@@ -33,12 +33,9 @@ const TASK_TYPE_MESSAGE_KEYS = TASK_ENTITY_TYPES as Record<string, string>;
  * falls back to the authored value / description / taskId, so callers that
  * don't have a translator on hand still get a sensible title.
  */
-export const getTaskTitle = (task: Task, t?: TFunction): string => {
-  // An author-supplied title wins; the id-derived default is not a title.
-  const authored = [task.displayName, task.name]
-    .map((value) => value?.trim())
-    .find((value) => value && value !== task.taskId);
-
+// Compose a title from the task type and the entity the task is about, the way
+// the entity-page Task tab does. Returns '' when either part is unavailable.
+const getComposedTaskTitle = (task: Task, t?: TFunction): string => {
   const typeKey = TASK_TYPE_MESSAGE_KEYS[task.type ?? ''];
   const typeLabel = typeKey && t ? t(typeKey) : '';
   // Several task-type message keys are unset upstream and i18next echoes the
@@ -46,11 +43,22 @@ export const getTaskTitle = (task: Task, t?: TFunction): string => {
   const prefix = typeLabel && typeLabel !== typeKey ? typeLabel : '';
   const entityName = task.about ? getEntityName(task.about) : '';
 
-  return (
-    authored ||
-    (prefix && entityName ? `${prefix} ${entityName}` : '') ||
-    task.description?.trim() ||
-    task.taskId ||
-    ''
-  );
+  return prefix && entityName ? `${prefix} ${entityName}` : '';
+};
+
+export const getTaskTitle = (task: Task, t?: TFunction): string => {
+  // An author-supplied title wins; the id-derived default is not a title.
+  const authored = [task.displayName, task.name]
+    .map((value) => value?.trim())
+    .find((value) => value && value !== task.taskId);
+  if (authored) {
+    return authored;
+  }
+
+  const composed = getComposedTaskTitle(task, t);
+  if (composed) {
+    return composed;
+  }
+
+  return task.description?.trim() || task.taskId || '';
 };

@@ -145,10 +145,34 @@ const RelatedMetrics: FC = () => {
     [onMetricUpdate, relatedMetrics]
   );
 
+  const relatedMetricsListBody = useMemo(() => {
+    if (isEmpty(relatedMetrics)) {
+      return null;
+    }
+
+    return (
+      <div
+        className="metric-entity-list-body"
+        data-testid="metric-entity-list-body">
+        {getRelatedMetricListing(visibleRelatedMetrics)}
+        {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
+        {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
+      </div>
+    );
+  }, [
+    relatedMetrics,
+    visibleRelatedMetrics,
+    hiddenRelatedMetrics,
+    isShowMore,
+    getRelatedMetricListing,
+    showMoreLessElement,
+  ]);
+
+  const canEditRelatedMetrics =
+    !isEdit && permissions.EditAll && !metricDetails.deleted;
+
   const headerExtra =
-    !isEdit &&
-    permissions.EditAll &&
-    !metricDetails.deleted &&
+    canEditRelatedMetrics &&
     (isEmpty(relatedMetrics) ? (
       <WidgetPlusButton
         data-testid="add-related-metrics-container"
@@ -176,15 +200,7 @@ const RelatedMetrics: FC = () => {
       onSubmit={handleRelatedMetricUpdate}
     />
   ) : (
-    !isEmpty(relatedMetrics) && (
-      <div
-        className="metric-entity-list-body"
-        data-testid="metric-entity-list-body">
-        {getRelatedMetricListing(visibleRelatedMetrics)}
-        {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
-        {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
-      </div>
-    )
+    relatedMetricsListBody
   );
 
   return (

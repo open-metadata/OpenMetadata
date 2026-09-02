@@ -61,6 +61,7 @@ import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
   KnowledgePage,
+  KnowledgePageHierarchyResponse,
   KnowledgePagesHierarchyRef,
   MovedEntity,
   PageHierarchy,
@@ -287,6 +288,56 @@ const KnowledgePagesHierarchy = forwardRef<
       }
     }, [knowledgePageHierarchy]);
 
+    const mergeFetchedData = (data: PageHierarchy[]) => {
+      const fqnParts = fqn ? Fqn.split(fqn) : [];
+      const isNestedNode = fqnParts.length > 1;
+
+      if (isNestedNode && data.length > 0) {
+        const parentFQN = extractKnowledgePageParentFQN(fqn);
+        setKnowledgePageHierarchy((prev) =>
+          integrateNodesIntoHierarchy(prev, data)
+        );
+        setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
+      } else {
+        setKnowledgePageHierarchy((prev) => {
+          const merged = prev.concat(data);
+
+          return Array.from(
+            new Map(merged.map((item) => [item.id, item])).values()
+          );
+        });
+      }
+    };
+
+    const applyFetchResult = (
+      data: PageHierarchy[],
+      paging: KnowledgePageHierarchyResponse['paging'],
+      isCreateHash: boolean,
+      forceRefresh: boolean
+    ) => {
+      setPaginationState({ type: 'SET_PAGING_VALUE', value: paging });
+
+      if (data.length === 0 || knowledgePageHierarchy.length === paging.total) {
+        setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
+      }
+
+      if (isCreateHash || forceRefresh) {
+        setKnowledgePageHierarchy(data);
+        if (forceRefresh) {
+          setExpandedKeys([]);
+          setIsUserExpandedAll(false);
+          nodesWithNoMoreChildrenRef.current.clear();
+          nodesLoadingChildrenRef.current.clear();
+          nodeChildrenOffsetRef.current.clear();
+        }
+        if (isCreateHash) {
+          consumedCreateHashFqnRef.current = fqn;
+        }
+      } else {
+        mergeFetchedData(data);
+      }
+    };
+
     const fetchKnowledgePageHierarchy = async (
       setLoading = true,
       isPaginationLoading = false,
@@ -299,14 +350,15 @@ const KnowledgePagesHierarchy = forwardRef<
         !isPaginationLoading &&
         consumedCreateHashFqnRef.current !== fqn;
 
-      if (
+      const shouldSkipFetch = () =>
         !forceRefresh &&
         !isPaginationLoading &&
         isHierarchyInitialized &&
         knowledgePageHierarchy.length > 0 &&
         lastFetchedFqnRef.current === fqn &&
-        !isCreateHash
-      ) {
+        !isCreateHash;
+
+      if (shouldSkipFetch()) {
         return;
       }
 
@@ -317,6 +369,7 @@ const KnowledgePagesHierarchy = forwardRef<
       if (isPaginationLoading) {
         setPaginationState({ type: 'SET_PAGINATION_LOADING', value: true });
       }
+
       try {
         const { data, paging } = await getPageHierarchyFromES(
           undefined,
@@ -328,47 +381,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         lastFetchedFqnRef.current = fqn;
 
-        setPaginationState({ type: 'SET_PAGING_VALUE', value: paging });
-
-        if (
-          data.length === 0 ||
-          knowledgePageHierarchy.length === paging.total
-        ) {
-          setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
-        }
-
-        if (isCreateHash || forceRefresh) {
-          setKnowledgePageHierarchy(data);
-          if (forceRefresh) {
-            setExpandedKeys([]);
-            setIsUserExpandedAll(false);
-            nodesWithNoMoreChildrenRef.current.clear();
-            nodesLoadingChildrenRef.current.clear();
-            nodeChildrenOffsetRef.current.clear();
-          }
-          if (isCreateHash) {
-            consumedCreateHashFqnRef.current = fqn;
-          }
-        } else {
-          const fqnParts = fqn ? Fqn.split(fqn) : [];
-          const isNestedNode = fqnParts.length > 1;
-
-          if (isNestedNode && data.length > 0) {
-            const parentFQN = extractKnowledgePageParentFQN(fqn);
-            setKnowledgePageHierarchy((prev) =>
-              integrateNodesIntoHierarchy(prev, data)
-            );
-            setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
-          } else {
-            setKnowledgePageHierarchy((prev) => {
-              const merged = prev.concat(data);
-
-              return Array.from(
-                new Map(merged.map((item) => [item.id, item])).values()
-              );
-            });
-          }
-        }
+        applyFetchResult(data, paging, isCreateHash, forceRefresh);
         setIsHierarchyInitialized(true);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -827,6 +840,75 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const isHierarchyEmpty = !isLoading && knowledgePageHierarchy.length === 0;
 
+    const renderArticleList = () => (
+      <div
+        className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
+        data-testid="article-list-container"
+        onScroll={handleScroll}>
+        {isLoading && (
+          <div className="tw:px-1.5">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
+                key={`skeleton-${i}`}
+                style={{ width: `${60 + (i % 3) * 15}%` }}
+              />
+            ))}
+          </div>
+        )}
+
+        {isHierarchyEmpty && (
+          <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
+            <EmptyPlaceholder
+              description={t('message.no-articles-listed')}
+              icon={<Articles className="tw:text-secondary" />}
+              title={t('label.no-entity', {
+                entity: t('label.article-plural'),
+              })}
+              width={200}
+            />
+          </div>
+        )}
+
+        {!isLoading && !isHierarchyEmpty && (
+          <Tree
+            aria-label={t('label.article-plural')}
+            className="knowledge-pages-tree"
+            data-testid="knowledge-pages-hierarchy"
+            expandedKeys={new Set(expandedKeys)}
+            selectedKeys={activeKey ? new Set([activeKey]) : new Set<string>()}
+            selectionMode="single"
+            onExpandedChange={(keys: Selection) => {
+              if (keys !== 'all') {
+                setExpandedKeys(Array.from(keys).map(String));
+              }
+            }}
+            onItemMove={handleItemMove}
+            onItemRootDrop={(sourceKey) => {
+              if (!permissions.EditAll) {
+                return;
+              }
+              const { page: sourceNode, parent: sourceNodeParent } =
+                findPageAndParentInTreeData(
+                  knowledgePageHierarchy,
+                  sourceKey as string
+                );
+              if (sourceNode && sourceNodeParent) {
+                setMovedPage({
+                  sourceNode,
+                  sourceNodeParent,
+                  targetNode: undefined,
+                });
+              }
+            }}>
+            {knowledgePageHierarchy.map(renderNode)}
+          </Tree>
+        )}
+
+        {paginationState.paginationLoading && <Loader size="x-small" />}
+      </div>
+    );
+
     return (
       <Card
         aria-label={t('label.article-plural')}
@@ -899,74 +981,7 @@ const KnowledgePagesHierarchy = forwardRef<
             )}
           </Box>
 
-          <div
-            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
-            data-testid="article-list-container"
-            onScroll={handleScroll}>
-            {isLoading && (
-              <div className="tw:px-1.5">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div
-                    className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
-                    key={`skeleton-${i}`}
-                    style={{ width: `${60 + (i % 3) * 15}%` }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {isHierarchyEmpty && (
-              <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
-                <EmptyPlaceholder
-                  description={t('message.no-articles-listed')}
-                  icon={<Articles className="tw:text-secondary" />}
-                  title={t('label.no-entity', {
-                    entity: t('label.article-plural'),
-                  })}
-                  width={200}
-                />
-              </div>
-            )}
-
-            {!isLoading && !isHierarchyEmpty && (
-              <Tree
-                aria-label={t('label.article-plural')}
-                className="knowledge-pages-tree"
-                data-testid="knowledge-pages-hierarchy"
-                expandedKeys={new Set(expandedKeys)}
-                selectedKeys={
-                  activeKey ? new Set([activeKey]) : new Set<string>()
-                }
-                selectionMode="single"
-                onExpandedChange={(keys: Selection) => {
-                  if (keys !== 'all') {
-                    setExpandedKeys(Array.from(keys).map(String));
-                  }
-                }}
-                onItemMove={handleItemMove}
-                onItemRootDrop={(sourceKey) => {
-                  if (!permissions.EditAll) {
-                    return;
-                  }
-                  const { page: sourceNode, parent: sourceNodeParent } =
-                    findPageAndParentInTreeData(
-                      knowledgePageHierarchy,
-                      sourceKey as string
-                    );
-                  if (sourceNode && sourceNodeParent) {
-                    setMovedPage({
-                      sourceNode,
-                      sourceNodeParent,
-                      targetNode: undefined,
-                    });
-                  }
-                }}>
-                {knowledgePageHierarchy.map(renderNode)}
-              </Tree>
-            )}
-
-            {paginationState.paginationLoading && <Loader size="x-small" />}
-          </div>
+          {renderArticleList()}
 
           <DeleteModal
             entityTitle={getKnowledgePageName(deletePage, t)}

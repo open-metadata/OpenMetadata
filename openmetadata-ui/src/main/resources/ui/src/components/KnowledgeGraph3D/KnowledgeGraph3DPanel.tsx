@@ -143,6 +143,47 @@ const SharedRowItem: FC<{
   );
 };
 
+const hasRelations = (relations: ReturnType<typeof relationsOf>): boolean =>
+  [
+    relations.mapped,
+    relations.shared,
+    relations.hierarchy,
+    relations.technical,
+    relations.members,
+  ].some((list) => list.length > 0);
+
+const NodeMappingBadge: FC<{ node: GraphNode3D }> = ({ node }) => {
+  const { t } = useTranslation();
+
+  if (node.type !== 'table') {
+    return null;
+  }
+
+  return (
+    <div
+      className="tw:mt-3.5 tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-xs"
+      style={{
+        color: node.mapped ? '#75E0A7' : '#FDA29B',
+        background: node.mapped
+          ? 'rgba(23,178,106,0.12)'
+          : 'rgba(240,68,56,0.12)',
+        borderColor: node.mapped
+          ? 'rgba(23,178,106,0.25)'
+          : 'rgba(240,68,56,0.3)',
+      }}>
+      <span
+        className="tw:size-1.5 tw:rounded-full"
+        style={{
+          background: node.mapped ? MAPPED_ACCENT : COVERAGE_GAP_COLOR,
+        }}
+      />
+      {node.mapped
+        ? t('message.mapped-to-business-ontology')
+        : t('message.coverage-gap-no-ontology')}
+    </div>
+  );
+};
+
 const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   graph,
   node,
@@ -163,12 +204,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   const membersTitle =
     node.type === 'table' ? t('label.belongs-to') : t('label.member-plural');
 
-  const hasBody =
-    relations.mapped.length > 0 ||
-    relations.shared.length > 0 ||
-    relations.hierarchy.length > 0 ||
-    relations.technical.length > 0 ||
-    relations.members.length > 0;
+  const hasBody = hasRelations(relations);
 
   return (
     <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
@@ -201,29 +237,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
           />
         </div>
 
-        {node.type === 'table' && (
-          <div
-            className="tw:mt-3.5 tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-xs"
-            style={{
-              color: node.mapped ? '#75E0A7' : '#FDA29B',
-              background: node.mapped
-                ? 'rgba(23,178,106,0.12)'
-                : 'rgba(240,68,56,0.12)',
-              borderColor: node.mapped
-                ? 'rgba(23,178,106,0.25)'
-                : 'rgba(240,68,56,0.3)',
-            }}>
-            <span
-              className="tw:size-1.5 tw:rounded-full"
-              style={{
-                background: node.mapped ? MAPPED_ACCENT : COVERAGE_GAP_COLOR,
-              }}
-            />
-            {node.mapped
-              ? t('message.mapped-to-business-ontology')
-              : t('message.coverage-gap-no-ontology')}
-          </div>
-        )}
+        <NodeMappingBadge node={node} />
       </div>
 
       <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-1 tw:pb-4.5">

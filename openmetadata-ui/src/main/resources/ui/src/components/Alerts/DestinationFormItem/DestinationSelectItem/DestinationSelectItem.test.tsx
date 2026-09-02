@@ -36,6 +36,15 @@ const MOCK_DESTINATION_SELECT_ITEM_PROPS: DestinationSelectItemProps = {
   isDestinationStatusLoading: false,
 };
 
+const isDestinationFieldPath = (
+  val: string | string[],
+  length: number
+): val is string[] =>
+  Array.isArray(val) &&
+  val.length === length &&
+  val[0] === 'destinations' &&
+  Number(val[1]) === 0;
+
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
@@ -215,12 +224,7 @@ describe('DestinationSelectItem component', () => {
             if (isString(val)) {
               return [{ category: 'External' }];
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 3 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 3)) {
               if (val[2] === 'destinationType') {
                 return SubscriptionCategory.Owners;
               }
@@ -228,12 +232,7 @@ describe('DestinationSelectItem component', () => {
                 return SubscriptionType.ActivityFeed;
               }
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 2 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 2)) {
               return {
                 destinationType: SubscriptionCategory.Owners,
                 type: SubscriptionType.ActivityFeed,
@@ -308,12 +307,7 @@ describe('DestinationSelectItem component', () => {
             if (isString(val)) {
               return [{ category: 'External' }];
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 3 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 3)) {
               if (val[2] === 'destinationType') {
                 return SubscriptionCategory.Owners;
               }
@@ -321,12 +315,7 @@ describe('DestinationSelectItem component', () => {
                 return SubscriptionType.Email;
               }
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 2 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 2)) {
               return {
                 destinationType: SubscriptionCategory.Owners,
                 type: SubscriptionType.Email,
@@ -401,12 +390,7 @@ describe('DestinationSelectItem component', () => {
             if (isString(val)) {
               return [{ category: 'External' }];
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 3 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 3)) {
               if (val[2] === 'destinationType') {
                 return SubscriptionCategory.Admins;
               }
@@ -414,12 +398,7 @@ describe('DestinationSelectItem component', () => {
                 return SubscriptionType.ActivityFeed;
               }
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 2 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 2)) {
               return {
                 destinationType: SubscriptionCategory.Admins,
                 type: SubscriptionType.ActivityFeed,
@@ -494,12 +473,7 @@ describe('DestinationSelectItem component', () => {
             if (isString(val)) {
               return [{ category: 'External' }];
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 3 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 3)) {
               if (val[2] === 'destinationType') {
                 return SubscriptionType.Webhook;
               }
@@ -507,12 +481,7 @@ describe('DestinationSelectItem component', () => {
                 return SubscriptionType.Webhook;
               }
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 2 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 2)) {
               return {
                 destinationType: SubscriptionType.Webhook,
                 type: SubscriptionType.Webhook,
@@ -683,12 +652,7 @@ describe('DestinationSelectItem component', () => {
                 },
               ];
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 2 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 2)) {
               return {
                 category: 'External',
                 type: SubscriptionType.Email,
@@ -770,12 +734,7 @@ describe('DestinationSelectItem component', () => {
                 },
               ];
             }
-            if (
-              Array.isArray(val) &&
-              val.length === 2 &&
-              val[0] === 'destinations' &&
-              Number(val[1]) === 0
-            ) {
+            if (isDestinationFieldPath(val, 2)) {
               return {
                 category: 'External',
                 type: SubscriptionType.Email,

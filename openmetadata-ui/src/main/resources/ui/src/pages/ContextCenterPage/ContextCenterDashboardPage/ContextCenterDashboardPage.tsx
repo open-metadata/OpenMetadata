@@ -82,6 +82,15 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+const getIsDashboardEmpty = (params: {
+  loadingFlags: boolean[];
+  counts: number[];
+}): boolean => {
+  const isDashboardLoading = params.loadingFlags.some(Boolean);
+
+  return !isDashboardLoading && params.counts.every((count) => count === 0);
+};
+
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -114,19 +123,16 @@ const ContextCenterDashboardPage: FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const isDashboardLoading =
-    isArticlesLoading ||
-    isDocumentsLoading ||
-    isFoldersLoading ||
-    isMemoriesLoading ||
-    isMostCitedLoading;
-
-  const isDashboardEmpty =
-    !isDashboardLoading &&
-    articlesCount === 0 &&
-    documentsCount === 0 &&
-    folderCount === 0 &&
-    memoriesCount === 0;
+  const isDashboardEmpty = getIsDashboardEmpty({
+    loadingFlags: [
+      isArticlesLoading,
+      isDocumentsLoading,
+      isFoldersLoading,
+      isMemoriesLoading,
+      isMostCitedLoading,
+    ],
+    counts: [articlesCount, documentsCount, folderCount, memoriesCount],
+  });
 
   const hasCreatePermission = useMemo(
     () => permissions.Create,

@@ -78,6 +78,68 @@ export const UserSelectableList = ({
     []
   );
 
+  const removeCurrentUserFromList = (list: EntityReference[]) => {
+    if (!filterCurrentUser) {
+      return list;
+    }
+    const user = list.find((item) => item.id === currentUser?.id);
+    if (user) {
+      list.splice(list.indexOf(user), 1);
+    }
+
+    return list;
+  };
+
+  const fetchUsersBySearch = async (searchText: string) => {
+    try {
+      const res = await searchQuery({
+        query: searchText,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: includeBot ? undefined : getTermQuery({ isBot: 'false' }),
+        searchIndex: SearchIndex.USER,
+      });
+
+      const users = formatUsersResponse(res.hits.hits);
+
+      if (includeBot) {
+        trackBots(users);
+      }
+
+      const data = getEntityReferenceListFromEntities(users, EntityType.USER);
+
+      return {
+        data: removeCurrentUserFromList(data),
+        paging: { total: res.hits.total.value },
+      };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
+    }
+  };
+
+  const fetchUsersList = async (after?: string) => {
+    try {
+      const { data, paging } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+        after: after ?? undefined,
+        ...(includeBot ? {} : { isBot: false }),
+      });
+
+      if (includeBot) {
+        trackBots(data);
+      }
+
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+
+      return { data: removeCurrentUserFromList(filterData), paging };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
+    }
+  };
+
   const fetchOptions = async (searchText: string, after?: string) => {
     if (!after) {
       botUserIds.current.clear();
@@ -86,64 +148,10 @@ export const UserSelectableList = ({
       }
     }
     if (searchText) {
-      try {
-        const res = await searchQuery({
-          query: searchText,
-          pageNumber: 1,
-          pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: includeBot
-            ? undefined
-            : getTermQuery({ isBot: 'false' }),
-          searchIndex: SearchIndex.USER,
-        });
-
-        const users = formatUsersResponse(res.hits.hits);
-
-        if (includeBot) {
-          trackBots(users);
-        }
-
-        const data = getEntityReferenceListFromEntities(users, EntityType.USER);
-
-        if (filterCurrentUser) {
-          const user = data.find((user) => user.id === currentUser?.id);
-          if (user) {
-            data.splice(data.indexOf(user), 1);
-          }
-        }
-
-        return { data, paging: { total: res.hits.total.value } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        const { data, paging } = await getUsers({
-          limit: PAGE_SIZE_MEDIUM,
-          after: after ?? undefined,
-          ...(includeBot ? {} : { isBot: false }),
-        });
-
-        if (includeBot) {
-          trackBots(data);
-        }
-
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.USER
-        );
-        if (filterCurrentUser) {
-          const user = filterData.find((user) => user.id === currentUser?.id);
-          if (user) {
-            filterData.splice(filterData.indexOf(user), 1);
-          }
-        }
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+      return fetchUsersBySearch(searchText);
     }
+
+    return fetchUsersList(after);
   };
 
   const handleUpdate = useCallback(

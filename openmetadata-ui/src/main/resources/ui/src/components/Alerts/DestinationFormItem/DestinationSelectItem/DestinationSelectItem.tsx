@@ -238,6 +238,202 @@ function DestinationSelectItem({
     }
   }, []);
 
+  const hasSelectedDestination =
+    Boolean(selectedDestinations) && !isEmpty(selectedDestinations?.[id]);
+
+  const renderConfigField = () => {
+    if (!hasSelectedDestination) {
+      return null;
+    }
+
+    return getDestinationConfigField(
+      selectedDestinations?.[id]?.destinationType,
+      id
+    );
+  };
+
+  const renderInternalDestinationFields = () => {
+    if (!destinationType || !checkIfDestinationIsInternal(destinationType)) {
+      return null;
+    }
+
+    return (
+      <>
+        <Col span={24}>
+          <Form.Item
+            required
+            name={[id, 'type']}
+            rules={[
+              {
+                required: true,
+                message: t('message.field-text-is-required', {
+                  fieldText: t('label.field'),
+                }),
+              },
+            ]}>
+            <Select
+              className="w-full"
+              data-testid={`destination-type-select-${id}`}
+              options={getSubscriptionTypeOptions(destinationType)}
+              placeholder={t('label.select-field', {
+                field: t('label.destination'),
+              })}
+              popupClassName="select-options-container"
+            />
+          </Form.Item>
+        </Col>
+        {destinationType && subscriptionType && (
+          <Col span={24}>
+            <Alert
+              closable
+              showIcon
+              className="destination-warning-status"
+              icon={<InfoCircleOutlined height={14} />}
+              message={
+                <Typography.Text className="text-sm">
+                  <Transi18next
+                    i18nKey={
+                      destinationType === SubscriptionCategory.Owners &&
+                      subscriptionType !== SubscriptionType.Email
+                        ? 'message.destination-owner-selection-warning'
+                        : 'message.destination-selection-warning'
+                    }
+                    renderElement={<b />}
+                    values={{
+                      subscriptionCategory: destinationType,
+                      subscriptionType,
+                    }}
+                  />
+                </Typography.Text>
+              }
+              type="warning"
+            />
+          </Col>
+        )}
+      </>
+    );
+  };
+
+  const renderNotifyDownstreamSwitch = () => {
+    if (!hasSelectedDestination) {
+      return null;
+    }
+
+    return (
+      <Col span={24}>
+        <Form.Item
+          label={
+            <Typography.Text>{t('label.notify-downstream')}</Typography.Text>
+          }
+          labelAlign="left"
+          labelCol={{ span: 6 }}
+          name={[id, 'notifyDownstream']}
+          valuePropName="checked">
+          <Switch onChange={handleNotifyDownstreamChange} />
+        </Form.Item>
+      </Col>
+    );
+  };
+
+  const renderDownstreamDepth = () => {
+    if (!notifyDownstream) {
+      return null;
+    }
+
+    return (
+      <Col span={24}>
+        <Form.Item
+          label={t('label.downstream-depth')}
+          labelCol={{ span: 24 }}
+          name={[id, 'downstreamDepth']}
+          requiredMark={false}
+          rules={[
+            {
+              required: true,
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.field'),
+              }),
+            },
+            {
+              validator: (_, value) => {
+                if (!isEmpty(value) && value <= 0) {
+                  return Promise.reject(
+                    new Error(
+                      t('message.value-must-be-greater-than', {
+                        field: t('label.downstream-depth'),
+                        minimum: 0,
+                      })
+                    )
+                  );
+                }
+
+                return Promise.resolve();
+              },
+            },
+          ]}>
+          <Input
+            className="w-full"
+            data-testid={`destination-downstream-depth-${id}`}
+            defaultValue={1}
+            placeholder={t('label.select-field', {
+              field: t('label.destination'),
+            })}
+            type="number"
+          />
+        </Form.Item>
+      </Col>
+    );
+  };
+
+  const renderStatusSkeleton = () => {
+    if (
+      !isDestinationStatusLoading ||
+      destinationItem.category !== SubscriptionCategory.External
+    ) {
+      return null;
+    }
+
+    return (
+      <Col span={24}>
+        <Skeleton
+          active
+          className="destination-status-skeleton"
+          paragraph={false}
+        />
+      </Col>
+    );
+  };
+
+  const renderStatusAlert = () => {
+    if (isDestinationStatusLoading || isUndefined(destinationStatusDetails)) {
+      return null;
+    }
+
+    return (
+      <Col span={24}>
+        <Alert
+          closable
+          showIcon
+          className={alertClassName}
+          icon={alertIcon}
+          message={
+            <>
+              <Typography.Text className="text-sm">
+                {`${t('label.status')}:`}
+              </Typography.Text>
+              <Typography.Text className="font-medium text-sm m-l-xss">
+                {`${destinationStatusDetails?.statusCode} ${statusLabel} ${
+                  destinationStatusDetails?.reason ?? ''
+                }`}
+              </Typography.Text>
+            </>
+          }
+          type={alertType}
+        />
+      </Col>
+    );
+  };
+
   return (
     <Col data-testid={`destination-${id}`} key={selectorKey} span={24}>
       <div className="flex gap-4">
@@ -278,164 +474,12 @@ function DestinationSelectItem({
               id,
               destinationType
             )}
-            {selectedDestinations &&
-              !isEmpty(selectedDestinations[id]) &&
-              getDestinationConfigField(
-                selectedDestinations[id]?.destinationType,
-                id
-              )}
-            {destinationType &&
-              checkIfDestinationIsInternal(destinationType) && (
-                <>
-                  <Col span={24}>
-                    <Form.Item
-                      required
-                      name={[id, 'type']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('message.field-text-is-required', {
-                            fieldText: t('label.field'),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        className="w-full"
-                        data-testid={`destination-type-select-${id}`}
-                        options={getSubscriptionTypeOptions(destinationType)}
-                        placeholder={t('label.select-field', {
-                          field: t('label.destination'),
-                        })}
-                        popupClassName="select-options-container"
-                      />
-                    </Form.Item>
-                  </Col>
-                  {destinationType && subscriptionType && (
-                    <Col span={24}>
-                      <Alert
-                        closable
-                        showIcon
-                        className="destination-warning-status"
-                        icon={<InfoCircleOutlined height={14} />}
-                        message={
-                          <Typography.Text className="text-sm">
-                            <Transi18next
-                              i18nKey={
-                                destinationType ===
-                                  SubscriptionCategory.Owners &&
-                                subscriptionType !== SubscriptionType.Email
-                                  ? 'message.destination-owner-selection-warning'
-                                  : 'message.destination-selection-warning'
-                              }
-                              renderElement={<b />}
-                              values={{
-                                subscriptionCategory: destinationType,
-                                subscriptionType,
-                              }}
-                            />
-                          </Typography.Text>
-                        }
-                        type="warning"
-                      />
-                    </Col>
-                  )}
-                </>
-              )}
-            {selectedDestinations && !isEmpty(selectedDestinations[id]) && (
-              <Col span={24}>
-                <Form.Item
-                  label={
-                    <Typography.Text>
-                      {t('label.notify-downstream')}
-                    </Typography.Text>
-                  }
-                  labelAlign="left"
-                  labelCol={{ span: 6 }}
-                  name={[id, 'notifyDownstream']}
-                  valuePropName="checked">
-                  <Switch onChange={handleNotifyDownstreamChange} />
-                </Form.Item>
-              </Col>
-            )}
-            {notifyDownstream && (
-              <Col span={24}>
-                <Form.Item
-                  label={t('label.downstream-depth')}
-                  labelCol={{ span: 24 }}
-                  name={[id, 'downstreamDepth']}
-                  requiredMark={false}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.field'),
-                      }),
-                    },
-                    {
-                      validator: (_, value) => {
-                        if (!isEmpty(value) && value <= 0) {
-                          return Promise.reject(
-                            new Error(
-                              t('message.value-must-be-greater-than', {
-                                field: t('label.downstream-depth'),
-                                minimum: 0,
-                              })
-                            )
-                          );
-                        }
-
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}>
-                  <Input
-                    className="w-full"
-                    data-testid={`destination-downstream-depth-${id}`}
-                    defaultValue={1}
-                    placeholder={t('label.select-field', {
-                      field: t('label.destination'),
-                    })}
-                    type="number"
-                  />
-                </Form.Item>
-              </Col>
-            )}
-            {isDestinationStatusLoading &&
-              destinationItem.category === SubscriptionCategory.External && (
-                <Col span={24}>
-                  <Skeleton
-                    active
-                    className="destination-status-skeleton"
-                    paragraph={false}
-                  />
-                </Col>
-              )}
-            {!isDestinationStatusLoading &&
-              !isUndefined(destinationStatusDetails) && (
-                <Col span={24}>
-                  <Alert
-                    closable
-                    showIcon
-                    className={alertClassName}
-                    icon={alertIcon}
-                    message={
-                      <>
-                        <Typography.Text className="text-sm">
-                          {`${t('label.status')}:`}
-                        </Typography.Text>
-                        <Typography.Text className="font-medium text-sm m-l-xss">
-                          {`${
-                            destinationStatusDetails?.statusCode
-                          } ${statusLabel} ${
-                            destinationStatusDetails?.reason ?? ''
-                          }`}
-                        </Typography.Text>
-                      </>
-                    }
-                    type={alertType}
-                  />
-                </Col>
-              )}
+            {renderConfigField()}
+            {renderInternalDestinationFields()}
+            {renderNotifyDownstreamSwitch()}
+            {renderDownstreamDepth()}
+            {renderStatusSkeleton()}
+            {renderStatusAlert()}
           </Row>
         </div>
 

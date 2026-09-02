@@ -19,6 +19,7 @@ import {
   useMemo,
   useState,
   type FunctionComponent,
+  type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -77,6 +78,7 @@ import {
   getDriveAssetsVersion,
   getDriveAssetsVersions,
 } from '../../rest/driveAPI';
+import { DriveAssetEntityTypes } from '../../rest/driveAPI.interface';
 import {
   getMetricByFqn,
   getMetricVersion,
@@ -224,189 +226,111 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const fetchEntityVersions = useCallback(async () => {
     setIsLoading(true);
+
+    const fetchDriveAssetVersions = async () => {
+      const driveEntityType = entityType as DriveAssetEntityTypes;
+      const { id } = await getDriveAssetByFqn(
+        decodedEntityFQN,
+        driveEntityType
+      );
+      setEntityId(id ?? '');
+      const versions = await getDriveAssetsVersions(id ?? '', driveEntityType);
+      setVersionList(versions as unknown as EntityHistory);
+    };
+
+    const versionFetchers: Partial<Record<EntityType, () => Promise<void>>> = {
+      [EntityType.TABLE]: async () => {
+        const { id } = await getTableDetailsByFQN(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getTableVersions(id));
+      },
+      [EntityType.TOPIC]: async () => {
+        const { id } = await getTopicByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getTopicVersions(id));
+      },
+      [EntityType.DASHBOARD]: async () => {
+        const { id } = await getDashboardByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getDashboardVersions(id));
+      },
+      [EntityType.PIPELINE]: async () => {
+        const { id } = await getPipelineByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getPipelineVersions(id));
+      },
+      [EntityType.MLMODEL]: async () => {
+        const { id } = await getMlModelByFQN(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getMlModelVersions(id));
+      },
+      [EntityType.CONTAINER]: async () => {
+        const { id } = await getContainerByName(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getContainerVersions(id));
+      },
+      [EntityType.SEARCH_INDEX]: async () => {
+        const { id } = await getSearchIndexDetailsByFQN(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id);
+        setVersionList(await getSearchIndexVersions(id));
+      },
+      [EntityType.DASHBOARD_DATA_MODEL]: async () => {
+        const { id } = await getDataModelByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id ?? '');
+        setVersionList(await getDataModelVersionsList(id ?? ''));
+      },
+      [EntityType.STORED_PROCEDURE]: async () => {
+        const { id } = await getStoredProceduresByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id ?? '');
+        setVersionList(await getStoredProceduresVersionsList(id ?? ''));
+      },
+      [EntityType.API_ENDPOINT]: async () => {
+        const { id } = await getApiEndPointByFQN(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id ?? '');
+        setVersionList(await getApiEndPointVersions(id ?? ''));
+      },
+      [EntityType.METRIC]: async () => {
+        const { id } = await getMetricByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id ?? '');
+        setVersionList(await getMetricVersions(id ?? ''));
+      },
+      [EntityType.CHART]: async () => {
+        const { id } = await getChartByFqn(decodedEntityFQN, {
+          include: Include.All,
+        });
+        setEntityId(id ?? '');
+        setVersionList(await getChartVersions(id ?? ''));
+      },
+      [EntityType.DIRECTORY]: fetchDriveAssetVersions,
+      [EntityType.FILE]: fetchDriveAssetVersions,
+      [EntityType.SPREADSHEET]: fetchDriveAssetVersions,
+      [EntityType.WORKSHEET]: fetchDriveAssetVersions,
+    };
+
     try {
-      switch (entityType) {
-        case EntityType.TABLE: {
-          const { id } = await getTableDetailsByFQN(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getTableVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getTopicVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getDashboardVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getPipelineVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getMlModelVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.CONTAINER: {
-          const { id } = await getContainerByName(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getContainerVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.SEARCH_INDEX: {
-          const { id } = await getSearchIndexDetailsByFQN(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id);
-
-          const versions = await getSearchIndexVersions(id);
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.DASHBOARD_DATA_MODEL: {
-          const { id } = await getDataModelByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id ?? '');
-
-          const versions = await getDataModelVersionsList(id ?? '');
-
-          setVersionList(versions);
-
-          break;
-        }
-
-        case EntityType.STORED_PROCEDURE: {
-          const { id } = await getStoredProceduresByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id ?? '');
-
-          const versions = await getStoredProceduresVersionsList(id ?? '');
-
-          setVersionList(versions);
-
-          break;
-        }
-        case EntityType.API_ENDPOINT: {
-          const { id } = await getApiEndPointByFQN(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id ?? '');
-
-          const versions = await getApiEndPointVersions(id ?? '');
-
-          setVersionList(versions);
-
-          break;
-        }
-        case EntityType.METRIC: {
-          const { id } = await getMetricByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id ?? '');
-
-          const versions = await getMetricVersions(id ?? '');
-
-          setVersionList(versions);
-
-          break;
-        }
-        case EntityType.CHART: {
-          const { id } = await getChartByFqn(decodedEntityFQN, {
-            include: Include.All,
-          });
-
-          setEntityId(id ?? '');
-
-          const versions = await getChartVersions(id ?? '');
-
-          setVersionList(versions);
-
-          break;
-        }
-        case EntityType.DIRECTORY:
-        case EntityType.FILE:
-        case EntityType.SPREADSHEET:
-        case EntityType.WORKSHEET: {
-          const { id } = await getDriveAssetByFqn(decodedEntityFQN, entityType);
-          setEntityId(id ?? '');
-
-          const versions = await getDriveAssetsVersions(id ?? '', entityType);
-
-          setVersionList(versions as unknown as EntityHistory);
-
-          break;
-        }
-
-        default:
-          break;
-      }
+      await versionFetchers[entityType]?.();
     } finally {
       setIsLoading(false);
     }
@@ -415,148 +339,87 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchCurrentVersion = useCallback(
     async (id: string) => {
       setIsVersionLoading(true);
+
+      const currentVersionFetchers: Partial<
+        Record<EntityType, () => Promise<void>>
+      > = {
+        [EntityType.TABLE]: async () => {
+          setCurrentVersionData(await getTableVersion(id, version));
+        },
+        [EntityType.TOPIC]: async () => {
+          setCurrentVersionData(await getTopicVersion(id, version));
+        },
+        [EntityType.DASHBOARD]: async () => {
+          setCurrentVersionData(await getDashboardVersion(id, version));
+        },
+        [EntityType.PIPELINE]: async () => {
+          setCurrentVersionData(await getPipelineVersion(id, version));
+        },
+        [EntityType.MLMODEL]: async () => {
+          setCurrentVersionData(await getMlModelVersion(id, version));
+        },
+        [EntityType.CONTAINER]: async () => {
+          setCurrentVersionData(await getContainerVersion(id, version));
+        },
+        [EntityType.SEARCH_INDEX]: async () => {
+          setCurrentVersionData(await getSearchIndexVersion(id, version));
+        },
+        [EntityType.DASHBOARD_DATA_MODEL]: async () => {
+          setCurrentVersionData(await getDataModelVersion(id, version));
+        },
+        [EntityType.STORED_PROCEDURE]: async () => {
+          setCurrentVersionData(await getStoredProceduresVersion(id, version));
+        },
+        [EntityType.API_ENDPOINT]: async () => {
+          setCurrentVersionData(await getApiEndPointVersion(id, version));
+        },
+        [EntityType.METRIC]: async () => {
+          setCurrentVersionData(await getMetricVersion(id, version));
+        },
+        [EntityType.CHART]: async () => {
+          setCurrentVersionData(await getChartVersion(id, version));
+        },
+        [EntityType.DIRECTORY]: async () => {
+          setCurrentVersionData(
+            await getDriveAssetsVersion<Directory>(
+              id,
+              entityType as DriveAssetEntityTypes,
+              version
+            )
+          );
+        },
+        [EntityType.FILE]: async () => {
+          setCurrentVersionData(
+            await getDriveAssetsVersion<File>(
+              id,
+              entityType as DriveAssetEntityTypes,
+              version
+            )
+          );
+        },
+        [EntityType.SPREADSHEET]: async () => {
+          setCurrentVersionData(
+            await getDriveAssetsVersion<Spreadsheet>(
+              id,
+              entityType as DriveAssetEntityTypes,
+              version
+            )
+          );
+        },
+        [EntityType.WORKSHEET]: async () => {
+          setCurrentVersionData(
+            await getDriveAssetsVersion<Worksheet>(
+              id,
+              entityType as DriveAssetEntityTypes,
+              version
+            )
+          );
+        },
+      };
+
       try {
         if (viewVersionPermission) {
-          switch (entityType) {
-            case EntityType.TABLE: {
-              const currentVersion = await getTableVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-
-            case EntityType.TOPIC: {
-              const currentVersion = await getTopicVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.DASHBOARD: {
-              const currentVersion = await getDashboardVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.PIPELINE: {
-              const currentVersion = await getPipelineVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-
-            case EntityType.MLMODEL: {
-              const currentVersion = await getMlModelVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.CONTAINER: {
-              const currentVersion = await getContainerVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.SEARCH_INDEX: {
-              const currentVersion = await getSearchIndexVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-
-            case EntityType.DASHBOARD_DATA_MODEL: {
-              const currentVersion = await getDataModelVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-
-            case EntityType.STORED_PROCEDURE: {
-              const currentVersion = await getStoredProceduresVersion(
-                id,
-                version
-              );
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.API_ENDPOINT: {
-              const currentVersion = await getApiEndPointVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.METRIC: {
-              const currentVersion = await getMetricVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.CHART: {
-              const currentVersion = await getChartVersion(id, version);
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.DIRECTORY: {
-              const currentVersion = await getDriveAssetsVersion<Directory>(
-                id,
-                entityType,
-                version
-              );
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.FILE: {
-              const currentVersion = await getDriveAssetsVersion<File>(
-                id,
-                entityType,
-                version
-              );
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.SPREADSHEET: {
-              const currentVersion = await getDriveAssetsVersion<Spreadsheet>(
-                id,
-                entityType,
-                version
-              );
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-            case EntityType.WORKSHEET: {
-              const currentVersion = await getDriveAssetsVersion<Worksheet>(
-                id,
-                entityType,
-                version
-              );
-
-              setCurrentVersionData(currentVersion);
-
-              break;
-            }
-
-            default:
-              break;
-          }
+          await currentVersionFetchers[entityType]?.();
         }
       } finally {
         setIsVersionLoading(false);
@@ -660,9 +523,9 @@ const EntityVersionPage: FunctionComponent = () => {
       <Suspense fallback={<Loader />}>{node}</Suspense>
     );
 
-    switch (entityType) {
-      case EntityType.TABLE: {
-        return TableVersion
+    const versionRenderers: Partial<Record<EntityType, () => ReactNode>> = {
+      [EntityType.TABLE]: () =>
+        TableVersion
           ? wrapSuspense(
               <TableVersion
                 backHandler={backHandler}
@@ -680,10 +543,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.TOPIC: {
-        return TopicVersion
+          : null,
+      [EntityType.TOPIC]: () =>
+        TopicVersion
           ? wrapSuspense(
               <TopicVersion
                 backHandler={backHandler}
@@ -701,11 +563,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.DASHBOARD: {
-        return DashboardVersion
+          : null,
+      [EntityType.DASHBOARD]: () =>
+        DashboardVersion
           ? wrapSuspense(
               <DashboardVersion
                 backHandler={backHandler}
@@ -723,11 +583,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.PIPELINE: {
-        return PipelineVersion
+          : null,
+      [EntityType.PIPELINE]: () =>
+        PipelineVersion
           ? wrapSuspense(
               <PipelineVersion
                 backHandler={backHandler}
@@ -745,11 +603,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.MLMODEL: {
-        return MlModelVersion
+          : null,
+      [EntityType.MLMODEL]: () =>
+        MlModelVersion
           ? wrapSuspense(
               <MlModelVersion
                 backHandler={backHandler}
@@ -767,10 +623,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.CONTAINER: {
-        return ContainerVersion
+          : null,
+      [EntityType.CONTAINER]: () =>
+        ContainerVersion
           ? wrapSuspense(
               <ContainerVersion
                 backHandler={backHandler}
@@ -788,10 +643,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.SEARCH_INDEX: {
-        return SearchIndexVersion
+          : null,
+      [EntityType.SEARCH_INDEX]: () =>
+        SearchIndexVersion
           ? wrapSuspense(
               <SearchIndexVersion
                 backHandler={backHandler}
@@ -809,11 +663,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.DASHBOARD_DATA_MODEL: {
-        return DataModelVersion
+          : null,
+      [EntityType.DASHBOARD_DATA_MODEL]: () =>
+        DataModelVersion
           ? wrapSuspense(
               <DataModelVersion
                 backHandler={backHandler}
@@ -831,11 +683,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.STORED_PROCEDURE: {
-        return StoredProcedureVersion
+          : null,
+      [EntityType.STORED_PROCEDURE]: () =>
+        StoredProcedureVersion
           ? wrapSuspense(
               <StoredProcedureVersion
                 backHandler={backHandler}
@@ -853,11 +703,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.API_ENDPOINT: {
-        return APIEndpointVersion
+          : null,
+      [EntityType.API_ENDPOINT]: () =>
+        APIEndpointVersion
           ? wrapSuspense(
               <APIEndpointVersion
                 backHandler={backHandler}
@@ -873,10 +721,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.METRIC: {
-        return MetricVersion
+          : null,
+      [EntityType.METRIC]: () =>
+        MetricVersion
           ? wrapSuspense(
               <MetricVersion
                 backHandler={backHandler}
@@ -892,10 +739,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.CHART: {
-        return ChartVersion
+          : null,
+      [EntityType.CHART]: () =>
+        ChartVersion
           ? wrapSuspense(
               <ChartVersion
                 backHandler={backHandler}
@@ -913,10 +759,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.DIRECTORY: {
-        return DirectoryVersion
+          : null,
+      [EntityType.DIRECTORY]: () =>
+        DirectoryVersion
           ? wrapSuspense(
               <DirectoryVersion
                 backHandler={backHandler}
@@ -934,10 +779,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.FILE: {
-        return FileVersion
+          : null,
+      [EntityType.FILE]: () =>
+        FileVersion
           ? wrapSuspense(
               <FileVersion
                 backHandler={backHandler}
@@ -955,10 +799,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.SPREADSHEET: {
-        return SpreadsheetVersion
+          : null,
+      [EntityType.SPREADSHEET]: () =>
+        SpreadsheetVersion
           ? wrapSuspense(
               <SpreadsheetVersion
                 backHandler={backHandler}
@@ -976,10 +819,9 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-      case EntityType.WORKSHEET: {
-        return WorksheetVersion
+          : null,
+      [EntityType.WORKSHEET]: () =>
+        WorksheetVersion
           ? wrapSuspense(
               <WorksheetVersion
                 backHandler={backHandler}
@@ -997,38 +839,30 @@ const EntityVersionPage: FunctionComponent = () => {
                 versionList={versionList}
               />
             )
-          : null;
-      }
-
-      case EntityType.DATABASE: {
-        return DatabaseVersionPage
-          ? wrapSuspense(<DatabaseVersionPage />)
-          : null;
-      }
-
-      case EntityType.DATABASE_SCHEMA: {
-        return DatabaseSchemaVersionPage
+          : null,
+      [EntityType.DATABASE]: () =>
+        DatabaseVersionPage ? wrapSuspense(<DatabaseVersionPage />) : null,
+      [EntityType.DATABASE_SCHEMA]: () =>
+        DatabaseSchemaVersionPage
           ? wrapSuspense(<DatabaseSchemaVersionPage />)
-          : null;
-      }
-
-      case EntityType.DATA_PRODUCT: {
-        return DataProductsPage ? wrapSuspense(<DataProductsPage />) : null;
-      }
-
-      case EntityType.API_COLLECTION: {
-        return APICollectionVersionPage
+          : null,
+      [EntityType.DATA_PRODUCT]: () =>
+        DataProductsPage ? wrapSuspense(<DataProductsPage />) : null,
+      [EntityType.API_COLLECTION]: () =>
+        APICollectionVersionPage
           ? wrapSuspense(<APICollectionVersionPage />)
-          : null;
-      }
+          : null,
+    };
 
-      default: {
-        const VersionPage =
-          entityVersionClassBase.getEntityDetailComponent(entityType);
-
-        return VersionPage ? <VersionPage /> : null;
-      }
+    const renderer = versionRenderers[entityType];
+    if (renderer) {
+      return renderer();
     }
+
+    const VersionPage =
+      entityVersionClassBase.getEntityDetailComponent(entityType);
+
+    return VersionPage ? <VersionPage /> : null;
   };
 
   useEffect(() => {

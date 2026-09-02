@@ -226,12 +226,18 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     useApplicationStore();
 
   const userExtras = currentUser as CurrentUserExtras | undefined;
-  const displayName =
-    currentUser?.displayName ??
-    currentUser?.name ??
-    currentUser?.email ??
-    'User';
-  const email = currentUser?.email ?? currentUser?.name ?? '';
+  const displayName = useMemo(
+    () =>
+      currentUser?.displayName ??
+      currentUser?.name ??
+      currentUser?.email ??
+      'User',
+    [currentUser]
+  );
+  const email = useMemo(
+    () => currentUser?.email ?? currentUser?.name ?? '',
+    [currentUser]
+  );
   const currentLocale = i18n.language ?? '';
   const currentLanguage = currentLocale
     ? upperCase(currentLocale.split('-')[0])

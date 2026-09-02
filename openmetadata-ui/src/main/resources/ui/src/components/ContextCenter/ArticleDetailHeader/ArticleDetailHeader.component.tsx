@@ -201,22 +201,26 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     navigate,
   ]);
 
-  const handleVersionClick = () => {
+  const handleVersionClick = useCallback(() => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
-  };
+  }, [navigate, fqn, version]);
 
-  const handleFollowClick = async () => {
+  const handleFollowClick = useCallback(async () => {
     setIsFollowLoading(true);
     await onFollowChange();
     setIsFollowLoading(false);
-  };
+  }, [onFollowChange]);
 
-  const handleVoteChange = async (type: QueryVoteType) => {
-    const updatedVoteType = voteStatus === type ? QueryVoteType.unVoted : type;
-    setVoteLoading(type);
-    await onVoteChange({ updatedVoteType });
-    setVoteLoading(null);
-  };
+  const handleVoteChange = useCallback(
+    async (type: QueryVoteType) => {
+      const updatedVoteType =
+        voteStatus === type ? QueryVoteType.unVoted : type;
+      setVoteLoading(type);
+      await onVoteChange({ updatedVoteType });
+      setVoteLoading(null);
+    },
+    [voteStatus, onVoteChange]
+  );
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
@@ -244,7 +248,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     [knowledgePage, onUpdate]
   );
 
-  const handleOpenConversation = () => {
+  const handleOpenConversation = useCallback(() => {
     onSetThreadLink(
       EntityLink.getEntityLink(
         EntityType.KNOWLEDGE_PAGE,
@@ -252,7 +256,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         EntityField.DESCRIPTION
       )
     );
-  };
+  }, [onSetThreadLink, knowledgePage?.fullyQualifiedName]);
 
   const entityStatusBadge = useMemo(() => {
     const shouldShowStatus = true;
@@ -305,35 +309,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     }
   }, [contentChangeState, t]);
 
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-
-  const breadcrumbEl = (
-    <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
-  );
-
-  if (!knowledgePage && !tabs) {
-    return (
-      <div
-        className="tw:flex tw:flex-col tw:gap-3 tw:px-6 tw:py-4"
-        data-testid="article-detail-header-skeleton">
-        <Skeleton height={20} variant="rounded" width={300} />
-        <Card className="tw:mb-0">
-          <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
-            <Skeleton height={28} variant="rounded" width={250} />
-            <div className="tw:flex tw:items-center tw:gap-2">
-              <Skeleton height={32} variant="rounded" width={80} />
-              <Skeleton height={32} variant="rounded" width={32} />
-              <Skeleton height={32} variant="rounded" width={32} />
-            </div>
-          </div>
-          <Skeleton height={16} variant="rounded" width={180} />
-        </Card>
-      </div>
-    );
-  }
-
-  const metaEl = (
-    <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
+  const domainMetaEl = useMemo(
+    () => (
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
@@ -377,271 +354,378 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           </DomainSelectableList>
         )}
       </Box>
+    ),
+    [
+      firstDomain,
+      extraDomains,
+      permissions.EditAll,
+      entityRules.canAddMultipleDomains,
+      knowledgePage?.domains,
+      handleDomainSave,
+      t,
+    ]
+  );
 
-      <Dot className="tw:text-fg-quaternary" size="xs" />
+  const ownerMetaEl = useMemo(
+    () => (
+      <>
+        <Box align="center" gap={1}>
+          <Tooltip title={t('label.owner-plural')}>
+            <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
+              <UserIcon
+                className="tw:shrink-0 tw:text-quaternary"
+                height={16}
+                width={16}
+              />
+            </TooltipTrigger>
+          </Tooltip>
 
-      <Box align="center" gap={1}>
-        <Tooltip title={t('label.owner-plural')}>
-          <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
-            <UserIcon
-              className="tw:shrink-0 tw:text-quaternary"
-              height={16}
-              width={16}
-            />
-          </TooltipTrigger>
-        </Tooltip>
-
-        {owners.length > 0 ? (
-          <div className="article-detail-owner-label">
-            <OwnerLabel
-              hasPermission={false}
-              isCompactView={false}
-              multiple={{ user: true, team: true }}
-              owners={owners}
-              showLabel={false}
-            />
-          </div>
-        ) : (
-          <Typography
-            className="tw:text-quaternary"
-            size="text-sm"
-            weight="regular">
-            {t('label.no-entity', { entity: t('label.owner') })}
-          </Typography>
-        )}
-        {(permissions.EditAll || permissions.EditOwners) && (
-          <UserTeamSelectableList
-            hasPermission={permissions.EditAll || permissions.EditOwners}
-            multiple={{
-              user: entityRules.canAddMultipleUserOwners,
-              team: entityRules.canAddMultipleTeamOwner,
-            }}
-            owner={knowledgePage?.owners}
-            onUpdate={handleOwnerSave}>
-            <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
-              data-testid="edit-owner-btn"
-              icon={<EditIcon height={14} width={14} />}
-              tooltip={t('label.edit-entity', {
-                entity: t('label.owner-plural'),
-              })}
-            />
-          </UserTeamSelectableList>
-        )}
-      </Box>
-
-      {editors.length > 0 && (
-        <>
-          <Dot className="tw:text-fg-quaternary" size="xs" />
-          <Box align="center" gap={1}>
-            <Tooltip title={t('label.editor')}>
-              <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
-                <EditorIcon
-                  className="tw:shrink-0 tw:text-quaternary"
-                  height={16}
-                  width={16}
-                />
-              </TooltipTrigger>
-            </Tooltip>
-            <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
+          {owners.length > 0 ? (
+            <div className="article-detail-owner-label">
               <OwnerLabel
                 hasPermission={false}
                 isCompactView={false}
                 multiple={{ user: true, team: true }}
-                owners={editors}
+                owners={owners}
                 showLabel={false}
               />
             </div>
-          </Box>
-        </>
-      )}
+          ) : (
+            <Typography
+              className="tw:text-quaternary"
+              size="text-sm"
+              weight="regular">
+              {t('label.no-entity', { entity: t('label.owner') })}
+            </Typography>
+          )}
+          {(permissions.EditAll || permissions.EditOwners) && (
+            <UserTeamSelectableList
+              hasPermission={permissions.EditAll || permissions.EditOwners}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
+              owner={knowledgePage?.owners}
+              onUpdate={handleOwnerSave}>
+              <ButtonUtility
+                className="tw:p-1"
+                color="tertiary"
+                data-testid="edit-owner-btn"
+                icon={<EditIcon height={14} width={14} />}
+                tooltip={t('label.edit-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            </UserTeamSelectableList>
+          )}
+        </Box>
+
+        {editors.length > 0 && (
+          <>
+            <Dot className="tw:text-fg-quaternary" size="xs" />
+            <Box align="center" gap={1}>
+              <Tooltip title={t('label.editor')}>
+                <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
+                  <EditorIcon
+                    className="tw:shrink-0 tw:text-quaternary"
+                    height={16}
+                    width={16}
+                  />
+                </TooltipTrigger>
+              </Tooltip>
+              <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
+                <OwnerLabel
+                  hasPermission={false}
+                  isCompactView={false}
+                  multiple={{ user: true, team: true }}
+                  owners={editors}
+                  showLabel={false}
+                />
+              </div>
+            </Box>
+          </>
+        )}
+      </>
+    ),
+    [
+      owners,
+      permissions.EditAll,
+      permissions.EditOwners,
+      entityRules.canAddMultipleUserOwners,
+      entityRules.canAddMultipleTeamOwner,
+      knowledgePage?.owners,
+      handleOwnerSave,
+      editors,
+      t,
+    ]
+  );
+
+  const actionsPrimaryEl = useMemo(
+    () => (
+      <>
+        <Box align="center" className="tw:mr-1.5" gap={3}>
+          {contentChangeIcon}
+        </Box>
+
+        <Tooltip title={t('label.version-plural')}>
+          <TooltipTrigger>
+            <Button
+              className="tw:p-1.5"
+              color="secondary"
+              data-testid="version-btn"
+              iconLeading={<VersionIcon height={16} width={16} />}
+              size="sm"
+              onClick={handleVersionClick}>
+              {version}
+            </Button>
+          </TooltipTrigger>
+        </Tooltip>
+
+        <ButtonUtility
+          className={
+            voteStatus === QueryVoteType.votedUp
+              ? 'tw:text-fg-brand-primary'
+              : undefined
+          }
+          color="tertiary"
+          data-testid="upvote-btn"
+          disabled={knowledgePage?.deleted || voteLoading !== null}
+          icon={
+            voteStatus === QueryVoteType.votedUp ? (
+              <ThumbsUpActiveIcon height={20} width={20} />
+            ) : (
+              <ThumbsUpIcon height={20} width={20} />
+            )
+          }
+          tooltip={t('label.up-vote')}
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}
+        />
+
+        <ButtonUtility
+          className={
+            voteStatus === QueryVoteType.votedDown
+              ? 'tw:text-fg-brand-primary'
+              : undefined
+          }
+          color="tertiary"
+          data-testid="downvote-btn"
+          disabled={knowledgePage?.deleted || voteLoading !== null}
+          icon={
+            voteStatus === QueryVoteType.votedDown ? (
+              <ThumbsDownActiveIcon height={20} width={20} />
+            ) : (
+              <ThumbsDownIcon height={20} width={20} />
+            )
+          }
+          tooltip={t('label.down-vote')}
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}
+        />
+
+        <ButtonUtility
+          color="tertiary"
+          data-testid="conversation"
+          icon={<ChatIcon height={20} width={20} />}
+          tooltip={t('label.conversation')}
+          onClick={handleOpenConversation}
+        />
+      </>
+    ),
+    [
+      contentChangeIcon,
+      t,
+      version,
+      handleVersionClick,
+      voteStatus,
+      knowledgePage?.deleted,
+      voteLoading,
+      handleVoteChange,
+      handleOpenConversation,
+    ]
+  );
+
+  const actionsSecondaryEl = useMemo(
+    () => (
+      <>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="follow-btn"
+          disabled={isFollowLoading || knowledgePage?.deleted}
+          icon={
+            isFollowing ? (
+              <FollowActiveIcon height={20} width={20} />
+            ) : (
+              <FollowIcon height={20} width={20} />
+            )
+          }
+          tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
+          onClick={handleFollowClick}
+        />
+        <CopyLinkButton
+          className="tw:w-8 tw:h-8"
+          color="tertiary"
+          testId="copy-btn"
+          url={window.location.href}>
+          <CopyIcon height={20} width={20} />
+        </CopyLinkButton>
+
+        {permissions?.Delete && (
+          <Dropdown.Root>
+            <ButtonUtility
+              color="tertiary"
+              data-testid="manage-button"
+              icon={<DotsVerticalIcon height={20} width={20} />}
+              size="sm"
+              tooltip={t('label.manage-entity', {
+                entity: t('label.article'),
+              })}
+            />
+            <Dropdown.Popover className="tw:w-30">
+              <Dropdown.Menu
+                onAction={(key) => {
+                  if (key === 'delete') {
+                    setIsDeleteModalOpen(true);
+                  }
+                }}>
+                <Dropdown.Item data-testid="delete-btn" id="delete">
+                  <Box align="center" gap={2}>
+                    <TrashIcon
+                      aria-hidden="true"
+                      className="ttw:shrink-0 tw:text-error-primary"
+                      height={20}
+                      width={20}
+                    />
+                    <Typography
+                      ellipsis
+                      className="tw:grow tw:text-error-primary"
+                      size="text-sm"
+                      weight="medium">
+                      {t('label.delete')}
+                    </Typography>
+                  </Box>
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        )}
+
+        <DeleteModal
+          entityTitle={getKnowledgePageName(knowledgePage, t)}
+          isDeleting={isDeleting}
+          message={t('message.delete-entity-permanently', {
+            entityType: t('label.article-lowercase'),
+          })}
+          open={isDeleteModalOpen}
+          onCancel={() => setIsDeleteModalOpen(false)}
+          onDelete={handleDeleteConfirm}
+        />
+      </>
+    ),
+    [
+      isFollowLoading,
+      knowledgePage,
+      isFollowing,
+      handleFollowClick,
+      permissions?.Delete,
+      t,
+      isDeleting,
+      isDeleteModalOpen,
+      handleDeleteConfirm,
+    ]
+  );
+
+  const footerEl = useMemo(
+    () => (
+      <Box align="center" className="tw:mt-6" justify="between">
+        <Tabs
+          className="tw:w-auto"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => onTabChange?.(String(key))}>
+          <Tabs.List className="tw:gap-6" type="underline">
+            {tabs?.map((tab) => (
+              <Tabs.Item id={String(tab.key)} key={String(tab.key)}>
+                <TabsLabel
+                  count={tab.key === 'activity_feed' ? feedCount : undefined}
+                  id={String(tab.key)}
+                  isActive={activeTab === String(tab.key)}
+                  name={tab.name}
+                />
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
+
+        {activeTab !== EntityTabs.ACTIVITY_FEED && (
+          <Button
+            className="tw:relative tw:bottom-2.5"
+            color="tertiary"
+            data-testid="right-panel-toggle-btn"
+            iconLeading={
+              <SidebarCollapsible
+                className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
+                height={20}
+                width={20}
+              />
+            }
+            size="sm"
+            onClick={onToggleRightPanel}>
+            {isRightPanelOpen
+              ? t('label.hide-property-plural')
+              : t('label.show-property-plural')}
+          </Button>
+        )}
+      </Box>
+    ),
+    [
+      activeTab,
+      onTabChange,
+      tabs,
+      feedCount,
+      isRightPanelOpen,
+      onToggleRightPanel,
+      t,
+    ]
+  );
+
+  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
+
+  const breadcrumbEl = (
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
+  );
+
+  if (!knowledgePage && !tabs) {
+    return (
+      <div
+        className="tw:flex tw:flex-col tw:gap-3 tw:px-6 tw:py-4"
+        data-testid="article-detail-header-skeleton">
+        <Skeleton height={20} variant="rounded" width={300} />
+        <Card className="tw:mb-0">
+          <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
+            <Skeleton height={28} variant="rounded" width={250} />
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <Skeleton height={32} variant="rounded" width={80} />
+              <Skeleton height={32} variant="rounded" width={32} />
+              <Skeleton height={32} variant="rounded" width={32} />
+            </div>
+          </div>
+          <Skeleton height={16} variant="rounded" width={180} />
+        </Card>
+      </div>
+    );
+  }
+
+  const metaEl = (
+    <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
+      {domainMetaEl}
+      <Dot className="tw:text-fg-quaternary" size="xs" />
+      {ownerMetaEl}
     </Box>
   );
 
   const actionsEl = (
     <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
-      <Box align="center" className="tw:mr-1.5" gap={3}>
-        {contentChangeIcon}
-      </Box>
-
-      <Tooltip title={t('label.version-plural')}>
-        <TooltipTrigger>
-          <Button
-            className="tw:p-1.5"
-            color="secondary"
-            data-testid="version-btn"
-            iconLeading={<VersionIcon height={16} width={16} />}
-            size="sm"
-            onClick={handleVersionClick}>
-            {version}
-          </Button>
-        </TooltipTrigger>
-      </Tooltip>
-
-      <ButtonUtility
-        className={
-          voteStatus === QueryVoteType.votedUp
-            ? 'tw:text-fg-brand-primary'
-            : undefined
-        }
-        color="tertiary"
-        data-testid="upvote-btn"
-        disabled={knowledgePage?.deleted || voteLoading !== null}
-        icon={
-          voteStatus === QueryVoteType.votedUp ? (
-            <ThumbsUpActiveIcon height={20} width={20} />
-          ) : (
-            <ThumbsUpIcon height={20} width={20} />
-          )
-        }
-        tooltip={t('label.up-vote')}
-        onClick={() => handleVoteChange(QueryVoteType.votedUp)}
-      />
-
-      <ButtonUtility
-        className={
-          voteStatus === QueryVoteType.votedDown
-            ? 'tw:text-fg-brand-primary'
-            : undefined
-        }
-        color="tertiary"
-        data-testid="downvote-btn"
-        disabled={knowledgePage?.deleted || voteLoading !== null}
-        icon={
-          voteStatus === QueryVoteType.votedDown ? (
-            <ThumbsDownActiveIcon height={20} width={20} />
-          ) : (
-            <ThumbsDownIcon height={20} width={20} />
-          )
-        }
-        tooltip={t('label.down-vote')}
-        onClick={() => handleVoteChange(QueryVoteType.votedDown)}
-      />
-
-      <ButtonUtility
-        color="tertiary"
-        data-testid="conversation"
-        icon={<ChatIcon height={20} width={20} />}
-        tooltip={t('label.conversation')}
-        onClick={handleOpenConversation}
-      />
-
-      <ButtonUtility
-        color="tertiary"
-        data-testid="follow-btn"
-        disabled={isFollowLoading || knowledgePage?.deleted}
-        icon={
-          isFollowing ? (
-            <FollowActiveIcon height={20} width={20} />
-          ) : (
-            <FollowIcon height={20} width={20} />
-          )
-        }
-        tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
-        onClick={handleFollowClick}
-      />
-      <CopyLinkButton
-        className="tw:w-8 tw:h-8"
-        color="tertiary"
-        testId="copy-btn"
-        url={window.location.href}>
-        <CopyIcon height={20} width={20} />
-      </CopyLinkButton>
-
-      {permissions?.Delete && (
-        <Dropdown.Root>
-          <ButtonUtility
-            color="tertiary"
-            data-testid="manage-button"
-            icon={<DotsVerticalIcon height={20} width={20} />}
-            size="sm"
-            tooltip={t('label.manage-entity', {
-              entity: t('label.article'),
-            })}
-          />
-          <Dropdown.Popover className="tw:w-30">
-            <Dropdown.Menu
-              onAction={(key) => {
-                if (key === 'delete') {
-                  setIsDeleteModalOpen(true);
-                }
-              }}>
-              <Dropdown.Item data-testid="delete-btn" id="delete">
-                <Box align="center" gap={2}>
-                  <TrashIcon
-                    aria-hidden="true"
-                    className="ttw:shrink-0 tw:text-error-primary"
-                    height={20}
-                    width={20}
-                  />
-                  <Typography
-                    ellipsis
-                    className="tw:grow tw:text-error-primary"
-                    size="text-sm"
-                    weight="medium">
-                    {t('label.delete')}
-                  </Typography>
-                </Box>
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
-      )}
-
-      <DeleteModal
-        entityTitle={getKnowledgePageName(knowledgePage, t)}
-        isDeleting={isDeleting}
-        message={t('message.delete-entity-permanently', {
-          entityType: t('label.article-lowercase'),
-        })}
-        open={isDeleteModalOpen}
-        onCancel={() => setIsDeleteModalOpen(false)}
-        onDelete={handleDeleteConfirm}
-      />
+      {actionsPrimaryEl}
+      {actionsSecondaryEl}
     </div>
-  );
-
-  const footerEl = (
-    <Box align="center" className="tw:mt-6" justify="between">
-      <Tabs
-        className="tw:w-auto"
-        selectedKey={activeTab}
-        onSelectionChange={(key) => onTabChange?.(String(key))}>
-        <Tabs.List className="tw:gap-6" type="underline">
-          {tabs?.map((tab) => (
-            <Tabs.Item id={String(tab.key)} key={String(tab.key)}>
-              <TabsLabel
-                count={tab.key === 'activity_feed' ? feedCount : undefined}
-                id={String(tab.key)}
-                isActive={activeTab === String(tab.key)}
-                name={tab.name}
-              />
-            </Tabs.Item>
-          ))}
-        </Tabs.List>
-      </Tabs>
-
-      {activeTab !== EntityTabs.ACTIVITY_FEED && (
-        <Button
-          className="tw:relative tw:bottom-2.5"
-          color="tertiary"
-          data-testid="right-panel-toggle-btn"
-          iconLeading={
-            <SidebarCollapsible
-              className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-              height={20}
-              width={20}
-            />
-          }
-          size="sm"
-          onClick={onToggleRightPanel}>
-          {isRightPanelOpen
-            ? t('label.hide-property-plural')
-            : t('label.show-property-plural')}
-        </Button>
-      )}
-    </Box>
   );
 
   return (

@@ -25,21 +25,17 @@ import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
   DataAssetsType,
+  DataAssetsWithoutServiceField,
   DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
-import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
@@ -51,17 +47,6 @@ import {
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
-import { APIService } from '../generated/entity/services/apiService';
-import { DashboardService } from '../generated/entity/services/dashboardService';
-import { DatabaseService } from '../generated/entity/services/databaseService';
-import { DriveService } from '../generated/entity/services/driveService';
-import { MessagingService } from '../generated/entity/services/messagingService';
-import { MetadataService } from '../generated/entity/services/metadataService';
-import { MlmodelService } from '../generated/entity/services/mlmodelService';
-import { PipelineService } from '../generated/entity/services/pipelineService';
-import { SearchService } from '../generated/entity/services/searchService';
-import { SecurityService } from '../generated/entity/services/securityService';
-import { StorageService } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/type/entityReference';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
@@ -186,687 +171,596 @@ export const ExtraInfoLink = ({
   </div>
 );
 
+const EMPTY_EXTRA_INFO = <></>;
+
+type HeaderInfoBuilder = (
+  dataAsset: DataAssetsHeaderProps['dataAsset'],
+  entityName: string,
+  parentContainers: EntityReference[]
+) => DataAssetHeaderInfo;
+
+const getTopicHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const topicDetails = dataAsset as Topic;
+
+  return {
+    breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(topicDetails),
+    extraInfo: (
+      <>
+        {topicDetails?.partitions ? (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.partition-plural')}
+              value={topicDetails.partitions}
+            />
+          </>
+        ) : null}
+        {topicDetails?.replicationFactor && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.replication-factor')}
+              value={topicDetails.replicationFactor}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getDashboardHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const dashboardDetails = dataAsset as Dashboard;
+
+  return {
+    breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(dashboardDetails),
+    extraInfo: (
+      <>
+        {dashboardDetails.dashboardType && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.entity-type-plural', {
+                entity: t('label.dashboard'),
+              })}
+              value={dashboardDetails.dashboardType}
+            />
+          </>
+        )}
+        {dashboardDetails.project && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.project')}
+              value={dashboardDetails.project}
+            />
+          </>
+        )}
+        {dashboardDetails?.usageSummary && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                dashboardDetails.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                false
+              )}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getPipelineHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const pipelineDetails = dataAsset as Pipeline;
+
+  return {
+    breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails),
+    extraInfo: (
+      <>
+        {pipelineDetails.state && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.state')}
+              value={pipelineDetails.state}
+            />
+          </>
+        )}
+
+        {pipelineDetails?.usageSummary && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                pipelineDetails.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                false
+              )}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getMlModelHeaderInfo: HeaderInfoBuilder = (dataAsset, entityName) => {
+  const mlModelDetail = dataAsset as Mlmodel;
+
+  return {
+    breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail),
+    extraInfo: (
+      <>
+        {mlModelDetail.algorithm && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.algorithm')}
+              value={mlModelDetail.algorithm}
+            />
+          </>
+        )}
+        {mlModelDetail.target && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.target')}
+              value={mlModelDetail.target}
+            />
+          </>
+        )}
+        {mlModelDetail.server && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLink
+              newTab
+              href={mlModelDetail.server}
+              label={t('label.server')}
+              value={mlModelDetail.server}
+            />
+          </>
+        )}
+        {mlModelDetail.dashboard && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLink
+              href={getEntityDetailsPath(
+                EntityType.DASHBOARD,
+                mlModelDetail.dashboard?.fullyQualifiedName as string
+              )}
+              label={t('label.dashboard')}
+              value={entityName}
+            />
+          </>
+        )}
+        {mlModelDetail?.usageSummary && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
+                false
+              )}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getContainerHeaderInfo: HeaderInfoBuilder = (
+  dataAsset,
+  _entityName,
+  parentContainers
+) => {
+  const containerDetails = dataAsset as Container;
+
+  return {
+    breadcrumbs: getBreadcrumbForEntityWithParent({
+      entity: containerDetails,
+      entityType: EntityType.CONTAINER,
+      parents: parentContainers,
+    }),
+    extraInfo: (
+      <>
+        {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label=""
+              value={
+                containerDetails?.dataModel?.isPartitioned
+                  ? (t('label.partitioned') as string)
+                  : (t('label.non-partitioned') as string)
+              }
+            />
+          </>
+        )}
+        {!isUndefined(containerDetails.numberOfObjects) && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.number-of-object-plural')}
+              value={containerDetails.numberOfObjects}
+            />
+          </>
+        )}
+        {!isUndefined(containerDetails.size) && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.size')}
+              value={bytesToSize(containerDetails.size)}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getDashboardDataModelHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const dataModelDetails = dataAsset as DashboardDataModel;
+
+  return {
+    breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails),
+    extraInfo: (
+      <>
+        {dataModelDetails.dataModelType && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.data-model-type')}
+              value={dataModelDetails.dataModelType}
+            />
+          </>
+        )}
+        {dataModelDetails.project && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.project')}
+              value={dataModelDetails.project}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getStoredProcedureHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const storedProcedureDetails = dataAsset as StoredProcedure;
+
+  return {
+    breadcrumbs: getBreadcrumbForTable(dataAsset as Table),
+    extraInfo: (
+      <>
+        {isObject(storedProcedureDetails.storedProcedureCode) && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.language')}
+              value={
+                (
+                  storedProcedureDetails.storedProcedureCode as StoredProcedureCodeObject
+                ).language ?? NO_DATA_PLACEHOLDER
+              }
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getApiEndpointHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const apiEndpoint = dataAsset as APIEndpoint;
+
+  return {
+    breadcrumbs: getEntityBreadcrumbs(apiEndpoint, EntityType.API_ENDPOINT),
+    extraInfo: (
+      <>
+        {apiEndpoint.requestMethod && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              dataTestId="api-endpoint-request-method"
+              label={t('label.request-method')}
+              value={apiEndpoint.requestMethod}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getDirectoryHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const directory = dataAsset as Directory;
+
+  return {
+    breadcrumbs: getEntityBreadcrumbs(directory, EntityType.DIRECTORY),
+    extraInfo: (
+      <>
+        {directory.directoryType && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.type')}
+              value={directory.directoryType}
+            />
+          </>
+        )}
+        {directory.numberOfFiles !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.file-plural')}
+              value={directory.numberOfFiles}
+            />
+          </>
+        )}
+        {directory.numberOfSubDirectories !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.subdirectory-plural')}
+              value={directory.numberOfSubDirectories}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getFileHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const file = dataAsset as File;
+
+  return {
+    breadcrumbs: getEntityBreadcrumbs(file, EntityType.FILE),
+    extraInfo: (
+      <>
+        {file.fileType && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
+          </>
+        )}
+        {file.fileExtension !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.extension')}
+              value={file.fileExtension}
+            />
+          </>
+        )}
+        {file.fileVersion !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.version')}
+              value={file.fileVersion}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getSpreadsheetHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const spreadsheet = dataAsset as Spreadsheet;
+
+  return {
+    breadcrumbs: getEntityBreadcrumbs(spreadsheet, EntityType.SPREADSHEET),
+    extraInfo: (
+      <>
+        {spreadsheet.mimeType && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.mime-type')}
+              value={
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  ellipsis={{ tooltip: spreadsheet.mimeType }}
+                  size="text-sm"
+                  weight="medium">
+                  {spreadsheet.mimeType}
+                </Typography>
+              }
+            />
+          </>
+        )}
+        {spreadsheet.createdTime !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.created-time')}
+              value={formatDateTime(spreadsheet.createdTime)}
+            />
+          </>
+        )}
+        {spreadsheet.modifiedTime !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.modified-time')}
+              value={formatDateTime(spreadsheet.modifiedTime)}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getWorksheetHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const worksheet = dataAsset as Worksheet;
+
+  return {
+    breadcrumbs: getEntityBreadcrumbs(worksheet, EntityType.WORKSHEET),
+    extraInfo: (
+      <>
+        {worksheet.rowCount && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.row-count')}
+              value={worksheet.rowCount}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+const getSearchIndexHeaderInfo: HeaderInfoBuilder = (dataAsset) => ({
+  breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(
+    dataAsset as SearchIndex
+  ),
+  extraInfo: EMPTY_EXTRA_INFO,
+});
+
+const getTableHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
+  const tableDetails = dataAsset as Table;
+
+  return {
+    breadcrumbs: getBreadcrumbForTable(tableDetails),
+    extraInfo: (
+      <>
+        {tableDetails.tableType && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.type')}
+              value={tableDetails.tableType}
+            />
+          </>
+        )}
+        {tableDetails?.usageSummary && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                false
+              )}
+            />
+          </>
+        )}
+        {tableDetails?.profile?.columnCount && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.column-plural')}
+              value={tableDetails.profile?.columnCount}
+            />
+          </>
+        )}
+        {tableDetails?.profile?.rowCount && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              label={t('label.row-plural')}
+              value={tableDetails.profile?.rowCount}
+            />
+          </>
+        )}
+      </>
+    ),
+  };
+};
+
+// Service-type assets only render breadcrumbs via getEntityBreadcrumbs.
+const makeBreadcrumbOnlyBuilder =
+  (breadcrumbEntityType: EntityType): HeaderInfoBuilder =>
+  (dataAsset) => ({
+    breadcrumbs: getEntityBreadcrumbs(
+      dataAsset as DataAssetsWithoutServiceField,
+      breadcrumbEntityType
+    ),
+    extraInfo: EMPTY_EXTRA_INFO,
+  });
+
+const entityHeaderInfoBuilders: Partial<Record<EntityType, HeaderInfoBuilder>> =
+  {
+    [EntityType.TOPIC]: getTopicHeaderInfo,
+    [EntityType.DASHBOARD]: getDashboardHeaderInfo,
+    [EntityType.PIPELINE]: getPipelineHeaderInfo,
+    [EntityType.MLMODEL]: getMlModelHeaderInfo,
+    [EntityType.CONTAINER]: getContainerHeaderInfo,
+    [EntityType.DASHBOARD_DATA_MODEL]: getDashboardDataModelHeaderInfo,
+    [EntityType.STORED_PROCEDURE]: getStoredProcedureHeaderInfo,
+    [EntityType.API_ENDPOINT]: getApiEndpointHeaderInfo,
+    [EntityType.DIRECTORY]: getDirectoryHeaderInfo,
+    [EntityType.FILE]: getFileHeaderInfo,
+    [EntityType.SPREADSHEET]: getSpreadsheetHeaderInfo,
+    [EntityType.WORKSHEET]: getWorksheetHeaderInfo,
+    [EntityType.SEARCH_INDEX]: getSearchIndexHeaderInfo,
+    [EntityType.DATABASE]: makeBreadcrumbOnlyBuilder(EntityType.DATABASE),
+    [EntityType.DATABASE_SCHEMA]: makeBreadcrumbOnlyBuilder(
+      EntityType.DATABASE_SCHEMA
+    ),
+    [EntityType.DATABASE_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.DATABASE_SERVICE
+    ),
+    [EntityType.API_SERVICE]: makeBreadcrumbOnlyBuilder(EntityType.API_SERVICE),
+    [EntityType.DASHBOARD_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.DASHBOARD_SERVICE
+    ),
+    [EntityType.MESSAGING_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.MESSAGING_SERVICE
+    ),
+    [EntityType.PIPELINE_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.PIPELINE_SERVICE
+    ),
+    [EntityType.MLMODEL_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.MLMODEL_SERVICE
+    ),
+    [EntityType.METADATA_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.METADATA_SERVICE
+    ),
+    [EntityType.STORAGE_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.STORAGE_SERVICE
+    ),
+    [EntityType.SEARCH_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.SEARCH_SERVICE
+    ),
+    [EntityType.SECURITY_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.SECURITY_SERVICE
+    ),
+    [EntityType.DRIVE_SERVICE]: makeBreadcrumbOnlyBuilder(
+      EntityType.DRIVE_SERVICE
+    ),
+    [EntityType.API_COLLECTION]: makeBreadcrumbOnlyBuilder(
+      EntityType.API_COLLECTION
+    ),
+    [EntityType.METRIC]: makeBreadcrumbOnlyBuilder(EntityType.METRIC),
+    [EntityType.CHART]: makeBreadcrumbOnlyBuilder(EntityType.CHART),
+  };
+
 export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
   dataAsset: DataAssetsHeaderProps['dataAsset'],
   entityName: string,
   parentContainers: EntityReference[]
 ) => {
-  const returnData: DataAssetHeaderInfo = {
-    extraInfo: <></>,
-    breadcrumbs: [],
-  };
-  switch (entityType) {
-    case EntityType.TOPIC:
-      const topicDetails = dataAsset as Topic;
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(topicDetails);
-      returnData.extraInfo = (
-        <>
-          {topicDetails?.partitions ? (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.partition-plural')}
-                value={topicDetails.partitions}
-              />
-            </>
-          ) : null}
-          {topicDetails?.replicationFactor && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.replication-factor')}
-                value={topicDetails.replicationFactor}
-              />
-            </>
-          )}
-        </>
-      );
+  // TABLE and any unmapped entity type fall back to the table header info.
+  const builder = entityHeaderInfoBuilders[entityType] ?? getTableHeaderInfo;
 
-      break;
-
-    case EntityType.DASHBOARD:
-      const dashboardDetails = dataAsset as Dashboard;
-
-      returnData.extraInfo = (
-        <>
-          {dashboardDetails.dashboardType && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.entity-type-plural', {
-                  entity: t('label.dashboard'),
-                })}
-                value={dashboardDetails.dashboardType}
-              />
-            </>
-          )}
-          {dashboardDetails.project && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.project')}
-                value={dashboardDetails.project}
-              />
-            </>
-          )}
-          {dashboardDetails?.usageSummary && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  dashboardDetails.usageSummary?.weeklyStats?.percentileRank ??
-                    0,
-                  false
-                )}
-              />
-            </>
-          )}
-        </>
-      );
-
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(dashboardDetails);
-
-      break;
-    case EntityType.PIPELINE:
-      const pipelineDetails = dataAsset as Pipeline;
-      returnData.extraInfo = (
-        <>
-          {pipelineDetails.state && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.state')}
-                value={pipelineDetails.state}
-              />
-            </>
-          )}
-
-          {pipelineDetails?.usageSummary && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  pipelineDetails.usageSummary?.weeklyStats?.percentileRank ??
-                    0,
-                  false
-                )}
-              />
-            </>
-          )}
-        </>
-      );
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
-
-      break;
-    case EntityType.MLMODEL:
-      const mlModelDetail = dataAsset as Mlmodel;
-
-      returnData.extraInfo = (
-        <>
-          {mlModelDetail.algorithm && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.algorithm')}
-                value={mlModelDetail.algorithm}
-              />
-            </>
-          )}
-          {mlModelDetail.target && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.target')}
-                value={mlModelDetail.target}
-              />
-            </>
-          )}
-          {mlModelDetail.server && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLink
-                newTab
-                href={mlModelDetail.server}
-                label={t('label.server')}
-                value={mlModelDetail.server}
-              />
-            </>
-          )}
-          {mlModelDetail.dashboard && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLink
-                href={getEntityDetailsPath(
-                  EntityType.DASHBOARD,
-                  mlModelDetail.dashboard?.fullyQualifiedName as string
-                )}
-                label={t('label.dashboard')}
-                value={entityName}
-              />
-            </>
-          )}
-          {mlModelDetail?.usageSummary && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
-                  false
-                )}
-              />
-            </>
-          )}
-        </>
-      );
-
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail);
-
-      break;
-    case EntityType.CONTAINER:
-      const containerDetails = dataAsset as Container;
-
-      returnData.extraInfo = (
-        <>
-          {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label=""
-                value={
-                  containerDetails?.dataModel?.isPartitioned
-                    ? (t('label.partitioned') as string)
-                    : (t('label.non-partitioned') as string)
-                }
-              />
-            </>
-          )}
-          {!isUndefined(containerDetails.numberOfObjects) && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.number-of-object-plural')}
-                value={containerDetails.numberOfObjects}
-              />
-            </>
-          )}
-          {!isUndefined(containerDetails.size) && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.size')}
-                value={bytesToSize(containerDetails.size)}
-              />
-            </>
-          )}
-        </>
-      );
-
-      returnData.breadcrumbs = getBreadcrumbForEntityWithParent({
-        entity: containerDetails,
-        entityType: EntityType.CONTAINER,
-        parents: parentContainers,
-      });
-
-      break;
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      const dataModelDetails = dataAsset as DashboardDataModel;
-
-      returnData.extraInfo = (
-        <>
-          {dataModelDetails.dataModelType && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.data-model-type')}
-                value={dataModelDetails.dataModelType}
-              />
-            </>
-          )}
-          {dataModelDetails.project && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.project')}
-                value={dataModelDetails.project}
-              />
-            </>
-          )}
-        </>
-      );
-
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
-
-      break;
-
-    case EntityType.DATABASE:
-      const databaseDetails = dataAsset as Database;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        databaseDetails,
-        EntityType.DATABASE
-      );
-
-      break;
-
-    case EntityType.DATABASE_SCHEMA:
-      const databaseSchemaDetails = dataAsset as DatabaseSchema;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        databaseSchemaDetails,
-        EntityType.DATABASE_SCHEMA
-      );
-
-      break;
-
-    case EntityType.DATABASE_SERVICE:
-      const databaseServiceDetails = dataAsset as DatabaseService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        databaseServiceDetails,
-        EntityType.DATABASE_SERVICE
-      );
-
-      break;
-    case EntityType.API_SERVICE:
-      const apiServiceDetails = dataAsset as APIService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        apiServiceDetails,
-        EntityType.API_SERVICE
-      );
-
-      break;
-
-    case EntityType.DASHBOARD_SERVICE:
-      const dashboardServiceDetails = dataAsset as DashboardService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        dashboardServiceDetails,
-        EntityType.DASHBOARD_SERVICE
-      );
-
-      break;
-
-    case EntityType.MESSAGING_SERVICE:
-      const messagingServiceDetails = dataAsset as MessagingService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        messagingServiceDetails,
-        EntityType.MESSAGING_SERVICE
-      );
-
-      break;
-
-    case EntityType.PIPELINE_SERVICE:
-      const pipelineServiceDetails = dataAsset as PipelineService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        pipelineServiceDetails,
-        EntityType.PIPELINE_SERVICE
-      );
-
-      break;
-
-    case EntityType.MLMODEL_SERVICE:
-      const mlModelServiceDetails = dataAsset as MlmodelService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        mlModelServiceDetails,
-        EntityType.MLMODEL_SERVICE
-      );
-
-      break;
-
-    case EntityType.METADATA_SERVICE:
-      const metadataServiceDetails = dataAsset as MetadataService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        metadataServiceDetails,
-        EntityType.METADATA_SERVICE
-      );
-
-      break;
-
-    case EntityType.STORAGE_SERVICE:
-      const storageServiceDetails = dataAsset as StorageService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        storageServiceDetails,
-        EntityType.STORAGE_SERVICE
-      );
-
-      break;
-
-    case EntityType.SEARCH_INDEX:
-      const searchIndexDetails = dataAsset as SearchIndex;
-      returnData.breadcrumbs =
-        getBreadcrumbForEntitiesWithServiceOnly(searchIndexDetails);
-
-      break;
-
-    case EntityType.SEARCH_SERVICE:
-      const searchServiceDetails = dataAsset as SearchService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        searchServiceDetails,
-        EntityType.SEARCH_SERVICE
-      );
-
-      break;
-
-    case EntityType.SECURITY_SERVICE:
-      const securityServiceDetails = dataAsset as SecurityService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        securityServiceDetails,
-        EntityType.SECURITY_SERVICE
-      );
-
-      break;
-
-    case EntityType.DRIVE_SERVICE:
-      const driveServiceDetails = dataAsset as DriveService;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        driveServiceDetails,
-        EntityType.DRIVE_SERVICE
-      );
-
-      break;
-
-    case EntityType.STORED_PROCEDURE:
-      const storedProcedureDetails = dataAsset as StoredProcedure;
-
-      returnData.extraInfo = (
-        <>
-          {isObject(storedProcedureDetails.storedProcedureCode) && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.language')}
-                value={
-                  (
-                    storedProcedureDetails.storedProcedureCode as StoredProcedureCodeObject
-                  ).language ?? NO_DATA_PLACEHOLDER
-                }
-              />
-            </>
-          )}
-        </>
-      );
-
-      returnData.breadcrumbs = getBreadcrumbForTable(dataAsset as Table);
-
-      break;
-
-    case EntityType.API_COLLECTION: {
-      const apiCollection = dataAsset as APICollection;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        apiCollection,
-        EntityType.API_COLLECTION
-      );
-
-      break;
-    }
-    case EntityType.API_ENDPOINT: {
-      const apiEndpoint = dataAsset as APIEndpoint;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        apiEndpoint,
-        EntityType.API_ENDPOINT
-      );
-
-      returnData.extraInfo = (
-        <>
-          {apiEndpoint.requestMethod && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                dataTestId="api-endpoint-request-method"
-                label={t('label.request-method')}
-                value={apiEndpoint.requestMethod}
-              />
-            </>
-          )}
-        </>
-      );
-
-      break;
-    }
-    case EntityType.METRIC: {
-      const metric = dataAsset as Metric;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(metric, EntityType.METRIC);
-
-      break;
-    }
-    case EntityType.CHART: {
-      const chart = dataAsset as Chart;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(chart, EntityType.CHART);
-
-      break;
-    }
-    case EntityType.DIRECTORY: {
-      const directory = dataAsset as Directory;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        directory,
-        EntityType.DIRECTORY
-      );
-
-      returnData.extraInfo = (
-        <>
-          {directory.directoryType && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.type')}
-                value={directory.directoryType}
-              />
-            </>
-          )}
-          {directory.numberOfFiles !== undefined && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.file-plural')}
-                value={directory.numberOfFiles}
-              />
-            </>
-          )}
-          {directory.numberOfSubDirectories !== undefined && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.subdirectory-plural')}
-                value={directory.numberOfSubDirectories}
-              />
-            </>
-          )}
-        </>
-      );
-
-      break;
-    }
-
-    case EntityType.FILE: {
-      const file = dataAsset as File;
-      returnData.breadcrumbs = getEntityBreadcrumbs(file, EntityType.FILE);
-
-      returnData.extraInfo = (
-        <>
-          {file.fileType && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
-            </>
-          )}
-          {file.fileExtension !== undefined && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.extension')}
-                value={file.fileExtension}
-              />
-            </>
-          )}
-          {file.fileVersion !== undefined && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.version')}
-                value={file.fileVersion}
-              />
-            </>
-          )}
-        </>
-      );
-
-      break;
-    }
-
-    case EntityType.SPREADSHEET: {
-      const spreadsheet = dataAsset as Spreadsheet;
-
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        spreadsheet,
-        EntityType.SPREADSHEET
-      );
-
-      returnData.extraInfo = (
-        <>
-          {spreadsheet.mimeType && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.mime-type')}
-                value={
-                  <Typography
-                    as="span"
-                    className="tw:text-primary"
-                    ellipsis={{ tooltip: spreadsheet.mimeType }}
-                    size="text-sm"
-                    weight="medium">
-                    {spreadsheet.mimeType}
-                  </Typography>
-                }
-              />
-            </>
-          )}
-          {spreadsheet.createdTime !== undefined && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.created-time')}
-                value={formatDateTime(spreadsheet.createdTime)}
-              />
-            </>
-          )}
-          {spreadsheet.modifiedTime !== undefined && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.modified-time')}
-                value={formatDateTime(spreadsheet.modifiedTime)}
-              />
-            </>
-          )}
-        </>
-      );
-
-      break;
-    }
-
-    case EntityType.WORKSHEET: {
-      const worksheet = dataAsset as Worksheet;
-      returnData.breadcrumbs = getEntityBreadcrumbs(
-        worksheet,
-        EntityType.WORKSHEET
-      );
-
-      returnData.extraInfo = (
-        <>
-          {worksheet.rowCount && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.row-count')}
-                value={worksheet.rowCount}
-              />
-            </>
-          )}
-        </>
-      );
-
-      break;
-    }
-
-    case EntityType.TABLE:
-    default:
-      const tableDetails = dataAsset as Table;
-
-      returnData.extraInfo = (
-        <>
-          {tableDetails.tableType && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.type')}
-                value={tableDetails.tableType}
-              />
-            </>
-          )}
-          {tableDetails?.usageSummary && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  false
-                )}
-              />
-            </>
-          )}
-          {tableDetails?.profile?.columnCount && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.column-plural')}
-                value={tableDetails.profile?.columnCount}
-              />
-            </>
-          )}
-          {tableDetails?.profile?.rowCount && (
-            <>
-              <HeaderDotSeparator />
-              <ExtraInfoLabel
-                label={t('label.row-plural')}
-                value={tableDetails.profile?.rowCount}
-              />
-            </>
-          )}
-        </>
-      );
-
-      returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
-
-      break;
-  }
-
-  return returnData;
+  return builder(dataAsset, entityName, parentContainers);
 };
 
 export const isDataAssetsWithServiceField = (

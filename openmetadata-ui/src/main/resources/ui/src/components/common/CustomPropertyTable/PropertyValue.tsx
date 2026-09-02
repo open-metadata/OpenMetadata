@@ -39,6 +39,7 @@ import {
   CSSProperties,
   FC,
   lazy,
+  ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -210,673 +211,685 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
   };
 
+  const handleEntityReferenceSave = (
+    values: { entityReference: DataAssetOption | DataAssetOption[] },
+    initialOptions: DataAssetOption[]
+  ) => {
+    const { entityReference } = values;
+
+    if (Array.isArray(entityReference)) {
+      const references = entityReference
+        .map((item) => findOptionReference(item, initialOptions))
+        .filter(Boolean) as EntityReference[];
+      onInputSave(references);
+
+      return;
+    }
+
+    const reference = findOptionReference(entityReference, initialOptions);
+    onInputSave(reference as EntityReference);
+  };
+
   const getPropertyInput = () => {
     const commonStyle: CSSProperties = {
       marginBottom: '0px',
       width: '100%',
     };
-    switch (propertyType.name) {
-      case 'string':
-      case 'integer':
-      case 'number': {
-        const inputType = ['integer', 'number'].includes(propertyType.name)
-          ? 'number'
-          : 'text';
 
-        return (
-          <PropertyInput
-            isLoading={isLoading}
-            propertyName={propertyName}
-            type={inputType}
-            value={value}
-            onCancel={onHideInput}
-            onSave={onInputSave}
-          />
-        );
-      }
+    const renderTextInput = () => {
+      const inputType = ['integer', 'number'].includes(propertyType.name ?? '')
+        ? 'number'
+        : 'text';
 
-      case 'markdown': {
-        const header = t('label.edit-entity-name', {
-          entityType: t('label.property'),
-          entityName: getEntityName(property),
-        });
+      return (
+        <PropertyInput
+          isLoading={isLoading}
+          propertyName={propertyName}
+          type={inputType}
+          value={value}
+          onCancel={onHideInput}
+          onSave={onInputSave}
+        />
+      );
+    };
 
-        return (
-          <ModalWithMarkdownEditor
-            header={header}
-            placeholder={t('label.enter-property-value')}
-            value={value ?? ''}
-            visible={showInput}
-            onCancel={onHideInput}
-            onSave={onInputSave}
-          />
-        );
-      }
+    const renderMarkdownInput = () => {
+      const header = t('label.edit-entity-name', {
+        entityType: t('label.property'),
+        entityName: getEntityName(property),
+      });
 
-      case 'enum': {
-        const enumConfig = property.customPropertyConfig?.config as Config;
+      return (
+        <ModalWithMarkdownEditor
+          header={header}
+          placeholder={t('label.enter-property-value')}
+          value={value ?? ''}
+          visible={showInput}
+          onCancel={onHideInput}
+          onSave={onInputSave}
+        />
+      );
+    };
 
-        const isMultiSelect = Boolean(enumConfig?.multiSelect);
+    const renderEnumInput = () => {
+      const enumConfig = property.customPropertyConfig?.config as Config;
 
-        const options = enumConfig?.values?.map((option) => ({
-          label: option,
-          value: option,
-        }));
+      const isMultiSelect = Boolean(enumConfig?.multiSelect);
 
-        const initialValues = {
-          enumValues: (isArray(value) ? value : [value]).filter(Boolean),
-        };
+      const options = enumConfig?.values?.map((option) => ({
+        label: option,
+        value: option,
+      }));
 
-        const formId = `enum-form-${propertyName}`;
+      const initialValues = {
+        enumValues: (isArray(value) ? value : [value]).filter(Boolean),
+      };
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              onFinish={(values: { enumValues: string | string[] }) =>
-                onInputSave(values.enumValues)
-              }>
-              <Form.Item name="enumValues" style={commonStyle}>
-                <Select
-                  allowClear
-                  data-testid="enum-select"
-                  disabled={isLoading}
-                  mode={isMultiSelect ? 'multiple' : undefined}
-                  options={options}
-                  placeholder={t('label.enum-value-plural')}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      const formId = `enum-form-${propertyName}`;
 
-      case 'date-cp':
-      case 'dateTime-cp': {
-        const format = getCustomPropertyLuxonFormat(
-          propertyType.name,
-          property.customPropertyConfig?.config
-        );
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            onFinish={(values: { enumValues: string | string[] }) =>
+              onInputSave(values.enumValues)
+            }>
+            <Form.Item name="enumValues" style={commonStyle}>
+              <Select
+                allowClear
+                data-testid="enum-select"
+                disabled={isLoading}
+                mode={isMultiSelect ? 'multiple' : undefined}
+                options={options}
+                placeholder={t('label.enum-value-plural')}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-        const initialValues = {
-          dateTimeValue: value
-            ? parseCustomPropertyDateTime(
-                value,
-                propertyType.name ?? '',
-                property.customPropertyConfig?.config
-              )
-            : undefined,
-        };
+    const renderDateInput = () => {
+      const format = getCustomPropertyLuxonFormat(
+        propertyType.name ?? '',
+        property.customPropertyConfig?.config
+      );
 
-        const formId = `dateTime-form-${propertyName}`;
+      const initialValues = {
+        dateTimeValue: value
+          ? parseCustomPropertyDateTime(
+              value,
+              propertyType.name ?? '',
+              property.customPropertyConfig?.config
+            )
+          : undefined,
+      };
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              onFinish={(values: { dateTimeValue: DateTime }) => {
-                onInputSave(
-                  values.dateTimeValue
-                    ? formatCustomPropertyDateTime(
-                        values.dateTimeValue,
-                        propertyType.name ?? '',
-                        property.customPropertyConfig?.config
-                      )
-                    : values.dateTimeValue // If date is cleared and set undefined
-                );
-              }}>
-              <Form.Item name="dateTimeValue" style={commonStyle}>
-                <DatePicker
-                  allowClear
-                  className="w-full"
-                  data-testid="date-time-picker"
-                  disabled={isLoading}
-                  format={format}
-                  showTime={propertyType.name === 'dateTime-cp'}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      const formId = `dateTime-form-${propertyName}`;
 
-      case 'time-cp': {
-        const format = getCustomPropertyLuxonFormat(
-          propertyType.name,
-          property.customPropertyConfig?.config
-        );
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            onFinish={(values: { dateTimeValue: DateTime }) => {
+              onInputSave(
+                values.dateTimeValue
+                  ? formatCustomPropertyDateTime(
+                      values.dateTimeValue,
+                      propertyType.name ?? '',
+                      property.customPropertyConfig?.config
+                    )
+                  : values.dateTimeValue // If date is cleared and set undefined
+              );
+            }}>
+            <Form.Item name="dateTimeValue" style={commonStyle}>
+              <DatePicker
+                allowClear
+                className="w-full"
+                data-testid="date-time-picker"
+                disabled={isLoading}
+                format={format}
+                showTime={propertyType.name === 'dateTime-cp'}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-        const initialValues = {
-          time: value ? moment(value, format) : undefined,
-        };
+    const renderTimeInput = () => {
+      const format = getCustomPropertyLuxonFormat(
+        propertyType.name ?? '',
+        property.customPropertyConfig?.config
+      );
 
-        const formId = `time-form-${propertyName}`;
+      const initialValues = {
+        time: value ? moment(value, format) : undefined,
+      };
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={(values: { time: Moment }) => {
-                onInputSave(
-                  values.time ? values.time.format(format) : values.time // If time is cleared and set undefined
-                );
-              }}>
-              <Form.Item name="time" style={commonStyle}>
-                <TimePicker
-                  allowClear
-                  className="w-full"
-                  data-testid="time-picker"
-                  disabled={isLoading}
-                  format={format}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      const formId = `time-form-${propertyName}`;
 
-      case 'email': {
-        const initialValues = {
-          email: value,
-        };
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            validateMessages={VALIDATION_MESSAGES}
+            onFinish={(values: { time: Moment }) => {
+              onInputSave(
+                values.time ? values.time.format(format) : values.time // If time is cleared and set undefined
+              );
+            }}>
+            <Form.Item name="time" style={commonStyle}>
+              <TimePicker
+                allowClear
+                className="w-full"
+                data-testid="time-picker"
+                disabled={isLoading}
+                format={format}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-        const formId = `email-form-${propertyName}`;
+    const renderEmailInput = () => {
+      const initialValues = {
+        email: value,
+      };
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={(values: { email: string }) => {
-                onInputSave(values.email);
-              }}>
-              <Form.Item
-                name="email"
-                rules={[
+      const formId = `email-form-${propertyName}`;
+
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            validateMessages={VALIDATION_MESSAGES}
+            onFinish={(values: { email: string }) => {
+              onInputSave(values.email);
+            }}>
+            <Form.Item
+              name="email"
+              rules={[
+                {
+                  min: 6,
+                  max: 127,
+                  type: 'email',
+                },
+              ]}
+              style={commonStyle}>
+              <Input
+                allowClear
+                data-testid="email-input"
+                disabled={isLoading}
+                placeholder="john@doe.com"
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
+
+    const renderTimestampInput = () => {
+      const initialValues = {
+        timestamp: value,
+      };
+
+      const formId = `timestamp-form-${propertyName}`;
+
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            onFinish={(values: { timestamp: string }) => {
+              onInputSave(
+                values.timestamp ? toNumber(values.timestamp) : values.timestamp // If timestamp is cleared and set undefined
+              );
+            }}>
+            <Form.Item
+              name="timestamp"
+              rules={[
+                {
+                  pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                  message: t('message.invalid-unix-epoch-time-milliseconds'),
+                },
+              ]}
+              style={commonStyle}>
+              <Input
+                allowClear
+                data-testid="timestamp-input"
+                disabled={isLoading}
+                placeholder={t('message.unix-epoch-time-in-ms', {
+                  prefix: '',
+                })}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
+
+    const renderTimeIntervalInput = () => {
+      const initialValues = {
+        start: value?.start ? value.start?.toString() : undefined,
+        end: value?.end ? value.end?.toString() : undefined,
+      };
+
+      const formId = `timeInterval-form-${propertyName}`;
+
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            onFinish={(values: { start: string; end: string }) => {
+              onInputSave(
+                omitBy(
                   {
-                    min: 6,
-                    max: 127,
-                    type: 'email',
+                    start: values.start ? toNumber(values.start) : values.start,
+                    end: values.end ? toNumber(values.end) : values.end,
                   },
-                ]}
-                style={commonStyle}>
-                <Input
-                  allowClear
-                  data-testid="email-input"
-                  disabled={isLoading}
-                  placeholder="john@doe.com"
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+                  isUndefined
+                ) as TimeIntervalType
+              );
+            }}>
+            <Form.Item
+              name="start"
+              rules={[
+                {
+                  pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                  message: t('message.invalid-unix-epoch-time-milliseconds'),
+                },
+              ]}
+              style={{ ...commonStyle, marginBottom: '16px' }}>
+              <Input
+                allowClear
+                data-testid="start-input"
+                disabled={isLoading}
+                placeholder={t('message.unix-epoch-time-in-ms', {
+                  prefix: 'Start',
+                })}
+              />
+            </Form.Item>
+            <Form.Item
+              name="end"
+              rules={[
+                {
+                  pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                  message: t('message.invalid-unix-epoch-time-milliseconds'),
+                },
+              ]}
+              style={commonStyle}>
+              <Input
+                allowClear
+                data-testid="end-input"
+                disabled={isLoading}
+                placeholder={t('message.unix-epoch-time-in-ms', {
+                  prefix: 'End',
+                })}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-      case 'timestamp': {
-        const initialValues = {
-          timestamp: value,
-        };
+    const renderDurationInput = () => {
+      const initialValues = {
+        duration: value,
+      };
 
-        const formId = `timestamp-form-${propertyName}`;
+      const formId = `duration-form-${propertyName}`;
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              onFinish={(values: { timestamp: string }) => {
-                onInputSave(
-                  values.timestamp
-                    ? toNumber(values.timestamp)
-                    : values.timestamp // If timestamp is cleared and set undefined
-                );
-              }}>
-              <Form.Item
-                name="timestamp"
-                rules={[
-                  {
-                    pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
-                    message: t('message.invalid-unix-epoch-time-milliseconds'),
-                  },
-                ]}
-                style={commonStyle}>
-                <Input
-                  allowClear
-                  data-testid="timestamp-input"
-                  disabled={isLoading}
-                  placeholder={t('message.unix-epoch-time-in-ms', {
-                    prefix: '',
-                  })}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            validateMessages={VALIDATION_MESSAGES}
+            onFinish={(values: { duration: string }) => {
+              onInputSave(values.duration);
+            }}>
+            <Form.Item name="duration" style={commonStyle}>
+              <Input
+                allowClear
+                data-testid="duration-input"
+                disabled={isLoading}
+                placeholder={t('message.duration-in-iso-format')}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-      case 'timeInterval': {
-        const initialValues = {
-          start: value?.start ? value.start?.toString() : undefined,
-          end: value?.end ? value.end?.toString() : undefined,
-        };
+    const renderSqlQueryInput = () => {
+      const initialValues = {
+        sqlQuery: value,
+      };
 
-        const formId = `timeInterval-form-${propertyName}`;
+      const formId = `sqlQuery-form-${propertyName}`;
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              onFinish={(values: { start: string; end: string }) => {
-                onInputSave(
-                  omitBy(
-                    {
-                      start: values.start
-                        ? toNumber(values.start)
-                        : values.start,
-                      end: values.end ? toNumber(values.end) : values.end,
-                    },
-                    isUndefined
-                  ) as TimeIntervalType
-                );
-              }}>
-              <Form.Item
-                name="start"
-                rules={[
-                  {
-                    pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
-                    message: t('message.invalid-unix-epoch-time-milliseconds'),
-                  },
-                ]}
-                style={{ ...commonStyle, marginBottom: '16px' }}>
-                <Input
-                  allowClear
-                  data-testid="start-input"
-                  disabled={isLoading}
-                  placeholder={t('message.unix-epoch-time-in-ms', {
-                    prefix: 'Start',
-                  })}
-                />
-              </Form.Item>
-              <Form.Item
-                name="end"
-                rules={[
-                  {
-                    pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
-                    message: t('message.invalid-unix-epoch-time-milliseconds'),
-                  },
-                ]}
-                style={commonStyle}>
-                <Input
-                  allowClear
-                  data-testid="end-input"
-                  disabled={isLoading}
-                  placeholder={t('message.unix-epoch-time-in-ms', {
-                    prefix: 'End',
-                  })}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container sql-query-custom-property"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            validateMessages={VALIDATION_MESSAGES}
+            onFinish={(values: { sqlQuery: string }) => {
+              onInputSave(values.sqlQuery);
+            }}>
+            <Form.Item name="sqlQuery" style={commonStyle} trigger="onChange">
+              <SchemaEditor
+                className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                mode={{ name: CSMode.SQL }}
+                showCopyButton={false}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-      case 'duration': {
-        const initialValues = {
-          duration: value,
-        };
+    const renderEntityReferenceInput = () => {
+      const mode =
+        propertyType.name === 'entityReferenceList' ? 'multiple' : undefined;
 
-        const formId = `duration-form-${propertyName}`;
+      const index = (property.customPropertyConfig?.config as string[]) ?? [];
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={(values: { duration: string }) => {
-                onInputSave(values.duration);
-              }}>
-              <Form.Item name="duration" style={commonStyle}>
-                <Input
-                  allowClear
-                  data-testid="duration-input"
-                  disabled={isLoading}
-                  placeholder={t('message.duration-in-iso-format')}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      let initialOptions: DataAssetOption[] = [];
+      let initialValue: string[] | string | undefined;
 
-      case 'sqlQuery': {
-        const initialValues = {
-          sqlQuery: value,
-        };
+      if (!isUndefined(value)) {
+        if (isArray(value)) {
+          initialOptions = value.map((item: EntityReference) => {
+            return {
+              displayName: getEntityName(item),
+              reference: item,
+              label: getEntityName(item),
+              value: item?.fullyQualifiedName ?? '',
+            };
+          });
 
-        const formId = `sqlQuery-form-${propertyName}`;
+          initialValue = value.map(
+            (item: EntityReference) => item?.fullyQualifiedName ?? ''
+          );
+        } else {
+          initialOptions = [
+            {
+              displayName: getEntityName(value),
+              reference: value,
+              label: getEntityName(value),
+              value: value?.fullyQualifiedName ?? '',
+            },
+          ];
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container sql-query-custom-property"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={(values: { sqlQuery: string }) => {
-                onInputSave(values.sqlQuery);
-              }}>
-              <Form.Item name="sqlQuery" style={commonStyle} trigger="onChange">
-                <SchemaEditor
-                  className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-                  mode={{ name: CSMode.SQL }}
-                  showCopyButton={false}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
-
-      case 'entityReference':
-      case 'entityReferenceList': {
-        const mode =
-          propertyType.name === 'entityReferenceList' ? 'multiple' : undefined;
-
-        const index = (property.customPropertyConfig?.config as string[]) ?? [];
-
-        let initialOptions: DataAssetOption[] = [];
-        let initialValue: string[] | string | undefined;
-
-        if (!isUndefined(value)) {
-          if (isArray(value)) {
-            initialOptions = value.map((item: EntityReference) => {
-              return {
-                displayName: getEntityName(item),
-                reference: item,
-                label: getEntityName(item),
-                value: item?.fullyQualifiedName ?? '',
-              };
-            });
-
-            initialValue = value.map(
-              (item: EntityReference) => item?.fullyQualifiedName ?? ''
-            );
-          } else {
-            initialOptions = [
-              {
-                displayName: getEntityName(value),
-                reference: value,
-                label: getEntityName(value),
-                value: value?.fullyQualifiedName ?? '',
-              },
-            ];
-
-            initialValue = value?.fullyQualifiedName ?? '';
-          }
+          initialValue = value?.fullyQualifiedName ?? '';
         }
+      }
 
-        const initialValues = {
-          entityReference: initialValue,
-        };
+      const initialValues = {
+        entityReference: initialValue,
+      };
 
-        const formId = `entity-reference-form-${propertyName}`;
+      const formId = `entity-reference-form-${propertyName}`;
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={(values: {
-                entityReference: DataAssetOption | DataAssetOption[];
-              }) => {
-                const { entityReference } = values;
-
-                if (Array.isArray(entityReference)) {
-                  const references = entityReference
-                    .map((item) => findOptionReference(item, initialOptions))
-                    .filter(Boolean) as EntityReference[];
-                  onInputSave(references);
-
-                  return;
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            validateMessages={VALIDATION_MESSAGES}
+            onFinish={(values: {
+              entityReference: DataAssetOption | DataAssetOption[];
+            }) => handleEntityReferenceSave(values, initialOptions)}>
+            <Form.Item name="entityReference" style={commonStyle}>
+              <DataAssetAsyncSelectList
+                initialOptions={initialOptions}
+                mode={mode}
+                placeholder={
+                  mode === 'multiple'
+                    ? t('label.entity-reference')
+                    : t('label.entity-reference-plural')
                 }
+                searchIndex={index.join(',') as SearchIndex}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-                const reference = findOptionReference(
-                  entityReference,
-                  initialOptions
-                );
-                onInputSave(reference as EntityReference);
-              }}>
-              <Form.Item name="entityReference" style={commonStyle}>
-                <DataAssetAsyncSelectList
-                  initialOptions={initialOptions}
-                  mode={mode}
-                  placeholder={
-                    mode === 'multiple'
-                      ? t('label.entity-reference')
-                      : t('label.entity-reference-plural')
-                  }
-                  searchIndex={index.join(',') as SearchIndex}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+    const renderTableTypeInput = () => {
+      const config = property.customPropertyConfig?.config as Config;
 
-      case TABLE_TYPE_CUSTOM_PROPERTY: {
-        const config = property.customPropertyConfig?.config as Config;
+      const columns = config?.columns ?? [];
+      const rows = value?.rows ?? [];
 
-        const columns = config?.columns ?? [];
-        const rows = value?.rows ?? [];
+      return (
+        <>
+          {showInput && <TableTypePropertyView columns={columns} rows={rows} />}
+          <EditTableTypePropertyModal
+            columns={columns}
+            isUpdating={isLoading}
+            isVisible={showInput}
+            property={property}
+            rows={value?.rows ?? []}
+            onCancel={onHideInput}
+            onSave={onInputSave}
+          />
+        </>
+      );
+    };
 
-        return (
-          <>
-            {showInput && (
-              <TableTypePropertyView columns={columns} rows={rows} />
-            )}
-            <EditTableTypePropertyModal
-              columns={columns}
-              isUpdating={isLoading}
-              isVisible={showInput}
-              property={property}
-              rows={value?.rows ?? []}
-              onCancel={onHideInput}
-              onSave={onInputSave}
-            />
-          </>
-        );
-      }
+    const renderHyperlinkInput = () => {
+      const hyperlinkValue = value as Hyperlink | undefined;
+      const initialValues = {
+        url: hyperlinkValue?.url ?? '',
+        displayText: hyperlinkValue?.displayText ?? '',
+      };
 
-      case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
-        const hyperlinkValue = value as Hyperlink | undefined;
-        const initialValues = {
-          url: hyperlinkValue?.url ?? '',
-          displayText: hyperlinkValue?.displayText ?? '',
-        };
+      const formId = `hyperlink-form-${propertyName}`;
 
-        const formId = `hyperlink-form-${propertyName}`;
-
-        const validateSafeUrl = (_: unknown, urlValue: string) => {
-          if (!urlValue) {
+      const validateSafeUrl = (_: unknown, urlValue: string) => {
+        if (!urlValue) {
+          return Promise.resolve();
+        }
+        try {
+          const parsed = new URL(urlValue);
+          if (['http:', 'https:'].includes(parsed.protocol)) {
             return Promise.resolve();
           }
-          try {
-            const parsed = new URL(urlValue);
-            if (['http:', 'https:'].includes(parsed.protocol)) {
-              return Promise.resolve();
-            }
 
-            return Promise.reject(
-              new Error(t('message.url-must-use-http-or-https'))
-            );
-          } catch {
-            return Promise.reject(new Error(t('message.invalid-url')));
-          }
-        };
+          return Promise.reject(
+            new Error(t('message.url-must-use-http-or-https'))
+          );
+        } catch {
+          return Promise.reject(new Error(t('message.invalid-url')));
+        }
+      };
 
-        return (
-          <InlineEdit
-            className="custom-property-inline-edit-container"
-            isLoading={isLoading}
-            saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
-              form: formId,
-            }}
-            onCancel={onHideInput}
-            onSave={noop}>
-            <Form
-              id={formId}
-              initialValues={initialValues}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={(values: { url: string; displayText: string }) => {
-                const hyperlinkData: Hyperlink = {
-                  url: values.url,
-                  ...(values.displayText
-                    ? { displayText: values.displayText }
-                    : {}),
-                };
-                onInputSave(hyperlinkData);
-              }}>
-              <Form.Item
-                name="url"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.url-uppercase'),
-                    }),
-                  },
-                  {
-                    validator: validateSafeUrl,
-                  },
-                ]}
-                style={{ ...commonStyle, marginBottom: '16px' }}>
-                <Input
-                  allowClear
-                  data-testid="hyperlink-url-input"
-                  disabled={isLoading}
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.url-uppercase'),
-                  })}
-                />
-              </Form.Item>
-              <Form.Item name="displayText" style={commonStyle}>
-                <Input
-                  allowClear
-                  data-testid="hyperlink-display-text-input"
-                  disabled={isLoading}
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.display-text'),
-                  })}
-                />
-              </Form.Item>
-            </Form>
-          </InlineEdit>
-        );
-      }
+      return (
+        <InlineEdit
+          className="custom-property-inline-edit-container"
+          isLoading={isLoading}
+          saveButtonProps={{
+            disabled: isLoading,
+            htmlType: 'submit',
+            form: formId,
+          }}
+          onCancel={onHideInput}
+          onSave={noop}>
+          <Form
+            id={formId}
+            initialValues={initialValues}
+            layout="vertical"
+            validateMessages={VALIDATION_MESSAGES}
+            onFinish={(values: { url: string; displayText: string }) => {
+              const hyperlinkData: Hyperlink = {
+                url: values.url,
+                ...(values.displayText
+                  ? { displayText: values.displayText }
+                  : {}),
+              };
+              onInputSave(hyperlinkData);
+            }}>
+            <Form.Item
+              name="url"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.url-uppercase'),
+                  }),
+                },
+                {
+                  validator: validateSafeUrl,
+                },
+              ]}
+              style={{ ...commonStyle, marginBottom: '16px' }}>
+              <Input
+                allowClear
+                data-testid="hyperlink-url-input"
+                disabled={isLoading}
+                placeholder={t('label.enter-entity', {
+                  entity: t('label.url-uppercase'),
+                })}
+              />
+            </Form.Item>
+            <Form.Item name="displayText" style={commonStyle}>
+              <Input
+                allowClear
+                data-testid="hyperlink-display-text-input"
+                disabled={isLoading}
+                placeholder={t('label.enter-entity', {
+                  entity: t('label.display-text'),
+                })}
+              />
+            </Form.Item>
+          </Form>
+        </InlineEdit>
+      );
+    };
 
-      default:
-        return null;
-    }
+    const inputRenderers: Record<string, () => ReactNode> = {
+      string: renderTextInput,
+      integer: renderTextInput,
+      number: renderTextInput,
+      markdown: renderMarkdownInput,
+      enum: renderEnumInput,
+      'date-cp': renderDateInput,
+      'dateTime-cp': renderDateInput,
+      'time-cp': renderTimeInput,
+      email: renderEmailInput,
+      timestamp: renderTimestampInput,
+      timeInterval: renderTimeIntervalInput,
+      duration: renderDurationInput,
+      sqlQuery: renderSqlQueryInput,
+      entityReference: renderEntityReferenceInput,
+      entityReferenceList: renderEntityReferenceInput,
+      [TABLE_TYPE_CUSTOM_PROPERTY]: renderTableTypeInput,
+      [HYPERLINK_TYPE_CUSTOM_PROPERTY]: renderHyperlinkInput,
+    };
+
+    const renderer = inputRenderers[propertyType.name ?? ''];
+
+    return renderer ? renderer() : null;
   };
 
   const getEntityRefLinkValue = (item: EntityReference) => (
@@ -918,181 +931,183 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         />
       );
     }
-    switch (propertyType.name) {
-      case 'markdown':
-        return <RichTextEditorPreviewerV1 markdown={value ?? ''} />;
+    const renderMarkdownValue = () => (
+      <RichTextEditorPreviewerV1 markdown={value ?? ''} />
+    );
 
-      case 'enum':
-        return (
-          <>
-            {isArray(value) ? (
-              <div
-                className="w-max-full d-flex gap-2 flex-wrap"
-                data-testid="enum-value">
-                {value.map((val) => (
-                  <Tooltip key={val} title={val} trigger="hover">
-                    <Tag className="enum-key-tag">{val}</Tag>
-                  </Tooltip>
-                ))}
-              </div>
-            ) : (
-              <Tooltip key={value} title={value} trigger="hover">
-                <Tag className="enum-key-tag" data-testid="enum-value">
-                  {value}
-                </Tag>
-              </Tooltip>
-            )}
-          </>
-        );
-
-      case 'sqlQuery':
-        return (
-          <SchemaEditor
-            className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-            mode={{ name: CSMode.SQL }}
-            options={{
-              readOnly: true,
-            }}
-            value={value ?? ''}
-          />
-        );
-      case 'entityReferenceList': {
-        const entityReferences = (value as EntityReference[]) ?? [];
-
-        return (
-          <div className="entity-list-body">
-            {entityReferences.map((item) => {
-              return (
-                <div
-                  className="entity-reference-list-item flex items-center justify-between"
-                  data-testid={getEntityName(item)}
-                  key={item.id}>
-                  {getEntityRefLinkValue(item)}
-                </div>
-              );
-            })}
-          </div>
-        );
-      }
-
-      case 'entityReference': {
-        const item = value as EntityReference;
-
-        if (isUndefined(item)) {
-          return null;
-        }
-
-        return (
-          <div className="entity-list-body" data-testid="entityReference-value">
-            {getEntityRefLinkValue(item)}
-          </div>
-        );
-      }
-      case 'timeInterval': {
-        const timeInterval = value as TimeIntervalType;
-
-        if (isUndefined(timeInterval)) {
-          return null;
-        }
-
-        return (
+    const renderEnumValue = () => (
+      <>
+        {isArray(value) ? (
           <div
-            className="d-flex justify-center flex-wrap gap-2 py-2"
-            data-testid="time-interval-value">
-            <div className="d-flex flex-column gap-2 items-center">
-              <StartTimeIcon height={30} width={30} />
-              <Typography.Text className="property-value">{`${t(
-                'label.start-entity',
-                {
-                  entity: t('label.time'),
-                }
-              )}`}</Typography.Text>
-              <Typography.Text className="text-sm text-grey-body property-value">
-                {timeInterval.start}
-              </Typography.Text>
-            </div>
-            <div className="d-flex items-center">
-              <EndTimeArrowIcon />
-              <Tag className="time-interval-separator">
-                {calculateInterval(timeInterval.start, timeInterval.end)}
-              </Tag>
-              <EndTimeArrowIcon />
-            </div>
-            <div className="d-flex flex-column gap-2 items-center">
-              <EndTimeIcon height={30} width={30} />
-              <Typography.Text className="property-value">{`${t(
-                'label.end-entity',
-                {
-                  entity: t('label.time'),
-                }
-              )}`}</Typography.Text>
-              <Typography.Text className="text-sm text-grey-body property-value">
-                {timeInterval.end}
-              </Typography.Text>
-            </div>
+            className="w-max-full d-flex gap-2 flex-wrap"
+            data-testid="enum-value">
+            {value.map((val) => (
+              <Tooltip key={val} title={val} trigger="hover">
+                <Tag className="enum-key-tag">{val}</Tag>
+              </Tooltip>
+            ))}
           </div>
-        );
+        ) : (
+          <Tooltip key={value} title={value} trigger="hover">
+            <Tag className="enum-key-tag" data-testid="enum-value">
+              {value}
+            </Tag>
+          </Tooltip>
+        )}
+      </>
+    );
+
+    const renderSqlQueryValue = () => (
+      <SchemaEditor
+        className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+        mode={{ name: CSMode.SQL }}
+        options={{
+          readOnly: true,
+        }}
+        value={value ?? ''}
+      />
+    );
+
+    const renderEntityReferenceListValue = () => {
+      const entityReferences = (value as EntityReference[]) ?? [];
+
+      return (
+        <div className="entity-list-body">
+          {entityReferences.map((item) => {
+            return (
+              <div
+                className="entity-reference-list-item flex items-center justify-between"
+                data-testid={getEntityName(item)}
+                key={item.id}>
+                {getEntityRefLinkValue(item)}
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    const renderEntityReferenceValue = () => {
+      const item = value as EntityReference;
+
+      if (isUndefined(item)) {
+        return null;
       }
 
-      case TABLE_TYPE_CUSTOM_PROPERTY: {
-        const columns =
-          (property.customPropertyConfig?.config as Config)?.columns ?? [];
-        const rows = value?.rows ?? [];
+      return (
+        <div className="entity-list-body" data-testid="entityReference-value">
+          {getEntityRefLinkValue(item)}
+        </div>
+      );
+    };
 
-        return <TableTypePropertyView columns={columns} rows={rows} />;
+    const renderTimeIntervalValue = () => {
+      const timeInterval = value as TimeIntervalType;
+
+      if (isUndefined(timeInterval)) {
+        return null;
       }
 
-      case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
-        const hyperlinkValue = value as Hyperlink | undefined;
+      return (
+        <div
+          className="d-flex justify-center flex-wrap gap-2 py-2"
+          data-testid="time-interval-value">
+          <div className="d-flex flex-column gap-2 items-center">
+            <StartTimeIcon height={30} width={30} />
+            <Typography.Text className="property-value">{`${t(
+              'label.start-entity',
+              {
+                entity: t('label.time'),
+              }
+            )}`}</Typography.Text>
+            <Typography.Text className="text-sm text-grey-body property-value">
+              {timeInterval.start}
+            </Typography.Text>
+          </div>
+          <div className="d-flex items-center">
+            <EndTimeArrowIcon />
+            <Tag className="time-interval-separator">
+              {calculateInterval(timeInterval.start, timeInterval.end)}
+            </Tag>
+            <EndTimeArrowIcon />
+          </div>
+          <div className="d-flex flex-column gap-2 items-center">
+            <EndTimeIcon height={30} width={30} />
+            <Typography.Text className="property-value">{`${t(
+              'label.end-entity',
+              {
+                entity: t('label.time'),
+              }
+            )}`}</Typography.Text>
+            <Typography.Text className="text-sm text-grey-body property-value">
+              {timeInterval.end}
+            </Typography.Text>
+          </div>
+        </div>
+      );
+    };
 
-        if (!hyperlinkValue?.url) {
-          return null;
+    const renderTableTypeValue = () => {
+      const columns =
+        (property.customPropertyConfig?.config as Config)?.columns ?? [];
+      const rows = value?.rows ?? [];
+
+      return <TableTypePropertyView columns={columns} rows={rows} />;
+    };
+
+    const renderHyperlinkValue = () => {
+      const hyperlinkValue = value as Hyperlink | undefined;
+
+      if (!hyperlinkValue?.url) {
+        return null;
+      }
+
+      const isSafeUrl = (url: string): boolean => {
+        try {
+          const parsed = new URL(url);
+
+          return ['http:', 'https:'].includes(parsed.protocol);
+        } catch {
+          return false;
         }
+      };
 
-        const isSafeUrl = (url: string): boolean => {
-          try {
-            const parsed = new URL(url);
+      const safeHref = isSafeUrl(hyperlinkValue.url) ? hyperlinkValue.url : '#';
 
-            return ['http:', 'https:'].includes(parsed.protocol);
-          } catch {
-            return false;
-          }
-        };
+      return (
+        <Typography.Link
+          className="break-all property-value"
+          data-testid="hyperlink-value"
+          href={safeHref}
+          rel="noopener noreferrer"
+          target="_blank">
+          {hyperlinkValue.displayText || hyperlinkValue.url}
+        </Typography.Link>
+      );
+    };
 
-        const safeHref = isSafeUrl(hyperlinkValue.url)
-          ? hyperlinkValue.url
-          : '#';
+    const renderDefaultValue = () => (
+      <Typography.Text
+        className="break-all text-grey-body property-value"
+        data-testid="value">
+        {value}
+      </Typography.Text>
+    );
 
-        return (
-          <Typography.Link
-            className="break-all property-value"
-            data-testid="hyperlink-value"
-            href={safeHref}
-            rel="noopener noreferrer"
-            target="_blank">
-            {hyperlinkValue.displayText || hyperlinkValue.url}
-          </Typography.Link>
-        );
-      }
+    const valueRenderers: Record<string, () => ReactNode> = {
+      markdown: renderMarkdownValue,
+      enum: renderEnumValue,
+      sqlQuery: renderSqlQueryValue,
+      entityReferenceList: renderEntityReferenceListValue,
+      entityReference: renderEntityReferenceValue,
+      timeInterval: renderTimeIntervalValue,
+      [TABLE_TYPE_CUSTOM_PROPERTY]: renderTableTypeValue,
+      [HYPERLINK_TYPE_CUSTOM_PROPERTY]: renderHyperlinkValue,
+    };
 
-      case 'string':
-      case 'integer':
-      case 'number':
-      case 'date-cp':
-      case 'time-cp':
-      case 'email':
-      case 'timestamp':
-      case 'duration':
-      case 'dateTime-cp':
-      default:
-        return (
-          <Typography.Text
-            className="break-all text-grey-body property-value"
-            data-testid="value">
-            {value}
-          </Typography.Text>
-        );
-    }
+    const renderer = valueRenderers[propertyType.name ?? ''];
+
+    return renderer ? renderer() : renderDefaultValue();
   };
 
   const getValueElement = () => {
@@ -1142,17 +1157,52 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     return isExpanded || showInput || isRenderedInRightPanel;
   }, [isExpanded, showInput, isRenderedInRightPanel]);
 
-  let propertyCountSuffix: string | null = null;
-  if (propertyType.name === 'entityReferenceList' && isArray(value)) {
-    propertyCountSuffix = ` (${value.length})`;
-  } else if (
-    propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY &&
-    isArray(value?.rows)
-  ) {
-    propertyCountSuffix = ` (${value.rows.length})`;
-  }
+  const getPropertyCountSuffix = (): string | null => {
+    if (propertyType.name === 'entityReferenceList' && isArray(value)) {
+      return ` (${value.length})`;
+    }
+    if (
+      propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY &&
+      isArray(value?.rows)
+    ) {
+      return ` (${value.rows.length})`;
+    }
 
-  const customPropertyElement = (
+    return null;
+  };
+
+  const propertyCountSuffix = getPropertyCountSuffix();
+
+  const renderEditIcon = () => {
+    if (!hasEditPermissions || showInput) {
+      return null;
+    }
+
+    return (
+      <Tooltip
+        placement="left"
+        title={t('label.edit-entity', {
+          entity: getEntityName(property),
+        })}>
+        <Icon
+          component={EditIconComponent}
+          data-testid={`edit-icon${
+            isRenderedInRightPanel ? '-right-panel' : ''
+          }`}
+          style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+          tabIndex={0}
+          onClick={onShowInput}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              onShowInput();
+            }
+          }}
+        />
+      </Tooltip>
+    );
+  };
+
+  const renderCustomPropertyElement = () => (
     <div className="tw:flex tw:flex-col tw:gap-2" data-testid={propertyName}>
       <div className="d-flex items-center gap-1">
         <Typography.Text
@@ -1197,28 +1247,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 : '32px',
           }}>
           {showInput ? getPropertyInput() : getValueElement()}
-          {hasEditPermissions && !showInput && (
-            <Tooltip
-              placement="left"
-              title={t('label.edit-entity', {
-                entity: getEntityName(property),
-              })}>
-              <Icon
-                component={EditIconComponent}
-                data-testid={`edit-icon${
-                  isRenderedInRightPanel ? '-right-panel' : ''
-                }`}
-                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                tabIndex={0}
-                onClick={onShowInput}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    onShowInput();
-                  }
-                }}
-              />
-            </Tooltip>
-          )}
+          {renderEditIcon()}
         </div>
         {isOverflowing && !showInput && (
           <Icon
@@ -1240,6 +1269,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       </div>
     </div>
   );
+
+  const customPropertyElement = renderCustomPropertyElement();
 
   if (isRenderedInRightPanel) {
     return (

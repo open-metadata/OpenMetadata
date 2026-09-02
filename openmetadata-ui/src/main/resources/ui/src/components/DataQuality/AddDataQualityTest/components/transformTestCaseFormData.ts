@@ -137,14 +137,7 @@ export const normalizeFormValuesForPayload = (
  * Builds a CreateTestCase payload from form values and resolved context.
  * Extracted from TestCaseFormV1.createTestCaseObj — no React, no network calls.
  */
-export const transformTestCaseFormData = (
-  values: FormValues,
-  ctx: TestCaseTransformContext
-): CreateTestCase => {
-  const columnName = ctx.selectedColumn;
-
-  const name = values.testName?.trim() || ctx.generateName?.() || '';
-
+const resolveEntityLink = (ctx: TestCaseTransformContext): string => {
   const entityFqn =
     ctx.selectedTableData?.fullyQualifiedName ||
     ctx.selectedTable ||
@@ -153,10 +146,19 @@ export const transformTestCaseFormData = (
 
   const isColumnLevel = ctx.selectedTestLevel === TestLevel.COLUMN;
 
-  const entityLink = generateEntityLink(
-    isColumnLevel ? `${entityFqn}.${columnName}` : entityFqn,
+  return generateEntityLink(
+    isColumnLevel ? `${entityFqn}.${ctx.selectedColumn}` : entityFqn,
     isColumnLevel
   );
+};
+
+export const transformTestCaseFormData = (
+  values: FormValues,
+  ctx: TestCaseTransformContext
+): CreateTestCase => {
+  const name = values.testName?.trim() || ctx.generateName?.() || '';
+
+  const entityLink = resolveEntityLink(ctx);
 
   const normalizedValues = normalizeFormValuesForPayload(
     values,
@@ -317,43 +319,42 @@ const buildEditArrayParamValue = (
  * classifier `ParameterFields.tsx` render logic is built on (via
  * `isSelectParam`) — so the two can't drift out of sync.
  */
+const buildEditParamFromKind = (
+  kind: ReturnType<typeof getParamPrefillKind>,
+  curr: { name?: string; value?: string },
+  isTableDiff: boolean
+): EditParamValue => {
+  switch (kind) {
+    case 'select':
+      return curr.value ? toColumnFormSelectItem(curr.value) : '';
+    case 'array':
+      return isValidJSONString(curr.value)
+        ? buildEditArrayParamValue(
+            curr.name ?? '',
+            curr.value ?? '[]',
+            isTableDiff
+          )
+        : curr.value ?? '';
+    case 'boolean':
+      return curr.value === 'true';
+    default:
+      return curr.value ?? '';
+  }
+};
+
 const buildEditParamEntry = (
   curr: { name?: string; value?: string },
   param: TestCaseParameterDefinition | undefined,
   definition: TestDefinition,
   isTableDiff: boolean
 ): EditParamValue => {
-  let result: EditParamValue;
-
   if (isTableDiff && curr.name === TABLE2) {
-    result = curr.value ? toColumnFormSelectItem(curr.value) : '';
-  } else {
-    const kind = getParamPrefillKind(definition, param);
-    switch (kind) {
-      case 'select':
-        result = curr.value ? toColumnFormSelectItem(curr.value) : '';
-
-        break;
-      case 'array':
-        result = isValidJSONString(curr.value)
-          ? buildEditArrayParamValue(
-              curr.name ?? '',
-              curr.value ?? '[]',
-              isTableDiff
-            )
-          : curr.value ?? '';
-
-        break;
-      case 'boolean':
-        result = curr.value === 'true';
-
-        break;
-      default:
-        result = curr.value ?? '';
-    }
+    return curr.value ? toColumnFormSelectItem(curr.value) : '';
   }
 
-  return result;
+  const kind = getParamPrefillKind(definition, param);
+
+  return buildEditParamFromKind(kind, curr, isTableDiff);
 };
 
 /**

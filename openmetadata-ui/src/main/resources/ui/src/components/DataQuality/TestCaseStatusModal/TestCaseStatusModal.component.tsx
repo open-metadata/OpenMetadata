@@ -130,6 +130,49 @@ export const TestCaseStatusModal = ({
     onCancel();
   };
 
+  const buildAssignedResolveRequest = (): ResolveTask => {
+    const transitionId =
+      data?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Assigned
+        ? 'reassign'
+        : 'assign';
+    const assignee = updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
+
+    return {
+      transitionId,
+      payload: assignee
+        ? {
+            assignees: [
+              {
+                id: assignee.value ?? assignee.id,
+                type: EntityType.USER,
+                name: assignee.name,
+                fullyQualifiedName:
+                  assignee.fullyQualifiedName ?? assignee.name,
+                displayName: assignee.displayName,
+              },
+            ],
+          }
+        : undefined,
+    };
+  };
+
+  const buildResolvedResolveRequest = (
+    formData: CreateTestCaseResolutionStatus
+  ): ResolveTask => {
+    return {
+      transitionId: 'resolve',
+      resolutionType: TaskResolutionType.Completed,
+      comment: formData.testCaseResolutionStatusDetails?.testCaseFailureComment,
+      payload: formData.testCaseResolutionStatusDetails?.testCaseFailureReason
+        ? {
+            testCaseFailureReason:
+              formData.testCaseResolutionStatusDetails.testCaseFailureReason,
+          }
+        : undefined,
+    };
+  };
+
   const buildResolveRequest = (
     status: TestCaseResolutionStatusTypes,
     formData: CreateTestCaseResolutionStatus
@@ -141,45 +184,10 @@ export const TestCaseStatusModal = ({
       return { transitionId: 'ack' };
     }
     if (status === TestCaseResolutionStatusTypes.Assigned) {
-      const transitionId =
-        data?.testCaseResolutionStatusType ===
-        TestCaseResolutionStatusTypes.Assigned
-          ? 'reassign'
-          : 'assign';
-      const assignee =
-        updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
-
-      return {
-        transitionId,
-        payload: assignee
-          ? {
-              assignees: [
-                {
-                  id: assignee.value ?? assignee.id,
-                  type: EntityType.USER,
-                  name: assignee.name,
-                  fullyQualifiedName:
-                    assignee.fullyQualifiedName ?? assignee.name,
-                  displayName: assignee.displayName,
-                },
-              ],
-            }
-          : undefined,
-      };
+      return buildAssignedResolveRequest();
     }
     if (status === TestCaseResolutionStatusTypes.Resolved) {
-      return {
-        transitionId: 'resolve',
-        resolutionType: TaskResolutionType.Completed,
-        comment:
-          formData.testCaseResolutionStatusDetails?.testCaseFailureComment,
-        payload: formData.testCaseResolutionStatusDetails?.testCaseFailureReason
-          ? {
-              testCaseFailureReason:
-                formData.testCaseResolutionStatusDetails.testCaseFailureReason,
-            }
-          : undefined,
-      };
+      return buildResolvedResolveRequest(formData);
     }
 
     return null;

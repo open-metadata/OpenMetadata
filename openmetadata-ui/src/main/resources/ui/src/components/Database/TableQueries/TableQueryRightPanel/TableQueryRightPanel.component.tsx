@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import { Col, Drawer, Row, Space, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
@@ -41,6 +42,16 @@ const TableQueryRightPanel = ({
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
+
+  const canEditOwners = useMemo(
+    () => EditAll || EditOwners,
+    [EditAll, EditOwners]
+  );
+  const canEditDescription = useMemo(
+    () => EditDescription || EditAll,
+    [EditDescription, EditAll]
+  );
+  const canEditTags = useMemo(() => EditAll || EditTags, [EditAll, EditTags]);
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
@@ -90,9 +101,9 @@ const TableQueryRightPanel = ({
                       {t('label.owner-plural')}
                     </Typography.Text>
 
-                    {(EditAll || EditOwners) && (
+                    {canEditOwners && (
                       <UserTeamSelectableList
-                        hasPermission={EditAll || EditOwners}
+                        hasPermission={canEditOwners}
                         multiple={{
                           user: entityRules.canAddMultipleUserOwners,
                           team: entityRules.canAddMultipleTeamOwner,
@@ -128,7 +139,7 @@ const TableQueryRightPanel = ({
               description={query?.description || ''}
               entityFullyQualifiedName={query?.fullyQualifiedName}
               entityType={EntityType.QUERY}
-              hasEditAccess={EditDescription || EditAll}
+              hasEditAccess={canEditDescription}
               showCommentsIcon={false}
               onDescriptionUpdate={onDescriptionUpdate}
             />
@@ -136,7 +147,7 @@ const TableQueryRightPanel = ({
           <Col span={24}>
             <TagsContainerV2
               newLook
-              permission={EditAll || EditTags}
+              permission={canEditTags}
               selectedTags={query?.tags || []}
               showTaskHandler={false}
               tagType={TagSource.Classification}

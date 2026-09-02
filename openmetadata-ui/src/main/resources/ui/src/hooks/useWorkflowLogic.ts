@@ -36,6 +36,21 @@ interface UseWorkflowLogicProps {
   initialConfig?: Record<string, unknown>;
 }
 
+const isStartNodeConfigured = (startNode: Node): boolean => {
+  const data = startNode.data ?? {};
+  const hasNamedAssets = Boolean(data.name && data.dataAssets?.length > 0);
+  const configFlags = [
+    data.lastSaved,
+    data.userModified,
+    hasNamedAssets,
+    data.triggerType,
+    data.eventType,
+    data.scheduleType,
+  ];
+
+  return configFlags.some(Boolean);
+};
+
 export const useWorkflowLogic = ({
   fqn,
   initialConfig,
@@ -189,16 +204,7 @@ export const useWorkflowLogic = ({
       }
 
       if (reactFlowNodes.length <= 1) {
-        const isConfigured = Boolean(
-          startNode.data?.lastSaved ||
-            startNode.data?.userModified ||
-            (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||
-            startNode.data?.triggerType ||
-            startNode.data?.eventType ||
-            startNode.data?.scheduleType
-        );
-
-        return isConfigured;
+        return isStartNodeConfigured(startNode);
       }
 
       return true;

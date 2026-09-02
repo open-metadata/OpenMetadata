@@ -82,6 +82,11 @@ const APIEndpointPage = () => {
     [apiEndpointPermissions]
   );
 
+  const hasNoViewPermission = useMemo(
+    () => !apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic,
+    [apiEndpointPermissions]
+  );
+
   const apiEndpointCacheKey = useMemo(
     () => apiEndpointQueryKey(apiEndpointFqn, API_ENDPOINT_DEFAULT_FIELDS),
     [apiEndpointFqn]
@@ -361,7 +366,7 @@ const APIEndpointPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic) {
+  if (hasNoViewPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"
