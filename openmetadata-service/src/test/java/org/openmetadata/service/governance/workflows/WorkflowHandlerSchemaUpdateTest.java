@@ -60,6 +60,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.configuration.WorkflowSettings;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -432,6 +433,47 @@ class WorkflowHandlerSchemaUpdateTest {
       // Wrapper's getJdbcUrl returns Mockito's default null; only assert the setter was invoked
       // via the raw-JDBC branch (not that the string is non-null).
       verify(runtimeEngineConfig).setJdbcUrl(any());
+    }
+  }
+
+  @Test
+  void isDeployedUsesFullyQualifiedProcessKeysAndCountQueries() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    RepositoryService repositoryService = mock(RepositoryService.class);
+    ProcessDefinitionQuery mainQuery = mock(ProcessDefinitionQuery.class);
+    ProcessDefinitionQuery triggerQuery = mock(ProcessDefinitionQuery.class);
+    WorkflowDefinition workflowDefinition =
+        new WorkflowDefinition().withName("approval").withFullyQualifiedName("governance.approval");
+
+    when(mockEngine.getRepositoryService()).thenReturn(repositoryService);
+    when(repositoryService.createProcessDefinitionQuery()).thenReturn(mainQuery, triggerQuery);
+    when(mainQuery.processDefinitionKey("governance.approval")).thenReturn(mainQuery);
+    when(mainQuery.count()).thenReturn(1L);
+    when(triggerQuery.processDefinitionKeyLike("governance.approvalTrigger%"))
+        .thenReturn(triggerQuery);
+    when(triggerQuery.count()).thenReturn(1L);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> ignored =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignoredEngines = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), true);
+
+      assertTrue(WorkflowHandler.getInstance().isDeployed(workflowDefinition));
+      verify(mainQuery, never()).list();
+      verify(triggerQuery, never()).list();
     }
   }
 

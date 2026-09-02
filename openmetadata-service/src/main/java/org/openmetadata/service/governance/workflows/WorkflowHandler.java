@@ -494,18 +494,19 @@ public class WorkflowHandler {
 
   public boolean isDeployed(WorkflowDefinition wf) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
+    String workflowFullyQualifiedName = wf.getFullyQualifiedName();
     boolean mainWorkflowDeployed =
-        !repositoryService
-            .createProcessDefinitionQuery()
-            .processDefinitionKey(wf.getName())
-            .list()
-            .isEmpty();
+        repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKey(workflowFullyQualifiedName)
+                .count()
+            > 0;
     boolean triggerWorkflowDeployed =
-        !repositoryService
-            .createProcessDefinitionQuery()
-            .processDefinitionKeyLike(getTriggerWorkflowId(wf.getName()) + "%")
-            .list()
-            .isEmpty();
+        repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKeyLike(getTriggerWorkflowId(workflowFullyQualifiedName) + "%")
+                .count()
+            > 0;
     return mainWorkflowDeployed && triggerWorkflowDeployed;
   }
 

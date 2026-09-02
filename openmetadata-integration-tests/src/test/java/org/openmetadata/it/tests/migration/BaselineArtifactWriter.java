@@ -19,39 +19,42 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.tests.migration.BaselineScratchSupport.ScratchDatabase;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.baseline.BaselineFiles;
-import org.openmetadata.service.migration.utils.MigrationHistoryTable;
 import org.testcontainers.containers.Container.ExecResult;
 
 /**
  * Dumps a chain-installed scratch database into the committed baseline artifact:
- * {@code schema.sql} via the dialect's native dump tool (run inside the shared container) plus a
- * deterministic JDBC-generated {@code data.sql}, both post-processed for idempotency.
+ * {@code schema.sql} via the dialect's native dump tool (run inside the shared container),
+ * post-processed for idempotency.
  *
- * <p>Excluded from the artifact: the migration history tables (their DDL is runner-owned — see
- * {@link MigrationHistoryTable}) and Flowable's {@code ACT_%}/{@code FLW_%} tables (Flowable
- * creates and upgrades its own schema at runtime; freezing it would pin a Flowable version).
+ * <p>Excluded from the artifact: the runner-owned migration history tables and Flowable's {@code
+ * ACT_%}/{@code FLW_%} tables (Flowable creates and upgrades its own schema at runtime; freezing it
+ * would pin a Flowable version).
  */
 class BaselineArtifactWriter {
 
   private static final List<String> FLOWABLE_TABLE_PREFIXES = List.of("ACT_", "FLW_");
+  private static final String SCHEMA_FILE = "schema.sql";
+  private static final String SERVER_CHANGE_LOG = "SERVER_CHANGE_LOG";
+  private static final String SERVER_MIGRATION_SQL_LOGS = "SERVER_MIGRATION_SQL_LOGS";
 
   private final ScratchDatabase database;
   private final ConnectionType connectionType;
+  private final String sourceRevision;
 
-  BaselineArtifactWriter(ScratchDatabase database, ConnectionType connectionType) {
+  BaselineArtifactWriter(
+      ScratchDatabase database, ConnectionType connectionType, String sourceRevision) {
     this.database = database;
     this.connectionType = connectionType;
+    this.sourceRevision = sourceRevision;
   }
 
   void write(Path baselineRoot) throws IOException, InterruptedException {
     String dialectDir = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
     Path outputDir = Files.createDirectories(baselineRoot.resolve(dialectDir));
     String schema = buildHeader() + dumpSchema(listIncludedTables()) + counterBootstrap();
-    Files.writeString(outputDir.resolve(BaselineFiles.SCHEMA_FILE), schema, StandardCharsets.UTF_8);
+    Files.writeString(outputDir.resolve(SCHEMA_FILE), schema, StandardCharsets.UTF_8);
   }
 
   /**
@@ -138,9 +141,9 @@ class BaselineArtifactWriter {
                 "--no-privileges",
                 "--no-comments"));
     command.add("-T");
-    command.add(MigrationHistoryTable.SERVER_CHANGE_LOG.toLowerCase(Locale.ROOT));
+    command.add(SERVER_CHANGE_LOG.toLowerCase(Locale.ROOT));
     command.add("-T");
-    command.add(MigrationHistoryTable.SERVER_MIGRATION_SQL_LOGS.toLowerCase(Locale.ROOT));
+    command.add(SERVER_MIGRATION_SQL_LOGS.toLowerCase(Locale.ROOT));
     for (String prefix : FLOWABLE_TABLE_PREFIXES) {
       command.add("-T");
       command.add(prefix.toLowerCase(Locale.ROOT) + "*");
@@ -152,7 +155,7 @@ class BaselineArtifactWriter {
   }
 
   private String execDump(String[] command) throws IOException, InterruptedException {
-    ExecResult result = TestSuiteBootstrap.getDatabaseContainer().execInContainer(command);
+    ExecResult result = BaselineScratchSupport.databaseContainer().execInContainer(command);
     if (result.getExitCode() != 0) {
       throw new IllegalStateException(
           "Dump command failed (exit " + result.getExitCode() + "): " + result.getStderr());
@@ -242,20 +245,6 @@ class BaselineArtifactWriter {
         .formatted(
             connectionType == ConnectionType.MYSQL ? "MySQL" : "PostgreSQL",
             "flyway v000-v015 + native 1.1.0-1.13.4",
-            gitRevision());
-  }
-
-  private String gitRevision() {
-    String result = "unknown";
-    try {
-      Process process = new ProcessBuilder("git", "rev-parse", "HEAD").start();
-      result = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
-      process.waitFor();
-    } catch (IOException e) {
-      // best effort — the header is documentation, not behavior
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-    return result;
+            sourceRevision);
   }
 }

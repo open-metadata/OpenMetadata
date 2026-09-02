@@ -106,15 +106,7 @@ public class BaselineWorkflow {
 
   /** Resolve what the baseline should do for the current database state. Fail-closed. */
   public BaselineAction resolveAction() {
-    BaselineAction result;
-    if (!baselineFiles.exists()) {
-      result = BaselineAction.DISABLED;
-    } else if (!tableExists(MigrationHistoryTable.SERVER_CHANGE_LOG)) {
-      result = resolveActionForEmptyHistory();
-    } else {
-      result = resolveActionFromHistoryRows();
-    }
-    return result;
+    return baselineFiles.exists() ? resolveDatabaseAction() : BaselineAction.DISABLED;
   }
 
   public void runIfRequired() {
@@ -124,7 +116,27 @@ public class BaselineWorkflow {
       case RUN -> execute();
       case RESUME -> resumeAfterCrash();
       case ABORT -> throw new IllegalStateException(INCONSISTENT_STATE_ERROR);
-      case SKIP, DISABLED -> LOG.debug("[Baseline] No baseline work to do");
+      case DISABLED -> handleMissingBaselineFiles();
+      case SKIP -> LOG.debug("[Baseline] No baseline work to do");
+    }
+  }
+
+  private BaselineAction resolveDatabaseAction() {
+    return !tableExists(MigrationHistoryTable.SERVER_CHANGE_LOG)
+        ? resolveActionForEmptyHistory()
+        : resolveActionFromHistoryRows();
+  }
+
+  private void handleMissingBaselineFiles() {
+    switch (resolveDatabaseAction()) {
+      case RUN, RESUME -> throw new IllegalStateException(
+          "Baseline files not found at "
+              + baselineFiles.directoryPath()
+              + ", but the database is empty or contains an interrupted baseline install."
+              + " Verify migrationConfiguration.baselinePath and the distribution contents.");
+      case ABORT -> throw new IllegalStateException(INCONSISTENT_STATE_ERROR);
+      case SKIP -> LOG.debug("[Baseline] Existing database does not require baseline files");
+      case DISABLED -> throw new IllegalStateException("Unexpected nested disabled baseline state");
     }
   }
 

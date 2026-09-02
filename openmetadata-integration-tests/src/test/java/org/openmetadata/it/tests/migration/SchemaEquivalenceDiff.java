@@ -47,7 +47,7 @@ class SchemaEquivalenceDiff {
    *   <li>{@code index_mapping_versions} — stamped by the search index-creation path; freezing
    *       these would actively lie about which mapping version an index is on
    *   <li>{@code di_chart_entity} — {@code DataInsightSystemChartResource.initialize}, from the
-   *       {@code json/data/dataInsight/custom} seeds exported by the baseline generator
+   *       maintained {@code json/data/dataInsight/custom} seed resources
    *   <li>{@code policy_entity}, {@code role_entity}, {@code workflow_definition_entity},
    *       {@code event_subscription_entity}, {@code doc_store}, {@code task_form_schema} —
    *       {@code initSeedDataFromResources} on the matching resource

@@ -12,7 +12,6 @@
  */
 package org.openmetadata.it.tests.migration;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
@@ -41,7 +40,6 @@ class FlowableSchemaCustomizationIT {
   @Test
   void flowableActivityIdIsWideEnoughForGovernanceWorkflows() {
     Optional<Integer> length = activityIdLength();
-    assertNotNull(length);
     assertTrue(
         length.isPresent(),
         EVENT_SUBSCRIPTION_TABLE

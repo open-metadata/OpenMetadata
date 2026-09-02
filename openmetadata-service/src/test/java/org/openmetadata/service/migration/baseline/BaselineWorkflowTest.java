@@ -71,6 +71,33 @@ class BaselineWorkflowTest {
   }
 
   @Test
+  void missingBaselineFilesFailClearlyForAnEmptyDatabase() {
+    BaselineFiles absent = new BaselineFiles(baselineDir.toString(), ConnectionType.POSTGRES);
+    FakeDatabaseBaselineWorkflow workflow = new FakeDatabaseBaselineWorkflow(absent);
+
+    IllegalStateException failure =
+        assertThrows(IllegalStateException.class, workflow::runIfRequired);
+
+    assertTrue(failure.getMessage().contains("Baseline files not found at"));
+    assertTrue(failure.getMessage().contains(absent.directoryPath()));
+    assertTrue(failure.getMessage().contains("migrationConfiguration.baselinePath"));
+    assertFalse(workflow.executed);
+  }
+
+  @Test
+  void missingBaselineFilesAreAllowedForAnExistingDatabase() {
+    BaselineFiles absent = new BaselineFiles(baselineDir.toString(), ConnectionType.POSTGRES);
+    FakeDatabaseBaselineWorkflow workflow = new FakeDatabaseBaselineWorkflow(absent);
+    workflow.existingTables.add(MigrationHistoryTable.SERVER_CHANGE_LOG);
+    workflow.historyVersions = List.of("2.0.0");
+
+    workflow.runIfRequired();
+
+    assertFalse(workflow.executed);
+    assertFalse(workflow.wiped);
+  }
+
+  @Test
   void existingMigrationHistorySkips() {
     FakeDatabaseBaselineWorkflow workflow = workflow();
     workflow.existingTables.add(MigrationHistoryTable.SERVER_CHANGE_LOG);
@@ -192,7 +219,7 @@ class BaselineWorkflowTest {
   }
 
   @Test
-  void skipAndDisabledDoNothing() {
+  void skipDoesNothing() {
     FakeDatabaseBaselineWorkflow skipping = workflow();
     skipping.existingTables.add(MigrationHistoryTable.SERVER_CHANGE_LOG);
     skipping.historyVersions = List.of("1.13.4");

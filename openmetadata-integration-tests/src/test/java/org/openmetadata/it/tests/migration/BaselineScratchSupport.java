@@ -12,13 +12,10 @@
  */
 package org.openmetadata.it.tests.migration;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.flowable.engine.ProcessEngines;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -35,11 +32,11 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.migration.utils.MigrationVersionUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.testcontainers.containers.JdbcDatabaseContainer;
 
 /**
  * Shared plumbing for baseline generation and equivalence checks: scratch databases inside the
@@ -52,6 +49,8 @@ final class BaselineScratchSupport {
 
   private static final Pattern JDBC_URL_PATTERN =
       Pattern.compile("(jdbc:[a-z]+://[^/]+/)([^?]*)(.*)");
+  private static final String SERVER_CHANGE_LOG = "SERVER_CHANGE_LOG";
+  private static final String SERVER_MIGRATION_SQL_LOGS = "SERVER_MIGRATION_SQL_LOGS";
 
   record ScratchDatabase(
       String name, String jdbcUrl, String username, String password, Jdbi jdbi) {}
@@ -71,17 +70,14 @@ final class BaselineScratchSupport {
    */
   static boolean isExcludedFromBaseline(String tableName) {
     String upper = tableName.toUpperCase(java.util.Locale.ROOT);
-    return upper.equals(
-            org.openmetadata.service.migration.utils.MigrationHistoryTable.SERVER_CHANGE_LOG)
-        || upper.equals(
-            org.openmetadata.service.migration.utils.MigrationHistoryTable
-                .SERVER_MIGRATION_SQL_LOGS)
+    return upper.equals(SERVER_CHANGE_LOG)
+        || upper.equals(SERVER_MIGRATION_SQL_LOGS)
         || upper.startsWith("ACT_")
         || upper.startsWith("FLW_");
   }
 
   static ConnectionType currentConnectionType() {
-    return ConnectionType.from(TestSuiteBootstrap.getDatabaseContainer().getDriverClassName());
+    return ConnectionType.from(databaseContainer().getDriverClassName());
   }
 
   static GlobalState captureGlobals() {
@@ -150,7 +146,7 @@ final class BaselineScratchSupport {
   /** Drop-and-recreate a scratch database inside the shared container. */
   static ScratchDatabase createScratchDatabase(String name) {
     ConnectionType connectionType = currentConnectionType();
-    String containerUrl = TestSuiteBootstrap.getDatabaseContainer().getJdbcUrl();
+    String containerUrl = databaseContainer().getJdbcUrl();
     ScratchDatabase result;
     if (connectionType == ConnectionType.MYSQL) {
       recreateDatabase(swapDatabase(containerUrl, "mysql"), "root", "test", name, connectionType);
@@ -168,11 +164,17 @@ final class BaselineScratchSupport {
    * database. Re-points the Entity globals — capture them first and restore after.
    */
   static void runMigrations(ScratchDatabase database, String nativeRoot, boolean force) {
+    runMigrations(database, nativeRoot, "", force);
+  }
+
+  static void runMigrations(
+      ScratchDatabase database, String nativeRoot, String flywayPath, boolean force) {
     ConnectionType connectionType = currentConnectionType();
     OpenMetadataApplicationConfig config = scratchConfig(database);
     DatasourceConfig.initialize(connectionType.label);
     MigrationWorkflow workflow =
-        new MigrationWorkflow(database.jdbi(), nativeRoot, connectionType, "", config, force);
+        new MigrationWorkflow(
+            database.jdbi(), nativeRoot, connectionType, "", flywayPath, config, force);
     resetWorkflowHandlerForScratchRun();
     resetStaticEntityCaches();
     Entity.cleanup();
@@ -220,42 +222,10 @@ final class BaselineScratchSupport {
         .getNativePath();
   }
 
-  /** Copy of the native migration tree filtered to versions strictly below 2.0.0. */
-  static Path buildPreTwoZeroNativeRoot(Path tempDir) throws IOException {
-    return copyNativeVersions(tempDir.resolve("native-pre-2.0.0"), true);
-  }
-
-  /** Copy of the native migration tree filtered to versions 2.0.0 and above. */
-  static Path buildPostBaselineNativeRoot(Path tempDir) throws IOException {
-    return copyNativeVersions(tempDir.resolve("native-post-baseline"), false);
-  }
-
-  private static Path copyNativeVersions(Path targetRoot, boolean belowMinimum) throws IOException {
-    Path sourceRoot = Path.of(realNativePath());
-    Files.createDirectories(targetRoot);
-    try (Stream<Path> versions = Files.list(sourceRoot)) {
-      for (Path versionDir : versions.filter(Files::isDirectory).toList()) {
-        String version = versionDir.getFileName().toString();
-        if (MigrationVersionUtil.isBelowMinimum(version) == belowMinimum) {
-          copyRecursively(versionDir, targetRoot.resolve(version));
-        }
-      }
-    }
-    return targetRoot;
-  }
-
-  private static void copyRecursively(Path source, Path target) throws IOException {
-    try (Stream<Path> paths = Files.walk(source)) {
-      for (Path path : paths.toList()) {
-        Path destination = target.resolve(source.relativize(path).toString());
-        if (Files.isDirectory(path)) {
-          Files.createDirectories(destination);
-        } else {
-          Files.createDirectories(destination.getParent());
-          Files.copy(path, destination);
-        }
-      }
-    }
+  static String realFlywayPath() {
+    return TestSuiteBootstrap.createApplicationConfigCopy()
+        .getMigrationConfiguration()
+        .getFlywayPath();
   }
 
   private static void recreateDatabase(
@@ -284,9 +254,19 @@ final class BaselineScratchSupport {
     scratchJdbi
         .getConfig(SqlObjects.class)
         .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                TestSuiteBootstrap.getDatabaseContainer().getDriverClassName()));
+            new ConnectionAwareAnnotationSqlLocator(databaseContainer().getDriverClassName()));
     return new ScratchDatabase(name, jdbcUrl, username, password, scratchJdbi);
+  }
+
+  static JdbcDatabaseContainer<?> databaseContainer() {
+    try {
+      Field field = TestSuiteBootstrap.class.getDeclaredField("DATABASE_CONTAINER");
+      field.setAccessible(true);
+      return (JdbcDatabaseContainer<?>) field.get(null);
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(
+          "Failed to access the integration-test database container", e);
+    }
   }
 
   private static String swapDatabase(String jdbcUrl, String databaseName) {

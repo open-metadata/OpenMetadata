@@ -120,7 +120,10 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.migration.utils.MigrationHistoryTable;
+import org.openmetadata.service.migration.utils.MigrationHistoryTable.MigrationStatus;
 import org.openmetadata.service.migration.utils.MigrationHistoryTableUpgrader;
+import org.openmetadata.service.migration.utils.MigrationVersionUtil;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
@@ -431,40 +434,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Handle repair of SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables
       try {
-        // Both statuses describe a step that did not finish: FAILED was recorded when a phase threw
-        // under --force, STARTED is what a crash mid-step leaves behind.
-        List<String> failedVersions =
-            jdbi.withHandle(
-                handle ->
-                    handle
-                        .createQuery(
-                            "SELECT version FROM SERVER_CHANGE_LOG WHERE status IN ('FAILED', 'STARTED')")
-                        .mapTo(String.class)
-                        .list());
-
-        if (!failedVersions.isEmpty()) {
-          LOG.info(
-              "Clearing {} unfinished migration(s): {}", failedVersions.size(), failedVersions);
-
-          // Remove them so the next migrate run treats those versions as pending again
-          jdbi.useHandle(
-              handle ->
-                  handle
-                      .createUpdate(
-                          "DELETE FROM SERVER_CHANGE_LOG WHERE status IN ('FAILED', 'STARTED')")
-                      .execute());
-
-          // Clean up related entries in SERVER_MIGRATION_SQL_LOGS
-          for (String version : failedVersions) {
-            jdbi.useHandle(
-                handle ->
-                    handle
-                        .createUpdate(
-                            "DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
-                        .bind("version", version)
-                        .execute());
-          }
-        }
+        repairUnfinishedMigrations(jdbi);
       } catch (Exception e) {
         LOG.error("Error repairing SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS tables", e);
         throw e;
@@ -474,6 +444,52 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.error("Repair of migration tables failed due to ", e);
       return 1;
     }
+  }
+
+  static List<String> repairUnfinishedMigrations(Jdbi jdbi) {
+    return jdbi.inTransaction(
+        handle -> {
+          List<String> versions = findRepairableMigrationVersions(handle);
+          if (!versions.isEmpty()) {
+            LOG.info("Clearing {} unfinished migration(s): {}", versions.size(), versions);
+            deleteRepairableMigrations(handle, versions);
+          }
+          return List.copyOf(versions);
+        });
+  }
+
+  private static List<String> findRepairableMigrationVersions(Handle handle) {
+    return handle
+        .createQuery(
+            "SELECT version FROM "
+                + MigrationHistoryTable.SERVER_CHANGE_LOG
+                + " WHERE status IN (:failedStatus, :startedStatus)"
+                + " AND version <> :baselineVersion ORDER BY version")
+        .bind("failedStatus", MigrationStatus.FAILED.name())
+        .bind("startedStatus", MigrationStatus.STARTED.name())
+        .bind("baselineVersion", MigrationVersionUtil.BASELINE_VERSION)
+        .mapTo(String.class)
+        .list();
+  }
+
+  private static void deleteRepairableMigrations(Handle handle, List<String> versions) {
+    handle
+        .createUpdate(
+            "DELETE FROM "
+                + MigrationHistoryTable.SERVER_CHANGE_LOG
+                + " WHERE status IN (:failedStatus, :startedStatus)"
+                + " AND version <> :baselineVersion")
+        .bind("failedStatus", MigrationStatus.FAILED.name())
+        .bind("startedStatus", MigrationStatus.STARTED.name())
+        .bind("baselineVersion", MigrationVersionUtil.BASELINE_VERSION)
+        .execute();
+    handle
+        .createUpdate(
+            "DELETE FROM "
+                + MigrationHistoryTable.SERVER_MIGRATION_SQL_LOGS
+                + " WHERE version IN (<versions>)")
+        .bindList("versions", versions)
+        .execute();
   }
 
   @Command(

@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
-  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  private final SearchClient searchClient;
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
   // Streaming constants
@@ -140,6 +140,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         Entity.getCollectionDAO().dataInsightCustomChartDAO(),
         "",
         "");
+    this.searchClient = Entity.getSearchRepository().getSearchClient();
     // Lazy initialization: do not create scheduler here
     this.activeSessions = new ConcurrentHashMap<>();
   }

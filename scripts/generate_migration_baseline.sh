@@ -11,26 +11,61 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-# Regenerates the consolidated migration baseline under bootstrap/sql/migrations/baseline/
-# for BOTH dialects by chain-installing every pre-2.0 migration into scratch databases and
-# dumping the result. Requires Docker (testcontainers) and a full local Maven build.
-#
-# After regenerating: review the diff, then prove fidelity with the equivalence check:
-#   mvn test -pl openmetadata-integration-tests -Dtest=BaselineEquivalenceIT
-#   mvn test -pl openmetadata-integration-tests -Dtest=BaselineEquivalenceIT -DdatabaseType=mysql
+# Regenerates the consolidated migration baseline for both dialects from the pinned revision that
+# still contains the complete Flyway + native pre-2.0 chain. Requires Docker, Java 21, and Maven.
 
 set -euo pipefail
-cd "$(dirname "$0")/.."
+
+readonly REFERENCE_REVISION="b07117a765466d3fd12c3179ac800bc734de0a5f"
+readonly WORKSPACE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+readonly GENERATOR_PACKAGE="openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/migration"
+readonly REFERENCE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/openmetadata-baseline-reference.XXXXXX")"
+readonly REFERENCE_MAVEN_REPO="$REFERENCE_ROOT/.m2"
+
+cleanup() {
+  rm -rf -- "$REFERENCE_ROOT"
+}
+trap cleanup EXIT
+
+cd "$WORKSPACE_ROOT"
+git cat-file -e "${REFERENCE_REVISION}^{commit}"
+git -C "$REFERENCE_ROOT" init --quiet
+git -C "$REFERENCE_ROOT" fetch --quiet --depth=1 "$WORKSPACE_ROOT" "$REFERENCE_REVISION"
+git -C "$REFERENCE_ROOT" checkout --quiet --detach FETCH_HEAD
+
+mkdir -p "$REFERENCE_ROOT/$GENERATOR_PACKAGE"
+for helper in BaselineGeneratorHarness.java BaselineScratchSupport.java BaselineArtifactWriter.java; do
+  cp "$WORKSPACE_ROOT/$GENERATOR_PACKAGE/$helper" "$REFERENCE_ROOT/$GENERATOR_PACKAGE/$helper"
+done
+
+echo "==> Building pinned migration runtime ($REFERENCE_REVISION)"
+(
+  cd "$REFERENCE_ROOT"
+  mvn -Dmaven.repo.local="$REFERENCE_MAVEN_REPO" -DskipTests \
+    -pl openmetadata-integration-tests -am install
+)
 
 echo "==> Generating PostgreSQL baseline (bootstrap/sql/migrations/baseline/postgres/)"
-mvn test -pl openmetadata-integration-tests \
-  -Dtest=BaselineGeneratorHarness -Dbaseline.generate=true -DfailIfNoTests=false
+(
+  cd "$REFERENCE_ROOT"
+  mvn -Dmaven.repo.local="$REFERENCE_MAVEN_REPO" test -pl openmetadata-integration-tests \
+    -Dtest=BaselineGeneratorHarness -Dbaseline.generate=true -DfailIfNoTests=false \
+    -Dbaseline.referenceRevision="$REFERENCE_REVISION" \
+    -Dbaseline.outputRoot="$WORKSPACE_ROOT/bootstrap/sql/migrations/baseline"
+)
 
 echo "==> Generating MySQL baseline (bootstrap/sql/migrations/baseline/mysql/)"
-mvn test -pl openmetadata-integration-tests \
-  -Dtest=BaselineGeneratorHarness -Dbaseline.generate=true -DfailIfNoTests=false \
-  -DdatabaseType=mysql
+(
+  cd "$REFERENCE_ROOT"
+  mvn -Dmaven.repo.local="$REFERENCE_MAVEN_REPO" test -pl openmetadata-integration-tests \
+    -Dtest=BaselineGeneratorHarness -Dbaseline.generate=true -DfailIfNoTests=false \
+    -Dbaseline.referenceRevision="$REFERENCE_REVISION" \
+    -Dbaseline.outputRoot="$WORKSPACE_ROOT/bootstrap/sql/migrations/baseline" \
+    -DdatabaseType=mysql
+)
 
 echo "==> Done. Review the diff:"
 git -c color.ui=always diff --stat -- bootstrap/sql/migrations/baseline || true
-echo "==> Now run BaselineEquivalenceIT for both dialects before committing."
+echo "==> Verify both dialects before committing:"
+echo "    mvn test -pl openmetadata-integration-tests -Dtest=BaselineFreshInstallIT,BaselineCrashResumeIT"
+echo "    mvn test -pl openmetadata-integration-tests -Dtest=BaselineFreshInstallIT,BaselineCrashResumeIT -DdatabaseType=mysql"

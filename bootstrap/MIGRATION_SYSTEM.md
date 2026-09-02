@@ -38,7 +38,7 @@ On every migrate the runner resolves one of:
 | `RESUME` | Only a `STARTED` baseline row exists (a crash) | Wipe and re-install, refusing if entity rows are present |
 | `SKIP` | Real migration history already exists | Nothing |
 | `ABORT` | Entity tables but no migration history | Refuse and tell the operator to restore or drop-create |
-| `DISABLED` | No baseline files shipped | Nothing |
+| `DISABLED` | No baseline files shipped | Continue for an existing database; fail with the missing path when an empty database requires the baseline |
 
 Once a database is baseline-managed, every version below 2.0.0 is filtered out of the available
 set — so a stray pre-2.0 directory can never be replayed on top of the baseline.
@@ -58,7 +58,9 @@ Each history row describes a step:
   and the version stays pending.
 
 `./bootstrap/openmetadata-ops.sh info` prints this as a Version / Type / Status / Installed-On
-table; `repair` clears unfinished (`STARTED` / `FAILED`) rows so the next run retries them.
+table; `repair` clears unfinished (`STARTED` / `FAILED`) native and extension rows so the next run
+retries them. It preserves a `STARTED` baseline row because that marker is what selects the guarded
+wipe-and-resume path after an interrupted fresh install.
 
 ## File layout
 

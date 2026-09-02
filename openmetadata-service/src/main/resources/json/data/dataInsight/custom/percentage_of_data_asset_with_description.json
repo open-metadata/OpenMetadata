@@ -1,9 +1,10 @@
 {
   "chartDetails" : {
-    "excludeGroups" : [ "tag", "glossaryTerm" ],
+    "excludeGroups" : [ "tag", "glossaryTerm", "dataProduct" ],
     "groupBy" : "entityType.keyword",
     "includeGroups" : [ ],
     "metrics" : [ {
+      "filter" : "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[{\"term\":{\"entityType.keyword\":\"tag\"}},{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}},{\"term\":{\"entityType.keyword\":\"dataProduct\"}}]}}}",
       "formula" : "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"
     } ],
     "type" : "LineChart",

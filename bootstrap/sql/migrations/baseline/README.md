@@ -45,19 +45,20 @@ re-add a pre-2.0 version directory under `native/`:
 scripts/generate_migration_baseline.sh   # both dialects; requires Docker + full Maven build
 ```
 
-This also re-exports the system Data Insight charts to
-`openmetadata-service/src/main/resources/json/data/dataInsight/custom/`. Those charts were built
-programmatically by the pre-2.0 migrations `v150.createSystemDICharts` / `v170.createServiceCharts`
-and had no seed files, so `DataInsightSystemChartResource.initialize()` — which already globs that
-path — created nothing. As seed content the application owns them for fresh installs, and existing
-clusters keep theirs untouched (`initializeEntity` is create-if-missing). Edit them like any other
-seed file; they are not part of the frozen baseline.
+The script checks out the pinned pre-consolidation revision into a temporary directory and builds
+the generator there. This is deliberate: the current tree no longer contains Flyway, the historical
+SQL files, or their Java migrations, so replaying the current `native/` directory cannot reproduce
+the baseline. Update the pinned revision only as part of an intentional re-freeze review.
 
-Then prove fidelity before committing — the equivalence check chain-installs a reference database
-and asserts the baseline-installed one is indistinguishable (schema, indexes, constraints, seeded
-rows):
+Data Insight charts under
+`openmetadata-service/src/main/resources/json/data/dataInsight/custom/` are normal application seed
+resources, not frozen baseline output. Maintain them with the application behavior they represent;
+`DataInsightChartMigrationTest` guards the data-asset scope shared by fresh and upgraded databases.
+
+After regeneration, review the SQL diff and run the fresh-install and crash-resume coverage against
+both dialects:
 
 ```bash
-mvn test -pl openmetadata-integration-tests -Dtest=BaselineEquivalenceIT                       # postgres
-mvn test -pl openmetadata-integration-tests -Dtest=BaselineEquivalenceIT -DdatabaseType=mysql  # mysql
+mvn test -pl openmetadata-integration-tests -Dtest=BaselineFreshInstallIT,BaselineCrashResumeIT
+mvn test -pl openmetadata-integration-tests -Dtest=BaselineFreshInstallIT,BaselineCrashResumeIT -DdatabaseType=mysql
 ```

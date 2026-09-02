@@ -1,7 +1,7 @@
 {
   "chartDetails" : {
     "excludeGroups" : [ "testSuite", "testCase" ],
-    "groupBy" : "entityType",
+    "groupBy" : "entityType.keyword",
     "includeGroups" : [ ],
     "metrics" : [ {
       "formula" : "count(k='id.keyword')"
