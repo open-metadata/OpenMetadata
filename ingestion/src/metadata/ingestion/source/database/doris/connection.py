@@ -51,6 +51,7 @@ class DorisConnection(BaseConnection[DorisConnectionConfig, Engine]):
         Return the SQLAlchemy Engine for Doris.
         """
         engine = BasicAuthStrategy(self.service_connection).build()
+        self._on_close(engine.dispose)
         dialect = cast("DefaultDialect", engine.dialect)
         engine.dialect.identifier_preparer = DorisIdentifierPreparer(dialect)
         return engine
