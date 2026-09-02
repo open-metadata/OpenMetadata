@@ -23,6 +23,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
@@ -47,6 +48,11 @@ from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
 
 logger = cli_logger()
+
+
+# Probed only after the user schemas: these are exposed to every login, so landing
+# on one proves nothing about the data being ingested.
+LEGACY_SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema"})
 
 
 class SourceConnectionException(Exception):  # noqa: N818
@@ -375,21 +381,26 @@ def test_connection_db_schema_sources(
 
     def custom_executor(engine_: Engine, inspector_fn_str: str):
         """
-        Check if we can list tables or views from a given schema
-        or a random one
+        Check if we can list tables or views from the schemas the ingestion would
+        read: the configured `databaseSchema` when set, else the ones
+        `schemaFilterPattern` targets, system schemas last.
+
+        Probing a single arbitrary schema fails a connection whose ingestion reads
+        a different, readable schema - on an engine fronted by an external
+        authorizer (Hive or Trino with Ranger) an unauthorized schema raises rather
+        than returning an empty list. Only every schema in scope refusing the read
+        is a failure.
         """
 
         inspector = inspect(engine_)
         inspector_fn = getattr(inspector, inspector_fn_str)
 
-        if service_connection.databaseSchema:
-            inspector_fn(service_connection.databaseSchema)
-        else:
-            schema_name = inspector.get_schema_names() or []
-            for schema in schema_name:
-                if schema.lower() not in ("information_schema", "performance_schema"):
-                    inspector_fn(schema)
-                    break
+        scope = ProbeScope(
+            pinned=service_connection.databaseSchema,
+            excluded=getattr(service_connection, "schemaFilterPattern", None),
+            last_resort=LEGACY_SYSTEM_SCHEMAS,
+        )
+        probe_targets(scope.targets(inspector.get_schema_names() or []), inspector_fn)
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),

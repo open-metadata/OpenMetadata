@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import event, inspect
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
+from metadata.core.connections.test_connection.checks.scope import ProbeScope, probe_targets
 from metadata.core.connections.test_connection.checks.summary import count, enumerated
 from metadata.core.connections.test_connection.network import probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
@@ -43,6 +44,7 @@ class DatabaseStep(StepName):
     CheckAccess = "CheckAccess"
     GetDatabases = "GetDatabases"
     GetSchemas = "GetSchemas"
+    GetCollections = "GetCollections"
     GetTables = "GetTables"
     GetViews = "GetViews"
     GetQueries = "GetQueries"
@@ -152,20 +154,17 @@ def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[s
     return result, _resolved_command(captured)
 
 
-def _resolve_schema(
-    inspector: Inspector, schema: str | None, system_schemas: frozenset[str]
-) -> tuple[str | None, bool]:
-    """The schema to probe, and whether it was auto-selected.
+def _targets(inspector: Inspector, scope: ProbeScope) -> tuple[list[str], bool]:
+    """The schemas to probe in order, and whether they were auto-selected.
 
-    Falls back to the first non-system schema so the checks still probe real data.
+    A configured ``databaseSchema`` is the only schema the run reads, so it is the
+    only one probed. Otherwise the scope keeps what ``schemaFilterPattern`` targets
+    and defers the system schemas, so the probe lands on the data the run would
+    actually read.
     """
-    if schema:
-        return schema, False
-    avoid = {name.lower() for name in system_schemas}
-    for candidate in inspector.get_schema_names() or []:
-        if candidate.lower() not in avoid:
-            return candidate, True
-    return None, False
+    if scope.pinned:
+        return [scope.pinned], False
+    return scope.targets(inspector.get_schema_names() or []), True
 
 
 def _in_schema(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:
@@ -203,23 +202,45 @@ def list_schemas(client: Engine) -> Evidence:
     )
 
 
-def list_tables(client: Engine, schema: str | None, system_schemas: frozenset[str] = frozenset()) -> Evidence:
+def _reflect_in_scope(client: Engine, scope: ProbeScope, operation: str) -> tuple[str | None, list[str], str | None]:
+    """Reflect ``operation`` on the schemas in scope, keeping the first that answers.
+
+    Most catalogs filter what the login cannot see and return an empty list, but an
+    engine fronted by an external authorizer (Hive or Trino with Ranger, Unity
+    Catalog) raises instead. Probing only one schema then fails a connection whose
+    ingestion reads a different, readable schema - so the rest are tried before the
+    step gives up, and only every schema refusing the read is a failure.
+    """
     inspector = inspect(client)
-    target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
-    names, command = _reflect(client, lambda: inspector.get_table_names(target))
-    scope = f"schema '{target}'" if target else "the database"
+    targets, _ = _targets(inspector, scope)
+    if not targets:
+        return None, [], None
+    names: list[str] = []
+    command: str | None = None
+
+    def probe(target: str) -> None:
+        nonlocal names, command
+        names, command = _reflect(client, lambda: getattr(inspector, operation)(target))
+
+    probed = probe_targets(targets, probe)
+    return probed, names, command
+
+
+def list_tables(client: Engine, scope: ProbeScope | None = None) -> Evidence:
+    scope = scope or ProbeScope()
+    target, names, command = _reflect_in_scope(client, scope, "get_table_names")
+    described = f"schema '{target}'" if target else "the database"
     return Evidence(
-        summary=_in_schema("table", len(names), target, auto_selected),
+        summary=_in_schema("table", len(names), target, auto_selected=not scope.pinned),
         command=command,
-        caveat=None if names else _empty_caveat("table", scope),
+        caveat=None if names else _empty_caveat("table", described),
     )
 
 
-def list_views(client: Engine, schema: str | None, system_schemas: frozenset[str] = frozenset()) -> Evidence:
-    inspector = inspect(client)
-    target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
-    names, command = _reflect(client, lambda: inspector.get_view_names(target))
+def list_views(client: Engine, scope: ProbeScope | None = None) -> Evidence:
+    scope = scope or ProbeScope()
+    target, names, command = _reflect_in_scope(client, scope, "get_view_names")
     return Evidence(
-        summary=_in_schema("view", len(names), target, auto_selected),
+        summary=_in_schema("view", len(names), target, auto_selected=not scope.pinned),
         command=command,
     )

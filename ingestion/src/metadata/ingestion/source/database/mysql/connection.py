@@ -31,6 +31,7 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.scope import ProbeScope
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
     AzureConfigurationSource,
@@ -67,8 +68,7 @@ if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.records import Evidence
-
-
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 # Error numbers are from the MySQL 8.0 error references (server:
 # https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html,
 # client: .../client-error-reference.html). PyMySQL exposes the code at
@@ -130,10 +130,21 @@ class MySQLChecks:
     # MySQL 8 system databases - skipped when auto-selecting a schema to probe.
     SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "mysql", "sys"})
 
-    def __init__(self, db: Borrowed[Engine], schema: str | None, queries_statement: str) -> None:
+    def __init__(
+        self,
+        db: Borrowed[Engine],
+        schema: str | None,
+        queries_statement: str,
+        schema_filter_pattern: FilterPattern | None = None,
+    ) -> None:
         self._db = db
         self.schema = schema
         self.queries_statement = queries_statement
+        self._scope = ProbeScope(
+            pinned=schema,
+            excluded=schema_filter_pattern,
+            last_resort=self.SYSTEM_SCHEMAS,
+        )
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -145,11 +156,11 @@ class MySQLChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._db.client, self.schema, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, self._scope)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self._db.client, self.schema, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, self._scope)
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
@@ -332,4 +343,5 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
             db=self.borrow(),
             schema=self.service_connection.databaseSchema,
             queries_statement=self._test_queries_statement(),
+            schema_filter_pattern=self.service_connection.schemaFilterPattern,
         )

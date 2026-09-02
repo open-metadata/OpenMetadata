@@ -29,6 +29,7 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.scope import ProbeScope
 from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
 def _pgcode(error: BaseException) -> str | None:
@@ -148,9 +150,15 @@ class PostgresChecks:
     # System schemas - skipped when auto-selecting a schema to probe.
     SYSTEM_SCHEMAS = frozenset({"information_schema", "pg_catalog", "pg_toast"})
 
-    def __init__(self, db: Borrowed[Engine], query_statement_source: str | None) -> None:
+    def __init__(
+        self,
+        db: Borrowed[Engine],
+        query_statement_source: str | None,
+        schema_filter_pattern: FilterPattern | None = None,
+    ) -> None:
         self._db = db
         self.query_statement_source = query_statement_source
+        self._scope = ProbeScope(excluded=schema_filter_pattern, last_resort=self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -168,11 +176,11 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, self._scope)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, self._scope)
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:
@@ -217,4 +225,5 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
         return PostgresChecks(
             db=self.borrow(),
             query_statement_source=self.service_connection.queryStatementSource,
+            schema_filter_pattern=self.service_connection.schemaFilterPattern,
         )
