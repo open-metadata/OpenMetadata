@@ -903,36 +903,19 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getDomainOwnersCondition(String tableName) {
-    String owners = getQueryParam("owners");
-    if (nullOrEmpty(owners)) {
-      return "";
-    }
-    String hashCsv =
-        Arrays.stream(owners.split(","))
-            .map(String::trim)
-            .filter(name -> !name.isEmpty())
-            .map(ListFilter::hashUserName)
-            .collect(Collectors.joining(","));
-    if (hashCsv.isEmpty()) {
+    // Owner names/FQNs are resolved to ids by the resource, so we match the indexed
+    // entity_relationship.fromId directly instead of joining user_entity/team_entity.
+    String ownerIds = getQueryParam("ownerIds");
+    if (nullOrEmpty(ownerIds)) {
       return "";
     }
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
-    String inCondition = buildIndexedBindParams("ownerNameHash", hashCsv);
+    String inCondition = buildIndexedBindParams("domainOwnerId", ownerIds);
     return String.format(
         "(%s IN (SELECT er.toId FROM entity_relationship er "
-            + "INNER JOIN user_entity u ON er.fromId = u.id "
-            + "WHERE er.fromEntity = 'user' AND er.toEntity = 'domain' "
-            + "AND u.nameHash IN (%s) AND er.relation = %d) "
-            + "OR %s IN (SELECT er.toId FROM entity_relationship er "
-            + "INNER JOIN team_entity t ON er.fromId = t.id "
-            + "WHERE er.fromEntity = 'team' AND er.toEntity = 'domain' "
-            + "AND t.nameHash IN (%s) AND er.relation = %d))",
-        entityIdColumn,
-        inCondition,
-        Relationship.OWNS.ordinal(),
-        entityIdColumn,
-        inCondition,
-        Relationship.OWNS.ordinal());
+            + "WHERE er.fromEntity IN ('user', 'team') AND er.toEntity = 'domain' "
+            + "AND er.fromId IN (%s) AND er.relation = %d))",
+        entityIdColumn, inCondition, Relationship.OWNS.ordinal());
   }
 
   private String getClassificationTagsCondition(String tableName) {

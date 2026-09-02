@@ -1122,6 +1122,59 @@ public final class EntityUtil {
     }
   }
 
+  /**
+   * Resolves a comma-separated list of owner identifiers (user/team ids, names, or FQNs) to a
+   * comma-separated list of ids, so an owner filter can hit the indexed entity_relationship.fromId
+   * directly instead of joining user/team tables. Unresolvable owners are skipped; returns null when
+   * nothing resolves so the caller drops the filter.
+   */
+  public static String resolveOwnersToIds(String owners) {
+    if (nullOrEmpty(owners)) {
+      return null;
+    }
+    List<String> ids = new ArrayList<>();
+    for (String owner : owners.split(",")) {
+      String id = resolveOwnerToId(owner.trim());
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    return ids.isEmpty() ? null : String.join(",", ids);
+  }
+
+  private static String resolveOwnerToId(String owner) {
+    if (nullOrEmpty(owner)) {
+      return null;
+    }
+    if (isUuid(owner)) {
+      return owner;
+    }
+    EntityReference reference = resolveUserOrTeam(owner);
+    return reference == null ? null : reference.getId().toString();
+  }
+
+  private static EntityReference resolveUserOrTeam(String name) {
+    try {
+      return Entity.getEntityReferenceByName(Entity.USER, name, NON_DELETED);
+    } catch (EntityNotFoundException userNotFound) {
+      try {
+        return Entity.getEntityReferenceByName(Entity.TEAM, name, NON_DELETED);
+      } catch (EntityNotFoundException teamNotFound) {
+        LOG.warn("Owner filter: '{}' did not resolve to a user or team", name);
+        return null;
+      }
+    }
+  }
+
+  private static boolean isUuid(String value) {
+    try {
+      UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException notUuid) {
+      return false;
+    }
+  }
+
   private static String getCommaSeparatedDomainFqnHashes(List<EntityReference> references) {
     return listOrEmpty(references).stream()
         .map(EntityReference::getFullyQualifiedName)
