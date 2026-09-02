@@ -70,7 +70,6 @@ jobs:
             # has nothing new for it to find.
             docker:
               - '.github/workflows/openmetadata-service-unit-tests.yml'
-              - 'docker/Health.java'
               - 'docker/openmetadata-start.sh'
               - 'docker/development/Dockerfile'
               - 'docker/docker-compose-quickstart/Dockerfile'
@@ -230,10 +229,11 @@ jobs:
           report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
           check_name: "K8s Operator Test Report"
 
-  # The server image is distroless: no shell, no package manager, a jlink'd
-  # runtime and a non-root uid. Every one of those is a way for the image to
-  # break without a single Java test noticing, so the build gets its own smoke
-  # test. It needs no database and no search cluster -- see the script.
+  # The server image is distroless: no package manager, a non-root uid, a shell
+  # that exists only because busybox is deliberately kept, and the glibc
+  # libraries the JNI natives link against. Every one of those is a way for the
+  # image to break without a single Java test noticing, so the build gets its own
+  # smoke test. It needs no database and no search cluster -- see the script.
   docker-image-smoke-test:
     runs-on: ubuntu-latest
     timeout-minutes: 60

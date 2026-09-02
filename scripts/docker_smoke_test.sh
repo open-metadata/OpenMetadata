@@ -11,11 +11,11 @@
 #  limitations under the License.
 #
 # Smoke test for the server image. Deliberately needs no database and no search
-# cluster: everything asserted here is a property of the *image* -- the jlink
-# module set, the glibc libraries the JNI natives link against, the writable log
-# directory, the non-root uid, the shell the launch scripts need, the absence of
-# a package manager, and the JVM owning PID 1. A stack-level test belongs in the
-# integration workflows, not here.
+# cluster: everything asserted here is a property of the *image* -- that the JDK
+# resolves the whole application classpath, the glibc libraries the JNI natives
+# link against, the writable log directory, the non-root uid, the shell the
+# launch scripts need, the absence of a package manager, and the JVM owning
+# PID 1. A stack-level test belongs in the integration workflows, not here.
 #
 #   ./scripts/docker_smoke_test.sh [image-tag]
 #
@@ -63,6 +63,25 @@ for ignore in docker/docker-compose-quickstart/Dockerfile.dockerignore \
 done
 if [ -n "$stale_includes" ]; then
   echo "stale .dockerignore re-include(s), the path no longer exists:$stale_includes"
+  exit 1
+fi
+
+# Same rot, different file: the workflow's `docker:` path filter decides whether
+# this smoke test runs at all, so an entry left pointing at a deleted file makes
+# the gate quietly narrower than it reads. That is how docker/Health.java
+# survived in the filter after the file was removed.
+WORKFLOW=".github/workflows/openmetadata-service-unit-tests.yml"
+stale_filters=""
+while IFS= read -r entry; do
+  probe="${entry%/\*\*}"
+  case "$probe" in
+    *[*?]*) compgen -G "$probe" >/dev/null 2>&1 || stale_filters="$stale_filters $entry" ;;
+    *)      [ -e "$probe" ] || stale_filters="$stale_filters $entry" ;;
+  esac
+done < <(awk '/^ *docker:$/{f=1;next} f && /^ *[a-z_]+:$/{f=0} f' "$WORKFLOW" \
+           | sed -n "s/^ *- '\(.*\)'$/\1/p")
+if [ -n "$stale_filters" ]; then
+  echo "stale docker path-filter entr(ies) in $WORKFLOW, the path no longer exists:$stale_filters"
   exit 1
 fi
 
@@ -142,14 +161,15 @@ docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 # Runs bootstrap/openmetadata-ops.sh exactly the way compose and the helm chart
 # do -- through the shell entrypoint -- so this covers the launch script, the
-# classpath it assembles from libs/, and the jlink module set in one shot. It
+# classpath it assembles from libs/, and every JDK module the app touches in one
+# shot. It
 # cannot reach a database and is expected to fail on that; what matters is that
 # it does not fail on a missing module or an unresolvable class.
 ops="$(docker run --rm "$IMAGE" \
   /opt/openmetadata/bootstrap/openmetadata-ops.sh --help 2>&1 || true)"
 if echo "$ops" | grep -qE 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found'; then
   echo "$ops" | grep -E 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found' | head -5
-  fail "openmetadata-ops.sh hit a class-loading or module error -- the jlink module set is short"
+  fail "openmetadata-ops.sh hit a class-loading or module error -- the image is missing a class or a JDK module"
 else
   pass "openmetadata-ops.sh runs through the shell and resolves every class it needs"
 fi
