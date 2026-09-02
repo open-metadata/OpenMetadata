@@ -27,9 +27,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -706,5 +708,196 @@ class UserUtilTest {
 
   private static Fields patchFields() {
     return new Fields(Set.of("description"));
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_basic() {
+    String username = UserUtil.generateUsernameFromEmail("john.doe@company.com", name -> false);
+
+    assertEquals("john.doe", username);
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_withCollision() {
+    AtomicInteger callCount = new AtomicInteger(0);
+    String username =
+        UserUtil.generateUsernameFromEmail(
+            "john.doe@company.com",
+            name -> {
+              return callCount.getAndIncrement() == 0;
+            });
+
+    assertTrue(username.startsWith("john.doe_"));
+    assertTrue(username.length() > "john.doe_".length());
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_sameLocalPartDifferentDomainsStayUnique() {
+    String firstUsername = UserUtil.generateUsernameFromEmail("john@x.com", name -> false);
+    String secondUsername =
+        UserUtil.generateUsernameFromEmail("john@y.com", name -> "john".equals(name));
+
+    assertEquals("john", firstUsername);
+    assertTrue(secondUsername.startsWith("john_"));
+    assertTrue(secondUsername.length() > "john_".length());
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_lowercases() {
+    String username = UserUtil.generateUsernameFromEmail("John.Doe@Company.COM", name -> false);
+
+    assertEquals("john.doe", username);
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_handlesSpecialChars() {
+    String username = UserUtil.generateUsernameFromEmail("john+test@company.com", name -> false);
+
+    assertEquals("john+test", username);
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_nullEmail() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> UserUtil.generateUsernameFromEmail(null, name -> false));
+
+    assertEquals("Email cannot be null or empty", exception.getMessage());
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_emptyEmail() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> UserUtil.generateUsernameFromEmail("", name -> false));
+
+    assertEquals("Email cannot be null or empty", exception.getMessage());
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_nullExistsChecker() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> UserUtil.generateUsernameFromEmail("john@company.com", null));
+
+    assertEquals("ExistsChecker predicate cannot be null", exception.getMessage());
+  }
+
+  @Test
+  void testGenerateUsernameFromEmail_maxRetryLimitExceeded() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> UserUtil.generateUsernameFromEmail("john@company.com", name -> true));
+
+    assertTrue(exception.getMessage().contains("Unable to generate unique username"));
+    assertTrue(exception.getMessage().contains("john@company.com"));
+    assertTrue(exception.getMessage().contains("100 attempts"));
+  }
+
+  @Test
+  void testIsAdminEmail_inList() {
+    List<String> adminEmails = List.of("admin@company.com", "super@company.com");
+
+    assertTrue(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+    assertTrue(UserUtil.isAdminEmail("super@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_notInList() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail("user@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_caseInsensitive() {
+    List<String> adminEmails = List.of("Admin@Company.COM");
+
+    assertTrue(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_emptyList() {
+    List<String> adminEmails = List.of();
+
+    assertFalse(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_nullList() {
+    assertFalse(UserUtil.isAdminEmail("admin@company.com", null));
+  }
+
+  @Test
+  void testIsAdminEmail_nullEmail() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail(null, adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_emptyEmail() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail("", adminEmails));
+  }
+
+  @Test
+  void testCreateBotEmail_withBotDomain() {
+    String botEmail = UserUtil.createBotEmail("ingestion-bot", "bot.company.com");
+
+    assertEquals("ingestion-bot@bot.company.com", botEmail);
+  }
+
+  @Test
+  void testCreateBotEmail_lowercases() {
+    String botEmail = UserUtil.createBotEmail("Ingestion-Bot", "Bot.Company.COM");
+
+    assertEquals("ingestion-bot@bot.company.com", botEmail);
+  }
+
+  @Test
+  void testCreateBotEmail_nullBotName() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail(null, "domain.com"));
+  }
+
+  @Test
+  void testCreateBotEmail_emptyBotName() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("", "domain.com"));
+  }
+
+  @Test
+  void testCreateBotEmail_nullDomain() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("bot", null));
+  }
+
+  @Test
+  void testCreateBotEmail_emptyDomain() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("bot", ""));
+  }
+
+  @Test
+  void testIsConfiguredAdmin_matchesAdminEmailsAndAdminPrincipals() {
+    AuthorizerConfiguration config =
+        new AuthorizerConfiguration()
+            .withAdminEmails(Set.of("boss@company.com"))
+            .withAdminPrincipals(Set.of("legacy-admin"));
+
+    // preferred: adminEmails, case-insensitive
+    assertTrue(UserUtil.isConfiguredAdmin(config, "BOSS@company.com", "someone"));
+    // deprecated fallback: adminPrincipals matches the username
+    assertTrue(UserUtil.isConfiguredAdmin(config, "other@company.com", "legacy-admin"));
+    // neither
+    assertFalse(UserUtil.isConfiguredAdmin(config, "other@company.com", "someone"));
+  }
+
+  @Test
+  void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
+    assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
+    assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
   }
 }

@@ -2,9 +2,7 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -66,7 +64,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -254,7 +251,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(claimsMapping);
     this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
-    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.principalDomain =
+        SecurityUtil.resolvePrincipalDomain(
+            authorizerConfiguration.getPrincipalDomain(),
+            authorizerConfiguration.getAllowedEmailDomains(),
+            authorizerConfiguration.getAllowedDomains());
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
@@ -541,9 +542,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(idTokenClaims.getClaims());
 
-      String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
-      String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
-      User user = getOrCreateOidcUser(userName, email, claims);
+      OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
+      User user =
+          identity.emailFirstFlow()
+              ? getOrCreateEmailFirstOidcUser(identity.email(), identity.displayName(), claims)
+              : getOrCreateOidcUser(identity.userName(), identity.email(), claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       if (Entity.getAuditLogRepository() != null) {
@@ -939,6 +942,37 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             validatedRedirectUri, accessToken, user.getEmail(), user.getName()));
   }
 
+  private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
+      Map<String, Object> claims) {
+    return new OidcIdentityResolver(
+            authenticationConfiguration,
+            authorizerConfiguration,
+            claimsMapping,
+            claimsOrder,
+            principalDomain)
+        .resolve(claims);
+  }
+
+  private User getOrCreateEmailFirstOidcUser(
+      String email, String displayName, Map<String, Object> claims) {
+    List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
+    return EmailFirstUserProvisioner.forProvider(
+            "OIDC",
+            authorizerConfiguration,
+            Entity.getUserRepository(),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+        .getOrCreate(
+            email,
+            displayName,
+            SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
+            Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
+  }
+
+  private boolean isUserAdmin(String email, String username) {
+    return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
+  }
+
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
@@ -948,7 +982,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       User user =
           Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+      boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;
 
       LOG.debug(
@@ -978,7 +1012,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
 
     if (authenticationConfiguration.getEnableSelfSignup()) {
-      boolean isAdmin = getAdminPrincipals().contains(userName);
+      boolean isAdmin = isUserAdmin(email, userName);
       LOG.debug("Creating new OIDC user - Username: {}, isAdmin: {}", userName, isAdmin);
 
       String domain = email.split("@")[1];
@@ -1021,10 +1055,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       return UserUtil.addOrUpdateUser(newUser);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
-  }
-
-  private Set<String> getAdminPrincipals() {
-    return new HashSet<>(authorizerConfiguration.getAdminPrincipals());
   }
 
   @SneakyThrows

@@ -89,6 +89,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       // the full audit and the planned migration of those layers to the registry.
       registerInvalidatable(cachedLineage);
       registerInvalidatable(notFoundCache);
+      // The email->username mapping decides which principal a request runs as, so it has to drop
+      // on a user write made by any replica, not just this one.
+      registerInvalidatable(org.openmetadata.service.security.JwtFilter.emailIdentityInvalidator());
       // Per-JVM caches behind Ask Collate's persona context. Both are keyed by data a peer's write
       // changes, so without this a persona edit, a context regenerate, or a persona assignment is
       // visible on the writing pod only, for up to that cache's TTL.

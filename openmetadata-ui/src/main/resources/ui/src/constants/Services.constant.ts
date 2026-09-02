@@ -29,3 +29,14 @@
 
 export * from './ServiceType.constant';
 export * from './ServiceUISchema.constant';
+
+export const DEPRECATED_SSO_PROPERTIES = [
+  'adminPrincipals',
+  'principalDomain',
+  'enforcePrincipalDomain',
+  'allowedDomains',
+  'botPrincipals',
+  'jwtPrincipalClaims',
+  'jwtPrincipalClaimsMapping',
+  'authorityUrl',
+];

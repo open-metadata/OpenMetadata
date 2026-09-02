@@ -273,3 +273,10 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt BIGINT NOT NULL,
   PRIMARY KEY (name)
 );
+
+-- Email-first identity: email/name lookups on the authentication hot path compare LOWER()
+-- values. Postgres columns are case-sensitive, so functional indexes are required to avoid a
+-- full table scan per login. Non-unique on purpose: pre-existing case-variant duplicate emails
+-- must not fail the upgrade; uniqueness is enforced at the application layer.
+CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));

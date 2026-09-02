@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -792,5 +794,150 @@ class AuthenticationCodeFlowHandlerTest {
     String getCapturedOutput() {
       return buffer.toString(java.nio.charset.StandardCharsets.UTF_8);
     }
+  }
+
+  @Test
+  void resolveOidcIdentity_fallsBackToLegacyClaimsWhenEmailClaimMissing() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "claimsMapping", Map.of());
+    setField(handler, "claimsOrder", List.of("preferred_username"));
+    setField(handler, "principalDomain", "openmetadata.org");
+
+    Object identity =
+        invokePrivateMethod(
+            handler, "resolveOidcIdentity", Map.class, Map.of("preferred_username", "legacy-user"));
+
+    assertFalse((Boolean) readRecordComponent(identity, "emailFirstFlow"));
+    assertEquals("legacy-user", readRecordComponent(identity, "userName"));
+    assertEquals("legacy-user@openmetadata.org", readRecordComponent(identity, "email"));
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_looksUpExistingUserByExactEmail() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    User existing =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("john_a1b2")
+            .withEmail("john@y.com")
+            .withDisplayName("John Y");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+          .thenReturn(existing);
+
+      User resolved = invokeGetOrCreateEmailFirstOidcUser(handler, "john@y.com", "John Y");
+
+      assertSame(existing, resolved);
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsUnregisteredUserWhenSelfSignupDisabled()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "authenticationConfiguration", selfSignupDisabledAuthConfig());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () ->
+                  invokeGetOrCreateEmailFirstOidcUser(handler, "newuser@company.com", "New User"));
+
+      assertTrue(exception.getMessage().contains("User not registered"));
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsDisallowedRegistrationDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(Set.of("company.com"));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () -> invokeGetOrCreateEmailFirstOidcUser(handler, "intruder@other.org", "Intruder"));
+
+      assertTrue(exception.getMessage().contains("not allowed for self-signup"));
+    }
+  }
+
+  private AuthenticationConfiguration selfSignupDisabledAuthConfig() {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(false);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    return authConfig;
+  }
+
+  private AuthenticationCodeFlowHandler createEmailFirstHandler(Set<String> registrationDomains)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+
+    AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
+    when(authzConfig.getAdminPrincipals()).thenReturn(Set.of());
+    when(authzConfig.getAllowedEmailRegistrationDomains()).thenReturn(registrationDomains);
+    when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
+
+    sun.misc.Unsafe unsafe = getUnsafe();
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "authorizerConfiguration", authzConfig);
+    return handler;
+  }
+
+  private User invokeGetOrCreateEmailFirstOidcUser(
+      AuthenticationCodeFlowHandler handler, String email, String displayName) throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "getOrCreateEmailFirstOidcUser", String.class, String.class, Map.class);
+    method.setAccessible(true);
+    try {
+      return (User) method.invoke(handler, email, displayName, new HashMap<String, Object>());
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object invokePrivateMethod(
+      Object target, String methodName, Class<?> paramType, Object arg) throws Exception {
+    Method method = target.getClass().getDeclaredMethod(methodName, paramType);
+    method.setAccessible(true);
+    try {
+      return method.invoke(target, arg);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object readRecordComponent(Object record, String component) throws Exception {
+    Method accessor = record.getClass().getDeclaredMethod(component);
+    accessor.setAccessible(true);
+    return accessor.invoke(record);
   }
 }

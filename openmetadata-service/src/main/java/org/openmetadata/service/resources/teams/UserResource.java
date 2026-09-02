@@ -30,6 +30,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -126,6 +127,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -690,11 +692,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addRolesToBot(user, uriInfo);
     }
 
-    //
     try {
-      // Email Validation
       validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
+      ensureUniqueUsername(user);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
           .type(MediaType.APPLICATION_JSON_TYPE)
@@ -749,6 +750,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
+    }
+  }
+
+  private void ensureUniqueUsername(User user) {
+    if (!isBasicAuth() && repository.checkUserNameExists(user.getName())) {
+      String username = generateUsernameFromEmail(user.getEmail(), repository::checkUserNameExists);
+      user.setName(username);
+      user.setFullyQualifiedName(EntityInterfaceUtil.quoteName(username));
     }
   }
 

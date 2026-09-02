@@ -105,9 +105,15 @@ public class ValidationErrorBuilder {
     public static final String SAML_SECURITY_VALIDATE_RESPONSE_SIGNATURE =
         "authenticationConfiguration.samlConfiguration.security.validateResponseSignature";
 
+    // Identity Configuration
+    public static final String AUTH_EMAIL_CLAIM = "authenticationConfiguration.emailClaim";
+
     // Authorizer Configuration
     public static final String AUTHZ_PRINCIPAL_DOMAIN = "authorizerConfiguration.principalDomain";
     public static final String AUTHZ_ADMIN_PRINCIPALS = "authorizerConfiguration.adminPrincipals";
+    public static final String AUTHZ_ADMIN_EMAILS = "authorizerConfiguration.adminEmails";
+    public static final String AUTHZ_ALLOWED_EMAIL_DOMAINS =
+        "authorizerConfiguration.allowedEmailDomains";
     public static final String AUTHZ_ALLOWED_REGISTRATION_DOMAINS =
         "authorizerConfiguration.allowedRegistrationDomains";
     public static final String AUTHZ_CONTAINER_REQUEST_FILTER =

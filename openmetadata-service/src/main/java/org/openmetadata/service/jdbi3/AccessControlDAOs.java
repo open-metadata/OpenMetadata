@@ -913,18 +913,74 @@ public interface AccessControlDAOs {
         @Bind("afterId") String afterId,
         @Bind("relation") int relation);
 
-    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
+    // MySQL email/name generated columns use the case-insensitive table collation, so plain
+    // equality is case-insensitive AND uses the existing indexes. Postgres columns are
+    // case-sensitive; LOWER() comparisons there are backed by functional indexes
+    // (idx_user_entity_email_lower / idx_user_entity_name_lower) — these lookups are on the
+    // authentication hot path and must not scan.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
 
-    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE name = :name",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)",
+        connectionType = POSTGRES)
     int checkUserNameExists(@Bind("name") String name);
 
-    @SqlQuery(
-        "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE name = :name AND email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
-    @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
-    String findUserByEmail(@Bind("email") String email);
+    // Returns every row matching the address. Postgres compares case-insensitively via LOWER()
+    // while its unique constraint is case-sensitive, so an installation can legitimately hold two
+    // rows differing only by case; a single-value return would surface that as an opaque JDBI
+    // TooManyResultsException on the login path instead of an actionable error.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
+    List<String> findUsersByEmail(@Bind("email") String email);
+
+    record NameEmail(String name, String email) {}
+
+    class NameEmailMapper implements RowMapper<NameEmail> {
+      @Override
+      public NameEmail map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new NameEmail(rs.getString("name"), rs.getString("email"));
+      }
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE email LIKE :domainSuffix AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE LOWER(email) LIKE LOWER(:domainSuffix) AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(NameEmailMapper.class)
+    List<NameEmail> listUsersWithEmailDomain(
+        @Bind("domainSuffix") String domainSuffix,
+        @Bind("afterName") String afterName,
+        @Bind("limit") int limit);
 
     @Override
     default User findEntityByName(String fqn, Include include) {

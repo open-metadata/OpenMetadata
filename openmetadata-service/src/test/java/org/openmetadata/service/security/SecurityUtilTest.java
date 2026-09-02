@@ -13,6 +13,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
@@ -25,8 +27,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -834,5 +838,373 @@ class SecurityUtilTest {
     assertTrue(fragment.contains("email="));
     assertTrue(fragment.contains("name="));
     assertTrue(fragment.contains("%26"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_withValidEmail() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "john.doe@company.com");
+
+    String email = SecurityUtil.extractEmailFromClaim(claims, "email");
+
+    assertEquals("john.doe@company.com", email);
+  }
+
+  @Test
+  void testExtractEmailFromClaim_lowercasesEmail() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "John.Doe@Company.COM");
+
+    String email = SecurityUtil.extractEmailFromClaim(claims, "email");
+
+    assertEquals("john.doe@company.com", email);
+  }
+
+  @Test
+  void testExtractEmailFromClaim_missingClaim() {
+    Map<String, Object> claims = new HashMap<>();
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(claims, "email"));
+
+    assertTrue(ex.getMessage().contains("email claim 'email' not found"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_invalidEmailFormat() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "not-an-email");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(claims, "email"));
+
+    assertTrue(ex.getMessage().contains("invalid email format"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_withEmptyString() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(claims, "email"));
+
+    assertTrue(ex.getMessage().contains("email claim 'email' not found"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_withCustomClaimName() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("preferred_email", "user@domain.org");
+
+    String email = SecurityUtil.extractEmailFromClaim(claims, "preferred_email");
+
+    assertEquals("user@domain.org", email);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaim_withValidName() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "John Doe");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaim(claims, "name");
+
+    assertEquals("John Doe", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaim_returnsNullWhenNoClaims() {
+    Map<String, Object> claims = new HashMap<>();
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaim(claims, "name");
+
+    assertNull(displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaim_emptyClaim_returnsNull() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaim(claims, "name");
+
+    assertNull(displayName);
+  }
+
+  @Test
+  void testIsEmailRegistrationDomainAllowed() {
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", null));
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of()));
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of("all")));
+    assertTrue(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of("X.COM")));
+    assertFalse(SecurityUtil.isEmailRegistrationDomainAllowed("a@x.com", Set.of("y.com")));
+    assertFalse(SecurityUtil.isEmailRegistrationDomainAllowed(null, Set.of("y.com")));
+    assertFalse(SecurityUtil.isEmailRegistrationDomainAllowed("no-at-sign", Set.of("y.com")));
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_withNameClaim() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "John Doe");
+
+    assertEquals("John Doe", SecurityUtil.extractDisplayNameFromClaims(claims));
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_withGivenAndFamilyName() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("given_name", "John");
+    claims.put("family_name", "Doe");
+
+    assertEquals("John Doe", SecurityUtil.extractDisplayNameFromClaims(claims));
+  }
+
+  @Test
+  void testValidateEmailDomain_allowedDomain() {
+    List<String> allowedDomains = List.of("company.com", "subsidiary.com");
+
+    // Should not throw
+    SecurityUtil.validateEmailDomain("john@company.com", allowedDomains);
+    SecurityUtil.validateEmailDomain("jane@subsidiary.com", allowedDomains);
+  }
+
+  @Test
+  void testValidateEmailDomain_disallowedDomain() {
+    List<String> allowedDomains = List.of("company.com");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.validateEmailDomain("john@other.com", allowedDomains));
+
+    assertTrue(ex.getMessage().contains("domain 'other.com' not in allowed list"));
+  }
+
+  @Test
+  void testValidateEmailDomain_emptyAllowedList_allowsAll() {
+    List<String> allowedDomains = List.of();
+
+    // Should not throw - empty list means all domains allowed
+    SecurityUtil.validateEmailDomain("john@any-domain.com", allowedDomains);
+  }
+
+  @Test
+  void testValidateEmailDomain_caseInsensitive() {
+    List<String> allowedDomains = List.of("Company.COM");
+
+    // Should not throw - case insensitive comparison
+    SecurityUtil.validateEmailDomain("john@company.com", allowedDomains);
+  }
+
+  @Test
+  void testValidateEmailDomain_nullAllowedList_allowsAll() {
+    // Should not throw - null list means all domains allowed
+    assertDoesNotThrow(() -> SecurityUtil.validateEmailDomain("john@any-domain.com", null));
+  }
+
+  @Test
+  void testValidateEmailDomain_nullEmail_throwsAuthenticationException() {
+    List<String> allowedDomains = List.of("company.com");
+
+    // An unusable email on the auth path is an authentication failure (401), not a server fault.
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.validateEmailDomain(null, allowedDomains));
+
+    assertTrue(ex.getMessage().contains("not a valid email address"));
+  }
+
+  @Test
+  void testValidateEmailDomain_emailWithoutAtSymbol_throwsAuthenticationException() {
+    List<String> allowedDomains = List.of("company.com");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.validateEmailDomain("invalid-email", allowedDomains));
+
+    assertTrue(ex.getMessage().contains("not a valid email address"));
+  }
+
+  @Test
+  void testValidateConfiguredEmailDomain_usesPrincipalDomainFallback() {
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateConfiguredEmailDomain(
+                "john@company.com", List.of(), "company.com", Collections.emptySet(), true));
+  }
+
+  @Test
+  void testValidateConfiguredEmailDomain_usesAllowedDomainsFallback() {
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateConfiguredEmailDomain(
+                "john@company.com",
+                List.of(),
+                "other.com",
+                Set.of("company.com", "subsidiary.com"),
+                true));
+  }
+
+  @Test
+  void testValidateConfiguredEmailDomain_prioritizesAllowedEmailDomains() {
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () ->
+                SecurityUtil.validateConfiguredEmailDomain(
+                    "john@company.com",
+                    List.of("approved.com"),
+                    "company.com",
+                    Set.of("company.com"),
+                    true));
+
+    assertTrue(ex.getMessage().contains("domain 'company.com' not in allowed list"));
+  }
+
+  @Test
+  void testResolvePrincipalDomain_usesPrincipalDomainWhenSet() {
+    assertEquals(
+        "principal.com",
+        SecurityUtil.resolvePrincipalDomain(
+            "principal.com", Set.of("email.com"), Set.of("allowed.com")));
+  }
+
+  @Test
+  void testResolvePrincipalDomain_fallsBackToAllowedEmailDomains() {
+    assertEquals(
+        "email.com",
+        SecurityUtil.resolvePrincipalDomain(null, Set.of("email.com"), Set.of("allowed.com")));
+  }
+
+  @Test
+  void testResolvePrincipalDomain_fallsBackToAllowedDomains() {
+    assertEquals(
+        "allowed.com", SecurityUtil.resolvePrincipalDomain(null, null, Set.of("allowed.com")));
+  }
+
+  @Test
+  void testResolvePrincipalDomain_returnsNullWhenNothingConfigured() {
+    assertNull(SecurityUtil.resolvePrincipalDomain(null, null, null));
+    assertNull(SecurityUtil.resolvePrincipalDomain("", Set.of(), Set.of()));
+  }
+
+  @Test
+  void testResolvePrincipalDomain_skipsEmptyPrincipalDomain() {
+    assertEquals("email.com", SecurityUtil.resolvePrincipalDomain("", Set.of("email.com"), null));
+  }
+
+  @Test
+  void testFindEmailFromClaims_claimWithAtSign_returnsDirectly() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "john@company.com");
+
+    String email =
+        SecurityUtil.findEmailFromClaims(Map.of(), List.of("email"), claims, "other.com");
+
+    assertEquals("john@company.com", email);
+  }
+
+  @Test
+  void testFindEmailFromClaims_claimWithoutAtSign_appendsDomain() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("sub", "john123");
+
+    String email =
+        SecurityUtil.findEmailFromClaims(Map.of(), List.of("sub"), claims, "company.com");
+
+    assertEquals("john123@company.com", email);
+  }
+
+  @Test
+  void testFindEmailFromClaims_claimWithoutAtSign_noDomain_throwsError() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("sub", "john123");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.findEmailFromClaims(Map.of(), List.of("sub"), claims, null));
+
+    assertTrue(ex.getMessage().contains("john123"));
+    assertTrue(ex.getMessage().contains("not an email address"));
+    assertTrue(ex.getMessage().contains("emailClaim"));
+  }
+
+  @Test
+  void testFindEmailFromClaims_claimWithoutAtSign_emptyDomain_throwsError() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("sub", "john123");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.findEmailFromClaims(Map.of(), List.of("sub"), claims, ""));
+
+    assertTrue(ex.getMessage().contains("not an email address"));
+  }
+
+  @Test
+  void testFindEmailFromClaims_lowercasesResult() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "John.Doe@Company.COM");
+
+    String email =
+        SecurityUtil.findEmailFromClaims(Map.of(), List.of("email"), claims, "other.com");
+
+    assertEquals("john.doe@company.com", email);
+  }
+
+  @Test
+  void testExtractEmailFromNonStringClaimFailsAuthenticationRatherThanCrashing() {
+    // A boolean/array claim makes Claim.asString() return null; treating that as a string used to
+    // throw NullPointerException, surfacing as a 500 instead of an authentication failure.
+    Map<String, Claim> booleanClaim = jwtClaims(Map.of("email", true));
+
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(booleanClaim, "email"));
+
+    assertTrue(
+        exception.getMessage().contains("not found"),
+        "Expected a clean authentication failure but got: " + exception.getMessage());
+  }
+
+  @Test
+  void testExtractEmailFromArrayClaimFailsAuthenticationRatherThanCrashing() {
+    Map<String, Claim> arrayClaim = jwtClaims(Map.of("email", List.of("a@b.com")));
+
+    assertThrows(
+        AuthenticationException.class,
+        () -> SecurityUtil.extractEmailFromClaim(arrayClaim, "email"));
+  }
+
+  @Test
+  void testEmailNormalizationIsLocaleIndependent() {
+    // Turkish maps 'I' to a dotless 'i' under the default locale, which would corrupt an address
+    // that is now the identity key.
+    Locale previous = Locale.getDefault();
+    try {
+      Locale.setDefault(new Locale("tr", "TR"));
+      assertEquals(
+          "istanbul@example.com",
+          SecurityUtil.extractEmailFromClaim(
+              jwtClaims(Map.of("email", "ISTANBUL@EXAMPLE.COM")), "email"));
+    } finally {
+      Locale.setDefault(previous);
+    }
+  }
+
+  private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
+    String token = JWT.create().withPayload(values).sign(Algorithm.none());
+    return JWT.decode(token).getClaims();
   }
 }

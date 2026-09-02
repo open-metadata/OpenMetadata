@@ -91,6 +91,7 @@ import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
+import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
@@ -1245,6 +1246,7 @@ const SSOConfigurationFormRJSF = ({
           fields={customFields}
           formContext={{
             clearFieldError: handleClearFieldError,
+            currentProvider,
           }}
           formData={internalData}
           idSeparator="/"
@@ -1257,6 +1259,7 @@ const SSOConfigurationFormRJSF = ({
           templates={{
             DescriptionFieldTemplate: DescriptionFieldTemplate,
             FieldErrorTemplate: FieldErrorTemplate,
+            FieldTemplate: SSOFieldTemplate,
             ObjectFieldTemplate: SSOGroupedFieldTemplate,
           }}
           transformErrors={transformErrors}

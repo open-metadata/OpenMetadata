@@ -1635,10 +1635,14 @@ public class SystemRepository {
             "authenticationConfiguration.providerName", "Provider name is required");
       }
 
-      if (authConfig.getJwtPrincipalClaims() == null
-          || authConfig.getJwtPrincipalClaims().isEmpty()) {
+      boolean hasEmailClaim = !nullOrEmpty(authConfig.getEmailClaim());
+      boolean hasJwtPrincipalClaims =
+          authConfig.getJwtPrincipalClaims() != null
+              && !authConfig.getJwtPrincipalClaims().isEmpty();
+      if (!hasEmailClaim && !hasJwtPrincipalClaims) {
         return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_JWT_PRINCIPAL_CLAIMS, "JWT principal claims are required");
+            FieldPaths.AUTH_EMAIL_CLAIM,
+            "Either 'emailClaim' or 'jwtPrincipalClaims' must be configured for identity resolution");
       }
 
       boolean isLdapOrSaml =
@@ -2260,17 +2264,19 @@ public class SystemRepository {
             "authorizerConfiguration.className", "Class name is required");
       }
 
-      // Validate admin principals
-      if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
+      boolean hasAdminEmails =
+          authzConfig.getAdminEmails() != null && !authzConfig.getAdminEmails().isEmpty();
+      boolean hasAdminPrincipals =
+          authzConfig.getAdminPrincipals() != null && !authzConfig.getAdminPrincipals().isEmpty();
+      if (!hasAdminEmails && !hasAdminPrincipals) {
         return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTHZ_ADMIN_PRINCIPALS, "At least one admin principal is required");
+            FieldPaths.AUTHZ_ADMIN_EMAILS,
+            "Either 'adminEmails' or 'adminPrincipals' must be configured");
       }
 
-      // Validate principal domain (required field)
-      if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
-      }
+      // Neither domain field is required: an empty allowedEmailDomains means "allow every
+      // domain", and principalDomain falls back to SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN, so
+      // requiring one of them here would reject configurations that rely on those defaults.
 
       // Try to instantiate the authorizer class
       try {

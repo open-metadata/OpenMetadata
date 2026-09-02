@@ -14,10 +14,10 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
+import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
@@ -32,6 +32,8 @@ import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.Priority;
@@ -44,6 +46,7 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +67,9 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -73,6 +79,7 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Provider
@@ -98,6 +105,50 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+
+  private String emailClaim;
+  private String displayNameClaim;
+  private List<String> allowedEmailDomains;
+
+  /**
+   * Email-to-username resolution cache for the email-first flow. This mapping decides which
+   * principal a request runs as, so a stale entry is an authorization bug, not just a stale read:
+   * if an address is reassigned, a replica still holding the old mapping would run the new holder
+   * as the previous owner. Three things bound that. Entries are only written for an email a
+   * stored account actually owns. Local user writes invalidate through {@link
+   * #invalidateResolvedEmailIdentity}, and that fans out to other replicas over the cache
+   * invalidation channel when Redis is configured. The short TTL is the backstop for deployments
+   * with no shared cache, and for changes made outside a running server -- the {@code
+   * change-email} ops command runs in its own process and cannot reach any replica's memory.
+   */
+  private static final Cache<String, String> EMAIL_TO_USERNAME_CACHE =
+      CacheBuilder.newBuilder().maximumSize(10_000).expireAfterWrite(60, TimeUnit.SECONDS).build();
+
+  /**
+   * Drops resolved-identity entries for a user when any replica reports a write to that user.
+   * Registered with {@link CacheBundle}, which fans both local mutations and remote pub/sub
+   * messages out to every registered layer.
+   */
+  private static final Invalidatable EMAIL_IDENTITY_INVALIDATOR =
+      (type, id, fqn) -> {
+        if (!USER.equals(type) || fqn == null) {
+          return;
+        }
+        String userName = EntityInterfaceUtil.unquoteName(fqn);
+        EMAIL_TO_USERNAME_CACHE.asMap().values().removeIf(userName::equals);
+      };
+
+  public static Invalidatable emailIdentityInvalidator() {
+    return EMAIL_IDENTITY_INVALIDATOR;
+  }
+
+  public static void invalidateResolvedEmailIdentity(String email) {
+    if (email != null) {
+      EMAIL_TO_USERNAME_CACHE.invalidate(email.toLowerCase(Locale.ROOT));
+    }
+  }
+
+  private record ResolvedIdentity(String userName, String email, boolean usedEmailFirstFlow) {}
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -138,11 +189,49 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
 
-    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.principalDomain =
+        SecurityUtil.resolvePrincipalDomain(
+            authorizerConfiguration.getPrincipalDomain(),
+            authorizerConfiguration.getAllowedEmailDomains(),
+            authorizerConfiguration.getAllowedDomains());
     this.allowedDomains = authorizerConfiguration.getAllowedDomains();
-    this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
+    this.enforcePrincipalDomain =
+        Boolean.TRUE.equals(authorizerConfiguration.getEnforcePrincipalDomain());
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
     this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
+
+    this.emailClaim = authenticationConfiguration.getEmailClaim();
+    this.displayNameClaim = authenticationConfiguration.getDisplayNameClaim();
+    Set<String> emailDomainsSet = authorizerConfiguration.getAllowedEmailDomains();
+    this.allowedEmailDomains =
+        emailDomainsSet != null ? new ArrayList<>(emailDomainsSet) : new ArrayList<>();
+
+    logDeprecationWarnings(authenticationConfiguration);
+  }
+
+  /**
+   * Warns only about deprecated settings that are now redundant, i.e. once the replacement is
+   * configured. 'jwtPrincipalClaims' ships with a non-empty default and still drives the legacy
+   * flow when 'emailClaim' is unset, so warning about it unconditionally would tell every
+   * untouched deployment to remove configuration it still depends on.
+   */
+  private void logDeprecationWarnings(AuthenticationConfiguration config) {
+    boolean emailFirstConfigured = !nullOrEmpty(config.getEmailClaim());
+    if (emailFirstConfigured && !nullOrEmpty(config.getJwtPrincipalClaims())) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaims' is deprecated and no longer used now that "
+              + "'emailClaim' is configured. It can be removed; this will be removed in a "
+              + "future version.");
+    }
+
+    // Empty by default, so this only fires for a deployment that explicitly set it. Note it also
+    // suppresses the email-first flow, which is worth saying out loud.
+    if (!nullOrEmpty(config.getJwtPrincipalClaimsMapping())) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaimsMapping' configuration is deprecated and keeps "
+              + "identity resolution on the legacy flow. Use 'emailClaim' and "
+              + "'displayNameClaim' instead. This will be removed in a future version.");
+    }
   }
 
   @VisibleForTesting
@@ -169,6 +258,36 @@ public class JwtFilter implements ContainerRequestFilter {
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      String emailClaim,
+      String displayNameClaim,
+      List<String> allowedEmailDomains) {
+    this.jwkProvider = jwkProvider;
+    this.emailClaim = emailClaim;
+    this.displayNameClaim = displayNameClaim;
+    this.allowedEmailDomains = allowedEmailDomains;
+    this.jwtPrincipalClaimsMapping = null;
+    this.jwtPrincipalClaims = new ArrayList<>();
+    this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      String emailClaim,
+      String displayNameClaim,
+      List<String> allowedEmailDomains) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain);
+    this.emailClaim = emailClaim;
+    this.displayNameClaim = displayNameClaim;
+    this.allowedEmailDomains = allowedEmailDomains;
+  }
+
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
@@ -188,12 +307,10 @@ public class JwtFilter implements ContainerRequestFilter {
       DecodedJWT decodedJwt = decodeAndVerify(tokenFromHeader);
       String tokenKeyId = decodedJwt.getKeyId();
       Map<String, Claim> claims = extractClaims(decodedJwt);
-      String userName =
-          findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-      String email =
-          findEmailFromClaims(
-              jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
       boolean isBotUser = isBot(claims);
+      ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
+      String userName = resolvedIdentity.userName();
+      String email = resolvedIdentity.email();
 
       String impersonateUser = requestContext.getHeaderString(IMPERSONATE_USER_HEADER);
       String activePersona = requestContext.getHeaderString(ACTIVE_PERSONA_HEADER);
@@ -216,7 +333,14 @@ public class JwtFilter implements ContainerRequestFilter {
         }
       }
 
-      checkValidationsForToken(claims, tokenFromHeader, tokenKeyId, userName, impersonatedBy);
+      checkValidationsForToken(
+          claims,
+          tokenFromHeader,
+          tokenKeyId,
+          userName,
+          email,
+          impersonatedBy,
+          resolvedIdentity.usedEmailFirstFlow());
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
@@ -255,7 +379,15 @@ public class JwtFilter implements ContainerRequestFilter {
     } catch (JWTDecodeException e) {
       LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
     }
-    checkValidationsForToken(claims, tokenFromHeader, tokenKeyId, userName, impersonatedBy);
+    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims));
+    checkValidationsForToken(
+        claims,
+        tokenFromHeader,
+        tokenKeyId,
+        userName,
+        resolvedIdentity.email(),
+        impersonatedBy,
+        resolvedIdentity.usedEmailFirstFlow());
   }
 
   private void checkValidationsForToken(
@@ -263,7 +395,9 @@ public class JwtFilter implements ContainerRequestFilter {
       String tokenFromHeader,
       String tokenKeyId,
       String userName,
-      String impersonatedBy) {
+      String email,
+      String impersonatedBy,
+      boolean usedEmailFirstFlow) {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
@@ -274,7 +408,15 @@ public class JwtFilter implements ContainerRequestFilter {
     // are already handled (validateDomainEnforcement returns early for isBot=true tokens).
     // The isInternallyIssuedToken check is guarded by enforcePrincipalDomain to avoid the
     // singleton lookup on deployments where enforcement is disabled.
-    if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenKeyId)) {
+    if (usedEmailFirstFlow) {
+      // OM-issued tokens (sessions, PATs) carry emails that predate any allowedEmailDomains
+      // config; enforcing the domain list on them would lock out the seeded admin and
+      // grandfathered users. Domain restrictions apply to IdP-issued tokens only.
+      if (!isInternallyIssuedToken(claims, tokenKeyId)) {
+        validateConfiguredEmailDomain(
+            email, allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain);
+      }
+    } else if (enforcePrincipalDomain && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateDomainEnforcement(
           jwtPrincipalClaimsMapping,
           jwtPrincipalClaims,
@@ -298,6 +440,35 @@ public class JwtFilter implements ContainerRequestFilter {
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
 
     validateSessionBoundToken(claims, userName);
+  }
+
+  private ResolvedIdentity resolveIdentity(Map<String, Claim> claims, boolean isBotUser) {
+    JwtIdentityResolver.ResolvedIdentity resolvedIdentity =
+        new JwtIdentityResolver(
+                emailClaim,
+                jwtPrincipalClaimsMapping,
+                jwtPrincipalClaims,
+                principalDomain,
+                this::resolveUserNameForEmail)
+            .resolve(claims, isBotUser);
+    return new ResolvedIdentity(
+        resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
+  }
+
+  /** Caching wrapper around {@link UserUtil#resolveUserName}; this runs on every request. */
+  private String resolveUserNameForEmail(String email) {
+    String cached = EMAIL_TO_USERNAME_CACHE.getIfPresent(email);
+    if (cached != null) {
+      return cached;
+    }
+    UserUtil.ResolvedUserName resolved = UserUtil.resolveUserName(email);
+    // A name no account owns is a first-login bootstrap guess. Caching it would outlive the guess:
+    // creation does not invalidate this cache, so a later account taking that name -- for someone
+    // else's email -- would inherit the mapping and the requests authorized under it.
+    if (resolved.backedByAccount()) {
+      EMAIL_TO_USERNAME_CACHE.put(email, resolved.userName());
+    }
+    return resolved.userName();
   }
 
   private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {
@@ -484,11 +655,24 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-    String email =
-        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     boolean isBotUser = isBot(claims);
+    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
+    String tokenKeyId = null;
+    try {
+      tokenKeyId = JWT.decode(token).getKeyId();
+    } catch (JWTDecodeException e) {
+      LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
+    }
+    if (resolvedIdentity.usedEmailFirstFlow() && !isInternallyIssuedToken(claims, tokenKeyId)) {
+      validateConfiguredEmailDomain(
+          resolvedIdentity.email(),
+          allowedEmailDomains,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
+    CatalogPrincipal catalogPrincipal =
+        new CatalogPrincipal(resolvedIdentity.userName(), resolvedIdentity.email());
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",

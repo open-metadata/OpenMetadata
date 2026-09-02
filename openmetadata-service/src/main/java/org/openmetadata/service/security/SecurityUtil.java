@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -58,6 +59,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
+  public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
 
   private SecurityUtil() {}
 
@@ -108,6 +110,20 @@ public final class SecurityUtil {
     return CommonUtil.nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
   }
 
+  public static String resolvePrincipalDomain(
+      String principalDomain, Set<String> allowedEmailDomains, Set<String> allowedDomains) {
+    if (!nullOrEmpty(principalDomain)) {
+      return principalDomain;
+    }
+    if (allowedEmailDomains != null && !allowedEmailDomains.isEmpty()) {
+      return allowedEmailDomains.stream().sorted().findFirst().orElse(null);
+    }
+    if (allowedDomains != null && !allowedDomains.isEmpty()) {
+      return allowedDomains.stream().sorted().findFirst().orElse(null);
+    }
+    return null;
+  }
+
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
     if (headers != null) {
       return target
@@ -141,7 +157,7 @@ public final class SecurityUtil {
       String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
       userName = jwtClaim.contains("@") ? jwtClaim.split("@")[0] : jwtClaim;
     }
-    return userName.toLowerCase();
+    return userName.toLowerCase(Locale.ROOT);
   }
 
   public static String findEmailFromClaims(
@@ -165,12 +181,116 @@ public final class SecurityUtil {
       }
     } else {
       String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
-      email =
-          jwtClaim.contains("@")
-              ? jwtClaim
-              : String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
+      if (jwtClaim.contains("@")) {
+        email = jwtClaim;
+      } else if (!nullOrEmpty(defaulPrincipalClaim)) {
+        email = String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
+      } else {
+        throw new AuthenticationException(
+            String.format(
+                "JWT claim value '%s' is not an email address and no domain is configured. "
+                    + "Configure 'emailClaim' for direct email resolution, "
+                    + "or set 'allowedEmailDomains' / 'principalDomain' for domain construction.",
+                jwtClaim));
+      }
     }
-    return email.toLowerCase();
+    return email.toLowerCase(Locale.ROOT);
+  }
+
+  public static String extractEmailFromClaim(Map<String, ?> claims, String emailClaim) {
+    if (nullOrEmpty(emailClaim)) {
+      throw new AuthenticationException("Authentication failed: emailClaim is not configured");
+    }
+
+    Object claimValue = claims.get(emailClaim);
+    String claimString = getClaimOrObject(claimValue);
+
+    if (claimValue == null || claimString.isEmpty()) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: email claim '%s' not found in token", emailClaim));
+    }
+
+    String email = claimString.toLowerCase(Locale.ROOT);
+
+    if (!email.contains("@") || !isValidEmail(email)) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: invalid email format in claim '%s'", emailClaim));
+    }
+
+    return email;
+  }
+
+  public static String extractDisplayNameFromClaim(Map<String, ?> claims, String displayNameClaim) {
+    if (!nullOrEmpty(displayNameClaim)) {
+      Object claimValue = claims.get(displayNameClaim);
+      if (claimValue != null) {
+        String value = getClaimOrObject(claimValue);
+        if (!nullOrEmpty(value)) {
+          return value.trim();
+        }
+      }
+    }
+    return extractDisplayNameFromClaims(claims);
+  }
+
+  public static boolean isEmailRegistrationDomainAllowed(
+      String email, Set<String> allowedRegistrationDomains) {
+    if (allowedRegistrationDomains == null
+        || allowedRegistrationDomains.isEmpty()
+        || allowedRegistrationDomains.contains("all")) {
+      return true;
+    }
+    if (email == null || !email.contains("@")) {
+      return false;
+    }
+    String domain = email.substring(email.indexOf('@') + 1);
+    return allowedRegistrationDomains.stream().anyMatch(domain::equalsIgnoreCase);
+  }
+
+  /**
+   * Boundary guard for the email-first flows. Every downstream consumer splits on '@' (username
+   * generation, bot/user domains, domain enforcement), so a value that is not an email must be
+   * rejected here as an authentication failure rather than surfacing later as a 500.
+   */
+  public static String requireEmailWithDomain(String email) {
+    if (nullOrEmpty(email) || !isValidEmail(email.toLowerCase(Locale.ROOT))) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: '%s' is not a valid email address", email));
+    }
+    return email.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Rejects a token whose identity provider explicitly marked the email unverified. Absent claims
+   * are accepted: many providers omit email_verified entirely, and email-first identity must keep
+   * working for them. Shared by the request path and the OIDC login callback so an unverified
+   * address cannot be mapped onto an existing account through either route.
+   */
+  public static void validateEmailVerifiedClaim(Map<String, ?> claims, String email) {
+    Object claimValue = claims == null ? null : claims.get(EMAIL_VERIFIED_CLAIM);
+    if (claimValue == null) {
+      return;
+    }
+    String value =
+        claimValue instanceof Claim claim
+            ? String.valueOf(claim.as(Object.class))
+            : String.valueOf(claimValue);
+    if ("false".equalsIgnoreCase(value)) {
+      throw new AuthenticationException(
+          String.format(
+              "Authentication failed: email '%s' is not verified by the identity provider", email));
+    }
+  }
+
+  /**
+   * Mirrors the {@code email} definition in {@code openmetadata-spec .../type/basic.json}, whose
+   * pattern reduces to this: its character class lists punctuation that {@code \S} already covers.
+   * The two must agree — a stricter check here would let an account be created through the API and
+   * then refuse to authenticate it, which is what a locale-specific address (apostrophes, accented
+   * characters) would have hit.
+   */
+  public static boolean isValidEmail(String email) {
+    return email.matches("^\\S+@\\S+\\.\\S+$");
   }
 
   public static String getClaimOrObject(Object obj) {
@@ -179,7 +299,9 @@ public final class SecurityUtil {
     }
 
     if (obj instanceof Claim c) {
-      return c.asString();
+      // asString() returns null for a non-string claim (boolean, number, array); callers treat
+      // the result as a plain string, so normalize that to empty rather than handing back null.
+      return c.asString() == null ? StringUtils.EMPTY : c.asString();
     } else if (obj instanceof String s) {
       return s;
     }
@@ -634,5 +756,47 @@ public final class SecurityUtil {
       return uri.getPort();
     }
     return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+  }
+
+  public static void validateEmailDomain(String email, List<String> allowedEmailDomains) {
+    if (allowedEmailDomains == null || allowedEmailDomains.isEmpty()) {
+      return;
+    }
+
+    String normalizedEmail = requireEmailWithDomain(email);
+
+    String domain = normalizedEmail.substring(normalizedEmail.indexOf("@") + 1);
+
+    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> d.equalsIgnoreCase(domain));
+
+    if (!allowed) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: domain '%s' not in allowed list", domain));
+    }
+  }
+
+  public static void validateConfiguredEmailDomain(
+      String email,
+      List<String> allowedEmailDomains,
+      String principalDomain,
+      Set<String> allowedDomains,
+      Boolean enforcePrincipalDomain) {
+    if (allowedEmailDomains != null && !allowedEmailDomains.isEmpty()) {
+      validateEmailDomain(email, allowedEmailDomains);
+      return;
+    }
+
+    if (!Boolean.TRUE.equals(enforcePrincipalDomain)) {
+      return;
+    }
+
+    if (allowedDomains != null && !allowedDomains.isEmpty()) {
+      validateEmailDomain(email, new ArrayList<>(allowedDomains));
+      return;
+    }
+
+    String effectivePrincipalDomain =
+        nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
+    validateEmailDomain(email, List.of(effectivePrincipalDomain));
   }
 }

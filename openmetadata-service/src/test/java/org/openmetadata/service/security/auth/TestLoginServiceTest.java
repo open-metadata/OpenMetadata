@@ -193,4 +193,55 @@ class TestLoginServiceTest {
     assertEquals("CLAIMS_EXTRACTED", result.getStage());
     assertFalse(result.getErrors().isEmpty());
   }
+
+  @Test
+  void usesEmailFirstResolutionWhenEmailClaimIsConfigured() {
+    // The dry-run must agree with the request path: with emailClaim set, the configured claim
+    // wins over the legacy jwtPrincipalClaims ordering.
+    TestLoginResult result =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(List.of("preferred_username"), null, null).withEmailClaim("mail"),
+            authzConfig("example.com", false, false),
+            claims(Map.of("mail", "Alice@Example.com", "preferred_username", "legacy-name")));
+
+    assertEquals(TestLoginResult.Status.SUCCESS, result.getStatus());
+    assertEquals("alice@example.com", result.getResolvedEmail());
+    assertEquals("alice", result.getResolvedPrincipal());
+  }
+
+  @Test
+  void rejectsUnverifiedEmailUnderEmailFirstResolution() {
+    // Real login refuses a token the IdP marked unverified; the dry-run must report that too
+    // rather than telling an administrator the configuration works.
+    TestLoginResult result =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(List.of("email"), null, null).withEmailClaim("email"),
+            authzConfig("example.com", false, false),
+            claims(Map.of("email", "alice@example.com", "email_verified", false)));
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+  }
+
+  @Test
+  void checksAllowedEmailDomainsUnderEmailFirstResolution() {
+    AuthorizerConfiguration authzConfig =
+        authzConfig("example.com", false, false)
+            .withAllowedEmailDomains(java.util.Set.of("example.com"));
+
+    TestLoginResult allowed =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(List.of("email"), null, null).withEmailClaim("email"),
+            authzConfig,
+            claims(Map.of("email", "alice@example.com")));
+    assertEquals(TestLoginResult.Status.SUCCESS, allowed.getStatus());
+
+    // allowedEmailDomains applies even with enforcePrincipalDomain off, matching the request path
+    TestLoginResult rejected =
+        TestLoginService.resolveIdentityFromClaims(
+            authConfig(List.of("email"), null, null).withEmailClaim("email"),
+            authzConfig,
+            claims(Map.of("email", "bob@other.org")));
+    assertEquals(TestLoginResult.Status.FAILED, rejected.getStatus());
+    assertFalse(Boolean.TRUE.equals(rejected.getDomainCheck().getPassed()));
+  }
 }

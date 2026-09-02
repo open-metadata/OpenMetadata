@@ -204,6 +204,28 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         });
       });
 
+      const identityFieldNames = [
+        // Every provider honours these: LDAP maps them onto directory attributes (falling back to
+        // mailAttributeName/displayName) and SAML reads them as assertion attribute names, so the
+        // fields stay configurable for all of them.
+        'emailClaim',
+        'displayNameClaim',
+        'jwtPrincipalClaims',
+        'jwtPrincipalClaimsMapping',
+        'jwtTeamClaimMapping',
+      ];
+
+      const identityFields = visibleProperties.filter((prop) =>
+        identityFieldNames.includes(prop.name)
+      );
+      if (identityFields.length > 0) {
+        groups.push({
+          title: 'Identity Configuration',
+          properties: identityFields,
+          showDivider: false,
+        });
+      }
+
       // Remaining fields
       const groupedFieldNames = [
         ...basicConfigFields,
@@ -212,6 +234,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         ...securityFields,
         ...credentialsFields,
         ...configObjectFields,
+        ...identityFields,
       ].map((p) => p.name);
       const remainingFields = visibleProperties.filter(
         (prop) => !groupedFieldNames.includes(prop.name)
@@ -224,19 +247,25 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         });
       }
     } else if (isAuthorizerConfig) {
-      // Authorizer configuration grouping
-      const principalFields = visibleProperties.filter((prop) =>
-        [
-          'adminPrincipals',
-          'botPrincipals',
-          'principalDomain',
-          'enforcePrincipalDomain',
-        ].includes(prop.name)
+      // Authorizer configuration grouping — new fields first, deprecated in separate group
+      const adminFields = visibleProperties.filter((prop) =>
+        ['adminEmails'].includes(prop.name)
       );
-      if (principalFields.length > 0) {
+      if (adminFields.length > 0) {
         groups.push({
-          title: 'Principal Management',
-          properties: principalFields,
+          title: 'Admin Management',
+          properties: adminFields,
+          showDivider: false,
+        });
+      }
+
+      const domainFields = visibleProperties.filter((prop) =>
+        ['allowedEmailDomains', 'botDomain'].includes(prop.name)
+      );
+      if (domainFields.length > 0) {
+        groups.push({
+          title: 'Domain Configuration',
+          properties: domainFields,
           showDivider: false,
         });
       }
@@ -246,6 +275,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
           'enableSecureSocketConnection',
           'className',
           'containerRequestFilter',
+          'useRolesFromProvider',
         ].includes(prop.name)
       );
       if (connectionFields.length > 0) {
@@ -256,10 +286,30 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         });
       }
 
-      // Remaining authorizer fields
-      const groupedFieldNames = [...principalFields, ...connectionFields].map(
-        (p) => p.name
+      const deprecatedFields = visibleProperties.filter((prop) =>
+        [
+          'adminPrincipals',
+          'principalDomain',
+          'enforcePrincipalDomain',
+          'allowedDomains',
+          'botPrincipals',
+        ].includes(prop.name)
       );
+      if (deprecatedFields.length > 0) {
+        groups.push({
+          title: 'Legacy Configuration (Deprecated)',
+          properties: deprecatedFields,
+          showDivider: false,
+        });
+      }
+
+      // Remaining authorizer fields
+      const groupedFieldNames = [
+        ...adminFields,
+        ...domainFields,
+        ...connectionFields,
+        ...deprecatedFields,
+      ].map((p) => p.name);
       const remainingFields = visibleProperties.filter(
         (prop) => !groupedFieldNames.includes(prop.name)
       );

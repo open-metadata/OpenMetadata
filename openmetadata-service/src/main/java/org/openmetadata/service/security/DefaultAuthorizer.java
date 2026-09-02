@@ -22,6 +22,7 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -44,6 +45,51 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public void init(OpenMetadataApplicationConfig config) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
+    logDeprecationWarnings(config.getAuthorizerConfiguration());
+  }
+
+  private void logDeprecationWarnings(AuthorizerConfiguration config) {
+    if (config == null) {
+      return;
+    }
+    // adminPrincipals and principalDomain both ship with non-empty defaults and still drive
+    // behaviour until their replacements are set, so warn only once the replacement exists and
+    // the deprecated setting has become redundant. Otherwise every untouched deployment is told
+    // to remove configuration it still relies on.
+    if (!nullOrEmpty(config.getAdminEmails()) && !nullOrEmpty(config.getAdminPrincipals())) {
+      LOG.warn(
+          "DEPRECATED: 'adminPrincipals' is deprecated and 'adminEmails' is already configured. "
+              + "Move any remaining principals to 'adminEmails'; this will be removed in a "
+              + "future version.");
+    }
+
+    if ((!nullOrEmpty(config.getAllowedEmailDomains()) || !nullOrEmpty(config.getBotDomain()))
+        && !nullOrEmpty(config.getPrincipalDomain())) {
+      LOG.warn(
+          "DEPRECATED: 'principalDomain' is deprecated. Use 'botDomain' for bots and "
+              + "'allowedEmailDomains' for domain restrictions; this will be removed in a "
+              + "future version.");
+    }
+
+    if (!nullOrEmpty(config.getAllowedDomains())) {
+      LOG.warn(
+          "DEPRECATED: 'allowedDomains' configuration is deprecated. "
+              + "Use 'allowedEmailDomains' instead. This will be removed in a future version.");
+    }
+
+    if (Boolean.TRUE.equals(config.getEnforcePrincipalDomain())) {
+      LOG.warn(
+          "DEPRECATED: 'enforcePrincipalDomain' configuration is deprecated. "
+              + "Restrict logins with 'allowedEmailDomains' instead. "
+              + "This will be removed in a future version.");
+    }
+
+    if (!nullOrEmpty(config.getBotPrincipals())) {
+      LOG.warn(
+          "DEPRECATED: 'botPrincipals' configuration is deprecated and no longer used. "
+              + "Bots are identified by their user entity; use 'botDomain' for bot email "
+              + "construction. This will be removed in a future version.");
+    }
   }
 
   @Override

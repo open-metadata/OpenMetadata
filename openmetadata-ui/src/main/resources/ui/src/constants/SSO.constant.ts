@@ -605,6 +605,21 @@ export const COMMON_FIELD_TITLES = {
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
+  emailClaim: {
+    'ui:title': 'Email Claim',
+    'ui:placeholder': 'e.g. email',
+    'ui:help':
+      "JWT/SAML/LDAP attribute containing the user's email. " +
+      'When configured, enables email-first identity resolution. ' +
+      'Replaces jwtPrincipalClaims for simpler configuration.',
+  },
+  displayNameClaim: {
+    'ui:title': 'Display Name Claim',
+    'ui:placeholder': 'e.g. name',
+    'ui:help':
+      "JWT/SAML/LDAP attribute containing the user's display name. " +
+      'Only used when Email Claim is configured.',
+  },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -642,6 +657,24 @@ export const AUTHORIZER_FIELD_TITLES = {
     'ui:title': 'Allowed Email Registration Domains',
     'ui:placeholder':
       'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
+  },
+  adminEmails: {
+    'ui:title': 'Admin Emails',
+    'ui:placeholder': 'Enter email (e.g. admin@company.com) and press ENTER',
+    'ui:help':
+      'Preferred over Admin Principals. Uses full email addresses for admin designation.',
+  },
+  allowedEmailDomains: {
+    'ui:title': 'Allowed Email Domains',
+    'ui:placeholder': 'Enter domain (e.g. company.com) and press ENTER',
+    'ui:help':
+      'Restrict authentication to users from these email domains. If empty, all domains are allowed.',
+  },
+  botDomain: {
+    'ui:title': 'Bot Domain',
+    'ui:placeholder': 'e.g. openmetadata.org',
+    'ui:help':
+      'Email domain for system-created bots (e.g. ingestion-bot@{botDomain}).',
   },
 };
 
