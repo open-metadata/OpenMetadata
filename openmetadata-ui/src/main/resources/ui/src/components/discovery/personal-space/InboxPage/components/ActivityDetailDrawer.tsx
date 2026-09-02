@@ -96,6 +96,127 @@ interface CommentRowProps {
   onChanged: () => void;
 }
 
+interface CommentRowDerivedState {
+  authorLogin: string;
+  authorName: string;
+  canDelete: boolean;
+  canEdit: boolean;
+}
+
+const getCommentRowDerivedState = (
+  reply: ConversationReply,
+  currentUser: { name?: string; isAdmin?: boolean } | undefined,
+  deleteAccess: Access | undefined,
+  user: ReturnType<typeof useUserProfile>[2]
+): CommentRowDerivedState => {
+  const authorLogin = reply.author?.name ?? '';
+  const authorName =
+    getEntityName(user) || reply.author?.displayName || authorLogin;
+
+  const isAuthor =
+    Boolean(currentUser?.name) && authorLogin === currentUser?.name;
+  const isAdmin = Boolean(currentUser?.isAdmin);
+  // Admins bypass policy evaluation server-side. ConditionalAllow → author
+  // only: exact for the default isOwner() rule; an approximation for other
+  // conditional rules, since the blanket permissions endpoint never evaluates
+  // conditions (see useFeedDeleteAccess). The backend re-authorizes on click.
+  const canDelete =
+    isAdmin ||
+    deleteAccess === Access.Allow ||
+    (deleteAccess === Access.ConditionalAllow && isAuthor);
+
+  return { authorLogin, authorName, canDelete, canEdit: isAuthor };
+};
+
+const CommentHoverActions = ({
+  canDelete,
+  canEdit,
+  isEditPost,
+  isHovered,
+  onDeleteClick,
+  onEditClick,
+}: {
+  canDelete: boolean;
+  canEdit: boolean;
+  isEditPost: boolean;
+  isHovered: boolean;
+  onDeleteClick: () => void;
+  onEditClick: () => void;
+}) => {
+  if (isEditPost || !isHovered || !(canEdit || canDelete)) {
+    return null;
+  }
+
+  return (
+    <Box align="center" data-testid="feed-actions" gap={1}>
+      {canEdit && (
+        <Edit01
+          className="tw:cursor-pointer tw:text-secondary"
+          data-testid="edit-message"
+          height={16}
+          width={16}
+          onClick={onEditClick}
+        />
+      )}
+      {canDelete && (
+        <Trash01
+          className="tw:cursor-pointer tw:text-error-primary"
+          data-testid="delete-message"
+          height={16}
+          width={16}
+          onClick={onDeleteClick}
+        />
+      )}
+    </Box>
+  );
+};
+
+const CommentBody = ({
+  isEditPost,
+  message,
+  onCancelEdit,
+  onSave,
+  t,
+}: {
+  isEditPost: boolean;
+  message: string;
+  onCancelEdit: () => void;
+  onSave: (message: string) => Promise<void>;
+  t: ReturnType<typeof useTranslation>['t'];
+}) => {
+  if (isEditPost) {
+    return (
+      <Box data-testid="edit-message-editor" direction="col" gap={2}>
+        <ActivityFeedEditorNew
+          focused
+          defaultValue={MarkdownToHTMLConverter.makeHtml(
+            getFrontEndFormat(message)
+          )}
+          onSave={onSave}
+        />
+        <Box align="center" className="tw:justify-end">
+          <Button
+            color="link-gray"
+            data-testid="cancel-edit-message"
+            size="sm"
+            onPress={onCancelEdit}>
+            {t('label.cancel')}
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3 tw:border-[0.6px]">
+      <RichTextEditorPreviewerV1
+        className="inbox-feed-message tw:text-sm"
+        markdown={getFrontEndFormat(message)}
+      />
+    </Box>
+  );
+};
+
 /**
  * A single comment. The author can edit it; delete is gated on the
  * server-evaluated `feed` Delete permission so the icon never shows when the
@@ -111,26 +232,12 @@ const CommentRow: React.FC<CommentRowProps> = ({
   const { currentUser } = useApplicationStore();
   // A reply carries its author as an EntityReference rather than the bare
   // username the legacy post did.
-  const authorLogin = reply.author?.name ?? '';
   const [, , user] = useUserProfile({
     permission: false,
-    name: authorLogin,
+    name: reply.author?.name ?? '',
   });
-  const authorName =
-    getEntityName(user) || reply.author?.displayName || authorLogin;
-
-  const isAuthor =
-    Boolean(currentUser?.name) && authorLogin === currentUser?.name;
-  const canEdit = isAuthor;
-  const isAdmin = Boolean(currentUser?.isAdmin);
-  // Admins bypass policy evaluation server-side. ConditionalAllow → author
-  // only: exact for the default isOwner() rule; an approximation for other
-  // conditional rules, since the blanket permissions endpoint never evaluates
-  // conditions (see useFeedDeleteAccess). The backend re-authorizes on click.
-  const canDelete =
-    isAdmin ||
-    deleteAccess === Access.Allow ||
-    (deleteAccess === Access.ConditionalAllow && isAuthor);
+  const { authorLogin, authorName, canDelete, canEdit } =
+    getCommentRowDerivedState(reply, currentUser, deleteAccess, user);
 
   const [isHovered, setIsHovered] = useState(false);
   const [isEditPost, setIsEditPost] = useState(false);
@@ -187,56 +294,22 @@ const CommentRow: React.FC<CommentRowProps> = ({
             {authorName}
           </Typography>
         </Box>
-        {isHovered && !isEditPost && (canEdit || canDelete) && (
-          <Box align="center" data-testid="feed-actions" gap={1}>
-            {canEdit && (
-              <Edit01
-                className="tw:cursor-pointer tw:text-secondary"
-                data-testid="edit-message"
-                height={16}
-                width={16}
-                onClick={() => setIsEditPost(true)}
-              />
-            )}
-            {canDelete && (
-              <Trash01
-                className="tw:cursor-pointer tw:text-error-primary"
-                data-testid="delete-message"
-                height={16}
-                width={16}
-                onClick={() => setShowDeleteDialog(true)}
-              />
-            )}
-          </Box>
-        )}
+        <CommentHoverActions
+          canDelete={canDelete}
+          canEdit={canEdit}
+          isEditPost={isEditPost}
+          isHovered={isHovered}
+          onDeleteClick={() => setShowDeleteDialog(true)}
+          onEditClick={() => setIsEditPost(true)}
+        />
       </Box>
-      {isEditPost ? (
-        <Box data-testid="edit-message-editor" direction="col" gap={2}>
-          <ActivityFeedEditorNew
-            focused
-            defaultValue={MarkdownToHTMLConverter.makeHtml(
-              getFrontEndFormat(reply.message)
-            )}
-            onSave={handleEditSave}
-          />
-          <Box align="center" className="tw:justify-end">
-            <Button
-              color="link-gray"
-              data-testid="cancel-edit-message"
-              size="sm"
-              onPress={() => setIsEditPost(false)}>
-              {t('label.cancel')}
-            </Button>
-          </Box>
-        </Box>
-      ) : (
-        <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3 tw:border-[0.6px]">
-          <RichTextEditorPreviewerV1
-            className="inbox-feed-message tw:text-sm"
-            markdown={getFrontEndFormat(reply.message)}
-          />
-        </Box>
-      )}
+      <CommentBody
+        isEditPost={isEditPost}
+        message={reply.message}
+        t={t}
+        onCancelEdit={() => setIsEditPost(false)}
+        onSave={handleEditSave}
+      />
       <Typography className="tw:text-secondary" size="text-xs">
         {formatActivityTime(reply.createdAt)}
       </Typography>
@@ -252,6 +325,233 @@ const CommentRow: React.FC<CommentRowProps> = ({
     </Box>
   );
 };
+
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
+const getActorName = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  isActivity: boolean
+): string =>
+  isActivity ? activity?.actor?.name ?? '' : feed?.createdBy?.name ?? '';
+
+const getAuthorDisplayName = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  isActivity: boolean,
+  actorName: string,
+  author: ReturnType<typeof useUserProfile>[2]
+): string =>
+  getEntityName(author) ||
+  (isActivity ? activity?.actor?.displayName : feed?.createdBy?.displayName) ||
+  actorName;
+
+const getActionLabel = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  t: TFunc
+): string => {
+  if (activity) {
+    return getActivityEventLabel(activity, t);
+  }
+
+  return feed ? t('label.posted-on') : '';
+};
+
+const getEntityInfo = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  isActivity: boolean
+) => {
+  const entity = isActivity ? activity?.entity : feed?.entityRef;
+  const entityName = entity?.displayName || entity?.name || entity?.type;
+
+  return { entity, entityName };
+};
+
+const getBodyMessage = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  isActivity: boolean
+): string => (isActivity ? activity?.summary ?? '' : feed?.message ?? '');
+
+const getTimestamp = (
+  activity: ActivityEvent | undefined,
+  feed: Conversation | undefined,
+  isActivity: boolean
+) => (isActivity ? activity?.timestamp : feed && getFeedTimestamp(feed));
+
+interface DrawerEntity {
+  displayName?: string;
+  name?: string;
+  type?: string;
+}
+
+const DrawerHeader = ({
+  actorName,
+  authorName,
+  actionLabel,
+  entity,
+  entityName,
+  isExpanded,
+  t,
+  onClose,
+  onToggleExpand,
+}: {
+  actorName: string;
+  authorName: string;
+  actionLabel: string;
+  entity: DrawerEntity | undefined;
+  entityName: string | undefined;
+  isExpanded: boolean;
+  t: TFunc;
+  onClose: () => void;
+  onToggleExpand: () => void;
+}) => (
+  <Box
+    align="center"
+    className="tw:shrink-0 tw:justify-between tw:gap-2 tw:border-b tw:border-secondary tw:px-5 tw:py-4">
+    {/* One line: name + action never shrink; the badge truncates. */}
+    <Box
+      align="center"
+      className="tw:min-w-0 tw:flex-1 tw:overflow-hidden"
+      gap={2}>
+      <ProfilePicture displayName={authorName} name={actorName} width="28" />
+      <Typography
+        className="tw:shrink-0 tw:whitespace-nowrap"
+        size="text-sm"
+        weight="medium">
+        {authorName}
+      </Typography>
+      <Typography
+        className="tw:shrink-0 tw:whitespace-nowrap tw:text-secondary"
+        size="text-sm">
+        {actionLabel}
+      </Typography>
+      {entityName && (
+        // max-w-full caps Badge's own `tw:size-max` so the name
+        // can truncate.
+        <Badge className="tw:min-w-0 tw:max-w-full" size="sm" type="color">
+          <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1">
+            {entity?.type && (
+              <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
+                {searchClassBase.getEntityIcon(entity.type)}
+              </span>
+            )}
+            <span className="tw:truncate">{entityName}</span>
+          </span>
+        </Badge>
+      )}
+    </Box>
+    <Box align="center" gap={1}>
+      <ButtonUtility
+        aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
+        color="tertiary"
+        icon={
+          isExpanded ? (
+            <Minimize02 height={16} width={16} />
+          ) : (
+            <Maximize02 height={16} width={16} />
+          )
+        }
+        size="sm"
+        onClick={onToggleExpand}
+      />
+      <ButtonUtility
+        aria-label={t('label.close')}
+        color="tertiary"
+        data-testid="close-drawer"
+        icon={<X height={16} width={16} />}
+        size="sm"
+        onClick={onClose}
+      />
+    </Box>
+  </Box>
+);
+
+const DrawerReplies = ({
+  feed,
+  feedDeleteAccess,
+  isLoading,
+  replies,
+  onChanged,
+}: {
+  feed: Conversation | undefined;
+  feedDeleteAccess: Access | undefined;
+  isLoading: boolean;
+  replies: ConversationReply[];
+  onChanged: () => void;
+}) => {
+  if (isLoading || !feed?.id || replies.length === 0) {
+    return null;
+  }
+
+  return (
+    <Box direction="col" gap={4}>
+      {replies.map((reply) => (
+        <CommentRow
+          conversationId={feed.id as string}
+          deleteAccess={feedDeleteAccess}
+          key={reply.id}
+          reply={reply}
+          onChanged={onChanged}
+        />
+      ))}
+    </Box>
+  );
+};
+
+const DrawerBody = ({
+  bodyMessage,
+  canComment,
+  feed,
+  feedDeleteAccess,
+  isLoading,
+  replies,
+  timestamp,
+  onChanged,
+  onSave,
+}: {
+  bodyMessage: string;
+  canComment: boolean;
+  feed: Conversation | undefined;
+  feedDeleteAccess: Access | undefined;
+  isLoading: boolean;
+  replies: ConversationReply[];
+  timestamp: number | undefined;
+  onChanged: () => void;
+  onSave: (message: string) => Promise<void>;
+}) => (
+  <Box
+    className="tw:flex-1 tw:overflow-y-auto tw:px-5 tw:py-4"
+    direction="col"
+    gap={3}>
+    <Box
+      className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3 tw:border-[0.6px]"
+      direction="col"
+      gap={1}>
+      <RichTextEditorPreviewerV1
+        className="inbox-feed-message tw:text-sm"
+        markdown={getFrontEndFormat(bodyMessage)}
+      />
+    </Box>
+    <Typography className="tw:text-secondary" size="text-xs">
+      {formatActivityTime(timestamp)}
+    </Typography>
+
+    {canComment && <InboxCommentComposer onSave={onSave} />}
+
+    {isLoading && <CommentsSkeleton />}
+
+    <DrawerReplies
+      feed={feed}
+      feedDeleteAccess={feedDeleteAccess}
+      isLoading={isLoading}
+      replies={replies}
+      onChanged={onChanged}
+    />
+  </Box>
+);
 
 /**
  * Right-anchored side modal showing a single activity or conversation.
@@ -271,16 +571,15 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   const [replies, setReplies] = useState<ConversationReply[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const actorName = isActivity
-    ? activity?.actor?.name ?? ''
-    : feed?.createdBy?.name ?? '';
+  const actorName = getActorName(activity, feed, isActivity);
   const [, , author] = useUserProfile({ permission: false, name: actorName });
-  const authorName =
-    getEntityName(author) ||
-    (isActivity
-      ? activity?.actor?.displayName
-      : feed?.createdBy?.displayName) ||
-    actorName;
+  const authorName = getAuthorDisplayName(
+    activity,
+    feed,
+    isActivity,
+    actorName,
+    author
+  );
 
   // Replies are their own resource in Conversation V2 rather than a field on
   // the root, so refreshing the list is a reply read, not a re-read of the
@@ -347,21 +646,13 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   const canComment = Boolean(feed?.id);
   const feedDeleteAccess = useFeedDeleteAccess(open && canComment);
   // Guard: the drawer renders even when nothing is selected (both undefined).
-  const actionLabel = activity
-    ? getActivityEventLabel(activity, t)
-    : feed
-    ? t('label.posted-on')
-    : '';
-  const entity = isActivity ? activity?.entity : feed?.entityRef;
-  const entityName = entity?.displayName || entity?.name || entity?.type;
-  const bodyMessage = isActivity
-    ? activity?.summary ?? ''
-    : feed?.message ?? '';
-  const timestamp = isActivity
-    ? activity?.timestamp
-    : feed && getFeedTimestamp(feed);
+  const actionLabel = getActionLabel(activity, feed, t);
+  const { entity, entityName } = getEntityInfo(activity, feed, isActivity);
+  const bodyMessage = getBodyMessage(activity, feed, isActivity);
+  const timestamp = getTimestamp(activity, feed, isActivity);
   // Mirrors ChatDrawer's expand/collapse chrome.
   const panelWidth = isExpanded ? '100%' : '45%';
+  const hasSelection = Boolean(activity || feed);
 
   return (
     <ModalOverlay
@@ -379,7 +670,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
         <Dialog
           className="tw:h-full tw:w-full tw:items-stretch tw:rounded-none"
           width={Infinity}>
-          {(activity || feed) && (
+          {hasSelection && (
             // rounded-2xl matches the core Dialog panel radius: the less hack
             // sets the panel's overflow to visible (mention popup must escape),
             // so this box is no longer clipped and must round itself.
@@ -387,110 +678,29 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               className="tw:flex tw:h-full tw:flex-col tw:rounded-2xl tw:bg-primary"
               data-testid="activity-detail-drawer"
               direction="col">
-              <Box
-                align="center"
-                className="tw:shrink-0 tw:justify-between tw:gap-2 tw:border-b tw:border-secondary tw:px-5 tw:py-4">
-                {/* One line: name + action never shrink; the badge truncates. */}
-                <Box
-                  align="center"
-                  className="tw:min-w-0 tw:flex-1 tw:overflow-hidden"
-                  gap={2}>
-                  <ProfilePicture
-                    displayName={authorName}
-                    name={actorName}
-                    width="28"
-                  />
-                  <Typography
-                    className="tw:shrink-0 tw:whitespace-nowrap"
-                    size="text-sm"
-                    weight="medium">
-                    {authorName}
-                  </Typography>
-                  <Typography
-                    className="tw:shrink-0 tw:whitespace-nowrap tw:text-secondary"
-                    size="text-sm">
-                    {actionLabel}
-                  </Typography>
-                  {entityName && (
-                    // max-w-full caps Badge's own `tw:size-max` so the name
-                    // can truncate.
-                    <Badge
-                      className="tw:min-w-0 tw:max-w-full"
-                      size="sm"
-                      type="color">
-                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1">
-                        {entity?.type && (
-                          <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
-                            {searchClassBase.getEntityIcon(entity.type)}
-                          </span>
-                        )}
-                        <span className="tw:truncate">{entityName}</span>
-                      </span>
-                    </Badge>
-                  )}
-                </Box>
-                <Box align="center" gap={1}>
-                  <ButtonUtility
-                    aria-label={
-                      isExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    color="tertiary"
-                    icon={
-                      isExpanded ? (
-                        <Minimize02 height={16} width={16} />
-                      ) : (
-                        <Maximize02 height={16} width={16} />
-                      )
-                    }
-                    size="sm"
-                    onClick={() => setIsExpanded((v) => !v)}
-                  />
-                  <ButtonUtility
-                    aria-label={t('label.close')}
-                    color="tertiary"
-                    data-testid="close-drawer"
-                    icon={<X height={16} width={16} />}
-                    size="sm"
-                    onClick={onClose}
-                  />
-                </Box>
-              </Box>
+              <DrawerHeader
+                actionLabel={actionLabel}
+                actorName={actorName}
+                authorName={authorName}
+                entity={entity}
+                entityName={entityName}
+                isExpanded={isExpanded}
+                t={t}
+                onClose={onClose}
+                onToggleExpand={() => setIsExpanded((v) => !v)}
+              />
 
-              <Box
-                className="tw:flex-1 tw:overflow-y-auto tw:px-5 tw:py-4"
-                direction="col"
-                gap={3}>
-                <Box
-                  className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3 tw:border-[0.6px]"
-                  direction="col"
-                  gap={1}>
-                  <RichTextEditorPreviewerV1
-                    className="inbox-feed-message tw:text-sm"
-                    markdown={getFrontEndFormat(bodyMessage)}
-                  />
-                </Box>
-                <Typography className="tw:text-secondary" size="text-xs">
-                  {formatActivityTime(timestamp)}
-                </Typography>
-
-                {canComment && <InboxCommentComposer onSave={handleSave} />}
-
-                {isLoading && <CommentsSkeleton />}
-
-                {!isLoading && feed?.id && replies.length > 0 && (
-                  <Box direction="col" gap={4}>
-                    {replies.map((reply) => (
-                      <CommentRow
-                        conversationId={feed.id}
-                        deleteAccess={feedDeleteAccess}
-                        key={reply.id}
-                        reply={reply}
-                        onChanged={handleCommentChanged}
-                      />
-                    ))}
-                  </Box>
-                )}
-              </Box>
+              <DrawerBody
+                bodyMessage={bodyMessage}
+                canComment={canComment}
+                feed={feed}
+                feedDeleteAccess={feedDeleteAccess}
+                isLoading={isLoading}
+                replies={replies}
+                timestamp={timestamp}
+                onChanged={handleCommentChanged}
+                onSave={handleSave}
+              />
             </Box>
           )}
         </Dialog>

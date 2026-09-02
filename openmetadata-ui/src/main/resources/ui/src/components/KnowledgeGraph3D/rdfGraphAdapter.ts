@@ -484,6 +484,30 @@ const expandSharedConcepts = (
   return expanded;
 };
 
+// A mapping edge connects a table and a concept in either direction. The
+// concept endpoint is the one we've expanded; the other endpoint is the
+// shared asset. Resolving by endpoint (not by source/target position) keeps
+// this correct for reverse-direction (concept->table) mappings.
+const resolveConceptId = (
+  source: string,
+  target: string,
+  expanded: Map<string, string>
+): string | undefined => {
+  if (expanded.has(source)) {
+    return source;
+  }
+
+  return expanded.has(target) ? target : undefined;
+};
+
+const isNewSharedTableAsset = (
+  asset: GraphNode3D | undefined,
+  assetId: string,
+  selfId: string,
+  seen: Set<string>
+): asset is GraphNode3D =>
+  asset?.type === 'table' && assetId !== selfId && !seen.has(assetId);
+
 const collectSharedAssets = (
   links: GraphLink3D[],
   byId: Map<string, GraphNode3D>,
@@ -496,20 +520,12 @@ const collectSharedAssets = (
     if (link.kind !== 'ontology' || link.label !== MAPPED_TO_LABEL) {
       return;
     }
-    // A mapping edge connects a table and a concept in either direction. The
-    // concept endpoint is the one we've expanded; the other endpoint is the
-    // shared asset. Resolving by endpoint (not by source/target position) keeps
-    // this correct for reverse-direction (concept->table) mappings.
     const source = idOf(link.source);
     const target = idOf(link.target);
-    const conceptId = expanded.has(source)
-      ? source
-      : expanded.has(target)
-      ? target
-      : undefined;
+    const conceptId = resolveConceptId(source, target, expanded);
     const assetId = conceptId === source ? target : source;
     const asset = conceptId ? byId.get(assetId) : undefined;
-    if (asset?.type === 'table' && assetId !== selfId && !seen.has(assetId)) {
+    if (isNewSharedTableAsset(asset, assetId, selfId, seen)) {
       seen.add(assetId);
       shared.push({
         asset,

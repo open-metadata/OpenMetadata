@@ -260,6 +260,28 @@ const DiffSelection = ({
   );
 };
 
+const computeCanDiff = (values: StructureFormState): boolean =>
+  Boolean(
+    values.sourceGlossaryId &&
+      values.targetGlossaryId &&
+      values.sourceGlossaryId !== values.targetGlossaryId &&
+      values.subsetTermIds.length
+  );
+
+const computeCanMerge = (
+  canDiff: boolean,
+  diff: OntologyStructuralDiff | undefined,
+  selections: FieldSelection[],
+  values: StructureFormState
+): boolean =>
+  Boolean(
+    canDiff &&
+      diff &&
+      selections.some((selection) => selection.fields.length) &&
+      values.changeSetName.trim() &&
+      values.changeSetDescription.trim()
+  );
+
 const OntologyStructurePanel = ({
   glossaries,
   graphData,
@@ -379,19 +401,8 @@ const OntologyStructurePanel = ({
       FieldTypes.TEXTAREA
     ),
   ];
-  const canDiff = Boolean(
-    values.sourceGlossaryId &&
-      values.targetGlossaryId &&
-      values.sourceGlossaryId !== values.targetGlossaryId &&
-      values.subsetTermIds.length
-  );
-  const canMerge = Boolean(
-    canDiff &&
-      diff &&
-      selections.some((selection) => selection.fields.length) &&
-      values.changeSetName.trim() &&
-      values.changeSetDescription.trim()
-  );
+  const canDiff = computeCanDiff(values);
+  const canMerge = computeCanMerge(canDiff, diff, selections, values);
 
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(handleMerge)}>

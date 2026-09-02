@@ -94,58 +94,61 @@ export const buildValidConfig = (data?: ServicesType): ConfigData => {
   return validConfig;
 };
 
+const CONNECTION_SCHEMA_LOADERS: Partial<
+  Record<
+    ServiceCategory,
+    (serviceType: string) => Promise<ConnectionSchemaResult['connSch']>
+  >
+> = {
+  [ServiceCategory.DATABASE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getDatabaseServiceConfig(
+      serviceType as DatabaseServiceType
+    ),
+  [ServiceCategory.MESSAGING_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getMessagingServiceConfig(
+      serviceType as MessagingServiceType
+    ),
+  [ServiceCategory.DASHBOARD_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getDashboardServiceConfig(
+      serviceType as DashboardServiceType
+    ),
+  [ServiceCategory.PIPELINE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getPipelineServiceConfig(
+      serviceType as PipelineServiceType
+    ),
+  [ServiceCategory.ML_MODEL_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getMlModelServiceConfig(
+      serviceType as MlModelServiceType
+    ),
+  [ServiceCategory.METADATA_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getMetadataServiceConfig(
+      serviceType as MetadataServiceType
+    ),
+  [ServiceCategory.STORAGE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getStorageServiceConfig(
+      serviceType as StorageServiceType
+    ),
+  [ServiceCategory.SEARCH_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getSearchServiceConfig(
+      serviceType as SearchServiceType
+    ),
+  [ServiceCategory.API_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getAPIServiceConfig(serviceType as APIServiceType),
+  [ServiceCategory.SECURITY_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getSecurityServiceConfig(
+      serviceType as SecurityServiceType
+    ),
+  [ServiceCategory.DRIVE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getDriveServiceConfig(serviceType as DriveServiceType),
+};
+
 export const loadConnectionSchema = async (
   serviceCategory: ServiceCategory,
   serviceType: string
 ): Promise<ConnectionSchemaResult['connSch']> => {
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES:
-      return serviceUtilClassBase.getDatabaseServiceConfig(
-        serviceType as DatabaseServiceType
-      );
-    case ServiceCategory.MESSAGING_SERVICES:
-      return serviceUtilClassBase.getMessagingServiceConfig(
-        serviceType as MessagingServiceType
-      );
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return serviceUtilClassBase.getDashboardServiceConfig(
-        serviceType as DashboardServiceType
-      );
-    case ServiceCategory.PIPELINE_SERVICES:
-      return serviceUtilClassBase.getPipelineServiceConfig(
-        serviceType as PipelineServiceType
-      );
-    case ServiceCategory.ML_MODEL_SERVICES:
-      return serviceUtilClassBase.getMlModelServiceConfig(
-        serviceType as MlModelServiceType
-      );
-    case ServiceCategory.METADATA_SERVICES:
-      return serviceUtilClassBase.getMetadataServiceConfig(
-        serviceType as MetadataServiceType
-      );
-    case ServiceCategory.STORAGE_SERVICES:
-      return serviceUtilClassBase.getStorageServiceConfig(
-        serviceType as StorageServiceType
-      );
-    case ServiceCategory.SEARCH_SERVICES:
-      return serviceUtilClassBase.getSearchServiceConfig(
-        serviceType as SearchServiceType
-      );
-    case ServiceCategory.API_SERVICES:
-      return serviceUtilClassBase.getAPIServiceConfig(
-        serviceType as APIServiceType
-      );
-    case ServiceCategory.SECURITY_SERVICES:
-      return serviceUtilClassBase.getSecurityServiceConfig(
-        serviceType as SecurityServiceType
-      );
-    case ServiceCategory.DRIVE_SERVICES:
-      return serviceUtilClassBase.getDriveServiceConfig(
-        serviceType as DriveServiceType
-      );
-    default:
-      return EMPTY_CONNECTION_SCHEMA;
-  }
+  const loader = CONNECTION_SCHEMA_LOADERS[serviceCategory];
+
+  return loader ? loader(serviceType) : EMPTY_CONNECTION_SCHEMA;
 };
 
 export const getConnectionSchemas = async ({
@@ -334,6 +337,31 @@ export type PasswordFieldWithoutPrefix = {
   key: string;
 };
 
+const isUnprefixedPasswordValue = (
+  propertySchema: Record<string, unknown> | undefined,
+  value: unknown,
+  prefix: string
+): value is string =>
+  Boolean(
+    propertySchema?.format === PASSWORD_FORMAT &&
+      typeof value === 'string' &&
+      value.trim() !== '' &&
+      value !== MASKED_PASSWORD_VALUE &&
+      (!value.startsWith(prefix) || value.slice(prefix.length).trim() === '')
+  );
+
+const isNestedObjectSchema = (
+  propertySchema: unknown,
+  value: unknown
+): value is Record<string, unknown> =>
+  Boolean(
+    propertySchema &&
+      typeof propertySchema === 'object' &&
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+  );
+
 /**
  * Recursively walks a connection schema (including `oneOf`/`anyOf` branches,
  * resolved against the currently-selected branch in `formData`, same
@@ -386,30 +414,16 @@ export const findPasswordFieldsWithoutPrefix = (
     const propertySchema = properties[key];
     const value = (formData as Record<string, unknown> | undefined)?.[key];
 
-    if (
-      propertySchema?.format === PASSWORD_FORMAT &&
-      typeof value === 'string' &&
-      value.trim() !== '' &&
-      value !== MASKED_PASSWORD_VALUE &&
-      (!value.startsWith(prefix) || value.slice(prefix.length).trim() === '')
-    ) {
+    if (isUnprefixedPasswordValue(propertySchema, value, prefix)) {
       acc.push({ path: [key], key });
 
       return acc;
     }
 
-    if (
-      propertySchema &&
-      typeof propertySchema === 'object' &&
-      value &&
-      typeof value === 'object' &&
-      !Array.isArray(value)
-    ) {
-      findPasswordFieldsWithoutPrefix(
-        propertySchema,
-        value as Record<string, unknown>,
-        prefix
-      ).forEach((hit) => acc.push({ path: [key, ...hit.path], key: hit.key }));
+    if (isNestedObjectSchema(propertySchema, value)) {
+      findPasswordFieldsWithoutPrefix(propertySchema, value, prefix).forEach(
+        (hit) => acc.push({ path: [key, ...hit.path], key: hit.key })
+      );
     }
 
     return acc;

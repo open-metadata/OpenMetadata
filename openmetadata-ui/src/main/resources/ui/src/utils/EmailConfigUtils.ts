@@ -12,29 +12,23 @@
  */
 import i18n from '../utils/i18next/LocalUtil';
 
+const EMAIL_CONFIG_FIELD_LABEL_KEYS: [string, string][] = [
+  ['emailingEntity', 'label.emailing-entity'],
+  ['enableSmtpServer', 'label.enable-smtp-server'],
+  ['openMetadataUrl', 'label.brand-name-url'],
+  ['password', 'label.password'],
+  ['senderMail', 'label.sender-email'],
+  ['serverEndpoint', 'label.server-endpoint'],
+  ['serverPort', 'label.server-port'],
+  ['supportUrl', 'label.support-url'],
+  ['transportationStrategy', 'label.transportation-strategy'],
+  ['username', 'label.username'],
+];
+
 export const getEmailConfigFieldLabels = (fieldName: string) => {
-  switch (fieldName) {
-    case 'emailingEntity':
-      return i18n.t('label.emailing-entity');
-    case 'enableSmtpServer':
-      return i18n.t('label.enable-smtp-server');
-    case 'openMetadataUrl':
-      return i18n.t('label.brand-name-url');
-    case 'password':
-      return i18n.t('label.password');
-    case 'senderMail':
-      return i18n.t('label.sender-email');
-    case 'serverEndpoint':
-      return i18n.t('label.server-endpoint');
-    case 'serverPort':
-      return i18n.t('label.server-port');
-    case 'supportUrl':
-      return i18n.t('label.support-url');
-    case 'transportationStrategy':
-      return i18n.t('label.transportation-strategy');
-    case 'username':
-      return i18n.t('label.username');
-    default:
-      return '';
-  }
+  const match = EMAIL_CONFIG_FIELD_LABEL_KEYS.find(
+    ([field]) => field === fieldName
+  );
+
+  return match ? i18n.t(match[1]) : '';
 };

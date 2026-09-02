@@ -180,24 +180,97 @@ const stripHtmlTags = (value: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getHasEditAccess = (
+  isAdminUser: boolean | undefined,
+  isAssignee: boolean | undefined,
+  hasGlossaryReviewer: boolean | undefined,
+  isOwner: boolean | undefined,
+  isPartOfAssigneeTeam: boolean | undefined,
+  isCreator: boolean
+): boolean => {
+  const isReviewerOwner = !hasGlossaryReviewer && Boolean(isOwner);
+  const isAssigneeTeamNonCreator = Boolean(isPartOfAssigneeTeam) && !isCreator;
+
+  return (
+    Boolean(isAdminUser) ||
+    Boolean(isAssignee) ||
+    isReviewerOwner ||
+    isAssigneeTeamNonCreator
+  );
+};
+
+const getShouldEditAssignee = (
+  isCreator: boolean,
+  hasEditAccess: boolean,
+  isTaskClosed: boolean,
+  ownersLength: number
+): boolean =>
+  (isCreator || hasEditAccess) && !isTaskClosed && ownersLength === 0;
+
+const getIsApprovalWorkflowTask = (
+  isTaskApprovalRequest: boolean,
+  isTaskRecognizerFeedbackApproval: boolean
+): boolean => isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
+
+const getIsTaskTestCaseResult = (
+  taskHandlerType: string,
+  taskType: TaskEntityType
+): boolean =>
+  taskHandlerType === 'incident' &&
+  taskType === TaskEntityType.TestCaseResolution;
+
+const getIsTaskActionable = (
+  isTaskClosed: boolean,
+  isWorkflowDrivenTask: boolean,
+  hasAvailableTransitions: boolean,
+  isTaskOpen: boolean
+): boolean => {
+  if (isTaskClosed) {
+    return false;
+  }
+
+  return isWorkflowDrivenTask ? hasAvailableTransitions : isTaskOpen;
+};
+
+const getTaskStatusIcon = (isTaskClosed: boolean) =>
+  isTaskClosed ? TaskCloseIcon : TaskOpenIcon;
+
+const getEditTaskModalTitle = (
+  isWorkflowDrivenTask: boolean,
+  selectedTransition: { label?: string } | undefined,
+  taskDisplayId: string,
+  displayName: string | undefined,
+  taskDisplayMessage: string,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string => {
+  if (isWorkflowDrivenTask && selectedTransition) {
+    return `${selectedTransition.label} #${taskDisplayId} ${
+      displayName ?? taskDisplayMessage
+    }`;
+  }
+
+  return `${t('label.edit-entity', {
+    entity: t('label.task-lowercase'),
+  })} #${taskDisplayId} ${displayName ?? taskDisplayMessage}`;
+};
+
 const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
-  if (
-    typeof payload !== 'object' ||
-    payload === null ||
-    Array.isArray(payload)
-  ) {
+  if (!isPlainObject(payload)) {
     return null;
   }
-  const raw = (payload as Record<string, unknown>).proposedChanges;
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+  const raw = payload.proposedChanges;
+  if (!isPlainObject(raw)) {
     return null;
   }
   const normalized: ProposedChanges = Object.create(null) as ProposedChanges;
-  for (const [field, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  for (const [field, value] of Object.entries(raw)) {
+    if (!isPlainObject(value)) {
       continue;
     }
-    const entry = value as Record<string, unknown>;
+    const entry = value;
     const added = Array.isArray(entry.added)
       ? (entry.added as unknown[]).filter(
           (v): v is string => typeof v === 'string'
@@ -367,8 +440,10 @@ export const TaskTabNew = ({
   const isTaskApprovalRequest = taskHandler.type === 'approval';
   const isTaskRecognizerFeedbackApproval =
     taskHandler.type === 'feedbackApproval';
-  const isApprovalWorkflowTask =
-    isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
+  const isApprovalWorkflowTask = getIsApprovalWorkflowTask(
+    isTaskApprovalRequest,
+    isTaskRecognizerFeedbackApproval
+  );
   const proposedChanges = useMemo(
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]
@@ -466,9 +541,10 @@ export const TaskTabNew = ({
     ];
   }, [isTaskTags, suggestedValue]);
 
-  const isTaskTestCaseResult =
-    taskHandler.type === 'incident' &&
-    task.type === TaskEntityType.TestCaseResolution;
+  const isTaskTestCaseResult = getIsTaskTestCaseResult(
+    taskHandler.type,
+    task.type
+  );
 
   const latestAction = useMemo(() => {
     const resolutionStatus = last(testCaseResolutionStatus);
@@ -500,11 +576,12 @@ export const TaskTabNew = ({
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isTaskTerminalStatus(task.status);
-  const isTaskActionable = !isTaskClosed
-    ? isWorkflowDrivenTask
-      ? Boolean(task.availableTransitions?.length)
-      : task.status === TaskEntityStatus.Open
-    : false;
+  const isTaskActionable = getIsTaskActionable(
+    isTaskClosed,
+    isWorkflowDrivenTask,
+    Boolean(task.availableTransitions?.length),
+    task.status === TaskEntityStatus.Open
+  );
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
@@ -910,17 +987,24 @@ export const TaskTabNew = ({
    *
    * @returns True if has access otherwise false
    */
-  const hasEditAccess =
-    isAdminUser ||
-    isAssignee ||
-    (!hasGlossaryReviewer && isOwner) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+  const hasEditAccess = getHasEditAccess(
+    isAdminUser,
+    isAssignee,
+    hasGlossaryReviewer,
+    isOwner,
+    isPartOfAssigneeTeam,
+    isCreator
+  );
 
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
 
-  const shouldEditAssignee =
-    (isCreator || hasEditAccess) && !isTaskClosed && owners.length === 0;
+  const shouldEditAssignee = getShouldEditAssignee(
+    isCreator,
+    hasEditAccess,
+    isTaskClosed,
+    owners.length
+  );
   const onSave = () => {
     postFeed(comment, task?.id ?? '', true)
       .catch(() => {
@@ -1493,143 +1577,150 @@ export const TaskTabNew = ({
     setIsEditAssignee(true);
   };
 
-  const taskHeader = isTaskTestCaseResult ? (
-    <TaskTabIncidentManagerHeaderNewFromTask task={task} />
-  ) : (
-    <div
-      className={classNames('d-flex justify-between flex-wrap gap-2 relative', {
-        'flex-column': isEditAssignee,
-      })}>
-      <div className="d-flex gap-2" data-testid="task-assignees">
-        <Row className="m-l-0" gutter={[16, 16]}>
-          <Col
-            className="flex items-center gap-2 text-grey-muted"
-            span={8}
-            style={{ paddingLeft: 0 }}>
-            <UserIcon height={16} />
-            <Typography.Text className="incident-manager-details-label">
-              {t('label.created-by')}
-            </Typography.Text>
-          </Col>
-          <Col span={16} style={{ paddingLeft: '2px' }}>
-            <Link
-              className="no-underline flex items-center gap-2"
-              to={getUserPath(task.createdBy?.name ?? '')}>
-              <UserPopOverCard userName={task.createdBy?.name ?? ''}>
-                <div className="d-flex items-center">
-                  <ProfilePicture
-                    name={task.createdBy?.name ?? ''}
-                    width="24"
-                  />
-                </div>
-              </UserPopOverCard>
-
-              <Typography.Text>{task.createdBy?.name}</Typography.Text>
-            </Link>
-          </Col>
-
-          {isEditAssignee ? (
-            <Form
-              className="w-full"
-              form={assigneesForm}
-              layout="vertical"
-              onFinish={handleAssigneeUpdate}>
-              <Form.Item
-                data-testid="assignees"
-                name="assignees"
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.assignee-plural'),
-                    }),
-                  },
-                ]}>
-                <InlineEdit
-                  className="assignees-edit-input"
-                  direction="horizontal"
-                  isLoading={isAssigneeLoading}
-                  onCancel={() => {
-                    setIsEditAssignee(false);
-                    assigneesForm.setFieldValue('assignees', initialAssignees);
-                  }}
-                  onSave={() => assigneesForm.submit()}>
-                  <Assignees
-                    disabled={owners.length > 0}
-                    options={options}
-                    value={updatedAssignees}
-                    onChange={(values) =>
-                      assigneesForm.setFieldValue('assignees', values)
-                    }
-                    onSearch={(query) =>
-                      fetchOptions({
-                        query,
-                        setOptions,
-                        currentUserId: currentUser?.id,
-                        initialOptions: assigneeOptions,
-                      })
-                    }
-                  />
-                </InlineEdit>
-              </Form.Item>
-            </Form>
-          ) : (
-            <>
-              <Col
-                className="flex gap-2 text-grey-muted"
-                span={8}
-                style={{ paddingLeft: 0 }}>
-                <AssigneesIcon height={16} />
-                <Typography.Text className="incident-manager-details-label @grey-8">
-                  {t('label.assignee-plural')}
-                </Typography.Text>
-              </Col>
-              <Col
-                className="flex gap-2"
-                span={16}
-                style={{ paddingLeft: '2px' }}>
-                {task?.assignees?.length === 1 ? (
-                  <div className="d-flex items-center gap-2">
-                    <UserPopOverCard userName={task?.assignees[0].name ?? ''}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture
-                          name={task?.assignees[0].name ?? ''}
-                          width="24"
-                        />
-                      </div>
-                    </UserPopOverCard>
-                    <Typography.Text className="text-grey-body">
-                      {getEntityName(task?.assignees[0])}
-                    </Typography.Text>
-                    {shouldEditAssignee && (
-                      <EditIconButton
-                        className="p-0"
-                        data-testid="edit-assignees"
-                        size="small"
-                        title={t('label.edit-entity', {
-                          entity: t('label.assignee-plural'),
-                        })}
-                        onClick={handleEditClick}
-                      />
-                    )}
+  const renderTaskHeader = () =>
+    isTaskTestCaseResult ? (
+      <TaskTabIncidentManagerHeaderNewFromTask task={task} />
+    ) : (
+      <div
+        className={classNames(
+          'd-flex justify-between flex-wrap gap-2 relative',
+          {
+            'flex-column': isEditAssignee,
+          }
+        )}>
+        <div className="d-flex gap-2" data-testid="task-assignees">
+          <Row className="m-l-0" gutter={[16, 16]}>
+            <Col
+              className="flex items-center gap-2 text-grey-muted"
+              span={8}
+              style={{ paddingLeft: 0 }}>
+              <UserIcon height={16} />
+              <Typography.Text className="incident-manager-details-label">
+                {t('label.created-by')}
+              </Typography.Text>
+            </Col>
+            <Col span={16} style={{ paddingLeft: '2px' }}>
+              <Link
+                className="no-underline flex items-center gap-2"
+                to={getUserPath(task.createdBy?.name ?? '')}>
+                <UserPopOverCard userName={task.createdBy?.name ?? ''}>
+                  <div className="d-flex items-center">
+                    <ProfilePicture
+                      name={task.createdBy?.name ?? ''}
+                      width="24"
+                    />
                   </div>
-                ) : (
-                  <OwnerLabel
-                    isAssignee
-                    hasPermission={shouldEditAssignee}
-                    isCompactView={false}
-                    owners={task?.assignees}
-                    showLabel={false}
-                    onEditClick={handleEditClick}
-                  />
-                )}
-              </Col>
-            </>
-          )}
-        </Row>
+                </UserPopOverCard>
+
+                <Typography.Text>{task.createdBy?.name}</Typography.Text>
+              </Link>
+            </Col>
+
+            {isEditAssignee ? (
+              <Form
+                className="w-full"
+                form={assigneesForm}
+                layout="vertical"
+                onFinish={handleAssigneeUpdate}>
+                <Form.Item
+                  data-testid="assignees"
+                  name="assignees"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.assignee-plural'),
+                      }),
+                    },
+                  ]}>
+                  <InlineEdit
+                    className="assignees-edit-input"
+                    direction="horizontal"
+                    isLoading={isAssigneeLoading}
+                    onCancel={() => {
+                      setIsEditAssignee(false);
+                      assigneesForm.setFieldValue(
+                        'assignees',
+                        initialAssignees
+                      );
+                    }}
+                    onSave={() => assigneesForm.submit()}>
+                    <Assignees
+                      disabled={owners.length > 0}
+                      options={options}
+                      value={updatedAssignees}
+                      onChange={(values) =>
+                        assigneesForm.setFieldValue('assignees', values)
+                      }
+                      onSearch={(query) =>
+                        fetchOptions({
+                          query,
+                          setOptions,
+                          currentUserId: currentUser?.id,
+                          initialOptions: assigneeOptions,
+                        })
+                      }
+                    />
+                  </InlineEdit>
+                </Form.Item>
+              </Form>
+            ) : (
+              <>
+                <Col
+                  className="flex gap-2 text-grey-muted"
+                  span={8}
+                  style={{ paddingLeft: 0 }}>
+                  <AssigneesIcon height={16} />
+                  <Typography.Text className="incident-manager-details-label @grey-8">
+                    {t('label.assignee-plural')}
+                  </Typography.Text>
+                </Col>
+                <Col
+                  className="flex gap-2"
+                  span={16}
+                  style={{ paddingLeft: '2px' }}>
+                  {task?.assignees?.length === 1 ? (
+                    <div className="d-flex items-center gap-2">
+                      <UserPopOverCard userName={task?.assignees[0].name ?? ''}>
+                        <div className="d-flex items-center">
+                          <ProfilePicture
+                            name={task?.assignees[0].name ?? ''}
+                            width="24"
+                          />
+                        </div>
+                      </UserPopOverCard>
+                      <Typography.Text className="text-grey-body">
+                        {getEntityName(task?.assignees[0])}
+                      </Typography.Text>
+                      {shouldEditAssignee && (
+                        <EditIconButton
+                          className="p-0"
+                          data-testid="edit-assignees"
+                          size="small"
+                          title={t('label.edit-entity', {
+                            entity: t('label.assignee-plural'),
+                          })}
+                          onClick={handleEditClick}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <OwnerLabel
+                      isAssignee
+                      hasPermission={shouldEditAssignee}
+                      isCompactView={false}
+                      owners={task?.assignees}
+                      showLabel={false}
+                      onEditClick={handleEditClick}
+                    />
+                  )}
+                </Col>
+              </>
+            )}
+          </Row>
+        </div>
       </div>
-    </div>
-  );
+    );
 
   const renderActionRequired = () => {
     if (!actionButtons) {
@@ -1659,6 +1750,40 @@ export const TaskTabNew = ({
       </div>
     );
   };
+
+  const renderTaskDetailBody = () => (
+    <>
+      {isTaskRecognizerFeedbackApproval && task.payload && (
+        <div className="feedback-details-container">
+          <FeedbackApprovalTask task={task} />
+        </div>
+      )}
+      {!isTaskRecognizerFeedbackApproval && shouldRenderTaskPayload && (
+        <div
+          className="task-payload-details-container"
+          data-testid="task-payload-details">
+          <TaskPayloadSchemaFields
+            formatters={
+              task.category === TaskCategory.DataAccess
+                ? DAR_FIELD_FORMATTERS
+                : undefined
+            }
+            headerRows={darHeaderRows}
+            icons={
+              task.category === TaskCategory.DataAccess
+                ? DAR_FIELD_ICONS
+                : undefined
+            }
+            mode="read"
+            payload={readOnlyTaskPayload}
+            schema={readOnlyFormSchema.formSchema}
+            uiSchema={readOnlyFormSchema.uiSchema}
+          />
+        </div>
+      )}
+      {isTaskActionable && !rest.isOpenInDrawer && renderActionRequired()}
+    </>
+  );
 
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
@@ -1723,6 +1848,128 @@ export const TaskTabNew = ({
     );
   }, [task, closeFeedEditor, isPostsLoading]);
 
+  const renderCommentsSection = () => (
+    <Col span={24}>
+      <div className="activity-feed-comments-container d-flex flex-col">
+        <Typography.Text
+          className={classNames('activity-feed-comments-title', {
+            'm-b-md': isTaskActionable && !showFeedEditor,
+          })}>
+          {t('label.comment-plural')}
+        </Typography.Text>
+
+        {showFeedEditor ? (
+          <ActivityFeedEditorNew
+            className={classNames(
+              'm-t-md feed-editor activity-feed-editor-container-new',
+              {
+                'm-b-md':
+                  (showFeedEditor && (task?.comments?.length ?? 0) === 0) ||
+                  rest.isOpenInDrawer,
+              }
+            )}
+            onSave={onSave}
+            onTextChange={setComment}
+          />
+        ) : (
+          isTaskActionable && (
+            <div className="d-flex gap-2">
+              <div className="profile-picture">
+                <UserPopOverCard userName={currentUser?.name ?? ''}>
+                  <div className="d-flex items-center">
+                    <ProfilePicture
+                      key={task.id}
+                      name={currentUser?.name ?? ''}
+                      width="32"
+                    />
+                  </div>
+                </UserPopOverCard>
+              </div>
+
+              <Input
+                className="comments-input-field"
+                data-testid="comments-input-field"
+                placeholder={t('message.input-placeholder')}
+                onClick={() => setShowFeedEditor(true)}
+              />
+            </div>
+          )
+        )}
+
+        {comments}
+      </div>
+    </Col>
+  );
+
+  const renderEditTaskModal = () =>
+    isTaskTestCaseResult && !isWorkflowDrivenTask ? (
+      <Modal
+        destroyOnClose
+        closable={false}
+        closeIcon={null}
+        maskClosable={false}
+        okButtonProps={{
+          loading: isActionLoading,
+        }}
+        okText={t('label.save')}
+        open={showEditTaskModel}
+        title={`${t('label.resolve')} ${t('label.task')} #${taskDisplayId}`}
+        width={768}
+        onCancel={() => setShowEditTaskModel(false)}
+        onOk={form.submit}>
+        <Form
+          form={form}
+          initialValues={initialFormValue}
+          layout="vertical"
+          onFinish={onTestCaseIncidentResolve}>
+          <Form.Item hidden name="payload" />
+          <TaskPayloadSchemaFields
+            payload={editablePayload ?? initialTaskPayload}
+            schema={activeTaskFormSchema?.formSchema}
+            uiSchema={activeTaskFormSchema?.uiSchema}
+            onChange={(payload) => form.setFieldValue('payload', payload)}
+          />
+        </Form>
+      </Modal>
+    ) : (
+      <Modal
+        destroyOnClose
+        closable={false}
+        closeIcon={null}
+        data-testid="suggestion-edit-task-modal"
+        footer={editTaskModalFooter}
+        maskClosable={false}
+        open={showEditTaskModel}
+        title={getEditTaskModalTitle(
+          isWorkflowDrivenTask,
+          selectedTransition,
+          taskDisplayId,
+          task.displayName,
+          taskDisplayMessage,
+          t
+        )}
+        width={768}
+        onCancel={() => {
+          form.resetFields();
+          setShowEditTaskModel(false);
+        }}
+        onOk={form.submit}>
+        <Form
+          form={form}
+          initialValues={initialFormValue}
+          layout="vertical"
+          onFinish={onEditAndSuggest}>
+          <Form.Item hidden name="payload" />
+          <TaskPayloadSchemaFields
+            payload={editablePayload ?? initialTaskPayload}
+            schema={activeTaskFormSchema?.formSchema}
+            uiSchema={activeTaskFormSchema?.uiSchema}
+            onChange={(payload) => form.setFieldValue('payload', payload)}
+          />
+        </Form>
+      </Modal>
+    );
+
   useEffect(() => {
     closeFeedEditor();
   }, [task.id]);
@@ -1739,14 +1986,14 @@ export const TaskTabNew = ({
       <Col className="d-flex items-start task-feed-message-container" span={24}>
         <Icon
           className="m-r-xs"
-          component={isTaskClosed ? TaskCloseIcon : TaskOpenIcon}
+          component={getTaskStatusIcon(isTaskClosed)}
           height={14}
         />
 
         {taskLinkTitleElement}
       </Col>
       <Divider className="m-0" type="horizontal" />
-      {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
+      {!darHeaderRows && <Col span={24}>{renderTaskHeader()}</Col>}
       {proposedChanges !== null && (
         <Col span={24}>
           <div className="task-proposed-changes">
@@ -1808,156 +2055,12 @@ export const TaskTabNew = ({
         </Col>
       )}
       <Col span={24}>
-        {isTaskRecognizerFeedbackApproval && task.payload && (
-          <div className="feedback-details-container">
-            <FeedbackApprovalTask task={task} />
-          </div>
-        )}
-        {!isTaskRecognizerFeedbackApproval && shouldRenderTaskPayload && (
-          <div
-            className="task-payload-details-container"
-            data-testid="task-payload-details">
-            <TaskPayloadSchemaFields
-              formatters={
-                task.category === TaskCategory.DataAccess
-                  ? DAR_FIELD_FORMATTERS
-                  : undefined
-              }
-              headerRows={darHeaderRows}
-              icons={
-                task.category === TaskCategory.DataAccess
-                  ? DAR_FIELD_ICONS
-                  : undefined
-              }
-              mode="read"
-              payload={readOnlyTaskPayload}
-              schema={readOnlyFormSchema.formSchema}
-              uiSchema={readOnlyFormSchema.uiSchema}
-            />
-          </div>
-        )}
-        {isTaskActionable && !rest.isOpenInDrawer && renderActionRequired()}
+        {renderTaskDetailBody()}
 
-        <Col span={24}>
-          <div className="activity-feed-comments-container d-flex flex-col">
-            <Typography.Text
-              className={classNames('activity-feed-comments-title', {
-                'm-b-md': isTaskActionable && !showFeedEditor,
-              })}>
-              {t('label.comment-plural')}
-            </Typography.Text>
-
-            {showFeedEditor ? (
-              <ActivityFeedEditorNew
-                className={classNames(
-                  'm-t-md feed-editor activity-feed-editor-container-new',
-                  {
-                    'm-b-md':
-                      (showFeedEditor && (task?.comments?.length ?? 0) === 0) ||
-                      rest.isOpenInDrawer,
-                  }
-                )}
-                onSave={onSave}
-                onTextChange={setComment}
-              />
-            ) : (
-              isTaskActionable && (
-                <div className="d-flex gap-2">
-                  <div className="profile-picture">
-                    <UserPopOverCard userName={currentUser?.name ?? ''}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture
-                          key={task.id}
-                          name={currentUser?.name ?? ''}
-                          width="32"
-                        />
-                      </div>
-                    </UserPopOverCard>
-                  </div>
-
-                  <Input
-                    className="comments-input-field"
-                    data-testid="comments-input-field"
-                    placeholder={t('message.input-placeholder')}
-                    onClick={() => setShowFeedEditor(true)}
-                  />
-                </div>
-              )
-            )}
-
-            {comments}
-          </div>
-        </Col>
+        {renderCommentsSection()}
       </Col>
 
-      {isTaskTestCaseResult && !isWorkflowDrivenTask ? (
-        <Modal
-          destroyOnClose
-          closable={false}
-          closeIcon={null}
-          maskClosable={false}
-          okButtonProps={{
-            loading: isActionLoading,
-          }}
-          okText={t('label.save')}
-          open={showEditTaskModel}
-          title={`${t('label.resolve')} ${t('label.task')} #${taskDisplayId}`}
-          width={768}
-          onCancel={() => setShowEditTaskModel(false)}
-          onOk={form.submit}>
-          <Form
-            form={form}
-            initialValues={initialFormValue}
-            layout="vertical"
-            onFinish={onTestCaseIncidentResolve}>
-            <Form.Item hidden name="payload" />
-            <TaskPayloadSchemaFields
-              payload={editablePayload ?? initialTaskPayload}
-              schema={activeTaskFormSchema?.formSchema}
-              uiSchema={activeTaskFormSchema?.uiSchema}
-              onChange={(payload) => form.setFieldValue('payload', payload)}
-            />
-          </Form>
-        </Modal>
-      ) : (
-        <Modal
-          destroyOnClose
-          closable={false}
-          closeIcon={null}
-          data-testid="suggestion-edit-task-modal"
-          footer={editTaskModalFooter}
-          maskClosable={false}
-          open={showEditTaskModel}
-          title={
-            isWorkflowDrivenTask && selectedTransition
-              ? `${selectedTransition.label} #${taskDisplayId} ${
-                  task.displayName ?? taskDisplayMessage
-                }`
-              : `${t('label.edit-entity', {
-                  entity: t('label.task-lowercase'),
-                })} #${taskDisplayId} ${task.displayName ?? taskDisplayMessage}`
-          }
-          width={768}
-          onCancel={() => {
-            form.resetFields();
-            setShowEditTaskModel(false);
-          }}
-          onOk={form.submit}>
-          <Form
-            form={form}
-            initialValues={initialFormValue}
-            layout="vertical"
-            onFinish={onEditAndSuggest}>
-            <Form.Item hidden name="payload" />
-            <TaskPayloadSchemaFields
-              payload={editablePayload ?? initialTaskPayload}
-              schema={activeTaskFormSchema?.formSchema}
-              uiSchema={activeTaskFormSchema?.uiSchema}
-              onChange={(payload) => form.setFieldValue('payload', payload)}
-            />
-          </Form>
-        </Modal>
-      )}
+      {renderEditTaskModal()}
       {isTaskTestCaseResult && (
         <Modal
           maskClosable

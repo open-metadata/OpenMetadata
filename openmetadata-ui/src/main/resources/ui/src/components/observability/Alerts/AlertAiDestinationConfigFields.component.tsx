@@ -47,6 +47,7 @@ import {
   getValidationPath,
   isWebhookDestination,
   updateAlertAiValue,
+  WebhookDestinationType,
 } from './AlertAiFormFieldsPureUtils';
 import {
   AlertAiSearchOption,
@@ -364,102 +365,98 @@ const TeamUserSelectInput = ({
   );
 };
 
-/** Renders destination-specific configuration fields based on the selected destination type. */
-const AlertAiDestinationConfigFields = ({
+interface DestinationFieldsCommonProps {
+  destination: AlertAiDestinationItemProps['destination'];
+  isViewOnly?: boolean;
+  name: number;
+  getConfigError: (...path: (string | number)[]) => string | undefined;
+  updateDestinationConfig: (
+    path: (string | number)[],
+    nextValue: unknown
+  ) => void;
+}
+
+const EmailDestinationFields = ({
   destination,
   isViewOnly,
   name,
-  onChange,
-  validationErrors,
-  value,
-}: Pick<
-  AlertAiDestinationItemProps,
-  | 'destination'
-  | 'isViewOnly'
-  | 'name'
-  | 'onChange'
-  | 'validationErrors'
-  | 'value'
->) => {
+  getConfigError,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps) => {
+  const receivers = getStringArrayValue(destination?.config?.receivers);
+  const receiversError = getConfigError('receivers');
+
+  return (
+    <div
+      className={classNames(
+        ALERT_AI_FORM_CLASS_NAMES.field,
+        ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
+      )}>
+      <EmailTagInput
+        hint={receiversError}
+        isDisabled={isViewOnly}
+        isInvalid={Boolean(receiversError)}
+        name={name}
+        value={receivers}
+        onChange={(nextReceivers) =>
+          updateDestinationConfig(['receivers'], nextReceivers)
+        }
+      />
+    </div>
+  );
+};
+
+const TeamOrUserDestinationFields = ({
+  destination,
+  destinationType,
+  isViewOnly,
+  name,
+  getConfigError,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps & {
+  destinationType: SubscriptionCategory | SubscriptionType | undefined;
+}) => {
   const { t } = useTranslation();
-  const destinationType = destination?.destinationType;
-  const authType = destination?.config?.authType?.type;
-  const getConfigError = (...path: (string | number)[]) =>
-    validationErrors?.[
-      getValidationPath('destinations', name, 'config', ...path)
-    ];
+  const receivers = getStringArrayValue(destination?.config?.receivers);
+  const receiversError = getConfigError('receivers');
+  const isTeams = destinationType === SubscriptionCategory.Teams;
 
-  /** Applies nested config updates under the current destination item. */
-  const updateDestinationConfig = (
-    path: (string | number)[],
-    nextValue: unknown
-  ) => {
-    updateAlertAiValue(
-      value,
-      onChange,
-      ['destinations', name, 'config', ...path],
-      nextValue
-    );
-  };
+  return (
+    <div
+      className={classNames(
+        ALERT_AI_FORM_CLASS_NAMES.field,
+        ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
+      )}>
+      <TeamUserSelectInput
+        destinationNumber={name}
+        entityType={
+          isTeams ? t('label.team-lowercase') : t('label.user-lowercase')
+        }
+        hint={receiversError}
+        isDisabled={isViewOnly}
+        value={receivers}
+        onChange={(nextReceivers) =>
+          updateDestinationConfig(['receivers'], nextReceivers)
+        }
+        onSearch={isTeams ? getAlertAiTeamOptions : getAlertAiUserOptions}
+      />
+    </div>
+  );
+};
 
-  if (destinationType === SubscriptionType.Email) {
-    const receivers = getStringArrayValue(destination?.config?.receivers);
-    const receiversError = getConfigError('receivers');
-
-    return (
-      <div
-        className={classNames(
-          ALERT_AI_FORM_CLASS_NAMES.field,
-          ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
-        )}>
-        <EmailTagInput
-          hint={receiversError}
-          isDisabled={isViewOnly}
-          isInvalid={Boolean(receiversError)}
-          name={name}
-          value={receivers}
-          onChange={(nextReceivers) =>
-            updateDestinationConfig(['receivers'], nextReceivers)
-          }
-        />
-      </div>
-    );
-  }
-
-  if (
-    destinationType === SubscriptionCategory.Teams ||
-    destinationType === SubscriptionCategory.Users
-  ) {
-    const receivers = getStringArrayValue(destination?.config?.receivers);
-    const receiversError = getConfigError('receivers');
-    const isTeams = destinationType === SubscriptionCategory.Teams;
-
-    return (
-      <div
-        className={classNames(
-          ALERT_AI_FORM_CLASS_NAMES.field,
-          ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
-        )}>
-        <TeamUserSelectInput
-          destinationNumber={name}
-          entityType={
-            isTeams ? t('label.team-lowercase') : t('label.user-lowercase')
-          }
-          hint={receiversError}
-          isDisabled={isViewOnly}
-          value={receivers}
-          onChange={(nextReceivers) =>
-            updateDestinationConfig(['receivers'], nextReceivers)
-          }
-          onSearch={isTeams ? getAlertAiTeamOptions : getAlertAiUserOptions}
-        />
-      </div>
-    );
-  }
-
-  if (!isWebhookDestination(destinationType)) {
-    return null;
-  }
+const WebhookDestinationFields = ({
+  authType,
+  destination,
+  destinationType,
+  isViewOnly,
+  name,
+  getConfigError,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps & {
+  authType: Type | undefined;
+  destinationType: WebhookDestinationType;
+}) => {
+  const { t } = useTranslation();
 
   return (
     <>
@@ -610,6 +607,88 @@ const AlertAiDestinationConfigFields = ({
         </Accordion>
       </div>
     </>
+  );
+};
+
+/** Renders destination-specific configuration fields based on the selected destination type. */
+const AlertAiDestinationConfigFields = ({
+  destination,
+  isViewOnly,
+  name,
+  onChange,
+  validationErrors,
+  value,
+}: Pick<
+  AlertAiDestinationItemProps,
+  | 'destination'
+  | 'isViewOnly'
+  | 'name'
+  | 'onChange'
+  | 'validationErrors'
+  | 'value'
+>) => {
+  const destinationType = destination?.destinationType;
+  const authType = destination?.config?.authType?.type;
+  const getConfigError = (...path: (string | number)[]) =>
+    validationErrors?.[
+      getValidationPath('destinations', name, 'config', ...path)
+    ];
+
+  /** Applies nested config updates under the current destination item. */
+  const updateDestinationConfig = (
+    path: (string | number)[],
+    nextValue: unknown
+  ) => {
+    updateAlertAiValue(
+      value,
+      onChange,
+      ['destinations', name, 'config', ...path],
+      nextValue
+    );
+  };
+
+  if (destinationType === SubscriptionType.Email) {
+    return (
+      <EmailDestinationFields
+        destination={destination}
+        getConfigError={getConfigError}
+        isViewOnly={isViewOnly}
+        name={name}
+        updateDestinationConfig={updateDestinationConfig}
+      />
+    );
+  }
+
+  if (
+    destinationType === SubscriptionCategory.Teams ||
+    destinationType === SubscriptionCategory.Users
+  ) {
+    return (
+      <TeamOrUserDestinationFields
+        destination={destination}
+        destinationType={destinationType}
+        getConfigError={getConfigError}
+        isViewOnly={isViewOnly}
+        name={name}
+        updateDestinationConfig={updateDestinationConfig}
+      />
+    );
+  }
+
+  if (!isWebhookDestination(destinationType)) {
+    return null;
+  }
+
+  return (
+    <WebhookDestinationFields
+      authType={authType}
+      destination={destination}
+      destinationType={destinationType}
+      getConfigError={getConfigError}
+      isViewOnly={isViewOnly}
+      name={name}
+      updateDestinationConfig={updateDestinationConfig}
+    />
   );
 };
 

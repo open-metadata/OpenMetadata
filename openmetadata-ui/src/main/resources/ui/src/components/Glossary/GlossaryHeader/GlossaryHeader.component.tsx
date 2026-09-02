@@ -17,7 +17,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
@@ -40,7 +40,10 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -49,6 +52,7 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { Votes } from '../../../generated/type/votes';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -69,6 +73,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -78,6 +83,404 @@ import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.comp
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
+
+type TranslateFunction = ReturnType<typeof useTranslation>['t'];
+
+const buildManageButtonContent = ({
+  t,
+  isGlossary,
+  importExportPermissions,
+  editDisplayNamePermission,
+  permissions,
+  handleGlossaryExportClick,
+  handleGlossaryImport,
+  setShowActions,
+  setIsOntologyImportOpen,
+  setIsNameEditing,
+  setIsStyleEditing,
+  setOpenChangeParentHierarchyModal,
+  setIsDelete,
+}: {
+  t: TranslateFunction;
+  isGlossary: boolean;
+  importExportPermissions: boolean;
+  editDisplayNamePermission: boolean;
+  permissions: OperationPermission;
+  handleGlossaryExportClick: () => void;
+  handleGlossaryImport: () => void;
+  setShowActions: (value: boolean) => void;
+  setIsOntologyImportOpen: (value: boolean) => void;
+  setIsNameEditing: (value: boolean) => void;
+  setIsStyleEditing: (value: boolean) => void;
+  setOpenChangeParentHierarchyModal: (value: boolean) => void;
+  setIsDelete: (value: boolean) => void;
+}): ItemType[] => [
+  ...(isGlossary && importExportPermissions
+    ? ([
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.export-entity-help', {
+                entity: t('label.glossary-term-lowercase-plural'),
+              })}
+              icon={ExportIcon}
+              id="export-button"
+              name={t('label.export')}
+            />
+          ),
+          key: 'export-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            handleGlossaryExportClick();
+            setShowActions(false);
+          },
+        },
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.import-entity-help', {
+                entity: t('label.glossary-term-lowercase'),
+              })}
+              icon={ImportIcon}
+              id="import-button"
+              name={t('label.import')}
+            />
+          ),
+          key: 'import-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            handleGlossaryImport();
+            setShowActions(false);
+          },
+        },
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.import-ontology-help')}
+              icon={ImportIcon}
+              id="import-ontology-button"
+              name={t('label.import-ontology')}
+            />
+          ),
+          key: 'import-ontology-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            setIsOntologyImportOpen(true);
+            setShowActions(false);
+          },
+        },
+      ] as ItemType[])
+    : []),
+  ...(editDisplayNamePermission
+    ? ([
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.rename-entity', {
+                entity: isGlossary
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
+              })}
+              icon={EditIcon}
+              id="rename-button"
+              name={t('label.rename')}
+            />
+          ),
+          key: 'rename-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            setIsNameEditing(true);
+            setShowActions(false);
+          },
+        },
+      ] as ItemType[])
+    : []),
+  ...(permissions?.EditAll && !isGlossary
+    ? ([
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.edit-entity-style-description', {
+                entity: t('label.glossary-term'),
+              })}
+              icon={StyleIcon}
+              id="edit-style-button"
+              name={t('label.style')}
+            />
+          ),
+          key: 'edit-style-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            setIsStyleEditing(true);
+            setShowActions(false);
+          },
+        },
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.modify-hierarchy-entity-description', {
+                entity: t('label.term'),
+              })}
+              icon={ChangeHierarchyIcon}
+              id="change-parent-button"
+              name={t('label.change-parent-entity', {
+                entity: t('label.term'),
+              })}
+            />
+          ),
+          key: 'change-parent-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            setOpenChangeParentHierarchyModal(true);
+            setShowActions(false);
+          },
+        },
+      ] as ItemType[])
+    : []),
+
+  ...(permissions.Delete
+    ? ([
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('message.delete-entity-type-action-description', {
+                entityType: isGlossary
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
+              })}
+              icon={IconDelete}
+              id="delete-button"
+              name={t('label.delete')}
+            />
+          ),
+          key: 'delete-button',
+          onClick: (e) => {
+            e.domEvent.stopPropagation();
+            setIsDelete(true);
+            setShowActions(false);
+          },
+        },
+      ] as ItemType[])
+    : []),
+];
+
+const getGlossaryHeaderSuffix = (isGlossary: boolean): ReactNode =>
+  !isGlossary && <LearningIcon pageId={LEARNING_PAGE_IDS.GLOSSARY_TERM} />;
+
+const getGlossaryTitleColor = (
+  isGlossary: boolean,
+  color?: string
+): string | undefined => (isGlossary ? undefined : color);
+
+interface GlossaryHeaderActionsProps {
+  isVersionView?: boolean;
+  createButtons: ReactNode;
+  updateVote?: (data: {
+    updatedVoteType: QueryVoteType;
+  }) => void | Promise<void>;
+  voteStatus: QueryVoteType;
+  votes?: Votes;
+  entityVersion?: number;
+  version?: string;
+  handleVersionClick: () => void;
+  manageButtonContent: ItemType[];
+  showActions: boolean;
+  setShowActions: (value: boolean) => void;
+  isGlossary: boolean;
+  t: TranslateFunction;
+}
+
+const GlossaryHeaderActions = ({
+  isVersionView,
+  createButtons,
+  updateVote,
+  voteStatus,
+  votes,
+  entityVersion,
+  version,
+  handleVersionClick,
+  manageButtonContent,
+  showActions,
+  setShowActions,
+  isGlossary,
+  t,
+}: GlossaryHeaderActionsProps) => (
+  <div className="flex items-center">
+    <div className="d-flex gap-3 justify-end">
+      {!isVersionView && createButtons}
+
+      <ButtonGroup className="spaced" size="small">
+        {updateVote && (
+          <Voting
+            voteStatus={voteStatus}
+            votes={votes}
+            onUpdateVote={updateVote}
+          />
+        )}
+
+        {entityVersion && (
+          <Tooltip
+            title={t(
+              `label.${
+                isVersionView
+                  ? 'exit-version-history'
+                  : 'version-plural-history'
+              }`
+            )}>
+            <Button
+              className={classNames('', {
+                'text-primary border-primary': version,
+              })}
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={handleVersionClick}>
+              <Typography.Text
+                className={classNames('', {
+                  'text-primary': version,
+                })}>
+                {toString(entityVersion)}
+              </Typography.Text>
+            </Button>
+          </Tooltip>
+        )}
+
+        {!isVersionView && manageButtonContent.length > 0 && (
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            className="m-l-xs"
+            menu={{
+              items: manageButtonContent,
+            }}
+            open={showActions}
+            overlayClassName="glossary-manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip
+              placement="topRight"
+              title={t('label.manage-entity', {
+                entity: isGlossary
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
+              })}>
+              <Button
+                className="glossary-manage-dropdown-button"
+                data-testid="manage-button"
+                icon={
+                  <IconDropdown
+                    className="vertical-align-inherit manage-dropdown-icon"
+                    height={16}
+                    width={16}
+                  />
+                }
+                onClick={() => setShowActions(true)}
+              />
+            </Tooltip>
+          </Dropdown>
+        )}
+      </ButtonGroup>
+    </div>
+  </div>
+);
+
+interface GlossaryHeaderModalsProps {
+  selectedData: GlossaryTerm;
+  isDelete: boolean;
+  setIsDelete: (value: boolean) => void;
+  handleDelete: () => Promise<void>;
+  isNameEditing: boolean;
+  setIsNameEditing: (value: boolean) => void;
+  onNameSave: (obj: { name: string; displayName?: string }) => Promise<void>;
+  isStyleEditing: boolean;
+  setIsStyleEditing: (value: boolean) => void;
+  onStyleSave: (data: Style) => Promise<void>;
+  openChangeParentHierarchyModal: boolean;
+  setOpenChangeParentHierarchyModal: (value: boolean) => void;
+  isOntologyImportOpen: boolean;
+  setIsOntologyImportOpen: (value: boolean) => void;
+  refreshGlossaryTerms: () => void;
+  t: TranslateFunction;
+}
+
+const GlossaryHeaderModals = ({
+  selectedData,
+  isDelete,
+  setIsDelete,
+  handleDelete,
+  isNameEditing,
+  setIsNameEditing,
+  onNameSave,
+  isStyleEditing,
+  setIsStyleEditing,
+  onStyleSave,
+  openChangeParentHierarchyModal,
+  setOpenChangeParentHierarchyModal,
+  isOntologyImportOpen,
+  setIsOntologyImportOpen,
+  refreshGlossaryTerms,
+  t,
+}: GlossaryHeaderModalsProps) => (
+  <>
+    {selectedData && (
+      <DeleteModal
+        entityTitle={selectedData.name}
+        message={t('message.delete-entity-message', {
+          entity: selectedData.name,
+        })}
+        open={isDelete}
+        onCancel={() => setIsDelete(false)}
+        onDelete={handleDelete}
+      />
+    )}
+
+    <EntityNameModal<GlossaryTerm>
+      allowRename
+      entity={selectedData}
+      nameValidationRules={[
+        {
+          min: 1,
+          max: 128,
+          message: t('message.entity-size-in-between', {
+            entity: t('label.name'),
+            min: 1,
+            max: 128,
+          }),
+        },
+      ]}
+      title={t('label.edit-entity', {
+        entity: t('label.name'),
+      })}
+      visible={isNameEditing}
+      onCancel={() => setIsNameEditing(false)}
+      onSave={onNameSave}
+    />
+
+    <StyleModal
+      open={isStyleEditing}
+      style={selectedData.style}
+      onCancel={() => setIsStyleEditing(false)}
+      onSubmit={onStyleSave}
+    />
+
+    {openChangeParentHierarchyModal && (
+      <ChangeParentHierarchy
+        selectedData={selectedData}
+        onCancel={() => setOpenChangeParentHierarchyModal(false)}
+      />
+    )}
+
+    {isOntologyImportOpen && (
+      <ImportOntologyModal
+        glossaryName={selectedData.fullyQualifiedName ?? ''}
+        open={isOntologyImportOpen}
+        onCancel={() => setIsOntologyImportOpen(false)}
+        onSuccess={refreshGlossaryTerms}
+      />
+    )}
+  </>
+);
+
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
@@ -297,158 +700,21 @@ const GlossaryHeader = ({
     }
   }, [selectedData]);
 
-  const manageButtonContent: ItemType[] = [
-    ...(isGlossary && importExportPermissions
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.export-entity-help', {
-                  entity: t('label.glossary-term-lowercase-plural'),
-                })}
-                icon={ExportIcon}
-                id="export-button"
-                name={t('label.export')}
-              />
-            ),
-            key: 'export-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              handleGlossaryExportClick();
-              setShowActions(false);
-            },
-          },
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.import-entity-help', {
-                  entity: t('label.glossary-term-lowercase'),
-                })}
-                icon={ImportIcon}
-                id="import-button"
-                name={t('label.import')}
-              />
-            ),
-            key: 'import-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              handleGlossaryImport();
-              setShowActions(false);
-            },
-          },
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.import-ontology-help')}
-                icon={ImportIcon}
-                id="import-ontology-button"
-                name={t('label.import-ontology')}
-              />
-            ),
-            key: 'import-ontology-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsOntologyImportOpen(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    ...(editDisplayNamePermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.rename-entity', {
-                  entity: isGlossary
-                    ? t('label.glossary')
-                    : t('label.glossary-term'),
-                })}
-                icon={EditIcon}
-                id="rename-button"
-                name={t('label.rename')}
-              />
-            ),
-            key: 'rename-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsNameEditing(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    ...(permissions?.EditAll && !isGlossary
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.edit-entity-style-description', {
-                  entity: t('label.glossary-term'),
-                })}
-                icon={StyleIcon}
-                id="edit-style-button"
-                name={t('label.style')}
-              />
-            ),
-            key: 'edit-style-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsStyleEditing(true);
-              setShowActions(false);
-            },
-          },
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.modify-hierarchy-entity-description', {
-                  entity: t('label.term'),
-                })}
-                icon={ChangeHierarchyIcon}
-                id="change-parent-button"
-                name={t('label.change-parent-entity', {
-                  entity: t('label.term'),
-                })}
-              />
-            ),
-            key: 'change-parent-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setOpenChangeParentHierarchyModal(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-
-    ...(permissions.Delete
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t(
-                  'message.delete-entity-type-action-description',
-                  {
-                    entityType: isGlossary
-                      ? t('label.glossary')
-                      : t('label.glossary-term'),
-                  }
-                )}
-                icon={IconDelete}
-                id="delete-button"
-                name={t('label.delete')}
-              />
-            ),
-            key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDelete(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-  ];
+  const manageButtonContent: ItemType[] = buildManageButtonContent({
+    t,
+    isGlossary,
+    importExportPermissions,
+    editDisplayNamePermission,
+    permissions,
+    handleGlossaryExportClick,
+    handleGlossaryImport,
+    setShowActions,
+    setIsOntologyImportOpen,
+    setIsNameEditing,
+    setIsStyleEditing,
+    setOpenChangeParentHierarchyModal,
+    setIsDelete,
+  });
 
   const statusBadge = useMemo(() => {
     const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
@@ -554,148 +820,47 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={icon}
             serviceName=""
-            suffix={
-              !isGlossary && (
-                <LearningIcon pageId={LEARNING_PAGE_IDS.GLOSSARY_TERM} />
-              )
-            }
-            titleColor={isGlossary ? undefined : selectedData.style?.color}
+            suffix={getGlossaryHeaderSuffix(isGlossary)}
+            titleColor={getGlossaryTitleColor(
+              isGlossary,
+              selectedData.style?.color
+            )}
           />
         </div>
-        <div className="flex items-center">
-          <div className="d-flex gap-3 justify-end">
-            {!isVersionView && createButtons}
-
-            <ButtonGroup className="spaced" size="small">
-              {updateVote && (
-                <Voting
-                  voteStatus={voteStatus}
-                  votes={selectedData.votes}
-                  onUpdateVote={updateVote}
-                />
-              )}
-
-              {selectedData?.version && (
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(selectedData.version)}
-                    </Typography.Text>
-                  </Button>
-                </Tooltip>
-              )}
-
-              {!isVersionView && manageButtonContent.length > 0 && (
-                <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
-                  menu={{
-                    items: manageButtonContent,
-                  }}
-                  open={showActions}
-                  overlayClassName="glossary-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
-                  <Tooltip
-                    placement="topRight"
-                    title={t('label.manage-entity', {
-                      entity: isGlossary
-                        ? t('label.glossary')
-                        : t('label.glossary-term'),
-                    })}>
-                    <Button
-                      className="glossary-manage-dropdown-button"
-                      data-testid="manage-button"
-                      icon={
-                        <IconDropdown
-                          className="vertical-align-inherit manage-dropdown-icon"
-                          height={16}
-                          width={16}
-                        />
-                      }
-                      onClick={() => setShowActions(true)}
-                    />
-                  </Tooltip>
-                </Dropdown>
-              )}
-            </ButtonGroup>
-          </div>
-        </div>
+        <GlossaryHeaderActions
+          createButtons={createButtons}
+          entityVersion={selectedData?.version}
+          handleVersionClick={handleVersionClick}
+          isGlossary={isGlossary}
+          isVersionView={isVersionView}
+          manageButtonContent={manageButtonContent}
+          setShowActions={setShowActions}
+          showActions={showActions}
+          t={t}
+          updateVote={updateVote}
+          version={version}
+          voteStatus={voteStatus}
+          votes={selectedData.votes}
+        />
       </div>
-      {selectedData && (
-        <DeleteModal
-          entityTitle={selectedData.name}
-          message={t('message.delete-entity-message', {
-            entity: selectedData.name,
-          })}
-          open={isDelete}
-          onCancel={() => setIsDelete(false)}
-          onDelete={handleDelete}
-        />
-      )}
-
-      <EntityNameModal<GlossaryTerm>
-        allowRename
-        entity={selectedData}
-        nameValidationRules={[
-          {
-            min: 1,
-            max: 128,
-            message: t('message.entity-size-in-between', {
-              entity: t('label.name'),
-              min: 1,
-              max: 128,
-            }),
-          },
-        ]}
-        title={t('label.edit-entity', {
-          entity: t('label.name'),
-        })}
-        visible={isNameEditing}
-        onCancel={() => setIsNameEditing(false)}
-        onSave={onNameSave}
+      <GlossaryHeaderModals
+        handleDelete={handleDelete}
+        isDelete={isDelete}
+        isNameEditing={isNameEditing}
+        isOntologyImportOpen={isOntologyImportOpen}
+        isStyleEditing={isStyleEditing}
+        openChangeParentHierarchyModal={openChangeParentHierarchyModal}
+        refreshGlossaryTerms={refreshGlossaryTerms}
+        selectedData={selectedData}
+        setIsDelete={setIsDelete}
+        setIsNameEditing={setIsNameEditing}
+        setIsOntologyImportOpen={setIsOntologyImportOpen}
+        setIsStyleEditing={setIsStyleEditing}
+        setOpenChangeParentHierarchyModal={setOpenChangeParentHierarchyModal}
+        t={t}
+        onNameSave={onNameSave}
+        onStyleSave={onStyleSave}
       />
-
-      <StyleModal
-        open={isStyleEditing}
-        style={selectedData.style}
-        onCancel={() => setIsStyleEditing(false)}
-        onSubmit={onStyleSave}
-      />
-
-      {openChangeParentHierarchyModal && (
-        <ChangeParentHierarchy
-          selectedData={selectedData}
-          onCancel={() => setOpenChangeParentHierarchyModal(false)}
-        />
-      )}
-
-      {isOntologyImportOpen && (
-        <ImportOntologyModal
-          glossaryName={selectedData.fullyQualifiedName ?? ''}
-          open={isOntologyImportOpen}
-          onCancel={() => setIsOntologyImportOpen(false)}
-          onSuccess={refreshGlossaryTerms}
-        />
-      )}
     </>
   );
 };

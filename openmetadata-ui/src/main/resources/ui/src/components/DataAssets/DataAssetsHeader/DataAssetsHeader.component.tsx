@@ -49,6 +49,7 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -119,6 +120,29 @@ import {
 } from './DataAssetsHeader.interface';
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';
+
+const getEditableMetadataPermissions = (
+  permissions: OperationPermission,
+  dataAsset: DataAssetsHeaderProps['dataAsset'],
+  onStyleUpdate?: (style: Style) => Promise<void>
+) => {
+  const notDeleted = !dataAsset.deleted;
+
+  return {
+    editDomainPermission: permissions.EditAll && notDeleted,
+    editOwnerPermission:
+      getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
+      notDeleted,
+    editTierPermission:
+      getPrioritizedEditPermission(permissions, Operation.EditTier) &&
+      notDeleted,
+    editCertificationPermission:
+      getPrioritizedEditPermission(permissions, Operation.EditCertification) &&
+      notDeleted,
+    editStylePermission:
+      Boolean(onStyleUpdate) && permissions.EditAll && notDeleted,
+  };
+};
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
@@ -465,22 +489,7 @@ export const DataAssetsHeader = ({
     editCertificationPermission,
     editStylePermission,
   } = useMemo(
-    () => ({
-      editDomainPermission: permissions.EditAll && !dataAsset.deleted,
-      editOwnerPermission:
-        getPrioritizedEditPermission(permissions, Operation.EditOwners) &&
-        !dataAsset.deleted,
-      editTierPermission:
-        getPrioritizedEditPermission(permissions, Operation.EditTier) &&
-        !dataAsset.deleted,
-      editCertificationPermission:
-        getPrioritizedEditPermission(
-          permissions,
-          Operation.EditCertification
-        ) && !dataAsset.deleted,
-      editStylePermission:
-        Boolean(onStyleUpdate) && permissions.EditAll && !dataAsset.deleted,
-    }),
+    () => getEditableMetadataPermissions(permissions, dataAsset, onStyleUpdate),
     [permissions, dataAsset, onStyleUpdate]
   );
 

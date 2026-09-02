@@ -90,80 +90,205 @@ export const getNodeName = (
   return proposedName;
 };
 
+const applySetEntityAttributeConfig = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  const fieldName = nodeData.fieldName || nodeData.config?.fieldName;
+  const fieldValue = nodeData.fieldValue || nodeData.config?.fieldValue;
+  if (!fieldName && !fieldValue) {
+    return;
+  }
+  config.config = {};
+  if (fieldName) {
+    config.config.fieldName = fieldName;
+  }
+  if (fieldValue) {
+    config.config.fieldValue = fieldValue;
+  } else if (config.config.fieldName) {
+    config.config.fieldValue = '';
+  }
+};
+
+const applyCheckEntityAttributesConfig = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  const rules = nodeData.rules || nodeData.config?.rules;
+  if (!rules) {
+    return;
+  }
+  config.config = {
+    rules: typeof rules === 'object' ? JSON.stringify(rules) : rules,
+  };
+};
+
+const applyDataCompletenessConfig = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  const qualityBands = nodeData.qualityBands || nodeData.config?.qualityBands;
+  const fieldsToCheck =
+    nodeData.fieldsToCheck || nodeData.config?.fieldsToCheck;
+  if (!qualityBands && !fieldsToCheck) {
+    return;
+  }
+  config.config = {};
+  if (qualityBands) {
+    config.config.qualityBands = qualityBands;
+  }
+  if (fieldsToCheck) {
+    config.config.fieldsToCheck = fieldsToCheck;
+  }
+};
+
+const applyCheckChangeDescriptionConfig = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  if (!nodeData.config || typeof nodeData.config !== 'object') {
+    return;
+  }
+  const cfg = nodeData.config as {
+    condition?: 'AND' | 'OR';
+    rules?: Record<string, string[]>;
+  };
+  const hasValidRules =
+    cfg.rules && typeof cfg.rules === 'object' && !Array.isArray(cfg.rules);
+  config.config = {
+    condition: cfg.condition ?? 'OR',
+    rules: hasValidRules ? cfg.rules : {},
+  };
+};
+
+const applyPassthroughConfig = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  if (nodeData.config && Object.keys(nodeData.config).length > 0) {
+    config.config = nodeData.config;
+  }
+};
+
+const NODE_SPECIFIC_CONFIG_HANDLERS: Record<
+  string,
+  (config: NodeConfiguration, nodeData: NodeDataWithMetadata) => void
+> = {
+  [NodeSubType.SetEntityAttributeTask]: applySetEntityAttributeConfig,
+  [NodeSubType.CheckEntityAttributesTask]: applyCheckEntityAttributesConfig,
+  [NodeSubType.DataCompletenessTask]: applyDataCompletenessConfig,
+  [NodeSubType.CheckChangeDescriptionTask]: applyCheckChangeDescriptionConfig,
+  [NodeSubType.RollbackEntityTask]: applyPassthroughConfig,
+  [NodeSubType.SinkTask]: applyPassthroughConfig,
+};
+
 const addNodeSpecificConfig = (
   config: NodeConfiguration,
   subType: string,
   nodeData: NodeDataWithMetadata
 ): void => {
-  if (subType === NodeSubType.SetEntityAttributeTask) {
-    if (
-      nodeData.fieldName ||
-      nodeData.fieldValue ||
-      nodeData.config?.fieldName ||
-      nodeData.config?.fieldValue
-    ) {
-      config.config = {};
-      if (nodeData.fieldName || nodeData.config?.fieldName) {
-        config.config.fieldName =
-          nodeData.fieldName || nodeData.config?.fieldName;
+  const handler = NODE_SPECIFIC_CONFIG_HANDLERS[subType];
+  handler?.(config, nodeData);
+};
+
+// Most automated tasks require input: ["relatedEntity", "updatedBy"]
+// Exception: checkEntityAttributesTask, checkChangeDescriptionTask and
+// dataCompletenessTask only need ["relatedEntity"]
+const AUTOMATED_TASK_SINGLE_INPUT_SUBTYPES: string[] = [
+  NodeSubType.CheckEntityAttributesTask,
+  NodeSubType.CheckChangeDescriptionTask,
+  NodeSubType.DataCompletenessTask,
+];
+
+const AUTOMATED_TASK_OUTPUT_MAP: Record<
+  string,
+  { output: string[]; branches?: string[] }
+> = {
+  [NodeSubType.CheckEntityAttributesTask]: {
+    output: ['result'],
+    branches: ['true', 'false'],
+  },
+  [NodeSubType.CheckChangeDescriptionTask]: {
+    output: ['result'],
+    branches: ['true', 'false'],
+  },
+  [NodeSubType.DataCompletenessTask]: {
+    output: [
+      'completenessScore',
+      'qualityBand',
+      'filledFieldsCount',
+      'totalFieldsCount',
+      'missingFields',
+      'filledFields',
+      'result',
+    ],
+  },
+  [NodeSubType.SinkTask]: {
+    output: ['syncResult', 'syncedCount', 'failedCount', 'result'],
+    branches: ['success', 'failure'],
+  },
+};
+
+const configureAutomatedTaskIO = (
+  config: NodeConfiguration,
+  subType: string,
+  nodeData: NodeDataWithMetadata
+): void => {
+  config.input = AUTOMATED_TASK_SINGLE_INPUT_SUBTYPES.includes(subType)
+    ? ['relatedEntity']
+    : ['relatedEntity', 'updatedBy'];
+
+  const outputConfig = AUTOMATED_TASK_OUTPUT_MAP[subType];
+  config.output = outputConfig?.output ?? [];
+  if (outputConfig?.branches) {
+    config.branches = outputConfig.branches;
+  }
+
+  addNodeSpecificConfig(config, subType, nodeData);
+};
+
+const applyUserApprovalConfig = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  const assigneesFromNode = nodeData.config?.assignees as
+    | {
+        addReviewers?: boolean;
+        addOwners?: boolean;
+        emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+        candidates?: Array<{
+          id: string;
+          type: string;
+          fullyQualifiedName?: string;
+          name?: string;
+        }>;
       }
-      if (nodeData.fieldValue || nodeData.config?.fieldValue) {
-        config.config.fieldValue =
-          nodeData.fieldValue || nodeData.config?.fieldValue;
-      } else if (config.config.fieldName) {
-        config.config.fieldValue = '';
-      }
-    }
-  } else if (subType === NodeSubType.CheckEntityAttributesTask) {
-    if (nodeData.rules || nodeData.config?.rules) {
-      let rulesString = nodeData.rules || nodeData.config?.rules;
-      if (typeof rulesString === 'object') {
-        rulesString = JSON.stringify(rulesString);
-      }
-      config.config = {
-        rules: rulesString,
-      };
-    }
-  } else if (subType === NodeSubType.DataCompletenessTask) {
-    if (
-      nodeData.qualityBands ||
-      nodeData.fieldsToCheck ||
-      nodeData.config?.qualityBands ||
-      nodeData.config?.fieldsToCheck
-    ) {
-      config.config = {};
-      if (nodeData.qualityBands || nodeData.config?.qualityBands) {
-        config.config.qualityBands =
-          nodeData.qualityBands || nodeData.config?.qualityBands;
-      }
-      if (nodeData.fieldsToCheck || nodeData.config?.fieldsToCheck) {
-        config.config.fieldsToCheck =
-          nodeData.fieldsToCheck || nodeData.config?.fieldsToCheck;
-      }
-    }
-  } else if (subType === NodeSubType.CheckChangeDescriptionTask) {
-    if (nodeData.config && typeof nodeData.config === 'object') {
-      const cfg = nodeData.config as {
-        condition?: 'AND' | 'OR';
-        rules?: Record<string, string[]>;
-      };
-      config.config = {
-        condition: cfg.condition ?? 'OR',
-        rules:
-          cfg.rules &&
-          typeof cfg.rules === 'object' &&
-          !Array.isArray(cfg.rules)
-            ? cfg.rules
-            : {},
-      };
-    }
-  } else if (
-    (subType === NodeSubType.RollbackEntityTask ||
-      subType === NodeSubType.SinkTask) &&
-    nodeData.config &&
-    Object.keys(nodeData.config).length > 0
-  ) {
-    config.config = nodeData.config;
+    | undefined;
+  config.config = {};
+  config.config.assignees = {
+    addReviewers: assigneesFromNode?.addReviewers ?? true,
+    addOwners: assigneesFromNode?.addOwners ?? false,
+    emptyAssigneeStrategy: assigneesFromNode?.emptyAssigneeStrategy ?? 'none',
+    candidates: assigneesFromNode?.candidates ?? [],
+  };
+  config.config.approvalThreshold =
+    nodeData.approvalThreshold ?? nodeData.config?.approvalThreshold ?? 1;
+
+  config.config.rejectionThreshold =
+    nodeData.rejectionThreshold ?? nodeData.config?.rejectionThreshold ?? 1;
+};
+
+const configureUserTaskIO = (
+  config: NodeConfiguration,
+  subType: string,
+  nodeData: NodeDataWithMetadata
+): void => {
+  config.input = ['relatedEntity'];
+  config.output = ['updatedBy'];
+  config.branches = ['true', 'false'];
+
+  if (subType === NodeSubType.UserApprovalTask) {
+    applyUserApprovalConfig(config, nodeData);
   }
 };
 
@@ -178,80 +303,78 @@ export const configureNodeInputOutput = (
   }
 
   if (nodeType === NodeType.AutomatedTask) {
-    // Most automated tasks require input: ["relatedEntity", "updatedBy"]
-    // Exception: checkEntityAttributesTask and dataCompletenessTask only need ["relatedEntity"]
-    if (
-      subType === NodeSubType.CheckEntityAttributesTask ||
-      subType === NodeSubType.CheckChangeDescriptionTask ||
-      subType === NodeSubType.DataCompletenessTask
-    ) {
-      config.input = ['relatedEntity'];
-    } else {
-      config.input = ['relatedEntity', 'updatedBy'];
-    }
-
-    // Configure output based on subType
-    if (
-      subType === NodeSubType.CheckEntityAttributesTask ||
-      subType === NodeSubType.CheckChangeDescriptionTask
-    ) {
-      config.output = ['result'];
-      config.branches = ['true', 'false'];
-    } else if (subType === NodeSubType.DataCompletenessTask) {
-      config.output = [
-        'completenessScore',
-        'qualityBand',
-        'filledFieldsCount',
-        'totalFieldsCount',
-        'missingFields',
-        'filledFields',
-        'result',
-      ];
-    } else if (subType === NodeSubType.SinkTask) {
-      config.output = ['syncResult', 'syncedCount', 'failedCount', 'result'];
-      config.branches = ['success', 'failure'];
-    } else {
-      config.output = [];
-    }
-    addNodeSpecificConfig(config, subType, nodeData);
+    configureAutomatedTaskIO(config, subType, nodeData);
   }
 
   if (nodeType === NodeType.UserTask) {
-    config.input = ['relatedEntity'];
-    config.output = ['updatedBy'];
-    config.branches = ['true', 'false'];
-
-    if (subType === NodeSubType.UserApprovalTask) {
-      const assigneesFromNode = nodeData.config?.assignees as
-        | {
-            addReviewers?: boolean;
-            addOwners?: boolean;
-            emptyAssigneeStrategy?: 'none' | 'assignAdmins';
-            candidates?: Array<{
-              id: string;
-              type: string;
-              fullyQualifiedName?: string;
-              name?: string;
-            }>;
-          }
-        | undefined;
-      config.config = {};
-      config.config.assignees = {
-        addReviewers: assigneesFromNode?.addReviewers ?? true,
-        addOwners: assigneesFromNode?.addOwners ?? false,
-        emptyAssigneeStrategy:
-          assigneesFromNode?.emptyAssigneeStrategy ?? 'none',
-        candidates: assigneesFromNode?.candidates ?? [],
-      };
-      config.config.approvalThreshold =
-        nodeData.approvalThreshold ?? nodeData.config?.approvalThreshold ?? 1;
-
-      config.config.rejectionThreshold =
-        nodeData.rejectionThreshold ?? nodeData.config?.rejectionThreshold ?? 1;
-    }
+    configureUserTaskIO(config, subType, nodeData);
   }
 
   return config;
+};
+
+// Resolve the namespace for the "updatedBy" input by finding the nearest
+// preceding user-approval task, falling back to any user task, then 'global'.
+const resolveUpdatedByNamespace = (
+  nodeData: NodeDataWithMetadata,
+  allNodes: NodeDataWithMetadata[],
+  allEdges: BackendEdge[]
+): string => {
+  if (allEdges.length === 0) {
+    // No edges available, find any user task (fallback for edge case)
+    const userTaskNode = allNodes.find(
+      (node) => node.subType === NodeSubType.UserApprovalTask
+    );
+
+    return userTaskNode ? userTaskNode.name || userTaskNode.id : 'global';
+  }
+
+  const currentNodeId = nodeData.id;
+  const userTasks = allNodes.filter(
+    (node) => node.subType === NodeSubType.UserApprovalTask
+  );
+
+  for (const userTask of userTasks) {
+    const hasPath = findPathBetweenNodes(userTask.id, currentNodeId, allEdges);
+    if (hasPath) {
+      // Use the actual node name as the namespace for backend reference
+      return userTask.name || userTask.id;
+    }
+  }
+
+  return 'global';
+};
+
+// Apply user overrides with selective filtering
+const applyNamespaceOverrides = (
+  config: NodeConfiguration,
+  nodeData: NodeDataWithMetadata
+): void => {
+  if (
+    !nodeData.inputNamespaceMap ||
+    Object.keys(nodeData.inputNamespaceMap).length === 0
+  ) {
+    return;
+  }
+
+  const filteredOverrides: Record<string, string> = {};
+  Object.entries(nodeData.inputNamespaceMap).forEach(([key, value]) => {
+    const isRedundantGlobalUpdatedBy =
+      key === 'updatedBy' &&
+      value === 'global' &&
+      config.inputNamespaceMap?.updatedBy !== 'global';
+    if (isRedundantGlobalUpdatedBy) {
+      return;
+    }
+    if (typeof value === 'string') {
+      filteredOverrides[key] = value;
+    }
+  });
+
+  config.inputNamespaceMap = {
+    ...(config.inputNamespaceMap || {}),
+    ...filteredOverrides,
+  };
 };
 
 // Configure input namespace mapping
@@ -272,67 +395,14 @@ export const configureInputNamespaceMap = (
   }
 
   if (config.input.includes('updatedBy')) {
-    let userTaskNamespace = 'global';
-
-    if (allEdges.length > 0) {
-      const currentNodeId = nodeData.id;
-
-      const userTasks = allNodes.filter(
-        (node) => node.subType === NodeSubType.UserApprovalTask
-      );
-
-      for (const userTask of userTasks) {
-        const userTaskId = userTask.id;
-
-        const hasPath = findPathBetweenNodes(
-          userTaskId,
-          currentNodeId,
-          allEdges
-        );
-        if (hasPath) {
-          // Use the actual node name as the namespace for backend reference
-          userTaskNamespace = userTask.name || userTask.id;
-
-          break;
-        }
-      }
-    } else {
-      // No edges available, find any user task (fallback for edge case)
-      const userTaskNode = allNodes.find(
-        (node) => node.subType === NodeSubType.UserApprovalTask
-      );
-      if (userTaskNode) {
-        userTaskNamespace = userTaskNode.name || userTaskNode.id;
-      }
-    }
-
-    config.inputNamespaceMap.updatedBy = userTaskNamespace;
+    config.inputNamespaceMap.updatedBy = resolveUpdatedByNamespace(
+      nodeData,
+      allNodes,
+      allEdges
+    );
   }
 
-  // Apply user overrides with selective filtering
-  if (
-    nodeData.inputNamespaceMap &&
-    Object.keys(nodeData.inputNamespaceMap).length > 0
-  ) {
-    const filteredOverrides: Record<string, string> = {};
-    Object.entries(nodeData.inputNamespaceMap).forEach(([key, value]) => {
-      if (
-        key === 'updatedBy' &&
-        value === 'global' &&
-        config.inputNamespaceMap?.updatedBy !== 'global'
-      ) {
-        return;
-      }
-      if (typeof value === 'string') {
-        filteredOverrides[key] = value;
-      }
-    });
-
-    config.inputNamespaceMap = {
-      ...(config.inputNamespaceMap || {}),
-      ...filteredOverrides,
-    };
-  }
+  applyNamespaceOverrides(config, nodeData);
 
   return config;
 };

@@ -120,6 +120,476 @@ const DEFAULT_INITIAL_QUERY = `${DEFAULT_SPARQL_PREFIXES}\n\nSELECT ?s ?p ?o WHE
 
 type SaveTarget = 'personal' | 'template';
 
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
+interface TabularResult {
+  keyedRows: { key: string; row: { [key: string]: Binding } }[];
+  rows: { [key: string]: Binding }[];
+  vars: string[];
+}
+
+interface ConceptChip {
+  key: string;
+  value: string;
+}
+
+const getSaveModalTitle = (
+  saveTarget: SaveTarget,
+  activeTemplateId: string | undefined,
+  t: TFunc
+): string => {
+  if (saveTarget !== 'template') {
+    return t('label.save-query');
+  }
+
+  return activeTemplateId
+    ? t('label.update-sample-query')
+    : t('label.save-as-sample-query');
+};
+
+const getSaveModalActionLabel = (
+  saveTarget: SaveTarget,
+  activeTemplateId: string | undefined,
+  t: TFunc
+): string =>
+  saveTarget === 'template' && activeTemplateId
+    ? t('label.update')
+    : t('label.save');
+
+const QueryToolbarActions = ({
+  activeTemplateId,
+  format,
+  inference,
+  isAdminUser,
+  running,
+  t,
+  onInjectPrefixes,
+  onRun,
+  onSaveCurrent,
+  onSaveTemplate,
+  setFormat,
+  setInference,
+}: {
+  activeTemplateId: string | undefined;
+  format: SparqlPlaygroundFormat;
+  inference: SparqlPlaygroundInference;
+  isAdminUser: boolean | undefined;
+  running: boolean;
+  t: TFunc;
+  onInjectPrefixes: () => void;
+  onRun: () => void;
+  onSaveCurrent: () => void;
+  onSaveTemplate: () => void;
+  setFormat: (format: SparqlPlaygroundFormat) => void;
+  setInference: (inference: SparqlPlaygroundInference) => void;
+}) => (
+  <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+      <Select
+        aria-label={t('label.format')}
+        data-testid="sparql-format-select"
+        items={FORMAT_OPTIONS.map((o) => ({
+          id: o.value,
+          label: t(o.labelKey),
+        }))}
+        size="sm"
+        value={format}
+        onChange={(key) => setFormat(String(key) as SparqlPlaygroundFormat)}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} label={item.label} />
+        )}
+      </Select>
+      <Select
+        aria-label={t('label.inference')}
+        data-testid="sparql-inference-select"
+        items={INFERENCE_OPTIONS.map((o) => ({
+          id: o.value,
+          label: t(o.labelKey),
+        }))}
+        size="sm"
+        value={inference}
+        onChange={(key) =>
+          setInference(String(key) as SparqlPlaygroundInference)
+        }>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} label={item.label} />
+        )}
+      </Select>
+      <Button
+        color="secondary"
+        data-testid="sparql-inject-prefixes"
+        size="sm"
+        onClick={onInjectPrefixes}>
+        {t('label.inject-prefixes')}
+      </Button>
+      <Button
+        color="secondary"
+        data-testid="sparql-save-query"
+        size="sm"
+        onClick={onSaveCurrent}>
+        {t('label.save-query')}
+      </Button>
+      {isAdminUser ? (
+        <Button
+          color="secondary"
+          data-testid="sparql-save-template"
+          size="sm"
+          onClick={onSaveTemplate}>
+          {activeTemplateId
+            ? t('label.update-sample-query')
+            : t('label.save-as-sample-query')}
+        </Button>
+      ) : null}
+    </div>
+    <Button
+      color="primary"
+      data-testid="sparql-run"
+      isDisabled={running}
+      size="sm"
+      onClick={onRun}>
+      {running ? t('label.running') : t('label.run-query')}
+    </Button>
+  </div>
+);
+
+const ResultStatusLine = ({
+  result,
+  t,
+  tabularResult,
+}: {
+  result: SparqlPlaygroundResult;
+  t: TFunc;
+  tabularResult: TabularResult | null;
+}) => (
+  <Typography
+    as="span"
+    className={tabularResult ? 'tw:text-success-primary' : 'tw:text-tertiary'}
+    data-testid="sparql-result-status"
+    size="text-xs"
+    weight="medium">
+    {tabularResult
+      ? `✓ ${tabularResult.rows.length} ${t('label.result-plural')} · ${
+          result.durationMs
+        } ms`
+      : `${result.format} · ${result.durationMs} ms`}
+  </Typography>
+);
+
+const ResultChips = ({
+  conceptChips,
+  t,
+}: {
+  conceptChips: ConceptChip[];
+  t: TFunc;
+}) => (
+  <div className="tw:flex tw:flex-wrap tw:gap-2" data-testid="sparql-chips">
+    {conceptChips.length === 0 ? (
+      <Typography as="span" className="tw:text-tertiary" size="text-xs">
+        {t('message.sparql-no-rows')}
+      </Typography>
+    ) : (
+      conceptChips.map(({ key, value }) => (
+        <span
+          className="tw:rounded-full tw:border tw:border-utility-gray-200 tw:bg-primary tw:px-3 tw:py-1 tw:text-xs"
+          key={key}>
+          {value}
+        </span>
+      ))
+    )}
+  </div>
+);
+
+const ResultTable = ({
+  t,
+  tabularResult,
+}: {
+  t: TFunc;
+  tabularResult: TabularResult;
+}) => (
+  <div
+    className="tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200"
+    data-testid="sparql-table">
+    <table className="tw:w-full tw:text-sm">
+      <thead>
+        <tr>
+          {tabularResult.vars.map((v) => (
+            <th
+              className="tw:border-b tw:border-utility-gray-200 tw:bg-secondary tw:px-3 tw:py-2 tw:text-left tw:font-semibold"
+              key={v}>
+              {v}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {tabularResult.keyedRows.map(({ key, row }) => (
+          <tr key={key}>
+            {tabularResult.vars.map((v) => {
+              const binding = row[v] as Binding | undefined;
+
+              return (
+                <td
+                  className="tw:border-b tw:border-utility-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-xs"
+                  key={v}>
+                  {binding?.value ?? ''}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    {tabularResult.rows.length === 0 ? (
+      <div className="tw:p-3 tw:text-tertiary">
+        {t('message.sparql-no-rows')}
+      </div>
+    ) : null}
+  </div>
+);
+
+const ResultBody = ({
+  conceptChips,
+  result,
+  t,
+  tabularResult,
+}: {
+  conceptChips: ConceptChip[] | null;
+  result: SparqlPlaygroundResult;
+  t: TFunc;
+  tabularResult: TabularResult | null;
+}) => {
+  if (conceptChips) {
+    return <ResultChips conceptChips={conceptChips} t={t} />;
+  }
+
+  if (tabularResult) {
+    return <ResultTable t={t} tabularResult={tabularResult} />;
+  }
+
+  return (
+    <pre
+      className="tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200 tw:bg-secondary tw:p-3 tw:text-xs"
+      data-testid="sparql-raw">
+      {result.body}
+    </pre>
+  );
+};
+
+const ResultPanel = ({
+  conceptChips,
+  onDownload,
+  result,
+  t,
+  tabularResult,
+}: {
+  conceptChips: ConceptChip[] | null;
+  onDownload: () => void;
+  result: SparqlPlaygroundResult | null;
+  t: TFunc;
+  tabularResult: TabularResult | null;
+}) => {
+  if (!result) {
+    return null;
+  }
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-2" data-testid="sparql-result">
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+        <ResultStatusLine result={result} t={t} tabularResult={tabularResult} />
+        <Button
+          color="secondary"
+          data-testid="sparql-download"
+          size="sm"
+          onClick={onDownload}>
+          {t('label.download')}
+        </Button>
+      </div>
+      <ResultBody
+        conceptChips={conceptChips}
+        result={result}
+        t={t}
+        tabularResult={tabularResult}
+      />
+    </div>
+  );
+};
+
+const QueryTemplatesList = ({
+  isAdminUser,
+  isLoading,
+  queryTemplates,
+  t,
+  onDeleteTemplate,
+  onLoadTemplate,
+}: {
+  isAdminUser: boolean | undefined;
+  isLoading: boolean;
+  queryTemplates: SavedSparqlQuery[];
+  t: TFunc;
+  onDeleteTemplate: (id: string) => void;
+  onLoadTemplate: (queryTemplate: SavedSparqlQuery) => void;
+}) => {
+  if (isLoading) {
+    return (
+      <Typography as="p" className="tw:text-tertiary" size="text-xs">
+        {t('label.loading')}
+      </Typography>
+    );
+  }
+
+  if (queryTemplates.length === 0) {
+    return (
+      <Typography as="p" className="tw:text-tertiary" size="text-xs">
+        {t('message.no-query-available')}
+      </Typography>
+    );
+  }
+
+  return (
+    <ul className="tw:flex tw:flex-col tw:gap-1">
+      {queryTemplates.map((queryTemplate) => (
+        <li
+          className="tw:flex tw:items-center tw:justify-between tw:gap-1"
+          key={queryTemplate.id}>
+          <Button
+            className="tw:min-w-0 tw:flex-1 tw:justify-start"
+            color="tertiary"
+            data-testid={`sparql-template-${queryTemplate.id}`}
+            size="sm"
+            onClick={() => onLoadTemplate(queryTemplate)}>
+            {queryTemplate.name}
+          </Button>
+          {isAdminUser ? (
+            <>
+              <ButtonUtility
+                className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-secondary"
+                data-testid={`sparql-template-edit-${queryTemplate.id}`}
+                icon={Edit03}
+                size="xs"
+                tooltip={`${t('label.edit')} ${queryTemplate.name}`}
+                onClick={() => onLoadTemplate(queryTemplate)}
+              />
+              <ButtonUtility
+                className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-error-50 hover:tw:text-error-600"
+                data-testid={`sparql-template-delete-${queryTemplate.id}`}
+                icon={Trash01}
+                size="xs"
+                tooltip={`${t('label.delete')} ${queryTemplate.name}`}
+                onClick={() => onDeleteTemplate(queryTemplate.id)}
+              />
+            </>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const SavedQueriesList = ({
+  savedQueries,
+  t,
+  onDeleteSavedQuery,
+  onLoadSaved,
+}: {
+  savedQueries: SavedSparqlQuery[];
+  t: TFunc;
+  onDeleteSavedQuery: (id: string) => void;
+  onLoadSaved: (saved: SavedSparqlQuery) => void;
+}) => {
+  if (savedQueries.length === 0) {
+    return (
+      <Typography as="p" className="tw:text-tertiary" size="text-xs">
+        {t('message.sparql-no-saved-queries')}
+      </Typography>
+    );
+  }
+
+  return (
+    <ul
+      className="tw:flex tw:flex-col tw:gap-1"
+      data-testid="sparql-saved-list">
+      {savedQueries.map((saved) => (
+        <li
+          className="tw:flex tw:items-center tw:justify-between tw:gap-2"
+          key={saved.id}>
+          <Button
+            color="tertiary"
+            data-testid={`sparql-saved-${saved.id}`}
+            size="sm"
+            onClick={() => onLoadSaved(saved)}>
+            {saved.name}
+          </Button>
+          <Button
+            color="tertiary"
+            data-testid={`sparql-saved-delete-${saved.id}`}
+            size="sm"
+            onClick={() => onDeleteSavedQuery(saved.id)}>
+            {t('label.delete')}
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const SaveQueryModal = ({
+  activeTemplateId,
+  isOpen,
+  saveName,
+  saveTarget,
+  t,
+  onClose,
+  onCommitSave,
+  setSaveName,
+}: {
+  activeTemplateId: string | undefined;
+  isOpen: boolean;
+  saveName: string;
+  saveTarget: SaveTarget;
+  t: TFunc;
+  onClose: (open: boolean) => void;
+  onCommitSave: () => void;
+  setSaveName: (value: string) => void;
+}) => (
+  <ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onClose}>
+    <Modal>
+      <Dialog
+        showCloseButton
+        data-testid="sparql-save-modal"
+        title={getSaveModalTitle(saveTarget, activeTemplateId, t)}
+        width={480}
+        onClose={() => onClose(false)}>
+        <Dialog.Content>
+          <Input
+            inputDataTestId="sparql-save-name-input"
+            label={t('label.name')}
+            placeholder={t('message.sparql-save-prompt')}
+            value={saveName}
+            onChange={setSaveName}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && saveName.trim()) {
+                onCommitSave();
+              }
+            }}
+          />
+        </Dialog.Content>
+        <Dialog.Footer>
+          <Button color="secondary" size="sm" onPress={() => onClose(false)}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            isDisabled={!saveName.trim()}
+            size="sm"
+            onPress={onCommitSave}>
+            {getSaveModalActionLabel(saveTarget, activeTemplateId, t)}
+          </Button>
+        </Dialog.Footer>
+      </Dialog>
+    </Modal>
+  </ModalOverlay>
+);
+
 /**
  * Reusable, page-chrome-free SPARQL query interface: editor, format/inference
  * controls, results (tabular for JSON SELECT/ASK, raw otherwise), and
@@ -319,75 +789,20 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           className
         )}>
         <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4 lg:tw:order-2">
-          <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
-            <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
-              <Select
-                aria-label={t('label.format')}
-                data-testid="sparql-format-select"
-                items={FORMAT_OPTIONS.map((o) => ({
-                  id: o.value,
-                  label: t(o.labelKey),
-                }))}
-                size="sm"
-                value={format}
-                onChange={(key) =>
-                  setFormat(String(key) as SparqlPlaygroundFormat)
-                }>
-                {(item) => (
-                  <Select.Item id={item.id} key={item.id} label={item.label} />
-                )}
-              </Select>
-              <Select
-                aria-label={t('label.inference')}
-                data-testid="sparql-inference-select"
-                items={INFERENCE_OPTIONS.map((o) => ({
-                  id: o.value,
-                  label: t(o.labelKey),
-                }))}
-                size="sm"
-                value={inference}
-                onChange={(key) =>
-                  setInference(String(key) as SparqlPlaygroundInference)
-                }>
-                {(item) => (
-                  <Select.Item id={item.id} key={item.id} label={item.label} />
-                )}
-              </Select>
-              <Button
-                color="secondary"
-                data-testid="sparql-inject-prefixes"
-                size="sm"
-                onClick={handleInjectPrefixes}>
-                {t('label.inject-prefixes')}
-              </Button>
-              <Button
-                color="secondary"
-                data-testid="sparql-save-query"
-                size="sm"
-                onClick={handleSaveCurrent}>
-                {t('label.save-query')}
-              </Button>
-              {isAdminUser ? (
-                <Button
-                  color="secondary"
-                  data-testid="sparql-save-template"
-                  size="sm"
-                  onClick={handleSaveTemplate}>
-                  {activeTemplateId
-                    ? t('label.update-sample-query')
-                    : t('label.save-as-sample-query')}
-                </Button>
-              ) : null}
-            </div>
-            <Button
-              color="primary"
-              data-testid="sparql-run"
-              isDisabled={running}
-              size="sm"
-              onClick={handleRun}>
-              {running ? t('label.running') : t('label.run-query')}
-            </Button>
-          </div>
+          <QueryToolbarActions
+            activeTemplateId={activeTemplateId}
+            format={format}
+            inference={inference}
+            isAdminUser={isAdminUser}
+            running={running}
+            setFormat={setFormat}
+            setInference={setInference}
+            t={t}
+            onInjectPrefixes={handleInjectPrefixes}
+            onRun={handleRun}
+            onSaveCurrent={handleSaveCurrent}
+            onSaveTemplate={handleSaveTemplate}
+          />
 
           <div
             className="tw:rounded-md tw:border tw:border-utility-gray-200"
@@ -414,107 +829,13 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
             </div>
           ) : null}
 
-          {result ? (
-            <div
-              className="tw:flex tw:flex-col tw:gap-2"
-              data-testid="sparql-result">
-              <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
-                <Typography
-                  as="span"
-                  className={
-                    tabularResult
-                      ? 'tw:text-success-primary'
-                      : 'tw:text-tertiary'
-                  }
-                  data-testid="sparql-result-status"
-                  size="text-xs"
-                  weight="medium">
-                  {tabularResult
-                    ? `✓ ${tabularResult.rows.length} ${t(
-                        'label.result-plural'
-                      )} · ${result.durationMs} ms`
-                    : `${result.format} · ${result.durationMs} ms`}
-                </Typography>
-                <Button
-                  color="secondary"
-                  data-testid="sparql-download"
-                  size="sm"
-                  onClick={handleDownload}>
-                  {t('label.download')}
-                </Button>
-              </div>
-              {conceptChips ? (
-                <div
-                  className="tw:flex tw:flex-wrap tw:gap-2"
-                  data-testid="sparql-chips">
-                  {conceptChips.length === 0 ? (
-                    <Typography
-                      as="span"
-                      className="tw:text-tertiary"
-                      size="text-xs">
-                      {t('message.sparql-no-rows')}
-                    </Typography>
-                  ) : (
-                    conceptChips.map(({ key, value }) => (
-                      <span
-                        className="tw:rounded-full tw:border tw:border-utility-gray-200 tw:bg-primary tw:px-3 tw:py-1 tw:text-xs"
-                        key={key}>
-                        {value}
-                      </span>
-                    ))
-                  )}
-                </div>
-              ) : tabularResult ? (
-                <div
-                  className="tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200"
-                  data-testid="sparql-table">
-                  <table className="tw:w-full tw:text-sm">
-                    <thead>
-                      <tr>
-                        {tabularResult.vars.map((v) => (
-                          <th
-                            className="tw:border-b tw:border-utility-gray-200 tw:bg-secondary tw:px-3 tw:py-2 tw:text-left tw:font-semibold"
-                            key={v}>
-                            {v}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tabularResult.keyedRows.map(({ key, row }) => (
-                        <tr key={key}>
-                          {tabularResult.vars.map((v) => {
-                            const binding = row[v] as Binding | undefined;
-
-                            return (
-                              <td
-                                className="tw:border-b tw:border-utility-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-xs"
-                                key={v}>
-                                {binding?.value ?? ''}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {tabularResult.rows.length === 0 ? (
-                    <div className="tw:p-3 tw:text-tertiary">
-                      {t('message.sparql-no-rows')}
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <pre
-                  className={classNames(
-                    'tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200 tw:bg-secondary tw:p-3 tw:text-xs'
-                  )}
-                  data-testid="sparql-raw">
-                  {result.body}
-                </pre>
-              )}
-            </div>
-          ) : null}
+          <ResultPanel
+            conceptChips={conceptChips}
+            result={result}
+            t={t}
+            tabularResult={tabularResult}
+            onDownload={handleDownload}
+          />
         </Card>
 
         <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4 lg:tw:order-1">
@@ -525,54 +846,14 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
             weight="semibold">
             {t('label.installation-queries')}
           </Typography>
-          {isLoading ? (
-            <Typography as="p" className="tw:text-tertiary" size="text-xs">
-              {t('label.loading')}
-            </Typography>
-          ) : queryTemplates.length === 0 ? (
-            <Typography as="p" className="tw:text-tertiary" size="text-xs">
-              {t('message.no-query-available')}
-            </Typography>
-          ) : (
-            <ul className="tw:flex tw:flex-col tw:gap-1">
-              {queryTemplates.map((queryTemplate) => (
-                <li
-                  className="tw:flex tw:items-center tw:justify-between tw:gap-1"
-                  key={queryTemplate.id}>
-                  <Button
-                    className="tw:min-w-0 tw:flex-1 tw:justify-start"
-                    color="tertiary"
-                    data-testid={`sparql-template-${queryTemplate.id}`}
-                    size="sm"
-                    onClick={() => handleLoadTemplate(queryTemplate)}>
-                    {queryTemplate.name}
-                  </Button>
-                  {isAdminUser ? (
-                    <>
-                      <ButtonUtility
-                        className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-secondary"
-                        data-testid={`sparql-template-edit-${queryTemplate.id}`}
-                        icon={Edit03}
-                        size="xs"
-                        tooltip={`${t('label.edit')} ${queryTemplate.name}`}
-                        onClick={() => handleLoadTemplate(queryTemplate)}
-                      />
-                      <ButtonUtility
-                        className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-error-50 hover:tw:text-error-600"
-                        data-testid={`sparql-template-delete-${queryTemplate.id}`}
-                        icon={Trash01}
-                        size="xs"
-                        tooltip={`${t('label.delete')} ${queryTemplate.name}`}
-                        onClick={() =>
-                          void handleDeleteTemplate(queryTemplate.id)
-                        }
-                      />
-                    </>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
+          <QueryTemplatesList
+            isAdminUser={isAdminUser}
+            isLoading={isLoading}
+            queryTemplates={queryTemplates}
+            t={t}
+            onDeleteTemplate={(id) => void handleDeleteTemplate(id)}
+            onLoadTemplate={handleLoadTemplate}
+          />
 
           <Typography
             as="span"
@@ -584,90 +865,25 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           <Typography as="p" className="tw:text-tertiary" size="text-xs">
             {t('message.sparql-private-queries-description')}
           </Typography>
-          {savedQueries.length === 0 ? (
-            <Typography as="p" className="tw:text-tertiary" size="text-xs">
-              {t('message.sparql-no-saved-queries')}
-            </Typography>
-          ) : (
-            <ul
-              className="tw:flex tw:flex-col tw:gap-1"
-              data-testid="sparql-saved-list">
-              {savedQueries.map((saved) => (
-                <li
-                  className="tw:flex tw:items-center tw:justify-between tw:gap-2"
-                  key={saved.id}>
-                  <Button
-                    color="tertiary"
-                    data-testid={`sparql-saved-${saved.id}`}
-                    size="sm"
-                    onClick={() => handleLoadSaved(saved)}>
-                    {saved.name}
-                  </Button>
-                  <Button
-                    color="tertiary"
-                    data-testid={`sparql-saved-delete-${saved.id}`}
-                    size="sm"
-                    onClick={() => void deleteSavedQuery(saved.id)}>
-                    {t('label.delete')}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <SavedQueriesList
+            savedQueries={savedQueries}
+            t={t}
+            onDeleteSavedQuery={(id) => void deleteSavedQuery(id)}
+            onLoadSaved={handleLoadSaved}
+          />
         </Card>
       </div>
 
-      <ModalOverlay
-        isDismissable
+      <SaveQueryModal
+        activeTemplateId={activeTemplateId}
         isOpen={isSaveModalOpen}
-        onOpenChange={setIsSaveModalOpen}>
-        <Modal>
-          <Dialog
-            showCloseButton
-            data-testid="sparql-save-modal"
-            title={
-              saveTarget === 'template'
-                ? activeTemplateId
-                  ? t('label.update-sample-query')
-                  : t('label.save-as-sample-query')
-                : t('label.save-query')
-            }
-            width={480}
-            onClose={() => setIsSaveModalOpen(false)}>
-            <Dialog.Content>
-              <Input
-                inputDataTestId="sparql-save-name-input"
-                label={t('label.name')}
-                placeholder={t('message.sparql-save-prompt')}
-                value={saveName}
-                onChange={setSaveName}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && saveName.trim()) {
-                    void handleCommitSave();
-                  }
-                }}
-              />
-            </Dialog.Content>
-            <Dialog.Footer>
-              <Button
-                color="secondary"
-                size="sm"
-                onPress={() => setIsSaveModalOpen(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isDisabled={!saveName.trim()}
-                size="sm"
-                onPress={() => void handleCommitSave()}>
-                {saveTarget === 'template' && activeTemplateId
-                  ? t('label.update')
-                  : t('label.save')}
-              </Button>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
+        saveName={saveName}
+        saveTarget={saveTarget}
+        setSaveName={setSaveName}
+        t={t}
+        onClose={setIsSaveModalOpen}
+        onCommitSave={() => void handleCommitSave()}
+      />
     </>
   );
 };

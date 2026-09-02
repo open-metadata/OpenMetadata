@@ -29,7 +29,7 @@ import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useWatch } from 'react-hook-form';
+import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
@@ -76,6 +76,7 @@ import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCard
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ParameterFields from './ParameterFields';
 import {
+  FormValues,
   TablesCache,
   TestCaseFormBodyProps,
   TestLevel,
@@ -85,6 +86,16 @@ import TestCaseSchedulerSection from './TestCaseSchedulerSection';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
+
+// Small pure helpers so a `??`/`||`/ternary used for a single field value
+// doesn't add another decision point to TestCaseFormBody's own complexity.
+const orDefault = <T,>(value: T | undefined | null, fallback: T): T =>
+  value ?? fallback;
+
+const anyTrue = (...values: boolean[]): boolean => values.some(Boolean);
+
+const fieldRootId = (name: string | undefined, fallback: string): string =>
+  name ? `root/${name}` : fallback;
 
 const fqnFromSelectItem = (
   value?: FormSelectItem | string | null
@@ -97,6 +108,285 @@ const fqnFromSelectItem = (
   }
 
   return result;
+};
+
+interface SelectTableCardProps {
+  show: boolean;
+  isEditMode: boolean;
+  form: UseFormReturn<FormValues>;
+  testLevelDoc: Record<string, unknown>;
+  testLevelOptions: TestLevelOption[];
+  handleActiveField: (id: string) => void;
+  selectedTableField: FieldProp;
+  selectedTestLevel?: string;
+  selectedColumnField: FieldProp;
+  showDimensionFields: boolean;
+  dimensionColumnsField: FieldProp;
+  topDimensionsField: FieldProp;
+}
+
+// Rendered separately so its own show/isEditMode/level gating doesn't add to
+// TestCaseFormBody's cyclomatic complexity.
+const SelectTableCard = ({
+  show,
+  isEditMode,
+  form,
+  testLevelDoc,
+  testLevelOptions,
+  handleActiveField,
+  selectedTableField,
+  selectedTestLevel,
+  selectedColumnField,
+  showDimensionFields,
+  dimensionColumnsField,
+  topDimensionsField,
+}: SelectTableCardProps) => {
+  const { t } = useTranslation();
+
+  if (!show) {
+    return null;
+  }
+
+  return (
+    <div className="form-card-section" data-testid="select-table-card">
+      {!isEditMode && (
+        <div {...testLevelDoc}>
+          <FormField control={form.control} name="testLevel">
+            {({ field }) => (
+              <>
+                <FormItemLabel
+                  required
+                  label={t('message.select-test-level')}
+                />
+                <SelectionCardGroup
+                  layout="vertical"
+                  options={testLevelOptions}
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    handleActiveField('root/testLevel');
+                  }}
+                />
+              </>
+            )}
+          </FormField>
+        </div>
+      )}
+
+      {getField(selectedTableField)}
+
+      {selectedTestLevel === TestLevel.COLUMN && getField(selectedColumnField)}
+
+      {showDimensionFields && getField(dimensionColumnsField)}
+
+      {showDimensionFields && getField(topDimensionsField)}
+    </div>
+  );
+};
+
+interface TestTypeCardProps {
+  isEditMode: boolean;
+  selectedTestLevel?: string;
+  isCustomQuery: boolean;
+  handleCustomQueryToggle: () => void;
+  testTypeField: FieldProp;
+  additionalFields: FieldProp[];
+  showParameterFields: boolean;
+  selectedTestDefinition?: TestDefinition;
+  form: UseFormReturn<FormValues>;
+  selectedTableData?: Table;
+  fieldDocs: Record<string, string>;
+  handleActiveField: (id: string) => void;
+  selectedTestType?: string;
+  isComputeRowCountFieldVisible: boolean;
+  computeRowCountField: FieldProp;
+}
+
+interface CustomQueryToggleProps {
+  show: boolean;
+  isCustomQuery: boolean;
+  onToggle: () => void;
+}
+
+// Rendered separately so its isCustomQuery-driven label/className ternaries
+// don't add to TestTypeCard's cyclomatic complexity.
+const CustomQueryToggle = ({
+  show,
+  isCustomQuery,
+  onToggle,
+}: CustomQueryToggleProps) => {
+  const { t } = useTranslation();
+
+  if (!show) {
+    return null;
+  }
+
+  return (
+    <div
+      className={classNames(
+        'custom-test-type-container d-flex items-center',
+        isCustomQuery ? 'justify-between' : 'justify-end'
+      )}>
+      {isCustomQuery && <FormItemLabel label={t('label.test-type')} />}
+      <Button
+        color="link-color"
+        data-testid={isCustomQuery ? 'test-type-btn' : 'custom-query'}
+        iconLeading={Edit01}
+        size="sm"
+        onClick={onToggle}>
+        {isCustomQuery ? t('label.select-test-type') : t('label.custom-query')}
+      </Button>
+    </div>
+  );
+};
+
+// Rendered separately so its custom-query/parameter-visibility branching
+// doesn't add to TestCaseFormBody's cyclomatic complexity.
+const TestTypeCard = ({
+  isEditMode,
+  selectedTestLevel,
+  isCustomQuery,
+  handleCustomQueryToggle,
+  testTypeField,
+  additionalFields,
+  showParameterFields,
+  selectedTestDefinition,
+  form,
+  selectedTableData,
+  fieldDocs,
+  handleActiveField,
+  selectedTestType,
+  isComputeRowCountFieldVisible,
+  computeRowCountField,
+}: TestTypeCardProps) => (
+  <div
+    className="form-card-section test-type-card test-type-section"
+    data-testid="test-type-card">
+    <CustomQueryToggle
+      isCustomQuery={isCustomQuery}
+      show={!isEditMode && selectedTestLevel === TestLevel.TABLE}
+      onToggle={handleCustomQueryToggle}
+    />
+
+    {!isCustomQuery && getField(testTypeField)}
+
+    {additionalFields.map((field) => (
+      <div key={field.name}>{getField(field)}</div>
+    ))}
+
+    {showParameterFields && selectedTestDefinition && (
+      <div
+        className="parameter-fields-wrapper"
+        onFocusCapture={() =>
+          handleActiveField(fieldRootId(selectedTestType, 'root/testType'))
+        }>
+        <ParameterFields
+          definition={selectedTestDefinition}
+          form={form}
+          table={selectedTableData}
+          testDefinitionDoc={orDefault(
+            fieldDocs[orDefault(selectedTestDefinition.name, '')],
+            selectedTestDefinition.description
+          )}
+        />
+      </div>
+    )}
+
+    {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+  </div>
+);
+
+interface TestDetailsCardProps {
+  show: boolean;
+  testNameField: FieldProp;
+  isEditMode: boolean;
+  displayNameField: FieldProp;
+  form: UseFormReturn<FormValues>;
+  descriptionDoc: Record<string, unknown>;
+  handleActiveField: (id: string) => void;
+  tagsDoc: Record<string, unknown>;
+  glossaryTermsDoc: Record<string, unknown>;
+}
+
+// Rendered separately so its own show/isEditMode gating doesn't add to
+// TestCaseFormBody's cyclomatic complexity.
+const TestDetailsCard = ({
+  show,
+  testNameField,
+  isEditMode,
+  displayNameField,
+  form,
+  descriptionDoc,
+  handleActiveField,
+  tagsDoc,
+  glossaryTermsDoc,
+}: TestDetailsCardProps) => {
+  const { t } = useTranslation();
+
+  if (!show) {
+    return null;
+  }
+
+  return (
+    <div
+      className="form-card-section test-details-section"
+      data-testid="test-details-card">
+      {getField(testNameField)}
+
+      {isEditMode && getField(displayNameField)}
+
+      <FormField control={form.control} name="description">
+        {({ field }) => (
+          <div
+            className="tw:flex tw:flex-col tw:gap-1"
+            data-testid="description"
+            id="root/description"
+            {...descriptionDoc}>
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              initialValue={field.value ?? ''}
+              onFocus={() => handleActiveField('root/description')}
+              onTextChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+
+      <FormField control={form.control} name="tags">
+        {({ field }) => (
+          <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
+            <TagSuggestion
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+
+      <FormField control={form.control} name="glossaryTerms">
+        {({ field }) => (
+          <div
+            data-testid="glossary-terms-selector"
+            id="root/glossaryTerms"
+            {...glossaryTermsDoc}>
+            <TagSuggestion
+              label={t('label.glossary-term-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.glossary-term-plural'),
+              })}
+              tagType={TagSource.Glossary}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+    </div>
+  );
 };
 
 const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
@@ -283,8 +573,27 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     return result;
   }, [testLevelFieldValue]);
 
-  const hasTestSuite = Boolean(
-    testSuite?.id || selectedTableData?.testSuite?.id
+  const showDimensionFields = useMemo(
+    () =>
+      anyTrue(
+        testLevelFieldValue === TestLevel.COLUMN_DIMENSION,
+        isEditMode && selectedTestLevel === TestLevel.COLUMN
+      ),
+    [testLevelFieldValue, isEditMode, selectedTestLevel]
+  );
+
+  const showScheduler = useMemo(
+    () =>
+      !showOnlyParameter &&
+      !isEditMode &&
+      Boolean(selectedTableFqn) &&
+      canCreatePipeline,
+    [showOnlyParameter, isEditMode, selectedTableFqn, canCreatePipeline]
+  );
+
+  const hasTestSuite = anyTrue(
+    Boolean(testSuite?.id),
+    Boolean(selectedTableData?.testSuite?.id)
   );
 
   const pipelineSchedules = config?.limits?.config.featureLimits.find(
@@ -673,11 +982,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, []);
 
-  const isComputeRowCountFieldVisible =
-    selectedTestDefinition?.supportsRowLevelPassedFailed ?? false;
-  const showParameterFields =
-    Boolean(selectedTestDefinition?.parameterDefinition) &&
-    useDynamicAssertionValue !== true;
+  const isComputeRowCountFieldVisible = orDefault(
+    selectedTestDefinition?.supportsRowLevelPassedFailed,
+    false
+  );
+  const showParameterFields = useMemo(
+    () =>
+      Boolean(selectedTestDefinition?.parameterDefinition) &&
+      useDynamicAssertionValue !== true,
+    [selectedTestDefinition?.parameterDefinition, useDynamicAssertionValue]
+  );
 
   useEffect(() => {
     fetchExistingTestCases();
@@ -769,11 +1083,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       },
     },
     id: 'root/table',
-    doc: fieldDocs.table ?? t('message.doc-field-selected-table'),
+    doc: orDefault(fieldDocs.table, t('message.doc-field-selected-table')),
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
       'data-testid': 'selectedTable',
-      isDisabled: Boolean(table) || isEditMode,
+      isDisabled: anyTrue(Boolean(table), isEditMode),
       isLoading: isTableLoading,
       options: tableOptions,
       onSearchChange: debouncedFetchTables,
@@ -812,11 +1126,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       required: t('label.please-select-entity', { entity: t('label.column') }),
     },
     id: 'root/column',
-    doc: fieldDocs.column ?? t('message.doc-field-selected-column'),
+    doc: orDefault(fieldDocs.column, t('message.doc-field-selected-column')),
     placeholder: t('label.select-entity', { entity: t('label.column') }),
     props: {
       'data-testid': 'selectedColumn',
-      isDisabled: !selectedTableFqn || isEditMode,
+      isDisabled: anyTrue(!selectedTableFqn, isEditMode),
       options: columnOptions,
     },
   };
@@ -826,7 +1140,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     label: t('label.select-entity', { entity: t('label.dimension-plural') }),
     type: FieldTypes.MULTI_SELECT,
     id: 'root/dimensionColumns',
-    doc: fieldDocs.dimensionColumns ?? t('message.doc-field-dimension-columns'),
+    doc: orDefault(
+      fieldDocs.dimensionColumns,
+      t('message.doc-field-dimension-columns')
+    ),
     placeholder: t('label.select-entity', {
       entity: t('label.dimension-plural'),
     }),
@@ -842,7 +1159,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     label: t('label.top-dimension-plural'),
     type: FieldTypes.NUMBER,
     id: 'root/topDimensions',
-    doc: fieldDocs.topDimensions ?? t('message.doc-field-top-dimensions'),
+    doc: orDefault(
+      fieldDocs.topDimensions,
+      t('message.doc-field-top-dimensions')
+    ),
     placeholder: '5',
     props: {
       'data-testid': 'topDimensions',
@@ -864,11 +1184,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     rules: {
       required: t('label.select-test-type'),
     },
-    id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
-    doc:
-      selectedTestDefinition?.description ??
-      fieldDocs.testType ??
-      t('message.doc-field-test-type'),
+    id: fieldRootId(selectedTestType, 'root/testType'),
+    doc: orDefault(
+      orDefault(selectedTestDefinition?.description, fieldDocs.testType),
+      t('message.doc-field-test-type')
+    ),
     placeholder: t('label.select-test-type'),
     props: {
       'data-testid': 'test-type',
@@ -896,7 +1216,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   // Schema capabilities are shared for API and import compatibility, so
   // distribution-only controls must be supplied through the class-base hook.
   const additionalFields = testCaseClassBase.createFormAdditionalFields(
-    selectedTestDefinition?.supportsDynamicAssertion ?? false
+    orDefault(selectedTestDefinition?.supportsDynamicAssertion, false)
   );
 
   const testNameField: FieldProp = {
@@ -905,7 +1225,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.TEXT,
     required: false,
     id: 'root/name',
-    doc: fieldDocs.name ?? t('message.doc-field-test-case-name'),
+    doc: orDefault(fieldDocs.name, t('message.doc-field-test-case-name')),
     placeholder: t('message.enter-test-case-name'),
     rules: {
       pattern: {
@@ -954,30 +1274,33 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const testLevelDoc = useFieldDoc({
     name: 'testLevel',
     label: t('message.select-test-level'),
-    doc: fieldDocs.testLevel ?? t('message.doc-field-test-level'),
+    doc: orDefault(fieldDocs.testLevel, t('message.doc-field-test-level')),
   });
 
   const tagsDoc = useFieldDoc({
     name: 'tags',
     label: t('label.tag-plural'),
-    doc: fieldDocs.tags ?? t('message.doc-field-tags'),
+    doc: orDefault(fieldDocs.tags, t('message.doc-field-tags')),
   });
 
   const glossaryTermsDoc = useFieldDoc({
     name: 'glossaryTerms',
     label: t('label.glossary-term-plural'),
-    doc: fieldDocs.glossaryTerms ?? t('message.doc-field-glossary-terms'),
+    doc: orDefault(
+      fieldDocs.glossaryTerms,
+      t('message.doc-field-glossary-terms')
+    ),
   });
 
   const pipelineDoc = useFieldDoc({
     name: 'pipeline',
     label: t('label.pipeline'),
-    doc: fieldDocs.createPipeline ?? t('message.doc-field-pipeline'),
+    doc: orDefault(fieldDocs.createPipeline, t('message.doc-field-pipeline')),
   });
   const descriptionDoc = useFieldDoc({
     name: 'description',
     label: t('label.description'),
-    doc: fieldDocs.description ?? t('message.doc-field-description'),
+    doc: orDefault(fieldDocs.description, t('message.doc-field-description')),
   });
 
   // Seed the hint panel with the first field actually on screen so it isn't
@@ -1022,177 +1345,65 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         </div>
       )}
 
-      {!showOnlyParameter && (
-        <div className="form-card-section" data-testid="select-table-card">
-          {!isEditMode && (
-            <div {...testLevelDoc}>
-              <FormField control={form.control} name="testLevel">
-                {({ field }) => (
-                  <>
-                    <FormItemLabel
-                      required
-                      label={t('message.select-test-level')}
-                    />
-                    <SelectionCardGroup
-                      layout="vertical"
-                      options={testLevelOptions}
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        handleActiveField('root/testLevel');
-                      }}
-                    />
-                  </>
-                )}
-              </FormField>
-            </div>
-          )}
+      <SelectTableCard
+        dimensionColumnsField={dimensionColumnsField}
+        form={form}
+        handleActiveField={handleActiveField}
+        isEditMode={isEditMode}
+        selectedColumnField={selectedColumnField}
+        selectedTableField={selectedTableField}
+        selectedTestLevel={selectedTestLevel}
+        show={!showOnlyParameter}
+        showDimensionFields={showDimensionFields}
+        testLevelDoc={testLevelDoc}
+        testLevelOptions={testLevelOptions}
+        topDimensionsField={topDimensionsField}
+      />
 
-          {getField(selectedTableField)}
+      <TestTypeCard
+        additionalFields={additionalFields}
+        computeRowCountField={computeRowCountField}
+        fieldDocs={fieldDocs}
+        form={form}
+        handleActiveField={handleActiveField}
+        handleCustomQueryToggle={handleCustomQueryToggle}
+        isComputeRowCountFieldVisible={isComputeRowCountFieldVisible}
+        isCustomQuery={isCustomQuery}
+        isEditMode={isEditMode}
+        selectedTableData={selectedTableData}
+        selectedTestDefinition={selectedTestDefinition}
+        selectedTestLevel={selectedTestLevel}
+        selectedTestType={selectedTestType}
+        showParameterFields={showParameterFields}
+        testTypeField={testTypeField}
+      />
 
-          {selectedTestLevel === TestLevel.COLUMN &&
-            getField(selectedColumnField)}
+      <TestDetailsCard
+        descriptionDoc={descriptionDoc}
+        displayNameField={displayNameField}
+        form={form}
+        glossaryTermsDoc={glossaryTermsDoc}
+        handleActiveField={handleActiveField}
+        isEditMode={isEditMode}
+        show={!showOnlyParameter}
+        tagsDoc={tagsDoc}
+        testNameField={testNameField}
+      />
 
-          {(testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
-            (isEditMode && selectedTestLevel === TestLevel.COLUMN)) &&
-            getField(dimensionColumnsField)}
-
-          {(testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
-            (isEditMode && selectedTestLevel === TestLevel.COLUMN)) &&
-            getField(topDimensionsField)}
+      {showScheduler && (
+        <div {...pipelineDoc}>
+          <TestCaseSchedulerSection
+            canCreatePipeline={canCreatePipeline}
+            form={form}
+            hasTestSuite={hasTestSuite}
+            schedulerOptions={schedulerOptions}
+            selectedTableData={selectedTableData}
+            table={table}
+            testSuite={testSuite}
+            onActiveFieldChange={onActiveFieldChange}
+          />
         </div>
       )}
-
-      <div
-        className="form-card-section test-type-card test-type-section"
-        data-testid="test-type-card">
-        {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
-          <div
-            className={classNames(
-              'custom-test-type-container d-flex items-center',
-              isCustomQuery ? 'justify-between' : 'justify-end'
-            )}>
-            {isCustomQuery && <FormItemLabel label={t('label.test-type')} />}
-            <Button
-              color="link-color"
-              data-testid={isCustomQuery ? 'test-type-btn' : 'custom-query'}
-              iconLeading={Edit01}
-              size="sm"
-              onClick={handleCustomQueryToggle}>
-              {isCustomQuery
-                ? t('label.select-test-type')
-                : t('label.custom-query')}
-            </Button>
-          </div>
-        )}
-
-        {!isCustomQuery && getField(testTypeField)}
-
-        {additionalFields.map((field) => (
-          <div key={field.name}>{getField(field)}</div>
-        ))}
-
-        {showParameterFields && selectedTestDefinition && (
-          <div
-            className="parameter-fields-wrapper"
-            onFocusCapture={() =>
-              handleActiveField(
-                selectedTestType ? `root/${selectedTestType}` : 'root/testType'
-              )
-            }>
-            <ParameterFields
-              definition={selectedTestDefinition}
-              form={form}
-              table={selectedTableData}
-              testDefinitionDoc={
-                fieldDocs[selectedTestDefinition.name ?? ''] ??
-                selectedTestDefinition.description
-              }
-            />
-          </div>
-        )}
-
-        {isComputeRowCountFieldVisible && getField(computeRowCountField)}
-      </div>
-
-      {!showOnlyParameter && (
-        <div
-          className="form-card-section test-details-section"
-          data-testid="test-details-card">
-          {getField(testNameField)}
-
-          {isEditMode && getField(displayNameField)}
-
-          <FormField control={form.control} name="description">
-            {({ field }) => (
-              <div
-                className="tw:flex tw:flex-col tw:gap-1"
-                data-testid="description"
-                id="root/description"
-                {...descriptionDoc}>
-                <FormItemLabel label={t('label.description')} />
-                <RichTextEditor
-                  initialValue={field.value ?? ''}
-                  onFocus={() => handleActiveField('root/description')}
-                  onTextChange={field.onChange}
-                />
-              </div>
-            )}
-          </FormField>
-
-          <FormField control={form.control} name="tags">
-            {({ field }) => (
-              <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-                <TagSuggestion
-                  label={t('label.tag-plural')}
-                  placeholder={t('label.select-field', {
-                    field: t('label.tag-plural'),
-                  })}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              </div>
-            )}
-          </FormField>
-
-          <FormField control={form.control} name="glossaryTerms">
-            {({ field }) => (
-              <div
-                data-testid="glossary-terms-selector"
-                id="root/glossaryTerms"
-                {...glossaryTermsDoc}>
-                <TagSuggestion
-                  label={t('label.glossary-term-plural')}
-                  placeholder={t('label.select-field', {
-                    field: t('label.glossary-term-plural'),
-                  })}
-                  tagType={TagSource.Glossary}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              </div>
-            )}
-          </FormField>
-        </div>
-      )}
-
-      {!showOnlyParameter &&
-        !isEditMode &&
-        selectedTableFqn &&
-        canCreatePipeline && (
-          <div {...pipelineDoc}>
-            <TestCaseSchedulerSection
-              canCreatePipeline={canCreatePipeline}
-              form={form}
-              hasTestSuite={hasTestSuite}
-              schedulerOptions={schedulerOptions}
-              selectedTableData={selectedTableData}
-              table={table}
-              testSuite={testSuite}
-              onActiveFieldChange={onActiveFieldChange}
-            />
-          </div>
-        )}
     </div>
   );
 };

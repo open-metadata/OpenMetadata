@@ -77,6 +77,47 @@ import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
+const DROPDOWN_ITEMS_BY_INDEX: Record<string, typeof COMMON_DROPDOWN_ITEMS> = {
+  [SearchIndex.TABLE]: [...COMMON_DROPDOWN_ITEMS, ...TABLE_DROPDOWN_ITEMS],
+  [SearchIndex.TOPIC]: [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS],
+  [SearchIndex.API_ENDPOINT]: [
+    ...COMMON_DROPDOWN_ITEMS,
+    ...API_ENDPOINT_DROPDOWN_ITEMS,
+  ],
+  [SearchIndex.DASHBOARD]: [
+    ...COMMON_DROPDOWN_ITEMS,
+    ...DASHBOARD_DROPDOWN_ITEMS,
+  ],
+  [SearchIndex.PIPELINE]: [
+    ...COMMON_DROPDOWN_ITEMS,
+    ...PIPELINE_DROPDOWN_ITEMS,
+  ],
+  [SearchIndex.SEARCH_INDEX]: [
+    ...COMMON_DROPDOWN_ITEMS,
+    ...SEARCH_INDEX_DROPDOWN_ITEMS,
+  ],
+  [SearchIndex.MLMODEL]: [...COMMON_DROPDOWN_ITEMS, ...ML_MODEL_DROPDOWN_ITEMS],
+  [SearchIndex.CONTAINER]: [
+    ...COMMON_DROPDOWN_ITEMS,
+    ...CONTAINER_DROPDOWN_ITEMS,
+  ],
+  [SearchIndex.DASHBOARD_DATA_MODEL]: [
+    ...COMMON_DROPDOWN_ITEMS,
+    ...DASHBOARD_DATA_MODEL_TYPE,
+  ],
+  [SearchIndex.GLOSSARY_TERM]: GLOSSARY_DROPDOWN_ITEMS,
+  [SearchIndex.TAG]: TAG_DROPDOWN_ITEMS,
+  [SearchIndex.DATA_PRODUCT]: DATA_PRODUCT_DROPDOWN_ITEMS,
+  [SearchIndex.COLUMN]: COLUMN_DROPDOWN_ITEMS,
+  [SearchIndex.STORED_PROCEDURE]: COMMON_DROPDOWN_ITEMS,
+  [SearchIndex.DATABASE]: COMMON_DROPDOWN_ITEMS,
+  [SearchIndex.DATABASE_SCHEMA]: COMMON_DROPDOWN_ITEMS,
+  [SearchIndex.API_COLLECTION]: COMMON_DROPDOWN_ITEMS,
+  [SearchIndex.METRIC]: COMMON_DROPDOWN_ITEMS,
+  [SearchIndex.DATA_ASSET]: DATA_ASSET_DROPDOWN_ITEMS,
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KNOWLEDGE_PAGE_DROPDOWN_ITEMS,
+};
+
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
     return {
@@ -675,53 +716,7 @@ class SearchClassBase {
     };
   }
   public getDropDownItems(index: string) {
-    switch (index) {
-      case SearchIndex.TABLE:
-        return [...COMMON_DROPDOWN_ITEMS, ...TABLE_DROPDOWN_ITEMS];
-
-      case SearchIndex.TOPIC:
-        return [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS];
-
-      case SearchIndex.API_ENDPOINT:
-        return [...COMMON_DROPDOWN_ITEMS, ...API_ENDPOINT_DROPDOWN_ITEMS];
-
-      case SearchIndex.DASHBOARD:
-        return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
-
-      case SearchIndex.PIPELINE:
-        return [...COMMON_DROPDOWN_ITEMS, ...PIPELINE_DROPDOWN_ITEMS];
-
-      case SearchIndex.SEARCH_INDEX:
-        return [...COMMON_DROPDOWN_ITEMS, ...SEARCH_INDEX_DROPDOWN_ITEMS];
-
-      case SearchIndex.MLMODEL:
-        return [...COMMON_DROPDOWN_ITEMS, ...ML_MODEL_DROPDOWN_ITEMS];
-      case SearchIndex.CONTAINER:
-        return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
-      case SearchIndex.DASHBOARD_DATA_MODEL:
-        return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
-      case SearchIndex.GLOSSARY_TERM:
-        return GLOSSARY_DROPDOWN_ITEMS;
-      case SearchIndex.TAG:
-        return TAG_DROPDOWN_ITEMS;
-      case SearchIndex.DATA_PRODUCT:
-        return DATA_PRODUCT_DROPDOWN_ITEMS;
-      case SearchIndex.COLUMN:
-        return COLUMN_DROPDOWN_ITEMS;
-      case SearchIndex.STORED_PROCEDURE:
-      case SearchIndex.DATABASE:
-      case SearchIndex.DATABASE_SCHEMA:
-      case SearchIndex.API_COLLECTION:
-      case SearchIndex.METRIC:
-        return COMMON_DROPDOWN_ITEMS;
-      case SearchIndex.DATA_ASSET:
-        return DATA_ASSET_DROPDOWN_ITEMS;
-      case SearchIndex.KNOWLEDGE_PAGE_INDEX:
-        return KNOWLEDGE_PAGE_DROPDOWN_ITEMS;
-
-      default:
-        return [];
-    }
+    return DROPDOWN_ITEMS_BY_INDEX[index] ?? [];
   }
 
   public getListOfEntitiesWithoutTier() {
@@ -769,6 +764,16 @@ class SearchClassBase {
     return getEntityBreadcrumbItems(source);
   }
 
+  private getKnowledgePageEntityLink(entity: SearchSourceAlias): string {
+    const pageEntity = entity as KnowledgePageSearchSource;
+    const isQuickLink = pageEntity.pageType === PageType.QUICK_LINK;
+    const link = isQuickLink
+      ? (pageEntity?.page as QuickLink)?.url
+      : getKnowledgePagePath(pageEntity.fullyQualifiedName ?? '');
+
+    return link ?? '';
+  }
+
   public getEntityLink(
     entity: SearchSourceAlias
   ): string | { pathname: string } {
@@ -796,13 +801,7 @@ class SearchClassBase {
     }
 
     if (entity?.entityType === EntityType.KNOWLEDGE_PAGE) {
-      const pageEntity = entity as KnowledgePageSearchSource;
-      const isQuickLink = pageEntity.pageType === PageType.QUICK_LINK;
-      const link = isQuickLink
-        ? (pageEntity?.page as QuickLink)?.url
-        : getKnowledgePagePath(pageEntity.fullyQualifiedName ?? '');
-
-      return link ?? '';
+      return this.getKnowledgePageEntityLink(entity);
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {

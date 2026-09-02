@@ -125,6 +125,50 @@ export interface CreateUpdatedTestCasePatchArgs {
   isComputeRowCountFieldVisible: boolean;
 }
 
+const resolvePatchedDescription = (
+  showOnlyParameter: boolean | undefined,
+  testCase: TestCase,
+  value: TestCaseFormType
+): string | undefined => {
+  if (showOnlyParameter) {
+    return testCase.description;
+  }
+
+  return isEmpty(value.description) ? undefined : value.description;
+};
+
+const resolvePatchedTags = (
+  showOnlyParameter: boolean | undefined,
+  rebuiltTags: TestCase['tags'],
+  testCase: TestCase
+): TestCase['tags'] => {
+  const hasNoTagChanges = isEmpty(rebuiltTags) && isEmpty(testCase.tags);
+
+  return showOnlyParameter || hasNoTagChanges ? testCase.tags : rebuiltTags;
+};
+
+const resolvePatchedDimensionColumns = (
+  testCase: TestCase,
+  value: TestCaseFormType
+) => {
+  if (isUndefined(value.dimensionColumns)) {
+    return testCase.dimensionColumns;
+  }
+
+  return value.dimensionColumns || undefined;
+};
+
+const resolvePatchedTopDimensions = (
+  testCase: TestCase,
+  value: TestCaseFormType
+) => {
+  if (isUndefined(value.topDimensions)) {
+    return testCase.topDimensions;
+  }
+
+  return value.topDimensions ?? undefined;
+};
+
 export const createUpdatedTestCasePatch = ({
   testCase,
   value,
@@ -141,25 +185,14 @@ export const createUpdatedTestCasePatch = ({
   const updatedTestCase = {
     ...testCase,
     ...createTestCaseObject,
-    description: showOnlyParameter
-      ? testCase.description
-      : isEmpty(value.description)
-      ? undefined
-      : value.description,
+    description: resolvePatchedDescription(showOnlyParameter, testCase, value),
     displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
     computePassedFailedRowCount: isComputeRowCountFieldVisible
       ? value.computePassedFailedRowCount
       : testCase?.computePassedFailedRowCount,
-    tags:
-      showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
-        ? testCase.tags
-        : rebuiltTags,
-    dimensionColumns: isUndefined(value.dimensionColumns)
-      ? testCase.dimensionColumns
-      : value.dimensionColumns || undefined,
-    topDimensions: isUndefined(value.topDimensions)
-      ? testCase.topDimensions
-      : value.topDimensions ?? undefined,
+    tags: resolvePatchedTags(showOnlyParameter, rebuiltTags, testCase),
+    dimensionColumns: resolvePatchedDimensionColumns(testCase, value),
+    topDimensions: resolvePatchedTopDimensions(testCase, value),
   };
 
   return compare(testCase, updatedTestCase);
@@ -372,6 +405,139 @@ const buildDataQualityDimensionFilter = (dimension: string) => {
   return { term: { dataQualityDimension: dimension } };
 };
 
+type EsFilterClause = Record<string, unknown>;
+
+/** Owner/tagging-related filters (unhealthy status, owner, certification, tags, tier, data products). */
+const buildOwnershipAndTaggingFilters = (
+  filters: DataQualityDashboardChartFilters | undefined,
+  unhealthy: boolean
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (unhealthy) {
+    clauses.push({
+      terms: {
+        // The latest status is stored under testCaseResult in the testCase
+        // index; the top-level testCaseStatus field belongs to result documents.
+        'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
+      },
+    });
+  }
+
+  if (filters?.ownerFqn) {
+    clauses.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.certification) {
+    clauses.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tags && filters.tags.length > 0) {
+    clauses.push(buildMustEsFilterForTags(filters.tags));
+  }
+
+  if (filters?.tier && filters.tier.length > 0) {
+    clauses.push(buildMustEsFilterForTier(filters.tier));
+  }
+
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    clauses.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
+  }
+
+  return clauses;
+};
+
+/** Entity/service/platform/dimension-related filters. */
+const buildEntityAndServiceFilters = (
+  filters: DataQualityDashboardChartFilters | undefined
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (filters?.entityFQN) {
+    clauses.push({
+      term: { originEntityFQN: filters.entityFQN },
+    });
+  }
+
+  if (filters?.serviceName) {
+    clauses.push({
+      term: {
+        'service.name.keyword': filters.serviceName,
+      },
+    });
+  }
+
+  if (filters?.testPlatforms) {
+    clauses.push({
+      terms: {
+        testPlatforms: filters.testPlatforms,
+      },
+    });
+  }
+
+  if (filters?.dataQualityDimension) {
+    clauses.push(buildDataQualityDimensionFilter(filters.dataQualityDimension));
+  }
+
+  return clauses;
+};
+
+/** Status/type/time-range-related filters. */
+const buildStatusTypeAndTimeFilters = (
+  filters: DataQualityDashboardChartFilters | undefined
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (!isEmpty(filters?.testCaseStatus)) {
+    // Elasticsearch `term` only accepts one value; URL-backed multi-selects
+    // need `terms` so the selected statuses are matched with OR semantics.
+    if (isArray(filters?.testCaseStatus)) {
+      clauses.push({
+        terms: {
+          'testCaseResult.testCaseStatus': filters.testCaseStatus,
+        },
+      });
+    } else {
+      clauses.push({
+        term: {
+          'testCaseResult.testCaseStatus': filters?.testCaseStatus,
+        },
+      });
+    }
+  }
+
+  if (filters?.testCaseType) {
+    if (filters.testCaseType === TestCaseType.table) {
+      clauses.push({
+        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
+      });
+    }
+
+    if (filters.testCaseType === TestCaseType.column) {
+      clauses.push({ regexp: { entityLink: '.*::columns::.*' } });
+    }
+  }
+
+  if (filters?.startTs && filters?.endTs) {
+    clauses.push({
+      range: {
+        'testCaseResult.timestamp': {
+          gte: filters.startTs,
+          lte: filters.endTs,
+        },
+      },
+    });
+  }
+
+  return clauses;
+};
+
 /** Builds the complete filter set supported by the testCase index. */
 export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
@@ -387,112 +553,11 @@ export const buildDataQualityDashboardFilters = (data: {
     return buildDataQualityTableFilters(filters);
   }
 
-  const mustFilter = [];
-
-  if (unhealthy) {
-    mustFilter.push({
-      terms: {
-        // The latest status is stored under testCaseResult in the testCase
-        // index; the top-level testCaseStatus field belongs to result documents.
-        'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
-      },
-    });
-  }
-
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-
-  if (filters?.certification) {
-    mustFilter.push({
-      bool: {
-        should: filters.certification.map((fqn) => ({
-          term: { 'certification.tagLabel.tagFQN': fqn },
-        })),
-      },
-    });
-  }
-
-  if (filters?.tags && filters.tags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(filters.tags));
-  }
-
-  if (filters?.tier && filters.tier.length > 0) {
-    mustFilter.push(buildMustEsFilterForTier(filters.tier));
-  }
-
-  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
-    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
-  }
-
-  if (filters?.entityFQN) {
-    mustFilter.push({
-      term: { originEntityFQN: filters.entityFQN },
-    });
-  }
-
-  if (filters?.serviceName) {
-    mustFilter.push({
-      term: {
-        'service.name.keyword': filters.serviceName,
-      },
-    });
-  }
-
-  if (filters?.testPlatforms) {
-    mustFilter.push({
-      terms: {
-        testPlatforms: filters.testPlatforms,
-      },
-    });
-  }
-
-  if (filters?.dataQualityDimension) {
-    mustFilter.push(
-      buildDataQualityDimensionFilter(filters.dataQualityDimension)
-    );
-  }
-
-  if (!isEmpty(filters?.testCaseStatus)) {
-    // Elasticsearch `term` only accepts one value; URL-backed multi-selects
-    // need `terms` so the selected statuses are matched with OR semantics.
-    if (isArray(filters?.testCaseStatus)) {
-      mustFilter.push({
-        terms: {
-          'testCaseResult.testCaseStatus': filters.testCaseStatus,
-        },
-      });
-    } else {
-      mustFilter.push({
-        term: {
-          'testCaseResult.testCaseStatus': filters?.testCaseStatus,
-        },
-      });
-    }
-  }
-
-  if (filters?.testCaseType) {
-    if (filters.testCaseType === TestCaseType.table) {
-      mustFilter.push({
-        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
-      });
-    }
-
-    if (filters.testCaseType === TestCaseType.column) {
-      mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
-    }
-  }
-
-  if (filters?.startTs && filters?.endTs) {
-    mustFilter.push({
-      range: {
-        'testCaseResult.timestamp': {
-          gte: filters.startTs,
-          lte: filters.endTs,
-        },
-      },
-    });
-  }
+  const mustFilter = [
+    ...buildOwnershipAndTaggingFilters(filters, unhealthy),
+    ...buildEntityAndServiceFilters(filters),
+    ...buildStatusTypeAndTimeFilters(filters),
+  ];
 
   mustFilter.push({
     term: {

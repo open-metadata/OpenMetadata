@@ -117,6 +117,37 @@ const getConversationFilterType = (filter?: FeedFilter) => {
   }
 };
 
+const getConversationsUserId = (
+  entityType: EntityType | undefined,
+  feedFilterType: FeedFilter,
+  user: string | undefined,
+  currentUserId: string | undefined
+): string | undefined => {
+  if (entityType === EntityType.USER) {
+    return user;
+  }
+  if (feedFilterType !== FeedFilter.ALL) {
+    return currentUserId;
+  }
+
+  return undefined;
+};
+
+const getConversationsEntityLink = (
+  entityType: EntityType | undefined,
+  fqn: string | undefined
+) =>
+  entityType !== EntityType.USER && fqn
+    ? getEntityFeedLink(entityType, fqn)
+    : undefined;
+
+const getConversationsFilterType = (
+  feedFilterType: FeedFilter,
+  userId: string | undefined
+) =>
+  getConversationFilterType(feedFilterType) ??
+  (userId ? ConversationFilterType.OwnerOrFollows : undefined);
+
 const withReply = (
   conversation: Conversation,
   reply: ConversationReply,
@@ -432,23 +463,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setEntityPaging({} as Paging);
         }
         const feedFilterType = filterType ?? FeedFilter.ALL;
-        let userId = undefined;
-
-        if (entityType === EntityType.USER) {
-          userId = user;
-        } else if (feedFilterType !== FeedFilter.ALL) {
-          userId = currentUser?.id;
-        }
+        const userId = getConversationsUserId(
+          entityType,
+          feedFilterType,
+          user,
+          currentUser?.id
+        );
 
         const { data, paging } = await listConversations({
-          entityLink:
-            entityType !== EntityType.USER && fqn
-              ? getEntityFeedLink(entityType, fqn)
-              : undefined,
+          entityLink: getConversationsEntityLink(entityType, fqn),
           after,
-          filterType:
-            getConversationFilterType(feedFilterType) ??
-            (userId ? ConversationFilterType.OwnerOrFollows : undefined),
+          filterType: getConversationsFilterType(feedFilterType, userId),
           userId,
           limit,
         });

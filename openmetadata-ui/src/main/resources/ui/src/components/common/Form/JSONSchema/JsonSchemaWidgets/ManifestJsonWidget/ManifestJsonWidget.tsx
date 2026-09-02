@@ -175,6 +175,43 @@ const suggest = (unknownField: string, candidates: string[]): string | null => {
   return bestDistance <= threshold ? bestCandidate : null;
 };
 
+type TypeCheck = {
+  isValid: (value: unknown) => boolean;
+  buildMismatch: (value: unknown) => TypeMismatch;
+};
+
+const TYPE_CHECKS: Record<(typeof ENTRY_FIELDS)[EntryFieldName], TypeCheck> = {
+  string: {
+    isValid: (value) => typeof value === 'string',
+    buildMismatch: (value) => ({ kind: 'expected-string', got: typeof value }),
+  },
+  boolean: {
+    isValid: (value) => typeof value === 'boolean',
+    buildMismatch: (value) => ({
+      kind: 'expected-boolean',
+      got: typeof value,
+    }),
+  },
+  number: {
+    isValid: (value) => typeof value === 'number',
+    buildMismatch: (value) => ({ kind: 'expected-number', got: typeof value }),
+  },
+  'string[]': {
+    isValid: (value) =>
+      Array.isArray(value) && value.every((item) => typeof item === 'string'),
+    buildMismatch: () => ({ kind: 'expected-string-array' }),
+  },
+  'object[]': {
+    isValid: (value) =>
+      Array.isArray(value) &&
+      value.every(
+        (item) =>
+          typeof item === 'object' && item !== null && !Array.isArray(item)
+      ),
+    buildMismatch: () => ({ kind: 'expected-object-array' }),
+  },
+};
+
 const getTypeMismatch = (
   value: unknown,
   expected: (typeof ENTRY_FIELDS)[EntryFieldName]
@@ -182,41 +219,58 @@ const getTypeMismatch = (
   if (value === null || value === undefined) {
     return null;
   }
-  switch (expected) {
-    case 'string':
-      return typeof value === 'string'
-        ? null
-        : { kind: 'expected-string', got: typeof value };
-    case 'boolean':
-      return typeof value === 'boolean'
-        ? null
-        : { kind: 'expected-boolean', got: typeof value };
-    case 'number':
-      return typeof value === 'number'
-        ? null
-        : { kind: 'expected-number', got: typeof value };
-    case 'string[]':
-      if (!Array.isArray(value)) {
-        return { kind: 'expected-string-array' };
-      }
+  const check = TYPE_CHECKS[expected];
 
-      return value.every((item) => typeof item === 'string')
-        ? null
-        : { kind: 'expected-string-array' };
-    case 'object[]':
-      if (!Array.isArray(value)) {
-        return { kind: 'expected-object-array' };
-      }
+  return check.isValid(value) ? null : check.buildMismatch(value);
+};
 
-      return value.every(
-        (item) =>
-          typeof item === 'object' && item !== null && !Array.isArray(item)
-      )
-        ? null
-        : { kind: 'expected-object-array' };
-    default:
-      return null;
+const validatePartitionColumn = (
+  entryIndex: number,
+  colIndex: number,
+  column: unknown
+): ValidationError | null => {
+  if (typeof column !== 'object' || column === null) {
+    return {
+      code: 'partition-column-must-be-object',
+      entryIndex: entryIndex + 1,
+      colIndex,
+    };
   }
+  const columnRecord = column as Record<string, unknown>;
+  for (const key of Object.keys(columnRecord)) {
+    if (!PARTITION_COLUMN_FIELDS.has(key)) {
+      const suggestion = suggest(key, Array.from(PARTITION_COLUMN_FIELDS));
+
+      return {
+        code: 'partition-column-unknown-field',
+        entryIndex: entryIndex + 1,
+        colIndex,
+        field: key,
+        suggestion: suggestion ?? undefined,
+      };
+    }
+  }
+  if (typeof columnRecord.name !== 'string' || !columnRecord.name.trim()) {
+    return {
+      code: 'partition-column-required',
+      entryIndex: entryIndex + 1,
+      colIndex,
+      field: 'name',
+    };
+  }
+  if (
+    typeof columnRecord.dataType !== 'string' ||
+    !columnRecord.dataType.trim()
+  ) {
+    return {
+      code: 'partition-column-required',
+      entryIndex: entryIndex + 1,
+      colIndex,
+      field: 'dataType',
+    };
+  }
+
+  return null;
 };
 
 const validatePartitionColumns = (
@@ -227,50 +281,106 @@ const validatePartitionColumns = (
     return null;
   }
   for (let colIndex = 0; colIndex < columns.length; colIndex += 1) {
-    const column = columns[colIndex];
-    if (typeof column !== 'object' || column === null) {
-      return {
-        code: 'partition-column-must-be-object',
-        entryIndex: entryIndex + 1,
-        colIndex,
-      };
-    }
-    const columnRecord = column as Record<string, unknown>;
-    for (const key of Object.keys(columnRecord)) {
-      if (!PARTITION_COLUMN_FIELDS.has(key)) {
-        const suggestion = suggest(key, Array.from(PARTITION_COLUMN_FIELDS));
-
-        return {
-          code: 'partition-column-unknown-field',
-          entryIndex: entryIndex + 1,
-          colIndex,
-          field: key,
-          suggestion: suggestion ?? undefined,
-        };
-      }
-    }
-    if (typeof columnRecord.name !== 'string' || !columnRecord.name.trim()) {
-      return {
-        code: 'partition-column-required',
-        entryIndex: entryIndex + 1,
-        colIndex,
-        field: 'name',
-      };
-    }
-    if (
-      typeof columnRecord.dataType !== 'string' ||
-      !columnRecord.dataType.trim()
-    ) {
-      return {
-        code: 'partition-column-required',
-        entryIndex: entryIndex + 1,
-        colIndex,
-        field: 'dataType',
-      };
+    const error = validatePartitionColumn(
+      entryIndex,
+      colIndex,
+      columns[colIndex]
+    );
+    if (error) {
+      return error;
     }
   }
 
   return null;
+};
+
+const parseManifestJsonPayload = (
+  trimmed: string
+): { parsed: unknown } | { error: ValidationError } => {
+  try {
+    return { parsed: JSON.parse(trimmed) };
+  } catch (err) {
+    return {
+      error: {
+        code: 'invalid-json',
+        error: err instanceof Error ? err.message : String(err),
+      },
+    };
+  }
+};
+
+const validateTopLevelShape = (parsed: unknown): ValidationError | null => {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { code: 'top-level-must-be-object' };
+  }
+
+  const topLevelKeys = Object.keys(parsed as Record<string, unknown>);
+  for (const key of topLevelKeys) {
+    if (key !== 'entries') {
+      return { code: 'unknown-top-level-field', field: key };
+    }
+  }
+
+  return null;
+};
+
+const validateEntryRequiredStringField = (
+  entryRecord: Record<string, unknown>,
+  field: 'containerName' | 'dataPath',
+  index: number
+): ValidationError | null => {
+  const value = entryRecord[field];
+  if (typeof value !== 'string' || !value.trim()) {
+    return { code: 'entry-required-field', index: index + 1, field };
+  }
+
+  return null;
+};
+
+const validateEntryFieldTypes = (
+  entryRecord: Record<string, unknown>,
+  allowedFields: EntryFieldName[],
+  index: number
+): ValidationError | null => {
+  for (const field of allowedFields) {
+    const mismatch = getTypeMismatch(entryRecord[field], ENTRY_FIELDS[field]);
+    if (mismatch) {
+      return { code: 'entry-type-error', index: index + 1, field, mismatch };
+    }
+  }
+
+  return null;
+};
+
+const validateManifestEntry = (
+  index: number,
+  entry: unknown,
+  allowedFields: EntryFieldName[]
+): ValidationError | null => {
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+    return { code: 'entry-must-be-object', index: index + 1 };
+  }
+  const entryRecord = entry as Record<string, unknown>;
+
+  for (const key of Object.keys(entryRecord)) {
+    if (!(key in ENTRY_FIELDS)) {
+      const suggestion = suggest(key, allowedFields);
+
+      return {
+        code: 'entry-unknown-field',
+        index: index + 1,
+        field: key,
+        suggestion: suggestion ?? undefined,
+      };
+    }
+  }
+
+  return (
+    validateEntryRequiredStringField(entryRecord, 'containerName', index) ??
+    validateEntryRequiredStringField(entryRecord, 'dataPath', index) ??
+    validateEntryFieldTypes(entryRecord, allowedFields, index) ??
+    validatePartitionColumns(index, entryRecord.partitionColumns)
+  );
 };
 
 export const validateManifestJson = (raw: string): ValidationState => {
@@ -279,120 +389,27 @@ export const validateManifestJson = (raw: string): ValidationState => {
     return { status: 'empty' };
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch (err) {
-    return {
-      status: 'error',
-      error: {
-        code: 'invalid-json',
-        error: err instanceof Error ? err.message : String(err),
-      },
-    };
+  const parseResult = parseManifestJsonPayload(trimmed);
+  if ('error' in parseResult) {
+    return { status: 'error', error: parseResult.error };
   }
 
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return {
-      status: 'error',
-      error: { code: 'top-level-must-be-object' },
-    };
+  const topLevelError = validateTopLevelShape(parseResult.parsed);
+  if (topLevelError) {
+    return { status: 'error', error: topLevelError };
   }
 
-  const topLevelKeys = Object.keys(parsed as Record<string, unknown>);
-  for (const key of topLevelKeys) {
-    if (key !== 'entries') {
-      return {
-        status: 'error',
-        error: { code: 'unknown-top-level-field', field: key },
-      };
-    }
-  }
-
-  const entries = (parsed as { entries?: unknown }).entries;
+  const entries = (parseResult.parsed as { entries?: unknown }).entries;
   if (!Array.isArray(entries)) {
-    return {
-      status: 'error',
-      error: { code: 'entries-must-be-array' },
-    };
+    return { status: 'error', error: { code: 'entries-must-be-array' } };
   }
 
-  const allowedFields = Object.keys(ENTRY_FIELDS);
+  const allowedFields = Object.keys(ENTRY_FIELDS) as EntryFieldName[];
 
   for (let i = 0; i < entries.length; i += 1) {
-    const entry = entries[i];
-    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-      return {
-        status: 'error',
-        error: { code: 'entry-must-be-object', index: i + 1 },
-      };
-    }
-    const entryRecord = entry as Record<string, unknown>;
-
-    for (const key of Object.keys(entryRecord)) {
-      if (!(key in ENTRY_FIELDS)) {
-        const suggestion = suggest(key, allowedFields);
-
-        return {
-          status: 'error',
-          error: {
-            code: 'entry-unknown-field',
-            index: i + 1,
-            field: key,
-            suggestion: suggestion ?? undefined,
-          },
-        };
-      }
-    }
-
-    if (
-      typeof entryRecord.containerName !== 'string' ||
-      !entryRecord.containerName.trim()
-    ) {
-      return {
-        status: 'error',
-        error: {
-          code: 'entry-required-field',
-          index: i + 1,
-          field: 'containerName',
-        },
-      };
-    }
-    if (
-      typeof entryRecord.dataPath !== 'string' ||
-      !entryRecord.dataPath.trim()
-    ) {
-      return {
-        status: 'error',
-        error: {
-          code: 'entry-required-field',
-          index: i + 1,
-          field: 'dataPath',
-        },
-      };
-    }
-
-    for (const field of allowedFields as EntryFieldName[]) {
-      const mismatch = getTypeMismatch(entryRecord[field], ENTRY_FIELDS[field]);
-      if (mismatch) {
-        return {
-          status: 'error',
-          error: {
-            code: 'entry-type-error',
-            index: i + 1,
-            field,
-            mismatch,
-          },
-        };
-      }
-    }
-
-    const partitionError = validatePartitionColumns(
-      i,
-      entryRecord.partitionColumns
-    );
-    if (partitionError) {
-      return { status: 'error', error: partitionError };
+    const entryError = validateManifestEntry(i, entries[i], allowedFields);
+    if (entryError) {
+      return { status: 'error', error: entryError };
     }
   }
 
@@ -418,75 +435,77 @@ const formatTypeMismatch = (mismatch: TypeMismatch, t: TFunction): string => {
   }
 };
 
+const formatUnknownFieldSuggestion = (
+  suggestion: string | undefined,
+  t: TFunction
+): string =>
+  suggestion
+    ? t('message.manifest-entry-unknown-field-suggestion', { suggestion })
+    : '';
+
+const VALIDATION_ERROR_FORMATTERS: {
+  [K in ValidationError['code']]: (
+    error: Extract<ValidationError, { code: K }>,
+    t: TFunction
+  ) => string;
+} = {
+  'invalid-json': (error, t) =>
+    t('message.manifest-invalid-json', { error: error.error }),
+  'top-level-must-be-object': (_error, t) =>
+    t('message.manifest-top-level-must-be-object'),
+  'unknown-top-level-field': (error, t) =>
+    t('message.manifest-unknown-top-level-field', { field: error.field }),
+  'entries-must-be-array': (_error, t) =>
+    t('message.manifest-entries-must-be-array'),
+  'entry-must-be-object': (error, t) =>
+    t('message.manifest-entry-must-be-object', { index: error.index }),
+  'entry-unknown-field': (error, t) =>
+    t('message.manifest-entry-unknown-field', {
+      index: error.index,
+      field: error.field,
+      suggestion: formatUnknownFieldSuggestion(error.suggestion, t),
+    }),
+  'entry-required-field': (error, t) =>
+    t('message.manifest-entry-required-field', {
+      index: error.index,
+      field: error.field,
+    }),
+  'entry-type-error': (error, t) =>
+    t('message.manifest-entry-type-error', {
+      index: error.index,
+      field: error.field,
+      error: formatTypeMismatch(error.mismatch, t),
+    }),
+  'partition-column-must-be-object': (error, t) =>
+    t('message.manifest-partition-column-must-be-object', {
+      entryIndex: error.entryIndex,
+      colIndex: error.colIndex,
+    }),
+  'partition-column-unknown-field': (error, t) =>
+    t('message.manifest-partition-column-unknown-field', {
+      entryIndex: error.entryIndex,
+      colIndex: error.colIndex,
+      field: error.field,
+      suggestion: formatUnknownFieldSuggestion(error.suggestion, t),
+    }),
+  'partition-column-required': (error, t) =>
+    t('message.manifest-partition-column-required', {
+      entryIndex: error.entryIndex,
+      colIndex: error.colIndex,
+      field: error.field,
+    }),
+};
+
 export const formatValidationError = (
   error: ValidationError,
   t: TFunction
 ): string => {
-  switch (error.code) {
-    case 'invalid-json':
-      return t('message.manifest-invalid-json', { error: error.error });
-    case 'top-level-must-be-object':
-      return t('message.manifest-top-level-must-be-object');
-    case 'unknown-top-level-field':
-      return t('message.manifest-unknown-top-level-field', {
-        field: error.field,
-      });
-    case 'entries-must-be-array':
-      return t('message.manifest-entries-must-be-array');
-    case 'entry-must-be-object':
-      return t('message.manifest-entry-must-be-object', { index: error.index });
-    case 'entry-unknown-field': {
-      const suggestionText = error.suggestion
-        ? t('message.manifest-entry-unknown-field-suggestion', {
-            suggestion: error.suggestion,
-          })
-        : '';
+  const formatter = VALIDATION_ERROR_FORMATTERS[error.code] as (
+    error: ValidationError,
+    t: TFunction
+  ) => string;
 
-      return t('message.manifest-entry-unknown-field', {
-        index: error.index,
-        field: error.field,
-        suggestion: suggestionText,
-      });
-    }
-    case 'entry-required-field':
-      return t('message.manifest-entry-required-field', {
-        index: error.index,
-        field: error.field,
-      });
-    case 'entry-type-error':
-      return t('message.manifest-entry-type-error', {
-        index: error.index,
-        field: error.field,
-        error: formatTypeMismatch(error.mismatch, t),
-      });
-    case 'partition-column-must-be-object':
-      return t('message.manifest-partition-column-must-be-object', {
-        entryIndex: error.entryIndex,
-        colIndex: error.colIndex,
-      });
-    case 'partition-column-unknown-field': {
-      const suggestionText = error.suggestion
-        ? t('message.manifest-entry-unknown-field-suggestion', {
-            suggestion: error.suggestion,
-          })
-        : '';
-
-      return t('message.manifest-partition-column-unknown-field', {
-        entryIndex: error.entryIndex,
-        colIndex: error.colIndex,
-        field: error.field,
-        suggestion: suggestionText,
-      });
-    }
-    case 'partition-column-required':
-      return t('message.manifest-partition-column-required', {
-        entryIndex: error.entryIndex,
-        colIndex: error.colIndex,
-        field: error.field,
-      });
-    default:
-      return '';
-  }
+  return formatter(error, t);
 };
 
 const ManifestJsonWidget = ({

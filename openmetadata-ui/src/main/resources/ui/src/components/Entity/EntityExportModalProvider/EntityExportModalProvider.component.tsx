@@ -230,6 +230,56 @@ export const EntityExportModalProvider = ({
     setCSVExportError(undefined);
   }, [handleCancel]);
 
+  // FAILED / CANCELLED — notify the caller (mirrors the synchronous catch),
+  // drop the job ref so a late message can't re-merge, and show a generic
+  // error to the bulk-edit grid so it stops waiting on an export that will
+  // never arrive. The raw backend error is not surfaced — it can leak
+  // internal details (stack traces, SQL, entity internals).
+  const notifyCSVExportFailure = useCallback(() => {
+    setDownloading(false);
+    exportOnErrorRef.current?.();
+    exportOnErrorRef.current = undefined;
+    csvExportJobRef.current = undefined;
+    pendingCSVExportResponsesRef.current.clear();
+    if (isBulkEdit) {
+      setCSVExportError(t('server.unexpected-error'));
+    }
+  }, [isBulkEdit, t]);
+
+  // Completion events no longer carry the CSV (it can be arbitrarily large)
+  // — download it from the job result endpoint instead.
+  const downloadCompletedCSVExport = useCallback(
+    (jobId: string, fileName?: string) => {
+      const abortController = new AbortController();
+      csvExportResultAbortControllerRef.current = abortController;
+      getCsvAsyncJobResult(jobId, abortController.signal)
+        .then((csvData) => {
+          if (
+            !abortController.signal.aborted &&
+            csvExportJobRef.current?.jobId === jobId
+          ) {
+            handleCSVExportSuccess(csvData, fileName);
+          }
+        })
+        .catch((error) => {
+          if (abortController.signal.aborted) {
+            return;
+          }
+          if (csvExportJobRef.current?.jobId !== jobId) {
+            return;
+          }
+          showErrorToast(error as AxiosError);
+          notifyCSVExportFailure();
+        })
+        .finally(() => {
+          if (csvExportResultAbortControllerRef.current === abortController) {
+            csvExportResultAbortControllerRef.current = undefined;
+          }
+        });
+    },
+    [handleCSVExportSuccess, notifyCSVExportFailure]
+  );
+
   const applyCSVExportJobUpdate = useCallback(
     (response: Partial<CSVExportWebsocketResponse>) => {
       const activeJob = csvExportJobRef.current;
@@ -262,68 +312,22 @@ export const EntityExportModalProvider = ({
       } else if (response.status === 'COMPLETED') {
         stopCSVExportPolling();
         abortCSVExportResultRequest();
-        // Completion events no longer carry the CSV (it can be arbitrarily
-        // large) — download it from the job result endpoint instead.
-        const { jobId, fileName } = activeJob;
-        const abortController = new AbortController();
-        csvExportResultAbortControllerRef.current = abortController;
-        getCsvAsyncJobResult(jobId, abortController.signal)
-          .then((csvData) => {
-            if (
-              !abortController.signal.aborted &&
-              csvExportJobRef.current?.jobId === jobId
-            ) {
-              handleCSVExportSuccess(csvData, fileName);
-            }
-          })
-          .catch((error) => {
-            if (abortController.signal.aborted) {
-              return;
-            }
-            if (csvExportJobRef.current?.jobId !== jobId) {
-              return;
-            }
-            showErrorToast(error as AxiosError);
-            setDownloading(false);
-            exportOnErrorRef.current?.();
-            exportOnErrorRef.current = undefined;
-            csvExportJobRef.current = undefined;
-            pendingCSVExportResponsesRef.current.clear();
-            if (isBulkEdit) {
-              setCSVExportError(t('server.unexpected-error'));
-            }
-          })
-          .finally(() => {
-            if (csvExportResultAbortControllerRef.current === abortController) {
-              csvExportResultAbortControllerRef.current = undefined;
-            }
-          });
+        downloadCompletedCSVExport(activeJob.jobId, activeJob.fileName);
       } else if (response.status === 'IN_PROGRESS') {
         // Keep downloading state true during progress
         setDownloading(true);
       } else {
         stopCSVExportPolling();
         abortCSVExportResultRequest();
-        // FAILED / CANCELLED — notify the caller (mirrors the synchronous
-        // catch), drop the job ref so a late message can't re-merge, and show a
-        // generic error to the bulk-edit grid so it stops waiting on an export
-        // that will never arrive. The raw backend error is not surfaced — it can
-        // leak internal details (stack traces, SQL, entity internals).
-        setDownloading(false);
-        exportOnErrorRef.current?.();
-        exportOnErrorRef.current = undefined;
-        csvExportJobRef.current = undefined;
-        pendingCSVExportResponsesRef.current.clear();
-        if (isBulkEdit) {
-          setCSVExportError(t('server.unexpected-error'));
-        }
+        notifyCSVExportFailure();
       }
     },
     [
       abortCSVExportResultRequest,
       clearCSVExportPollingWatchdog,
-      isBulkEdit,
+      downloadCompletedCSVExport,
       handleCSVExportSuccess,
+      notifyCSVExportFailure,
       stopCSVExportPolling,
       t,
     ]
@@ -384,6 +388,14 @@ export const EntityExportModalProvider = ({
     csvExportJobRef.current = updatedCSVExportJob;
     setCSVExportJob(updatedCSVExportJob);
   }, []);
+
+  const isPollingStale = useCallback(
+    (pollingState: CSVExportPollingState, jobId: string) =>
+      pollingState.abortController.signal.aborted ||
+      csvExportPollingRef.current !== pollingState ||
+      csvExportJobRef.current?.jobId !== jobId,
+    []
+  );
 
   const startCSVExportPolling = useCallback(
     (jobId: string) => {
@@ -470,22 +482,14 @@ export const EntityExportModalProvider = ({
             await waitForNextPoll(getJitteredPollInterval(intervalMs));
           }
 
-          if (
-            pollingState.abortController.signal.aborted ||
-            csvExportPollingRef.current !== pollingState ||
-            csvExportJobRef.current?.jobId !== jobId
-          ) {
+          if (isPollingStale(pollingState, jobId)) {
             return;
           }
 
           try {
             const job = await getPolledJob();
 
-            if (
-              pollingState.abortController.signal.aborted ||
-              csvExportPollingRef.current !== pollingState ||
-              csvExportJobRef.current?.jobId !== jobId
-            ) {
+            if (isPollingStale(pollingState, jobId)) {
               return;
             }
 
@@ -510,12 +514,65 @@ export const EntityExportModalProvider = ({
     },
     [
       applyCSVExportJobUpdate,
+      isPollingStale,
       markCSVExportStatusUnavailable,
       stopCSVExportPolling,
     ]
   );
 
   csvExportPollingStarterRef.current = startCSVExportPolling;
+
+  const isExportStale = useCallback(
+    (exportGeneration: number) =>
+      !isMountedRef.current || exportGenerationRef.current !== exportGeneration,
+    []
+  );
+
+  const runNonCsvExport = useCallback(
+    async (
+      exportType: ExportTypes,
+      activeExportData: ExportData,
+      fileName: string,
+      exportGeneration: number
+    ) => {
+      // Flush the loading state, then wait for the browser to actually paint
+      // it before the heavy toPng work starts — html-to-image does synchronous
+      // DOM cloning that blocks the event loop, so without a paint the
+      // disabled/loading button would only render once the export is already
+      // done. Only needed for non-CSV (image) paths; CSV uses the async
+      // websocket flow.
+      flushSync(() => {
+        setDownloading(true);
+      });
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+      if (isExportStale(exportGeneration)) {
+        return;
+      }
+
+      const { default: exportUtilClassBase } = await import(
+        '../../../utils/ExportUtilClassBase'
+      );
+      if (isExportStale(exportGeneration)) {
+        return;
+      }
+      await exportUtilClassBase.exportMethodBasedOnType({
+        exportType,
+        exportData: {
+          ...activeExportData,
+          name: fileName,
+        },
+      });
+      if (isExportStale(exportGeneration)) {
+        return;
+      }
+
+      handleCancel();
+      setDownloading(false);
+    },
+    [handleCancel, isExportStale]
+  );
 
   const handleExport = async ({
     fileName,
@@ -533,50 +590,12 @@ export const EntityExportModalProvider = ({
     exportOnErrorRef.current = activeExportData.onError;
     try {
       if (exportType !== ExportTypes.CSV) {
-        // Flush the loading state, then wait for the browser to actually paint
-        // it before the heavy toPng work starts — html-to-image does synchronous
-        // DOM cloning that blocks the event loop, so without a paint the
-        // disabled/loading button would only render once the export is already
-        // done. Only needed for non-CSV (image) paths; CSV uses the async
-        // websocket flow.
-        flushSync(() => {
-          setDownloading(true);
-        });
-        await new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        );
-        if (
-          !isMountedRef.current ||
-          exportGenerationRef.current !== exportGeneration
-        ) {
-          return;
-        }
-
-        const { default: exportUtilClassBase } = await import(
-          '../../../utils/ExportUtilClassBase'
-        );
-        if (
-          !isMountedRef.current ||
-          exportGenerationRef.current !== exportGeneration
-        ) {
-          return;
-        }
-        await exportUtilClassBase.exportMethodBasedOnType({
+        await runNonCsvExport(
           exportType,
-          exportData: {
-            ...activeExportData,
-            name: fileName,
-          },
-        });
-        if (
-          !isMountedRef.current ||
-          exportGenerationRef.current !== exportGeneration
-        ) {
-          return;
-        }
-
-        handleCancel();
-        setDownloading(false);
+          activeExportData,
+          fileName,
+          exportGeneration
+        );
 
         return;
       }
@@ -591,10 +610,7 @@ export const EntityExportModalProvider = ({
       const data = await activeExportData.onExport(activeExportData.name, {
         recursive: !isBulkEdit,
       });
-      if (
-        !isMountedRef.current ||
-        exportGenerationRef.current !== exportGeneration
-      ) {
+      if (isExportStale(exportGeneration)) {
         return;
       }
 
@@ -631,10 +647,7 @@ export const EntityExportModalProvider = ({
         }
       }
     } catch (error) {
-      if (
-        !isMountedRef.current ||
-        exportGenerationRef.current !== exportGeneration
-      ) {
+      if (isExportStale(exportGeneration)) {
         return;
       }
       showErrorToast(error as AxiosError);

@@ -31,6 +31,7 @@ import { useMemo, useState } from 'react';
 import { Button as AriaButton, type Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
+import { EntityReference } from '../../../../generated/entity/type';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
@@ -382,6 +383,65 @@ const DateChip = ({
   return picker;
 };
 
+const getUserChipDisplayText = (
+  selected: EntityReference | undefined,
+  value: FilterDescriptor['value']
+): string => {
+  if (selected) {
+    return selected.displayName ?? selected.name ?? '';
+  }
+
+  return isString(value) ? value : '';
+};
+
+const UserChipTrigger = ({
+  variant,
+  filterKey,
+  hasSelection,
+  displayText,
+  label,
+}: {
+  variant: FilterChipVariant;
+  filterKey: string;
+  hasSelection: boolean;
+  displayText: string;
+  label: string;
+}) => {
+  if (variant === 'input') {
+    return (
+      <button
+        className="tw:flex tw:w-44 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand"
+        data-testid={`search-dropdown-${filterKey}`}
+        type="button">
+        <span
+          className={classNames(
+            'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
+            hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
+          )}>
+          {hasSelection ? displayText : label}
+        </span>
+        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className={classNames(
+        'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap',
+        'tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary',
+        'tw:relative tw:shadow-xs-skeuomorphic tw:outline-brand',
+        borderAfter,
+        'tw:after:outline-primary'
+      )}
+      data-testid={`search-dropdown-${filterKey}`}
+      type="button">
+      {hasSelection ? `${label} · 1` : label}
+      <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+    </button>
+  );
+};
+
 // User/team picker (controlType 'user') — reuses the OSS UserTeamSelectableList
 // (search, avatars, users/teams) behind the shared chip/input trigger.
 const UserChip = ({
@@ -403,43 +463,18 @@ const UserChip = ({
   };
   const { label, key, value, selectedOwners, onOwnerChange } = descriptor;
   const selected = selectedOwners?.[0];
-  const displayText = selected
-    ? selected.displayName ?? selected.name ?? ''
-    : isString(value)
-    ? value
-    : '';
+  const displayText = getUserChipDisplayText(selected, value);
   const hasSelection = Boolean(displayText);
 
-  const trigger =
-    variant === 'input' ? (
-      <button
-        className="tw:flex tw:w-44 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand"
-        data-testid={`search-dropdown-${key}`}
-        type="button">
-        <span
-          className={classNames(
-            'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
-            hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
-          )}>
-          {hasSelection ? displayText : label}
-        </span>
-        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
-      </button>
-    ) : (
-      <button
-        className={classNames(
-          'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap',
-          'tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary',
-          'tw:relative tw:shadow-xs-skeuomorphic tw:outline-brand',
-          borderAfter,
-          'tw:after:outline-primary'
-        )}
-        data-testid={`search-dropdown-${key}`}
-        type="button">
-        {hasSelection ? `${label} · 1` : label}
-        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
-      </button>
-    );
+  const trigger = (
+    <UserChipTrigger
+      displayText={displayText}
+      filterKey={key}
+      hasSelection={hasSelection}
+      label={label}
+      variant={variant}
+    />
+  );
 
   const picker = (
     <UserTeamSelectableList

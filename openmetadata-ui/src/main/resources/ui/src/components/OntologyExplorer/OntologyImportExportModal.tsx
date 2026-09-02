@@ -165,6 +165,463 @@ function triggerDownload(text: string, filename: string, mediaType: string) {
   }, 100);
 }
 
+type TranslateFunction = ReturnType<typeof useTranslation>['t'];
+
+const getExportPreviewContent = (
+  isPreviewLoading: boolean,
+  isRdfFormat: boolean,
+  preview: string,
+  t: TranslateFunction
+): ReactNode => {
+  if (isPreviewLoading) {
+    return t('label.loading');
+  }
+  if (isRdfFormat && preview) {
+    return highlightRdf(preview);
+  }
+
+  return '—';
+};
+
+interface ExportShaclStatusProps {
+  shaclResult: ShaclValidationResult | null;
+  isRdfFormat: boolean;
+  preview: string;
+  isPreviewLoading: boolean;
+  t: TranslateFunction;
+}
+
+const ExportShaclStatus = ({
+  shaclResult,
+  isRdfFormat,
+  preview,
+  isPreviewLoading,
+  t,
+}: ExportShaclStatusProps) => {
+  if (shaclResult) {
+    return (
+      <div
+        className={classNames(
+          'tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium',
+          shaclResult.conforms
+            ? 'tw:text-success-primary'
+            : 'tw:text-error-primary'
+        )}
+        data-testid="ontology-shacl-status">
+        {shaclResult.conforms ? (
+          <CheckCircle className="tw:size-3.5" />
+        ) : (
+          <AlertCircle className="tw:size-3.5" />
+        )}
+        {t(
+          shaclResult.conforms
+            ? 'message.shacl-no-violations'
+            : 'message.shacl-violations-found'
+        )}
+      </div>
+    );
+  }
+
+  const previewReady = isRdfFormat && preview && !isPreviewLoading;
+
+  if (previewReady) {
+    return (
+      <div className="tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium tw:text-success-primary">
+        <CheckCircle className="tw:size-3.5" />
+        {t('message.ontology-preview-ready')}
+      </div>
+    );
+  }
+
+  return null;
+};
+
+interface OntologyExportPanelProps {
+  format: ExportFormatKey;
+  setFormat: (format: ExportFormatKey) => void;
+  includeInverse: boolean;
+  setIncludeInverse: (value: boolean) => void;
+  validateShacl: boolean;
+  setValidateShacl: (value: boolean) => void;
+  isAdminUser: boolean;
+  includeAssets: boolean;
+  setIncludeAssets: (value: boolean) => void;
+  isPreviewLoading: boolean;
+  isRdfFormat: boolean;
+  preview: string;
+  shaclResult: ShaclValidationResult | null;
+  t: TranslateFunction;
+}
+
+const OntologyExportPanel = ({
+  format,
+  setFormat,
+  includeInverse,
+  setIncludeInverse,
+  validateShacl,
+  setValidateShacl,
+  isAdminUser,
+  includeAssets,
+  setIncludeAssets,
+  isPreviewLoading,
+  isRdfFormat,
+  preview,
+  shaclResult,
+  t,
+}: OntologyExportPanelProps) => (
+  <div className="tw:flex tw:min-h-0 tw:flex-1 tw:gap-5 tw:overflow-y-auto tw:p-5">
+    <div className="tw:min-w-0 tw:flex-1">
+      <div className="tw:mb-2.5 tw:text-[10px] tw:font-semibold tw:tracking-[0.05em] tw:text-quaternary tw:uppercase">
+        {t('label.format')}
+      </div>
+      <div className="tw:mb-[18px] tw:flex tw:flex-col tw:gap-2">
+        {FORMAT_OPTIONS.map((option) => (
+          <Button
+            noTextPadding
+            aria-checked={format === option.key}
+            className={classNames(
+              'tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:text-left tw:whitespace-normal',
+              'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
+              format === option.key
+                ? 'tw:border-brand tw:bg-brand-primary'
+                : 'tw:border-secondary tw:bg-primary hover:tw:bg-secondary'
+            )}
+            color="tertiary"
+            data-testid={`ontology-format-${option.key}`}
+            key={option.key}
+            role="radio"
+            onClick={() => setFormat(option.key)}>
+            <span
+              className={classNames(
+                'tw:grid tw:size-[18px] tw:shrink-0 tw:place-items-center tw:rounded-full tw:border-[1.5px]',
+                format === option.key
+                  ? 'tw:border-brand-solid'
+                  : 'tw:border-secondary'
+              )}>
+              {format === option.key ? (
+                <span className="tw:size-2.5 tw:rounded-full tw:bg-brand-solid" />
+              ) : null}
+            </span>
+            <span className="tw:min-w-0 tw:flex-1">
+              <span className="tw:block tw:text-[13px] tw:font-semibold tw:text-primary">
+                {t(option.titleKey)}
+              </span>
+              <span className="tw:block tw:text-[11px] tw:font-normal tw:text-quaternary">
+                {t(option.descriptionKey)}
+              </span>
+            </span>
+            <span className="tw:shrink-0 tw:font-mono tw:text-[11px] tw:font-medium tw:text-quaternary">
+              {option.extension}
+            </span>
+          </Button>
+        ))}
+      </div>
+      <div className="tw:flex tw:flex-col tw:gap-2.5">
+        <Checkbox
+          isSelected={includeInverse}
+          label={t('message.include-inverse-relationships')}
+          onChange={setIncludeInverse}
+        />
+        <Checkbox
+          isDisabled={!isAdminUser}
+          isSelected={validateShacl}
+          label={t('message.validate-with-shacl-before-export')}
+          onChange={setValidateShacl}
+        />
+        <Checkbox
+          isSelected={includeAssets}
+          label={t('message.include-bound-data-assets')}
+          onChange={setIncludeAssets}
+        />
+      </div>
+    </div>
+
+    <div className="tw:w-[300px] tw:shrink-0">
+      <div className="tw:mb-2.5 tw:text-[10px] tw:font-semibold tw:tracking-[0.05em] tw:text-quaternary tw:uppercase">
+        {t('label.preview')}
+      </div>
+      <div
+        className="tw:overflow-hidden tw:rounded-[10px] tw:px-[15px] tw:py-[13px]"
+        style={{ backgroundColor: PREVIEW_BG }}>
+        <pre
+          className="tw:max-h-[360px] tw:overflow-auto tw:font-mono tw:text-[11px] tw:leading-[1.7] tw:whitespace-pre-wrap"
+          data-testid="ontology-export-preview"
+          style={{ color: SYNTAX_COLOR.default }}>
+          {getExportPreviewContent(isPreviewLoading, isRdfFormat, preview, t)}
+        </pre>
+      </div>
+      <ExportShaclStatus
+        isPreviewLoading={isPreviewLoading}
+        isRdfFormat={isRdfFormat}
+        preview={preview}
+        shaclResult={shaclResult}
+        t={t}
+      />
+    </div>
+  </div>
+);
+
+interface OntologyImportPanelProps {
+  activeGlossary: Glossary | undefined;
+  importTargetItems: { id: string; label?: string }[];
+  importTargetId: string;
+  setImportTargetId: (id: string) => void;
+  handleImportFileSelect: (files: FileList | null) => void;
+  importFileName: string;
+  importFileSize: number;
+  importFormat: OntologyImportFormat;
+  importValidation: OntologyImportResult | undefined;
+  importSkippedCount: number;
+  hasReviewers: boolean;
+  t: TranslateFunction;
+}
+
+const OntologyImportPanel = ({
+  activeGlossary,
+  importTargetItems,
+  importTargetId,
+  setImportTargetId,
+  handleImportFileSelect,
+  importFileName,
+  importFileSize,
+  importFormat,
+  importValidation,
+  importSkippedCount,
+  hasReviewers,
+  t,
+}: OntologyImportPanelProps) => (
+  <div
+    className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:gap-4 tw:overflow-y-auto tw:p-5"
+    data-testid="ontology-import-panel">
+    {!activeGlossary ? (
+      <div
+        className="tw:flex tw:items-center tw:gap-3"
+        data-testid="ontology-import-select-target">
+        <span className="tw:shrink-0 tw:text-[12px] tw:font-semibold tw:text-tertiary">
+          {t('label.import-into')}
+        </span>
+        <Select
+          aria-label={t('label.import-into')}
+          className="tw:w-56"
+          data-testid="ontology-import-target-select"
+          fontSize="sm"
+          items={importTargetItems}
+          size="sm"
+          value={importTargetId}
+          onChange={(key) => setImportTargetId(String(key))}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+      </div>
+    ) : null}
+
+    <div
+      className="tw:flex tw:items-center tw:gap-3.5 tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3.5"
+      data-testid="ontology-import-file">
+      <span className="tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-lg tw:bg-brand-50">
+        <File02 className="tw:size-5 tw:text-brand-600" />
+      </span>
+      <span className="tw:min-w-0 tw:flex-1">
+        <span className="tw:block tw:truncate tw:text-[14px] tw:font-semibold tw:text-primary">
+          {importFileName || t('message.no-file-selected')}
+        </span>
+        <span className="tw:mt-0.5 tw:block tw:text-[12px] tw:font-normal tw:text-quaternary">
+          {importFileName ? (
+            <>
+              {`${formatBytes(importFileSize)} · ${
+                ONTOLOGY_IMPORT_FORMAT_LABEL[importFormat]
+              } · `}
+              <span className="tw:text-success-primary">
+                {t('label.format-auto-detected')}
+              </span>
+            </>
+          ) : (
+            t('message.ontology-accepted-extensions')
+          )}
+        </span>
+      </span>
+      <FileTrigger
+        acceptedFileTypes={['.ttl', '.rdf', '.owl', '.nt', '.xml']}
+        data-testid="ontology-import-input"
+        onSelect={handleImportFileSelect}>
+        <Button color="secondary" data-testid="ontology-choose-file" size="sm">
+          {t('label.choose-file')}
+        </Button>
+      </FileTrigger>
+    </div>
+
+    <p className="tw:text-[13px] tw:leading-relaxed tw:text-quaternary">
+      {t('message.import-ontology-accepts')}
+    </p>
+
+    {importValidation ? (
+      <div
+        className="tw:flex tw:flex-col tw:gap-3"
+        data-testid="ontology-import-summary">
+        <div className="tw:flex tw:items-center tw:gap-2.5">
+          <span className="tw:text-[11px] tw:font-semibold tw:tracking-[0.05em] tw:text-quaternary tw:uppercase">
+            {t('label.dry-run-preview')}
+          </span>
+          <span className="tw:rounded-full tw:bg-brand-50 tw:px-2.5 tw:py-0.5 tw:text-[11px] tw:font-semibold tw:text-brand-700">
+            {t('label.nothing-persisted-yet')}
+          </span>
+        </div>
+        <div className="tw:grid tw:grid-cols-4 tw:gap-2.5">
+          {[
+            {
+              key: 'terms',
+              labelKey: 'label.new-term-plural',
+              value: importValidation.termsCreated,
+            },
+            {
+              key: 'relations',
+              labelKey: 'label.relation-plural',
+              value: importValidation.relationsAdded,
+            },
+            {
+              key: 'mappings',
+              labelKey: 'label.mapping-plural',
+              value: importValidation.conceptMappingsAdded,
+            },
+            {
+              key: 'skipped',
+              labelKey: 'label.skipped',
+              value: importSkippedCount,
+              warn: true,
+            },
+          ].map((stat) => {
+            const isWarn = Boolean(stat.warn) && stat.value > 0;
+
+            return (
+              <div
+                className={classNames(
+                  'tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
+                  isWarn
+                    ? 'tw:border-warning-300 tw:bg-warning-50'
+                    : 'tw:border-secondary tw:bg-primary'
+                )}
+                data-testid={`ontology-import-stat-${stat.key}`}
+                key={stat.key}>
+                <div
+                  className={classNames(
+                    'tw:text-[26px] tw:leading-none tw:font-bold',
+                    isWarn ? 'tw:text-warning-primary' : 'tw:text-primary'
+                  )}>
+                  {stat.value}
+                </div>
+                <div className="tw:mt-1.5 tw:text-[12px] tw:font-normal tw:text-quaternary tw:lowercase">
+                  {t(stat.labelKey)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {hasReviewers || importSkippedCount > 0 ? (
+          <div
+            className="tw:flex tw:gap-2 tw:rounded-lg tw:bg-brand-50 tw:px-3.5 tw:py-3"
+            data-testid="ontology-import-note">
+            <InfoCircle className="tw:mt-px tw:size-4 tw:shrink-0 tw:text-brand-600" />
+            <div className="tw:flex tw:flex-col tw:gap-1 tw:text-[12px] tw:leading-relaxed tw:text-brand-700">
+              {hasReviewers ? (
+                <span>{t('message.import-terms-enter-draft')}</span>
+              ) : null}
+              {importValidation.messages.map((message) => (
+                <span key={message}>{message}</span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    ) : null}
+  </div>
+);
+
+interface OntologyModalFooterProps {
+  activeTab: TransferTab;
+  targetGlossaries: Glossary[];
+  isExporting: boolean;
+  handleExport: () => void;
+  isAdminUser: boolean;
+  isValidating: boolean;
+  handleRunShacl: () => void;
+  hasImportedTerms: boolean;
+  isImporting: boolean;
+  handleConfirmImport: () => void;
+  importTermTotal: number;
+  importTarget: Glossary | undefined;
+  importFileContent: string;
+  isParsing: boolean;
+  handleParseDryRun: () => void;
+  t: TranslateFunction;
+}
+
+const OntologyModalFooter = ({
+  activeTab,
+  targetGlossaries,
+  isExporting,
+  handleExport,
+  isAdminUser,
+  isValidating,
+  handleRunShacl,
+  hasImportedTerms,
+  isImporting,
+  handleConfirmImport,
+  importTermTotal,
+  importTarget,
+  importFileContent,
+  isParsing,
+  handleParseDryRun,
+  t,
+}: OntologyModalFooterProps) => (
+  <div className="tw:flex tw:items-center tw:gap-2.5 tw:border-t tw:border-secondary tw:px-5 tw:py-3.5">
+    {activeTab === 'export' ? (
+      <>
+        <Button
+          color="primary"
+          data-testid="ontology-run-export"
+          iconLeading={<Download01 className="tw:size-4" />}
+          isDisabled={!targetGlossaries.length}
+          isLoading={isExporting}
+          onPress={handleExport}>
+          {t('label.export')}
+        </Button>
+        <Button
+          color="secondary"
+          data-testid="ontology-run-shacl"
+          isDisabled={!isAdminUser || isValidating}
+          isLoading={isValidating}
+          onPress={handleRunShacl}>
+          {t('label.run-shacl-report')}
+        </Button>
+      </>
+    ) : (
+      <>
+        {hasImportedTerms ? (
+          <Button
+            color="primary"
+            data-testid="ontology-run-import"
+            isLoading={isImporting}
+            onPress={handleConfirmImport}>
+            {t('label.import-count-terms', {
+              count: importTermTotal,
+            })}
+          </Button>
+        ) : null}
+        <Button
+          color={hasImportedTerms ? 'secondary' : 'primary'}
+          data-testid="ontology-parse-dry-run"
+          isDisabled={!importTarget || !importFileContent || isImporting}
+          isLoading={isParsing}
+          onPress={handleParseDryRun}>
+          {t('label.parse-dry-run')}
+        </Button>
+      </>
+    )}
+  </div>
+);
+
 const OntologyImportExportModal = ({
   glossary,
   glossaries,
@@ -507,324 +964,57 @@ const OntologyImportExportModal = ({
             </div>
 
             {activeTab === 'export' ? (
-              <div className="tw:flex tw:min-h-0 tw:flex-1 tw:gap-5 tw:overflow-y-auto tw:p-5">
-                <div className="tw:min-w-0 tw:flex-1">
-                  <div className="tw:mb-2.5 tw:text-[10px] tw:font-semibold tw:tracking-[0.05em] tw:text-quaternary tw:uppercase">
-                    {t('label.format')}
-                  </div>
-                  <div className="tw:mb-[18px] tw:flex tw:flex-col tw:gap-2">
-                    {FORMAT_OPTIONS.map((option) => (
-                      <Button
-                        noTextPadding
-                        aria-checked={format === option.key}
-                        className={classNames(
-                          'tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:text-left tw:whitespace-normal',
-                          'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
-                          format === option.key
-                            ? 'tw:border-brand tw:bg-brand-primary'
-                            : 'tw:border-secondary tw:bg-primary hover:tw:bg-secondary'
-                        )}
-                        color="tertiary"
-                        data-testid={`ontology-format-${option.key}`}
-                        key={option.key}
-                        role="radio"
-                        onClick={() => setFormat(option.key)}>
-                        <span
-                          className={classNames(
-                            'tw:grid tw:size-[18px] tw:shrink-0 tw:place-items-center tw:rounded-full tw:border-[1.5px]',
-                            format === option.key
-                              ? 'tw:border-brand-solid'
-                              : 'tw:border-secondary'
-                          )}>
-                          {format === option.key ? (
-                            <span className="tw:size-2.5 tw:rounded-full tw:bg-brand-solid" />
-                          ) : null}
-                        </span>
-                        <span className="tw:min-w-0 tw:flex-1">
-                          <span className="tw:block tw:text-[13px] tw:font-semibold tw:text-primary">
-                            {t(option.titleKey)}
-                          </span>
-                          <span className="tw:block tw:text-[11px] tw:font-normal tw:text-quaternary">
-                            {t(option.descriptionKey)}
-                          </span>
-                        </span>
-                        <span className="tw:shrink-0 tw:font-mono tw:text-[11px] tw:font-medium tw:text-quaternary">
-                          {option.extension}
-                        </span>
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="tw:flex tw:flex-col tw:gap-2.5">
-                    <Checkbox
-                      isSelected={includeInverse}
-                      label={t('message.include-inverse-relationships')}
-                      onChange={setIncludeInverse}
-                    />
-                    <Checkbox
-                      isDisabled={!isAdminUser}
-                      isSelected={validateShacl}
-                      label={t('message.validate-with-shacl-before-export')}
-                      onChange={setValidateShacl}
-                    />
-                    <Checkbox
-                      isSelected={includeAssets}
-                      label={t('message.include-bound-data-assets')}
-                      onChange={setIncludeAssets}
-                    />
-                  </div>
-                </div>
-
-                <div className="tw:w-[300px] tw:shrink-0">
-                  <div className="tw:mb-2.5 tw:text-[10px] tw:font-semibold tw:tracking-[0.05em] tw:text-quaternary tw:uppercase">
-                    {t('label.preview')}
-                  </div>
-                  <div
-                    className="tw:overflow-hidden tw:rounded-[10px] tw:px-[15px] tw:py-[13px]"
-                    style={{ backgroundColor: PREVIEW_BG }}>
-                    <pre
-                      className="tw:max-h-[360px] tw:overflow-auto tw:font-mono tw:text-[11px] tw:leading-[1.7] tw:whitespace-pre-wrap"
-                      data-testid="ontology-export-preview"
-                      style={{ color: SYNTAX_COLOR.default }}>
-                      {isPreviewLoading
-                        ? t('label.loading')
-                        : isRdfFormat && preview
-                        ? highlightRdf(preview)
-                        : '—'}
-                    </pre>
-                  </div>
-                  {shaclResult ? (
-                    <div
-                      className={classNames(
-                        'tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium',
-                        shaclResult.conforms
-                          ? 'tw:text-success-primary'
-                          : 'tw:text-error-primary'
-                      )}
-                      data-testid="ontology-shacl-status">
-                      {shaclResult.conforms ? (
-                        <CheckCircle className="tw:size-3.5" />
-                      ) : (
-                        <AlertCircle className="tw:size-3.5" />
-                      )}
-                      {t(
-                        shaclResult.conforms
-                          ? 'message.shacl-no-violations'
-                          : 'message.shacl-violations-found'
-                      )}
-                    </div>
-                  ) : isRdfFormat && preview && !isPreviewLoading ? (
-                    <div className="tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium tw:text-success-primary">
-                      <CheckCircle className="tw:size-3.5" />
-                      {t('message.ontology-preview-ready')}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <OntologyExportPanel
+                format={format}
+                includeAssets={includeAssets}
+                includeInverse={includeInverse}
+                isAdminUser={isAdminUser}
+                isPreviewLoading={isPreviewLoading}
+                isRdfFormat={isRdfFormat}
+                preview={preview}
+                setFormat={setFormat}
+                setIncludeAssets={setIncludeAssets}
+                setIncludeInverse={setIncludeInverse}
+                setValidateShacl={setValidateShacl}
+                shaclResult={shaclResult}
+                t={t}
+                validateShacl={validateShacl}
+              />
             ) : (
-              <div
-                className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:gap-4 tw:overflow-y-auto tw:p-5"
-                data-testid="ontology-import-panel">
-                {!activeGlossary ? (
-                  <div
-                    className="tw:flex tw:items-center tw:gap-3"
-                    data-testid="ontology-import-select-target">
-                    <span className="tw:shrink-0 tw:text-[12px] tw:font-semibold tw:text-tertiary">
-                      {t('label.import-into')}
-                    </span>
-                    <Select
-                      aria-label={t('label.import-into')}
-                      className="tw:w-56"
-                      data-testid="ontology-import-target-select"
-                      fontSize="sm"
-                      items={importTargetItems}
-                      size="sm"
-                      value={importTargetId}
-                      onChange={(key) => setImportTargetId(String(key))}>
-                      {(item) => (
-                        <Select.Item
-                          id={item.id}
-                          key={item.id}
-                          label={item.label}
-                        />
-                      )}
-                    </Select>
-                  </div>
-                ) : null}
-
-                <div
-                  className="tw:flex tw:items-center tw:gap-3.5 tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3.5"
-                  data-testid="ontology-import-file">
-                  <span className="tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-lg tw:bg-brand-50">
-                    <File02 className="tw:size-5 tw:text-brand-600" />
-                  </span>
-                  <span className="tw:min-w-0 tw:flex-1">
-                    <span className="tw:block tw:truncate tw:text-[14px] tw:font-semibold tw:text-primary">
-                      {importFileName || t('message.no-file-selected')}
-                    </span>
-                    <span className="tw:mt-0.5 tw:block tw:text-[12px] tw:font-normal tw:text-quaternary">
-                      {importFileName ? (
-                        <>
-                          {`${formatBytes(importFileSize)} · ${
-                            ONTOLOGY_IMPORT_FORMAT_LABEL[importFormat]
-                          } · `}
-                          <span className="tw:text-success-primary">
-                            {t('label.format-auto-detected')}
-                          </span>
-                        </>
-                      ) : (
-                        t('message.ontology-accepted-extensions')
-                      )}
-                    </span>
-                  </span>
-                  <FileTrigger
-                    acceptedFileTypes={['.ttl', '.rdf', '.owl', '.nt', '.xml']}
-                    data-testid="ontology-import-input"
-                    onSelect={handleImportFileSelect}>
-                    <Button
-                      color="secondary"
-                      data-testid="ontology-choose-file"
-                      size="sm">
-                      {t('label.choose-file')}
-                    </Button>
-                  </FileTrigger>
-                </div>
-
-                <p className="tw:text-[13px] tw:leading-relaxed tw:text-quaternary">
-                  {t('message.import-ontology-accepts')}
-                </p>
-
-                {importValidation ? (
-                  <div
-                    className="tw:flex tw:flex-col tw:gap-3"
-                    data-testid="ontology-import-summary">
-                    <div className="tw:flex tw:items-center tw:gap-2.5">
-                      <span className="tw:text-[11px] tw:font-semibold tw:tracking-[0.05em] tw:text-quaternary tw:uppercase">
-                        {t('label.dry-run-preview')}
-                      </span>
-                      <span className="tw:rounded-full tw:bg-brand-50 tw:px-2.5 tw:py-0.5 tw:text-[11px] tw:font-semibold tw:text-brand-700">
-                        {t('label.nothing-persisted-yet')}
-                      </span>
-                    </div>
-                    <div className="tw:grid tw:grid-cols-4 tw:gap-2.5">
-                      {[
-                        {
-                          key: 'terms',
-                          labelKey: 'label.new-term-plural',
-                          value: importValidation.termsCreated,
-                        },
-                        {
-                          key: 'relations',
-                          labelKey: 'label.relation-plural',
-                          value: importValidation.relationsAdded,
-                        },
-                        {
-                          key: 'mappings',
-                          labelKey: 'label.mapping-plural',
-                          value: importValidation.conceptMappingsAdded,
-                        },
-                        {
-                          key: 'skipped',
-                          labelKey: 'label.skipped',
-                          value: importSkippedCount,
-                          warn: true,
-                        },
-                      ].map((stat) => {
-                        const isWarn = Boolean(stat.warn) && stat.value > 0;
-
-                        return (
-                          <div
-                            className={classNames(
-                              'tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
-                              isWarn
-                                ? 'tw:border-warning-300 tw:bg-warning-50'
-                                : 'tw:border-secondary tw:bg-primary'
-                            )}
-                            data-testid={`ontology-import-stat-${stat.key}`}
-                            key={stat.key}>
-                            <div
-                              className={classNames(
-                                'tw:text-[26px] tw:leading-none tw:font-bold',
-                                isWarn
-                                  ? 'tw:text-warning-primary'
-                                  : 'tw:text-primary'
-                              )}>
-                              {stat.value}
-                            </div>
-                            <div className="tw:mt-1.5 tw:text-[12px] tw:font-normal tw:text-quaternary tw:lowercase">
-                              {t(stat.labelKey)}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {hasReviewers || importSkippedCount > 0 ? (
-                      <div
-                        className="tw:flex tw:gap-2 tw:rounded-lg tw:bg-brand-50 tw:px-3.5 tw:py-3"
-                        data-testid="ontology-import-note">
-                        <InfoCircle className="tw:mt-px tw:size-4 tw:shrink-0 tw:text-brand-600" />
-                        <div className="tw:flex tw:flex-col tw:gap-1 tw:text-[12px] tw:leading-relaxed tw:text-brand-700">
-                          {hasReviewers ? (
-                            <span>{t('message.import-terms-enter-draft')}</span>
-                          ) : null}
-                          {importValidation.messages.map((message) => (
-                            <span key={message}>{message}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+              <OntologyImportPanel
+                activeGlossary={activeGlossary}
+                handleImportFileSelect={handleImportFileSelect}
+                hasReviewers={hasReviewers}
+                importFileName={importFileName}
+                importFileSize={importFileSize}
+                importFormat={importFormat}
+                importSkippedCount={importSkippedCount}
+                importTargetId={importTargetId}
+                importTargetItems={importTargetItems}
+                importValidation={importValidation}
+                setImportTargetId={setImportTargetId}
+                t={t}
+              />
             )}
 
-            <div className="tw:flex tw:items-center tw:gap-2.5 tw:border-t tw:border-secondary tw:px-5 tw:py-3.5">
-              {activeTab === 'export' ? (
-                <>
-                  <Button
-                    color="primary"
-                    data-testid="ontology-run-export"
-                    iconLeading={<Download01 className="tw:size-4" />}
-                    isDisabled={!targetGlossaries.length}
-                    isLoading={isExporting}
-                    onPress={handleExport}>
-                    {t('label.export')}
-                  </Button>
-                  <Button
-                    color="secondary"
-                    data-testid="ontology-run-shacl"
-                    isDisabled={!isAdminUser || isValidating}
-                    isLoading={isValidating}
-                    onPress={handleRunShacl}>
-                    {t('label.run-shacl-report')}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {hasImportedTerms ? (
-                    <Button
-                      color="primary"
-                      data-testid="ontology-run-import"
-                      isLoading={isImporting}
-                      onPress={handleConfirmImport}>
-                      {t('label.import-count-terms', {
-                        count: importTermTotal,
-                      })}
-                    </Button>
-                  ) : null}
-                  <Button
-                    color={hasImportedTerms ? 'secondary' : 'primary'}
-                    data-testid="ontology-parse-dry-run"
-                    isDisabled={
-                      !importTarget || !importFileContent || isImporting
-                    }
-                    isLoading={isParsing}
-                    onPress={handleParseDryRun}>
-                    {t('label.parse-dry-run')}
-                  </Button>
-                </>
-              )}
-            </div>
+            <OntologyModalFooter
+              activeTab={activeTab}
+              handleConfirmImport={handleConfirmImport}
+              handleExport={handleExport}
+              handleParseDryRun={handleParseDryRun}
+              handleRunShacl={handleRunShacl}
+              hasImportedTerms={hasImportedTerms}
+              importFileContent={importFileContent}
+              importTarget={importTarget}
+              importTermTotal={importTermTotal}
+              isAdminUser={isAdminUser}
+              isExporting={isExporting}
+              isImporting={isImporting}
+              isParsing={isParsing}
+              isValidating={isValidating}
+              t={t}
+              targetGlossaries={targetGlossaries}
+            />
           </div>
         </Dialog>
       </Modal>

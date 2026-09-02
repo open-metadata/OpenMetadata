@@ -26,11 +26,73 @@ import {
   GraphViewMode,
 } from './OntologyExplorer.interface';
 
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
 const VIEW_MODES: { label: string; value: GraphViewMode }[] = [
   { label: 'label.overview', value: 'overview' },
   { label: 'label.hierarchy', value: 'hierarchy' },
   { label: 'label.cross-glossary', value: 'crossGlossary' },
 ];
+
+const LoadMoreSection = ({
+  hasActiveFilters,
+  hasMoreTerms,
+  isLoading,
+  isLoadingMore,
+  loadedTermCount,
+  totalTermCount,
+  t,
+  onClearAll,
+  onLoadMore,
+}: {
+  hasActiveFilters: boolean;
+  hasMoreTerms: boolean;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  loadedTermCount?: number;
+  totalTermCount?: number;
+  t: TFunc;
+  onClearAll?: () => void;
+  onLoadMore?: () => void;
+}) => (
+  <div className="tw:ml-auto tw:flex tw:items-center">
+    {onLoadMore !== undefined &&
+      loadedTermCount !== undefined &&
+      totalTermCount !== undefined && (
+        <Typography
+          as="span"
+          className="tw:whitespace-nowrap tw:pr-1 tw:text-(--color-text-tertiary)"
+          size="text-sm">
+          {t('label.loaded-x-of-y-entity', {
+            loaded: loadedTermCount,
+            total: totalTermCount,
+            entity: t('label.term-plural'),
+          })}
+        </Typography>
+      )}
+    {onLoadMore !== undefined && (
+      <Button
+        className="tw:text-brand-secondary"
+        color="tertiary"
+        data-testid="ontology-load-more-btn"
+        isDisabled={!hasMoreTerms || isLoading || isLoadingMore}
+        size="sm"
+        onClick={onLoadMore}>
+        {t('label.load-more')}
+      </Button>
+    )}
+    {onClearAll && hasActiveFilters && (
+      <Button
+        color="tertiary"
+        data-testid="ontology-clear-all-btn"
+        isDisabled={isLoading}
+        size="sm"
+        onClick={onClearAll}>
+        {t('label.clear-entity', { entity: t('label.all-lowercase') })}
+      </Button>
+    )}
+  </div>
+);
 
 const FilterToolbar: React.FC<FilterToolbarProps> = ({
   filters,
@@ -139,8 +201,10 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
     [filters, onFiltersChange]
   );
 
-  const hasActiveFilters =
-    filters.glossaryIds.length > 0 || filters.relationTypes.length > 0;
+  const hasActiveFilters = useMemo(
+    () => filters.glossaryIds.length > 0 || filters.relationTypes.length > 0,
+    [filters.glossaryIds, filters.relationTypes]
+  );
 
   const viewModeItems = useMemo(
     () =>
@@ -151,16 +215,42 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
     [t]
   );
 
+  const isViewModeDisabled = useMemo(
+    () => viewModeDisabled || isLoading,
+    [viewModeDisabled, isLoading]
+  );
+
+  const viewModeSectionClassName = useMemo(
+    () =>
+      'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
+      (isViewModeDisabled ? ' tw:pointer-events-none tw:opacity-50' : ''),
+    [isViewModeDisabled]
+  );
+
+  const loadingSectionClassName = useMemo(
+    () =>
+      'tw:flex tw:shrink-0 tw:items-center' +
+      (isLoading ? ' tw:pointer-events-none tw:opacity-50' : ''),
+    [isLoading]
+  );
+
+  const glossaryLabel = useMemo(
+    () =>
+      filters.glossaryIds.length === 0
+        ? t('label.all-glossaries')
+        : t('label.glossary'),
+    [filters.glossaryIds, t]
+  );
+
+  const isIsolatedToggleDisabled = useMemo(
+    () => isLoading || filters.showCrossGlossaryOnly,
+    [isLoading, filters.showCrossGlossaryOnly]
+  );
+
   return (
     <div className="tw:flex tw:w-full tw:items-center tw:gap-5 tw:pl-2">
       {/* View Mode dropdown — disabled in data mode or while loading */}
-      <div
-        className={
-          'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
-          (viewModeDisabled || isLoading
-            ? ' tw:pointer-events-none tw:opacity-50'
-            : '')
-        }>
+      <div className={viewModeSectionClassName}>
         <Typography
           as="span"
           className="tw:whitespace-nowrap tw:text-tertiary"
@@ -172,7 +262,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           className="tw:w-36"
           data-testid="view-mode-select"
           fontSize="sm"
-          isDisabled={viewModeDisabled || isLoading}
+          isDisabled={isViewModeDisabled}
           items={viewModeItems}
           size="sm"
           value={filters.viewMode}
@@ -192,18 +282,11 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
       {/* Glossary filter */}
       <div
-        className={
-          'tw:flex tw:shrink-0 tw:items-center' +
-          (isLoading ? ' tw:pointer-events-none tw:opacity-50' : '')
-        }
+        className={loadingSectionClassName}
         data-testid="glossary-filter-section">
         <SearchDropdown
           hideCounts
-          label={
-            filters.glossaryIds.length === 0
-              ? t('label.all-glossaries')
-              : t('label.glossary')
-          }
+          label={glossaryLabel}
           options={glossaryOptions}
           searchKey="glossaryIds"
           selectedKeys={selectedGlossaryKeys}
@@ -215,10 +298,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       </div>
 
       <div
-        className={
-          'tw:flex tw:shrink-0 tw:items-center' +
-          (isLoading ? ' tw:pointer-events-none tw:opacity-50' : '')
-        }
+        className={loadingSectionClassName}
         data-testid="relation-type-filter-section">
         <SearchDropdown
           hideCounts
@@ -236,7 +316,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       {/* Isolated toggle — disabled while loading or when Cross Glossary view removes all non-connected nodes */}
       <Toggle
         data-testid="ontology-isolated-toggle"
-        isDisabled={isLoading || filters.showCrossGlossaryOnly}
+        isDisabled={isIsolatedToggleDisabled}
         isSelected={filters.showIsolatedNodes}
         label={t('label.isolated')}
         size="sm"
@@ -245,43 +325,17 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         }
       />
 
-      <div className="tw:ml-auto tw:flex tw:items-center">
-        {onLoadMore !== undefined &&
-          loadedTermCount !== undefined &&
-          totalTermCount !== undefined && (
-            <Typography
-              as="span"
-              className="tw:whitespace-nowrap tw:pr-1 tw:text-(--color-text-tertiary)"
-              size="text-sm">
-              {t('label.loaded-x-of-y-entity', {
-                loaded: loadedTermCount,
-                total: totalTermCount,
-                entity: t('label.term-plural'),
-              })}
-            </Typography>
-          )}
-        {onLoadMore !== undefined && (
-          <Button
-            className="tw:text-brand-secondary"
-            color="tertiary"
-            data-testid="ontology-load-more-btn"
-            isDisabled={!hasMoreTerms || isLoading || isLoadingMore}
-            size="sm"
-            onClick={onLoadMore}>
-            {t('label.load-more')}
-          </Button>
-        )}
-        {onClearAll && hasActiveFilters && (
-          <Button
-            color="tertiary"
-            data-testid="ontology-clear-all-btn"
-            isDisabled={isLoading}
-            size="sm"
-            onClick={onClearAll}>
-            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
-          </Button>
-        )}
-      </div>
+      <LoadMoreSection
+        hasActiveFilters={hasActiveFilters}
+        hasMoreTerms={hasMoreTerms}
+        isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
+        loadedTermCount={loadedTermCount}
+        t={t}
+        totalTermCount={totalTermCount}
+        onClearAll={onClearAll}
+        onLoadMore={onLoadMore}
+      />
     </div>
   );
 };
