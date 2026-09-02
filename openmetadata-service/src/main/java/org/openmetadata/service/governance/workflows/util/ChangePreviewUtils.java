@@ -287,8 +287,14 @@ public final class ChangePreviewUtils {
                 List<TagLabel> heldTags =
                     JsonUtils.convertValue(
                         fieldChange.getNewValue(), new TypeReference<List<TagLabel>>() {});
+                List<TagLabel> mergedTags =
+                    TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), heldTags);
+                // Store the resolved tags in the same JSON shape as the rest of the change
+                // description (a list of objects) so downstream identifier extraction reads
+                // tagFQN, instead of leaving raw TagLabel POJOs that get toString-ed.
                 fieldChange.withNewValue(
-                    TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), heldTags));
+                    JsonUtils.convertValue(
+                        mergedTags, new TypeReference<List<Map<String, Object>>>() {}));
               });
     }
     return result;

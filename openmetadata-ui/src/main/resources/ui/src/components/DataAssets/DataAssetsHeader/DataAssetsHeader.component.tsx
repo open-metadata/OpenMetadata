@@ -895,7 +895,7 @@ export const DataAssetsHeader = ({
             {tableClassBase.getRequestDataAccessButton()}
             <PendingChangesNotification
               entityFqn={dataAsset.fullyQualifiedName ?? ''}
-              entityId={entityId}
+              entityId={dataAsset.id ?? ''}
               entityType={entityType as EntityType}
             />
             <ManageButton

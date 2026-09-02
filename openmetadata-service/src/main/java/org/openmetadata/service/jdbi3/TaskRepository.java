@@ -1049,15 +1049,17 @@ public class TaskRepository extends EntityRepository<Task> {
     if (task.getAbout() == null || !isApprovalTask(task)) {
       return;
     }
-    // Read the governed status without assuming the target supports a "reviewers" field.
-    EntityInterface target = Entity.getEntity(task.getAbout(), "", NON_DELETED);
-    if (target.getEntityStatus() != EntityStatus.IN_REVIEW) {
+    // Entity types with no reviewers field (e.g. a table) can never be reviewer-gated, so skip them
+    // before requesting the field — otherwise Entity.getEntity(..., "reviewers") throws
+    // "Invalid field name reviewers" for those types.
+    EntityRepository<?> targetRepository = Entity.getEntityRepository(task.getAbout().getType());
+    if (!targetRepository.getAllowedFields().contains(Entity.FIELD_REVIEWERS)) {
       return;
     }
-    EntityInterface reviewed = Entity.getEntity(task.getAbout(), "reviewers", NON_DELETED);
-    if (!nullOrEmpty(reviewed.getReviewers())) {
+    EntityInterface target = Entity.getEntity(task.getAbout(), Entity.FIELD_REVIEWERS, NON_DELETED);
+    if (target.getEntityStatus() == EntityStatus.IN_REVIEW && !nullOrEmpty(target.getReviewers())) {
       EntityRepository.EntityUpdater.checkUpdatedByReviewer(
-          reviewed, securityContext.getUserPrincipal().getName());
+          target, securityContext.getUserPrincipal().getName());
     }
   }
 
