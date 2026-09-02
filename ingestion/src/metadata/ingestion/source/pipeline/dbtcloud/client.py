@@ -14,8 +14,9 @@ Client to interact with DBT Cloud REST APIs
 
 import json
 import traceback
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
@@ -229,8 +230,8 @@ class DBTCloudClient:
 
     def _get_jobs_total_count(
         self,
-        project_id: Optional[str] = None,  # noqa: UP045
-        environment_id: Optional[str] = None,  # noqa: UP045
+        project_id: str | None = None,
+        environment_id: str | None = None,
     ) -> int:
         """Read the paginated ``total_count`` for a single job filter. Returns
         0 on any failure so a single bad filter never aborts the whole count."""
@@ -255,7 +256,7 @@ class DBTCloudClient:
             )
         return 0
 
-    def get_jobs_count(self) -> Optional[int]:  # noqa: UP045
+    def get_jobs_count(self) -> int | None:
         """
         Total number of jobs that will be ingested for the configured filters,
         mirroring the ``get_jobs`` filter priority, or ``None`` when it cannot
@@ -279,7 +280,7 @@ class DBTCloudClient:
             logger.debug(f"Could not fetch job count: {exc}")
         return None
 
-    def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:  # noqa: UP045
+    def get_latest_successful_run_id(self, job_id: int) -> int | None:
         """
         Get the latest successful run ID for a given job.
         """
@@ -304,7 +305,7 @@ class DBTCloudClient:
             logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
             return None
 
-    def get_latest_run(self, job_id: int) -> Optional[DBTRun]:  # noqa: UP045
+    def get_latest_run(self, job_id: int) -> DBTRun | None:
         """
         Most recent run of a job, ignoring any lookback window.
 
@@ -329,7 +330,7 @@ class DBTCloudClient:
             logger.warning(f"Unable to get latest run for job {job_id}: {exc}")
         return latest_run
 
-    def get_runs(self, job_id: int, lookback_days: Optional[int] = None) -> Iterable[DBTRun]:  # noqa: UP045
+    def get_runs(self, job_id: int, lookback_days: int | None = None) -> Iterable[DBTRun]:
         """
         List runs for a job in dbt cloud using generator pattern.
         yields run one at a time for memory efficiency.
@@ -389,7 +390,7 @@ class DBTCloudClient:
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
-    ) -> Tuple[Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]]:  # noqa: UP006, UP045
+    ) -> tuple[list[DBTModel] | None, list[DBTModel] | None, list[DBTModel] | None]:
         """
         Get models with dependsOn and seeds in a single GraphQL call.
         """

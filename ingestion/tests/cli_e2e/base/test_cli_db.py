@@ -15,7 +15,6 @@ Test database connectors with CLI
 
 from abc import abstractmethod
 from datetime import datetime
-from typing import List, Optional, Tuple  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -283,7 +282,7 @@ class CliDBBase(TestCase):
                 E2EType.DATA_QUALITY,
                 {
                     "entity_fqn": table.fullyQualifiedName.root,
-                    "test_case_definitions": TypeAdapter(List[TestCaseDefinition]).dump_python(test_case_definitions),  # noqa: UP006
+                    "test_case_definitions": TypeAdapter(list[TestCaseDefinition]).dump_python(test_case_definitions),
                 },
             )
             result = self.run_command("test")
@@ -387,21 +386,21 @@ class CliDBBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def get_includes_schemas() -> List[str]:  # noqa: UP006
+        def get_includes_schemas() -> list[str]:
             raise NotImplementedError()
 
         @classmethod
-        def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
+        def get_excludes_schemas(cls) -> list[str]:
             return cls.get_includes_schemas()
 
         @staticmethod
         @abstractmethod
-        def get_includes_tables() -> List[str]:  # noqa: UP006
+        def get_includes_tables() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_tables() -> List[str]:  # noqa: UP006
+        def get_excludes_tables() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
@@ -409,19 +408,19 @@ class CliDBBase(TestCase):
             return {}
 
         @staticmethod
-        def get_profiler_time_partition() -> Optional[dict]:  # noqa: UP045
+        def get_profiler_time_partition() -> dict | None:
             return None
 
         @staticmethod
-        def get_profiler_time_partition_results() -> Optional[dict]:  # noqa: UP045
+        def get_profiler_time_partition_results() -> dict | None:
             return None
 
         @staticmethod
-        def delete_queries() -> Optional[List[str]]:  # noqa: UP006, UP045
+        def delete_queries() -> list[str] | None:
             return None
 
         @staticmethod
-        def update_queries() -> Optional[List[str]]:  # noqa: UP006, UP045
+        def update_queries() -> list[str] | None:
             return None
 
         @staticmethod
@@ -447,10 +446,10 @@ class CliDBBase(TestCase):
         def get_data_quality_table(self):
             return None
 
-        def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
+        def get_test_case_definitions(self) -> list[TestCaseDefinition]:
             pass
 
-        def get_expected_test_case_results(self) -> List[TestCaseResult]:  # noqa: UP006
+        def get_expected_test_case_results(self) -> list[TestCaseResult]:
             pass
 
         def assert_status_for_data_quality(self, source_status, sink_status):
@@ -485,7 +484,7 @@ class CliDBBase(TestCase):
                             f"System metrics profile did not return exepcted results for table: {table_fqn}"
                         ) from e
 
-        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
+        def get_system_profile_cases(self) -> list[tuple[str, list[SystemProfile]]]:
             """Return a list of tuples with the table fqn and the expected system profile"""
             return []
 
