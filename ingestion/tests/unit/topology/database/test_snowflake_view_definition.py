@@ -79,7 +79,8 @@ def test_view_definition_fallback_logs_failure_and_closes_result():
     dialect = MagicMock(default_schema_name="PUBLIC")
     connection = MagicMock()
     cursor = connection.execute.return_value
-    cursor.fetchone.side_effect = RuntimeError("fetch failed")
+    fetch_error = RuntimeError("fetch failed")
+    cursor.fetchone.side_effect = fetch_error
 
     with (
         patch.object(
@@ -97,5 +98,10 @@ def test_view_definition_fallback_logs_failure_and_closes_result():
         )
 
     assert result is None
-    assert "fetch failed" in mock_warning.call_args.args[0]
+    mock_warning.assert_called_once_with(
+        "Failed to fetch DDL for %s [%s]: %s",
+        "VIEW",
+        '"ANALYTICS"."ORDERS_VIEW"',
+        fetch_error,
+    )
     cursor.close.assert_called_once_with()
