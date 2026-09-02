@@ -15,7 +15,7 @@ Helpers module for db sources
 
 import time
 import traceback
-from typing import Callable, Iterable, List, Optional, Union  # noqa: UP035
+from collections.abc import Callable, Iterable
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -59,11 +59,11 @@ def get_host_from_host_port(uri: str) -> str:
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    service_names: str | list[str],
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,
-    extension: Optional[ViewLineageExtension] = None,  # noqa: UP045
+    extension: ViewLineageExtension | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     Method to generate view lineage

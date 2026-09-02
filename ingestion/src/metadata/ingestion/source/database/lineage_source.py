@@ -18,9 +18,10 @@ import os
 import time
 import traceback
 from abc import ABC
+from collections.abc import Callable, Iterable, Iterator
 from multiprocessing import Process, Queue
 from threading import Thread
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 import networkx as nx
 from sqlalchemy import text
@@ -85,7 +86,7 @@ class LineageSource(QueryParserSource, ABC):
     def generate_lineage_with_processes(  # noqa: C901
         producer_fn: Callable[[], Iterable[Any]],
         processor_fn: Callable[[Any, Queue], None],
-        args: Tuple[Any, ...],  # noqa: UP006
+        args: tuple[Any, ...],
         chunk_size: int = CHUNK_SIZE,
         processor_timeout: int = PROCESS_TIMEOUT,
         max_threads: int = MAX_ACTIVE_TIMED_OUT_THREADS,
@@ -358,7 +359,7 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_query_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -461,13 +462,13 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         By default stored   procedure lineage is not supported.
         """
         logger.info(f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}")  # noqa: RUF010
 
-    def get_column_lineage(self, from_table: Table, to_table: Table) -> List[ColumnLineage]:  # noqa: UP006
+    def get_column_lineage(self, from_table: Table, to_table: Table) -> list[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
@@ -490,8 +491,8 @@ class LineageSource(QueryParserSource, ABC):
         self,
         from_entity: Table,
         to_entity: Table,
-        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
-    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        column_lineage: list[ColumnLineage] = None,  # noqa: RUF013
+    ) -> Either[AddLineageRequest] | None:
         """
         Get the add cross database lineage request
         """
@@ -516,7 +517,7 @@ class LineageSource(QueryParserSource, ABC):
         By default cross database lineage is not supported.
         """
 
-    def _iter(self, *_, **__) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

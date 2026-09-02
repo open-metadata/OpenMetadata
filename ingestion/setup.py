@@ -13,8 +13,6 @@
 Python Dependencies
 """
 
-from typing import Dict, List, Set  # noqa: UP035
-
 from setuptools import setup
 
 # Add here versions required for multiple plugins
@@ -207,7 +205,7 @@ base_requirements = {
     "httpx~=0.28.0",
 }
 
-plugins: Dict[str, Set[str]] = {  # noqa: UP006
+plugins: dict[str, set[str]] = {
     "airflow": {
         "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
@@ -600,7 +598,7 @@ playwright_dependencies = {
 }
 
 
-def filter_requirements(filtered: Set[str]) -> List[str]:  # noqa: UP006
+def filter_requirements(filtered: set[str]) -> list[str]:
     """Filter out requirements from base_requirements"""
     return list(
         base_requirements.union(*[requirements for plugin, requirements in plugins.items() if plugin not in filtered])

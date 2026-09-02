@@ -17,7 +17,8 @@ for AI governance in OpenMetadata.
 
 import re
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
@@ -106,7 +107,7 @@ def infer_server_type(server_name: str) -> ServerType:
     return ServerType.Custom
 
 
-def infer_resource_type(uri: str, mime_type: Optional[str] = None) -> ResourceType:  # noqa: UP045
+def infer_resource_type(uri: str, mime_type: str | None = None) -> ResourceType:
     """Infer resource type from URI and mime type"""
     uri_lower = uri.lower()
     if mime_type:
@@ -157,7 +158,7 @@ class McpSource(Source):
             self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: McpConnection = config.serviceConnection.root.config
         if not isinstance(connection, McpConnection):
@@ -192,7 +193,7 @@ class McpSource(Source):
 
     def _process_server(self, server: ClientServerInfo) -> Iterable[Either[CreateMcpServerRequest]]:
         """Process a single MCP server and yield CreateMcpServerRequest request"""
-        client: Optional[McpClient] = None  # noqa: UP045
+        client: McpClient | None = None
         try:
             if self._should_connect_to_server():
                 client = self._connect_and_initialize(server)
@@ -261,7 +262,7 @@ class McpSource(Source):
             except McpProtocolError as e:
                 logger.warning(f"Could not fetch prompts from '{server.name}': {e}")
 
-    def _build_create_request(self, server: ClientServerInfo, error: Optional[str] = None) -> CreateMcpServerRequest:  # noqa: UP045
+    def _build_create_request(self, server: ClientServerInfo, error: str | None = None) -> CreateMcpServerRequest:
         """Build CreateMcpServerRequest request from server info"""
         transport_type = TRANSPORT_TYPE_MAP.get(server.transport.lower(), TransportType.Stdio)
 
@@ -328,7 +329,7 @@ class McpSource(Source):
             sanitized = f"mcp_server_{uuid4().hex[:8]}"
         return sanitized[:256] if len(sanitized) > 256 else sanitized
 
-    def _convert_tools(self, tools: List[Dict[str, Any]]) -> List[McpTool]:  # noqa: UP006
+    def _convert_tools(self, tools: list[dict[str, Any]]) -> list[McpTool]:
         """Convert MCP protocol tools to OpenMetadata McpTool objects"""
         result = []
         for tool in tools:
@@ -341,7 +342,7 @@ class McpSource(Source):
             result.append(mcp_tool)
         return result
 
-    def _convert_resources(self, resources: List[Dict[str, Any]]) -> List[McpResource]:  # noqa: UP006
+    def _convert_resources(self, resources: list[dict[str, Any]]) -> list[McpResource]:
         """Convert MCP protocol resources to OpenMetadata McpResource objects"""
         result = []
         for resource in resources:
@@ -360,7 +361,7 @@ class McpSource(Source):
             result.append(mcp_resource)
         return result
 
-    def _convert_prompts(self, prompts: List[Dict[str, Any]]) -> List[McpPrompt]:  # noqa: UP006
+    def _convert_prompts(self, prompts: list[dict[str, Any]]) -> list[McpPrompt]:
         """Convert MCP protocol prompts to OpenMetadata McpPrompt objects"""
         result = []
         for prompt in prompts:
