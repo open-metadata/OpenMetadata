@@ -74,7 +74,7 @@ export const OwnerLabel = ({
           {showLabel && (
             <Typography
               as="span"
-              className={classNames(className, 'tw:mb-0 tw:text-secondary')}
+              className={classNames(className, 'tw:mb-0 tw:text-brand-700')}
               size="text-sm"
               weight="medium">
               {placeHolder ?? t('label.owner-plural')}
