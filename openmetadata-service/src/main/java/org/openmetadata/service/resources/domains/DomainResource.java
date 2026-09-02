@@ -167,7 +167,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           String glossaryTerms) {
     ListFilter filter =
         new ListFilter(null)
-            .addQueryParam("ownerIds", EntityUtil.resolveOwnersToIds(owners))
+            .addQueryParam("ownerId", EntityUtil.resolveOwnersToIds(owners))
             .addQueryParam("domainType", domainType)
             .addQueryParam("tags", tags)
             .addQueryParam("glossaryTerms", glossaryTerms);

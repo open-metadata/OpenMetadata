@@ -87,7 +87,6 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getOwnedByCondition());
     conditions.add(getTierCondition(tableName));
     conditions.add(getDomainTypeCondition(tableName));
-    conditions.add(getDomainOwnersCondition(tableName));
     conditions.add(getClassificationTagsCondition(tableName));
     conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
@@ -801,15 +800,17 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getOwnerCondition(String tableName) {
-    String ownerId = getQueryParam("ownerId");
-    if (ownerId == null) {
+    // Generic owner filter for any entity: matches the indexed entity_relationship.fromId.
+    // Accepts one or more owner (user/team) ids as a comma-separated value.
+    String ownerIds = getQueryParam("ownerId");
+    if (nullOrEmpty(ownerIds)) {
       return "";
     }
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
-    queryParams.put("ownerIdParam", ownerId);
+    String inCondition = buildIndexedBindParams("ownerId", ownerIds);
     return String.format(
-        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId = :ownerIdParam AND relation=8))",
-        entityIdColumn);
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId IN (%s) AND relation=8))",
+        entityIdColumn, inCondition);
   }
 
   /**
@@ -900,22 +901,6 @@ public class ListFilter extends Filter<ListFilter> {
           "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.domainType')) IN (%s)", jsonColumn, inCondition);
     }
     return String.format("%s->>'domainType' IN (%s)", jsonColumn, inCondition);
-  }
-
-  private String getDomainOwnersCondition(String tableName) {
-    // Owner names/FQNs are resolved to ids by the resource, so we match the indexed
-    // entity_relationship.fromId directly instead of joining user_entity/team_entity.
-    String ownerIds = getQueryParam("ownerIds");
-    if (nullOrEmpty(ownerIds)) {
-      return "";
-    }
-    String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
-    String inCondition = buildIndexedBindParams("domainOwnerId", ownerIds);
-    return String.format(
-        "(%s IN (SELECT er.toId FROM entity_relationship er "
-            + "WHERE er.fromEntity IN ('user', 'team') AND er.toEntity = 'domain' "
-            + "AND er.fromId IN (%s) AND er.relation = %d))",
-        entityIdColumn, inCondition, Relationship.OWNS.ordinal());
   }
 
   private String getClassificationTagsCondition(String tableName) {
