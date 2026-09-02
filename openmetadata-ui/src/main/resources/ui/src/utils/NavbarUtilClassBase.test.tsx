@@ -36,7 +36,10 @@ describe('NavbarUtilClassBase', () => {
     expect(stringifyResult).toContain('label.version');
   });
 
-  it('should return no user profile extra items by default', () => {
-    expect(navbarUtilClassBase.getUserProfileExtraItems()).toEqual([]);
+  it('should expose the interface-mode switch as the default extra item', () => {
+    const items = navbarUtilClassBase.getUserProfileExtraItems();
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ key: 'app-mode', type: 'group' });
   });
 });
