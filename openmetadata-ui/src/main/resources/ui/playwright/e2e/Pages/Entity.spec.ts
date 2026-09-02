@@ -1380,9 +1380,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          // Match both engines: AntD renders rows inside its inner <table>,
+          // TableV2 renders a plain <table> directly.
           const childTable = page
-            .locator('.ant-table')
-            .filter({ has: taggedRow });
+            .locator('table')
+            .filter({ has: taggedRow })
+            .first();
           const rows = childTable.locator(`[${rowSelector}]`);
 
           await test.step('Tag a child row', async () => {
@@ -1408,23 +1411,27 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           );
 
           const toggleTagFilter = async () => {
+            // TableV2 folds the filter trigger's label into the header's
+            // accessible name ("Tags filter"), so an exact match only works
+            // for the AntD engine — anchor on the title prefix instead.
             await page
-              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByRole('columnheader', { name: /^Tags\b/ })
               .getByTestId('filter-icon')
               .click();
 
-            await expect(
-              page.locator('.ant-table-filter-dropdown:visible')
-            ).toBeVisible();
+            // AntD mounts the dropdown as .ant-table-filter-dropdown;
+            // TableV2 mounts ColumnFilter inside a react-aria dialog popover.
+            const filterDropdown = page.locator(
+              '.ant-table-filter-dropdown:visible, [role="dialog"]:has(.ant-menu)'
+            );
 
-            await page
-              .locator('.ant-table-filter-dropdown:visible')
+            await expect(filterDropdown).toBeVisible();
+
+            await filterDropdown
               .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
               .click();
 
-            await expect(
-              page.locator('.ant-table-filter-dropdown:visible')
-            ).toBeHidden();
+            await expect(filterDropdown).toBeHidden();
           };
 
           await test.step('Apply tag filter and verify pruning', async () => {
