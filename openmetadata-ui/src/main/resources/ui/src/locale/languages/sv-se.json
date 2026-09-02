@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "Ett fel uppstod vid hämtning av domäner",
     "fetch-pipeline-status-error": "Fel vid hämtning av pipelinestatus.",
     "field-ca-certs-description": "Certifikatsökvägen måste läggas till i konfigurationen. Sökvägen ska vara lokal i inmatningsbehållaren.",
+    "field-cannot-be-highlighted": "Det här fältet kan inte markeras. Endast analyserade textfält stöder markering.",
     "field-count-required": "{{count}} krävs",
     "field-data-is-not-available-for-deleted-entities": "{{field}}-data är inte tillgängliga för borttagna entiteter.",
     "field-insight": "Visa procentandelen datatillgångar med {{field}} per typ.",

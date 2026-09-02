@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "获取域时发生错误",
     "fetch-pipeline-status-error": "获取工作流状态时出现错误",
     "field-ca-certs-description": "要添加到配置中的证书路径, 路径应为 Ingestion 容器中的本地路径",
+    "field-cannot-be-highlighted": "此字段无法高亮显示。仅经过分析的文本字段支持高亮显示。",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "{{field}}数据无法用于已删除的实体",
     "field-insight": "按类型显示具有{{field}}的数据资产百分比",

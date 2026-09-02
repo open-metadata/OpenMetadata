@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "אירעה שגיאה בעת אחזור התחומים",
     "fetch-pipeline-status-error": "שגיאה בעת קבלת מצב הצנת",
     "field-ca-certs-description": "יש להוסיף את נתיב התעוזית בהגדרה. הנתיב צריך להיות מקומי במכללת הקליטה.",
+    "field-cannot-be-highlighted": "לא ניתן להדגיש שדה זה. רק שדות טקסט מנותחים תומכים בהדגשה.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "נתוני {{field}} אינם זמינים עבור ישויות שנמחקו.",
     "field-insight": "הצגת אחוז הנכסים עם {{field}} לפי סוג.",

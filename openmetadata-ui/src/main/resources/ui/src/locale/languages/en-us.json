@@ -3730,6 +3730,7 @@
     "fetch-domain-list-error": "An error occurred while fetching domains",
     "fetch-pipeline-status-error": "Error while fetching pipeline status.",
     "field-ca-certs-description": "The Certificate path needs to be added in the configuration. The path should be local in the Ingestion Container.",
+    "field-cannot-be-highlighted": "This field cannot be highlighted. Only analyzed text fields support highlighting.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "{{field}} data is not available for deleted entities.",
     "field-insight": "Display the percentage of data assets with {{field}} by type.",
