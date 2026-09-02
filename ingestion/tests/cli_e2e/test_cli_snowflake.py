@@ -15,7 +15,7 @@ Test Snowflake connector with CLI
 
 from datetime import datetime
 from time import sleep
-from typing import Any, Dict, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 
 import pytest
 from sqlalchemy import text
@@ -42,12 +42,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     Snowflake CLI Tests
     """
 
-    prepare_db_setup: List[str] = [  # noqa: RUF012, UP006
+    prepare_db_setup: list[str] = [  # noqa: RUF012
         "DROP DATABASE IF EXISTS E2E_DB;",
         "CREATE OR REPLACE DATABASE E2E_DB;",
     ]
 
-    prepare_snowflake_e2e: List[str] = [  # noqa: RUF012, UP006
+    prepare_snowflake_e2e: list[str] = [  # noqa: RUF012
         "CREATE OR REPLACE SCHEMA E2E_DB.e2e_test;",
         "CREATE OR REPLACE TABLE E2E_DB.e2e_test.regions(region_id INT PRIMARY KEY,region_name VARCHAR(25));",
         "CREATE OR REPLACE TABLE E2E_DB.e2e_test.countries(country_id CHAR(2) PRIMARY KEY,country_name VARCHAR (40),region_id INT NOT NULL);",
@@ -76,7 +76,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM E2E_DB.e2e_test.persons;
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (1,'Peter Parker');",
         "INSERT INTO E2E_DB.e2e_test.persons (person_id, full_name) VALUES (2, 'Clark Kent');",
         "INSERT INTO E2E_DB.e2e_test.e2e_table (varchar_column, int_column) VALUES ('e2e_test.e2e_table', 1);",
@@ -98,7 +98,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         DROP VIEW IF EXISTS E2E_DB.e2e_test.view_persons;
     """
 
-    teardown_sql_statements: List[str] = [  # noqa: RUF012, UP006
+    teardown_sql_statements: list[str] = [  # noqa: RUF012
         "DROP TABLE IF EXISTS E2E_DB.e2e_test.e2e_table;",
         "DROP TABLE IF EXISTS E2E_DB.public.e2e_table;",
         "DROP TABLE IF EXISTS E2E_DB.public.public_table;",
@@ -252,15 +252,15 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "e2e_snowflake.E2E_DB.E2E_TEST.TRANSIENT_SAMPLE_TABLE"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["e2e_test.*"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["^test.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return [".*ons"]
 
     @staticmethod
@@ -284,7 +284,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 7
 
     @staticmethod
-    def delete_queries() -> List[str]:  # noqa: UP006
+    def delete_queries() -> list[str]:
         return [
             """
             DELETE FROM E2E_DB.E2E_TEST.PERSONS WHERE full_name = 'Peter Parker'
@@ -292,14 +292,14 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:  # noqa: UP006
+    def update_queries() -> list[str]:
         return [
             """
             UPDATE E2E_DB.E2E_TEST.PERSONS SET full_name = 'Bruce Wayne' WHERE full_name = 'Clark Kent'
             """,
         ]
 
-    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
+    def get_system_profile_cases(self) -> list[tuple[str, list[SystemProfile]]]:
         return [
             (
                 "e2e_snowflake.E2E_DB.E2E_TEST.E2E_TABLE",
@@ -373,7 +373,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_data_quality_table(self):
         return self.fqn_created_table()
 
-    def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
+    def get_test_case_definitions(self) -> list[TestCaseDefinition]:
         return [
             TestCaseDefinition(
                 name="snowflake_data_diff",
@@ -440,8 +440,8 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def build_config_file_with_overrides(
         self,
-        source_config_overrides: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
-        connection_overrides: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+        source_config_overrides: dict[str, Any] | None = None,
+        connection_overrides: dict[str, Any] | None = None,
     ) -> None:
         """Build config file with arbitrary overrides for sourceConfig and/or connection"""
         import yaml

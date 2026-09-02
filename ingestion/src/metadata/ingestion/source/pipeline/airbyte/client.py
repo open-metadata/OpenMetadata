@@ -14,7 +14,7 @@ Client to interact with airbyte apis
 
 import json
 import time
-from typing import Iterable, Optional, Tuple, Type, Union  # noqa: UP035
+from collections.abc import Iterable
 from urllib.parse import quote
 
 import requests
@@ -82,7 +82,7 @@ class AirbyteClient:
 
         self.client = TrackedREST(client_config, source_name="airbyte")
 
-    def _paginate_get(self, path: str, response_cls: Type[BaseModel]) -> Iterable:  # noqa: UP006
+    def _paginate_get(self, path: str, response_cls: type[BaseModel]) -> Iterable:
         """
         Handle offset-based pagination for the Airbyte public API.
         All public API list endpoints default to 20 items per page (max 100).
@@ -138,7 +138,7 @@ class AirbyteClient:
             raise APIError(response)
         yield from AirbyteConnectionList.model_validate(response).connections
 
-    def list_jobs(self, connection_id: str) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob]]:  # noqa: UP007
+    def list_jobs(self, connection_id: str) -> Iterable[AirbyteSelfHostedJob | AirbyteCloudJob]:
         """
         Method returns the list of all jobs of a connection.
         """
@@ -208,7 +208,7 @@ class AirbyteCloudClient(AirbyteClient):
     def __init__(self, config: AirbyteConnection):
         self.config = config
         self._use_public_api = True
-        self._oauth_token: Optional[str] = None  # noqa: UP045
+        self._oauth_token: str | None = None
         self._oauth_token_expiry: float = 0
 
         if not isinstance(config.auth, Oauth20ClientCredentialsAuthentication):
@@ -234,7 +234,7 @@ class AirbyteCloudClient(AirbyteClient):
 
         self.client = TrackedREST(client_config)
 
-    def _fetch_oauth_token(self) -> Tuple[str, int]:  # noqa: UP006
+    def _fetch_oauth_token(self) -> tuple[str, int]:
         """
         Fetch OAuth 2.0 access token using client credentials
         """

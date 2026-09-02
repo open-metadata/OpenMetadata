@@ -16,7 +16,6 @@ import datetime
 import io
 import json
 import uuid
-from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -113,7 +112,7 @@ MOCK_S3_METADATA_FILE_RESPONSE = {
         }
     ]
 }
-EXPECTED_S3_BUCKETS: List[S3BucketResponse] = [  # noqa: UP006
+EXPECTED_S3_BUCKETS: list[S3BucketResponse] = [
     S3BucketResponse(
         Name="test_transactions",
         CreationDate=datetime.datetime(2000, 1, 1),
@@ -225,7 +224,7 @@ class StorageUnitTest(TestCase):
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_S3_BUCKETS)
 
     def test_load_metadata_file_s3(self):
-        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()  # noqa: UP006
+        metadata_entry: list[MetadataEntry] = self.return_metadata_entry()
 
         self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
@@ -282,7 +281,7 @@ class StorageUnitTest(TestCase):
     def test_generate_structured_container(self):
         self.object_store_source._get_sample_file_path = lambda bucket_name, metadata_entry: "transactions/file_1.csv"
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
-        columns: List[Column] = [  # noqa: UP006
+        columns: list[Column] = [
             Column(
                 name=ColumnName("transaction_id"),
                 dataType=DataType.INT,

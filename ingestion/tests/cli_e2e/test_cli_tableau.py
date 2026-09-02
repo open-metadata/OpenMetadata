@@ -14,7 +14,6 @@ Test Tableau connector with CLI - Enhanced with comprehensive lineage and metada
 """
 
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -154,22 +153,22 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
     # FILTER CONFIGURATION METHODS
     # ================================
 
-    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_includes_dashboards(self) -> list[str]:
         return TableauExpectedValues.INCLUDE_DASHBOARDS
 
-    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_excludes_dashboards(self) -> list[str]:
         return TableauExpectedValues.EXCLUDE_DASHBOARDS
 
-    def get_includes_charts(self) -> List[str]:  # noqa: UP006
+    def get_includes_charts(self) -> list[str]:
         return TableauExpectedValues.INCLUDE_CHARTS
 
-    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
+    def get_excludes_charts(self) -> list[str]:
         return TableauExpectedValues.EXCLUDE_CHARTS
 
-    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_includes_datamodels(self) -> list[str]:
         return TableauExpectedValues.INCLUDE_DATAMODELS
 
-    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_excludes_datamodels(self) -> list[str]:
         return TableauExpectedValues.EXCLUDE_DATAMODELS
 
     # ================================
@@ -574,7 +573,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         entity_type,
         name: str,
         service: str = TableauExpectedValues.SERVICE_NAME,
-        fields: List = ["tags", "charts"],  # noqa: B006, UP006
+        fields: list = ["tags", "charts"],  # noqa: B006
     ):
         """Helper to get entity by name or displayName"""
         entities = self.openmetadata.list_entities(

@@ -9,6 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from http import HTTPStatus
+
+import pytest
 from flask import Flask
 
 from openmetadata_managed_apis.api.response import ApiResponse
@@ -37,3 +40,19 @@ def test_client_error_keeps_safe_actionable_message():
 
     assert response.status_code == ApiResponse.STATUS_BAD_REQUEST
     assert response.get_json() == {"error": message}
+
+
+@pytest.mark.parametrize(
+    "status,error,expected_status,expected_error",
+    [
+        (None, "Internal detail", ApiResponse.STATUS_SERVER_ERROR, ApiResponse.UNEXPECTED_ERROR),
+        (HTTPStatus.BAD_REQUEST, "Invalid request", ApiResponse.STATUS_BAD_REQUEST, "Invalid request"),
+        (499, "Client closed request", 499, "Client closed request"),
+    ],
+)
+def test_error_handles_missing_enum_and_nonstandard_statuses(status, error, expected_status, expected_error):
+    with Flask(__name__).app_context():
+        response = ApiResponse.error(status, error)
+
+    assert response.status_code == expected_status
+    assert response.get_json() == {"error": expected_error}

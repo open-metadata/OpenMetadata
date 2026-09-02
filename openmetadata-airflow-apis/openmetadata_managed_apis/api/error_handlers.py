@@ -12,8 +12,6 @@
 Register error handlers
 """
 
-from http import HTTPStatus
-
 from werkzeug.exceptions import HTTPException
 
 from openmetadata_managed_apis.api.app import blueprint
@@ -28,7 +26,7 @@ logger = api_logger()
 def handle_any_error(exc):
     logger.exception("Unhandled API exception")
     if isinstance(exc, HTTPException):
-        return ApiResponse.error(exc.code, HTTPStatus(exc.code).phrase)
+        return ApiResponse.error(exc.code, exc.name)
     return ApiResponse.server_error()
 
 
