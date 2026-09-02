@@ -143,7 +143,7 @@ class SqlDltParser:
     @staticmethod
     def _normalise(table: Any, called_functions: frozenset = frozenset()) -> Optional[str]:  # noqa: UP045
         """Turn a parser table reference into a name, or None when it is not a table."""
-        from metadata.utils.helpers import (
+        from metadata.utils.helpers import (  # noqa: PLC0415
             get_formatted_entity_name,
             has_table_name,
         )
@@ -175,10 +175,10 @@ class SqlDltParser:
     def extract(source_code: str) -> List[DLTTableDependency]:  # noqa: UP006
         # Imported here so pipelines that never use SQL do not pay the import cost
         # of the lineage stack.
-        import sqlparse
+        import sqlparse  # noqa: PLC0415
 
-        from metadata.ingestion.lineage.models import Dialect
-        from metadata.ingestion.lineage.parser import LineageParser
+        from metadata.ingestion.lineage.models import Dialect  # noqa: PLC0415
+        from metadata.ingestion.lineage.parser import LineageParser  # noqa: PLC0415
 
         dependencies: List[DLTTableDependency] = []  # noqa: UP006
         for raw_statement in sqlparse.split(source_code):
