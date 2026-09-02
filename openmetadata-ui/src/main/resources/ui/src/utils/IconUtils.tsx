@@ -137,17 +137,23 @@ export const ICON_MAP: Record<
 };
 
 /**
+ * An icon whose stroke weight can be overridden — the shape `@untitledui`
+ * icons expose (their own props type is wider, so they need a cast).
+ */
+export type StrokableIcon = ComponentType<{
+  size?: number;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}>;
+
+/**
  * Creates an icon component with custom stroke width
  * @param IconComponent - The icon component from @untitledui/icons
  * @param strokeWidth - Custom stroke width (default icons use 2)
  * @returns Wrapped icon component with custom stroke width
  */
 export const createIconWithStroke = (
-  IconComponent: ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    style?: React.CSSProperties;
-  }>,
+  IconComponent: StrokableIcon,
   strokeWidth: number
 ) => {
   return (props: { size?: number; style?: React.CSSProperties }) => (
@@ -155,68 +161,18 @@ export const createIconWithStroke = (
   );
 };
 
-interface RenderIconOptions {
-  size?: number;
-  className?: string;
-  style?: React.CSSProperties;
-  strokeWidth?: number;
-  alt?: string;
-}
-
 /**
- * Utility function to render an icon from either a URL or an icon name
- * @param iconValue - Either a URL string or an icon name from ICON_MAP
- * @param options - Options for rendering the icon
- * @returns React element of the icon or image, or null if invalid
+ * The Ontology Studio glyph, as every nav entry leading there renders it —
+ * classic sidebar and app-mode sub-nav — so the two surfaces cannot drift
+ * apart. Restroked to 1.2, the weight the hand-drawn nav SVGs beside it use:
+ * `@untitledui` icons ship at stroke 2, which at nav size reads noticeably
+ * heavier than the items around it. The page header draws the same glyph
+ * unrestroked, because there it sits reversed-out on a brand-solid badge.
  */
-export const renderIcon = (
-  iconValue: string | undefined,
-  options: RenderIconOptions = {}
-) => {
-  const {
-    size = 24,
-    className = '',
-    style = {},
-    strokeWidth = 1.5,
-    alt = 'icon',
-  } = options;
-
-  if (!iconValue) {
-    return null;
-  }
-
-  // Check if it's a known icon name
-  const IconComponent = ICON_MAP[iconValue];
-  if (IconComponent) {
-    return (
-      <IconComponent
-        className={className}
-        size={size}
-        style={{ strokeWidth, ...style }}
-      />
-    );
-  }
-
-  // Only render as image if it looks like a valid URL/path or has an image extension
-  if (!isImageUrl(iconValue)) {
-    return null;
-  }
-
-  // Render as image with error handling
-  return (
-    <img
-      alt={alt}
-      className={className}
-      src={getTagImageSrc(iconValue)}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-        ...style,
-      }}
-    />
-  );
-};
+export const OntologyStudioIcon = createIconWithStroke(
+  LayersThree01 as StrokableIcon,
+  1.2
+);
 
 /**
  * Get the default icon for an entity type

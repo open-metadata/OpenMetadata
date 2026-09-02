@@ -19,6 +19,8 @@ import {
   parseExportErrorMessage,
 } from './APIUtils';
 
+const TEXT_PLAIN_TYPE = 'text/plain';
+
 const APIHits = [
   {
     _source: {
@@ -32,12 +34,13 @@ const APIHits = [
 ];
 const formatDataResponse = jest.fn().mockImplementation((hist) => {
   const formatedData = hist.map((hit) => {
-    const newData = {};
-    newData.id = hit._source.tableId;
-    newData.name = hit._source.tableName;
-    newData.description = hit._source.description;
-    newData.fullyQualifiedName = hit._source.fqdn;
-    newData.tableType = hit._source.tableType;
+    const newData = {
+      id: hit._source.tableId,
+      name: hit._source.tableName,
+      description: hit._source.description,
+      fullyQualifiedName: hit._source.fqdn,
+      tableType: hit._source.tableType,
+    };
 
     return newData;
   });
@@ -159,7 +162,7 @@ describe('Test APIUtils utility', () => {
 
   describe('isBlobLikeResponse', () => {
     it('returns true for Blob instance', () => {
-      const blob = new Blob(['hello'], { type: 'text/plain' });
+      const blob = new Blob(['hello'], { type: TEXT_PLAIN_TYPE });
 
       expect(isBlobLikeResponse(blob)).toBe(true);
     });
@@ -169,7 +172,7 @@ describe('Test APIUtils utility', () => {
         size: 0,
         slice: jest.fn(),
         text: jest.fn().mockResolvedValue(''),
-        type: 'text/plain',
+        type: TEXT_PLAIN_TYPE,
       };
 
       expect(isBlobLikeResponse(blobLike)).toBe(true);
@@ -191,7 +194,7 @@ describe('Test APIUtils utility', () => {
 
     const makeBlobLike = (content) => ({
       size: content.length,
-      type: 'text/plain',
+      type: TEXT_PLAIN_TYPE,
       text: jest.fn().mockResolvedValue(content),
       slice: jest.fn(),
     });

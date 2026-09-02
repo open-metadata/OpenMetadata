@@ -160,6 +160,22 @@ export const getCronDefaultValue = (appName: string) => {
   return initialValue;
 };
 
+export const getDefaultScheduleFromPeriod = (
+  includePeriodOptions: string[]
+) => {
+  if (includePeriodOptions.includes('day')) {
+    return DEFAULT_SCHEDULE_CRON_DAILY;
+  } else if (includePeriodOptions.includes('week')) {
+    return DEFAULT_SCHEDULE_CRON_WEEKLY;
+  } else if (includePeriodOptions.includes('month')) {
+    return DEFAULT_SCHEDULE_CRON_MONTHLY;
+  } else if (includePeriodOptions.includes('hour')) {
+    return DEFAULT_SCHEDULE_CRON_HOURLY;
+  }
+
+  return DEFAULT_SCHEDULE_CRON_DAILY;
+};
+
 export const getDefaultScheduleValue = ({
   defaultSchedule,
   includePeriodOptions,
@@ -180,22 +196,6 @@ export const getDefaultScheduleValue = ({
   }
 
   return getDefaultScheduleFromPeriod(includePeriodOptions);
-};
-
-export const getDefaultScheduleFromPeriod = (
-  includePeriodOptions: string[]
-) => {
-  if (includePeriodOptions.includes('day')) {
-    return DEFAULT_SCHEDULE_CRON_DAILY;
-  } else if (includePeriodOptions.includes('week')) {
-    return DEFAULT_SCHEDULE_CRON_WEEKLY;
-  } else if (includePeriodOptions.includes('month')) {
-    return DEFAULT_SCHEDULE_CRON_MONTHLY;
-  } else if (includePeriodOptions.includes('hour')) {
-    return DEFAULT_SCHEDULE_CRON_HOURLY;
-  }
-
-  return DEFAULT_SCHEDULE_CRON_DAILY;
 };
 
 export const getUpdatedStateFromFormState = <T>(

@@ -254,7 +254,7 @@ describe('useTestDefinitionListPage', () => {
     });
 
     it('should keep permissionLoading true until the per-row permission promises settle', async () => {
-      let resolvePermission: (value: unknown) => void = () => undefined;
+      let resolvePermission: (value: unknown) => void = (_value) => undefined;
       mockGetEntityPermissionByFqn.mockImplementationOnce(
         () =>
           new Promise((resolve) => {

@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { Fragment } from 'react';
@@ -62,6 +61,7 @@ import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-l
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ExpandableConfig } from '../components/common/Table/Table.interface';
 import { ConstraintTypes } from '../enums/table.enum';
 import {
   ConstraintType,

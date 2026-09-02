@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,6 @@
  */
 
 import {
-  AntdConfig,
   type AsyncFetchListValuesResult,
   type BasicConfig,
   type Field,
@@ -20,7 +19,7 @@ import {
   type ListItem,
   type ListValues,
   type SelectFieldSettings,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
   SearchOutputType,
@@ -51,14 +50,17 @@ import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
+import { OMConfig } from './QueryBuilderOMConfig';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchPureUtils';
+
+const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
-  baseConfig = AntdConfig;
+  baseConfig = OMConfig;
   configTypes: BasicConfig['types'] = {
     ...this.baseConfig.types,
     multiselect: {
@@ -943,12 +945,12 @@ class AdvancedSearchClassBase {
             q: buildTermQuery(
               [
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'tier',
                   negate: true,
                 },
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'certification',
                   negate: true,
                 },
@@ -983,7 +985,7 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'certification',
               },
               true
@@ -1003,7 +1005,7 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'tier',
               },
               true

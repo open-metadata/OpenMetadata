@@ -53,6 +53,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: mockTestCasePermission,
+      testSuite: { Create: true },
     },
   })),
 }));
@@ -120,6 +121,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
   default: jest.fn().mockImplementation(({ onSearch, searchValue }) => (
     <div data-testid="searchbar-component">
       <input
+        aria-label="Search"
         data-testid="search-input"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}
@@ -139,6 +141,9 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
         onTestUpdate,
         tableHeader,
         emptyStateAction,
+        enableBulkActions,
+        hasActiveFilters,
+        deletionMode,
       }) => (
         <div data-testid="data-quality-tab">
           {tableHeader}
@@ -146,6 +151,13 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
           <span data-testid="loading-state">
             {isLoading ? 'loading' : 'loaded'}
           </span>
+          <span data-testid="bulk-actions-state">
+            {String(enableBulkActions)}
+          </span>
+          <span data-testid="active-filters-state">
+            {String(hasActiveFilters)}
+          </span>
+          <span data-testid="deletion-mode">{deletionMode}</span>
           <button
             data-testid="trigger-update"
             onClick={() =>
@@ -276,6 +288,7 @@ describe('TestCases component', () => {
     usePermissionProvider.mockReturnValue({
       permissions: {
         testCase: mockTestCasePermission,
+        testSuite: { Create: true },
       },
     });
   });
@@ -307,6 +320,33 @@ describe('TestCases component', () => {
       expect(await screen.findByTestId('data-quality-tab')).toBeInTheDocument();
       expect(await screen.findByTestId('summary-panel')).toBeInTheDocument();
       expect(await screen.findByTestId('page-header')).toBeInTheDocument();
+    });
+
+    it('should treat deleted visibility as a filter and disable bulk actions', async () => {
+      render(<TestCases />);
+
+      expect(await screen.findByTestId('bulk-actions-state')).toHaveTextContent(
+        'true'
+      );
+      expect(screen.getByTestId('active-filters-state')).toHaveTextContent(
+        'false'
+      );
+      expect(screen.getByTestId('deletion-mode')).toHaveTextContent('soft');
+
+      fireEvent.click(screen.getByTestId('show-deleted'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('bulk-actions-state')).toHaveTextContent(
+          'false'
+        )
+      );
+
+      expect(screen.getByTestId('active-filters-state')).toHaveTextContent(
+        'true'
+      );
+      expect(
+        screen.queryByTestId('empty-state-action-new-test-case')
+      ).not.toBeInTheDocument();
     });
 
     it('should render table filter when selected', async () => {
@@ -410,7 +450,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*sale*',
+            q: 'sale',
           })
         );
       });
@@ -524,7 +564,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*test*',
+            q: 'test',
             testCaseStatus: 'Failed',
           })
         );

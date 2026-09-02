@@ -206,10 +206,6 @@ export const GlossaryUpdateConfirmationModal = ({
           ),
         };
       case UpdateState.UPDATING:
-        return {
-          content: progressBar,
-          footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
-        };
       case UpdateState.SUCCESS:
         return {
           content: progressBar,

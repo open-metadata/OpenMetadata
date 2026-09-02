@@ -42,9 +42,10 @@ const ERROR = 'Error';
 
 const mockNavigate = jest.fn();
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div>ErrorPlaceHolder</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest.fn(() => <div>ErrorPlaceHolder</div>),
+}));
 
 jest.mock('../../hoc/withPageLayout', () => ({
   withPageLayout: jest.fn().mockImplementation((Component) => Component),
@@ -95,6 +96,7 @@ jest.mock(
         return (
           <div>
             <div>ConnectionConfigForm</div>
+            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input
               data-testid="connection-field"
               type="text"

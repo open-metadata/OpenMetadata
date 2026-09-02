@@ -13,7 +13,7 @@
 Entity interface model
 """
 
-from typing import List, Optional, Protocol, runtime_checkable  # noqa: UP035
+from typing import Protocol, runtime_checkable
 
 from metadata.generated.schema.type import basic, entityHistory, tagLabel
 
@@ -26,35 +26,35 @@ class EntityInterface(Protocol):
     def id(self) -> basic.Uuid: ...
 
     @property
-    def description(self) -> Optional[basic.Markdown]: ...  # noqa: UP045
+    def description(self) -> basic.Markdown | None: ...
 
     @property
-    def displayName(self) -> Optional[str]: ...  # noqa: N802, UP045
+    def displayName(self) -> str | None: ...  # noqa: N802
 
     @property
     def name(self) -> basic.EntityName: ...
 
     @property
-    def version(self) -> Optional[entityHistory.EntityVersion]: ...  # noqa: UP045
+    def version(self) -> entityHistory.EntityVersion | None: ...
 
     @property
-    def updatedBy(self) -> Optional[str]: ...  # noqa: N802, UP045
+    def updatedBy(self) -> str | None: ...  # noqa: N802
 
     @property
-    def updatedAt(self) -> Optional[basic.Timestamp]: ...  # noqa: N802, UP045
+    def updatedAt(self) -> basic.Timestamp | None: ...  # noqa: N802
 
     @property
-    def href(self) -> Optional[basic.Href]: ...  # noqa: UP045
+    def href(self) -> basic.Href | None: ...
 
     @property
-    def changeDescription(self) -> Optional[entityHistory.ChangeDescription]: ...  # noqa: N802, UP045
+    def changeDescription(self) -> entityHistory.ChangeDescription | None: ...  # noqa: N802
 
     @property
-    def fullyQualifiedName(self) -> Optional[basic.FullyQualifiedEntityName]: ...  # noqa: N802, UP045
+    def fullyQualifiedName(self) -> basic.FullyQualifiedEntityName | None: ...  # noqa: N802
 
 
 class EntityInterfaceWithTags(EntityInterface, Protocol):
     """Entity interface model with tags"""
 
     @property
-    def tags(self) -> Optional[List[tagLabel.TagLabel]]: ...  # noqa: UP006, UP045
+    def tags(self) -> list[tagLabel.TagLabel] | None: ...

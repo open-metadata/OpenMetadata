@@ -12,7 +12,6 @@
  */
 
 import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +21,7 @@ import {
 } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { ReindexFailuresProps } from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;

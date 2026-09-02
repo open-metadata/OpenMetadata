@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyPackModuleInstallation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPackModuleInstallation",
+  "description": "Verified ontology pack module recorded as installation provenance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyPackModuleInstallation",
+  "properties": {
+    "moduleId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": ["moduleId", "sha256"],
+  "additionalProperties": false
+}

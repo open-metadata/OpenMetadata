@@ -20,10 +20,18 @@ import {
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import {
+  FC,
+  MouseEvent,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -51,7 +59,6 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
-import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
@@ -168,12 +175,18 @@ const DataProductListPage = ({
             entity.name &&
             entity.displayName !== entity.name;
 
+          const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+            event.stopPropagation();
+            dataProductListing.actionHandlers.onEntityClick?.(entity);
+          };
+
           return (
             <Box
               align="center"
               className={NAME_CELL_CLIP_CLASS}
               direction="row"
-              gap={3}>
+              gap={3}
+              onClick={handleNameClick}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
               <Box className="tw:min-w-0" direction="col">
                 <Typography
@@ -250,7 +263,7 @@ const DataProductListPage = ({
           return null;
       }
     },
-    []
+    [dataProductListing.actionHandlers.onEntityClick]
   );
 
   const selectedDataProductEntities = useMemo(
@@ -280,12 +293,19 @@ const DataProductListPage = ({
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <div className="tw:relative tw:min-h-70">
-            <NoFilteredResultsPlaceholder
-              onClearFilters={() => {
-                dataProductListing.handleSearchChange('');
-                dataProductListing.handleFilterChange([]);
-              }}
+          <div className="tw:relative tw:min-h-70 tw:h-full">
+            <EmptyPlaceholder
+              actions={[
+                {
+                  color: 'primary',
+                  key: 'clear-filters',
+                  label: t('label.clear-entity', { entity: t('label.all') }),
+                  onPress: dataProductListing.handleClearAll,
+                },
+              ]}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
             />
           </div>
         );
@@ -368,7 +388,7 @@ const DataProductListPage = ({
     dataProductListing.currentPage,
     dataProductListing.totalPages,
     dataProductListing.handlePageChange,
-    dataProductListing.handleSearchChange,
+    dataProductListing.handleClearAll,
     isSearchOrFilterActive,
     view,
     renderDataProductCell,

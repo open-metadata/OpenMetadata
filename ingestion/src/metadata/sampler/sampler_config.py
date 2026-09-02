@@ -17,7 +17,7 @@ base class or into storage/messaging samplers.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
@@ -31,10 +31,10 @@ class SamplerConfig:
     """Base config — fields meaningful for all sampler types."""
 
     sample_config: SampleConfig = field(default_factory=SampleConfig)
-    sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT  # noqa: UP045
+    sample_data_count: int | None = SAMPLE_DATA_DEFAULT_COUNT
     # Config for uploading sample data to external blob storage (optional, all types).
     # Named "upload" to distinguish it from the sampler's own service connection.
-    upload_sample_storage_config: Optional[DataStorageConfig] = None  # noqa: UP045
+    upload_sample_storage_config: DataStorageConfig | None = None
 
 
 @dataclass
@@ -48,13 +48,13 @@ class DatabaseSamplerConfig(SamplerConfig):
 
     # List[ColumnProfilerConfig] — typed as Any to avoid importing the
     # database-specific generated schema type into this base config file.
-    include_columns: List[Any] = field(default_factory=list)  # noqa: UP006
-    exclude_columns: List[str] = field(default_factory=list)  # noqa: UP006
+    include_columns: list[Any] = field(default_factory=list)
+    exclude_columns: list[str] = field(default_factory=list)
     # PartitionProfilerConfig — typed as Any for the same reason.
-    partition_details: Optional[Any] = None  # noqa: UP045
-    sample_query: Optional[str] = None  # noqa: UP045
+    partition_details: Any | None = None
+    sample_query: str | None = None
     # ProcessingEngine — typed as Any for the same reason.
-    processing_engine: Optional[Any] = None  # noqa: UP045
+    processing_engine: Any | None = None
 
 
 @dataclass

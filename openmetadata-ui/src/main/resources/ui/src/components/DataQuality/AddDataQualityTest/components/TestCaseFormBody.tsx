@@ -85,6 +85,8 @@ import TestCaseSchedulerSection from './TestCaseSchedulerSection';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
+const ROOT_TABLE_PATH = 'root/table';
+const ROOT_TEST_TYPE_PATH = 'root/testType';
 
 const fqnFromSelectItem = (
   value?: FormSelectItem | string | null
@@ -675,7 +677,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const isComputeRowCountFieldVisible =
     selectedTestDefinition?.supportsRowLevelPassedFailed ?? false;
-
   const showParameterFields =
     Boolean(selectedTestDefinition?.parameterDefinition) &&
     useDynamicAssertionValue !== true;
@@ -769,7 +770,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         return checkTablePermissions(fqn);
       },
     },
-    id: 'root/table',
+    id: ROOT_TABLE_PATH,
     doc: fieldDocs.table ?? t('message.doc-field-selected-table'),
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
@@ -782,9 +783,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         if (tableOptions.length === 0) {
           fetchTables();
         }
-        handleActiveField('root/table');
+        handleActiveField(ROOT_TABLE_PATH);
         ensureComboboxMenuOpen(
-          () => document.getElementById('root/table') as HTMLInputElement
+          () => document.getElementById(ROOT_TABLE_PATH) as HTMLInputElement
         );
       },
       // Legacy antd validated on change: surface the table permission error
@@ -799,7 +800,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // and switch the doc panel back to the generic table section.
       onItemCleared: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/table');
+        handleActiveField(ROOT_TABLE_PATH);
       },
     },
   } as FieldProp;
@@ -810,7 +811,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.SELECT,
     required: true,
     rules: {
-      required: t('label.please-select-entity', { entity: t('label.column') }),
+      required: t('label.please-select-entity', {
+        entity: t('label.column'),
+      }),
     },
     id: 'root/column',
     doc: fieldDocs.column ?? t('message.doc-field-selected-column'),
@@ -865,7 +868,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     rules: {
       required: t('label.select-test-type'),
     },
-    id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
+    id: selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH,
     doc:
       selectedTestDefinition?.description ??
       fieldDocs.testType ??
@@ -876,21 +879,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       isDisabled: isEditMode,
       options: testTypeOptions,
       onItemInserted: (key?: string | number | null) =>
-        handleActiveField(key ? `root/${key}` : 'root/testType'),
+        handleActiveField(key ? `root/${key}` : ROOT_TEST_TYPE_PATH),
     },
   };
-
-  const dynamicAssertionField = {
-    name: 'useDynamicAssertion',
-    label: t('label.dynamic-assertion'),
-    type: FieldTypes.SWITCH,
-    required: false,
-    id: 'root/useDynamicAssertion',
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    props: {
-      'data-testid': 'use-dynamic-assertion',
-    },
-  } as FieldProp;
 
   const computeRowCountField = {
     name: 'computePassedFailedRowCount',
@@ -906,6 +897,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   } as FieldProp;
 
+  // Schema capabilities are shared for API and import compatibility, so
+  // distribution-only controls must be supplied through the class-base hook.
   const additionalFields = testCaseClassBase.createFormAdditionalFields(
     selectedTestDefinition?.supportsDynamicAssertion ?? false
   );
@@ -1099,19 +1092,18 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         {!isCustomQuery && getField(testTypeField)}
 
-        {additionalFields.length > 0
-          ? additionalFields.map((field) => (
-              <div key={field.name}>{getField(field)}</div>
-            ))
-          : selectedTestDefinition?.supportsDynamicAssertion &&
-            getField(dynamicAssertionField)}
+        {additionalFields.map((field) => (
+          <div key={field.name}>{getField(field)}</div>
+        ))}
 
         {showParameterFields && selectedTestDefinition && (
           <div
             className="parameter-fields-wrapper"
             onFocusCapture={() =>
               handleActiveField(
-                selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+                selectedTestType
+                  ? `root/${selectedTestType}`
+                  : ROOT_TEST_TYPE_PATH
               )
             }>
             <ParameterFields

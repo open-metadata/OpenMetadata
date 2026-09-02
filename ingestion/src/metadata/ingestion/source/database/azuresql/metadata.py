@@ -11,7 +11,7 @@
 """Azure SQL source module"""
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 
@@ -59,14 +59,14 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AzureSQLConnection = config.serviceConnection.root.config
         if not isinstance(connection, AzureSQLConnection):
             raise InvalidSourceException(f"Expected AzureSQLConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None

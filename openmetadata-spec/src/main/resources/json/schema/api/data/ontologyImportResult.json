@@ -1,0 +1,81 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyImportResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyImportResult",
+  "description": "Typed dry-run or commit result for an OWL/SKOS ontology import.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyImportResult",
+  "properties": {
+    "annexRevisions": {
+      "description": "Lossless annex revisions created by a committed import.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAnnexRevision.json"
+      },
+      "default": []
+    },
+    "conceptMappingsAdded": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "customPropertiesCreated": {
+      "description": "Per-concept ontology attributes created from OWL datatype properties. The legacy field name is retained for API compatibility.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "glossariesCreated": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "relationTypesRegistered": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "relationsAdded": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "termsCreated": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "termsUpdated": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "validationReport": {
+      "$ref": "../../type/rdfValidationReport.json"
+    }
+  },
+  "required": [
+    "annexRevisions",
+    "conceptMappingsAdded",
+    "customPropertiesCreated",
+    "dryRun",
+    "glossariesCreated",
+    "messages",
+    "relationTypesRegistered",
+    "relationsAdded",
+    "termsCreated",
+    "termsUpdated",
+    "validationReport"
+  ],
+  "additionalProperties": false
+}
