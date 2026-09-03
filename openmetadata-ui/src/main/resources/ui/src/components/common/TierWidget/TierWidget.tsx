@@ -26,8 +26,8 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import TierCard from '../TierCard/TierCard';
 import {
-  WidgetEditButton,
-  WidgetPlusButton,
+    WidgetEditButton,
+    WidgetPlusButton
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './TierWidget.less';

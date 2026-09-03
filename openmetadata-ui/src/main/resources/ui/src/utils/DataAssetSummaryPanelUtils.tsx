@@ -14,13 +14,12 @@
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
 import { lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import ClassificationTag from '../components/common/atoms/Tag/ClassificationTag';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { EntityServiceUnion } from '../components/Explore/ExplorePage.interface';
-import ClassificationTag from '../components/common/atoms/Tag/ClassificationTag';
-import { getTagName, getTagRedirectLink } from './TagsPureUtils';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { NO_DATA } from '../constants/constants';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
@@ -41,19 +40,20 @@ import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
+    StoredProcedure,
+    StoredProcedureCodeObject
 } from '../generated/entity/data/storedProcedure';
 import { Table, TableType, TagLabel } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
+import { getTagName, getTagRedirectLink } from './TagsPureUtils';
 
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
 import {
-  ColumnSearchResult,
-  getTableFieldsFromTableDetails,
-  getUsageData,
+    ColumnSearchResult,
+    getTableFieldsFromTableDetails,
+    getUsageData
 } from './DataAssetSummaryPanelPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';

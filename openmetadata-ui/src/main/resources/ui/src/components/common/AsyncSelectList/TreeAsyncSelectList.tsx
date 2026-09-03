@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import {
   Button,
   Empty,
   Form,
   Space,
   TreeSelect,
-  TreeSelectProps,
+  TreeSelectProps
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -31,7 +32,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
@@ -44,7 +45,7 @@ import {
   getGlossariesList,
   ListGlossaryTermsParams,
   queryGlossaryTerms,
-  searchGlossaryTerms,
+  searchGlossaryTerms
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -55,13 +56,12 @@ import {
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
-  getEncodedFqn,
+  getEncodedFqn
 } from '../../../utils/StringUtils';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { Tooltip } from '@openmetadata/ui-core-components';
 import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
@@ -69,7 +69,7 @@ import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
   AsyncSelectListProps,
-  SelectOption,
+  SelectOption
 } from './AsyncSelectList.interface';
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
