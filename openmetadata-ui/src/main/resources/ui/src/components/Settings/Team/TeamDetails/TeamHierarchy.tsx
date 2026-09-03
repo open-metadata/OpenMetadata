@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
-import { useDragAndDrop } from 'react-aria-components';
+import { DropZone, useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
@@ -237,6 +237,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
   const draggedTeamRef = useRef<Team>();
 
+  const handleRootDrop = useCallback(() => {
+    const dragRecord = draggedTeamRef.current;
+    draggedTeamRef.current = undefined;
+    if (dragRecord) {
+      handleMoveRow(dragRecord, undefined);
+    }
+  }, [handleMoveRow]);
+
   const { dragAndDropHooks } = useDragAndDrop({
     getItems: (keys) => {
       const record = teamByName.get(String(Array.from(keys)[0]));
@@ -268,13 +276,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         handleMoveRow(dragRecord, targetRecord);
       }
     },
-    onRootDrop: () => {
-      const dragRecord = draggedTeamRef.current;
-      draggedTeamRef.current = undefined;
-      if (dragRecord) {
-        handleMoveRow(dragRecord, undefined);
-      }
-    },
+    onRootDrop: () => handleRootDrop(),
   });
 
   const onDragConfirmationModalClose = useCallback(() => {
@@ -296,47 +298,57 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
   return (
     <div className="team-list-container">
-      <Table
-        className={classNames('teams-list-table drop-over-background', {
-          'drop-over-table': isTableHovered,
-        })}
-        columns={columns}
-        data-testid="team-hierarchy-table"
-        dataSource={data}
-        dragAndDropHooks={dragAndDropHooks}
-        expandable={expandableConfig}
-        extraTableFilters={
-          <Space align="center">
-            <span>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="show-deleted"
-                onClick={onShowDeletedTeamChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-
-            {createTeamPermission && !isTeamDeleted && (
-              <Button
-                data-testid="add-team"
-                type="primary"
-                onClick={handleAddTeamButtonClick}>
-                {t('label.add-entity', { entity: t('label.team') })}
-              </Button>
-            )}
-          </Space>
+      {/* The react-aria root drop target is the grid body only; the old AntD
+          flow also accepted a drop on the header/search area to move a team
+          to the root. The DropZone restores that surface. */}
+      <DropZone
+        className="tw:block"
+        getDropOperation={(types) =>
+          types.has(TEAM_DRAG_TYPE) ? 'move' : 'cancel'
         }
-        loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
-        locale={{
-          emptyText: <FilterTablePlaceHolder />,
-        }}
-        pagination={false}
-        rowKey="name"
-        searchProps={searchProps}
-        size="small"
-      />
+        onDrop={handleRootDrop}>
+        <Table
+          className={classNames('teams-list-table drop-over-background', {
+            'drop-over-table': isTableHovered,
+          })}
+          columns={columns}
+          data-testid="team-hierarchy-table"
+          dataSource={data}
+          dragAndDropHooks={dragAndDropHooks}
+          expandable={expandableConfig}
+          extraTableFilters={
+            <Space align="center">
+              <span>
+                <Switch
+                  checked={showDeletedTeam}
+                  data-testid="show-deleted"
+                  onClick={onShowDeletedTeamChange}
+                />
+                <Typography.Text className="m-l-xs">
+                  {t('label.deleted')}
+                </Typography.Text>
+              </span>
+
+              {createTeamPermission && !isTeamDeleted && (
+                <Button
+                  data-testid="add-team"
+                  type="primary"
+                  onClick={handleAddTeamButtonClick}>
+                  {t('label.add-entity', { entity: t('label.team') })}
+                </Button>
+              )}
+            </Space>
+          }
+          loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="name"
+          searchProps={searchProps}
+          size="small"
+        />
+      </DropZone>
 
       <Modal
         centered
