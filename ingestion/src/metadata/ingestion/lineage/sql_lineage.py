@@ -272,9 +272,15 @@ def get_table_fqn_from_query_name(
     """
     Method to extract database, schema and table name
     from raw table name used in query
+
+    The split is quote-aware: connectors are free to put a `.` inside a single name
+    component (Dremio flattens nested folder paths into `folder.subfolder`), in which
+    case that component reaches us quoted. Splitting such a name on every `.` would
+    tear the quoted identifier in half and yield components with unbalanced quotes,
+    which `fqn.quote_name` then rejects with `Invalid name "folder`.
     """
 
-    split_table = table_name.split(".")
+    split_table = fqn.split_raw_name(table_name)
     empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat
 
     if len(split_table) > 3:

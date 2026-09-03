@@ -251,6 +251,56 @@ class SqlLineageTest(TestCase):
 
         self.assertFalse([log for log in logger.output if log.startswith("ERROR")])
 
+    def test_table_name_from_query_with_dotted_schema(self):
+        """
+        A connector may put a `.` inside a single name component -- Dremio flattens
+        nested folder paths into `folder.subfolder` -- in which case that component
+        arrives quoted. It must survive as one component instead of being torn in half,
+        which used to surface as `ValueError: Invalid name "folder` (issue #31481).
+        """
+        assert get_table_fqn_from_query_name(
+            '"OpsDataViews.Reporting".vw_customer'
+        ) == (
+            None,
+            '"OpsDataViews.Reporting"',
+            "vw_customer",
+        )
+
+        assert get_table_fqn_from_query_name(
+            'Prod."OpsDataViews.Reporting".vw_customer'
+        ) == (
+            "Prod",
+            '"OpsDataViews.Reporting"',
+            "vw_customer",
+        )
+
+        # Deeply nested folders stay a single quoted schema rather than tripping the
+        # 4+ component branch and losing the schema altogether
+        assert get_table_fqn_from_query_name('"a.b.c.d".tab') == (
+            None,
+            '"a.b.c.d"',
+            "tab",
+        )
+
+        # A quoted table name containing a dot is likewise preserved
+        assert get_table_fqn_from_query_name('db.schema."tab.v2"') == (
+            "db",
+            "schema",
+            '"tab.v2"',
+        )
+
+    def test_table_name_from_query_is_quote_safe(self):
+        """
+        Names are harvested from parsed SQL, so malformed input must degrade rather
+        than raise -- get_table_fqn_from_query_name has no callers that catch ValueError.
+        """
+        assert get_table_fqn_from_query_name('"unbalanced') == (
+            None,
+            None,
+            '"unbalanced',
+        )
+        assert get_table_fqn_from_query_name('"a.b"."c.d"') == (None, '"a.b"', '"c.d"')
+
     def test_replace_target_table(self):
         """
         Test the _replace_target_table function
