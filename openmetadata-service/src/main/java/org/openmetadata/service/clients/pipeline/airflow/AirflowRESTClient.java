@@ -324,6 +324,17 @@ public class AirflowRESTClient extends PipelineServiceClient {
     return post(endpoint, payload, true);
   }
 
+  /**
+   * The deploy payload is the only place the bot JWT reaches Airflow: DagDeployer serialises it into
+   * DAG_GENERATED_CONFIGS/{dag_id}.json, which the generated DAG re-reads on every parse, while
+   * runPipeline below posts only the dag_id. A rotated token therefore cannot reach an already
+   * deployed DAG without another deploy.
+   */
+  @Override
+  public boolean pinsCredentialsAtDeployTime() {
+    return true;
+  }
+
   @Override
   public PipelineServiceClientResponse deployPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
