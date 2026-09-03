@@ -45,6 +45,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.azuresql.connection import (
     get_connection_url as get_pyodbc_connection_url,
 )
@@ -241,7 +242,20 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
         and `odbc_driver` can carry the driver the URL has no room for.
         """
         connection = self.service_connection
-        host, _, port = (connection.hostPort or "").partition(":")
+        if not connection.hostPort:
+            # `hostPort` is optional in the schema. Defaulting the host to "" would be
+            # worse than refusing: ODBC reads a blank server as the local machine, so
+            # the diff would quietly connect somewhere unintended. Falling back to a
+            # rendered URL cannot work either - it raises a bare TypeError - and this
+            # must stay outside (ValueError, AttributeError, NotImplementedError), or
+            # BaseTableParameter._get_service_connection_config downgrades it to that
+            # fallback and swallows the message.
+            raise SourceConnectionException(
+                "MSSQL connection has no hostPort configured, so the table diff has nothing "
+                "to connect to. Set 'Host and Port' on the service connection."
+            )
+
+        host, _, port = connection.hostPort.partition(":")
 
         return {
             # connectionOptions used to ride along as query params on the rendered

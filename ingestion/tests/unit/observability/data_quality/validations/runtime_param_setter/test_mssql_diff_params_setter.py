@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.mssql.connection import (
     DEFAULT_ODBC_DRIVER,
     FREETDS_ODBC_DRIVER,
@@ -137,6 +138,30 @@ class TestMssqlConnectionDict:
         config = _config(MssqlScheme.mssql_pytds)
         config.hostPort = "sqlserver.corp.local"
         assert MssqlConnection(config).get_connection_dict()["port"] == 1433
+
+    def test_missing_host_port_fails_with_a_clear_error(self):
+        """`hostPort` is optional in the schema, so None is reachable.
+
+        An empty host is worse than no dict: ODBC treats a blank server as the
+        local machine, so the diff would connect somewhere unintended instead of
+        failing. Rendering a URL instead cannot work either - it dies with a bare
+        `TypeError: can only concatenate str (not "NoneType")`. Neither is a
+        message anyone can act on, so name the missing field.
+        """
+        config = _config(MssqlScheme.mssql_pymssql)
+        config.hostPort = None
+
+        with pytest.raises(SourceConnectionException, match="hostPort"):
+            MssqlConnection(config).get_connection_dict()
+
+    def test_missing_host_port_is_not_swallowed_into_a_url_fallback(self):
+        """BaseTableParameter._get_service_connection_config catches ValueError.
+
+        Raising one here would be silently downgraded to the URL path, losing both
+        this message and the derived driver, so the error must sit outside that
+        tuple.
+        """
+        assert not issubclass(SourceConnectionException, ValueError | AttributeError | NotImplementedError)
 
 
 class TestMssqlTableParameter:
