@@ -893,7 +893,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <div style={{ minWidth: tableColumnsWidth.descriptionMin }}>
+            <div
+              style={{
+                maxWidth: tableColumnsWidth.descriptionMax,
+                minWidth: tableColumnsWidth.descriptionMin,
+              }}>
               {description?.trim() ? (
                 <RichTextEditorPreviewerNew
                   clampByLines
@@ -1802,6 +1806,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 pagination={false}
                 rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
+                scroll={GLOSSARY_TABLE_SCROLL}
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               />

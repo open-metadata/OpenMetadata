@@ -135,12 +135,19 @@ jest.mock('../../../hooks/useCustomPages', () => ({
     .fn()
     .mockReturnValue({ customizedPage: null, isLoading: false }),
 }));
-jest.mock('../../../hooks/useMarketplaceStore', () => ({
-  useMarketplaceStore: jest.fn().mockReturnValue({
+jest.mock('../../../hooks/useMarketplaceStore', () => {
+  const marketplaceState = {
     isMarketplace: false,
     dataProductBasePath: '/data-product',
-  }),
-}));
+  };
+
+  return {
+    useMarketplaceStore: Object.assign(
+      jest.fn().mockReturnValue(marketplaceState),
+      { getState: jest.fn().mockReturnValue(marketplaceState) }
+    ),
+  };
+});
 jest.mock('../../../rest/dataProductAPI', () => ({
   getDataProductPortsView: jest.fn().mockResolvedValue({ data: [] }),
 }));
@@ -149,6 +156,30 @@ jest.mock('../../../rest/contractAPI', () => ({
 }));
 jest.mock('../../../rest/announcementsAPI', () => ({
   getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
+}));
+
+const mockUseEntityRules = jest.fn().mockReturnValue({
+  entityRules: { requireDomainForDataProduct: true },
+  isRulesLoaded: true,
+  isLoading: false,
+  rules: [],
+});
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: (...args: unknown[]) => mockUseEntityRules(...args),
+}));
+
+const mockAssetDrawer = jest.fn();
+jest.mock('../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer', () => ({
+  AssetSelectionDrawer: (props: { queryFilter?: unknown }) => {
+    mockAssetDrawer(props);
+
+    return (
+      <div
+        data-queryfilter={JSON.stringify(props.queryFilter)}
+        data-testid="asset-selection-drawer"
+      />
+    );
+  },
 }));
 
 const mockDataProduct: DataProduct = {
@@ -331,5 +362,73 @@ describe('DataProductsDetailsPage — permissions', () => {
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(expect.any(Error));
     });
+  });
+});
+
+describe('DataProductsDetailsPage — Add Assets picker domain scoping', () => {
+  const domainScopedProps: DataProductsDetailsPageProps = {
+    ...defaultProps,
+    dataProduct: {
+      ...mockDataProduct,
+      domains: [
+        {
+          id: 'domain-1',
+          type: 'domain',
+          name: 'DomainA',
+          fullyQualifiedName: 'DomainA',
+        },
+      ],
+    },
+  };
+
+  const getPickerQueryFilter = () => {
+    const lastCall = mockAssetDrawer.mock.calls.at(-1)?.[0];
+
+    return lastCall?.queryFilter;
+  };
+
+  const hasDomainTerm = (queryFilter: unknown) =>
+    JSON.stringify(queryFilter).includes('domains.fullyQualifiedName');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseEntityRules.mockReturnValue({
+      entityRules: { requireDomainForDataProduct: true },
+      isRulesLoaded: true,
+      isLoading: false,
+      rules: [],
+    });
+  });
+
+  it('scopes the picker to the domain when the rule is enabled', () => {
+    render(<DataProductsDetailsPage {...domainScopedProps} />);
+
+    expect(hasDomainTerm(getPickerQueryFilter())).toBe(true);
+  });
+
+  it('does not scope the picker to the domain when the rule is disabled', () => {
+    mockUseEntityRules.mockReturnValue({
+      entityRules: { requireDomainForDataProduct: false },
+      isRulesLoaded: true,
+      isLoading: false,
+      rules: [],
+    });
+
+    render(<DataProductsDetailsPage {...domainScopedProps} />);
+
+    expect(hasDomainTerm(getPickerQueryFilter())).toBe(false);
+  });
+
+  it('holds the strict domain scope until the rules load', () => {
+    mockUseEntityRules.mockReturnValue({
+      entityRules: { requireDomainForDataProduct: false },
+      isRulesLoaded: false,
+      isLoading: true,
+      rules: [],
+    });
+
+    render(<DataProductsDetailsPage {...domainScopedProps} />);
+
+    expect(hasDomainTerm(getPickerQueryFilter())).toBe(true);
   });
 });
