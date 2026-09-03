@@ -16,18 +16,22 @@ import {
   Avatar,
   Badge,
   Box,
+  EmptyPlaceholder,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Domain as DomainIcon,
+  Expand,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -53,7 +57,6 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
@@ -64,6 +67,7 @@ interface DomainTreeViewProps {
   filters?: Record<string, string[]>;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
+  onClearSearch?: () => void;
 }
 
 const INITIAL_PAGE_SIZE = 15;
@@ -75,6 +79,7 @@ const DomainTreeView = ({
   filters,
   refreshToken = 0,
   openAddDomainDrawer,
+  onClearSearch,
 }: DomainTreeViewProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -957,21 +962,49 @@ const DomainTreeView = ({
     t,
   ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
+    if (searchQuery?.trim() || hasActiveFilters) {
+      return (
+        <div className="tw:relative tw:flex-1 tw:h-full">
+          <EmptyPlaceholder
+            actions={[
+              {
+                color: 'primary',
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => onClearSearch?.(),
+              },
+            ]}
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearch className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+          />
+        </div>
+      );
+    }
+
     return (
-      <ErrorPlaceHolder
-        buttonId="domain-add-button"
-        buttonTitle={t('label.add-entity', {
-          entity: t('label.domain'),
-        })}
-        className="border-none"
-        heading={t('message.no-data-message', {
-          entity: t('label.domain-lowercase-plural'),
-        })}
-        icon={<FolderEmptyIcon />}
-        permission={permissions.domain?.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-        onClick={openAddDomainDrawer}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          actions={
+            permissions.domain?.Create
+              ? [
+                  {
+                    color: 'primary',
+                    iconLeading: <Expand size={14} />,
+                    key: 'add-domain',
+                    label: t('label.add-entity', { entity: t('label.domain') }),
+                    onPress: openAddDomainDrawer,
+                  },
+                ]
+              : []
+          }
+          description={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
+          icon={<DomainIcon className="tw:text-fg-brand-primary" />}
+          title={t('label.no-entity', { entity: t('label.domain-plural') })}
+        />
+      </div>
     );
   }
 

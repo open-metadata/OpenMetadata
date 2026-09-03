@@ -48,10 +48,8 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -106,6 +104,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.lineage.LineageGraphPruner;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -138,7 +137,9 @@ public class LineageRepository {
       SubjectContext subjectContext) {
     EntityReference ref =
         Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+    EntityLineage lineage = getLineage(ref, upstreamDepth, downstreamDepth);
+    pruneLineageByDomain(lineage, subjectContext);
+    return lineage;
   }
 
   public EntityLineage getByName(
@@ -152,21 +153,38 @@ public class LineageRepository {
       int upstreamDepth,
       int downstreamDepth,
       SubjectContext subjectContext) {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
-    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+    return getByNameReportingPrune(entityType, fqn, upstreamDepth, downstreamDepth, subjectContext)
+        .lineage();
   }
 
-  private EntityLineage pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+  /** A domain-pruned graph and how many nodes the caller's domain scope removed from it. */
+  public record DomainPrunedLineage(EntityLineage lineage, int hiddenNodes) {}
+
+  /**
+   * As {@link #getByName}, but reports the domain prune. A caller that also filters the graph and
+   * tells the user how much was hidden needs this count, or its total silently omits every
+   * domain-scoped removal and understates what was withheld.
+   */
+  public DomainPrunedLineage getByNameReportingPrune(
+      String entityType,
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      SubjectContext subjectContext) {
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+    EntityLineage lineage = getLineage(ref, upstreamDepth, downstreamDepth);
+    return new DomainPrunedLineage(lineage, pruneLineageByDomain(lineage, subjectContext));
+  }
+
+  /** Returns how many nodes the domain scope removed; 0 when it does not apply. */
+  private int pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+    int hidden = 0;
     if (LineageDomainFilter.shouldApply(subjectContext)
         && lineage != null
         && !nullOrEmpty(lineage.getNodes())) {
-      Set<UUID> visible = visibleNodeIds(lineage, subjectContext);
-      Set<UUID> keep = reachableNodeIds(lineage.getEntity().getId(), visible, lineage);
-      lineage.setNodes(filterNodes(lineage.getNodes(), keep));
-      lineage.setUpstreamEdges(filterEdges(lineage.getUpstreamEdges(), keep));
-      lineage.setDownstreamEdges(filterEdges(lineage.getDownstreamEdges(), keep));
+      hidden = LineageGraphPruner.retainReachable(lineage, visibleNodeIds(lineage, subjectContext));
     }
-    return lineage;
+    return hidden;
   }
 
   private Set<UUID> visibleNodeIds(EntityLineage lineage, SubjectContext subjectContext) {
@@ -209,62 +227,6 @@ public class LineageRepository {
       }
     }
     return domainsByNode;
-  }
-
-  private Set<UUID> reachableNodeIds(UUID rootId, Set<UUID> visible, EntityLineage lineage) {
-    Set<UUID> reachable = new HashSet<>();
-    if (visible.contains(rootId)) {
-      Map<UUID, Set<UUID>> adjacency = buildDomainAdjacency(lineage, visible);
-      Deque<UUID> queue = new ArrayDeque<>();
-      queue.add(rootId);
-      reachable.add(rootId);
-      while (!queue.isEmpty()) {
-        for (UUID neighbor : adjacency.getOrDefault(queue.poll(), Set.of())) {
-          if (reachable.add(neighbor)) {
-            queue.add(neighbor);
-          }
-        }
-      }
-    }
-    return reachable;
-  }
-
-  private Map<UUID, Set<UUID>> buildDomainAdjacency(EntityLineage lineage, Set<UUID> visible) {
-    Map<UUID, Set<UUID>> adjacency = new HashMap<>();
-    List<Edge> edges = new ArrayList<>(listOrEmpty(lineage.getUpstreamEdges()));
-    edges.addAll(listOrEmpty(lineage.getDownstreamEdges()));
-    for (Edge edge : edges) {
-      linkVisibleNodes(adjacency, visible, edge.getFromEntity(), edge.getToEntity());
-    }
-    return adjacency;
-  }
-
-  private void linkVisibleNodes(
-      Map<UUID, Set<UUID>> adjacency, Set<UUID> visible, UUID from, UUID to) {
-    if (from != null && to != null && visible.contains(from) && visible.contains(to)) {
-      adjacency.computeIfAbsent(from, key -> new HashSet<>()).add(to);
-      adjacency.computeIfAbsent(to, key -> new HashSet<>()).add(from);
-    }
-  }
-
-  private List<EntityReference> filterNodes(List<EntityReference> nodes, Set<UUID> keep) {
-    List<EntityReference> filtered = new ArrayList<>();
-    for (EntityReference node : listOrEmpty(nodes)) {
-      if (keep.contains(node.getId())) {
-        filtered.add(node);
-      }
-    }
-    return filtered;
-  }
-
-  private List<Edge> filterEdges(List<Edge> edges, Set<UUID> keep) {
-    List<Edge> filtered = new ArrayList<>();
-    for (Edge edge : listOrEmpty(edges)) {
-      if (keep.contains(edge.getFromEntity()) && keep.contains(edge.getToEntity())) {
-        filtered.add(edge);
-      }
-    }
-    return filtered;
   }
 
   @Transaction
