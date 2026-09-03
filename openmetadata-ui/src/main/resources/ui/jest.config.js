@@ -56,6 +56,17 @@ module.exports = {
   setupFilesAfterEnv: ['./src/setupTests.js'],
   clearMocks: true,
   moduleNameMapper: {
+    // Mock `*.assets.ts` wrappers around `import.meta.glob(...)` — Vite-only
+    // syntax that ts-jest cannot parse. The stub returns `{}` for empty-map
+    // consumers; `applicationSchemaLoaders` gets real loaders backed by
+    // `require()` so ApplicationsClassBase tests see the on-disk JSON.
+    '\\.assets$': '<rootDir>/src/test/unit/mocks/glob.mock.js',
+    // Test shim for `loadConnectionSchema` — the real impl uses `fetch()`,
+    // unavailable in jsdom. This mock reads from `public/jsons/...` on disk
+    // synchronously via `require()` so tests get identical schema payloads
+    // without network calls.
+    '/loadConnectionSchema$':
+      '<rootDir>/src/test/unit/mocks/loadConnectionSchema.mock.js',
     // ui-core-components keeps its own react-aria copy under a link: install,
     // so a bare import resolves differently inside the package than it does in
     // the app. Vite already dedupes these for the build; without the same
