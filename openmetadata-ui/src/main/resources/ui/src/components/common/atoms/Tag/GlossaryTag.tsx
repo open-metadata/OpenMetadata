@@ -12,11 +12,11 @@
  */
 
 import {
-    Badge,
-    BadgeWithButton,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Badge,
+  BadgeWithButton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';

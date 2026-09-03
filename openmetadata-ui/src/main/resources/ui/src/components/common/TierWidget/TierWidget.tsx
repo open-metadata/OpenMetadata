@@ -20,14 +20,18 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
-import { getTagName, getTagRedirectLink, updateTierTag } from '../../../utils/TagsPureUtils';
+import {
+  getTagName,
+  getTagRedirectLink,
+  updateTierTag,
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import TierCard from '../TierCard/TierCard';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './TierWidget.less';

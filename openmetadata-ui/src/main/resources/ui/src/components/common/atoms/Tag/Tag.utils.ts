@@ -27,7 +27,7 @@ import type { TagSize } from './Tag.interface';
 export const computeTagColors = (color: string) => ({
   bg: reduceColorOpacity(color, 0.05),
   border: reduceColorOpacity(color, 0.32),
-  closeIcon: reduceColorOpacity(color, 0.60),
+  closeIcon: reduceColorOpacity(color, 0.6),
   text: color,
 });
 

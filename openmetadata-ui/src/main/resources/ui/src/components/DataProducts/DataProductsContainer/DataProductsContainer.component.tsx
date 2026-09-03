@@ -24,8 +24,8 @@ import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';

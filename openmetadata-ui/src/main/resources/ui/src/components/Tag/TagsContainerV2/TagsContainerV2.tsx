@@ -21,7 +21,7 @@ import {
   WidgetCommentButton,
   WidgetEditButton,
   WidgetPlusButton,
-  WidgetRequestButton
+  WidgetRequestButton,
 } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,7 +37,7 @@ import { getTagPlaceholder } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
-  getUpdateTagsPath
+  getUpdateTagsPath,
 } from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
