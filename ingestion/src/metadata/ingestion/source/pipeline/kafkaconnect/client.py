@@ -316,7 +316,7 @@ class KafkaConnectClient:
         # than retained. Size is therefore bounded by the connector count, and the client
         # lives for a single ingestion run. None means not yet fetched.
         self._connector_ids: dict[str, str] | None = None
-        self._telemetry_topics_by_connector_id: dict[str, set] | None = None
+        self._telemetry_topics_by_connector_id: dict[str, set[str]] | None = None
         # The telemetry API takes the same Confluent Cloud key as the Connect API, so no
         # separate credential is needed. Held as a tuple because that call is made with
         # requests directly rather than through the Connect client.
@@ -362,7 +362,7 @@ class KafkaConnectClient:
         self._connector_ids = result
         return result
 
-    def _query_dataflow_topics_by_client(self, cluster_id: str) -> dict[str, set]:
+    def _query_dataflow_topics_by_client(self, cluster_id: str) -> dict[str, set[str]]:
         """
         Topics each producer client wrote to on this cluster, from the telemetry API.
 
@@ -384,7 +384,7 @@ class KafkaConnectClient:
             "limit": CONFLUENT_TELEMETRY_PAGE_LIMIT,
         }
 
-        by_client: dict[str, set] = {}
+        by_client: dict[str, set[str]] = {}
         page_token = None
         for _ in range(CONFLUENT_TELEMETRY_MAX_PAGES):
             response = requests.post(
@@ -419,23 +419,26 @@ class KafkaConnectClient:
 
         return by_client
 
-    def _telemetry_topics_for_connector_ids(self, cluster_id: str) -> dict[str, set]:
+    def _telemetry_topics_for_connector_ids(self, cluster_id: str) -> dict[str, set[str]]:
         """
         Topics each connector produced to, keyed by connector id, fetched once per run.
 
         The telemetry response covers every producer on the cluster, most of which belong
-        to applications that are not connectors at all. Only the recognised connector
-        clients are kept, so what is retained is bounded by the number of connectors rather
-        than by the size of the cluster's traffic.
+        to applications that are not connectors at all, and the window outlives the
+        connectors in it, so it also carries ones deleted since. Only clients belonging to
+        a connector that currently exists are kept: a deleted connector could never be
+        attributed anyway, and retaining it would grow this with churn rather than with the
+        number of connectors the cluster has.
         """
         if self._telemetry_topics_by_connector_id is not None:
             return self._telemetry_topics_by_connector_id
 
-        by_connector: dict[str, set] = {}
+        live_connector_ids = set(self._connector_id_by_name().values())
+        by_connector: dict[str, set[str]] = {}
         try:
             for client_id, client_topics in self._query_dataflow_topics_by_client(cluster_id).items():
                 match = CONFLUENT_PRODUCER_CLIENT_PATTERN.match(client_id)
-                if match:
+                if match and match.group("connector_id") in live_connector_ids:
                     by_connector.setdefault(match.group("connector_id"), set()).update(client_topics)
         except Exception as exc:
             # Recorded as empty rather than left unset, so one failure does not become one

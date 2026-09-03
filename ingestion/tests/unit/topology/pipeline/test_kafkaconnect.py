@@ -2793,3 +2793,24 @@ class TestConfluentTelemetryTopics:
         assert client._list_topics_from_telemetry("outbox-a", connector_config={}) is None
         assert client._list_topics_from_telemetry("outbox-b", connector_config={}) is None
         assert query.call_count == 1, "a failed cluster-wide query must not be retried per connector"
+
+    def test_only_live_connectors_are_retained(self):
+        """
+        The telemetry window outlives the connectors in it. A connector deleted earlier in
+        the window still reports the topics it produced to, and keeping those grows what is
+        retained with churn rather than with the number of connectors that exist. They can
+        never be attributed either, since resolution goes through the live connector list.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-live": "lcc-live01"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-live01-0": {"prod.events.live_v1"},
+                "connector-producer-lcc-dead01-0": {"prod.events.deleted_v1"},
+                "connector-producer-lcc-dead02-0": {"prod.events.also_deleted_v1"},
+            }
+        )
+
+        retained = client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        assert set(retained) == {"lcc-live01"}, "a deleted connector's topics must not be retained"
