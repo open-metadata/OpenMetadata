@@ -35,9 +35,13 @@ from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlScheme,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    get_connection_options_dict,
     get_connection_url_common,
 )
 from metadata.ingestion.connections.connection import BaseConnection
@@ -57,6 +61,34 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
+
+
+DEFAULT_SQL_SERVER_PORT = 1433
+DEFAULT_ODBC_DRIVER = "ODBC Driver 18 for SQL Server"
+FREETDS_ODBC_DRIVER = "FreeTDS"
+
+
+def _odbc_driver_for_data_diff(connection: MssqlConnectionConfig) -> str:
+    """The ODBC driver whose auth capability matches `connection.scheme`.
+
+    data-diff is pyodbc-only, so a non-ODBC scheme still has to resolve to an ODBC
+    driver. Only FreeTDS splits a `DOMAIN\\user` login and negotiates NTLM;
+    msodbcsql offers it as a SQL login name, which SQL Server rejects with 18456
+    (a backslash is illegal in a SQL login, so the account can only be a Windows
+    one). pymssql is itself a FreeTDS binding, hence the mapping. pytds is
+    SQL-auth-only, so msodbcsql matches it exactly - routing it to FreeTDS would
+    let the diff authenticate more than metadata ingestion can. See issue #32582.
+
+    `connection.driver` is read only under pyodbc: it is documented as pyodbc-only
+    and otherwise sits at its schema default, so trusting it elsewhere would be a
+    no-op for exactly the configuration this resolves.
+    """
+    scheme = connection.scheme or MssqlScheme.mssql_pytds
+    if scheme.value == MssqlScheme.mssql_pyodbc.value:
+        return connection.driver or DEFAULT_ODBC_DRIVER
+    if scheme.value == MssqlScheme.mssql_pymssql.value:
+        return FREETDS_ODBC_DRIVER
+    return DEFAULT_ODBC_DRIVER
 
 
 def _mssql_number(error: BaseException) -> int | None:
@@ -199,6 +231,32 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
         )
         self._on_close(engine.dispose)
         return engine
+
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff.
+
+        Preferred over a rendered SQLAlchemy URL because it bypasses URI parsing
+        entirely: credentials reach data-diff verbatim, so usernames holding
+        reserved characters need no encode/decode round trip (see #31124/#31134),
+        and `odbc_driver` can carry the driver the URL has no room for.
+        """
+        connection = self.service_connection
+        host, _, port = (connection.hostPort or "").partition(":")
+
+        return {
+            # connectionOptions used to ride along as query params on the rendered
+            # URL and land in pyodbc's kwargs. This dict replaces that URL, so it
+            # has to carry them or extra ODBC keywords stop applying to diffs. The
+            # derived values below win: they are what makes domain auth work.
+            **(get_connection_options_dict(connection) or {}),
+            "driver": (connection.scheme or MssqlScheme.mssql_pytds).value,
+            "host": host,
+            "port": int(port) if port else DEFAULT_SQL_SERVER_PORT,
+            "user": connection.username,
+            "password": connection.password.get_secret_value() if connection.password else None,
+            "database": connection.database,
+            "odbc_driver": _odbc_driver_for_data_diff(connection),
+        }
 
     def _get_databases_statement(self) -> str:
         if self.service_connection.ingestAllDatabases:
