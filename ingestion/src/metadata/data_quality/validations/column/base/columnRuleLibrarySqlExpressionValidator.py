@@ -13,8 +13,6 @@
 Validator for column value rule library SQL expression
 """
 
-from typing import Dict  # noqa: UP035
-
 from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -45,7 +43,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def _get_user_params(self) -> Dict[str, str]:  # noqa: UP006
+    def _get_user_params(self) -> dict[str, str]:
         """Extract user-defined parameters from test case parameterValues.
 
         Returns:

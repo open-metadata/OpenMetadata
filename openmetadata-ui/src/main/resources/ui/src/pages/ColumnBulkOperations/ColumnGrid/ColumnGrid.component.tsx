@@ -16,11 +16,16 @@ import {
   Button,
   ButtonUtility,
   Card,
+  EmptyPlaceholder,
   Input,
   Table,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  NoFilterFunnel,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import {
   ArrowRight,
   ChevronRight,
@@ -55,11 +60,6 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
-import {
-  NoDataPlaceholder,
-  NoFilteredResultsPlaceholder,
-  NoSearchResultsPlaceholder,
-} from '../../../components/common/EmptyPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -106,6 +106,9 @@ import {
 } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
+
+const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ROTATE_90_CLASS = 'tw:rotate-90';
 
 interface BulkAssetsSocketMessage {
   jobId?: string;
@@ -1260,8 +1263,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isGroupExpanded && 'tw:rotate-90'
+                      ICON_TRANSITION_CLASS,
+                      isGroupExpanded && ROTATE_90_CLASS
                     )}
                   />
                 }
@@ -1323,8 +1326,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   icon={
                     <ChevronRight
                       className={classNames(
-                        'tw:size-4 tw:transition-transform',
-                        isStructExpanded && 'tw:rotate-90'
+                        ICON_TRANSITION_CLASS,
+                        isStructExpanded && ROTATE_90_CLASS
                       )}
                     />
                   }
@@ -1366,8 +1369,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isOccurrenceExpanded && 'tw:rotate-90'
+                      ICON_TRANSITION_CLASS,
+                      isOccurrenceExpanded && ROTATE_90_CLASS
                     )}
                   />
                 }
@@ -2355,18 +2358,41 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   // onboarding placeholder.
   const emptyPlaceholder = useMemo(() => {
     if (hasActiveSearch) {
-      return <NoSearchResultsPlaceholder />;
+      return (
+        <EmptyPlaceholder
+          description={t('message.check-spelling-or-try-shorter-term')}
+          icon={<NoSearch className="tw:text-secondary" />}
+          title={t('label.no-matching-result-plural')}
+          variant="blank"
+        />
+      );
     }
 
     if (hasActiveFilters) {
-      return <NoFilteredResultsPlaceholder onClearFilters={handleClearAll} />;
+      return (
+        <EmptyPlaceholder
+          actions={[
+            {
+              color: 'primary',
+              key: 'clear-filters',
+              label: t('label.clear-filter-plural'),
+              onPress: handleClearAll,
+            },
+          ]}
+          description={t('message.nothing-matches-current-filter')}
+          icon={<NoFilterFunnel className="tw:text-secondary" />}
+          title={t('label.no-result-for-these-filter-plural')}
+          variant="blank"
+        />
+      );
     }
 
     return (
-      <NoDataPlaceholder
+      <EmptyPlaceholder
         description={t('message.column-bulk-empty-description')}
         icon={<TableIcon className="tw:text-secondary" />}
         title={t('message.no-columns-to-work-with')}
+        variant="blank"
       />
     );
   }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);

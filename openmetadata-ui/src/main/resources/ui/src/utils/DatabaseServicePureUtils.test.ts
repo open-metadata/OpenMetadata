@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 
-const clickzettaSchema = { title: 'ClickzettaConnection' };
-
-jest.mock(
-  '../jsons/connectionSchemas/connections/database/clickzettaConnection.json',
-  () => clickzettaSchema,
-  { virtual: true }
-);
-
+import clickzettaConnection from '../../public/jsons/connectionSchemas/connections/database/clickzettaConnection.json';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { getDatabaseConfig } from './DatabaseServicePureUtils';
+
+// jest.mock() is hoisted above imports; require() inside the factory to avoid
+// referencing top-level import bindings before they're initialized.
+jest.mock('./loadConnectionSchema', () => {
+  const schemas: Record<string, unknown> = {
+    'connections/database/clickzettaConnection.json': require('../../public/jsons/connectionSchemas/connections/database/clickzettaConnection.json'),
+  };
+
+  return {
+    loadConnectionSchema: jest.fn((relativePath: string) =>
+      Promise.resolve(schemas[relativePath] ?? {})
+    ),
+  };
+});
 
 describe('DatabaseServicePureUtils', () => {
   it('loads the Clickzetta connection schema', async () => {
     const config = await getDatabaseConfig(DatabaseServiceType.Clickzetta);
 
-    expect(config.schema).toEqual(clickzettaSchema);
+    expect(config.schema).toEqual(clickzettaConnection);
   });
 });

@@ -14,7 +14,7 @@ IOMETE source methods.
 """
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -44,7 +44,7 @@ class IometeSource(CommonDbSourceService):
     service_connection: IometeConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: IometeConnection = config.serviceConnection.root.config
         if not isinstance(connection, IometeConnection):
@@ -81,7 +81,7 @@ class IometeSource(CommonDbSourceService):
 
     def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         try:
             schema_definition = None
             if self.source_config.includeDDL or table_type in (

@@ -1798,6 +1798,10 @@ export interface Pipeline {
  *
  * Cache Warmup Application Configuration.
  *
+ * RDF indexing application configuration.
+ *
+ * Scheduled RDF inference materialization configuration.
+ *
  * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
@@ -1852,6 +1856,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events sent in a batch (Default 100).
      *
      * Number of entities to process in each batch.
+     *
+     * Maximum number of entities processed in a batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -1877,12 +1883,16 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
      *
      * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
+     *
+     * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: string[];
     /**
@@ -1917,6 +1927,9 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
+     *
+     * Number of entities per partition for distributed RDF indexing. Smaller values create more
+     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -1925,10 +1938,14 @@ export interface CollateAIAppConfig {
     payLoadSize?: number;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of producer threads to use for non-distributed RDF reindexing
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
+     *
+     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -1954,6 +1971,8 @@ export interface CollateAIAppConfig {
     enableDistributedClaim?: boolean;
     /**
      * Force cache warmup even if another instance is detected (use with caution).
+     *
+     * Materialize every enabled rule even when its durable dirty flag is clear.
      */
     force?: boolean;
     /**
@@ -1967,6 +1986,19 @@ export interface CollateAIAppConfig {
      * warmup, so enable it only when first-read relationship latency matters.
      */
     warmRelationships?: boolean;
+    /**
+     * Recreate the RDF store before indexing.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Enable distributed RDF indexing across multiple servers with partition coordination and
+     * recovery.
+     */
+    useDistributedIndexing?: boolean;
+    /**
+     * Optional rule name for an on-demand single-rule run.
+     */
+    ruleName?: string;
     /**
      * Enter the retention period for comments on Activity Events in days. Use 0 to retain
      * activity comments forever.
@@ -2916,6 +2948,7 @@ export enum CollateAIAppConfigType {
     CollateAI = "CollateAI",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    RDFIndexing = "RdfIndexing",
     SearchIndexing = "SearchIndexing",
 }
 
