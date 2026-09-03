@@ -14,7 +14,6 @@ Helper module to process the service type from the config
 """
 
 from pydoc import locate
-from typing import Type  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -159,7 +158,7 @@ def get_reference_type_from_service_type(service_type: ServiceType) -> str:
     return service_reference
 
 
-def get_service_class_from_service_type(service_type: ServiceType) -> Type[BaseModel]:  # noqa: UP006
+def get_service_class_from_service_type(service_type: ServiceType) -> type[BaseModel]:
     """
     Method to get service class from service type
     """

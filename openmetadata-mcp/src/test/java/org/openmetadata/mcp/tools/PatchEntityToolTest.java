@@ -6,10 +6,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.ForbiddenException;
@@ -18,6 +20,7 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +44,9 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -233,6 +238,92 @@ class PatchEntityToolTest {
               McpChangeEventUtil.publishChangeEvent(
                   eq(mockEntity), eq(EventType.ENTITY_UPDATED), eq("alice")));
     }
+  }
+
+  @Test
+  void execute_authorizesWithPatchResourceContext() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
+    EntityInterface mockEntity = mock(EntityInterface.class);
+    when(mockRepo.getPatchFields()).thenReturn(new Fields(Set.of()));
+    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
+    doAnswer(
+            invocation -> {
+              ResourceContextInterface resourceContext = invocation.getArgument(2);
+              resourceContext.getEntity();
+              return null;
+            })
+        .when(authorizer)
+        .authorize(eq(securityContext), any(), any());
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put("fqn", "db.schema.test_table");
+    params.put("patch", "[]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    verify(mockRepo).getPatchFields();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "app",
+        "document",
+        "eventsubscription",
+        "ingestionPipeline",
+        "intakeForm",
+        "notificationTemplate",
+        "persona",
+        "testCase",
+        "testSuite",
+        "task",
+        "user",
+        "workflow"
+      })
+  void execute_rejectsEntitiesWhoseResourceOwnsThePatchLifecycle(String entityType) {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", entityType);
+    params.put("fqn", "target");
+    params.put("patch", "[]");
+
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("entityType '" + entityType + "'")
+        .hasMessageContaining("dedicated OpenMetadata REST PATCH API")
+        .hasMessageContaining("Nothing was changed");
+    verifyNoInteractions(authorizer);
+  }
+
+  @Test
+  void execute_rejectsTimeSeriesEntitiesBeforeAuthorization() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TEST_CASE_RESOLUTION_STATUS);
+    params.put("fqn", "target");
+    params.put("patch", "[]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.isTimeSeriesEntity(Entity.TEST_CASE_RESOLUTION_STATUS))
+          .thenReturn(true);
+
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("time-series entities")
+          .hasMessageContaining("dedicated OpenMetadata API")
+          .hasMessageContaining("Nothing was changed");
+    }
+    verifyNoInteractions(authorizer);
   }
 
   @ParameterizedTest
