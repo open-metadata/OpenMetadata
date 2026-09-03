@@ -54,13 +54,17 @@ class CassandraConnection(BaseConnection[CassandraConnectionConfig, CassandraSes
         cluster_config = {}
         if hasattr(connection.authType, "cloudConfig"):
             cloud_config = connection.authType.cloudConfig  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+            token = cloud_config.token  # pyright: ignore[reportOptionalMemberAccess]
             cluster_cloud_config = {
                 "connect_timeout": cloud_config.connectTimeout,  # pyright: ignore[reportOptionalMemberAccess]
                 "use_default_tempdir": True,
                 "secure_connect_bundle": cloud_config.secureConnectBundle,  # pyright: ignore[reportOptionalMemberAccess]
             }
             profile = ExecutionProfile(request_timeout=cloud_config.requestTimeout)  # pyright: ignore[reportOptionalMemberAccess, reportArgumentType]
-            auth_provider = PlainTextAuthProvider("token", cloud_config.token.get_secret_value())  # pyright: ignore[reportOptionalMemberAccess]
+            auth_provider = PlainTextAuthProvider(
+                "token",
+                token.get_secret_value() if token else None,
+            )
             cluster_config.update(
                 {
                     "cloud": cluster_cloud_config,

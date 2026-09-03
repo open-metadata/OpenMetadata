@@ -29,11 +29,11 @@ def _config() -> CassandraConnectionConfig:
     return CassandraConnectionConfig(hostPort="localhost:9042")
 
 
-def _cloud_config() -> CassandraConnectionConfig:
+def _cloud_config(token: str | None = "astra-token") -> CassandraConnectionConfig:
     return CassandraConnectionConfig(
         authType=CloudConfig(
             cloudConfig=CloudConfig1(
-                token="astra-token",
+                token=token,
                 secureConnectBundle="/tmp/secure-connect-bundle.zip",
             )
         )
@@ -58,6 +58,14 @@ def test_get_client_unwraps_astra_token():
 
     auth_provider = mock_cluster.call_args.kwargs["auth_provider"]
     assert auth_provider.password == "astra-token"
+
+
+def test_get_client_allows_missing_astra_token():
+    with patch(f"{CONNECTION_MODULE}.Cluster") as mock_cluster:
+        _ = CassandraConnection(_cloud_config(token=None)).client
+
+    auth_provider = mock_cluster.call_args.kwargs["auth_provider"]
+    assert auth_provider.password is None
 
 
 def test_close_shuts_down_the_cluster():
