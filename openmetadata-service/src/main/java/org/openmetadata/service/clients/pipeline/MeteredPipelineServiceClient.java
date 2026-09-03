@@ -161,6 +161,11 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   }
 
   @Override
+  public boolean pinsCredentialsAtDeployTime() {
+    return this.decoratedClient.pinsCredentialsAtDeployTime();
+  }
+
+  @Override
   public URL validateServiceURL(String serviceURL) {
     return decoratedClient.validateServiceURL(serviceURL);
   }
