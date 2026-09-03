@@ -264,7 +264,6 @@ const OnlineUsersPage = () => {
 
         <Col span={24}>
           <Table
-            bordered
             className="user-list-table"
             columns={columns}
             data-testid="online-users-table"
