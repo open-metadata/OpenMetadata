@@ -73,6 +73,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -765,7 +766,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             () -> {
               try {
                 DeleteResponse<T> deleteResponse =
-                    repository.delete(userName, id, recursive, hardDelete);
+                    DeadlockRetry.execute(
+                        () -> repository.delete(userName, id, recursive, hardDelete));
                 if (hardDelete) {
                   limits.invalidateCache(entityType);
                 }
@@ -1229,6 +1231,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     result.setNumberOfRowsProcessed(totalRequests);
     result.setNumberOfRowsPassed(0);
     result.setNumberOfRowsFailed(authFailedResponses.size());
+    List<BulkResponse> acceptedResponses = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      BulkResponse accepted = new BulkResponse();
+      accepted.setRequest(entity.getFullyQualifiedName());
+      accepted.setStatus(202);
+      acceptedResponses.add(accepted);
+    }
+    result.setSuccessRequest(acceptedResponses);
     if (!authFailedResponses.isEmpty()) {
       result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       result.setFailedRequest(authFailedResponses);

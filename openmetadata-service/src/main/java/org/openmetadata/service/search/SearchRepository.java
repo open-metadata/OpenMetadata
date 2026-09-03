@@ -2256,6 +2256,7 @@ public class SearchRepository {
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2289,16 +2290,20 @@ public class SearchRepository {
       }
       case ENTITY_REFERENCE -> {
         Object oldValue = field.getOldValue();
-        if (!nullOrEmpty(oldValue)) {
-          EntityReference ref = JsonUtils.readValue(oldValue.toString(), EntityReference.class);
-          script.append(
-              String.format(
-                  REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                  field.getName(),
-                  field.getName(),
-                  field.getName()));
-          data.put(field.getName(), ref);
+        if (nullOrEmpty(oldValue)) {
+          // Nothing to remove. Return rather than break so the trailing separator below is not
+          // appended: a script of only " " is non-empty, so it would clear the emptiness gate in
+          // propagateInheritedFieldsToChildren and fire a no-op update-by-query over every child.
+          return;
         }
+        EntityReference ref = JsonUtils.readValue(oldValue.toString(), EntityReference.class);
+        script.append(
+            String.format(
+                REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                field.getName()));
+        data.put(field.getName(), ref);
       }
       case SIMPLE_VALUE -> {
         script.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
@@ -2310,6 +2315,7 @@ public class SearchRepository {
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");
@@ -2377,6 +2383,7 @@ public class SearchRepository {
       }
       case EXTERNAL_HANDLER -> {
         // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
+        return;
       }
     }
     script.append(" ");

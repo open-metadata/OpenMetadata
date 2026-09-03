@@ -178,6 +178,7 @@ const SchemaTable = () => {
     data: table,
     openColumnDetailPanel,
     setDisplayedColumns,
+    selectedColumn,
   } = useGenericContext<TableType>();
 
   useFqnDeepLink({
@@ -186,6 +187,7 @@ const SchemaTable = () => {
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
+    selectedColumn,
   });
 
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
