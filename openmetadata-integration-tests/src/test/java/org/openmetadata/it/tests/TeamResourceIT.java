@@ -67,6 +67,8 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
   private static final String DIRECT_USER_ASSIGNMENT_ERROR =
       "Team is of type Department. Direct users can only be assigned to teams of type Group.";
+  private static final String UPDATE_DIRECT_USER_ASSIGNMENT_ERROR =
+      "Failed to update entity: " + DIRECT_USER_ASSIGNMENT_ERROR;
 
   {
     supportsImportExport = true;
@@ -309,7 +311,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Exception exception =
         assertThrows(Exception.class, () -> patchEntity(update.getId().toString(), update));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(UPDATE_DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -384,7 +386,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             Exception.class,
             () -> SdkClients.adminClient().users().update(user.getId().toString(), update));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(UPDATE_DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
