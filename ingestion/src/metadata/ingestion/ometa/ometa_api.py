@@ -18,17 +18,11 @@ working with OpenMetadata entities.
 import traceback
 import types
 from collections import OrderedDict
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from itertools import chain
-from typing import (  # noqa: UP035
+from typing import (
     Any,
-    Dict,
-    Generator,  # noqa: F811
     Generic,
-    Iterable,
-    List,
-    Optional,
-    Type,
     TypeVar,
     Union,
     get_args,
@@ -313,7 +307,7 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
-        additional_client_config_arguments: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+        additional_client_config_arguments: dict[str, Any] | None = None,
     ):
         self.config = config
 
@@ -328,7 +322,7 @@ class OpenMetadata(
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
-        extra_headers: Optional[dict[str, str]] = None  # noqa: UP045
+        extra_headers: dict[str, str] | None = None
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
 
@@ -377,7 +371,7 @@ class OpenMetadata(
         return cls(settings.connection)
 
     @staticmethod
-    def get_suffix(entity: Type[T]) -> str:  # noqa: UP006
+    def get_suffix(entity: type[T]) -> str:
         """
         Given an entity Type from the generated sources,
         return the endpoint to run requests.
@@ -389,7 +383,7 @@ class OpenMetadata(
 
         return route
 
-    def get_module_path(self, entity: Type[T]) -> Optional[str]:  # noqa: UP006, UP045
+    def get_module_path(self, entity: type[T]) -> str | None:
         """
         Based on the entity, return the module path
         it is found inside generated
@@ -404,7 +398,7 @@ class OpenMetadata(
             return "events"
         return entity.__module__.split(".")[-2]
 
-    def get_create_entity_type(self, entity: Type[T]) -> Type[C]:  # noqa: UP006
+    def get_create_entity_type(self, entity: type[T]) -> type[C]:
         """
         imports and returns the Create Type from an Entity Type T.
         We are following the expected path structure to import
@@ -419,7 +413,7 @@ class OpenMetadata(
         return create_class  # noqa: RET504
 
     @staticmethod
-    def update_file_name(create: Type[C], file_name: str) -> str:  # noqa: UP006
+    def update_file_name(create: type[C], file_name: str) -> str:
         """
         Update the filename for services and schemas
         """
@@ -438,7 +432,7 @@ class OpenMetadata(
 
         return file_name
 
-    def get_entity_from_create(self, create: Type[C]) -> Type[T]:  # noqa: UP006
+    def get_entity_from_create(self, create: type[C]) -> type[T]:
         """
         Inversely, import the Entity type based on the create Entity class
         """
@@ -532,12 +526,12 @@ class OpenMetadata(
 
     def get_by_name(
         self,
-        entity: Type[T],  # noqa: UP006
-        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        entity: type[T],
+        fqn: str | FullyQualifiedEntityName,
+        fields: list[str] | None = None,
         nullable: bool = True,
-        include: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[T]:  # noqa: UP045
+        include: str | None = None,
+    ) -> T | None:
         """
         Return entity by name or None
         """
@@ -552,11 +546,11 @@ class OpenMetadata(
 
     def get_by_id(
         self,
-        entity: Type[T],  # noqa: UP006
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        entity: type[T],
+        entity_id: str | basic.Uuid,
+        fields: list[str] | None = None,
         nullable: bool = True,
-    ) -> Optional[T]:  # noqa: UP045
+    ) -> T | None:
         """
         Return entity by ID or None
         """
@@ -569,10 +563,10 @@ class OpenMetadata(
 
     def get_context(
         self,
-        entity: Type[T],  # noqa: UP006
-        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
-        query: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        entity: type[T],
+        fqn: str | FullyQualifiedEntityName,
+        query: str | None = None,
+    ) -> str | None:
         """
         Return the AI Context (Context Profile) for an entity as an OKF-style
         markdown document: its attached business knowledge (glossary terms,
@@ -594,12 +588,12 @@ class OpenMetadata(
 
     def _get(
         self,
-        entity: Type[T],  # noqa: UP006
+        entity: type[T],
         path: str,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        fields: list[str] | None = None,
         nullable: bool = True,
-        include: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[T]:  # noqa: UP045
+        include: str | None = None,
+    ) -> T | None:
         """
         Generic GET operation for an entity
         :param entity: Entity Class
@@ -632,7 +626,7 @@ class OpenMetadata(
             )
             raise err  # noqa: TRY201
 
-    def get_entity_reference(self, entity: Type[T], fqn: str) -> Optional[EntityReference]:  # noqa: UP006, UP045
+    def get_entity_reference(self, entity: type[T], fqn: str) -> EntityReference | None:
         """
         Helper method to obtain an EntityReference from
         a FQN and the Entity class.
@@ -655,14 +649,14 @@ class OpenMetadata(
     # pylint: disable=too-many-locals, too-many-arguments
     def list_entities(
         self,
-        entity: Type[T],  # noqa: UP006
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        after: Optional[str] = None,  # noqa: UP045
-        before: Optional[str] = None,  # noqa: UP045
+        entity: type[T],
+        fields: list[str] | None = None,
+        after: str | None = None,
+        before: str | None = None,
         limit: int = 100,
-        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+        params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
-        include: Optional[str] = None,  # noqa: UP045
+        include: str | None = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -701,12 +695,12 @@ class OpenMetadata(
 
     def list_all_entities(
         self,
-        entity: Type[T],  # noqa: UP006
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+        entity: type[T],
+        fields: list[str] | None = None,
         limit: int = 100,
-        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
+        params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
-        include: Optional[str] = None,  # noqa: UP045
+        include: str | None = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -743,7 +737,7 @@ class OpenMetadata(
             yield from entity_list.entities
             after = entity_list.after
 
-    def list_versions(self, entity_id: Union[str, basic.Uuid], entity: Type[T]) -> EntityVersionHistory:  # noqa: UP006, UP007
+    def list_versions(self, entity_id: str | basic.Uuid, entity: type[T]) -> EntityVersionHistory:
         """
         Version history of an entity
         """
@@ -756,7 +750,7 @@ class OpenMetadata(
             return resp
         return EntityVersionHistory(**resp)
 
-    def list_services(self, entity: Type[T]) -> List[EntityList[T]]:  # noqa: UP006
+    def list_services(self, entity: type[T]) -> list[EntityList[T]]:
         """
         Service listing does not implement paging
         """
@@ -775,8 +769,8 @@ class OpenMetadata(
 
     def delete(
         self,
-        entity: Type[T],  # noqa: UP006
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        entity: type[T],
+        entity_id: str | basic.Uuid,
         recursive: bool = False,
         hard_delete: bool = False,
     ) -> None:
@@ -796,11 +790,11 @@ class OpenMetadata(
 
     def delete_stale_entities(
         self,
-        entity: Type[T],  # noqa: UP006
-        scope_params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+        entity: type[T],
+        scope_params: dict[str, str] | None,
         live_fqns: Iterable[str],
         recursive: bool = True,
-    ) -> Optional[BulkOperationResult]:  # noqa: UP045
+    ) -> BulkOperationResult | None:
         """
         Ask the server to soft-delete entities of `entity` within a scope that were not reported
         by the connector in the current run.
@@ -840,11 +834,11 @@ class OpenMetadata(
 
     def delete_async(
         self,
-        entity: Type[T],  # noqa: UP006
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        entity: type[T],
+        entity_id: str | basic.Uuid,
         recursive: bool = False,
         hard_delete: bool = False,
-    ) -> Optional[dict]:  # noqa: UP045
+    ) -> dict | None:
         """Server-side async delete.
 
         Issues ``DELETE /<entity>/async/{id}?recursive=...&hardDelete=...`` (the dedicated
@@ -861,9 +855,9 @@ class OpenMetadata(
 
     def restore(
         self,
-        entity: Type[T],  # noqa: UP006
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
-    ) -> Optional[T]:  # noqa: UP045
+        entity: type[T],
+        entity_id: str | basic.Uuid,
+    ) -> T | None:
         """
         API call to restore a soft-deleted entity from entity ID
 
@@ -895,9 +889,9 @@ class OpenMetadata(
 
     def restore_async(
         self,
-        entity: Type[T],  # noqa: UP006
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
-    ) -> Optional[dict]:  # noqa: UP045
+        entity: type[T],
+        entity_id: str | basic.Uuid,
+    ) -> dict | None:
         """Server-side async restore.
 
         Issues ``PUT /<entity>/restore?async=true`` and returns the 202 payload
@@ -910,7 +904,7 @@ class OpenMetadata(
         response = self.client.put(url, json=data)
         return response if isinstance(response, dict) else None
 
-    def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:  # noqa: UP006, UP007
+    def compute_percentile(self, entity: type[T] | str, date: str) -> None:
         """
         Compute an entity usage percentile
         """
@@ -918,7 +912,7 @@ class OpenMetadata(
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
 
-    def _group_entities_by_type(self, entities: List[Type[T]]) -> Dict[Type[T], List[Type[T]]]:  # noqa: UP006
+    def _group_entities_by_type(self, entities: list[type[T]]) -> dict[type[T], list[type[T]]]:
         """Group entities by type so we can process them in the correct order when
         creating the entities from bulk API.
 
@@ -934,7 +928,7 @@ class OpenMetadata(
             ordered by hierarchy depth
         """
 
-        grouped: Dict[Type[T], List[Type[T]]] = {}  # noqa: UP006
+        grouped: dict[type[T], list[type[T]]] = {}
 
         for entity in entities:
             entity_class = type(entity)
@@ -955,7 +949,7 @@ class OpenMetadata(
 
     def _execute_bulk_operation(
         self,
-        entities: List[Type[T]],  # noqa: UP006
+        entities: list[type[T]],
         use_async: bool = False,
         override_metadata: bool = False,
     ) -> BulkOperationResult:
@@ -996,7 +990,7 @@ class OpenMetadata(
 
     def bulk_create_or_update(
         self,
-        entities: List[Type[T]],  # noqa: UP006
+        entities: list[type[T]],
         use_async: bool = False,
         override_metadata: bool = False,
     ) -> BulkOperationResult:
