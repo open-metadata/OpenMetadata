@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Popover, Tag, Typography } from 'antd';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Popover, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
 import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { TagSource } from '../../../generated/type/tagLabel';
-import { activateOnEnterOrSpace } from '../../../utils/InteractiveTargetUtils';
+import { LabelType, TagSource } from '../../../generated/type/tagLabel';
+import EntityLink from '../../../utils/EntityLink';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import TagChip from '../../common/atoms/TagChip/TagChip';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import TagsV1 from '../TagsV1/TagsV1.component';
+import AutoClassificationTag from '../../common/atoms/Tag/AutoClassificationTag';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
+import GlossaryTag from '../../common/atoms/Tag/GlossaryTag';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
+
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
@@ -42,19 +42,36 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  let newTagsUI = false;
-  try {
-    const context = useGenericContext();
-    newTagsUI = context.newTagsUI || false;
-  } catch {
-    // Context not available, use default TagsV1
-  }
-
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
-      if (newTagsUI) {
-        const tagName = getTagName(tag, true);
-        const redirectLink = getTagRedirectLink(tag);
+      const tagName = getTagName(tag, tag.source === TagSource.Glossary);
+      const redirectLink = getTagRedirectLink(tag);
+
+      // Auto-classification (Generated) tags get a distinct brand-blue badge
+      if (tag.labelType === LabelType.Generated && entityFqn) {
+        const autoChip = (
+          <AutoClassificationTag
+            data-testid={`tag-${tag.tagFQN}`}
+            href={redirectLink}
+            label={tagName}
+          />
+        );
+
+        // Column-level tags may show a Collate recognizer feedback popup
+        const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+          entityFqn,
+          false
+        );
+        if (columnName) {
+          const popup = tagClassBase.getRecognizerFeedbackPopup(
+            tag,
+            entityFqn,
+            autoChip
+          );
+          if (popup) {
+            return popup;
+          }
+        }
 
         return (
           <Tooltip
@@ -63,47 +80,42 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             key={tag.tagFQN}
             placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <Focusable>
-              <Link
-                className={classNames(
-                  'tw:w-max',
-                  { 'diff-added tw-mx-1': tag?.added },
-                  { 'diff-removed': tag?.removed }
-                )}
-                data-testid="tag-redirect-link"
-                to={redirectLink}>
-                <TagChip
-                  data-testid="tags"
-                  icon={tag.style?.iconURL}
-                  label={tagName}
-                  labelDataTestId={`tag-${tag.tagFQN}`}
-                  size="small"
-                  tagColor={tag.style?.color}
-                  variant="blueGray"
-                />
-              </Link>
-            </Focusable>
+            <Focusable>{autoChip}</Focusable>
           </Tooltip>
         );
       }
 
+      // Regular tags
+      const isGlossary = tag.source === TagSource.Glossary;
+      const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
+
       return (
-        <TagsV1
-          className={classNames(
-            { 'diff-added tw-mx-1': tag?.added },
-            { 'diff-removed': tag?.removed }
-          )}
-          entityFqn={entityFqn}
-          isVersionPage={tag?.added || tag?.removed}
+        <Tooltip
+          arrow
+          delay={500}
           key={tag.tagFQN}
-          newLook={newLook}
-          showOnlyName={tag.source === TagSource.Glossary}
-          startWith={TAG_START_WITH.SOURCE_ICON}
-          tag={tag}
-        />
+          placement="top"
+          title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
+          <Focusable>
+            <span
+              className={classNames('tw:inline-flex', {
+                'diff-added tw-mx-1': tag?.added,
+                'diff-removed': tag?.removed,
+              })}>
+              <TagComponent
+                color={tag.style?.color}
+                data-testid="tags"
+                href={redirectLink}
+                icon={tag.style?.iconURL}
+                label={tagName}
+                size="sm"
+              />
+            </span>
+          </Focusable>
+        </Tooltip>
       );
     },
-    [newTagsUI, newLook, entityFqn]
+    [entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -123,9 +135,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         {hasMoreElement && (
           <Button
             className="show-more-tags-button"
+            color="link-color"
             data-testid="read-button"
-            size="small"
-            type="link"
+            size="sm"
             onClick={() => setIsOpen(!isOpen)}>
             {isOpen
               ? t('label.less')
@@ -154,19 +166,15 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             overlayClassName="tag-popover-container"
             placement="bottom"
             trigger="click">
-            {/* antd Tag renders a bare span, so without these the control is unreachable by
-                keyboard and invisible to isInteractiveTarget — a clickable row or card then
-                swallowed the click and navigated instead of opening the remaining tags. */}
-            <Tag
+            <Button
               className={classNames('cursor-pointer plus-more-tag', {
                 'new-look': newLook,
               })}
+              color="link-color"
               data-testid="plus-more-count"
-              role="button"
-              tabIndex={0}
-              onKeyDown={activateOnEnterOrSpace}>{`+${
-              sortedTagsBySource.length - (sizeCap ?? 0)
-            } more`}</Tag>
+              size="sm">
+              {`+${sortedTagsBySource.length - (sizeCap ?? 0)} more`}
+            </Button>
           </Popover>
         </div>
       ),

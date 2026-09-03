@@ -13,13 +13,13 @@
 import { Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
@@ -167,15 +167,17 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         onUpdate={handleTagSelection}>
         <div className="d-none tag-selector-display">
           {editingTags.length > 0 ? (
-            <div className="selected-tags-list">
+            <div className="tw:flex tw:flex-wrap tw:gap-1">
               {editingTags.map((tag) => (
-                <div
-                  className="selected-tag-chip"
+                <ClassificationTag
+                  key={tag.tagFQN}
+                  color={tag.style?.color}
                   data-testid={`tag-${tag.tagFQN}`}
-                  key={tag.tagFQN}>
-                  <ClassificationIcon className="tag-icon" />
-                  <span className="tag-name">{getEntityName(tag)}</span>
-                </div>
+                  href={getTagRedirectLink(tag)}
+                  icon={tag.style?.iconURL}
+                  label={getTagName(tag)}
+                  size="sm"
+                />
               ))}
             </div>
           ) : (
@@ -214,21 +216,24 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     );
   }, [isLoading, isEditing, loadingState, editingState, t]);
 
+  console.log(nonTierTags);
   const tagsDisplay = useMemo(
     () => (
       <div className="tags-display">
-        <div className="tags-list">
+        <div className="tw:flex tw:flex-wrap tw:gap-1">
           {(showAllTags
             ? nonTierTags
             : nonTierTags.slice(0, maxVisibleTags)
           ).map((tag) => (
-            <div
-              className="tag-item"
+            <ClassificationTag
+              key={tag.tagFQN}
+              color={tag.style?.color}
               data-testid={`tag-${tag.tagFQN}`}
-              key={tag.tagFQN}>
-              <ClassificationIcon className="tag-icon" />
-              <span className="tag-name">{getEntityName(tag)}</span>
-            </div>
+              href={getTagRedirectLink(tag)}
+              icon={tag.style?.iconURL}
+              label={getTagName(tag)}
+              size="sm"
+            />
           ))}
           {nonTierTags.length > maxVisibleTags && (
             <button

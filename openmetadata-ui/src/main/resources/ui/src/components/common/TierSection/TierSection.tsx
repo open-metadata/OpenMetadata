@@ -15,12 +15,12 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
@@ -146,13 +146,13 @@ const TierSection: React.FC<TierSectionProps> = ({
         <div className="tier-selector-display">
           {displayTier && (
             <div className="d-flex flex-col gap-2">
-              <TagsV1
-                hideIcon
-                startWith={TAG_START_WITH.SOURCE_ICON}
-                tag={displayTier}
-                tagProps={{
-                  'data-testid': 'Tier',
-                }}
+              <ClassificationTag
+                color={displayTier.style?.color}
+                data-testid="Tier"
+                href={getTagRedirectLink(displayTier)}
+                icon={displayTier.style?.iconURL}
+                label={getTagName(displayTier)}
+                size="sm"
               />
             </div>
           )}
@@ -167,13 +167,13 @@ const TierSection: React.FC<TierSectionProps> = ({
       <div className="tier-display">
         {displayTier ? (
           <div className="d-flex flex-col gap-2">
-            <TagsV1
-              hideIcon
-              startWith={TAG_START_WITH.SOURCE_ICON}
-              tag={displayTier}
-              tagProps={{
-                'data-testid': 'Tier',
-              }}
+            <ClassificationTag
+              color={displayTier.style?.color}
+              data-testid="Tier"
+              href={getTagRedirectLink(displayTier)}
+              icon={displayTier.style?.iconURL}
+              label={getTagName(displayTier)}
+              size="sm"
             />
           </div>
         ) : (

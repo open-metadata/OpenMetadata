@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { CSSProperties } from 'react';
 import { reduceColorOpacity } from '../../../../utils/ColorUtils';
 import type { TagSize } from './Tag.interface';
 
@@ -33,41 +32,16 @@ export const computeTagColors = (color: string) => ({
 });
 
 /**
- * Inline style overrides applied to Badge/BadgeWithButton to produce exact
- * heights and font sizes, overriding Badge's built-in padding classes.
+ * Tailwind classes for size variants applied to the Badge wrapper and label span.
  *
- * xs → 10 px font / 16 px height
- * sm → 12 px font / 20 px height
- * md → 14 px font / 24 px height
+ * xs → 16px height / 10px font
+ * sm → 20px height / 12px font
+ * md → 24px height / 14px font
  */
-export const SIZE_INLINE: Record<TagSize, CSSProperties> = {
-  xs: {
-    fontSize: '10px',
-    height: '16px',
-    lineHeight: '16px',
-    paddingLeft: '4px',
-    paddingRight: '4px',
-    paddingTop: '0',
-    paddingBottom: '0',
-  },
-  sm: {
-    fontSize: '12px',
-    height: '20px',
-    lineHeight: '20px',
-    paddingLeft: '6px',
-    paddingRight: '6px',
-    paddingTop: '0',
-    paddingBottom: '0',
-  },
-  md: {
-    fontSize: '14px',
-    height: '24px',
-    lineHeight: '24px',
-    paddingLeft: '8px',
-    paddingRight: '8px',
-    paddingTop: '0',
-    paddingBottom: '0',
-  },
+export const SIZE_CLASS: Record<TagSize, string> = {
+  xs: 'tw:h-4 tw:text-[10px]',
+  sm: 'tw:h-5 tw:text-xs',
+  md: 'tw:h-6 tw:text-sm',
 };
 
 /** Icon pixel size matching each tag size. */

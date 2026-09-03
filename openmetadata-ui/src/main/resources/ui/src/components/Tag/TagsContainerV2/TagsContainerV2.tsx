@@ -24,20 +24,12 @@ import {
   WidgetRequestButton,
 } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
-import {
-  GLOSSARY_CONSTANT,
-  TAG_CONSTANT,
-  TAG_START_WITH,
-} from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import {
-  activateOnEnterOrSpace,
-  stopPropagationIfInteractive,
-} from '../../../utils/InteractiveTargetUtils';
+import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -54,7 +46,6 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
@@ -382,17 +373,15 @@ const TagsContainerV2 = ({
     return (
       <Space>
         {showAddTagButton ? (
-          <div
-            role="button"
-            tabIndex={0}
+          <WidgetPlusButton
+            data-testid="add-tag"
+            title={t('label.add-entity', {
+              entity: isGlossaryType
+                ? t('label.glossary-term')
+                : t('label.tag-plural'),
+            })}
             onClick={handleAddClick}
-            onKeyDown={activateOnEnterOrSpace}>
-            <TagsV1
-              startWith={TAG_START_WITH.PLUS}
-              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-              tagType={tagType}
-            />
-          </div>
+          />
         ) : null}
         <TagsViewer
           displayType={displayType}
@@ -435,16 +424,15 @@ const TagsContainerV2 = ({
     return (
       <Row data-testid="entity-tags">
         {showAddTagButton && (
-          <Col
-            className="m-t-xss"
-            role="button"
-            tabIndex={0}
-            onClick={handleAddClick}
-            onKeyDown={activateOnEnterOrSpace}>
-            <TagsV1
-              startWith={TAG_START_WITH.PLUS}
-              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-              tagType={tagType}
+          <Col className="m-t-xss">
+            <WidgetPlusButton
+              data-testid="add-tag"
+              title={t('label.add-entity', {
+                entity: isGlossaryType
+                  ? t('label.glossary-term')
+                  : t('label.tag-plural'),
+              })}
+              onClick={handleAddClick}
             />
           </Col>
         )}
