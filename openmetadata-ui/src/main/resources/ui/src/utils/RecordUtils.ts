@@ -13,13 +13,22 @@
 
 /**
  * Safely read a value from a dispatch/lookup object using a dynamic (possibly
- * user-controlled) key. The record is copied into a `Map` and the value is read
- * through `Map.get`, so lookup never performs a computed member access on a
- * user-controlled name: a crafted key such as `constructor` or `__proto__` can
- * neither resolve to an inherited member nor be invoked as a handler.
+ * user-controlled) key. The record is copied into a `Map` and the key is
+ * validated with `Map.has` before `Map.get` is called, so lookup never performs
+ * a computed member access on a user-controlled name and a crafted key such as
+ * `constructor` or `__proto__` can neither resolve to an inherited member nor be
+ * invoked as a handler. (This is the remediation recommended by CodeQL's
+ * `js/unvalidated-dynamic-method-call` rule.)
  */
 export const getOwnHandler = <T>(
   record: Record<string, T>,
   key: string | undefined
-): T | undefined =>
-  key === undefined ? undefined : new Map(Object.entries(record)).get(key);
+): T | undefined => {
+  if (key === undefined) {
+    return undefined;
+  }
+
+  const lookup = new Map(Object.entries(record));
+
+  return lookup.has(key) ? lookup.get(key) : undefined;
+};
