@@ -297,6 +297,39 @@ REDSHIFT_GET_ALL_SCHEMAS = """
 SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
 """
 
+# Databases created from a datashare are reported as `shared`. They show up in
+# `pg_database` but the server refuses a connection to them, so their metadata
+# has to be read through the cross-database SVV_ALL_* catalog views below.
+REDSHIFT_GET_SHARED_DATABASE_NAMES = """
+SELECT database_name FROM SVV_REDSHIFT_DATABASES WHERE database_type <> 'local'
+"""
+
+REDSHIFT_GET_DATASHARE_SCHEMAS = """
+SELECT schema_name FROM SVV_ALL_SCHEMAS WHERE database_name = :database
+"""
+
+REDSHIFT_GET_DATASHARE_TABLES = """
+SELECT table_name, table_type, remarks
+FROM SVV_ALL_TABLES
+WHERE database_name = :database AND schema_name = :schema
+"""
+
+REDSHIFT_GET_DATASHARE_COLUMNS = """
+SELECT
+    column_name,
+    data_type,
+    character_maximum_length,
+    numeric_precision,
+    numeric_scale,
+    is_nullable,
+    column_default,
+    ordinal_position,
+    remarks
+FROM SVV_ALL_COLUMNS
+WHERE database_name = :database AND schema_name = :schema AND table_name = :table
+ORDER BY ordinal_position
+"""
+
 REDSHIFT_TEST_GET_QUERIES = """
 SELECT
     has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info,

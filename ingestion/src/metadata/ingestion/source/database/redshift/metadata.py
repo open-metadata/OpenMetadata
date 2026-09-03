@@ -69,6 +69,9 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.redshift.datashare import (
+    RedshiftDatashareCatalog,
+)
 from metadata.ingestion.source.database.redshift.incremental_table_processor import (
     RedshiftIncrementalTableProcessor,
 )
@@ -154,6 +157,11 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self.incremental = incremental_configuration
         self.incremental_table_processor: RedshiftIncrementalTableProcessor | None = None
         self.external_location_map = {}
+        self.datashare = RedshiftDatashareCatalog(lambda: self.connection)
+        # Set while walking a datashare database, which is read from the catalog
+        # views instead of from a connection of its own.
+        self.datashare_database: str | None = None
+        self.datashare_table_remarks: dict[tuple[str, str], str | None] = {}
 
         if self.incremental.enabled:
             logger.info(
@@ -197,6 +205,9 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         # Clear cached column / relation data from prior schemas to
         # prevent unbounded memory growth (issue #20649)
         self._clear_reflection_cache()
+
+        if self.datashare_database:
+            return self._datashare_table_names_and_types(schema_name)
 
         self._set_constraint_details(schema_name)
 
@@ -337,7 +348,11 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             self.set_external_location_map(configured_db)
             yield configured_db
         else:
+            # Resolved while the connection is still healthy, so that a failure to
+            # connect can be told apart from a datashare database.
+            shared_databases = self.datashare.shared_database_names
             for new_database in self.get_database_names_raw():
+                self.datashare_database = None
                 if self._is_database_filtered(new_database):
                     database_fqn = fqn.build(
                         self.metadata,
@@ -354,8 +369,85 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.set_external_location_map(new_database)
                     yield new_database
                 except Exception as exc:
+                    if new_database in shared_databases and self._enter_datashare_mode(new_database):
+                        yield new_database
+                        continue
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
+
+    def _enter_datashare_mode(self, database_name: str) -> bool:
+        """Read a datashare database from the cross-database catalog views.
+
+        The failed `set_inspector` left the source without an engine, so the
+        connection to the configured database has to be restored before any
+        catalog query can run. Returns False if that does not succeed, leaving
+        the caller to report the original connection error.
+        """
+        try:
+            self.set_inspector(database_name=self.service_connection.database)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Could not restore the connection to [%s]: %s", self.service_connection.database, exc)
+            return False
+        logger.info(
+            "Database [%s] is shared through a datashare and does not accept connections. "
+            "Reading its metadata from the cross-database catalog views.",
+            database_name,
+        )
+        self.datashare_database = database_name
+        # Populated from the database we just left; nothing repopulates it while
+        # reading from the catalog views.
+        self.external_location_map.clear()
+        return True
+
+    def _datashare_table_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
+        """Tables of the current datashare database from SVV_ALL_TABLES."""
+        # Constraints are not exposed across databases; clearing the map keeps the
+        # previous schema's constraints from being attached to these tables.
+        self.constraint_details = {}
+        tables = self.datashare.get_tables(self.datashare_database, schema_name)
+        # Keyed by schema as well, so that tables of another schema being processed
+        # in parallel keep their own remarks.
+        self.datashare_table_remarks.update({(schema_name, table.name): table.remarks for table in tables})
+        return [
+            TableNameAndType(name=table.name, type_=table.table_type)
+            for table in tables
+            if self.source_config.includeViews or table.table_type != TableType.View
+        ]
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.datashare_database:
+            yield from self.datashare.get_schema_names(self.datashare_database)
+        else:
+            yield from super().get_raw_database_schema_names()
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        if self.datashare_database:
+            return self.datashare.get_columns(self.datashare_database, schema_name, table_name)
+        return super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
+
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
+        if self.datashare_database:
+            return self.datashare_table_remarks.get((schema_name, table_name))
+        return super().get_table_description(schema_name, table_name, inspector)
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
+        """View definitions and DDL are not readable across databases."""
+        if self.datashare_database:
+            return None
+        return super().get_schema_definition(table_type, table_name, schema_name, inspector)
 
     def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
         """
@@ -380,7 +472,9 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
 
     def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
         """List Snowflake stored procedures"""
-        if self.source_config.includeStoredProcedures:
+        # A datashare database is read from the local connection, which would
+        # report the local database's stored procedures.
+        if self.source_config.includeStoredProcedures and not self.datashare_database:
             results = self.connection.execute(
                 text(
                     REDSHIFT_GET_STORED_PROCEDURES.format(
