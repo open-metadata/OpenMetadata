@@ -1277,69 +1277,6 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
 
         assert [t.name for t in topics] == ["prod.global.sales.outbox"]
 
-    def test_resolve_outbox_topics_matches_ingested_topic(self):
-        """
-        EventRouter routes by a row value (${routedByValue}) unknowable at
-        ingestion time, so the outbox topic must be matched by pattern against
-        topics already ingested in the messaging service.
-        """
-        config = {
-            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-            "topic.prefix": "ecommerce.sales",
-            "table.include.list": "prod.sales.outbox",
-            "transforms": "outbox",
-            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
-        }
-        source = self._make_source()
-        source.metadata.list_all_entities.return_value = [
-            self._topic("prod.global.sales.orderCreated_v1"),
-            self._topic("prod.global.sales.orderCancelled_v1"),
-            self._topic("unrelated.topic"),
-        ]
-
-        topics = source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka")
-
-        names = sorted(t.name for t in topics)
-        assert names == [
-            "prod.global.sales.orderCancelled_v1",
-            "prod.global.sales.orderCreated_v1",
-        ]
-        assert all(t.fqn for t in topics)
-
-    def test_resolve_outbox_topics_no_messaging_service_returns_empty(self):
-        """Without a messaging service the outbox topics cannot be matched."""
-        config = {
-            "transforms": "outbox",
-            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
-        }
-        source = self._make_source()
-
-        topics = source._resolve_outbox_topics(connector_config=config, messaging_service_name=None)
-
-        assert topics == []
-
-    def test_resolve_outbox_topics_composes_following_regex_router(self):
-        """An EventRouter followed by a RegexRouter must compose into one pattern."""
-        config = {
-            "transforms": "outbox,route",
-            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-            "transforms.outbox.route.topic.replacement": "outbox.event.${routedByValue}",
-            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
-            "transforms.route.regex": r"outbox\.event\.(.*)",
-            "transforms.route.replacement": "prod.global.sales.$1_v1",
-        }
-        source = self._make_source()
-        source.metadata.list_all_entities.return_value = [
-            self._topic("prod.global.sales.orderCreated_v1"),
-            self._topic("prod.global.other.thing"),
-        ]
-
-        topics = source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka")
-
-        assert [t.name for t in topics] == ["prod.global.sales.orderCreated_v1"]
-
     def test_apply_regex_router_named_group(self):
         """Java named groups (?<name>...) with ${name} replacement convert and apply."""
         from metadata.ingestion.source.pipeline.kafkaconnect.client import (
@@ -1354,22 +1291,6 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
         }
 
         assert apply_topic_routing_transforms("outbox.event.orderCreated", config) == "prod.global.orderCreated_v1"
-
-    def test_outbox_bare_replacement_is_not_catch_all(self):
-        """A replacement with no static part must NOT match every topic in the service."""
-        config = {
-            "transforms": "outbox",
-            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-            "transforms.outbox.route.topic.replacement": "${routedByValue}",
-        }
-        source = self._make_source()
-        source.metadata.list_all_entities.return_value = [
-            self._topic("some.unrelated.topic"),
-            self._topic("another.domain.topic"),
-        ]
-
-        assert source._build_outbox_topic_pattern(config) is None
-        assert source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka") == []
 
     def test_outbox_fanout_identifies_outbox_table_by_event_columns(self):
         """In a multi-table connector only the table with the full outbox schema fans out."""
@@ -1404,17 +1325,6 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
         assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=False) is False
         # Single-table connector is unambiguously the outbox.
         assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=True) is True
-
-    def test_outbox_separator_only_replacement_is_not_a_pattern(self):
-        """A replacement whose static part is only separators must not build a near-catch-all pattern."""
-        config = {
-            "transforms": "outbox",
-            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
-            "transforms.outbox.route.topic.replacement": "${routedByValue}.${aggregateid}",
-        }
-        source = self._make_source()
-
-        assert source._build_outbox_topic_pattern(config) is None
 
 
 class TestKafkaConnectTransformLineageEdges(TestCase):
@@ -1505,8 +1415,17 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
         self.last_source = source
         return table_entity, [r.right for r in results if r.right is not None]
 
-    def test_outbox_event_router_yields_lineage_edges(self):
-        """Outbox EventRouter must emit table -> topic edges for every routed topic."""
+    def test_outbox_event_router_without_runtime_topics_yields_no_edges(self):
+        """
+        A routing pattern must not be used to find the outbox topics. It matches a
+        namespace, and two connectors routing into one namespace produce the same
+        pattern while owning disjoint topics, so generating from it hands each of them
+        the other's edges.
+
+        Without the runtime's active-topic list there is nothing to attribute, so the
+        connector emits nothing. ``test_outbox_event_router_yields_edges_from_connector_topics``
+        covers the case where the runtime does supply them.
+        """
         config = {
             "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
             "topic.prefix": "ecommerce.sales",
@@ -1521,13 +1440,9 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
             "unrelated.topic",
         ]
 
-        table_entity, edges = self._run_lineage(config, ingested)
+        _, edges = self._run_lineage(config, ingested)
 
-        assert len(edges) == 2
-        for edge in edges:
-            assert edge.edge.fromEntity.type == "table"
-            assert edge.edge.fromEntity.id.root == table_entity.id
-            assert edge.edge.toEntity.type == "topic"
+        assert edges == []
 
     def test_outbox_event_router_yields_edges_from_connector_topics(self):
         """
@@ -1551,6 +1466,32 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
         for edge in edges:
             assert edge.edge.fromEntity.id.root == table_entity.id
             assert edge.edge.toEntity.type == "topic"
+
+    def test_prefix_scan_matches_one_topic_per_dataset(self):
+        """
+        The topic.prefix scan returns every topic under the namespace, so what keeps it
+        from becoming namespace-membership lineage is the 1:1 match that follows: each
+        dataset takes the single topic whose name resolves to it, and the rest are
+        dropped. Only an outbox EventRouter fans one table out to many topics, and such
+        a connector never reaches the scan.
+        """
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            # `tables` yields a dataset but is not read by _parse_cdc_topics_from_config,
+            # so resolution falls through to the namespace scan with a dataset in hand.
+            "tables": "prod.sales.orders",
+        }
+        under_prefix = [
+            "ecommerce.sales.prod.sales.orders",
+            "ecommerce.sales.prod.sales.customers",
+            "ecommerce.sales.prod.sales.payments",
+            "ecommerce.sales.transaction",
+        ]
+
+        _table_entity, edges = self._run_lineage(config, under_prefix)
+
+        assert len(edges) == 1, "the scan must not fan a dataset out across the namespace"
 
     def test_multi_table_outbox_connector_does_not_fan_out(self):
         """
@@ -2053,3 +1994,456 @@ class TestConnectorTopicsFromRuntime:
         assert [t.name for t in topics] == ["prod.ern.cashout.delayedCashouts"]
         assert client.client.list_connector_topics.call_count == 3
         assert client._topics_endpoint_supported is True
+
+
+class TestInternalTopicExclusion:
+    """
+    The Connect runtime legitimately reports a connector's own bookkeeping topics as
+    "active": Debezium's schema-change topic is named exactly ``topic.prefix``, and its
+    transaction-metadata topic ``topic.prefix + '.transaction'``. Both are measured, and
+    both are metadata plumbing rather than data assets, so neither may become a lineage
+    endpoint.
+
+    The names come from the connector's own config, never from name patterns: matching
+    ``*.transaction`` by name would delete a legitimately named customer topic.
+    """
+
+    def _client(self):
+        client = object.__new__(KafkaConnectClient)
+        client.client = MagicMock()
+        client.is_confluent_cloud = False
+        client._topics_endpoint_supported = None
+        return client
+
+    def test_schema_change_and_transaction_topics_are_excluded(self):
+        client = self._client()
+        client.client.list_connector_topics.return_value = {
+            "outbox-wallet": {
+                "topics": [
+                    "prod.ern.moneywallet.walletEntity_v1",
+                    "rigA.wallet.topiccol",
+                    "rigA.wallet.topiccol.transaction",
+                ]
+            }
+        }
+        client.get_connector_config = MagicMock(return_value={"topic.prefix": "rigA.wallet.topiccol"})
+
+        topics = client.get_connector_topics("outbox-wallet")
+
+        assert [t.name for t in topics] == ["prod.ern.moneywallet.walletEntity_v1"]
+
+    def test_schema_history_and_dlq_topics_are_excluded(self):
+        client = self._client()
+        client.client.list_connector_topics.return_value = {
+            "sink-wallet": {
+                "topics": [
+                    "prod.ern.moneywallet.walletEntity_v1",
+                    "schema-history.rigA.wallet",
+                    "dlq-sink-wallet",
+                ]
+            }
+        }
+        client.get_connector_config = MagicMock(
+            return_value={
+                "schema.history.internal.kafka.topic": "schema-history.rigA.wallet",
+                "errors.deadletterqueue.topic.name": "dlq-sink-wallet",
+            }
+        )
+
+        topics = client.get_connector_topics("sink-wallet")
+
+        assert [t.name for t in topics] == ["prod.ern.moneywallet.walletEntity_v1"]
+
+    def test_a_customer_topic_named_like_an_internal_one_survives(self):
+        """
+        Exclusion is by configured name, not by shape. A connector whose topic.prefix is
+        unrelated must keep a data topic that merely ends in ".transaction".
+        """
+        client = self._client()
+        client.client.list_connector_topics.return_value = {
+            "payments": {"topics": ["prod.ern.payments.transaction", "prod.ern.payments.refund_v1"]}
+        }
+        client.get_connector_config = MagicMock(return_value={"topic.prefix": "rigA.payments"})
+
+        topics = client.get_connector_topics("payments")
+
+        assert [t.name for t in topics] == [
+            "prod.ern.payments.transaction",
+            "prod.ern.payments.refund_v1",
+        ]
+
+
+def _source_with_topics(topic_names):
+    """A KafkaconnectSource whose only stubbed boundary is the OpenMetadata topic listing."""
+    from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+        KafkaconnectSource,
+    )
+
+    source = object.__new__(KafkaconnectSource)
+    source.lineage_results = []
+    source._database_services_cache = []
+    source._messaging_services_cache = []
+    source._topics_cache = {}
+    source.metadata = MagicMock()
+    # These tests assert on which topic NAMES get resolved, not on entity lookup, and a
+    # bare MagicMock here fails TopicResolutionResult validation.
+    source.metadata.get_by_name.return_value = None
+
+    def list_all_entities(entity, params=None, **kwargs):
+        for name in topic_names:
+            topic = MagicMock()
+            topic.name = name
+            topic.fullyQualifiedName = f'confluent-prod."{name}"'
+            yield topic
+
+    source.metadata.list_all_entities.side_effect = list_all_entities
+    return source
+
+
+class TestNamespaceScanRequiresAttribution:
+    """
+    The topic.prefix namespace scan is only sound when no topic-rewriting SMT is
+    configured, because that is exactly the condition under which a topic name still
+    encodes its source table. With a router in the chain the scan asserts membership it
+    cannot verify.
+    """
+
+    OUTBOX_CONFIG = {  # noqa: RUF012
+        "connector.class": "MySqlCdcSourceV2",
+        "topic.prefix": "earnin.moneywallet.prod",
+        "table.include.list": "moneywallet.outbox",
+        "transforms": "outbox",
+        "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+        "transforms.outbox.route.by.field": "_topic",
+        "transforms.outbox.route.topic.replacement": "${routedByValue}",
+    }
+
+    def test_event_router_connector_never_reaches_the_prefix_scan(self):
+        """
+        Regression for the shipped defect. The existing guard test passes
+        effective_messaging_service=None, which is the one value for which the prefix
+        scan below it cannot run. Every real deployment sets it, and with it set the
+        scan linked the outbox table to Debezium's transaction-metadata topic.
+        """
+        source = _source_with_topics(
+            [
+                "earnin.moneywallet.prod.lcc-d21vnd.transaction",
+                "earnin.moneywallet.prod.message",
+                "prod.ern.moneywallet.walletEntity_v1",
+            ]
+        )
+        details = KafkaConnectPipelineDetails(name="outbox-moneywallet-prod", type="source", config=self.OUTBOX_CONFIG)
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="earnin.moneywallet.prod",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == [], "an EventRouter connector must not namespace-scan"
+
+    def test_plain_cdc_still_resolves_through_the_prefix_scan(self):
+        """With no rewriting SMT the scan is sound, and must keep working."""
+        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
+        config = {"connector.class": "MySqlCdcSourceV2", "topic.prefix": "rigA.plaincdc"}
+        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.plaincdc",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert sorted(t.name for t in topics) == [
+            "rigA.plaincdc.walletdb.customers",
+            "rigA.plaincdc.walletdb.orders",
+        ]
+
+    def test_include_list_resolves_exact_names_without_scanning(self):
+        """
+        With table.include.list the topic names are constructed exactly, so the namespace
+        scan is never reached and a same-prefix internal topic cannot be picked up.
+        """
+        source = _source_with_topics(
+            [
+                "rigA.plaincdc.walletdb.customers",
+                "rigA.plaincdc.lcc-d21vnd.transaction",
+            ]
+        )
+        config = {
+            "connector.class": "MySqlCdcSourceV2",
+            "topic.prefix": "rigA.plaincdc",
+            "table.include.list": "walletdb.customers",
+        }
+        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.plaincdc",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == ["rigA.plaincdc.walletdb.customers"]
+
+
+class TestRoutingPatternsDoNotGenerateTopics:
+    """
+    A wildcard built from route.topic.replacement describes a superset of the connector's
+    topics, so it cannot attribute a topic to a table. Two connectors routing into one
+    namespace reduce to the same pattern while owning disjoint topics, so generating from
+    the pattern gives each of them the other's edges.
+    """
+
+    @staticmethod
+    def _config(replacement):
+        config = {
+            "connector.class": "MySqlCdcSourceV2",
+            "topic.prefix": "rigA.wallet.suffixcol",
+            "table.include.list": "walletdb.outbox_suffix_col",
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.by.field": "_route_suffix",
+        }
+        if replacement is not None:
+            config["transforms.outbox.route.topic.replacement"] = replacement
+        return config
+
+    def test_static_prefix_pattern_no_longer_claims_the_namespace(self):
+        source = _source_with_topics(
+            [
+                "prod.ern.moneywallet.settings_v1",
+                "prod.ern.moneywallet.ledgerEntry_v1",
+                "prod.ern.moneywallet.walletEntity_v1",
+            ]
+        )
+        details = KafkaConnectPipelineDetails(
+            name="outbox-wallet-suffix",
+            type="source",
+            config=self._config("prod.ern.moneywallet.${routedByValue}"),
+        )
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.wallet.suffixcol",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == [], "a routing pattern must not generate candidates"
+
+    def test_fully_static_replacement_is_config_deterministic(self):
+        """
+        A replacement with no ${...} token routes every event to one fixed topic, so the
+        destination is as derivable as any other declared name and must still resolve
+        without the runtime. Only a replacement that interpolates a row value is unknown.
+        """
+        source = _source_with_topics(["prod.events.all", "prod.events.settings_v1", "prod.events.orderPlaced_v1"])
+        details = KafkaConnectPipelineDetails(
+            name="outbox-static", type="source", config=self._config("prod.events.all")
+        )
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.wallet.suffixcol",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == ["prod.events.all"], (
+            "a static replacement names exactly one topic, with no namespace scan or pattern match"
+        )
+
+    def test_static_replacement_composes_with_a_following_regex_router(self):
+        """The published name is what survives the SMT chain, so later routers apply."""
+        config = self._config("outbox.event.all")
+        config["transforms"] = "outbox,reroute"
+        config["transforms.reroute.type"] = "org.apache.kafka.connect.transforms.RegexRouter"
+        config["transforms.reroute.regex"] = r"outbox\.event\.(.*)"
+        config["transforms.reroute.replacement"] = "prod.events.$1"
+        source = _source_with_topics(["prod.events.all"])
+        details = KafkaConnectPipelineDetails(name="outbox-static", type="source", config=config)
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.wallet.suffixcol",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == ["prod.events.all"]
+
+    def test_absent_route_topic_replacement_resolves_nothing(self):
+        """
+        An absent key means the routed name is unknown. The old code synthesised
+        "outbox.event.${routedByValue}", which invented a claim and matched nothing in
+        the deployment where this was found.
+        """
+        source = _source_with_topics(["outbox.event.wallet", "prod.ern.moneywallet.walletEntity_v1"])
+        details = KafkaConnectPipelineDetails(name="outbox-no-replacement", type="source", config=self._config(None))
+
+        topics = source._resolve_source_topics(
+            pipeline_details=details,
+            database_server_name="rigA.wallet.suffixcol",
+            effective_messaging_service="confluent-prod",
+        )
+
+        assert [t.name for t in topics] == []
+
+
+class TestConnectorEnrichmentOrdering:
+    """
+    The topic listing needs the connector's config to recognise that connector's own
+    bookkeeping topics, so enrichment must fetch config first and hand it to the topic
+    call. Reordering these two, or dropping the hand-off, silently costs a second round
+    trip per connector and leaves the internal-topic exclusion with nothing to match on.
+    """
+
+    def test_config_is_fetched_first_and_passed_to_the_topic_listing(self):
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            KafkaConnectClient,
+        )
+
+        client = object.__new__(KafkaConnectClient)
+        client.client = MagicMock()
+        client.is_confluent_cloud = False
+        client._topics_endpoint_supported = None
+
+        config = {"topic.prefix": "rigA.wallet", "description": "wallet outbox"}
+        calls = []
+        client.get_connector_config = MagicMock(side_effect=lambda connector: calls.append("config") or config)
+        client.get_connector_topics = MagicMock(
+            side_effect=lambda connector, connector_config=None: (
+                calls.append(("topics", connector_config)) or [KafkaConnectTopics(name="prod.events.orderPlaced_v1")]
+            )
+        )
+
+        details = KafkaConnectPipelineDetails(name="outbox-wallet", type="source")
+        client._enrich_connector_details(details, "outbox-wallet")
+
+        assert calls[0] == "config", "config must be fetched before the topic listing"
+        assert calls[1] == ("topics", config), "the fetched config must be handed to the topic listing"
+        assert client.get_connector_config.call_count == 1, "config must not be fetched twice"
+        assert [t.name for t in details.topics] == ["prod.events.orderPlaced_v1"]
+        assert details.description == "wallet outbox"
+
+
+class TestColdStartFallsBackToDeclaredTopics:
+    """
+    Active-topic tracking records what a connector has touched so far, not what it will.
+    A connector that has produced nothing, or so far only its own schema-change topic, is
+    at a cold start rather than asserting it has no data topics, so its config-declared
+    names are still the better answer.
+
+    Falling back is safe because every remaining fallback is deterministic: a sink's
+    declared topics, or CDC names built from table.include.list. Routing patterns no
+    longer generate candidates, and the namespace scan is restricted to connectors with
+    no topic-rewriting SMT.
+    """
+
+    def _client(self):
+        client = object.__new__(KafkaConnectClient)
+        client.client = MagicMock()
+        client.is_confluent_cloud = False
+        client._topics_endpoint_supported = None
+        return client
+
+    def test_runtime_reporting_only_internal_topics_falls_back(self):
+        """
+        A connector that has emitted a schema change but no data rows reports only its
+        schema-change topic. That is a cold start, so its declared topic still resolves.
+        """
+        client = self._client()
+        client.client.list_connector_topics.return_value = {"datagen": {"topics": ["rigA.plaincdc"]}}
+        config = {"topic.prefix": "rigA.plaincdc", "kafka.topic": "orders"}
+
+        topics = client.get_connector_topics("datagen", connector_config=config)
+
+        assert [t.name for t in topics] == ["orders"]
+
+    def test_silent_runtime_still_falls_back_to_config(self):
+        """A sink that has not consumed yet must still resolve its declared subscription."""
+        client = self._client()
+        client.client.list_connector_topics.return_value = {"jdbc-sink": {"topics": []}}
+        config = {"topics": "orders,payments"}
+
+        topics = client.get_connector_topics("jdbc-sink", connector_config=config)
+
+        assert [t.name for t in topics] == ["orders", "payments"]
+
+    def test_cold_start_cdc_still_resolves_constructed_names(self):
+        """
+        Regression for a gate that suppressed inference whenever the runtime reported no
+        data topics. A freshly started CDC connector resolved nothing, losing the
+        deterministically constructed names it should have had.
+        """
+        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
+        config = {
+            "connector.class": "MySqlCdcSourceV2",
+            "topic.prefix": "rigA.plaincdc",
+            "table.include.list": "walletdb.customers,walletdb.orders",
+        }
+        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+
+        result = source._parse_and_resolve_topics(
+            pipeline_details=details,
+            database_server_name="rigA.plaincdc",
+            effective_messaging_service="confluent-prod",
+            is_storage_sink=False,
+        )
+
+        assert sorted(t.name for t in result.topics) == [
+            "rigA.plaincdc.walletdb.customers",
+            "rigA.plaincdc.walletdb.orders",
+        ]
+
+
+class TestForbiddenIsNotAlwaysUnsupported:
+    """
+    Connect answers 403 "Topic tracking is disabled." when topic.tracking.enable=false,
+    which is a property of the whole worker. A proxy or per-route RBAC can also answer 403
+    while the endpoint exists, and latching on the status alone would silently disable
+    runtime topic discovery for every connector behind the first such response.
+    """
+
+    def _client(self):
+        client = object.__new__(KafkaConnectClient)
+        client.client = MagicMock()
+        client.is_confluent_cloud = False
+        client._topics_endpoint_supported = None
+        return client
+
+    @staticmethod
+    def _forbidden(body):
+        exc = Exception("403 Client Error: Forbidden")
+        exc.response = SimpleNamespace(status_code=403, text=body)
+        return exc
+
+    def test_topic_tracking_disabled_latches_off(self):
+        client = self._client()
+        client.client.list_connector_topics.side_effect = self._forbidden(
+            '{"error_code":403,"message":"Topic tracking is disabled."}'
+        )
+        client.get_connector_config = MagicMock(return_value={"topics": "orders"})
+
+        for name in ("conn-a", "conn-b", "conn-c"):
+            client.get_connector_topics(name)
+
+        assert client.client.list_connector_topics.call_count == 1
+        assert client._topics_endpoint_supported is False
+
+    def test_authorization_403_does_not_latch_off(self):
+        """
+        An RBAC or proxy 403 is request-specific. Latching would strip runtime truth from
+        every later connector, including ones whose topics are perfectly readable.
+        """
+        client = self._client()
+        client.client.list_connector_topics.side_effect = [
+            self._forbidden('{"error_code":403,"message":"Forbidden"}'),
+            {"outbox-b": {"topics": ["prod.events.orderPlaced_v1"]}},
+        ]
+        client.get_connector_config = MagicMock(return_value={})
+
+        assert client.get_connector_topics("outbox-a") is None
+        assert client._topics_endpoint_supported is None, "an auth 403 must not disable the endpoint"
+
+        topics = client.get_connector_topics("outbox-b")
+
+        assert [t.name for t in topics] == ["prod.events.orderPlaced_v1"]
+        assert client.client.list_connector_topics.call_count == 2

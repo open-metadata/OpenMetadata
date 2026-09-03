@@ -14,8 +14,9 @@ DBTcloud source to extract metadata from OM UI
 
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 
 from cachetools import LRUCache
 
@@ -111,7 +112,7 @@ class DbtcloudSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DBTCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, DBTCloudConnection):
@@ -129,7 +130,7 @@ class DbtcloudSource(PipelineServiceSource):
         # Bounded cache for the exact-FQN table fallback, keyed by table FQN
         self._exact_fqn_cache: LRUCache = LRUCache(maxsize=EXACT_FQN_CACHE_SIZE)
 
-    def _resolve_table_entity(self, db_service_name: Optional[str], node: DBTModel) -> Optional[Table]:  # noqa: UP045
+    def _resolve_table_entity(self, db_service_name: str | None, node: DBTModel) -> Table | None:
         """
         Resolve the OpenMetadata table backing a dbt model, seed or source.
 
@@ -165,7 +166,7 @@ class DbtcloudSource(PipelineServiceSource):
         return table_entity
 
     @staticmethod
-    def _pick_matching_table(matches: List[Table], node: DBTModel) -> Optional[Table]:  # noqa: UP006, UP045
+    def _pick_matching_table(matches: list[Table], node: DBTModel) -> Table | None:
         """
         Pick one table out of a search page.
 
@@ -199,7 +200,7 @@ class DbtcloudSource(PipelineServiceSource):
         """FQN of a resolved table as a plain string."""
         return model_str(table.fullyQualifiedName) if table.fullyQualifiedName else ""
 
-    def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Optional[Table]:  # noqa: UP045
+    def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Table | None:
         """
         Look the table up by its deterministic FQN, bypassing the search index.
 
@@ -224,7 +225,7 @@ class DbtcloudSource(PipelineServiceSource):
             self._exact_fqn_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         return self._exact_fqn_cache[table_fqn]
 
-    def _fetch_runs(self, job_id: int) -> List[DBTRun]:  # noqa: UP006
+    def _fetch_runs(self, job_id: int) -> list[DBTRun]:
         """
         Runs backing the pipeline status time series.
 
@@ -269,7 +270,7 @@ class DbtcloudSource(PipelineServiceSource):
             logger.warning(f"Failed to get runs of job {job.name} due to : {exc}")
 
     @staticmethod
-    def _get_task_list(job_url: str) -> List[Task]:  # noqa: UP006
+    def _get_task_list(job_url: str) -> list[Task]:
         """
         The job's single task, carrying its whole run history.
 
@@ -465,7 +466,7 @@ class DbtcloudSource(PipelineServiceSource):
             is_candidate = False
         return is_candidate
 
-    def _track_table_fqn(self, table_fqn: str, cache_key: Optional[Tuple[int, str]]) -> None:  # noqa: UP006, UP045
+    def _track_table_fqn(self, table_fqn: str, cache_key: tuple[int, str] | None) -> None:
         """
         Record a resolved table FQN so the observability stage can attach the
         job's run data to it, both for the pipeline being processed and for the
@@ -564,7 +565,7 @@ class DbtcloudSource(PipelineServiceSource):
 
         return None
 
-    def _parse_timestamp(self, timestamp_str: str) -> Optional[Timestamp]:  # noqa: UP045
+    def _parse_timestamp(self, timestamp_str: str) -> Timestamp | None:
         """Parse ISO timestamp string to Timestamp."""
         try:
             # Try primary format
@@ -584,7 +585,7 @@ class DbtcloudSource(PipelineServiceSource):
         """Map dbt Cloud run status to OpenMetadata StatusType."""
         return STATUS_MAP.get(status, StatusType.Pending.value)
 
-    def _build_task_statuses(self, run: DBTRun) -> List[TaskStatus]:  # noqa: UP006
+    def _build_task_statuses(self, run: DBTRun) -> list[TaskStatus]:
         """
         The run's outcome, reported against the pipeline's single task.
 
@@ -607,7 +608,7 @@ class DbtcloudSource(PipelineServiceSource):
         self,
         run,
         pipeline_entity: Pipeline,
-        schedule_interval: Optional[str] = None,  # noqa: UP045
+        schedule_interval: str | None = None,
     ) -> PipelineObservability:
         """Build PipelineObservability object from run data."""
         return PipelineObservability(
@@ -627,13 +628,13 @@ class DbtcloudSource(PipelineServiceSource):
 
     def get_table_pipeline_observability(
         self, pipeline_details: DBTJob
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
+    ) -> Iterable[dict[str, list[PipelineObservability]]]:
         """
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current job), falls back to cache for historical data.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
+            table_pipeline_map: dict[str, list[PipelineObservability]] = defaultdict(list)
 
             ctx = self.context.get()
             if (

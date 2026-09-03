@@ -133,6 +133,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -145,8 +146,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
@@ -189,6 +190,8 @@ public class SearchRepository {
    * carries far fewer and stays one update-by-query.
    */
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
+
+  private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
 
   /**
    * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
@@ -454,6 +457,9 @@ public class SearchRepository {
           Entity.SECURITY_SERVICE,
           Entity.API_SERVICE,
           Entity.DRIVE_SERVICE);
+
+  private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
+      Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
@@ -937,9 +943,9 @@ public class SearchRepository {
 
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
-    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.4;
+    double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
     double semanticWeight =
-        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.6;
+        nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
 
     try {
       SearchSettings ss =
@@ -2051,49 +2057,54 @@ public class SearchRepository {
         entityReference.getType(),
         List.of(entityReference.getId()),
         listOrEmpty(entity.getDomains()));
+    reindexQueriesForDomainSource(
+        entityReference.getType(), entityReference.getId(), entity.getFullyQualifiedName());
   }
 
   /**
    * Re-read each referenced entity with the same bounded field set {@link
-   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
-   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
-   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
-   * into a single bulk request. Duplicate references are resolved only once; chunking of the
-   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
-   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   * #updateEntity(EntityReference)} uses, then push bounded bulk index updates. Use this in place of
+   * a per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness while batching both DB reads and ES writes.
+   * Duplicate references are resolved only once. Callers inside a transaction should wrap the call
+   * in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
    */
   public void updateEntitiesByReference(List<EntityReference> references) {
     if (nullOrEmpty(references)) {
       return;
     }
-    Set<String> seen = new HashSet<>();
-    List<EntityInterface> entities = new ArrayList<>(references.size());
+    final Set<String> seen = new HashSet<>();
+    final Map<String, List<UUID>> idsByType = new LinkedHashMap<>();
     for (EntityReference reference : references) {
-      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
-      // re-index needlessly. Skip malformed refs too.
       if (reference == null
           || reference.getId() == null
           || reference.getType() == null
           || !seen.add(reference.getType() + ":" + reference.getId())) {
         continue;
       }
-      try {
-        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
-        String fields =
-            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
-        EntityInterface entity =
-            entityRepository.get(
-                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
-        entity.setChangeDescription(null);
-        entities.add(entity);
-      } catch (EntityNotFoundException e) {
-        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
-        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
-        // entity's own delete cascade removes its document.
-        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      idsByType
+          .computeIfAbsent(reference.getType(), ignored -> new ArrayList<>())
+          .add(reference.getId());
+    }
+
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      final EntityRepository<?> entityRepository = Entity.getEntityRepository(entry.getKey());
+      final String fieldNames =
+          String.join(",", searchIndexFactory.getReindexFieldsFor(entry.getKey()));
+      final EntityUtil.Fields fields = entityRepository.getOnlySupportedFields(fieldNames);
+      final List<UUID> ids = entry.getValue();
+      for (int start = 0; start < ids.size(); start += REFERENCE_REINDEX_BATCH_SIZE) {
+        final List<UUID> chunk =
+            List.copyOf(
+                ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
+        final List<? extends EntityInterface> entities =
+            entityRepository.get(null, chunk, fields, Include.NON_DELETED);
+        entities.forEach(entity -> entity.setChangeDescription(null));
+        if (!entities.isEmpty()) {
+          updateEntitiesIndex(entities);
+        }
       }
     }
-    updateEntitiesIndex(entities);
   }
 
   /**
@@ -2965,17 +2976,19 @@ public class SearchRepository {
   }
 
   private boolean isCertificationUpdated(ChangeDescription change) {
-    return Stream.concat(
-            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
-            change.getFieldsDeleted().stream())
-        .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
+    return hasFieldChange(change, CERTIFICATION_FIELD);
   }
 
   private boolean isStyleUpdated(ChangeDescription change) {
-    return Stream.concat(
-            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
-            change.getFieldsDeleted().stream())
-        .anyMatch(fieldChange -> FIELD_STYLE.equals(fieldChange.getName()));
+    return hasFieldChange(change, FIELD_STYLE);
+  }
+
+  private boolean hasFieldChange(ChangeDescription change, String fieldName) {
+    return change != null
+        && Stream.concat(
+                Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+                change.getFieldsDeleted().stream())
+            .anyMatch(fieldChange -> fieldName.equals(fieldChange.getName()));
   }
 
   private AssetCertification getCertificationFromEntity(EntityInterface entity) {
@@ -3009,6 +3022,8 @@ public class SearchRepository {
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
       EntityInterface entity) {
+
+    reindexQueriesForDomainChange(entityType, changeDescription, entity);
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
       String indexName = getWriteIndexName(indexMapping);
@@ -3091,6 +3106,28 @@ public class SearchRepository {
               new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
         }
       }
+    }
+  }
+
+  private void reindexQueriesForDomainChange(
+      String entityType, ChangeDescription changeDescription, EntityInterface entity) {
+    if (hasFieldChange(changeDescription, FIELD_DOMAINS)) {
+      reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void reindexQueriesForDomainSource(String entityType, UUID entityId, String entityFqn) {
+    if (QUERY_DOMAIN_REINDEX_SOURCE_TYPES.contains(entityType)) {
+      deferIfFlushScopeActive(
+          () -> {
+            final QueryRepository repository = (QueryRepository) Entity.getEntityRepository(QUERY);
+            repository.forEachQueryBatchForDomainSource(
+                entityType, entityId, entityFqn, this::updateEntitiesByReference);
+          },
+          "reindexQueriesForDomainChange",
+          entityId.toString(),
+          entityFqn,
+          entityType);
     }
   }
 
@@ -3573,6 +3610,7 @@ public class SearchRepository {
       searchClient.softDeleteOrRestoreEntity(
           getWriteIndexName(indexMapping), entityId, script.painless());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+      reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
 
       if (Entity.TABLE.equals(entityType)) {
         softDeleteOrRestoreTableColumns((Table) entity, delete);
@@ -3780,7 +3818,9 @@ public class SearchRepository {
             JsonUtils.convertValue(
                 fieldChange.getNewValue(),
                 new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        fieldAddParams.put(FIELD_DOMAINS, entity.getDomains());
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+        scriptTxt.append("ctx._source.domains = params.domains;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
         Map<String, Object> doc = JsonUtils.getMap(entity);

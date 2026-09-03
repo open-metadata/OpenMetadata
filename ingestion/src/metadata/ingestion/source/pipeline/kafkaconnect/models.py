@@ -14,7 +14,6 @@ KafkaConnect Source Model module
 """
 
 from enum import Enum
-from typing import List, Optional, Type, Union  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -33,20 +32,20 @@ class ConnectorType(str, Enum):
 
 class KafkaConnectTasks(BaseModel):
     id: int = Field(..., description="ID of the task")
-    state: Optional[str] = Field(default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)")  # noqa: UP045
-    worker_id: Optional[str] = Field(default=None, description="ID of the worker running the task")  # noqa: UP045
+    state: str | None = Field(default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)")
+    worker_id: str | None = Field(default=None, description="ID of the worker running the task")
 
 
 class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
-    fqn: Optional[str] = Field(default=None, description="Fully qualified name of the topic in OpenMetadata")  # noqa: UP045
+    fqn: str | None = Field(default=None, description="Fully qualified name of the topic in OpenMetadata")
 
 
 class ServiceResolutionResult(BaseModel):
     """Result of service name resolution from connector config"""
 
-    database_service_name: Optional[str] = Field(default=None, description="Resolved database service name")  # noqa: UP045
-    messaging_service_name: Optional[str] = Field(default=None, description="Resolved messaging service name")  # noqa: UP045
+    database_service_name: str | None = Field(default=None, description="Resolved database service name")
+    messaging_service_name: str | None = Field(default=None, description="Resolved messaging service name")
 
 
 class TopicResolutionResult(BaseModel):
@@ -54,8 +53,8 @@ class TopicResolutionResult(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    topics: List[KafkaConnectTopics] = Field(default_factory=list, description="List of discovered/parsed topics")  # noqa: UP006
-    topic_entity_map: dict[str, Optional[Topic]] = Field(  # noqa: UP045
+    topics: list[KafkaConnectTopics] = Field(default_factory=list, description="List of discovered/parsed topics")
+    topic_entity_map: dict[str, Topic | None] = Field(
         default_factory=dict, description="Map of topic name to resolved Topic entity"
     )
 
@@ -72,17 +71,17 @@ class KafkaConnectDatasetDetails(BaseModel):
     Details about the dataset from kafkaconnect configuration
     """
 
-    table: Optional[str] = None  # noqa: UP045
-    database: Optional[str] = None  # noqa: UP045
-    schema: Optional[str] = None  # noqa: UP045
-    parent_container: Optional[str] = None  # noqa: UP045
-    container_name: Optional[str] = None  # noqa: UP045
-    column_mappings: List[KafkaConnectColumnMapping] = Field(  # noqa: UP006
+    table: str | None = None
+    database: str | None = None
+    schema: str | None = None
+    parent_container: str | None = None
+    container_name: str | None = None
+    column_mappings: list[KafkaConnectColumnMapping] = Field(
         default_factory=list, description="Column-level mappings if available"
     )
 
     @property
-    def dataset_type(self) -> Optional[Type[Union[Table, Container]]]:  # noqa: UP006, UP007, UP045
+    def dataset_type(self) -> type[Table | Container] | None:
         if self.table or self.database:
             return Table
         if self.container_name or self.parent_container:
@@ -95,16 +94,16 @@ class KafkaConnectPipelineDetails(BaseModel):
     Details about a Kafka Connect pipeline/connector"""
 
     name: str = Field(..., description="Name of the status source (e.g., random-source-json)")
-    status: Optional[str] = Field(  # noqa: UP045
+    status: str | None = Field(
         default="UNASSIGNED",
         description="State of the connector (e.g., RUNNING, STOPPED)",
     )
-    tasks: Optional[List[KafkaConnectTasks]] = Field(default_factory=list)  # noqa: UP006, UP045
-    topics: Optional[List[KafkaConnectTopics]] = Field(default_factory=list)  # noqa: UP006, UP045
-    conn_type: Optional[str] = Field(default="UNKNOWN", alias="type")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    datasets: Optional[List[KafkaConnectDatasetDetails]] = Field(default_factory=list)  # noqa: UP006, UP045
-    config: Optional[dict] = Field(default_factory=dict)  # noqa: UP045
+    tasks: list[KafkaConnectTasks] | None = Field(default_factory=list)
+    topics: list[KafkaConnectTopics] | None = Field(default_factory=list)
+    conn_type: str | None = Field(default="UNKNOWN", alias="type")
+    description: str | None = None
+    datasets: list[KafkaConnectDatasetDetails] | None = Field(default_factory=list)
+    config: dict | None = Field(default_factory=dict)
 
     @field_validator("conn_type", mode="before")
     @classmethod

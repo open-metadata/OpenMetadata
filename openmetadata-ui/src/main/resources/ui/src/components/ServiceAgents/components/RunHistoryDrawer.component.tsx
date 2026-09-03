@@ -299,6 +299,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   {runLabel}
                 </div>
                 <div className="tw:text-xs tw:text-tertiary">
+                  {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
                   {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
                   {t('message.ran-for-duration', { duration: run.duration })}
                 </div>
@@ -377,7 +378,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                 run.steps.map((s, idx) => (
                   <RunStepRow
                     isLast={idx === run.steps.length - 1}
-                    key={idx}
+                    key={s.name}
                     step={s}
                   />
                 ))

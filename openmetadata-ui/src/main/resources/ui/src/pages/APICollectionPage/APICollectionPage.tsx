@@ -409,6 +409,8 @@ const APICollectionPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -416,6 +418,8 @@ const APICollectionPage: FunctionComponent = () => {
           entity: t('label.collection'),
         })
       );
+
+      return false;
     }
   }, [apiCollectionId, handleToggleDelete, t]);
 

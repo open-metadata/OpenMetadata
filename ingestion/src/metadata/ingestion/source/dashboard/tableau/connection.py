@@ -15,7 +15,7 @@ Source connection handler
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union  # noqa: UP035
+from typing import TYPE_CHECKING, Any
 
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
@@ -173,7 +173,7 @@ def get_connection(connection: TableauConnectionConfig) -> TableauClient:
 
 def set_verify_ssl(
     connection: TableauConnectionConfig,
-) -> tuple[Union[bool, str], Optional[SSLManager]]:  # noqa: UP007, UP045
+) -> tuple[bool | str, SSLManager | None]:
     """
     Set verify ssl based on connection configuration
     ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
@@ -207,7 +207,7 @@ def set_verify_ssl(
     )
 
 
-def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[str, Any]]:  # noqa: UP006
+def build_server_config(connection: TableauConnectionConfig) -> dict[str, dict[str, Any]]:
     """
     Build client configuration
     Args:

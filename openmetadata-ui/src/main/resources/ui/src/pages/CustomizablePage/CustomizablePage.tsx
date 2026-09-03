@@ -79,6 +79,12 @@ const SettingsAppModePage = withSuspenseFallback(
   )
 );
 
+const CustomizeAppModeSidebarPage = withSuspenseFallback(
+  lazy(
+    () => import('../CustomizeAppModeSidebarPage/CustomizeAppModeSidebarPage')
+  )
+);
+
 const CustomizablePageContent = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
@@ -419,6 +425,9 @@ const CustomizablePageContent = () => {
           onSave={handleAppModeSave}
         />
       );
+
+    case 'askCollateSidebar':
+      return <CustomizeAppModeSidebarPage />;
 
     case PageType.LandingPage:
     case 'homepage':

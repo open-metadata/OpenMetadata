@@ -364,7 +364,7 @@ export const runAdvancedBlocksTest = async (
     await verifyTaskList(editor, 'Task 2');
     await verifyTaskList(editor, 'Task 3');
 
-    await toggleTask(page, editor, 'Task 1');
+    await toggleTask(editor, 'Task 1');
     const taskCheckbox = editor
       .locator('li')
       .filter({ hasText: 'Task 1' })
