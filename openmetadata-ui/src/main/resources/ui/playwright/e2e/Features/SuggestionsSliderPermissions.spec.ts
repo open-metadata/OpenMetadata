@@ -32,9 +32,11 @@ const VIEWER_RULES: PolicyRulesType[] = [
     effect: 'allow',
   },
   {
+    // A rule listing EditAll subsumes every edit operation (CompiledRule
+    // matchesBySubsumption), so this one deny blocks all edits
     name: 'Edit-Deny-Rule',
     resources: ['All'],
-    operations: ['EditAll', 'EditDescription', 'EditTags'],
+    operations: ['EditAll'],
     effect: 'deny',
   },
 ];
@@ -53,9 +55,11 @@ const DESCRIPTION_EDITOR_RULES: PolicyRulesType[] = [
     effect: 'allow',
   },
   {
+    // Deny only EditTags — a deny listing EditAll would subsume and kill the
+    // EditDescription allow above (CompiledRule matchesBySubsumption)
     name: 'EditTags-Deny-Rule',
     resources: ['All'],
-    operations: ['EditAll', 'EditTags'],
+    operations: ['EditTags'],
     effect: 'deny',
   },
 ];
