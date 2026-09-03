@@ -97,8 +97,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           placement="top"
           title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
           <Focusable>
-            <span
-              className={classNames('tw:inline-flex')}>
+            <span className={classNames('tw:inline-flex')}>
               <TagComponent
                 color={tag.style?.color}
                 data-testid="tags"
@@ -164,10 +163,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             overlayClassName="tag-popover-container"
             placement="bottom"
             trigger="click">
-            <Button
-              color="link-color"
-              data-testid="plus-more-count"
-              size="xs">
+            <Button color="link-color" data-testid="plus-more-count" size="xs">
               {`+${sortedTagsBySource.length - (sizeCap ?? 0)} more`}
             </Button>
           </Popover>

@@ -18,7 +18,7 @@ import {
   Select,
   SelectProps,
   Space,
-  Typography
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -41,7 +41,7 @@ import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
   AsyncSelectListProps,
-  SelectOption
+  SelectOption,
 } from './AsyncSelectList.interface';
 
 const AsyncSelectList: FC<
@@ -228,30 +228,33 @@ const AsyncSelectList: FC<
 
     const isDerived =
       (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
-    const isGlossary = (selectedTag?.data as TagLabel).source === TagSource.Glossary;
+    const isGlossary =
+      (selectedTag?.data as TagLabel).source === TagSource.Glossary;
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
-        <TagComponent
-          color={tag.style?.color}
-          data-testid={`selected-tag-${tagLabel}`}
-          icon={tag.style?.iconURL}
-          label={tagLabel ?? tag.tagFQN}
-          maxWidth={140}
-          size="sm"
-          onDelete={
-            isDerived
-              ? undefined
-              : (e) => {
-                  e.stopPropagation();
-                  onClose?.();
-                }
-          }
-        />
+      <TagComponent
+        color={tag.style?.color}
+        data-testid={`selected-tag-${tagLabel}`}
+        icon={tag.style?.iconURL}
+        label={tagLabel ?? tag.tagFQN}
+        maxWidth={140}
+        size="sm"
+        onDelete={
+          isDerived
+            ? undefined
+            : (e) => {
+                e.stopPropagation();
+                onClose?.();
+              }
+        }
+      />
     );
 
     return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}><TooltipTrigger>{chip}</TooltipTrigger></Tooltip>
+      <Tooltip title={t('message.derived-tag-warning')}>
+        <TooltipTrigger>{chip}</TooltipTrigger>
+      </Tooltip>
     ) : (
       chip
     );
@@ -340,9 +343,7 @@ const AsyncSelectList: FC<
             placement="top left"
             title={label}
             trigger="hover">
-          <TooltipTrigger>
-            {displayName}
-            </TooltipTrigger>
+            <TooltipTrigger>{displayName}</TooltipTrigger>
           </Tooltip>
         </Select.Option>
       ))}

@@ -123,7 +123,7 @@ export const renderDomainGlossaryTagsCell = (
 );
 
 export const renderDomainClassificationTagsCell = (
-  entity: TaggedEntity,
+  entity: TaggedEntity
 ): ReactNode => (
   <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
 );

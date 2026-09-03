@@ -12,14 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Empty,
-  Form,
-  Space,
-  TreeSelect,
-  TreeSelectProps
-} from 'antd';
+import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
@@ -32,7 +25,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
@@ -45,17 +38,17 @@ import {
   getGlossariesList,
   ListGlossaryTermsParams,
   queryGlossaryTerms,
-  searchGlossaryTerms
+  searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   filterTreeNodeOptions,
-  findItemByFqn
+  findItemByFqn,
 } from '../../../utils/GlossaryPureUtils';
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
-  getEncodedFqn
+  getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { tagRender } from '../../../utils/TagsUtils';
@@ -68,7 +61,7 @@ import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
   AsyncSelectListProps,
-  SelectOption
+  SelectOption,
 } from './AsyncSelectList.interface';
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
@@ -253,29 +246,32 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
 
     const isDerived =
       (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
-    const isGlossary = (selectedTag?.data as TagLabel).source === TagSource.Glossary;
+    const isGlossary =
+      (selectedTag?.data as TagLabel).source === TagSource.Glossary;
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
-        <TagComponent
-          color={tag.style?.color}
-          data-testid={`selected-tag-${tagLabel}`}
-          icon={tag.style?.iconURL}
-          label={tagLabel ?? tag.tagFQN}
-          size="sm"
-          onDelete={
-            isDerived
-              ? undefined
-              : (e) => {
-                  e.stopPropagation();
-                  onClose?.();
-                }
-          }
-        />
+      <TagComponent
+        color={tag.style?.color}
+        data-testid={`selected-tag-${tagLabel}`}
+        icon={tag.style?.iconURL}
+        label={tagLabel ?? tag.tagFQN}
+        size="sm"
+        onDelete={
+          isDerived
+            ? undefined
+            : (e) => {
+                e.stopPropagation();
+                onClose?.();
+              }
+        }
+      />
     );
 
     return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}><TooltipTrigger>{chip}</TooltipTrigger></Tooltip>
+      <Tooltip title={t('message.derived-tag-warning')}>
+        <TooltipTrigger>{chip}</TooltipTrigger>
+      </Tooltip>
     ) : (
       chip
     );

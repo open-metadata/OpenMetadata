@@ -40,8 +40,8 @@ import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
-    StoredProcedure,
-    StoredProcedureCodeObject
+  StoredProcedure,
+  StoredProcedureCodeObject,
 } from '../generated/entity/data/storedProcedure';
 import { Table, TableType, TagLabel } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
@@ -51,9 +51,9 @@ import { getTagName, getTagRedirectLink } from './TagsPureUtils';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
 import {
-    ColumnSearchResult,
-    getTableFieldsFromTableDetails,
-    getUsageData
+  ColumnSearchResult,
+  getTableFieldsFromTableDetails,
+  getUsageData,
 } from './DataAssetSummaryPanelPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
