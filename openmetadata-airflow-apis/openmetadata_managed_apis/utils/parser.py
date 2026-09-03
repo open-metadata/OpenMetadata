@@ -28,32 +28,34 @@ logger = utils_logger()
 
 
 def parse_validation_err(validation_error: ValidationError) -> str:
-    """
-    Convert the validation error into a message to log
-    """
-    missing_fields = [
-        f"Extra parameter '{err.get('loc')[0]}'" if len(err.get("loc")) == 1 else f"Extra parameter in {err.get('loc')}"
-        for err in validation_error.errors()
-        if err.get("type") == "value_error.extra"
-    ]
+    """Render validation field locations without input values."""
+    error_details = validation_error.errors()
+    extra_error_types = {"extra_forbidden", "value_error.extra"}
+    missing_error_types = {"missing", "value_error.missing"}
 
     extra_fields = [
+        f"Extra parameter '{err.get('loc')[0]}'" if len(err.get("loc")) == 1 else f"Extra parameter in {err.get('loc')}"
+        for err in error_details
+        if err.get("type") in extra_error_types
+    ]
+
+    missing_fields = [
         f"Missing parameter '{err.get('loc')[0]}'"
         if len(err.get("loc")) == 1
         else f"Missing parameter in {err.get('loc')}"
-        for err in validation_error.errors()
-        if err.get("type") == "value_error.missing"
+        for err in error_details
+        if err.get("type") in missing_error_types
     ]
 
     invalid_fields = [
-        f"Invalid parameter value for  '{err.get('loc')[0]}'"
+        f"Invalid parameter value for '{err.get('loc')[0]}'"
         if len(err.get("loc")) == 1
-        else f"Missing parameter in {err.get('loc')}"
-        for err in validation_error.errors()
-        if err.get("type") not in ("value_error.missing", "value_error.extra")
+        else f"Invalid parameter value for {err.get('loc')}"
+        for err in error_details
+        if err.get("type") not in extra_error_types | missing_error_types
     ]
 
-    return "\n".join(missing_fields + extra_fields + invalid_fields)
+    return "\n".join(extra_fields + missing_fields + invalid_fields)
 
 
 def _parse_inner_connection(connection_dict: dict) -> None:
