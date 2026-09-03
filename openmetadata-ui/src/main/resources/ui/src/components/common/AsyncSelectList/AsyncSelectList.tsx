@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import {
-    Button,
-    Empty,
-    Form,
-    Select,
-    SelectProps,
-    Space,
-    Typography
+  Button,
+  Empty,
+  Form,
+  Select,
+  SelectProps,
+  Space,
+  Typography
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -40,8 +40,8 @@ import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-    AsyncSelectListProps,
-    SelectOption
+  AsyncSelectListProps,
+  SelectOption
 } from './AsyncSelectList.interface';
 
 const AsyncSelectList: FC<
@@ -55,7 +55,6 @@ const AsyncSelectList: FC<
   initialOptions,
   filterOptions = [],
   optionClassName,
-  tagType,
   onCancel,
   isSubmitLoading,
   newLook = false,
@@ -233,11 +232,6 @@ const AsyncSelectList: FC<
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
-      <span
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}>
         <TagComponent
           color={tag.style?.color}
           data-testid={`selected-tag-${tagLabel}`}
@@ -254,11 +248,10 @@ const AsyncSelectList: FC<
                 }
           }
         />
-      </span>
     );
 
     return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}>{chip}</Tooltip>
+      <Tooltip title={t('message.derived-tag-warning')}><TooltipTrigger>{chip}</TooltipTrigger></Tooltip>
     ) : (
       chip
     );
@@ -343,12 +336,13 @@ const AsyncSelectList: FC<
           key={label}
           value={value}>
           <Tooltip
-            destroyTooltipOnHide
-            mouseEnterDelay={1.5}
-            placement="leftTop"
+            delay={1.5}
+            placement="top left"
             title={label}
             trigger="hover">
+          <TooltipTrigger>
             {displayName}
+            </TooltipTrigger>
           </Tooltip>
         </Select.Option>
       ))}

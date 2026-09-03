@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import {
   Button,
   Empty,
@@ -180,7 +180,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
   value: formValue,
   initialOptions,
-  tagType,
   isSubmitLoading,
   filterOptions = [],
   onCancel,
@@ -358,11 +357,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
-      <span
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}>
         <TagComponent
           color={tag.style?.color}
           data-testid={`selected-tag-${tagLabel}`}
@@ -378,11 +372,10 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
                 }
           }
         />
-      </span>
     );
 
     return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}>{chip}</Tooltip>
+      <Tooltip title={t('message.derived-tag-warning')}><TooltipTrigger>{chip}</TooltipTrigger></Tooltip>
     ) : (
       chip
     );
