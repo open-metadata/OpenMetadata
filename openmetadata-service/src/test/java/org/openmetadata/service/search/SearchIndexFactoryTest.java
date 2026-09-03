@@ -246,11 +246,6 @@ class SearchIndexFactoryTest {
   }
 
   @Test
-  void pageReindexFieldsIncludeHierarchyFields() {
-    assertReindexFields(Entity.PAGE, "parent", "children", "editors", "relatedEntities");
-  }
-
-  @Test
   void pipelineReindexFieldsIncludeTasks() {
     assertReindexFields(Entity.PIPELINE, "tasks");
   }

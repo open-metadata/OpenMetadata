@@ -339,8 +339,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
-      // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
-      invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+      // Capture the descendants so their caches can be evicted again after the FQN rewrite.
+      List<EntityDAO.EntityIdFqnPair> renamedTags =
+          invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with any tag under this
       // classification. Tags live in the TAG entity table with FQNs starting with the
       // classification FQN, so the descendant helper finds them correctly.
@@ -352,7 +353,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
 
       updateEntityLinks(oldFqn, newFqn, updated);
-      updateAssetIndexes(oldFqn, newFqn);
+      // Reordered to run after every DB write and after the phase-2 evict. @Transaction on
+      // EntityRepository is inert on this branch (JDBI SqlObject annotation on a plain class),
+      // so each DAO call autocommits; this is an ordering fix, not a commit hook. Matches the
+      // ordering main gets from its post-commit DeferralScope.
+      deferReactOperation(() -> updateAssetIndexes(oldFqn, newFqn));
 
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
@@ -360,6 +365,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
       invalidateClassification(updated.getId());
+      finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {
