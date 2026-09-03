@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/es/table';
+import {
+  Alert,
+  Button,
+  Modal,
+  Progress,
+  Space,
+  TableColumnsType,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,7 +60,7 @@ const renderFooter = (
 const renderFailedContent = (
   failedStatus: BulkOperationResult | undefined,
   tagError: { code: number; message: string } | undefined,
-  tagsColumn: ColumnsType<Response>,
+  tagsColumn: TableColumnsType<Response>,
   t: (key: string) => string
 ) => (
   <div className="d-flex flex-column gap-2">
@@ -125,7 +132,7 @@ export const GlossaryUpdateConfirmationModal = ({
     }
   };
 
-  const tagsColumn: ColumnsType<Response> = useMemo(() => {
+  const tagsColumn: TableColumnsType<Response> = useMemo(() => {
     return [
       {
         title: t('label.asset-plural'),

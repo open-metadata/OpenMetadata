@@ -892,7 +892,7 @@ const loadBulkEditPickerOptions = async (
   columnKey: BulkEditPickerColumn,
   searchText: string,
   includeTeams = false
-) => BULK_EDIT_PICKER_LOADERS[columnKey](searchText, includeTeams);
+) => BULK_EDIT_PICKER_LOADERS[columnKey]?.(searchText, includeTeams);
 
 const serializeBulkEditPickerValues = (
   columnKey: BulkEditPickerColumn,

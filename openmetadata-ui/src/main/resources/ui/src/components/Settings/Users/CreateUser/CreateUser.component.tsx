@@ -20,10 +20,10 @@ import {
   Input,
   Radio,
   Select,
+  SelectProps,
   Space,
   Switch,
 } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import {
   compact,
@@ -153,7 +153,10 @@ const NonBotFields = ({
   fetchPersonaOptions: (
     searchText: string,
     page?: number
-  ) => Promise<DefaultOptionType[] | PagingResponse<DefaultOptionType[]>>;
+  ) => Promise<
+    | NonNullable<SelectProps['options']>
+    | PagingResponse<NonNullable<SelectProps['options']>>
+  >;
   isAdmin: boolean;
   onAdminToggle: () => void;
   setSelectedTeams: (teams: Array<EntityReference | undefined>) => void;
