@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/custom/dataAssetType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Data Asset Type",
+  "description": "Entity type reachable under the `di-data-assets-*` wildcard, and the single source of truth for which entity types Data Insights covers. The first sixteen are ingested by DataInsightsApp into a datastream of their own and are keyed by `dataInsights/config.json`. The last two are supplied instead by a `dataInsightAliases` entry in `indexMapping.json`, which aliases the live entity search index into the wildcard, so Data Insights reads them without ever writing them; those two must never be added to the ingestion subset.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.dataInsight.custom.DataAssetType",
+  "enum": [
+    "table",
+    "storedProcedure",
+    "databaseSchema",
+    "database",
+    "chart",
+    "dashboard",
+    "dashboardDataModel",
+    "pipeline",
+    "topic",
+    "container",
+    "searchIndex",
+    "mlmodel",
+    "dataProduct",
+    "glossaryTerm",
+    "tag",
+    "metric",
+    "testCaseResult",
+    "testCaseResolutionStatus"
+  ]
+}

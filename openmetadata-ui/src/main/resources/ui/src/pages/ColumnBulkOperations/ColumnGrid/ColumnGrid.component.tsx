@@ -107,6 +107,9 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
+const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ROTATE_90_CLASS = 'tw:rotate-90';
+
 interface BulkAssetsSocketMessage {
   jobId?: string;
   status?: string;
@@ -1260,8 +1263,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isGroupExpanded && 'tw:rotate-90'
+                      ICON_TRANSITION_CLASS,
+                      isGroupExpanded && ROTATE_90_CLASS
                     )}
                   />
                 }
@@ -1323,8 +1326,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   icon={
                     <ChevronRight
                       className={classNames(
-                        'tw:size-4 tw:transition-transform',
-                        isStructExpanded && 'tw:rotate-90'
+                        ICON_TRANSITION_CLASS,
+                        isStructExpanded && ROTATE_90_CLASS
                       )}
                     />
                   }
@@ -1366,8 +1369,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isOccurrenceExpanded && 'tw:rotate-90'
+                      ICON_TRANSITION_CLASS,
+                      isOccurrenceExpanded && ROTATE_90_CLASS
                     )}
                   />
                 }
