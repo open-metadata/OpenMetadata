@@ -60,6 +60,15 @@ const DESCRIPTION_EDITOR_RULES: PolicyRulesType[] = [
   },
 ];
 
+const SUGGESTED_TAG_LABELS = [
+  {
+    tagFQN: 'PersonalData.Personal',
+    source: 'Classification',
+    labelType: 'Manual',
+    state: 'Suggested',
+  },
+];
+
 const adminUser = new UserClass();
 const suggesterUser = new UserClass();
 const viewerUser = new UserClass();
@@ -75,7 +84,7 @@ const createdTaskIds: string[] = [];
 const createSuggestionTask = async (
   apiContext: APIRequestContext,
   table: TableClass,
-  payload: Record<string, string>
+  payload: Record<string, unknown>
 ) => {
   const response = await apiContext.post('/api/v1/tasks', {
     data: {
@@ -169,14 +178,10 @@ test.describe(
               {
                 suggestionType: 'Tag',
                 fieldPath: 'tags',
-                suggestedValue: JSON.stringify([
-                  {
-                    tagFQN: 'PersonalData.Personal',
-                    source: 'Classification',
-                    labelType: 'Manual',
-                    state: 'Suggested',
-                  },
-                ]),
+                // suggestedValue is the canonical TagSuggestion form-schema field;
+                // tagsToAdd is what the UI maps to tagLabels, so send both
+                suggestedValue: JSON.stringify(SUGGESTED_TAG_LABELS),
+                tagsToAdd: SUGGESTED_TAG_LABELS,
               }
             );
             await createSuggestionTask(suggesterContext, descriptionOnlyTable, {
