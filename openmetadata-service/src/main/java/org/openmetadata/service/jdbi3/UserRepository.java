@@ -1730,12 +1730,13 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User original, User updated) {
       List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
-      List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
-      validateGroupTeams(updatedTeams);
+      List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
+      validateGroupTeams(requestedTeams);
 
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
-      assignTeams(updated, updated.getTeams());
+      assignTeams(updated, requestedTeams);
+      List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);

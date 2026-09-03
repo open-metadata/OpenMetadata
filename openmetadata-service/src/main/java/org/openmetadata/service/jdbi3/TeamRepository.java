@@ -1496,13 +1496,10 @@ public class TeamRepository extends EntityRepository<Team> {
         Team updatedTeam,
         List<EntityReference> origUsers,
         List<EntityReference> updatedUsers) {
+      Set<UUID> origUserIds =
+          origUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
       List<EntityReference> addedUsers =
-          updatedUsers.stream()
-              .filter(
-                  user ->
-                      origUsers.stream()
-                          .noneMatch(origUser -> origUser.getId().equals(user.getId())))
-              .toList();
+          updatedUsers.stream().filter(user -> !origUserIds.contains(user.getId())).toList();
       validateDirectUserAddition(updatedTeam, addedUsers);
       updateToRelationships(
           "users",
