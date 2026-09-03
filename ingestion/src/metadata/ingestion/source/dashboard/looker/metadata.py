@@ -198,8 +198,8 @@ class ExploreRef(NamedTuple):
     """
 
     # Optional to match the SDK, where both fields are `str | None`.
-    model_name: Optional[str]  # noqa: UP045
-    name: Optional[str]  # noqa: UP045
+    model_name: str | None
+    name: str | None
 
 
 def clean_dashboard_name(name: str) -> str:
@@ -775,23 +775,23 @@ class LookerSource(DashboardServiceSource):
             yield from self._add_standalone_view_lineage(view, project_name, model_name)
         self._pending_standalone_lineage = []
 
-    def _resolve_pending_datamodels(self) -> Dict[str, Optional[DashboardDataModel]]:  # noqa: UP006, UP045
+    def _resolve_pending_datamodels(self) -> dict[str, DashboardDataModel | None]:
         """Fetch the data models written by this stage, keyed by their data model name.
 
         A view joined from several explores is yielded once per explore, so the same
         name is fetched only once and the caches keep the last-writer-wins semantics
         the interleaved implementation had.
         """
-        resolved: Dict[str, Optional[DashboardDataModel]] = {}  # noqa: UP006, UP045
+        resolved: dict[str, DashboardDataModel | None] = {}
 
-        def resolve(data_model_name: str) -> Optional[DashboardDataModel]:  # noqa: UP045
+        def resolve(data_model_name: str) -> DashboardDataModel | None:
             if data_model_name not in resolved:
                 try:
                     resolved[data_model_name] = self._build_data_model(data_model_name)
                 except Exception as err:
                     # One flaky lookup must not cost every other view its lineage; the
                     # None lands in the caches and the lineage builders skip that view.
-                    logger.warning(f"Error fetching data model [{data_model_name}]: {err}")
+                    logger.warning("Error fetching data model [%s]: %s", data_model_name, err)
                     logger.debug(traceback.format_exc())
                     resolved[data_model_name] = None
             return resolved[data_model_name]
@@ -1050,8 +1050,11 @@ class LookerSource(DashboardServiceSource):
             # the Barrier flush; a miss means the data model never made it to the server.
             if not self._view_data_model:
                 logger.warning(
-                    f"Skipping lineage for standalone view [{view.name}]: its data model "
-                    f"[{model_name}_{view.name}_view] was not found in OpenMetadata."
+                    "Skipping lineage for standalone view [%s]: its data model [%s_%s_view] "
+                    "was not found in OpenMetadata.",
+                    view.name,
+                    model_name,
+                    view.name,
                 )
                 return
 
@@ -1140,7 +1143,7 @@ class LookerSource(DashboardServiceSource):
     def add_view_lineage(  # noqa: C901
         self,
         view: LookMlView,
-        explore: Union[LookmlModelExplore, ExploreRef],  # noqa: UP007
+        explore: LookmlModelExplore | ExploreRef,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Add the lineage source -> view -> explore
@@ -1150,8 +1153,9 @@ class LookerSource(DashboardServiceSource):
             # the Barrier flush; a miss means the data model never made it to the server.
             if not self._view_data_model:
                 logger.warning(
-                    f"Skipping lineage for view [{view.name}] of explore [{explore.name}]: "
-                    "its data model was not found in OpenMetadata."
+                    "Skipping lineage for view [%s] of explore [%s]: its data model was not found in OpenMetadata.",
+                    view.name,
+                    explore.name,
                 )
                 return
 
