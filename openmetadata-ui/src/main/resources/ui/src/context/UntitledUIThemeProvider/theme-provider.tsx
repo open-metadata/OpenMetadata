@@ -26,30 +26,26 @@ import {
 } from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
+const DEFAULT_THEME: Theme = 'light';
 
 const getStoredTheme = (storageKey: string): Theme | null => {
-  if (typeof globalThis.localStorage === 'undefined') {
-    return null;
+  try {
+    if (typeof globalThis.localStorage === 'undefined') {
+      return null;
+    }
+
+    const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Privacy restrictions can block storage access; treat that as no preference.
   }
-
-  const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-
-  if (savedTheme === 'light' || savedTheme === 'dark') {
-    return savedTheme;
-  }
-
-  localStorage.removeItem(storageKey);
 
   return null;
-};
-
-const getSystemTheme = (): Theme | null => {
-  if (typeof globalThis.matchMedia !== 'function') {
-    return null;
-  }
-
-  return globalThis.matchMedia(SYSTEM_THEME_QUERY).matches ? 'dark' : 'light';
 };
 
 const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
@@ -86,11 +82,6 @@ interface ThemeProviderProps {
    * @default "dark-mode"
    */
   darkModeClass?: string;
-  /**
-   * The fallback theme when neither storage nor a system preference is available.
-   * @default "light"
-   */
-  defaultTheme?: Theme;
   /**
    * The key to use to store the theme in localStorage.
    * @default "ui-theme"
@@ -279,7 +270,6 @@ const clearBrandCssVars = (root: HTMLElement) => {
 export const ThemeProvider = ({
   children,
   brandColors,
-  defaultTheme = 'light',
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
@@ -293,8 +283,7 @@ export const ThemeProvider = ({
     infoColor,
   } = brandColors ?? {};
   const [theme, setThemeState] = useState<Theme>(() => {
-    const initialTheme =
-      getStoredTheme(storageKey) ?? getSystemTheme() ?? defaultTheme;
+    const initialTheme = getStoredTheme(storageKey) ?? DEFAULT_THEME;
 
     // This render-phase write is deliberate: canvas consumers resolve CSS tokens
     // before effects run, and applyThemeToRoot skips DOM writes when already synced.
@@ -305,10 +294,12 @@ export const ThemeProvider = ({
 
   const setTheme = useCallback(
     (nextTheme: Theme) => {
-      // System-derived initialization stays ephemeral so later visits can keep
-      // following the OS until the user or desktop shell makes an explicit choice.
-      if (typeof globalThis.localStorage !== 'undefined') {
-        localStorage.setItem(storageKey, nextTheme);
+      try {
+        if (typeof globalThis.localStorage !== 'undefined') {
+          localStorage.setItem(storageKey, nextTheme);
+        }
+      } catch {
+        // Persistence failure must not block theme changes for the current session.
       }
       // Canvas consumers resolve CSS tokens during the context update, so the
       // cascade must already represent the next theme when they render.
@@ -321,31 +312,6 @@ export const ThemeProvider = ({
   useEffect(() => {
     applyThemeToRoot(theme, darkModeClass);
   }, [theme, darkModeClass]);
-
-  useEffect(() => {
-    if (typeof globalThis.matchMedia !== 'function') {
-      return;
-    }
-
-    const systemTheme = globalThis.matchMedia(SYSTEM_THEME_QUERY);
-    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
-      // A stored value means the user or desktop shell has explicitly opted
-      // out of following later OS changes.
-      if (getStoredTheme(storageKey) !== null) {
-        return;
-      }
-
-      const nextTheme = event.matches ? 'dark' : 'light';
-
-      applyThemeToRoot(nextTheme, darkModeClass);
-      setThemeState(nextTheme);
-    };
-
-    systemTheme.addEventListener('change', handleSystemThemeChange);
-
-    return () =>
-      systemTheme.removeEventListener('change', handleSystemThemeChange);
-  }, [darkModeClass, storageKey]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;

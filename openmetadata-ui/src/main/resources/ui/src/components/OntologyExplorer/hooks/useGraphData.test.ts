@@ -97,7 +97,6 @@ const GraphThemeProvider = ({ children }: { children: ReactNode }) =>
       createElement(ThemeCapture),
       children
     ),
-    defaultTheme: 'light',
     storageKey: GRAPH_THEME_STORAGE_KEY,
   });
 
