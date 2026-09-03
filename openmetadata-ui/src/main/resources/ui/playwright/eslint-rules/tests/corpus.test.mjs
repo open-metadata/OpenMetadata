@@ -42,7 +42,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 80,
-    'om-playwright/no-positional-locator': 1324,
+    'om-playwright/no-positional-locator': 1323,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 35,

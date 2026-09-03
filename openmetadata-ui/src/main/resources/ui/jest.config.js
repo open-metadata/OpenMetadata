@@ -56,6 +56,14 @@ module.exports = {
   setupFilesAfterEnv: ['./src/setupTests.js'],
   clearMocks: true,
   moduleNameMapper: {
+    // ui-core-components keeps its own react-aria copy under a link: install,
+    // so a bare import resolves differently inside the package than it does in
+    // the app. Vite already dedupes these for the build; without the same
+    // mapping here, jest loads two copies and context lookups across the
+    // boundary miss — column resizing throws "Wrap your <Table> in a
+    // <ResizableTableContainer>" even though the container is right there.
+    '^(react-aria-components|react-aria|react-stately|@react-aria/utils|@react-stately/utils)$':
+      '<rootDir>/node_modules/$1',
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|mp4|MP4|webm|WEBM|less|LESS|css|CSS)$':
