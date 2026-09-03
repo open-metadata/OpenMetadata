@@ -497,7 +497,7 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         session_parameters = dict(connect_args.get("session_parameters") or {})
         if connection.queryTag:
             session_parameters["QUERY_TAG"] = connection.queryTag
-        if session_parameters or "session_parameters" in connect_args:
+        if session_parameters:
             connect_args["session_parameters"] = session_parameters
 
         return create_generic_db_connection(
