@@ -2843,3 +2843,31 @@ class TestConfluentTelemetryTopics:
 
         assert by_client == {"connector-producer-lcc-aaa111-0": {"good_v1", "also_good_v1"}}
         assert "" not in by_client, "an empty client id must not become a producer"
+
+    def test_unrelated_producers_are_dropped_before_they_accumulate(self):
+        """
+        The telemetry query is cluster wide, so the response describes every application
+        producing to the cluster, not just connectors. Those rows can never be attributed,
+        and this map is held across every page, so on a busy cluster keeping them would let
+        ordinary application traffic dominate what the connector holds in memory.
+
+        Asserted on the fetch result rather than on the attributed output, because
+        filtering later would still produce the right topics while holding the whole
+        cluster's producers to get there.
+        """
+        client = self._cloud_client()
+        rows = [
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "connector_v1"},
+            {"metric.client_id": "checkout-service-prod-17", "metric.topic": "orders_v1"},
+            {"metric.client_id": "spark-streaming-job-42", "metric.topic": "events_v1"},
+            {"metric.client_id": "consumer-analytics-9", "metric.topic": "connector_v1"},
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page(rows),
+        ):
+            by_client = client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert by_client == {"connector-producer-lcc-aaa111-0": {"connector_v1"}}, (
+            "only connector producers may be retained from a cluster-wide response"
+        )

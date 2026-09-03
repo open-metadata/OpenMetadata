@@ -367,10 +367,14 @@ class KafkaConnectClient:
 
     def _query_dataflow_topics_by_client(self, cluster_id: str) -> dict[str, set[str]]:
         """
-        Topics each producer client wrote to on this cluster, from the telemetry API.
+        Topics each connector producer wrote to on this cluster, from the telemetry API.
 
         Grouping by topic and client together is what makes the result attributable. The
         metric value is discarded: presence of the pair is the whole signal.
+
+        Only clients named like a connector producer are kept. The query is cluster wide,
+        so the response also describes every application producing to the cluster, and
+        those can never be attributed to a connector.
         """
         now = datetime.now(timezone.utc).replace(microsecond=0)
         start = now - timedelta(hours=CONFLUENT_TELEMETRY_WINDOW_HOURS)
@@ -411,6 +415,11 @@ class KafkaConnectClient:
                     # per page rather than logged per row: a response that changes shape
                     # would otherwise emit a line per pair on the whole cluster.
                     skipped += 1
+                    continue
+                # Discarded here rather than after the loop, because this map is held
+                # across every page: on a busy cluster the applications producing to it
+                # far outnumber the connectors, and none of them can ever be attributed.
+                if not CONFLUENT_PRODUCER_CLIENT_PATTERN.match(entry.client_id):
                     continue
                 by_client.setdefault(entry.client_id, set()).add(entry.topic)
 
