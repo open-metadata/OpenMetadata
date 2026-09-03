@@ -21,6 +21,8 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
+import DOMPurify from 'dompurify';
+import parse from 'html-react-parser';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
@@ -130,11 +132,11 @@ export const generateSearchDropdownLabel = (
             ellipsis
             className="dropdown-option-label"
             title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
+            <span>
+              {parse(
+                DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
+              )}
+            </span>
           </Typography.Text>
           {option.description && (
             <Typography.Text
