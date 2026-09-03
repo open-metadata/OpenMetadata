@@ -47,6 +47,10 @@ from metadata.ingestion.source.connections import (
     run_test_connection,
     test_connection_common,
 )
+from metadata.ingestion.source.database.unitycatalog.path_utils import (
+    container_path_candidates,
+    normalize_storage_path,
+)
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_COLUMN_LINEAGE,
     UNITY_CATALOG_EXTERNAL_TABLES,
@@ -89,6 +93,8 @@ class UnitycatalogLineageSource(Source):
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
         self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
         self.external_location_map: dict[str, str] = {}
+        self.path_to_table_map: dict[str, set[str]] = defaultdict(set)
+        self.path_lineage_map: dict[str, set[str]] = defaultdict(set)
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -110,6 +116,32 @@ class UnitycatalogLineageSource(Source):
             raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
         return cls(config, metadata)
 
+    def _resolve_lineage_side(self, full_name: str | None, path: str | None) -> tuple[set[str], str | None]:
+        """
+        Turn one side of a system-table lineage row into the tables it stands for.
+
+        A row that reads or writes a location by path (`delta.`abfss://...``) carries
+        no table name at all, only `source_path`/`target_path`. Such a path is the
+        storage of a registered external table whenever one is declared over it, which
+        makes it resolvable to a real table; otherwise it is handed back for the
+        container lookup to try.
+
+        Returns the table names for this side and, when it could not be resolved,
+        the normalized path.
+        """
+        if full_name:
+            return {full_name}, None
+
+        normalized_path = normalize_storage_path(path)
+        if not normalized_path:
+            return set(), None
+
+        tables = self.path_to_table_map.get(normalized_path)
+        if tables:
+            return set(tables), None
+
+        return set(), normalized_path
+
     def _cache_lineage(self):
         """
         Bulk-fetch all table and column lineage from system tables into memory.
@@ -121,16 +153,26 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_TABLE_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
-                    # A table never derives from itself. The system tables record
-                    # access rather than derivation, so a streaming or CDC write
-                    # legitimately names its target as its own source. Kept as
-                    # lineage it renders as a loop on the node and says nothing.
-                    if row.source_table_full_name == row.target_table_full_name:
-                        continue
-                    self.table_lineage_map[row.target_table_full_name].add(row.source_table_full_name)
+                    source_tables, source_path = self._resolve_lineage_side(row.source_table_full_name, row.source_path)
+                    target_tables, _ = self._resolve_lineage_side(row.target_table_full_name, row.target_path)
+
+                    for target_table in target_tables:
+                        for source_table in source_tables:
+                            # A table never derives from itself. The system tables record
+                            # access rather than derivation, so a streaming or CDC write
+                            # legitimately names its target as its own source. Kept as
+                            # lineage it renders as a loop on the node and says nothing.
+                            if source_table == target_table:
+                                continue
+                            self.table_lineage_map[target_table].add(source_table)
+
+                        if source_path:
+                            self.path_lineage_map[target_table].add(source_path)
             logger.info(
-                f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "
-                f"for {len(self.table_lineage_map)} target tables"
+                "Cached table lineage: %s edges for %s target tables, plus %s unresolved path upstreams",
+                sum(len(v) for v in self.table_lineage_map.values()),
+                len(self.table_lineage_map),
+                sum(len(v) for v in self.path_lineage_map.values()),
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -140,15 +182,22 @@ class UnitycatalogLineageSource(Source):
             with self.engine.connect() as conn:
                 rows = conn.execute(text(UNITY_CATALOG_COLUMN_LINEAGE.format(query_log_duration=query_log_duration)))
                 for row in rows:
-                    # The table pair this belongs to is dropped above, so caching the
-                    # columns only grows the map with entries nothing can read.
-                    if row.source_table_full_name == row.target_table_full_name:
-                        continue
-                    table_key = (
-                        row.source_table_full_name,
-                        row.target_table_full_name,
-                    )
-                    self.column_lineage_map[table_key].append((row.source_column_name, row.target_column_name))
+                    source_tables, _ = self._resolve_lineage_side(row.source_table_full_name, row.source_path)
+                    target_tables, _ = self._resolve_lineage_side(row.target_table_full_name, row.target_path)
+
+                    for target_table in target_tables:
+                        for source_table in source_tables:
+                            # The table pair this belongs to is dropped above, so caching the
+                            # columns only grows the map with entries nothing can read.
+                            if source_table == target_table:
+                                continue
+                            table_key = (source_table, target_table)
+                            column_pair = (row.source_column_name, row.target_column_name)
+                            # One edge reaches us twice when Databricks reports it both by
+                            # name and by path, and a duplicated pair would be sent as a
+                            # duplicated column edge.
+                            if column_pair not in self.column_lineage_map[table_key]:
+                                self.column_lineage_map[table_key].append(column_pair)
             logger.info(
                 f"Cached column lineage: {sum(len(v) for v in self.column_lineage_map.values())} "
                 f"column mappings for {len(self.column_lineage_map)} table pairs"
@@ -168,7 +217,17 @@ class UnitycatalogLineageSource(Source):
                 for row in rows:
                     table_fqn = f"{row.table_catalog}.{row.table_schema}.{row.table_name}"
                     self.external_location_map[table_fqn] = row.storage_path
-            logger.info(f"Cached {len(self.external_location_map)} external table locations")
+                    # The inverse direction resolves the paths that lineage rows carry
+                    # instead of a table name. Several external tables may be declared
+                    # over one location, and each is a legitimate reading of it.
+                    normalized_path = normalize_storage_path(row.storage_path)
+                    if normalized_path:
+                        self.path_to_table_map[normalized_path].add(table_fqn)
+            logger.info(
+                "Cached %s external table locations over %s distinct paths",
+                len(self.external_location_map),
+                len(self.path_to_table_map),
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to cache external table locations: {exc}")
@@ -273,6 +332,55 @@ class UnitycatalogLineageSource(Source):
             logger.debug(f"Error processing external location lineage for {databricks_table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
+    def _process_path_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Emit lineage for upstream locations that no registered table is declared over.
+
+        These reach the table only as a path, so the container ingested from the object
+        store is the one entity that can stand in for them.
+        """
+        for storage_path in sorted(self.path_lineage_map.get(databricks_table_fqn, set())):
+            try:
+                location_entity = None
+                for candidate in container_path_candidates(storage_path):
+                    location_entity = self.metadata.es_search_container_by_path(full_path=candidate, fields="dataModel")
+                    if location_entity and location_entity[0]:
+                        break
+
+                if not (location_entity and location_entity[0]):
+                    logger.debug(
+                        "No container ingested for upstream path %s of %s; declare an external table "
+                        "over it or ingest its storage service to get this lineage",
+                        storage_path,
+                        databricks_table_fqn,
+                    )
+                    continue
+
+                lineage_details = None
+                if location_entity[0].dataModel:
+                    lineage_details = self._get_container_column_lineage(location_entity[0].dataModel, table)
+
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=location_entity[0].id,
+                                type="container",
+                            ),
+                            toEntity=EntityReference(id=table.id, type="table"),
+                            lineageDetails=lineage_details or LineageDetails(source=LineageSource.ExternalTableLineage),
+                        )
+                    ),
+                )
+            except Exception as exc:
+                logger.debug(
+                    "Error processing path lineage %s -> %s: %s",
+                    storage_path,
+                    databricks_table_fqn,
+                    exc,
+                )
+                logger.debug(traceback.format_exc())
+
     def _process_table_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
         upstream_tables = self.table_lineage_map.get(databricks_table_fqn, set())
 
@@ -323,8 +431,10 @@ class UnitycatalogLineageSource(Source):
         Fetch lineage from system tables for both table-to-table
         and external location lineage.
         """
-        self._cache_lineage()
+        # External locations first: resolving a path-based lineage row to the table
+        # declared over that path needs the location map already populated.
         self._cache_external_locations()
+        self._cache_lineage()
 
         for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
             if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
@@ -357,6 +467,8 @@ class UnitycatalogLineageSource(Source):
                     databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
 
                     yield from self._process_table_lineage(table, databricks_table_fqn)
+
+                    yield from self._process_path_lineage(table, databricks_table_fqn)
 
                     yield from self._process_external_location_lineage(table, databricks_table_fqn)
 
