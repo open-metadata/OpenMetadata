@@ -180,8 +180,10 @@
                    that the reactor already built). It also suppresses postinstall, so
                    the `yarn run build-check` execution below re-runs its work (js-antlr
                    parser generation) explicitly, since that output is gitignored and
-                   required by the vite build. The dereferenced schemas under src/jsons
-                   are committed, so they are no longer regenerated here. -->
+                   required by the vite build. The dereferenced schemas — connection
+                   schemas under `public/jsons/connectionSchemas/` (fetched at runtime),
+                   application/ingestion/governance/sso schemas under `src/jsons/` (bundled
+                   at build time) — are all committed, so none are regenerated here. -->
               <arguments>install --frozen-lockfile --ignore-scripts</arguments>
               <skip>${skip.ui.build}</skip>
             </configuration>
