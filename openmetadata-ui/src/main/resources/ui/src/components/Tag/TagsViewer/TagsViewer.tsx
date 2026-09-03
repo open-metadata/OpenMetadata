@@ -37,6 +37,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
   entityFqn,
+  maxWidth,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -104,7 +105,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                 href={redirectLink}
                 icon={tag.style?.iconURL}
                 label={tagName}
-                maxWidth={130}
+                maxWidth={maxWidth ?? 130}
                 size="sm"
               />
             </span>
