@@ -242,10 +242,7 @@ export class AuthCoordinator {
       // closed mid-refresh, missed broadcast). Retry through the lock so
       // any other follower that also fell back races us for the exclusive
       // slot instead of running its own renewer in parallel.
-      if (
-        err instanceof LockTimeoutError &&
-        attempt < MAX_RECOVERY_ATTEMPTS
-      ) {
+      if (err instanceof LockTimeoutError && attempt < MAX_RECOVERY_ATTEMPTS) {
         return this.runExclusiveRefresh(renewer, attempt + 1);
       }
       // Leader's own renewer threw. `runExclusive` already broadcast
