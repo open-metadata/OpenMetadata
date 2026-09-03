@@ -1617,7 +1617,11 @@ const TableV2 = <T extends object>(
 
               <UntitledTable.Body
                 renderEmptyState={() =>
-                  isLoading ? null : (
+                  isLoading ? (
+                    // A real body height while loading — collapsed to zero,
+                    // the absolute spinner overlay centres on the header row.
+                    <div className="tw:min-h-32" />
+                  ) : (
                     // The padding is the placeholder's breathing room and
                     // belongs to whatever fills the slot: a call site's own
                     // placeholder needs it as much as the fallback does, and
