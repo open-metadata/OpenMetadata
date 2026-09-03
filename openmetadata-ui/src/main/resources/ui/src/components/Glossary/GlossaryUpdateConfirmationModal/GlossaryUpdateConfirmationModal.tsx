@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Modal,
-  Progress,
-  Space,
-  TableColumnsType,
-  Typography,
-} from 'antd';
+import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +23,6 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   BulkOperationResult,
-  Response,
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
@@ -60,33 +51,60 @@ const renderFooter = (
 const renderFailedContent = (
   failedStatus: BulkOperationResult | undefined,
   tagError: { code: number; message: string } | undefined,
-  tagsColumn: TableColumnsType<Response>,
   t: (key: string) => string
-) => (
-  <div className="d-flex flex-column gap-2">
-    {failedStatus && (
-      <>
-        <Table
-          columns={tagsColumn}
-          dataSource={failedStatus?.failedRequest ?? []}
-          pagination={{
-            pageSize: 5,
-            showSizeChanger: true,
-          }}
-          rowKey={(record) => record.request?.id}
-        />
-        <Alert
-          className="m-t-sm"
-          message={t('message.glossary-tag-assignment-help-message')}
-          type="warning"
-        />
-      </>
-    )}
-    {tagError?.code === ClientErrors.BAD_REQUEST && (
-      <Alert message={tagError.message} type="warning" />
-    )}
-  </div>
-);
+) => {
+  const columns = [
+    {
+      title: t('label.asset-plural'),
+      dataIndex: 'request',
+      key: 'request',
+      render: (record: EntityReference) => (
+        <Link
+          target="_blank"
+          to={getEntityLinkFromType(
+            record.fullyQualifiedName ?? '',
+            record.type as EntityType
+          )}>
+          {record.fullyQualifiedName}
+        </Link>
+      ),
+    },
+    {
+      title: t('label.failure-reason'),
+      dataIndex: 'message',
+      key: 'message',
+      render: (error: string) => (
+        <Typography.Paragraph>{error}</Typography.Paragraph>
+      ),
+    },
+  ];
+
+  return (
+    <div className="d-flex flex-column gap-2">
+      {failedStatus && (
+        <>
+          <Table
+            columns={columns}
+            dataSource={failedStatus?.failedRequest ?? []}
+            pagination={{
+              pageSize: 5,
+              showSizeChanger: true,
+            }}
+            rowKey={(record) => record.request?.id}
+          />
+          <Alert
+            className="m-t-sm"
+            message={t('message.glossary-tag-assignment-help-message')}
+            type="warning"
+          />
+        </>
+      )}
+      {tagError?.code === ClientErrors.BAD_REQUEST && (
+        <Alert message={tagError.message} type="warning" />
+      )}
+    </div>
+  );
+};
 
 export const GlossaryUpdateConfirmationModal = ({
   glossaryTerm,
@@ -131,34 +149,6 @@ export const GlossaryUpdateConfirmationModal = ({
       setUpdateState(UpdateState.FAILED);
     }
   };
-
-  const tagsColumn: TableColumnsType<Response> = useMemo(() => {
-    return [
-      {
-        title: t('label.asset-plural'),
-        dataIndex: 'request',
-        key: 'request',
-        render: (record: EntityReference) => (
-          <Link
-            target="_blank"
-            to={getEntityLinkFromType(
-              record.fullyQualifiedName ?? '',
-              record.type as EntityType
-            )}>
-            {record.fullyQualifiedName}
-          </Link>
-        ),
-      },
-      {
-        title: t('label.failure-reason'),
-        dataIndex: 'message',
-        key: 'message',
-        render: (error: string) => (
-          <Typography.Paragraph>{error}</Typography.Paragraph>
-        ),
-      },
-    ];
-  }, []);
 
   const progress =
     updateState === UpdateState.VALIDATING
@@ -216,7 +206,7 @@ export const GlossaryUpdateConfirmationModal = ({
         };
       case UpdateState.FAILED:
         return {
-          content: renderFailedContent(failedStatus, tagError, tagsColumn, t),
+          content: renderFailedContent(failedStatus, tagError, t),
           footer: renderFooter(failedStatus, onCancel, t),
         };
       case UpdateState.UPDATING:

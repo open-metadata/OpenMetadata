@@ -20,7 +20,6 @@ import {
   Input,
   Radio,
   Select,
-  SelectProps,
   Space,
   Switch,
 } from 'antd';
@@ -69,10 +68,8 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import {
-  AsyncSelect,
-  PagingResponse,
-} from '../../../common/AsyncSelect/AsyncSelect';
+import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
+import { AsyncSelectListProps } from '../../../common/AsyncSelect/AsyncSelectList.interface';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
@@ -150,13 +147,7 @@ const NonBotFields = ({
   roleOptions: Array<{ label: string; value: string }>;
   isRolesLoading: boolean;
   debouncedFetchRoleOptions: (searchText: string) => void;
-  fetchPersonaOptions: (
-    searchText: string,
-    page?: number
-  ) => Promise<
-    | NonNullable<SelectProps['options']>
-    | PagingResponse<NonNullable<SelectProps['options']>>
-  >;
+  fetchPersonaOptions: AsyncSelectListProps['api'];
   isAdmin: boolean;
   onAdminToggle: () => void;
   setSelectedTeams: (teams: Array<EntityReference | undefined>) => void;
