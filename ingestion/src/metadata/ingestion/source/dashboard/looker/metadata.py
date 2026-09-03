@@ -60,7 +60,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LocalRepositoryPath,
     LookerConnection,
@@ -842,7 +842,7 @@ class LookerSource(DashboardServiceSource):
         for dependent_view_name in view_references:
             self._derived_dependencies.add_edge(view_name, dependent_view_name)
 
-    def _extract_column_lineage(self, view: LookMlView) -> list[tuple[Column, Column]]:
+    def _extract_column_lineage(self, view: LookMlView) -> list[tuple[str, str]]:
         """
         Extract column level lineage from a LookML view.
         Returns a list of tuples containing (source_column, target_column)
@@ -858,7 +858,7 @@ class LookerSource(DashboardServiceSource):
                         field_sql_map[field.name] = field.sql
 
             # Regex to extract ${TABLE}.col and ${field}
-            table_col_pattern = re.compile(r"\$\{TABLE\}\.([a-zA-Z_][a-zA-Z0-9_]*)")
+            table_col_pattern = re.compile(r'\$\{TABLE\}\.(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))')
             dimension_ref_pattern = re.compile(r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
             # Recursive resolver
@@ -870,7 +870,10 @@ class LookerSource(DashboardServiceSource):
                 visited.add(field_name)
 
                 sql = field_sql_map.get(field_name, "")
-                source_cols = set(table_col_pattern.findall(sql))
+                source_cols = {
+                    quoted_column or unquoted_column
+                    for quoted_column, unquoted_column in table_col_pattern.findall(sql)
+                }
                 dimension_refs = dimension_ref_pattern.findall(sql)
 
                 for ref in dimension_refs:
@@ -1509,7 +1512,7 @@ class LookerSource(DashboardServiceSource):
 
     def _process_and_validate_column_lineage(
         self,
-        column_lineage: list[tuple[Column, Column]],
+        column_lineage: list[tuple[str, str]],
         from_entity: Table,
         to_entity: Dashboard | DashboardDataModel,
     ) -> list[ColumnLineage]:
@@ -1534,10 +1537,10 @@ class LookerSource(DashboardServiceSource):
                         )
                         continue
 
-                    from_column = get_column_fqn(table_entity=from_entity, column=str(target_col))
+                    from_column = get_column_fqn(table_entity=from_entity, column=str(source_col))
                     to_column = self._get_data_model_column_fqn(
                         data_model_entity=to_entity,
-                        column=str(source_col),
+                        column=str(target_col),
                     )
                     if from_column and to_column:
                         processed_column_lineage.append(
@@ -1557,7 +1560,7 @@ class LookerSource(DashboardServiceSource):
         source: str,
         db_service_prefix: str,
         to_entity: Dashboard | DashboardDataModel,
-        column_lineage: list[tuple[Column, Column]] | None = None,
+        column_lineage: list[tuple[str, str]] | None = None,
     ) -> Either[AddLineageRequest] | None:
         """
         Once we have a list of origin data sources, check their components
