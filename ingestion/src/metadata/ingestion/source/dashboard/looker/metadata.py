@@ -416,7 +416,7 @@ class LookerSource(DashboardServiceSource):
                 for model in all_lookml_models:
                     project_name = model.project_name or ""
                     if filter_by_project(self.source_config.projectFilterPattern, project_name):
-                        self.status.filter(project_name or model.name or "unknown", "Project filtered out.")
+                        self.status.filter(model.name or project_name, f"Project [{project_name}] filtered out.")
                         continue
                     lookml_models.append(model)
 
@@ -495,6 +495,10 @@ class LookerSource(DashboardServiceSource):
         are not associated with any explore.
 
         This is called as a post-process step after all explores have been processed.
+
+        Standalone views are not attached to any model, so we attribute them to the first
+        known project/model. Liquid `sql_table_name` conditions on `_model._name` may
+        therefore resolve the wrong branch when a repository hosts more than one model.
         """
         if not self.repository_credentials or not self._project_parsers:
             return
@@ -865,8 +869,12 @@ class LookerSource(DashboardServiceSource):
                     if hasattr(field, "sql") and field.sql is not None:
                         field_sql_map[field.name] = field.sql
 
-            # Regex to extract ${TABLE}.col and ${field}
-            table_col_pattern = re.compile(r'\$\{TABLE\}\.(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))')
+            # Regex to extract ${TABLE}.col and ${field}. The identifier may be delimited,
+            # and the delimiter is dialect specific: Snowflake uses ", Databricks/BigQuery `,
+            # and MSSQL []. Delimited names keep their original case and may contain spaces.
+            table_col_pattern = re.compile(
+                r'\$\{TABLE\}\.(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([a-zA-Z_][a-zA-Z0-9_]*))'
+            )
             dimension_ref_pattern = re.compile(r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
             # Recursive resolver
@@ -879,8 +887,7 @@ class LookerSource(DashboardServiceSource):
 
                 sql = field_sql_map.get(field_name, "")
                 source_cols = {
-                    quoted_column or unquoted_column
-                    for quoted_column, unquoted_column in table_col_pattern.findall(sql)
+                    next(group for group in match.groups() if group) for match in table_col_pattern.finditer(sql)
                 }
                 dimension_refs = dimension_ref_pattern.findall(sql)
 
@@ -1001,15 +1008,16 @@ class LookerSource(DashboardServiceSource):
 
             if view.sql_table_name:
                 sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
-                sql_table_name = self._render_table_name(sql_table_name, model_name)
+                sql_table_name = self._render_table_name(sql_table_name, model_name, view_name=view.name)
+
+                # Column lineage only depends on the view definition, so resolve it once
+                column_lineage = self._extract_column_lineage(view)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
                     dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
-
-                    column_lineage = self._extract_column_lineage(view)
 
                     lineage_request = self.build_lineage_request(
                         source=source_table_name,
@@ -1111,7 +1119,15 @@ class LookerSource(DashboardServiceSource):
 
             if view.sql_table_name:
                 sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
-                sql_table_name = self._render_table_name(sql_table_name, explore.model_name)
+                sql_table_name = self._render_table_name(
+                    sql_table_name,
+                    explore.model_name,
+                    explore_name=explore.name,
+                    view_name=view.name,
+                )
+
+                # Column lineage only depends on the view definition, so resolve it once
+                column_lineage = self._extract_column_lineage(view)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
@@ -1119,16 +1135,15 @@ class LookerSource(DashboardServiceSource):
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
 
-                    # Extract column lineage
-                    column_lineage = self._extract_column_lineage(view)
-
                     # View to the source is only there if we are informing the dbServiceNames
-                    yield self.build_lineage_request(
+                    lineage_request = self.build_lineage_request(
                         source=source_table_name,
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage,
                     )
+                    if lineage_request:
+                        yield lineage_request
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
@@ -1367,7 +1382,12 @@ class LookerSource(DashboardServiceSource):
         return resolved
 
     @staticmethod
-    def _render_table_name(table_name: str, model_name: str | None = None) -> str:
+    def _render_table_name(
+        table_name: str,
+        model_name: str | None = None,
+        explore_name: str | None = None,
+        view_name: str | None = None,
+    ) -> str:
         """
         sql_table_names might contain Liquid templates
         when defining an explore. e.g,:
@@ -1381,16 +1401,20 @@ class LookerSource(DashboardServiceSource):
             {% endif %} ;;
         we should render the template and give the option
         to render a specific value during metadata ingestion
-        using the "openmetadata" context argument. Looker model conditions are
-        evaluated using the current model name.
+        using the "openmetadata" context argument. Looker also exposes the current
+        model, explore and view to Liquid as `_model._name`, `_explore._name` and
+        `_view._name`, and sql_table_name commonly branches on them.
         :param table_name: table name with possible templating
         :param model_name: current LookML model name
+        :param explore_name: current Explore name
+        :param view_name: current LookML view name
         :return: rendered table name
         """
         try:
             context: dict[str, object] = {"openmetadata": True}
-            if model_name:
-                context["_model"] = {"_name": model_name}
+            for scope, name in (("_model", model_name), ("_explore", explore_name), ("_view", view_name)):
+                if name:
+                    context[scope] = {"_name": name}
             template = Template(table_name)
             sql_table_name = template.render(context)
         except Exception:

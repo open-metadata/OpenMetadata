@@ -36,6 +36,8 @@ def looker_source() -> LookerSource:
         ("${TABLE}.CUSTOMER_ID", "CUSTOMER_ID"),
         ('${TABLE}."CUSTOMER_ID"', "CUSTOMER_ID"),
         ('${TABLE}."Customer Id"', "Customer Id"),
+        ("${TABLE}.`Customer Id`", "Customer Id"),
+        ("${TABLE}.[Customer Id]", "Customer Id"),
     ],
 )
 def test_extracts_table_column_references(
