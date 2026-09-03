@@ -14,23 +14,14 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import { Tooltip } from 'antd';
 import chunk from 'lodash/chunk';
-import isEmpty from 'lodash/isEmpty';
-import isUndefined from 'lodash/isUndefined';
 import startCase from 'lodash/startCase';
-import { EntityTags } from 'Models';
 import React, { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
-import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import {
-  ChangeDescription,
-  TagLabel,
-  TestCase,
-  TestCaseParameterValue,
-} from '../../../../generated/tests/testCase';
+import { ChangeDescription } from '../../../../generated/tests/testCase';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
@@ -45,6 +36,19 @@ import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import TestCaseFormDrawer from '../../AddDataQualityTest/components/TestCaseFormDrawer';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
+import {
+  SqlParamsSectionProps,
+  TestCaseSidePanelProps,
+} from './TestCaseResultTab.interface';
+import {
+  canEditTestCaseParameters,
+  getSidePanelColSpanClass,
+  hasAdditionalComponents,
+  resolveIsSidePanelVisible,
+  shouldShowAILearningBanner,
+  shouldShowEditParameterButton,
+  shouldShowSqlParamsSection,
+} from './TestCaseResultTab.utils';
 import {
   ParameterDisplayItem,
   useTestCaseResultTab,
@@ -69,51 +73,6 @@ function ParameterTooltipText({
       <span className={className}>{title}</span>
     </Tooltip>
   );
-}
-
-const shouldShowEditParameterButton = (
-  hasEditPermission: boolean | undefined,
-  testCaseData: TestCase | undefined,
-  showComputeRowCount: boolean
-): boolean =>
-  Boolean(
-    hasEditPermission &&
-      (testCaseData?.parameterValues?.length ||
-        testCaseData?.useDynamicAssertion ||
-        showComputeRowCount)
-  );
-
-const shouldShowAILearningBanner = (
-  showAILearningBanner: boolean,
-  testCaseData: TestCase | undefined
-): boolean =>
-  Boolean(showAILearningBanner && testCaseData?.useDynamicAssertion);
-
-const shouldShowSqlParamsSection = (
-  withSqlParams: TestCaseParameterValue[] | undefined,
-  isVersionPage: boolean
-): boolean => !isUndefined(withSqlParams) && !isVersionPage;
-
-const hasAdditionalComponents = (additionalComponents: unknown[]): boolean =>
-  !isEmpty(additionalComponents);
-
-const canEditTestCaseParameters = (
-  hasEditPermission: boolean | undefined,
-  isParameterEdit: boolean
-): boolean => Boolean(hasEditPermission && isParameterEdit);
-
-const getSidePanelColSpanClass = (isSidePanelVisible: boolean): string =>
-  isSidePanelVisible ? 'tw:col-span-9' : 'tw:col-span-12';
-
-const resolveIsSidePanelVisible = (
-  showSidePanel: boolean | undefined,
-  isTabExpanded: boolean
-): boolean => showSidePanel ?? isTabExpanded;
-
-interface SqlParamsSectionProps {
-  withSqlParams: TestCaseParameterValue[];
-  hasEditPermission: boolean | undefined;
-  onEditParameter: () => void;
 }
 
 function SqlParamsSection({
@@ -162,19 +121,6 @@ function SqlParamsSection({
       ))}
     </div>
   );
-}
-
-interface TestCaseSidePanelProps {
-  testCaseData: TestCase | undefined;
-  hasEditTagsPermission: boolean | undefined;
-  hasEditGlossaryTermsPermission: boolean | undefined;
-  updatedTags: TagLabel[];
-  handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
-  isVersionPage: boolean;
-  hasEditPermission: boolean | undefined;
-  isRulesLoaded: boolean;
-  requireDomainForDataProduct: boolean | undefined;
-  handleDataProductsSave: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
 function TestCaseSidePanel({

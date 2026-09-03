@@ -12,23 +12,13 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { isEmpty, isString } from 'lodash';
-import {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
   CustomProperty,
   EntityReference,
@@ -55,121 +45,22 @@ import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
+import {
+  AddGlossaryTermFormProps,
+  IntakeFieldsSectionProps,
+  OwnersBadgeProps,
+} from './AddGlossaryTermForm.interface';
+import {
+  buildGlossaryTermSavePayload,
+  getGlossaryTermFqn,
+  getInitialDescription,
+  toEntityReferenceArray,
+} from './AddGlossaryTermForm.utils';
 import GlossaryTermIntakeFields, {
   GlossaryTermIntakeFieldsHandle,
 } from './GlossaryTermIntakeFields.component';
 
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
-
-const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
-  relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
-
-// In edit mode the related-terms multiselect can carry a plain FQN string (a
-// value the user hasn't touched), a freshly picked option (`term.data.id`), or
-// an antd-normalised `{ value }` option — resolve each back to the term id.
-const resolveRelatedTerms = (
-  editMode: boolean,
-  relatedTerms: DefaultOptionType[],
-  glossaryTerm: GlossaryTerm | undefined
-) =>
-  editMode
-    ? relatedTerms.map((term: DefaultOptionType) => {
-        if (isString(term)) {
-          return glossaryTerm?.relatedTerms?.find(
-            (r) => r.fullyQualifiedName === term
-          )?.id;
-        }
-        if (term.data) {
-          return term.data.id;
-        }
-
-        return glossaryTerm?.relatedTerms?.find(
-          (r) => r.fullyQualifiedName === term.value
-        )?.id;
-      })
-    : getRelatedTermFqnList(relatedTerms);
-
-interface BuildGlossaryTermSavePayloadParams {
-  formObj: Parameters<NonNullable<FormProps['onFinish']>>[0];
-  editMode: boolean;
-  ownersList: EntityReference[];
-  reviewersList: EntityReference[];
-  currentUserId?: string;
-  glossaryTerm: GlossaryTerm | undefined;
-  extension: Record<string, unknown>;
-}
-
-const buildGlossaryTermSavePayload = ({
-  formObj,
-  editMode,
-  ownersList,
-  reviewersList,
-  currentUserId,
-  glossaryTerm,
-  extension,
-}: BuildGlossaryTermSavePayloadParams) => {
-  const {
-    name,
-    displayName = '',
-    description = '',
-    synonyms = [],
-    tags = [],
-    mutuallyExclusive = false,
-    references = [],
-    relatedTerms = [],
-    color,
-    iconURL,
-  } = formObj;
-
-  const selectedOwners =
-    ownersList.length > 0
-      ? ownersList
-      : [
-          {
-            id: currentUserId ?? '',
-            type: 'user',
-          },
-        ];
-
-  const style = {
-    color,
-    iconURL,
-  };
-
-  return {
-    name: name.trim(),
-    displayName: displayName?.trim(),
-    description: description,
-    reviewers: reviewersList,
-    relatedTerms: resolveRelatedTerms(editMode, relatedTerms, glossaryTerm),
-    references: references.length > 0 ? references : undefined,
-    synonyms: synonyms,
-    mutuallyExclusive,
-    tags: tags,
-    owners: selectedOwners,
-    style: isEmpty(style) ? undefined : style,
-    ...(!editMode && !isEmpty(extension) ? { extension } : {}),
-  };
-};
-
-const toEntityReferenceArray = (
-  value: EntityReference | EntityReference[]
-): EntityReference[] => (Array.isArray(value) ? value : [value]);
-
-const getInitialDescription = (
-  editMode: boolean,
-  glossaryTerm: GlossaryTerm | undefined
-): string | undefined =>
-  editMode && glossaryTerm ? glossaryTerm.description : '';
-
-const getGlossaryTermFqn = (glossaryTerm: GlossaryTerm | undefined): string =>
-  glossaryTerm?.fullyQualifiedName ?? '';
-
-interface OwnersBadgeProps {
-  owners: EntityReference[];
-  testId: string;
-}
 
 const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
   Boolean(owners.length) && (
@@ -177,14 +68,6 @@ const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
       <OwnerLabel owners={owners} />
     </Space>
   );
-
-interface IntakeFieldsSectionProps {
-  editMode: boolean;
-  customPropertiesLoaded: boolean;
-  extensionFormFields: IntakeFormField[];
-  customProperties: CustomProperty[];
-  intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
-}
 
 const IntakeFieldsSection = ({
   editMode,

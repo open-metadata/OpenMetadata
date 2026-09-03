@@ -45,20 +45,25 @@ import {
   listConversationReplies,
   patchConversationReply,
 } from '../../../../../rest/conversationsAPI';
-import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import {
-  formatActivityTime,
-  getActivityEventLabel,
-  getFeedTimestamp,
-} from '../inbox.utils';
+import { formatActivityTime } from '../inbox.utils';
 import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
 import './activity-detail-drawer.less';
+import { DrawerEntity, TFunc } from './ActivityDetailDrawer.interface';
+import {
+  getActionLabel,
+  getActorName,
+  getAuthorDisplayName,
+  getBodyMessage,
+  getCommentRowDerivedState,
+  getEntityInfo,
+  getTimestamp,
+} from './ActivityDetailDrawer.utils';
 import InboxCommentComposer from './InboxCommentComposer';
 
 export interface ActivityDetailDrawerProps {
@@ -95,38 +100,6 @@ interface CommentRowProps {
   // Reload the conversation's replies after an edit or delete.
   onChanged: () => void;
 }
-
-interface CommentRowDerivedState {
-  authorLogin: string;
-  authorName: string;
-  canDelete: boolean;
-  canEdit: boolean;
-}
-
-const getCommentRowDerivedState = (
-  reply: ConversationReply,
-  currentUser: { name?: string; isAdmin?: boolean } | undefined,
-  deleteAccess: Access | undefined,
-  user: ReturnType<typeof useUserProfile>[2]
-): CommentRowDerivedState => {
-  const authorLogin = reply.author?.name ?? '';
-  const authorName =
-    getEntityName(user) || reply.author?.displayName || authorLogin;
-
-  const isAuthor =
-    Boolean(currentUser?.name) && authorLogin === currentUser?.name;
-  const isAdmin = Boolean(currentUser?.isAdmin);
-  // Admins bypass policy evaluation server-side. ConditionalAllow → author
-  // only: exact for the default isOwner() rule; an approximation for other
-  // conditional rules, since the blanket permissions endpoint never evaluates
-  // conditions (see useFeedDeleteAccess). The backend re-authorizes on click.
-  const canDelete =
-    isAdmin ||
-    deleteAccess === Access.Allow ||
-    (deleteAccess === Access.ConditionalAllow && isAuthor);
-
-  return { authorLogin, authorName, canDelete, canEdit: isAuthor };
-};
 
 const CommentHoverActions = ({
   canDelete,
@@ -325,67 +298,6 @@ const CommentRow: React.FC<CommentRowProps> = ({
     </Box>
   );
 };
-
-type TFunc = ReturnType<typeof useTranslation>['t'];
-
-const getActorName = (
-  activity: ActivityEvent | undefined,
-  feed: Conversation | undefined,
-  isActivity: boolean
-): string =>
-  isActivity ? activity?.actor?.name ?? '' : feed?.createdBy?.name ?? '';
-
-const getAuthorDisplayName = (
-  activity: ActivityEvent | undefined,
-  feed: Conversation | undefined,
-  isActivity: boolean,
-  actorName: string,
-  author: ReturnType<typeof useUserProfile>[2]
-): string =>
-  getEntityName(author) ||
-  (isActivity ? activity?.actor?.displayName : feed?.createdBy?.displayName) ||
-  actorName;
-
-const getActionLabel = (
-  activity: ActivityEvent | undefined,
-  feed: Conversation | undefined,
-  t: TFunc
-): string => {
-  if (activity) {
-    return getActivityEventLabel(activity, t);
-  }
-
-  return feed ? t('label.posted-on') : '';
-};
-
-const getEntityInfo = (
-  activity: ActivityEvent | undefined,
-  feed: Conversation | undefined,
-  isActivity: boolean
-) => {
-  const entity = isActivity ? activity?.entity : feed?.entityRef;
-  const entityName = entity?.displayName || entity?.name || entity?.type;
-
-  return { entity, entityName };
-};
-
-const getBodyMessage = (
-  activity: ActivityEvent | undefined,
-  feed: Conversation | undefined,
-  isActivity: boolean
-): string => (isActivity ? activity?.summary ?? '' : feed?.message ?? '');
-
-const getTimestamp = (
-  activity: ActivityEvent | undefined,
-  feed: Conversation | undefined,
-  isActivity: boolean
-) => (isActivity ? activity?.timestamp : feed && getFeedTimestamp(feed));
-
-interface DrawerEntity {
-  displayName?: string;
-  name?: string;
-  type?: string;
-}
 
 const DrawerHeader = ({
   actorName,

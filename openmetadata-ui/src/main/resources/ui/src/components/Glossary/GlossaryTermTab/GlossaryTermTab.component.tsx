@@ -38,15 +38,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { debounce, isEmpty, isUndefined, uniqBy } from 'lodash';
-import {
-  lazy,
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button as AriaButton,
   DropOperation,
@@ -136,10 +128,19 @@ import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
+  GlossaryTermEmptyPlaceholderProps,
+  GlossaryTermMoveConfirmationModalProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
+import {
+  computeShowExpandTreeLoadMore,
+  hasActiveSearchTerm,
+  isStaleFetchResponse,
+  resolveTotalTermsCount,
+  shouldShowEmptyPlaceholder,
+} from './GlossaryTermTab.utils';
 const WorkflowHistory = withSuspenseFallback(
   lazy(
     () => import('../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component')
@@ -217,19 +218,6 @@ const renderGlossaryExpandIcon = (
   );
 };
 
-interface GlossaryTermMoveConfirmationModalProps {
-  isModalOpen: boolean;
-  isTableLoading: boolean;
-  hasReviewers: boolean;
-  confirmCheckboxChecked: boolean;
-  onConfirmCheckboxChange: (checked: boolean) => void;
-  movedGlossaryTerm?: MoveGlossaryTermType;
-  activeGlossary?: ModifiedGlossary;
-  onDragConfirmationModalClose: () => void;
-  onChangeGlossaryTerm: () => void;
-  t: ReturnType<typeof useTranslation>['t'];
-}
-
 const GlossaryTermMoveConfirmationModal = ({
   isModalOpen,
   isTableLoading,
@@ -304,66 +292,6 @@ const GlossaryTermMoveConfirmationModal = ({
     )}
   </Modal>
 );
-
-// A fetch response is stale when it no longer matches the search/status
-// context the user is currently looking at (they typed/filtered again while
-// the request was in flight) — applying it would repopulate or clear the
-// table against the user's current intent.
-const isStaleFetchResponse = (
-  data: unknown,
-  fetchSearchTerm: string,
-  currentSearchTerm: string,
-  fetchStatusKey: string,
-  currentStatusKey: string
-) =>
-  !data ||
-  !Array.isArray(data) ||
-  fetchSearchTerm !== currentSearchTerm ||
-  fetchStatusKey !== currentStatusKey;
-
-// When a status filter zeroes out the current page, the real total is not
-// `0` — it's the unfiltered first-level count, fetched separately.
-const resolveTotalTermsCount = async (
-  data: unknown[],
-  isStatusFilterActive: boolean,
-  pagingResponseTotal: number | undefined,
-  glossaryFqn?: string
-): Promise<number> => {
-  if (data.length === 0 && isStatusFilterActive) {
-    const countResponse = await getFirstLevelGlossaryTermsPaginated(
-      glossaryFqn || '',
-      0
-    );
-
-    return countResponse.paging?.total ?? 0;
-  }
-
-  return pagingResponseTotal ?? data.length;
-};
-
-const hasActiveSearchTerm = (searchTerm: string) =>
-  Boolean(searchTerm && searchTerm.trim().length > 0);
-
-const computeShowExpandTreeLoadMore = (
-  toggleExpandBtn: boolean,
-  after?: string
-) => toggleExpandBtn && Boolean(after);
-
-const shouldShowEmptyPlaceholder = (
-  hasNoTerms: boolean,
-  isSearchActive: boolean,
-  totalTermsCount: number,
-  isTableLoading: boolean
-) => hasNoTerms && !isSearchActive && totalTermsCount === 0 && !isTableLoading;
-
-interface GlossaryTermEmptyPlaceholderProps {
-  canCreate: boolean;
-  isGlossary: boolean;
-  glossaryTermStatus: EntityStatus | null;
-  containerRef: RefObject<HTMLDivElement>;
-  onAddGlossaryTermClick: () => void;
-  t: ReturnType<typeof useTranslation>['t'];
-}
 
 const GlossaryTermEmptyPlaceholder = ({
   canCreate,

@@ -21,7 +21,6 @@ import {
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -32,12 +31,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
-import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
 import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
@@ -70,38 +67,24 @@ import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.compon
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {
   ColumnDetailPanelProps,
+  ColumnDetailPanelTitleProps,
   ColumnFieldUpdate,
   ColumnOrTask,
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
+import {
+  computeCanShowDisplayNameEdit,
+  computeEditPermission,
+  computeShowOriginalName,
+  getColumnDescriptionChangeSummary,
+  getColumnTitleText,
+  getEntityNameModalEntity,
+  isColumn,
+  shouldShowKeyProfileMetrics,
+} from './ColumnDetailPanel.utils';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-const isColumn = (item: ColumnOrTask | null): item is Column => {
-  return item !== null && 'dataType' in item;
-};
-
-const computeEditPermission = (
-  fieldPermission: boolean | undefined,
-  editAllPermission: boolean | undefined,
-  deleted: boolean
-): boolean => Boolean((fieldPermission || editAllPermission) && !deleted);
-
-const getColumnDescriptionChangeSummary = (
-  changeSummary: Record<string, ChangeSummaryEntry> | undefined,
-  columnFqn?: string
-) =>
-  changeSummary?.[
-    `columns.${EntityLink.getTableColumnNameFromColumnFqn(
-      columnFqn ?? '',
-      false
-    )}.description`
-  ];
-
-const shouldShowKeyProfileMetrics = (
-  column: ColumnOrTask | null,
-  entityType: EntityType
-): boolean => isColumn(column) && entityType === EntityType.TABLE;
 
 const ColumnTestSummary = ({
   total,
@@ -122,47 +105,6 @@ const ColumnTestSummary = ({
     <DataQualitySection tests={dataQualityTests} totalTests={total} />
   );
 };
-
-const getEntityNameModalEntity = (activeColumn: Column) => ({
-  name: isString(activeColumn.name) ? activeColumn.name : '',
-  displayName: isString((activeColumn as { displayName?: string }).displayName)
-    ? (activeColumn as { displayName?: string }).displayName
-    : undefined,
-});
-
-const isTitleEditableEntityType = (entityType: EntityType): boolean =>
-  entityType === EntityType.TABLE ||
-  entityType === EntityType.DASHBOARD_DATA_MODEL;
-
-const computeCanShowDisplayNameEdit = (
-  hasDisplayNameEditPermission: boolean,
-  entityType: EntityType
-): boolean =>
-  hasDisplayNameEditPermission && isTitleEditableEntityType(entityType);
-
-const computeShowOriginalName = (
-  activeColumn: Column,
-  entityType: EntityType
-): boolean =>
-  Boolean(activeColumn.displayName) &&
-  activeColumn.displayName !== activeColumn.name &&
-  isTitleEditableEntityType(entityType);
-
-const getColumnTitleText = (activeColumn: Column): string =>
-  (activeColumn as { displayName?: string }).displayName ||
-  activeColumn.name ||
-  '';
-
-interface ColumnDetailPanelTitleProps {
-  activeColumn: Column;
-  breadcrumbPath: Column[];
-  entityType: EntityType;
-  hasEditPermission: { displayName: boolean };
-  isPrimaryKey: boolean;
-  onBreadcrumbClick: (column: Column) => void;
-  onClose: () => void;
-  onEditDisplayName: () => void;
-}
 
 const ColumnDetailPanelTitle = ({
   activeColumn,

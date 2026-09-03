@@ -37,14 +37,7 @@ import type { RcFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { unparse } from 'papaparse';
-import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   Column,
   ColumnOrColumnGroup,
@@ -65,7 +58,6 @@ import {
 } from '../../../components/common/EntityImport/OperationCell/OperationCell.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import UploadFile from '../../../components/UploadFile/UploadFile';
 import {
@@ -73,9 +65,9 @@ import {
   VALIDATION_STEP,
 } from '../../../constants/BulkImport.constant';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { ROUTES, SOCKET_EVENTS } from '../../../constants/constants';
+import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
@@ -118,21 +110,26 @@ import {
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import {
-  getEntityDetailsPath,
-  getTestSuitePath,
-} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
 import {
+  ActiveImportBannerProps,
   BulkEntityImportLocationState,
   CSVImportAsyncResponse,
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
+  ImportWizardFooterProps,
+  Step0UploadContentProps,
+  Step1EditGridContentProps,
+  Step2ResultsContentProps,
 } from './BulkEntityImportPage.interface';
+import {
+  getActiveImportBannerMessage,
+  getActiveImportBannerType,
+  getTestCaseBreadcrumbList,
+  getWildcardBreadcrumbList,
+} from './BulkEntityImportPage.utils';
 
 interface SelectedCsvFile {
   content: string;
@@ -164,86 +161,6 @@ const getCsvFileSizeLabel = (bytes = 0) => {
     CSV_FILE_SIZE_UNITS[unitIndex]
   }`;
 };
-
-type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
-
-const getWildcardBreadcrumbList = (
-  entityType: EntityType,
-  t: TranslateFn
-): TitleBreadcrumbProps['titleLinks'] => {
-  if (entityType === EntityType.METRIC) {
-    return [
-      {
-        name: t('label.metric-plural'),
-        url: ROUTES.METRICS,
-      },
-    ];
-  }
-
-  return [
-    {
-      name: t('label.data-quality'),
-      url: observabilityRouterClassBase.getDataQualityPagePath(
-        DataQualityPageTabs.TEST_CASES
-      ),
-    },
-  ];
-};
-
-const getTestCaseBreadcrumbList = (
-  breadcrumbEntityType: EntityType,
-  entity: DataAssetsHeaderProps['dataAsset'],
-  isBulkEdit: boolean,
-  t: TranslateFn
-): TitleBreadcrumbProps['titleLinks'] | undefined => {
-  if (breadcrumbEntityType === EntityType.TABLE) {
-    return getBulkEntityBreadcrumbList(EntityType.TABLE, entity, isBulkEdit, [
-      {
-        name: t('label.data-quality'),
-        url: getEntityDetailsPath(
-          EntityType.TABLE,
-          entity.fullyQualifiedName ?? '',
-          EntityTabs.PROFILER,
-          ProfilerTabPath.DATA_QUALITY
-        ),
-      },
-    ]);
-  }
-
-  if (breadcrumbEntityType === EntityType.TEST_SUITE) {
-    return [
-      {
-        name: t('label.test-suite-plural'),
-        url: observabilityRouterClassBase.getDataQualityPagePath(
-          DataQualityPageTabs.TEST_SUITES
-        ),
-      },
-      {
-        name: entity.displayName ?? entity.name ?? '',
-        url: getTestSuitePath(entity.fullyQualifiedName ?? ''),
-      },
-    ];
-  }
-
-  return undefined;
-};
-
-const getActiveImportBannerType = (
-  job: CSVImportJobType
-): 'error' | 'info' | 'success' => {
-  if (job.error) {
-    return 'error';
-  }
-
-  return job.status === 'IN_PROGRESS' ? 'info' : 'success';
-};
-
-const getActiveImportBannerMessage = (job: CSVImportJobType): string =>
-  job.error ?? job.message ?? '';
-
-interface ActiveImportBannerProps {
-  activeAsyncImportJob?: CSVImportJobType;
-}
 
 /** Status banner + progress bar for the currently active async import/export job. */
 const ActiveImportBanner = ({
@@ -282,15 +199,6 @@ const ActiveImportBanner = ({
   );
 };
 
-interface ImportWizardFooterProps {
-  activeStep: VALIDATION_STEP;
-  isValidating: boolean;
-  isRichGridImport: boolean;
-  onBack: () => void;
-  onCancel: () => void;
-  onValidate: () => void;
-}
-
 /** Previous/cancel/next-or-update footer actions for the multi-step import wizard. */
 const ImportWizardFooter = ({
   activeStep,
@@ -327,14 +235,6 @@ const ImportWizardFooter = ({
   );
 };
 
-interface Step0UploadContentProps {
-  isCsvPreviewProcessing: boolean;
-  abortReason?: string;
-  processingPreview: ReactNode;
-  uploadStep: ReactNode;
-  onRetryCsvUpload: () => void;
-}
-
 /** Upload-step body: preview spinner, abort-state card, or the upload form. */
 const Step0UploadContent = ({
   isCsvPreviewProcessing,
@@ -370,19 +270,6 @@ const Step0UploadContent = ({
 
   return <>{uploadStep}</>;
 };
-
-interface Step2ResultsContentProps {
-  isValidating: boolean;
-  hasActiveAsyncImportJob: boolean;
-  importProgress: ReactNode;
-  validationData?: CSVImportResult;
-  importOperationSummary?: ReturnType<typeof getImportOperationSummary>;
-  validateCSVData?: {
-    columns: Column<Record<string, string>>[];
-    dataSource: Record<string, string>[];
-  };
-  importResultColumns: Column<Record<string, string>>[];
-}
 
 /** Step-3 body: either the in-progress spinner, or the operation summary + results grid. */
 const Step2ResultsContent = ({
@@ -434,14 +321,6 @@ const Step2ResultsContent = ({
     </div>
   );
 };
-
-interface Step1EditGridContentProps {
-  validationData?: CSVImportResult;
-  editDataGrid: ReactNode;
-  onAddRow: () => void;
-  onToggleRowFilter: () => void;
-  onRevertChanges: () => void;
-}
 
 /** Step-2 body: grid toolbar (status, add row, filter, revert) plus the editable data grid. */
 const Step1EditGridContent = ({
