@@ -899,7 +899,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   @Override
   protected void postDelete(Page entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    if (LLMClientHolder.isEnabled()) {
+    if (LLMClientHolder.isMemoryExtractionEnabled()) {
       PageContextProcessingEngineHolder.get().cancel(entity.getId());
     }
   }
@@ -949,7 +949,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   /** True when the LLM is configured and article (page) memory extraction is toggled on. */
   private boolean isExtractionEnabled() {
-    return LLMClientHolder.isEnabled();
+    return LLMClientHolder.isMemoryExtractionEnabled();
   }
 
   private void closeApprovalTask(Page entity, String comment) {

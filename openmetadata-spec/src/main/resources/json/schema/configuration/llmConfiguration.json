@@ -31,6 +31,11 @@
     "provider": {
       "$ref": "#/definitions/llmProvider"
     },
+    "memoryExtractionEnabled": {
+      "description": "Whether Context Center memory extraction (deriving knowledge pills from uploaded files and Knowledge Center articles) runs. Independent of `enabled`, which also gates embeddings and other completion features: a deployment can keep LLM features on for semantic search while leaving automatic extraction off. Extraction is unmetered in OpenMetadata, so it is opt-in.",
+      "type": "boolean",
+      "default": false
+    },
     "aiProviderClass": {
       "description": "Fully-qualified class name of the AiProvider implementation that backs Context Center memory extraction. When unset (or the class is not on the classpath), the built-in LLM-backed provider is used. Set this to select an alternate backend (e.g. an agent platform).",
       "type": "string"

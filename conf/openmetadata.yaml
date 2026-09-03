@@ -612,6 +612,10 @@ elasticsearch:
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  # Context Center memory extraction (files + articles -> knowledge pills). Independent of
+  # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
+  # with extraction off. Unmetered here, so opt-in.
+  memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
   # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
   aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
