@@ -405,23 +405,19 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // (before/after) paging. Either way the response replaces the current
       // page of rows — navigation is now explicit Previous/Next, not appending.
       if (searchTerm) {
-        const [response, recursiveCount] = await Promise.all([
-          searchGlossaryTermsPaginated({
-            q: searchTerm,
-            glossaryFqn: activeGlossary?.fullyQualifiedName,
-            // limit must match the pageSize used to compute the offset, else
-            // Previous/Next would skip or repeat results if pageSize changes.
-            limit: pageSize,
-            offset: options?.offset ?? 0,
-            fields:
-              'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
-            entityStatus: entityStatusParam,
-          }),
-          recursiveCountPromise,
-        ]);
+        const response = await searchGlossaryTermsPaginated({
+          q: searchTerm,
+          glossaryFqn: activeGlossary?.fullyQualifiedName,
+          // limit must match the pageSize used to compute the offset, else
+          // Previous/Next would skip or repeat results if pageSize changes.
+          limit: pageSize,
+          offset: options?.offset ?? 0,
+          fields:
+            'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          entityStatus: entityStatusParam,
+        });
         data = response.data;
         pagingResponse = response.paging;
-        recursiveChildrenTotal = recursiveCount;
       } else {
         const [response, recursiveCount] = await Promise.all([
           getFirstLevelGlossaryTermsPaginated(
@@ -437,6 +433,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         pagingResponse = response.paging;
         recursiveChildrenTotal = recursiveCount;
       }
+
+      // While searching, the badge should track what's on screen (the search
+      // results), not the static whole-subtree total — otherwise it disagrees
+      // with the table exactly like the original #28707 bug did.
+      const badgeCount = searchTerm
+        ? pagingResponse?.total ?? data.length
+        : recursiveChildrenTotal;
 
       // Apply the response only when it still matches the active search context.
       // A response computed for a different (now-outdated) search term or status
@@ -464,13 +467,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         setTotalTermsCount(countResponse.paging?.total ?? 0);
         setFilteredChildrenCount(
           activeGlossary?.fullyQualifiedName ?? '',
-          recursiveChildrenTotal
+          badgeCount
         );
       } else {
         setTotalTermsCount(pagingResponse?.total ?? data.length);
         setFilteredChildrenCount(
           activeGlossary?.fullyQualifiedName ?? '',
-          recursiveChildrenTotal
+          badgeCount
         );
       }
 

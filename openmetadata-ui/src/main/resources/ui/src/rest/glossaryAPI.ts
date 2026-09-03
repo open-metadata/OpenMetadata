@@ -56,6 +56,7 @@ export type SearchGlossaryTermsParams = ListParamsWithOffset & {
 };
 
 const BASE_URL = '/glossaries';
+const GLOSSARY_TERMS_URL = '/glossaryTerms';
 
 export const getGlossariesList = async (
   params?: ListParams,
@@ -110,7 +111,7 @@ export const getGlossariesById = async (id: string, params?: ListParams) => {
 
 export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
-    '/glossaryTerms',
+    GLOSSARY_TERMS_URL,
     {
       params,
     }
@@ -197,7 +198,7 @@ export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
 export const addGlossaryTerm = async (
   data: CreateGlossaryTerm
 ): Promise<GlossaryTerm> => {
-  const url = '/glossaryTerms';
+  const url = GLOSSARY_TERMS_URL;
 
   const response = await APIClient.post(url, data);
 
@@ -486,7 +487,7 @@ export const getGlossaryTermRecursiveCount = async (
 ) => {
   const key = isGlossary ? 'glossary' : 'parent';
   const { data } = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
-    '/glossaryTerms',
+    GLOSSARY_TERMS_URL,
     {
       params: {
         [key]: id,
