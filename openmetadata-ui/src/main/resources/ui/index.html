@@ -31,6 +31,29 @@
     </script>
 
     <!--
+      Node-globals stub for browser code that still references `process` at
+      module-init time (e.g. tiptap detects `process.platform === 'darwin'`
+      to pick Cmd vs Ctrl for keyboard shortcuts). Rollup + `vite-plugin-
+      node-polyfills` injected a matching shim into the entry chunk, but
+      Rolldown's chunking splits the polyfill init away from the module that
+      reads `process`, so the first access throws `ReferenceError` and the
+      whole SPA fails to mount. A blank line before any bundle loads is the
+      cheapest place to guarantee a `process` object exists — everything
+      else the polyfill does (Buffer etc.) is still handled by the plugin.
+    -->
+    <script nonce="${cspNonce}">
+      window.process = window.process || {
+        env: {},
+        platform: '',
+        browser: true,
+        version: '',
+        versions: {},
+        cwd: function () { return '/'; },
+        nextTick: function (fn) { setTimeout(fn, 0); },
+      };
+    </script>
+
+    <!--
       Theme restore — runs before any bundle parses so the boot shell paints
       in the user's last theme instead of always flashing the light skeleton
       and re-painting once React reads localStorage. Mirrors Linear's inline
