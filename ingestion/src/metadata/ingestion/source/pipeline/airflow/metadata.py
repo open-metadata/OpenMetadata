@@ -24,7 +24,7 @@ from typing import Any, cast
 from urllib.parse import quote
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, join, literal
+from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, literal
 from sqlalchemy.orm import Session
 
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
@@ -550,16 +550,13 @@ class AirflowSource(PipelineServiceSource):
             else literal(None)
         )
 
-        # In Airflow 3.x, fileloc is not available on SerializedDagModel
-        # We need to get it from DagModel instead
         if hasattr(SerializedDagModel, "fileloc"):
-            # Airflow 2.x: fileloc is on SerializedDagModel
-            # Use tuple IN clause to get only the latest version of each DAG
             session_query = self.session.query(  # pyright: ignore[reportCallIssue]
                 SerializedDagModel.dag_id,
                 json_data_column,
                 SerializedDagModel.fileloc,
                 compressed_col,
+                DagModel.is_paused,
             ).join(
                 latest_dag_subquery,
                 and_(
@@ -567,14 +564,21 @@ class AirflowSource(PipelineServiceSource):
                     timestamp_column == latest_dag_subquery.c.max_timestamp,
                 ),
             )
+            dag_model_join = (
+                session_query.outerjoin if self.source_config.includeUnDeployedPipelines else session_query.join
+            )
+            session_query = dag_model_join(
+                DagModel,
+                SerializedDagModel.dag_id == DagModel.dag_id,
+            )
         else:
-            # Airflow 3.x: fileloc is only on DagModel, we need to join
             session_query = (
                 self.session.query(  # pyright: ignore[reportCallIssue]
                     SerializedDagModel.dag_id,
                     json_data_column,
                     DagModel.fileloc,
                     compressed_col,
+                    DagModel.is_paused,
                 )
                 .join(
                     latest_dag_subquery,
@@ -590,16 +594,6 @@ class AirflowSource(PipelineServiceSource):
             )
 
         if not self.source_config.includeUnDeployedPipelines:
-            # If we haven't already joined with DagModel (Airflow 2.x case)
-            if hasattr(SerializedDagModel, "fileloc"):
-                session_query = session_query.select_from(
-                    join(
-                        SerializedDagModel,
-                        DagModel,
-                        SerializedDagModel.dag_id == DagModel.dag_id,
-                    )
-                )
-            # Add the is_paused filter
             session_query = session_query.filter(
                 DagModel.is_paused == False  # pylint: disable=singleton-comparison  # noqa: E712
             )
@@ -626,22 +620,7 @@ class AirflowSource(PipelineServiceSource):
                 break
             for serialized_dag in results:
                 try:
-                    # Query only the is_paused column from DagModel
-                    try:
-                        is_paused_result = (
-                            self.session.query(DagModel.is_paused).filter(DagModel.dag_id == serialized_dag[0]).scalar()
-                        )
-                        pipeline_state = (
-                            PipelineState.Active.value if not is_paused_result else PipelineState.Inactive.value
-                        )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Could not query DagModel.is_paused for {serialized_dag[0]}. "
-                            f"Using default pipeline state - {exc}"
-                        )
-                        # If we can't query is_paused, assume the pipeline is active
-                        pipeline_state = PipelineState.Active.value
+                    pipeline_state = PipelineState.Inactive.value if serialized_dag[4] else PipelineState.Active.value
 
                     raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], serialized_dag[3])
                     if raw_data is None:

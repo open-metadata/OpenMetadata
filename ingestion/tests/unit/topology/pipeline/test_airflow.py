@@ -12,11 +12,14 @@
 Test Airflow processing
 """
 
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
+from sqlalchemy import JSON, Boolean, Column, DateTime, LargeBinary, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Session
 
 # pylint: disable=unused-import
 try:
@@ -165,6 +168,27 @@ SERIALIZED_DAG = {
         "params": {},
     },
 }
+
+
+class Airflow2Base(DeclarativeBase):
+    pass
+
+
+class Airflow2SerializedDagModel(Airflow2Base):
+    __tablename__ = "serialized_dag"
+
+    dag_id = Column(String(250), primary_key=True)
+    fileloc = Column(String(2000), nullable=False)
+    _data = Column("data", JSON)
+    _data_compressed = Column("data_compressed", LargeBinary)
+    last_updated = Column(DateTime, nullable=False)
+
+
+class Airflow2DagModel(Airflow2Base):
+    __tablename__ = "dag"
+
+    dag_id = Column(String(250), primary_key=True)
+    is_paused = Column(Boolean)
 
 
 class TestAirflow(TestCase):
@@ -434,82 +458,75 @@ class TestAirflow(TestCase):
         result = get_schedule_interval(pipeline_data)
         self.assertEqual("invalid_format", result)
 
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
-    def test_get_pipelines_list_with_is_paused_query(self, mock_session, mock_dag_model):
-        """
-        Test that the is_paused column is queried correctly
-        instead of the entire DagModel
-        """
-        # Mock the session and query
-        mock_session_instance = mock_session.return_value
-        mock_query = mock_session_instance.query.return_value
-        mock_filter = mock_query.filter.return_value
-        mock_scalar = mock_filter.scalar.return_value
+    def test_get_pipelines_list_reads_pause_state_without_per_dag_queries(self, mock_session):
+        rows = [
+            ("active_dag", SERIALIZED_DAG, "/dags/active.py", None, False),
+            ("paused_dag", SERIALIZED_DAG, "/dags/paused.py", None, True),
+        ]
+        self.airflow._session = None
+        self.airflow.source_config.includeUnDeployedPipelines = True
+        session = self._configure_paginated_session(mock_session, [rows, []])
 
-        # Test case 1: DAG is not paused
-        mock_scalar.return_value = False
+        pipelines = list(self.airflow.get_pipelines_list())
 
-        # Create a mock serialized DAG result
-        mock_serialized_dag = ("test_dag", {"dag": {"tasks": []}}, "/path/to/dag.py")
-
-        # Mock the session query for SerializedDagModel
-        mock_query_chain = mock_session_instance.query.return_value
-        mock_query_chain = mock_query_chain.select_from.return_value
-        mock_query_chain = mock_query_chain.filter.return_value
-        mock_query_chain = mock_query_chain.limit.return_value
-        mock_query_chain.offset.return_value.all.return_value = [mock_serialized_dag]
-
-        # This would normally be called in get_pipelines_list, but we're testing the specific query
-        # Verify that the query is constructed correctly
-        is_paused_result = (
-            mock_session_instance.query(mock_dag_model.is_paused).filter(mock_dag_model.dag_id == "test_dag").scalar()
+        self.assertEqual(
+            [(pipeline.dag_id, pipeline.state) for pipeline in pipelines],
+            [("active_dag", "Active"), ("paused_dag", "Inactive")],
         )
+        self.assertEqual(session.query.call_count, 2)
 
-        # Verify the query was called correctly
-        mock_session_instance.query.assert_called_with(mock_dag_model.is_paused)
-        mock_query.filter.assert_called()
-        mock_filter.scalar.assert_called()
+    def test_airflow_2_reads_pause_state_and_preserves_serialized_only_dag(self):
+        engine = create_engine("sqlite://")
+        Airflow2Base.metadata.create_all(engine)
+        timestamp = datetime(2026, 1, 1)
 
-        # Test case 2: DAG is paused
-        mock_scalar.return_value = True
-        is_paused_result = (
-            mock_session_instance.query(mock_dag_model.is_paused).filter(mock_dag_model.dag_id == "test_dag").scalar()
-        )
-        self.assertTrue(is_paused_result)
+        with Session(engine) as session:
+            session.add_all(
+                [
+                    Airflow2DagModel(dag_id="active_dag", is_paused=False),
+                    Airflow2DagModel(dag_id="paused_dag", is_paused=True),
+                    Airflow2SerializedDagModel(
+                        dag_id="active_dag",
+                        fileloc="/dags/active.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                    Airflow2SerializedDagModel(
+                        dag_id="paused_dag",
+                        fileloc="/dags/paused.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                    Airflow2SerializedDagModel(
+                        dag_id="serialized_only_dag",
+                        fileloc="/dags/serialized_only.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                ]
+            )
+            session.commit()
+            self.airflow._session = session
+            self.airflow.source_config.includeUnDeployedPipelines = True
 
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
-    def test_get_pipelines_list_with_is_paused_query_error(self, mock_session, mock_dag_model):
-        """
-        Test error handling when is_paused query fails
-        """
-        # Mock the session to raise an exception
-        mock_session_instance = mock_session.return_value
-        mock_filter = mock_session_instance.query.return_value.filter.return_value
-        mock_filter.scalar.side_effect = Exception("Database error")
+            with (
+                patch(
+                    "metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel",
+                    Airflow2SerializedDagModel,
+                ),
+                patch(
+                    "metadata.ingestion.source.pipeline.airflow.metadata.DagModel",
+                    Airflow2DagModel,
+                ),
+            ):
+                pipelines = list(self.airflow.get_pipelines_list())
 
-        # Create a mock serialized DAG result
-        mock_serialized_dag = ("test_dag", {"dag": {"tasks": []}}, "/path/to/dag.py")
-
-        # Mock the session query for SerializedDagModel
-        mock_query_chain = mock_session_instance.query.return_value
-        mock_query_chain = mock_query_chain.select_from.return_value
-        mock_query_chain = mock_query_chain.filter.return_value
-        mock_query_chain = mock_query_chain.limit.return_value
-        mock_query_chain.offset.return_value.all.return_value = [mock_serialized_dag]
-
-        # This would normally be called in get_pipelines_list,
-        # but we're testing the error handling
-        try:  # noqa: SIM105
-            mock_session_instance.query(mock_dag_model.is_paused).filter(mock_dag_model.dag_id == "test_dag").scalar()
-        except Exception:  # pylint: disable=broad-exception-caught
-            # Expected to fail, but in the actual code
-            # this would be caught and default to Active
-            pass
-
-        # Verify the query was attempted
-        mock_session_instance.query.assert_called_with(mock_dag_model.is_paused)
+        assert [(pipeline.dag_id, pipeline.state) for pipeline in pipelines] == [
+            ("active_dag", "Active"),
+            ("paused_dag", "Inactive"),
+            ("serialized_only_dag", "Active"),
+        ]
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
@@ -585,6 +602,7 @@ class TestAirflow(TestCase):
         query = session_instance.query.return_value
         for method in (
             "join",
+            "outerjoin",
             "select_from",
             "filter",
             "group_by",
@@ -638,8 +656,8 @@ class TestAirflow(TestCase):
         A malformed DAG is recorded as a failure while valid DAGs are still
         yielded (P1-1).
         """
-        good_row = ("good_dag", SERIALIZED_DAG, "loc", None)
-        bad_row = ("bad_dag", "not-a-dict", "loc", None)
+        good_row = ("good_dag", SERIALIZED_DAG, "loc", None, False)
+        bad_row = ("bad_dag", "not-a-dict", "loc", None, False)
         self.airflow._session = None
         self.airflow.source_config.includeUnDeployedPipelines = True
         self.airflow.status.failures.clear()
