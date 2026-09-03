@@ -31,8 +31,7 @@ import {
   ChevronRight,
   SearchLg,
   Table as TableIcon,
-  Tag01 as TagIcon,
-  XClose,
+  XClose
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, some } from 'lodash';
@@ -64,6 +63,7 @@ import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
@@ -1133,23 +1133,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     }
 
     return (
-      <ColumnGridTruncatingTagBadges
-        renderBadge={(tag: TagLabel, index: number) => (
-          <Badge
-            className="tw:inline-flex tw:min-w-0 tw:max-w-full tw:items-center tw:gap-1"
-            color={index === 0 ? 'gray' : 'blue'}
-            size="sm"
-            type="color">
-            {index === 0 ? <TagIcon className="tw:size-3 tw:shrink-0" /> : null}
-            <div className="tw:min-w-0 tw:flex-1">
-              <Typography as="span" className="tw:block tw:min-w-0 tw:truncate">
-                {tag.name || tag.tagFQN.split('.').pop()}
-              </Typography>
-            </div>
-          </Badge>
-        )}
-        tags={classificationTags}
-      />
+      <TagsViewer maxWidth={150}  sizeCap={1} tags={classificationTags} />
     );
   }, []);
 
