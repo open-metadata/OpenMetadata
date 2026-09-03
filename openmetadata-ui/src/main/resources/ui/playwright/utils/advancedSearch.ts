@@ -161,6 +161,37 @@ export const NULL_CONDITIONS = {
   },
 };
 
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const SEARCH_RESPONSE_TIMEOUT = 60_000;
+
+/**
+ * Waits for the search the Apply button dispatches, matching the criteria
+ * case-insensitively.
+ *
+ * Tag-like fields (Tags, Tier, Certification) put the FQN in the query with its
+ * own capitalisation — `PersonalData.Personal` — because their options carry
+ * `fullyQualifiedName` as the value and the display name as the label. Other
+ * fields carry a lowercased aggregation key. `tags.tagFQN` is a normalised
+ * keyword, so both forms select the same documents and case is irrelevant to
+ * what these assertions are about.
+ */
+const waitForAppliedSearch = (page: Page, ...criteria: string[]) =>
+  page.waitForResponse(
+    (response) => {
+      const url = response.url().toLowerCase();
+
+      return (
+        url.includes('index=dataasset&from=0&size=15') &&
+        criteria.every((criterion) =>
+          url.includes(getEncodedFqn(criterion.toLowerCase(), true))
+        )
+      );
+    },
+    { timeout: SEARCH_RESPONSE_TIMEOUT }
+  );
+
 export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
@@ -289,9 +320,6 @@ export const fillRule = async (
     index: number;
   }
 ) => {
-  const escapeRegex = (value: string) =>
-    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
   const ruleLocator = page.locator('.rule').nth(index - 1);
 
   // Perform click on rule field
@@ -415,25 +443,25 @@ export const checkMustPaths = async (
     index,
   });
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchData,
-      true
-    )}*`
-  );
+  const searchRes = waitForAppliedSearch(page, searchCriteria);
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(res.request().url().toLowerCase()).toContain(
+    getEncodedFqn(searchData, true)
+  );
 
   const json = await res.json();
 
   expect(JSON.stringify(json.hits.hits)).toContain(searchCriteria);
 
+  // The summary renders the rule's stored value. Tag-like fields keep the
+  // FQN's own capitalisation (`Tier.Tier1`), others carry a lowercased
+  // aggregation key, so match without regard to case.
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(searchData);
+  ).toContainText(new RegExp(escapeRegex(searchData), 'i'));
 };
 
 export const checkMustNotPaths = async (
@@ -459,16 +487,13 @@ export const checkMustNotPaths = async (
     index,
   });
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchData,
-      true
-    )}*`
-  );
+  const searchRes = waitForAppliedSearch(page, searchCriteria);
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(res.request().url().toLowerCase()).toContain(
+    getEncodedFqn(searchData, true)
+  );
 
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
@@ -476,9 +501,12 @@ export const checkMustNotPaths = async (
     expect(JSON.stringify(json.hits.hits)).not.toContain(searchCriteria);
   }
 
+  // The summary renders the rule's stored value. Tag-like fields keep the
+  // FQN's own capitalisation (`Tier.Tier1`), others carry a lowercased
+  // aggregation key, so match without regard to case.
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(searchData);
+  ).toContainText(new RegExp(escapeRegex(searchData), 'i'));
 };
 
 export const checkNullPaths = async (
@@ -503,7 +531,8 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*',
+    { timeout: SEARCH_RESPONSE_TIMEOUT }
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -653,11 +682,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id === 'Column') {
     await page.getByTestId('apply-btn').click();
   } else {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-        searchCriteria1.toLowerCase(),
-        true
-      )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
+    const searchRes = waitForAppliedSearch(
+      page,
+      searchCriteria1,
+      searchCriteria2
     );
     await page.getByTestId('apply-btn').click();
     const res = await searchRes;

@@ -331,10 +331,6 @@ export const ContractSemanticFormTab: React.FC<{
                                 },
                               ]}>
                               <QueryBuilder
-                                // Rules here are always ANDed; fixing the
-                                // conjunction leaves RAQB nothing to toggle,
-                                // so the control stays hidden as it always was.
-                                conjunctionMode="and"
                                 entityType={EntityType.TABLE}
                                 fields={queryBuilderFields}
                                 groupMode="flat"
@@ -386,7 +382,6 @@ export const ContractSemanticFormTab: React.FC<{
                       <div className="semantic-rule-editor-view-only">
                         <QueryBuilder
                           readonly
-                          conjunctionMode="and"
                           entityType={EntityType.TABLE}
                           fields={queryBuilderFields}
                           groupMode="flat"
