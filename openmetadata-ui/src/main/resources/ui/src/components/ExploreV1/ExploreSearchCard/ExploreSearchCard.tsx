@@ -23,15 +23,15 @@ import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  EntityStatus,
-  GlossaryTerm,
+    EntityStatus,
+    GlossaryTerm
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import {
-  SearchExplanation,
-  TableColumnSearchSource,
+    SearchExplanation,
+    TableColumnSearchSource
 } from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';

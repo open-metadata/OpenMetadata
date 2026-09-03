@@ -12,13 +12,13 @@
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Empty,
-  Form,
-  Select,
-  SelectProps,
-  Space,
-  Typography,
+    Button,
+    Empty,
+    Form,
+    Select,
+    SelectProps,
+    Space,
+    Typography
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -40,8 +40,8 @@ import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-  AsyncSelectListProps,
-  SelectOption,
+    AsyncSelectListProps,
+    SelectOption
 } from './AsyncSelectList.interface';
 
 const AsyncSelectList: FC<

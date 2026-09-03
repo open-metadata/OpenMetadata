@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-  FieldProp,
-  FieldTypes,
-  HelperTextType,
+    FieldProp,
+    FieldTypes,
+    HelperTextType
 } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { ReactNode } from 'react';
 import {
-  NAME_LENGTH_REGEX,
-  TAG_NAME_REGEX,
+    NAME_LENGTH_REGEX,
+    TAG_NAME_REGEX
 } from '../../constants/regex.constants';
 import { TagFormSelectItem } from './TagsPage.interface';
 
