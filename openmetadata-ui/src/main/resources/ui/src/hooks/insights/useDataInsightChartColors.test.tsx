@@ -17,9 +17,11 @@ import {
   ThemeProvider,
   useTheme,
 } from '../../context/UntitledUIThemeProvider/theme-provider';
+import { BrandColors } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { useDataInsightChartColors } from './useDataInsightChartColors';
 
 const TEST_THEME_STORAGE_KEY = 'data-insight-chart-colors-test';
+let activeBrandColors: BrandColors | undefined;
 let setActiveTheme: ReturnType<typeof useTheme>['setTheme'];
 
 const ThemeController = ({ children }: { children: ReactNode }) => {
@@ -30,12 +32,19 @@ const ThemeController = ({ children }: { children: ReactNode }) => {
 };
 
 const TestThemeProvider = ({ children }: { children: ReactNode }) => (
-  <ThemeProvider defaultTheme="light" storageKey={TEST_THEME_STORAGE_KEY}>
+  <ThemeProvider
+    brandColors={activeBrandColors}
+    defaultTheme="light"
+    storageKey={TEST_THEME_STORAGE_KEY}>
     <ThemeController>{children}</ThemeController>
   </ThemeProvider>
 );
 
 describe('useDataInsightChartColors', () => {
+  beforeEach(() => {
+    activeBrandColors = undefined;
+  });
+
   afterEach(() => {
     localStorage.removeItem(TEST_THEME_STORAGE_KEY);
     document.documentElement.className = '';
@@ -111,5 +120,29 @@ describe('useDataInsightChartColors', () => {
     expect(result.current.dataInsightSeries[0]).toBe('#456789');
     expect(result.current.kpiBackgrounds[0]).toBe('#56789a');
     expect(result.current.kpiSeries[0]).toBe('#6789ab');
+  });
+
+  it('resolves chart colors again when brand colors change', () => {
+    document.documentElement.style.setProperty(
+      '--om-color-text-tertiary',
+      '#112233'
+    );
+
+    const { rerender, result } = renderHook(() => useDataInsightChartColors(), {
+      wrapper: TestThemeProvider,
+    });
+
+    expect(result.current.axis).toBe('#112233');
+
+    act(() => {
+      document.documentElement.style.setProperty(
+        '--om-color-text-tertiary',
+        '#aabbcc'
+      );
+      activeBrandColors = { primaryColor: '#123456' };
+      rerender();
+    });
+
+    expect(result.current.axis).toBe('#aabbcc');
   });
 });
