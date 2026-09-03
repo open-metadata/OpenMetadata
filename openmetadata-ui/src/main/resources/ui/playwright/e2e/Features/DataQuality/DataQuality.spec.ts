@@ -1516,10 +1516,17 @@ test.describe(
           );
 
           await expect(pageSizeDropdown).toBeVisible();
-          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
-          // button only runs its preventDefault handler and may not open the menu.
-          await pageSizeDropdown.hover();
-          await expect(pageSizeMenu).toBeVisible();
+          // NextPrevious inherits Ant Dropdown's hover trigger; a single hover
+          // can land while the control is still disabled by a fetch, and the
+          // menu then never mounts — retry with a click fallback, the same
+          // pattern verifyPageSizeChange uses.
+          await expect(async () => {
+            await pageSizeDropdown.hover();
+            if (!(await pageSizeMenu.isVisible())) {
+              await pageSizeDropdown.click();
+            }
+            await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
+          }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
