@@ -21,6 +21,7 @@ describe('ScheduleInterval utilities', () => {
     ['0 0 32 * *', 'message.cron-invalid-day-of-month-field'],
     ['0 0 * 13 *', 'message.cron-invalid-month-field'],
     ['0 0 * * 8', 'message.cron-invalid-day-of-week-field'],
+    ['30-10 * * * *', 'message.cron-invalid-minute-field'],
   ])('returns %s validation error for malformed cron fields', (cron, error) => {
     expect(validateCronExpression(cron)).toBe(error);
   });

@@ -32,6 +32,19 @@ const getMinuteRange = (range: string, hasStep: boolean): [number, number] => {
   return [start, hasStep ? 59 : start];
 };
 
+const hasDescendingMinuteRange = (minuteField: string): boolean =>
+  minuteField.split(',').some((segment) => {
+    const [range] = segment.split('/');
+
+    if (!range.includes('-')) {
+      return false;
+    }
+
+    const [start, end] = range.split('-').map(Number);
+
+    return start > end;
+  });
+
 const hasMultipleRunsPerHour = (minuteField: string): boolean => {
   const minutes = new Set<number>();
 
@@ -66,6 +79,10 @@ export const validateCronExpression = (cron: string): string | undefined => {
     if (!CRON_FIELD_PATTERNS[i].test(parts[i])) {
       return CRON_FIELD_ERROR_KEYS[i];
     }
+  }
+
+  if (hasDescendingMinuteRange(parts[0])) {
+    return CRON_FIELD_ERROR_KEYS[0];
   }
 
   // Only the minute field can schedule multiple executions within an hour.
