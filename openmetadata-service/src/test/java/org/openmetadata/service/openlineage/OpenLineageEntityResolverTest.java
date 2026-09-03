@@ -2212,6 +2212,7 @@ class OpenLineageEntityResolverTest {
               + warnings);
     } finally {
       resolverLogger.detachAppender(appender);
+      appender.stop();
     }
   }
 

@@ -14,7 +14,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -503,8 +502,9 @@ public class OpenLineageLineageResolutionIT {
     assertNotNull(
         fetchOpenLineageEdgeDetailsByFqn(accountSchemaFqn + "." + tableName, outputFqn),
         "Edge must attach to the table under the account id carried by the Glue ARN namespace");
-    assertFalse(
-        hasOpenLineageEdge(schemaFqn + "." + tableName, outputFqn),
+    assertNoOpenLineageEdge(
+        schemaFqn + "." + tableName,
+        outputFqn,
         "Edge must not attach to the same-named table in another database");
   }
 
@@ -560,8 +560,16 @@ public class OpenLineageLineageResolutionIT {
     return holder[0];
   }
 
-  private static boolean hasOpenLineageEdge(String inputFqn, String outputFqn) throws Exception {
-    return findOpenLineageEdge(inputFqn, outputFqn) != null;
+  /**
+   * Lineage reads are eventually consistent, so a single absence sample can pass simply because
+   * nothing is visible yet. Require the absence to hold for a window instead.
+   */
+  private static void assertNoOpenLineageEdge(String inputFqn, String outputFqn, String message) {
+    Awaitility.await(message)
+        .during(Duration.ofSeconds(3))
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> findOpenLineageEdge(inputFqn, outputFqn) == null);
   }
 
   @SuppressWarnings("unchecked")

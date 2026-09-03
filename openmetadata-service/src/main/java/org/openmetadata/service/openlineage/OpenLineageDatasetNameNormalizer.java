@@ -46,8 +46,10 @@ import org.openmetadata.schema.api.lineage.openlineage.SymlinksFacet;
 public final class OpenLineageDatasetNameNormalizer {
 
   private static final String GLUE_TABLE_PREFIX = "table/";
-  private static final String GLUE_ARN_PREFIX = "arn:aws:glue:";
-  private static final int GLUE_ARN_ACCOUNT_INDEX = 4;
+  private static final String ARN_PREFIX = "arn:";
+  private static final String GLUE_ARN_SERVICE = "glue";
+  private static final int ARN_SERVICE_INDEX = 2;
+  private static final int ARN_ACCOUNT_INDEX = 4;
   private static final String HIVE_WAREHOUSE_DB_SUFFIX = ".db";
   private static final int MAX_SLASH_SEGMENTS = 3;
 
@@ -61,7 +63,9 @@ public final class OpenLineageDatasetNameNormalizer {
 
   /**
    * Returns the AWS account id (Glue "catalog id") carried by a Glue symlink namespace
-   * {@code arn:aws:glue:<region>:<accountId>[:<resource>]}, or null for any other namespace.
+   * {@code arn:<partition>:glue:<region>:<accountId>[:<resource>]}, or null for any other
+   * namespace. The partition is not constrained, so GovCloud ({@code aws-us-gov}) and China
+   * ({@code aws-cn}) ARNs resolve the same way as commercial ones.
    *
    * <p>A Glue symlink name is always {@code table/<database>/<table>}, so it never carries the
    * catalog segment, while the Glue connector ingests the catalog id as the OpenMetadata database
@@ -69,10 +73,12 @@ public final class OpenLineageDatasetNameNormalizer {
    */
   public static String extractGlueCatalogId(String namespace) {
     String result = null;
-    if (!nullOrEmpty(namespace) && namespace.toLowerCase(Locale.ROOT).startsWith(GLUE_ARN_PREFIX)) {
+    if (!nullOrEmpty(namespace) && namespace.toLowerCase(Locale.ROOT).startsWith(ARN_PREFIX)) {
       String[] fields = namespace.split(":");
-      if (fields.length > GLUE_ARN_ACCOUNT_INDEX && !fields[GLUE_ARN_ACCOUNT_INDEX].isEmpty()) {
-        result = fields[GLUE_ARN_ACCOUNT_INDEX];
+      if (fields.length > ARN_ACCOUNT_INDEX
+          && GLUE_ARN_SERVICE.equalsIgnoreCase(fields[ARN_SERVICE_INDEX])
+          && !fields[ARN_ACCOUNT_INDEX].isEmpty()) {
+        result = fields[ARN_ACCOUNT_INDEX];
       }
     }
     return result;

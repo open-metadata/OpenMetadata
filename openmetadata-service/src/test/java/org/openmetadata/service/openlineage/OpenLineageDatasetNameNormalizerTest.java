@@ -274,6 +274,19 @@ class OpenLineageDatasetNameNormalizerTest {
   }
 
   @Test
+  void extractGlueCatalogId_nonCommercialPartitions_returnAccountId() {
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws-us-gov:glue:us-gov-west-1:048372910264"),
+        "GovCloud ARNs carry the account id in the same field as commercial ARNs");
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws-cn:glue:cn-north-1:048372910264:table/db/tbl"));
+  }
+
+  @Test
   void extractGlueCatalogId_nonGlueNamespace_returnsNull() {
     assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("s3://experian-bucket"));
     assertNull(
