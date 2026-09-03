@@ -25,7 +25,6 @@ import {
 } from 'recharts';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
   GRAYED_OUT_COLOR,
   HOVER_CHART_OPACITY,
 } from '../constants/constants';
@@ -42,7 +41,8 @@ import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 export const renderLegend = (
   legendData: LegendProps,
   activeKeys = [] as string[],
-  valueFormatter?: (value: string) => string
+  valueFormatter?: (value: string) => string,
+  inactiveColor = GRAYED_OUT_COLOR
 ) => {
   const { payload = [] } = legendData;
 
@@ -70,13 +70,13 @@ export const renderLegend = (
             }>
             <Surface className="m-r-xss" height={14} version="1.1" width={14}>
               <rect
-                fill={isActive ? entry.color : GRAYED_OUT_COLOR}
+                fill={isActive ? entry.color : inactiveColor}
                 height="14"
                 rx="2"
                 width="14"
               />
             </Surface>
-            <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
+            <span style={{ color: isActive ? 'inherit' : inactiveColor }}>
               {valueFormatter ? valueFormatter(entry.value) : entry.value}
             </span>
           </li>
@@ -166,11 +166,12 @@ export const renderDataInsightLineChart = (
   labels: string[],
   activeKeys: string[],
   activeMouseHoverKey: string,
-  isPercentage: boolean
+  isPercentage: boolean,
+  colors: { axis: string; grid: string }
 ) => {
   return (
     <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-      <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+      <CartesianGrid stroke={colors.grid} vertical={false} />
       <Tooltip
         content={
           <CustomTooltip isPercentage={isPercentage} timeStampKey="day" />
@@ -180,10 +181,12 @@ export const renderDataInsightLineChart = (
       <XAxis
         allowDuplicatedCategory={false}
         dataKey="day"
+        tick={{ fill: colors.axis }}
         tickFormatter={(value: number) => customFormatDateTime(value, 'MMM dd')}
         type="category"
       />
       <YAxis
+        tick={{ fill: colors.axis }}
         tickFormatter={
           isPercentage
             ? (value: number) => axisTickFormatter(value, '%')
