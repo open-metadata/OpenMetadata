@@ -1751,12 +1751,16 @@ const TableV2 = <T extends object>(
                               // inline — a Glossary Terms dropdown came out a
                               // few pixels wide.
                               className={classNames({
-                                'tw:flex tw:gap-1 tw:max-w-full':
+                                // items-start + a text-line-height icon box
+                                // keep the expander on the value's first line
+                                // (stretch + center floats it half a line low
+                                // whenever the cell is taller than the text).
+                                'tw:flex tw:items-start tw:gap-1 tw:max-w-full':
                                   showExpandInCell,
                                 'tw:contents': !showExpandInCell,
                               })}>
                               {showExpandInCell && (
-                                <div className="tw:flex tw:items-center tw:shrink-0">
+                                <div className="tw:flex tw:h-5 tw:items-center tw:shrink-0">
                                   {hasChildren ? (
                                     ExpandIcon ? (
                                       <ExpandIcon
