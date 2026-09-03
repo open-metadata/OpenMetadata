@@ -225,23 +225,67 @@ public class OpenLineageEntityResolver {
   private String resolveTableFqn(String namespace, String datasetName, DatasetFacets facets) {
     List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(namespace, datasetName, facets);
-    String result = null;
-    if (candidates.isEmpty()) {
-      LOG.warn(
-          "No parsable table identifier for dataset {} (namespace {}). "
-              + "Expected schema.table, catalog.schema.table, a Glue table/db/table symlink, or a Hive warehouse path",
-          datasetName,
-          namespace);
-    }
     String datasourceName = extractDatasourceName(facets);
+    String result = null;
     for (DatasetCandidate candidate : candidates) {
       result = resolveCandidateFqn(candidate.namespace(), datasourceName, candidate.tableName());
       if (result != null) {
         break;
       }
     }
-    if (result == null && !candidates.isEmpty()) {
+    if (result == null) {
+      result = resolveBareTokenViaNamespaceMapping(namespace, datasetName);
+    }
+    if (result == null) {
+      logUnresolvedDataset(namespace, datasetName, candidates);
+    }
+    return result;
+  }
+
+  private void logUnresolvedDataset(
+      String namespace, String datasetName, List<DatasetCandidate> candidates) {
+    if (!candidates.isEmpty()) {
       LOG.debug("Could not resolve dataset {} using candidates {}", datasetName, candidates);
+    } else if (bareToken(datasetName) != null) {
+      LOG.warn(
+          "Dataset {} (namespace {}) carries no schema, so it can only be matched by table name. "
+              + "Map this namespace to a service via namespaceToServiceMapping to enable that lookup",
+          datasetName,
+          namespace);
+    } else {
+      LOG.warn(
+          "No parsable table identifier for dataset {} (namespace {}). "
+              + "Expected schema.table, catalog.schema.table, a Glue table/db/table symlink, or a Hive warehouse path",
+          datasetName,
+          namespace);
+    }
+  }
+
+  /**
+   * Last resort for an identifier that carries no schema at all - a single bare token, which Spark
+   * emits for relations that miss the Glue/Iceberg symlink path. A table-name-only search is only
+   * defensible when the operator has declared which service the namespace belongs to, and only when
+   * it identifies exactly one table; matching the whole catalog on a bare name would pick an
+   * arbitrary same-named table from any database.
+   */
+  private String resolveBareTokenViaNamespaceMapping(String namespace, String datasetName) {
+    String result = null;
+    String table = bareToken(datasetName);
+    String mappedService = lookupServiceFromNamespace(namespace);
+    if (table != null && mappedService != null) {
+      result = searchUniqueTableByFqnPattern(mappedService + ".%." + table);
+    }
+    return result;
+  }
+
+  /** Returns the name when it is a single undelimited token, else null. */
+  private String bareToken(String datasetName) {
+    String result = null;
+    if (!nullOrEmpty(datasetName)) {
+      String trimmed = datasetName.trim();
+      if (!trimmed.isEmpty() && !trimmed.contains(".") && !trimmed.contains("/")) {
+        result = trimmed;
+      }
     }
     return result;
   }
@@ -333,19 +377,38 @@ public class OpenLineageEntityResolver {
   }
 
   private String searchTableByFilter(String searchKey, ListFilter filter) {
+    List<Table> tables = listTables(searchKey, filter);
     String result = null;
+    if (!tables.isEmpty()) {
+      result = tables.getFirst().getFullyQualifiedName();
+      warnOnAmbiguousMatch(searchKey, result, tables);
+    }
+    return result;
+  }
+
+  /** Resolves only an unambiguous match; a multi-match is dropped rather than guessed. */
+  private String searchUniqueTableByFqnPattern(String fqnPattern) {
+    List<Table> tables = listTables(fqnPattern, new ListFilterByFqnPattern(fqnPattern));
+    String result = null;
+    if (tables.size() == 1) {
+      result = tables.getFirst().getFullyQualifiedName();
+    } else if (tables.size() > 1) {
+      LOG.warn(
+          "Bare dataset name matched {} tables for [{}], dropping the edge rather than guessing. Candidates: {}",
+          tables.size(),
+          fqnPattern,
+          describeCandidates(tables));
+    }
+    return result;
+  }
+
+  private List<Table> listTables(String searchKey, ListFilter filter) {
+    List<Table> result = List.of();
     try {
       @SuppressWarnings("unchecked")
       EntityRepository<Table> tableRepository =
           (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
-
-      List<Table> tables =
-          tableRepository.listAll(tableRepository.getFields("databaseSchema"), filter);
-
-      if (!tables.isEmpty()) {
-        result = tables.getFirst().getFullyQualifiedName();
-        warnOnAmbiguousMatch(searchKey, result, tables);
-      }
+      result = tableRepository.listAll(tableRepository.getFields("databaseSchema"), filter);
     } catch (Exception e) {
       LOG.debug("Error searching for table matching {}: {}", searchKey, e.getMessage());
     }
@@ -359,19 +422,22 @@ public class OpenLineageEntityResolver {
    */
   private void warnOnAmbiguousMatch(String searchKey, String resolved, List<Table> tables) {
     if (tables.size() > 1) {
-      String competing =
-          tables.stream()
-              .limit(MAX_LOGGED_AMBIGUOUS_MATCHES)
-              .map(Table::getFullyQualifiedName)
-              .collect(Collectors.joining(", "));
       LOG.warn(
-          "Ambiguous OpenLineage table match: {} tables match [{}], resolving to [{}]. Candidates: {}{}",
+          "Ambiguous OpenLineage table match: {} tables match [{}], resolving to [{}]. Candidates: {}",
           tables.size(),
           searchKey,
           resolved,
-          competing,
-          tables.size() > MAX_LOGGED_AMBIGUOUS_MATCHES ? ", …" : "");
+          describeCandidates(tables));
     }
+  }
+
+  private String describeCandidates(List<Table> tables) {
+    String listed =
+        tables.stream()
+            .limit(MAX_LOGGED_AMBIGUOUS_MATCHES)
+            .map(Table::getFullyQualifiedName)
+            .collect(Collectors.joining(", "));
+    return tables.size() > MAX_LOGGED_AMBIGUOUS_MATCHES ? listed + ", …" : listed;
   }
 
   private String extractDatasourceName(DatasetFacets facets) {
