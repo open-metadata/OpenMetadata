@@ -28,12 +28,13 @@ const resolveColorTokens = (
 ) => definitions.map(({ token, fallback }) => resolveCssColor(token, fallback));
 
 export const useDataInsightChartColors = () => {
-  const { theme } = useTheme();
+  const { brandColors, theme } = useTheme();
   const chartColors = useChartColors();
 
   return useMemo(() => {
     // SVG presentation attributes need concrete values, so resolve them again
-    // after the root theme class changes instead of passing CSS variables.
+    // after theme classes or runtime brand variables change.
+    void brandColors;
     void theme;
 
     return {
@@ -43,5 +44,5 @@ export const useDataInsightChartColors = () => {
       kpiSeries: resolveColorTokens(KPI_WIDGET_GRAPH_COLOR_TOKENS),
       progress: resolveCssColor(PROGRESS_COLOR, '#B3D4F4'),
     };
-  }, [chartColors, theme]);
+  }, [brandColors, chartColors, theme]);
 };

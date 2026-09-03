@@ -32,6 +32,7 @@ import { BAR_CHART_MARGIN } from '../constants/DataInsight.constants';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
 import { axisTickFormatter } from './ChartUtils';
 import { entityChartColor } from './ColorUtils';
+import './DataInsightChartUtils.style.less';
 import {
   getEntryFormattedValue,
   getRandomHexColor,
@@ -115,7 +116,10 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         className="custom-data-insight-tooltip"
         style={cardStyles}
         title={
-          <Typography.Title level={5} style={titleStyles}>
+          <Typography.Title
+            className="custom-data-insight-tooltip-title"
+            level={5}
+            style={titleStyles}>
             {timestamp}
           </Typography.Title>
         }>

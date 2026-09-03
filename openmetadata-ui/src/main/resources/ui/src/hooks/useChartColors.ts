@@ -27,11 +27,13 @@ const CHART_COLOR_TOKENS = {
 } as const;
 
 export const useChartColors = () => {
-  const { theme } = useTheme();
+  const { brandColors, theme } = useTheme();
 
   return useMemo(() => {
     // Recharts passes these values through SVG presentation attributes, which
-    // need concrete colors and therefore must be refreshed with the root theme.
+    // need concrete colors and therefore must be refreshed with theme classes
+    // and runtime brand variables.
+    void brandColors;
     void theme;
 
     return Object.fromEntries(
@@ -40,5 +42,5 @@ export const useChartColors = () => {
         resolveCssColor(token, fallback),
       ])
     ) as Record<keyof typeof CHART_COLOR_TOKENS, string>;
-  }, [theme]);
+  }, [brandColors, theme]);
 };

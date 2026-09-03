@@ -17,9 +17,11 @@ import {
   ThemeProvider,
   useTheme,
 } from '../context/UntitledUIThemeProvider/theme-provider';
+import { BrandColors } from '../context/UntitledUIThemeProvider/theme-provider.interface';
 import { useChartColors } from './useChartColors';
 
 const TEST_THEME_STORAGE_KEY = 'shared-chart-colors-test';
+let activeBrandColors: BrandColors | undefined;
 let setActiveTheme: ReturnType<typeof useTheme>['setTheme'];
 
 const ThemeController = ({ children }: { children: ReactNode }) => {
@@ -30,12 +32,19 @@ const ThemeController = ({ children }: { children: ReactNode }) => {
 };
 
 const TestThemeProvider = ({ children }: { children: ReactNode }) => (
-  <ThemeProvider defaultTheme="light" storageKey={TEST_THEME_STORAGE_KEY}>
+  <ThemeProvider
+    brandColors={activeBrandColors}
+    defaultTheme="light"
+    storageKey={TEST_THEME_STORAGE_KEY}>
     <ThemeController>{children}</ThemeController>
   </ThemeProvider>
 );
 
 describe('useChartColors', () => {
+  beforeEach(() => {
+    activeBrandColors = undefined;
+  });
+
   afterEach(() => {
     localStorage.removeItem(TEST_THEME_STORAGE_KEY);
     document.documentElement.className = '';
@@ -111,5 +120,29 @@ describe('useChartColors', () => {
     expect(result.current.emptyFill).toBe('#234567');
     expect(result.current.primary).toBe('#345678');
     expect(result.current.primaryArea).toBe('#456789');
+  });
+
+  it('refreshes common chart colors when brand colors change', () => {
+    document.documentElement.style.setProperty(
+      '--om-color-fg-brand',
+      '#112233'
+    );
+
+    const { rerender, result } = renderHook(() => useChartColors(), {
+      wrapper: TestThemeProvider,
+    });
+
+    expect(result.current.primary).toBe('#112233');
+
+    act(() => {
+      document.documentElement.style.setProperty(
+        '--om-color-fg-brand',
+        '#aabbcc'
+      );
+      activeBrandColors = { primaryColor: '#123456' };
+      rerender();
+    });
+
+    expect(result.current.primary).toBe('#aabbcc');
   });
 });

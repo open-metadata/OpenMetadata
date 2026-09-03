@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import { PropsWithChildren } from 'react';
 import {
+  CustomTooltip,
   renderDataInsightLineChart,
   renderLegend,
 } from './DataInsightChartUtils';
@@ -43,6 +44,28 @@ const CHART_COLORS = {
 };
 
 describe('DataInsightChartUtils theme colors', () => {
+  it('uses the semantic text color for tooltip titles', () => {
+    render(
+      <CustomTooltip
+        active
+        payload={[
+          {
+            color: '#abcdef',
+            dataKey: 'count',
+            name: 'Description coverage',
+            payload: { term: 'Sep 1, 2026' },
+            value: 76.27,
+          },
+        ]}
+        timeStampKey="term"
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Sep 1, 2026' })).toHaveClass(
+      'custom-data-insight-tooltip-title'
+    );
+  });
+
   it('applies active theme colors to reusable line charts', () => {
     render(
       Reflect.apply(renderDataInsightLineChart, null, [
