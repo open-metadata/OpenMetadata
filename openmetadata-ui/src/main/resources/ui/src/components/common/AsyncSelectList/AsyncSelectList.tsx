@@ -343,7 +343,7 @@ const AsyncSelectList: FC<
             placement="top left"
             title={label}
             trigger="hover">
-            <TooltipTrigger>{displayName}</TooltipTrigger>
+            {displayName}
           </Tooltip>
         </Select.Option>
       ))}
