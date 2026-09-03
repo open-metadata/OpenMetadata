@@ -23,13 +23,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_db_source import (
+    get_service_database_name,
+)
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-# Matches the fallback used by CommonDbSourceService when `databaseName` is unset
-DEFAULT_DATABASE = "default"
 
 
 class StarRocksQueryParserSource(QueryParserSource, ABC):
@@ -65,6 +65,7 @@ class StarRocksQueryParserSource(QueryParserSource, ABC):
         like `service.db.db.table`, which never resolve, so the parsed lineage is
         silently dropped.
 
-        Mirror `CommonDbSourceService.get_database_names` so both workflows agree.
+        Share the resolution with `CommonDbSourceService.get_database_names` so the
+        two workflows cannot drift.
         """
-        return self.service_connection.databaseName or DEFAULT_DATABASE
+        return get_service_database_name(self.service_connection)

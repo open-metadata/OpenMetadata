@@ -99,6 +99,23 @@ class TableNameAndType(BaseModel):
     type_: TableType = TableType.Regular
 
 
+DEFAULT_DATABASE_NAME = "default"
+
+
+def get_service_database_name(service_connection: Any) -> str:
+    """
+    Resolve the OM database name a service ingests its schemas under.
+
+    Engines with no database/schema split (StarRocks, ClickHouse, MySQL, ...) hold
+    everything under a single OM database, named after the connection or defaulted.
+    Any workflow that builds a table FQN outside of metadata ingestion - lineage and
+    usage query parsers, for instance - has to resolve it exactly the same way, or the
+    FQNs will not match the ingested entities.
+    """
+    custom_database_name = service_connection.__dict__.get("databaseName")
+    return service_connection.__dict__.get("database", custom_database_name or DEFAULT_DATABASE_NAME)
+
+
 # pylint: disable=too-many-public-methods
 class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC):
     """
@@ -210,11 +227,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        custom_database_name = self.service_connection.__dict__.get("databaseName")
-
-        database_name = self.service_connection.__dict__.get("database", custom_database_name or "default")
-
-        yield database_name
+        yield get_service_database_name(self.service_connection)
 
     def get_database_description(self, database_name: str) -> str | None:
         """
