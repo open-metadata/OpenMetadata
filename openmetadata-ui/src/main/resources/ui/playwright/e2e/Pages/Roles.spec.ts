@@ -175,7 +175,11 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for teams tab content to load
       await waitForAllLoadersToDisappear(page);
-      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+      await expect(
+        // AntD's empty state sits in a `cell`; TableV2 (react-aria grid)
+        // puts it in a `gridcell`.
+        page.locator('role=cell[name="No data"], role=gridcell[name="No data"]')
+      ).toBeVisible();
 
       // click on the users tab
       const usersTab = page.locator('[role="tab"]:has-text("Users")');
@@ -184,7 +188,11 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for users tab content to load
       await waitForAllLoadersToDisappear(page);
-      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+      await expect(
+        // AntD's empty state sits in a `cell`; TableV2 (react-aria grid)
+        // puts it in a `gridcell`.
+        page.locator('role=cell[name="No data"], role=gridcell[name="No data"]')
+      ).toBeVisible();
 
       // Navigate to roles list page to verify the added role
       await settingClick(page, GlobalSettingOptions.ROLES);
