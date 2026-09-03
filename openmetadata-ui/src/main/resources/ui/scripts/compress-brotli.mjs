@@ -51,8 +51,16 @@ const distDirectory = path.resolve(scriptDirectory, '../dist');
 
 const MIN_BYTES = 1024;
 const COMPRESSIBLE_EXT = /\.(js|mjs|css|html|svg|json|wasm)$/i;
-const CONCURRENCY = Number(
-  process.env.BROTLI_CONCURRENCY || os.availableParallelism?.() || 2
+// `Number(env || fallback)` misbehaves on two edge cases: `BROTLI_CONCURRENCY=0`
+// stays 0 (non-empty string is truthy, so `||` doesn't fall through), and a
+// non-numeric value coerces to NaN. Both end with a zero-worker pool and a
+// crash in the summary `reduce` on `undefined.source`. Clamp to ≥ 1 by moving
+// `Number()` inside the `||` chain so 0/NaN fall through to the fallback.
+const CONCURRENCY = Math.max(
+  1,
+  Math.floor(
+    Number(process.env.BROTLI_CONCURRENCY) || os.availableParallelism?.() || 2
+  )
 );
 const QUALITY = zlibConstants.BROTLI_MAX_QUALITY;
 
@@ -103,7 +111,12 @@ async function shouldCompress(filePath) {
 async function compressOne(filePath) {
   const source = await readFile(filePath);
   const compressed = await brotliCompressAsync(source, {
-    params: { [zlibConstants.BROTLI_PARAM_QUALITY]: QUALITY },
+    params: {
+      [zlibConstants.BROTLI_PARAM_QUALITY]: QUALITY,
+      // Hinting the input size lets the encoder pick better window/block
+      // parameters — small but free compression-ratio win.
+      [zlibConstants.BROTLI_PARAM_SIZE_HINT]: source.length,
+    },
   });
   await writeFile(`${filePath}.br`, compressed);
 
