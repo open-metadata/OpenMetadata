@@ -461,7 +461,7 @@ const MetricListPage = () => {
     );
 
     const renderTagPills = (tags: TagLabel[]) => (
-      <TagsViewer sizeCap={2} tags={tags}  />
+      <TagsViewer sizeCap={2} tags={tags} />
     );
 
     const metricColumn = {
@@ -531,8 +531,7 @@ const MetricListPage = () => {
         dataIndex: 'tags',
         key: 'glossary',
         width: 240,
-        render: (tags: TagLabel[]) =>
-          renderTagPills(glossaryTerms(tags)),
+        render: (tags: TagLabel[]) => renderTagPills(glossaryTerms(tags)),
       },
       entityStatus: {
         title: t('label.status'),
@@ -586,8 +585,7 @@ const MetricListPage = () => {
         dataIndex: 'tags',
         key: 'tags',
         width: 220,
-        render: (tags: TagLabel[]) =>
-          renderTagPills(metricTags(tags), 'metric-list-tag-pill'),
+        render: (tags: TagLabel[]) => renderTagPills(metricTags(tags)),
       },
       domains: {
         title: t('label.domain-plural'),

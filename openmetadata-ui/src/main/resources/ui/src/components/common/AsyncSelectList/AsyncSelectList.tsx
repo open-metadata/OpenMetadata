@@ -219,9 +219,9 @@ const AsyncSelectList: FC<
         'style',
         'tagFQN'
       ),
-      } as TagLabel;
-      const tagDisplayName = getTagDisplay(label as string);
-      const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
+    } as TagLabel;
+    const tagDisplayName = getTagDisplay(label as string);
+    const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
       (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
