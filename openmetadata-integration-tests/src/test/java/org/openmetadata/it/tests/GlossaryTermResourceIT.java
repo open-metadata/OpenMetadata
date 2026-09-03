@@ -3660,7 +3660,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_rm_deny");
     Table table = createTableTaggedWithTerm(ns, term, "authz_rm_deny");
     String token = deniedGlossaryEditToken(ns, "rm");
-    warmPermissions(token);
 
     HttpResponse<String> response = putAssets(term.getId(), "remove", assetsBody(table), token);
 
@@ -3679,7 +3678,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_add_deny");
     Table table = createBareTable(ns, "authz_add_deny");
     String token = deniedGlossaryEditToken(ns, "add");
-    warmPermissions(token);
 
     HttpResponse<String> response = putAssets(term.getId(), "add", assetsBody(table), token);
 
@@ -3751,22 +3749,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .PUT(HttpRequest.BodyPublishers.ofString(body))
             .build();
     return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-  }
-
-  /**
-   * Warms the caller's authorization cache so the very first bulk-asset authorization already
-   * reflects their policies. The SubjectCache is populated lazily; without a prior authorized
-   * request a freshly created user's role/policy set is not yet resolved on the first authorize
-   * call. GET /v1/permissions runs the same listPermissions path and primes that cache.
-   */
-  private void warmPermissions(String token) throws Exception {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + "/v1/permissions"))
-            .header("Authorization", "Bearer " + token)
-            .GET()
-            .build();
-    HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   /**
