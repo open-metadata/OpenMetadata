@@ -82,10 +82,16 @@ test.describe('Advanced Search Suggestions', () => {
       // the helper matches the typed-value aggregate specifically so the wait
       // cannot resolve early on the dropdown-open request.
       await expect(async () => {
+        // .catch at construction: the exact dropped-aggregate case this fix
+        // targets leaves the underlying waitForResponse pending, so it will
+        // reject with a Playwright timeout ~30s later once the 5s fallback
+        // timer has already won the race. Without the catch, every toPass
+        // attempt orphans a fresh promise and Playwright surfaces them as
+        // unhandled rejections that can fail the test.
         const aggregateResponse = waitForAggregation(page, {
           field: field.fieldName,
           value: searchText,
-        });
+        }).catch(() => undefined);
         await dropdownInput.fill('');
         await dropdownInput.fill(searchText);
         await Promise.race([
