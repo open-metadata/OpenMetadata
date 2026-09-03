@@ -14,6 +14,7 @@
 package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -24,6 +25,8 @@ import java.util.Locale;
 import java.util.Map;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
+import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -218,6 +221,16 @@ public interface ColumnAggregator {
 
   private static boolean nullOrEmptyStr(String s) {
     return s == null || s.isBlank();
+  }
+
+  /**
+   * Parse a {@link TagLabel} out of an ES/OS column's raw {@code tags} array entry. Reads the
+   * common fields ({@code name}, {@code displayName}, {@code description}, {@code style}) in
+   * addition to the label-specific ones, mirroring what {@code TagLabelRowMapperWithTargetFqnHash}
+   * populates for the DB-backed read path so tag icon/color render consistently everywhere.
+   */
+  static TagLabel parseTagLabel(JsonNode tagData) {Expand commentComment on line R126Resolved
+    return JsonUtils.convertValueLenient(tagData, TagLabel.class);
   }
 
   /** Phase 1 result: matching column names and the total doc_count summed across buckets. */

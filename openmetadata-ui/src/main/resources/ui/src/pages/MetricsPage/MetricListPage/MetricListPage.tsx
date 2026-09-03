@@ -55,7 +55,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import {
   CSV_JOBS_REFRESH_EVENT,
@@ -72,6 +71,7 @@ import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
@@ -485,20 +485,7 @@ const MetricListPage = () => {
     );
 
     const renderTagPills = (tags: TagLabel[]) => (
-      <div className="metric-list-glossary">
-        {tags.length
-          ? tags.map((tag) => (
-              <TagChip
-                icon={tag.style?.iconURL}
-                key={tag.tagFQN}
-                label={tag.name ?? tag.tagFQN}
-                size="small"
-                tagColor={tag.style?.color}
-                variant="blueGray"
-              />
-            ))
-          : emptyDash}
-      </div>
+      <TagsViewer sizeCap={2} tags={tags}  />
     );
 
     const metricColumn = {
@@ -568,7 +555,8 @@ const MetricListPage = () => {
         dataIndex: 'tags',
         key: 'glossary',
         width: 240,
-        render: (tags: TagLabel[]) => renderTagPills(glossaryTerms(tags)),
+        render: (tags: TagLabel[]) =>
+          renderTagPills(glossaryTerms(tags)),
       },
       entityStatus: {
         title: t('label.status'),

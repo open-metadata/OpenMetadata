@@ -1306,7 +1306,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     }
 
-    return <TagsViewer maxWidth={150} sizeCap={1} tags={classificationTags} />;
+    return <TagsViewer maxWidth={130} sizeCap={1} tags={classificationTags} />;
   }, []);
 
   const renderGlossaryTermsCellAdapter = useCallback(

@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ColumnGridItem;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.search.ColumnAggregator.ColumnAggregationRequest;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class ColumnAggregatorTest {
 
@@ -242,5 +244,72 @@ class ColumnAggregatorTest {
     assertEquals(1, r3.getColumns().size(), "last page has the remaining single item");
     assertEquals("col_04", r3.getColumns().get(0).getColumnName());
     assertNull(r3.getCursor(), "cursor is null on the last page");
+  }
+  @Test
+  void parseTagLabel_populatesStyleFromSourceJson() {
+    JsonNode tagData =
+        JsonUtils.readTree(
+            """
+            {
+              "tagFQN": "PII.Sensitive",
+              "name": "Sensitive",
+              "displayName": "Sensitive",
+              "description": "PII data",
+              "labelType": "Manual",
+              "source": "Classification",
+              "state": "Confirmed",
+              "style": {"color": "#FF0000", "iconURL": "https://example.com/icon.png"}
+            }
+            """);
+
+    TagLabel tag = ColumnAggregator.parseTagLabel(tagData);
+
+    assertEquals("PII.Sensitive", tag.getTagFQN());
+    assertEquals("Sensitive", tag.getName());
+    assertEquals("Sensitive", tag.getDisplayName());
+    assertEquals("PII data", tag.getDescription());
+    assertEquals(TagLabel.LabelType.MANUAL, tag.getLabelType());
+    assertEquals(TagLabel.TagSource.CLASSIFICATION, tag.getSource());
+    assertEquals(TagLabel.State.CONFIRMED, tag.getState());
+    assertEquals("#FF0000", tag.getStyle().getColor());
+    assertEquals("https://example.com/icon.png", tag.getStyle().getIconURL());
+  }
+
+  @Test
+  void parseTagLabel_missingStyleLeavesItNull() {
+    JsonNode tagData =
+        JsonUtils.readTree(
+            """
+            {
+              "tagFQN": "PII.Sensitive",
+              "labelType": "Manual",
+              "source": "Classification",
+              "state": "Confirmed"
+            }
+            """);
+
+    TagLabel tag = ColumnAggregator.parseTagLabel(tagData);
+
+    assertEquals("PII.Sensitive", tag.getTagFQN());
+    assertNull(tag.getStyle());
+  }
+
+  @Test
+  void parseTagLabel_nullStyleNodeLeavesItNull() {
+    JsonNode tagData =
+        JsonUtils.readTree(
+            """
+            {
+              "tagFQN": "PII.Sensitive",
+              "labelType": "Manual",
+              "source": "Classification",
+              "state": "Confirmed",
+              "style": null
+            }
+            """);
+
+    TagLabel tag = ColumnAggregator.parseTagLabel(tagData);
+
+    assertNull(tag.getStyle());
   }
 }
