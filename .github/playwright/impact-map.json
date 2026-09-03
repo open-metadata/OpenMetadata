@@ -195,6 +195,30 @@
       ]
     },
     {
+      "_comment": "ScheduleInterval is shared by ingestion, data quality, data contracts, and application configuration, so changes must exercise every scheduler-facing flow.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleInterval*",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleSelectionCards.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/AppSchedule/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AppInstall/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Schedular.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CronExpressionUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SchedularUtils.tsx"
+      ],
+      "projects": ["chromium", "Basic", "Ingestion", "Data Insight"],
+      "specs": [
+        "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
+        "playwright/e2e/Features/TestSuite*.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+        "playwright/e2e/Pages/TestSuite*.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "ingestion/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/**",

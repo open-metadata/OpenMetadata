@@ -427,11 +427,11 @@ describe('ScheduleInterval', () => {
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('custom-cron-input'), {
-        target: { value: '*/5 * * * *' },
+        target: { value: '15 9,18 * * *' },
       });
     });
 
-    expect(onChange).toHaveBeenCalledWith('*/5 * * * *');
+    expect(onChange).toHaveBeenCalledWith('15 9,18 * * *');
   });
 
   it('should show validation error for invalid cron syntax and not call onChange', async () => {

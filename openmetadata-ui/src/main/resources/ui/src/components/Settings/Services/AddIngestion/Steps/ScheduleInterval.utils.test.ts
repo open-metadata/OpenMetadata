@@ -25,7 +25,16 @@ describe('ScheduleInterval utilities', () => {
     expect(validateCronExpression(cron)).toBe(error);
   });
 
-  it('accepts a valid five-field cron expression', () => {
-    expect(validateCronExpression('*/15 0 * * 1-5')).toBeUndefined();
+  it.each(['*/15 0 * * 1-5', '0/1 0 * * *'])(
+    'rejects the sub-hour schedule %s',
+    (cron) => {
+      expect(validateCronExpression(cron)).toBe(
+        'message.cron-less-than-hour-message'
+      );
+    }
+  );
+
+  it('accepts a valid hourly cron expression', () => {
+    expect(validateCronExpression('0 * * * *')).toBeUndefined();
   });
 });
