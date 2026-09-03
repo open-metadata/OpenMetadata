@@ -365,7 +365,9 @@ class KafkaConnectClient:
         self._connector_ids = result
         return result
 
-    def _query_dataflow_topics_by_client(self, cluster_id: str) -> dict[str, set[str]]:
+    def _query_dataflow_topics_by_client(
+        self, cluster_id: str, max_pages: int = CONFLUENT_TELEMETRY_MAX_PAGES
+    ) -> dict[str, set[str]]:
         """
         Topics each connector producer wrote to on this cluster, from the telemetry API.
 
@@ -375,6 +377,11 @@ class KafkaConnectClient:
         Only clients named like a connector producer are kept. The query is cluster wide,
         so the response also describes every application producing to the cluster, and
         those can never be attributed to a connector.
+
+        ``max_pages`` exists for the test-connection step, which only needs to know that
+        the API answers. Resolution needs every page, but a reachability check that walked
+        them all would spend a request per page against an endpoint that rate limits by the
+        hour, for an answer the first response already gave.
         """
         now = datetime.now(timezone.utc).replace(microsecond=0)
         start = now - timedelta(hours=CONFLUENT_TELEMETRY_WINDOW_HOURS)
@@ -393,7 +400,7 @@ class KafkaConnectClient:
 
         by_client: dict[str, set[str]] = {}
         page_token = None
-        for _ in range(CONFLUENT_TELEMETRY_MAX_PAGES):
+        for _ in range(max_pages):
             response = requests.post(
                 CONFLUENT_TELEMETRY_URL,
                 json=payload,
@@ -438,11 +445,15 @@ class KafkaConnectClient:
             if not page_token:
                 break
         else:
-            logger.warning(
-                "Stopped reading Confluent telemetry after %s pages for cluster %s, topic resolution may be incomplete",
-                CONFLUENT_TELEMETRY_MAX_PAGES,
-                cluster_id,
-            )
+            # Only when the full budget was asked for. A caller that deliberately reads one
+            # page has not lost anything it wanted, and warning there would report a problem
+            # during a test connection that ran exactly as intended.
+            if max_pages == CONFLUENT_TELEMETRY_MAX_PAGES:
+                logger.warning(
+                    "Stopped reading Confluent telemetry after %s pages for cluster %s, topic resolution may be incomplete",
+                    max_pages,
+                    cluster_id,
+                )
 
         return by_client
 
@@ -647,12 +658,17 @@ class KafkaConnectClient:
 
         Unlike the resolution path this raises, because a test step reports failure by
         raising and the operator is the one who can fix the credentials.
+
+        One page is read rather than all of them. Whether the API answers and accepts the
+        credentials is settled by the first response, while walking the rest would spend a
+        request per page against an endpoint that rate limits by the hour, and would leave
+        an operator waiting on a check that has already learned its answer.
         """
         cluster_id = self._confluent_kafka_cluster_id()
         if not cluster_id or not self._telemetry_auth:
             return True
 
-        self._query_dataflow_topics_by_client(cluster_id)
+        self._query_dataflow_topics_by_client(cluster_id, max_pages=1)
         return True
 
     def get_connector_config(self, connector: str) -> dict | None:

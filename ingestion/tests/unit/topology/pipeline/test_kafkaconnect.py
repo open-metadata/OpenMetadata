@@ -2532,7 +2532,7 @@ class TestConfluentTelemetryTopics:
 
     def test_schema_history_client_is_not_the_connector(self):
         """
-        Confluent's managed schema history topic is named dbhistory.<prefix>.<cluster-id>,
+        Confluent's managed schema history topic is named dbhistory.<prefix>.<connector-id>,
         so its name is not derivable from config and cannot be excluded by name. It is
         produced by a separate client, which is what makes it separable at all.
         """
@@ -2871,3 +2871,43 @@ class TestConfluentTelemetryTopics:
         assert by_client == {"connector-producer-lcc-aaa111-0": {"connector_v1"}}, (
             "only connector producers may be retained from a cluster-wide response"
         )
+
+    def test_reachability_check_reads_one_page_even_when_more_exist(self):
+        """
+        The test-connection step only has to learn whether the API answers and accepts the
+        credentials, which the first response settles. Following the cursor would spend a
+        request per page against an endpoint that rate limits by the hour, and would hold
+        an operator on a check whose answer was already known.
+
+        The first page here returns a cursor, so a caller that paged would issue a second
+        request. Asserting the call count is what distinguishes the two.
+        """
+        client = self._cloud_client()
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page(
+                [{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "a_v1"}],
+                next_token="MORE",
+            ),
+        ) as post:
+            assert client.check_confluent_telemetry() is True
+
+        assert post.call_count == 1, "a reachability check must not walk the cursor"
+
+    def test_reachability_check_reports_failure_by_raising(self):
+        """
+        A test step reports failure by raising, so a rejected credential has to propagate
+        rather than be swallowed the way the resolution path swallows it. The operator is
+        the one who can fix it, and a step that passed regardless would say nothing.
+        """
+        client = self._cloud_client()
+        response = MagicMock()
+        response.raise_for_status = MagicMock(side_effect=Exception("401 Unauthorized"))
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+                return_value=response,
+            ),
+            pytest.raises(Exception, match="401"),
+        ):
+            client.check_confluent_telemetry()
