@@ -469,3 +469,16 @@ defineInlineTest(
   `import { Button } from '@openmetadata/ui-core-components';\nconst App = () => <Button color='secondary' iconLeading={<EditIcon className="x" />} />;`,
   '`icon={<X className=... />}` stays an element so its props survive'
 );
+
+// -- an existing aliased core Button must be reused, not re-imported --
+//
+// `import { Button, Button as CoreButton }` binds the same component twice.
+// It compiles, so nothing catches it until the import line hits a conflict.
+
+defineInlineTest(
+  transform,
+  OPTS,
+  `import { Button as CoreButton } from '@openmetadata/ui-core-components';\nimport { Button } from 'antd';\nconst App = () => <><CoreButton>A</CoreButton><Button type="primary">B</Button></>;`,
+  `import { Button as CoreButton } from '@openmetadata/ui-core-components';\nconst App = () => <><CoreButton>A</CoreButton><CoreButton color='primary'>B</CoreButton></>;`,
+  'reuses an existing aliased core Button instead of importing Button twice'
+);

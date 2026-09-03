@@ -401,7 +401,24 @@ module.exports = function transformer(file, api) {
   }
 
   const fullyConvertedFile = buttonSkips.length === 0;
-  const finalCoreName = fullyConvertedFile ? 'Button' : CORE_LOCAL_ALIAS;
+
+  // The file may already import core's Button under an alias - an earlier hand
+  // migration commonly used `Button as CoreButton`. Binding it a second time
+  // produces `import { Button, Button as CoreButton }`: the same component
+  // under two names, which compiles and so goes unnoticed until a merge
+  // conflict surfaces it. Reuse whatever local name is already in scope.
+  const existingCoreButtonLocal = root
+    .find(j.ImportDeclaration, { source: { value: CORE_MODULE } })
+    .nodes()
+    .flatMap((n) => n.specifiers || [])
+    .filter(
+      (spec) =>
+        spec.type === 'ImportSpecifier' && spec.imported.name === 'Button'
+    )
+    .map((spec) => spec.local.name)[0];
+
+  const finalCoreName =
+    existingCoreButtonLocal ?? (fullyConvertedFile ? 'Button' : CORE_LOCAL_ALIAS);
 
   convertedElements.forEach((node) => {
     node.openingElement.name = j.jsxIdentifier(finalCoreName);
@@ -439,16 +456,7 @@ module.exports = function transformer(file, api) {
       (spec) => !(spec.type === 'ImportSpecifier' && spec.imported.name === 'Button')
     );
 
-    const hasCoreButtonAlready = coreImports
-      .nodes()
-      .some((n) =>
-        n.specifiers.some(
-          (s) =>
-            s.type === 'ImportSpecifier' &&
-            s.imported.name === 'Button' &&
-            s.local.name === 'Button'
-        )
-      );
+    const hasCoreButtonAlready = Boolean(existingCoreButtonLocal);
 
     if (remainingSpecifiers.length) {
       buttonImportPath.node.specifiers = remainingSpecifiers;
