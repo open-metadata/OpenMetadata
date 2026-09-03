@@ -13,19 +13,21 @@
 
 const clickzettaSchema = { title: 'ClickzettaConnection' };
 
-jest.mock(
-  '../jsons/connectionSchemas/connections/database/clickzettaConnection.json',
-  () => clickzettaSchema,
-  { virtual: true }
-);
+jest.mock('./loadConnectionSchema', () => ({
+  loadConnectionSchema: jest.fn(() => Promise.resolve(clickzettaSchema)),
+}));
 
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { getDatabaseConfig } from './DatabaseServicePureUtils';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 describe('DatabaseServicePureUtils', () => {
   it('loads the Clickzetta connection schema', async () => {
     const config = await getDatabaseConfig(DatabaseServiceType.Clickzetta);
 
     expect(config.schema).toEqual(clickzettaSchema);
+    expect(loadConnectionSchema).toHaveBeenCalledWith(
+      'connections/database/clickzettaConnection.json'
+    );
   });
 });
