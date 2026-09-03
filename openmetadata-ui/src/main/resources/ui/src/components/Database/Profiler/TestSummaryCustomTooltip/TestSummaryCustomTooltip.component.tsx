@@ -26,8 +26,8 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getIncidentDetails } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
-  convertSecondsToHumanReadableFormat,
-  formatDateTime,
+    convertSecondsToHumanReadableFormat,
+    formatDateTime
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';

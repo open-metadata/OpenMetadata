@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,8 +21,7 @@ import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { Owner } from '@openmetadata/ui-core-components';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -33,6 +33,7 @@ function GlossaryTermSummary({
   isLoading,
 }: GlossaryTermSummaryProps) {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [selectedData, setSelectedData] = useState<GlossaryTerm>();
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(() => {
@@ -95,9 +96,12 @@ function GlossaryTermSummary({
           </Col>
           <Col span={24}>
             {reviewers.length > 0 ? (
-              <Space wrap size={[8, 8]}>
-                <Owner owners={toOwnerRefs(reviewers)} />
-              </Space>
+              <Owner
+                isCompactView={false}
+                owners={toOwnersWithHref(reviewers)}
+                renderOwnerContent={renderOwnerContent}
+                showLabel={false}
+              />
             ) : (
               <Typography.Text
                 className="no-data-chip-placeholder"

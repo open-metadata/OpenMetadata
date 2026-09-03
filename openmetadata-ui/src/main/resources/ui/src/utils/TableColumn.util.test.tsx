@@ -17,22 +17,24 @@ import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/type/entityReference';
 import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
+    LabelType,
+    State,
+    TagLabel,
+    TagSource
 } from '../generated/type/tagLabel';
 import {
-  dataProductTableObject,
-  descriptionTableObject,
-  domainTableObject,
-  ownerTableObject,
-  tagTableObject,
+    dataProductTableObject,
+    descriptionTableObject,
+    domainTableObject,
+    ownerTableObject,
+    tagTableObject
 } from './TableColumn.util';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockReturnValue(null),
+  Owner: jest.fn(({ owners = [] }) => (
+    <div data-testid="owner-label">{owners.length}</div>
+  )),
 }));
 
 jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
@@ -136,23 +138,26 @@ describe('TableColumn.util', () => {
       const owners: EntityReference[] = [
         { id: '1', type: 'user', name: 'User1' },
       ];
-      const OwnerLabelMock = jest.requireMock(
-        '../components/common/OwnerLabel/OwnerLabel.component'
-      ).OwnerLabel;
+      const OwnerMock = jest.requireMock(
+        '@openmetadata/ui-core-components'
+      ).Owner;
       const renderResult = columns[0].render?.(owners, {} as never, 0);
 
       render(<>{renderResult}</>);
 
       await waitFor(() => {
-        expect(OwnerLabelMock).toHaveBeenCalledWith(
-          {
+        expect(OwnerMock).toHaveBeenCalledWith(
+          expect.objectContaining({
             isCompactView: false,
             maxVisibleOwners: 4,
-            owners,
             showLabel: false,
-          },
-          {}
+          }),
+          expect.anything()
         );
+
+        const callArgs = OwnerMock.mock.calls[OwnerMock.mock.calls.length - 1][0];
+
+        expect(callArgs.owners).toHaveLength(1);
       });
     });
   });

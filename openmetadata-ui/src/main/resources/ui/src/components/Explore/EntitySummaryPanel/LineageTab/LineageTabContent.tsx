@@ -25,11 +25,11 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageNodeUtils';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
@@ -44,6 +44,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
@@ -277,7 +278,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                         avatarSize={16}
                         className="item-owner-label-text"
                         isCompactView={false}
-                        owners={toOwnerRefs(item.entity.owners)}
+                        owners={toOwnersWithHref(item.entity.owners)}
+                        renderOwnerContent={renderOwnerContent}
                         showLabel={false}
                       />
                     ) : (

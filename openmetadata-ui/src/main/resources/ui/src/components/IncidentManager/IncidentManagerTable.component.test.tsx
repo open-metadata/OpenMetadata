@@ -102,6 +102,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }: React.PropsWithChildren) => (
         <button>{children}</button>
       )),
+    Owner: jest.fn(({ owners = [] }: { owners?: unknown[] }) => (
+      <div data-testid="owner-label">{owners.length}</div>
+    )),
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   };
 });
 
@@ -124,10 +129,6 @@ jest.mock('../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
       <div data-testid="filter-table-placeholder">{placeholderText}</div>
     ));
 });
-
-jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 
 jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
   return jest.fn().mockImplementation(() => <div>Severity</div>);

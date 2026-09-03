@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type React from 'react';
+
 /**
  * Color palette with UntitledUI-style shades (25-950)
  * All colors are hex strings (e.g., "#1570EF")
@@ -95,4 +97,6 @@ export interface OwnerRef {
   href?: string;
   /** URL to the user's profile picture, if available. */
   profileUrl?: string;
+  /** Custom avatar icon component — overrides the default placeholder icon. */
+  icon?: React.FC<{ className?: string }>;
 }

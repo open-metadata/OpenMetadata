@@ -113,19 +113,32 @@ jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(({ onUpdate }) => (
-    <button
-      tabIndex={0}
-      onClick={() => onUpdate({})}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          onUpdate({});
-        }
-      }}>
-      OwnerLabel
-    </button>
-  )),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockImplementation(
+    ({
+      selectorContent,
+    }: {
+      selectorContent?: React.ReactElement<{
+        onUpdate?: (owners: unknown[]) => void;
+      }>;
+    }) => {
+      const handleUpdate = selectorContent?.props?.onUpdate;
+
+      return (
+        <button
+          tabIndex={0}
+          onClick={() => handleUpdate?.([])}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              handleUpdate?.([]);
+            }
+          }}>
+          Owner
+        </button>
+      );
+    }
+  ),
 }));
 
 jest.mock('../../utils/DataAssetsHeader.utils', () => ({
@@ -175,7 +188,7 @@ describe('AlertDetailsPage', () => {
 
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('EntityHeaderTitle')).toBeInTheDocument();
-    expect(screen.getByText('OwnerLabel')).toBeInTheDocument();
+    expect(screen.getByText('Owner')).toBeInTheDocument();
     expect(screen.getAllByText('ExtraInfoLabel')).toHaveLength(3);
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
@@ -226,7 +239,7 @@ describe('AlertDetailsPage', () => {
       wrapper: MemoryRouter,
     });
 
-    const ownerLabel = await screen.findByText('OwnerLabel');
+    const ownerLabel = await screen.findByText('Owner');
 
     fireEvent.click(ownerLabel);
 
@@ -242,7 +255,7 @@ describe('AlertDetailsPage', () => {
       wrapper: MemoryRouter,
     });
 
-    const ownerLabel = await screen.findByText('OwnerLabel');
+    const ownerLabel = await screen.findByText('Owner');
 
     fireEvent.click(ownerLabel);
 

@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Typography } from 'antd';
+import { Owner } from '@openmetadata/ui-core-components';
+import { Col, Row, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
-import { Owner } from '@openmetadata/ui-core-components';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -36,6 +36,7 @@ const DataProductSummary = ({
   highlights,
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -79,7 +80,12 @@ const DataProductSummary = ({
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <Owner owners={toOwnerRefs(entityDetails.owners ?? [])} />
+            <Owner
+              isCompactView={false}
+              owners={toOwnersWithHref(entityDetails.owners ?? [])}
+              renderOwnerContent={renderOwnerContent}
+              showLabel={false}
+            />
           </Col>
         </Row>
 
@@ -93,9 +99,12 @@ const DataProductSummary = ({
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Space wrap size={[8, 8]}>
-                <Owner owners={toOwnerRefs(experts)} />
-              </Space>
+              <Owner
+                isCompactView={false}
+                owners={toOwnersWithHref(experts)}
+                renderOwnerContent={renderOwnerContent}
+                showLabel={false}
+              />
             ) : (
               <Typography.Text
                 className="text-grey-body"

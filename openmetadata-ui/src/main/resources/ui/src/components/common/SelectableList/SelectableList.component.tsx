@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Space, Tooltip } from 'antd';
+
+import {
+    Button,
+    CheckboxBase,
+    Tooltip,
+    TooltipTrigger
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
@@ -20,8 +24,8 @@ import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
-  ADD_USER_CONTAINER_HEIGHT,
-  pagingObject,
+    ADD_USER_CONTAINER_HEIGHT,
+    pagingObject
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
@@ -29,7 +33,6 @@ import { useRovingFocus } from '../../../hooks/useRovingFocus';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
-import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
 import { SelectableListProps } from './SelectableList.interface';
 
@@ -50,16 +53,18 @@ const RemoveIcon = ({
           entity: t('label.owner-lowercase'),
         })
       }>
-      <Icon
-        className="align-middle"
-        component={IconRemoveColored}
-        data-testid="remove-owner"
-        style={{ fontSize: '16px' }}
-        onClick={(e) => {
-          e.stopPropagation();
-          removeOwner && removeOwner();
-        }}
-      />
+      <TooltipTrigger>
+        <button
+          className="tw:flex tw:items-center tw:justify-center tw:bg-transparent tw:border-0 tw:p-0 tw:cursor-pointer tw:text-tertiary hover:tw:text-primary"
+          data-testid="remove-owner"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeOwner?.();
+          }}>
+          <IconRemoveColored aria-hidden className="tw:size-4" />
+        </button>
+      </TooltipTrigger>
     </Tooltip>
   );
 };
@@ -101,7 +106,7 @@ export const SelectableList = ({
   const checkActiveSelectedItem = (item: EntityReference) => {
     return (
       selectedItemsInternal.has(item.id) ||
-      selectedItemsInternal.has(item.name ?? '') // Name in case of Bulk Action, since we are using the name as the id
+      selectedItemsInternal.has(item.name ?? '')
     );
   };
 
@@ -173,11 +178,8 @@ export const SelectableList = ({
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     async (e) => {
       if (
-        // If user reachs to end of container fetch more options
         e.currentTarget.scrollHeight - e.currentTarget.scrollTop === height &&
-        // If there are other options available which can be determine form the cursor value
         pagingInfo.after &&
-        // If we have all the options already we don't need to fetch more
         uniqueOptions.length < pagingInfo.total
       ) {
         const { data, paging } = await fetchOptions(
@@ -216,7 +218,6 @@ export const SelectableList = ({
         }
 
         const newSelectedItems = [...newItemsMap.values()];
-        // Call onChange with the new selected items
         onChange?.(newSelectedItems);
 
         return newItemsMap;
@@ -245,42 +246,9 @@ export const SelectableList = ({
   };
 
   return (
-    <List
-      data-testid="selectable-list"
-      dataSource={uniqueOptions}
-      footer={
-        multiSelect && (
-          <div className="d-flex justify-between">
-            <Button
-              className="p-0"
-              color="primary"
-              data-testid="clear-all-button"
-              size="small"
-              type="text"
-              onClick={handleClearAllClick}>
-              {t('label.clear-entity', { entity: t('label.all-lowercase') })}
-            </Button>
-            <Space className="m-l-auto text-right">
-              <Button
-                color="primary"
-                data-testid="cancel-button"
-                size="small"
-                onClick={onCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="selectable-list-update-btn"
-                loading={updating}
-                size="small"
-                type="primary"
-                onClick={handleUpdateClick}>
-                {t('label.update')}
-              </Button>
-            </Space>
-          </div>
-        )
-      }
-      header={
+    <div data-testid="selectable-list">
+      {/* Header — search bar */}
+      <div className="tw:px-3 tw:pt-2 tw:pb-1">
         <Searchbar
           removeMargin
           placeholder={searchPlaceholder ?? t('label.search')}
@@ -288,74 +256,111 @@ export const SelectableList = ({
           typingInterval={500}
           onSearch={handleSearch}
         />
-      }
-      itemLayout="vertical"
-      loading={{
-        spinning: fetching || updating,
-        indicator: <Loader size="small" />,
-      }}
-      locale={{
-        emptyText: emptyPlaceholderText ?? t('message.no-data-available'),
-      }}
-      size="small">
-      {uniqueOptions.length > 0 && (
-        <div ref={containerRef}>
-          <VirtualList
-            className="selectable-list-virtual-list"
-            data={uniqueOptions}
-            height={height}
-            itemHeight={40}
-            itemKey="id"
-            onScroll={onScroll}>
-            {(item, index) => (
-              <List.Item
-                className={classNames(
-                  'selectable-list-item',
-                  'cursor-pointer',
-                  {
-                    active: checkActiveSelectedItem(item),
-                  }
-                )}
-                data-testid="owner-option"
-                extra={
-                  multiSelect ? (
-                    <CheckOutlined
-                      className={classNames('selectable-list-item-checkmark', {
-                        active: checkActiveSelectedItem(item),
-                      })}
-                    />
-                  ) : (
-                    checkActiveSelectedItem(item) && (
-                      <RemoveIcon
-                        removeIconTooltipLabel={removeIconTooltipLabel}
-                        removeOwner={handleRemoveClick}
+      </div>
+
+      {/* List body */}
+      <div className="tw:relative">
+        {(fetching || updating) && (
+          <div className="tw:flex tw:items-center tw:justify-center tw:py-4">
+            <Loader size="small" />
+          </div>
+        )}
+        {!fetching && uniqueOptions.length === 0 && (
+          <div className="tw:px-3 tw:py-4 tw:text-sm tw:text-tertiary">
+            {emptyPlaceholderText ?? t('message.no-data-available')}
+          </div>
+        )}
+        {uniqueOptions.length > 0 && (
+          <div ref={containerRef}>
+            <VirtualList
+              className="selectable-list-virtual-list tw:px-2 tw:pb-2"
+              data={uniqueOptions}
+              height={height}
+              itemHeight={40}
+              itemKey="id"
+              onScroll={onScroll}>
+              {(item, index) => (
+                <button
+                  className={classNames(
+                    'selectable-list-item',
+                    'tw:flex tw:w-full tw:items-center tw:justify-between tw:px-2 tw:py-2 tw:rounded-md tw:cursor-pointer tw:select-none tw:bg-transparent tw:border-0 tw:text-left',
+                    'hover:tw:bg-secondary',
+                    'focus-visible:tw:outline-2 focus-visible:tw:outline-brand-500',
+                    {
+                      'tw:bg-brand-50 active': checkActiveSelectedItem(item),
+                    }
+                  )}
+                  data-testid="owner-option"
+                  key={item.id}
+                  type="button"
+                  {...getItemProps(index)}
+                  title={getEntityName(item)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    selectionHandler(item);
+                  }}>
+                  <div className="tw:flex tw:items-center tw:min-w-0 tw:flex-1">
+                    {customTagRenderer ? (
+                      customTagRenderer(item)
+                    ) : (
+                      <UserTag
+                        avatarType="outlined"
+                        id={item.name ?? ''}
+                        name={getEntityName(item)}
                       />
-                    )
-                  )
-                }
-                key={item.id}
-                {...getItemProps(index)}
-                title={getEntityName(item)}
-                onClick={(e) => {
-                  // Used to stop click propagation event anywhere in the component to parent
-                  // TeamDetailsV1 collapsible panel
-                  e.stopPropagation();
-                  selectionHandler(item);
-                }}>
-                {customTagRenderer ? (
-                  customTagRenderer(item)
-                ) : (
-                  <UserTag
-                    avatarType="solid"
-                    id={item.name ?? ''}
-                    name={getEntityName(item)}
-                  />
-                )}
-              </List.Item>
-            )}
-          </VirtualList>
+                    )}
+                  </div>
+                  <div className="tw:flex tw:items-center tw:shrink-0 tw:ml-2">
+                    {multiSelect ? (
+                      <CheckboxBase
+                        isSelected={checkActiveSelectedItem(item)}
+                        size="sm"
+                      />
+                    ) : (
+                      checkActiveSelectedItem(item) && (
+                        <RemoveIcon
+                          removeIconTooltipLabel={removeIconTooltipLabel}
+                          removeOwner={handleRemoveClick}
+                        />
+                      )
+                    )}
+                  </div>
+                </button>
+              )}
+            </VirtualList>
+          </div>
+        )}
+      </div>
+
+      {/* Footer — multiselect controls */}
+      {multiSelect && (
+        <div className="tw:flex tw:items-center tw:justify-between tw:px-3 tw:py-3 tw:border-t tw:border-primary">
+          <Button
+            color="link-gray"
+            data-testid="clear-all-button"
+            size="sm"
+            onPress={handleClearAllClick}>
+            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
+          </Button>
+          <div className="tw:flex tw:items-center tw:gap-2">
+            <Button
+              color="secondary"
+              data-testid="cancel-button"
+              size="sm"
+              onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="selectable-list-update-btn"
+              isLoading={updating}
+              size="sm"
+              onPress={handleUpdateClick}>
+              {t('label.update')}
+            </Button>
+          </div>
         </div>
       )}
-    </List>
+    </div>
   );
 };

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { Owner } from '@openmetadata/ui-core-components';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -27,22 +27,22 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import type { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
+    getChangedEntityNewValue,
+    getChangedEntityOldValue,
+    getDiffByFieldName
 } from '../../../utils/EntityDiffPureUtils';
 import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
+    getCommonExtraInfoForVersionDetails,
+    getEntityVersionByField,
+    getEntityVersionTags
 } from '../../../utils/EntityVersionUtilsPure';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;

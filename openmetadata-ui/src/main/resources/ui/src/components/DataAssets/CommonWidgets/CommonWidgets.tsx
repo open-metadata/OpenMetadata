@@ -18,8 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
-  DetailPageWidgetKeys,
-  GlossaryTermDetailPageWidgetKeys,
+    DetailPageWidgetKeys,
+    GlossaryTermDetailPageWidgetKeys
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -37,34 +37,34 @@ import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
 import {
-  ChangeDescription,
-  EntityReference,
+    ChangeDescription,
+    EntityReference
 } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
-  getEntityVersionByField,
-  getEntityVersionTags,
+    getEntityVersionByField,
+    getEntityVersionTags
 } from '../../../utils/EntityVersionUtilsPure';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback, {
-  TAB_CONTENT_FALLBACK,
+    TAB_CONTENT_FALLBACK
 } from '../../AppRouter/withSuspenseFallback';
 import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
+    CustomPropertyProps,
+    ExtentionEntitiesKeys
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import {
-  WidgetEditButton,
-  WidgetPlusButton,
+    WidgetEditButton,
+    WidgetPlusButton
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -208,7 +208,8 @@ export const CommonWidgets = ({
     isVersionView,
   } = useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
-
+  const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const updatedData = useMemo(() => {
     const updatedDescription = isVersionView
       ? getEntityVersionByField(
@@ -542,7 +543,12 @@ export const CommonWidgets = ({
         }
         isExpandDisabled={isEmpty(owners)}
         title={t('label.owner-plural')}>
-        <Owner owners={toOwnerRefs(owners ?? [])} />
+        <Owner
+          isCompactView={false}
+          owners={toOwnersWithHref(owners ?? [])}
+          renderOwnerContent={renderOwnerContent}
+          showLabel={false}
+        />
       </WidgetCard>
     );
   }, [
@@ -554,6 +560,8 @@ export const CommonWidgets = ({
     editOwnerPermission,
     entityRules,
     t,
+    toOwnersWithHref,
+    renderOwnerContent,
   ]);
 
   const widget = useMemo(() => {

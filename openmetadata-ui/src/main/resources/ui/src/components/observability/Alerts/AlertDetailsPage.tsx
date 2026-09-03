@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Owner, Tabs } from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -24,7 +24,8 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -221,10 +222,16 @@ const AlertDetailsPage = () => {
         className="tw:mt-1.5 tw:flex-wrap tw:text-secondary"
         gap={3}>
         {ownerLoading ? null : (
-          <OwnerLabel
+          <Owner
             hasPermission={editOwnersPermission}
-            owners={alertDetails?.owners}
-            onUpdate={onOwnerUpdate}
+            owners={toOwnerRefs(alertDetails?.owners ?? [])}
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(editOwnersPermission)}
+                owner={alertDetails?.owners}
+                onUpdate={onOwnerUpdate}
+              />
+            }
           />
         )}
         {extraInfo}

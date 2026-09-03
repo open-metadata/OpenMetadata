@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Drawer, Row, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -21,13 +22,12 @@ import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
-import { Owner } from '@openmetadata/ui-core-components';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -40,6 +40,7 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
@@ -117,7 +118,8 @@ const TableQueryRightPanel = ({
               <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={toOwnerRefs(query.owners)}
+                owners={toOwnersWithHref(query.owners)}
+                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </ExpandableCard>

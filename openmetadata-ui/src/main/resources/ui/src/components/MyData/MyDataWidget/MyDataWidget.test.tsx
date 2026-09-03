@@ -13,8 +13,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';

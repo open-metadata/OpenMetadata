@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Button,
-  ButtonGroup,
-  ButtonGroupItem,
-  Card,
-  Dropdown,
-  Owner,
+    Badge,
+    Button,
+    ButtonGroup,
+    ButtonGroupItem,
+    Card,
+    Dropdown,
+    Owner
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -32,15 +32,15 @@ import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
-  FULLSCREEN_QUERY_PARAM_KEY,
-  NO_DATA,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    FULLSCREEN_QUERY_PARAM_KEY,
+    NO_DATA,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../constants/constants';
 import {
-  IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
-  IMPACT_ANALYSIS_STATIC_COLUMNS,
+    IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
+    IMPACT_ANALYSIS_STATIC_COLUMNS
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
@@ -56,8 +56,8 @@ import { useLineageStore } from '../../hooks/useLineageStore';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
-  getLineageByEntityCount,
-  getLineageDataByFQN,
+    getLineageByEntityCount,
+    getLineageDataByFQN
 } from '../../rest/lineageAPI';
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
@@ -67,11 +67,12 @@ import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
-  getSearchNameEsQuery,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
+    getSearchNameEsQuery,
+    prepareDownstreamColumnLevelNodesFromDownstreamEdges,
+    prepareUpstreamColumnLevelNodesFromUpstreamEdges
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import searchClassBase from '../../utils/SearchClassBase';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -80,20 +81,19 @@ import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
-import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import {
-  EdgeFromToData,
-  LineageNode,
-  LineageNodeType,
+    EdgeFromToData,
+    LineageNode,
+    LineageNodeType
 } from '../Lineage/Lineage.interface';
 import {
-  SearchedDataProps,
-  SourceType,
+    SearchedDataProps,
+    SourceType
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
@@ -115,6 +115,7 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -739,7 +740,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <Owner isCompactView={false} owners={toOwnerRefs(owners)} showLabel={false} />
+          <Owner isCompactView={false} owners={toOwnersWithHref(owners)} renderOwnerContent={renderOwnerContent} showLabel={false} />
         ),
       },
       {

@@ -13,8 +13,10 @@
 import type { ReactNode } from 'react';
 import type { AvatarSize, OwnerRef } from '../../../types';
 
-/** Callback that wraps a rendered avatar chip for a single owner. */
-export type RenderOwnerContent = (owner: OwnerRef, chip: ReactNode) => ReactNode;
+export type RenderOwnerContent = (
+  owner: OwnerRef,
+  chip: ReactNode
+) => ReactNode;
 
 export interface OwnerChipProps {
   owner: OwnerRef;
@@ -29,6 +31,7 @@ export interface OwnerAvatarStackProps {
   avatarSize?: AvatarSize;
   maxVisibleOwners?: number;
   ownerDisplayName?: Map<string, ReactNode>;
+  renderOwnerContent?: RenderOwnerContent;
   placement?: 'vertical' | 'horizontal';
   className?: string;
 }
@@ -48,6 +51,7 @@ export interface OwnerProps {
   placement?: 'vertical' | 'horizontal';
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
+  renderOwnerContent?: RenderOwnerContent;
   className?: string;
   ownerLabelClassName?: string;
   /** When true and hasPermission is true, shows an edit button for assignee flow. */

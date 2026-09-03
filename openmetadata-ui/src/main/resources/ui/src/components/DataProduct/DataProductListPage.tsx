@@ -12,26 +12,26 @@
  */
 
 import {
-  Avatar,
-  Box,
-  Card,
-  EmptyPlaceholder,
-  Input,
-  Owner,
-  PaginationCardDefault,
-  Typography,
+    Avatar,
+    Box,
+    Card,
+    EmptyPlaceholder,
+    Input,
+    Owner,
+    PaginationCardDefault,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
-  FC,
-  MouseEvent,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
+    FC,
+    MouseEvent,
+    ReactNode,
+    useCallback,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -41,18 +41,18 @@ import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import {
-  getClassificationTags,
-  getGlossaryTags,
+    getClassificationTags,
+    getGlossaryTags
 } from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
-  CLIPPED_NAME_CLASS,
-  COMPACT_CELL_CLIP_CLASS,
-  NAME_CELL_CLIP_CLASS,
+    CLIPPED_NAME_CLASS,
+    COMPACT_CELL_CLIP_CLASS,
+    NAME_CELL_CLIP_CLASS
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -76,6 +76,7 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -214,7 +215,8 @@ const DataProductListPage = ({
             <Owner
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={toOwnerRefs(entity.owners ?? [])}
+              owners={toOwnersWithHref(entity.owners ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );
@@ -256,7 +258,8 @@ const DataProductListPage = ({
             <Owner
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={toOwnerRefs(entity.experts ?? [])}
+              owners={toOwnersWithHref(entity.experts ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );

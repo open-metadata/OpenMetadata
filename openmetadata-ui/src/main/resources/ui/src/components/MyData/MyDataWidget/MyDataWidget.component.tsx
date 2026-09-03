@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -19,16 +20,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/widget/my-data.svg';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_MEDIUM,
+    ROUTES
 } from '../../../constants/constants';
 import {
-  applySortToData,
-  getSortField,
-  getSortOrder,
-  MY_DATA_WIDGET_FILTER_OPTIONS,
+    applySortToData,
+    getSortField,
+    getSortOrder,
+    MY_DATA_WIDGET_FILTER_OPTIONS
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -36,18 +37,17 @@ import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  WidgetCommonProps,
-  WidgetConfig,
+    WidgetCommonProps,
+    WidgetConfig
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { Owner } from '@openmetadata/ui-core-components';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
@@ -65,6 +65,7 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -110,7 +111,8 @@ const MyDataWidgetInternal = ({
         value: (
           <Owner
             isCompactView={false}
-            owners={toOwnerRefs((item.owners as EntityReference[]) ?? [])}
+            owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
+            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ),

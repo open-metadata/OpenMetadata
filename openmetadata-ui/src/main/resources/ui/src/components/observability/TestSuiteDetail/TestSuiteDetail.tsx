@@ -17,6 +17,7 @@ import {
   DialogTrigger,
   Modal,
   ModalOverlay,
+  Owner,
   Tabs,
   Tooltip,
   Typography,
@@ -43,7 +44,8 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -63,6 +65,7 @@ const breakableTooltipText = (text?: string) => (
  */
 const TestSuiteDetail = () => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const {
     testSuite,
@@ -381,19 +384,26 @@ const TestSuiteDetail = () => {
                 onUpdate={handleDomainUpdate}
               />
               <HeaderDotSeparator />
-              <OwnerLabel
+              <Owner
                 showDashPlaceholder
                 avatarSize={24}
                 className="header-owner-heading"
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}
-                multiple={{
-                  user: canAddMultipleUserOwners,
-                  team: canAddMultipleTeamOwner,
-                }}
-                owners={testOwners}
-                onUpdate={onUpdateOwner}
+                owners={toOwnersWithHref(testOwners ?? [])}
+                renderOwnerContent={renderOwnerContent}
+                selectorContent={
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                    multiple={{
+                      user: canAddMultipleUserOwners,
+                      team: canAddMultipleTeamOwner,
+                    }}
+                    owner={testOwners}
+                    onUpdate={onUpdateOwner}
+                  />
+                }
               />
             </div>
           </Box>

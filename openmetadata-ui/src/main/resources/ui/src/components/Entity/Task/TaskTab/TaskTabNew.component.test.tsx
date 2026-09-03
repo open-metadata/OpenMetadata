@@ -16,12 +16,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import {
-  Task,
-  TaskCategory,
-  TaskEntityStatus,
-  TaskEntityType,
-  TaskPriority,
-  TaskResolutionType,
+    Task,
+    TaskCategory,
+    TaskEntityStatus,
+    TaskEntityType,
+    TaskPriority,
+    TaskResolutionType
 } from '../../../../rest/tasksAPI';
 import { TaskTabNew } from './TaskTabNew.component';
 

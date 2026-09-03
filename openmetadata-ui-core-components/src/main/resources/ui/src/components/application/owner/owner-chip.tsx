@@ -10,11 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Users01, User01 } from '@untitledui/icons';
+import { User01 } from '@untitledui/icons';
+import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
 import { Avatar } from '../../base/avatar/avatar';
 import type { AvatarProps } from '../../base/avatar/avatar';
 import type { OwnerChipProps } from './owner.types';
+
+/** Hash a display name to a stable hue in [0, 360). */
+const nameToHue = (name: string): number => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return Math.abs(hash) % 360;
+};
 
 const avatarSizeMap: Record<number, AvatarProps['size']> = {
   16: 'xxs',
@@ -42,19 +53,33 @@ export const OwnerChip = ({
     owner.name ??
     owner.id;
   const isTeam = owner.type === 'team';
-  const PlaceholderIcon = isTeam ? Users01 : User01;
+  const PlaceholderIcon = owner.icon ?? (isTeam ? TeamsIcon : User01);
+  const nameStr =
+    typeof displayName === 'string' ? displayName : (owner.name ?? '');
+  const hue = nameToHue(nameStr);
+  const avatarStyle = isTeam
+    ? {
+        backgroundColor: 'var(--tw-color-utility-gray-200)',
+      }
+    : {
+        backgroundColor: `hsl(${hue}, 100%, 92%)`,
+        color: `hsl(${hue}, 70%, 40%)`,
+      };
 
   const avatar = (
     <Avatar
       alt={typeof displayName === 'string' ? displayName : owner.name}
+      className={isTeam ? 'tw:opacity-60' : undefined}
+      contrastBorder={!isTeam}
       initials={
-        typeof displayName === 'string'
-          ? displayName.slice(0, 2).toUpperCase()
+        typeof displayName === 'string' && !isTeam
+          ? displayName.slice(0, 1).toUpperCase()
           : undefined
       }
       placeholderIcon={PlaceholderIcon}
       size={resolvedSize}
       src={owner.profileUrl}
+      style={avatarStyle}
     />
   );
 
@@ -68,14 +93,12 @@ export const OwnerChip = ({
         {avatar}
         {owner.href ? (
           <a
-            className="tw:truncate tw:text-sm tw:font-medium tw:text-primary hover:tw:underline"
-            href={owner.href}
-            rel="noreferrer"
-            target="_blank">
+            className="tw:truncate tw:text-sm tw:text-primary hover:tw:underline"
+            href={owner.href}>
             {displayName}
           </a>
         ) : (
-          <span className="tw:truncate tw:text-sm tw:font-medium tw:text-primary">
+          <span className="tw:truncate tw:text-sm tw:text-primary">
             {displayName}
           </span>
         )}

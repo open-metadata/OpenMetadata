@@ -41,24 +41,28 @@ export const OwnerOverflowPopoverContent = ({
 
   const renderGroup = (label: string, group: OwnerRef[]) =>
     group.length > 0 && (
-      <div className="tw:flex tw:flex-col tw:gap-2">
-        <span className="tw:text-xs tw:font-medium tw:text-quaternary">
+      <div className="tw:flex tw:flex-col tw:gap-1">
+        <span className="tw:px-2 tw:pb-1 tw:text-xs tw:font-medium tw:text-quaternary">
           {label} ({group.length})
         </span>
         {group.map((owner) => (
-          <OwnerChip
-            avatarSize={avatarSize}
-            isCompactView={false}
-            key={owner.id}
-            owner={owner}
-            ownerDisplayName={ownerDisplayName}
-          />
+          <div
+            className="tw:rounded-md tw:transition-colors hover:tw:bg-secondary"
+            key={owner.id}>
+            <OwnerChip
+              avatarSize={avatarSize}
+              className="tw:w-full tw:px-2 tw:py-1.5"
+              isCompactView={false}
+              owner={owner}
+              ownerDisplayName={ownerDisplayName}
+            />
+          </div>
         ))}
       </div>
     );
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-3 tw:p-1 tw:min-w-56 tw:max-w-72">
+    <div className="tw:flex tw:flex-col tw:gap-3 tw:p-4 tw:min-w-56 tw:max-w-72">
       <span className="tw:text-sm tw:font-medium tw:text-primary">
         {owners.length} {overflowTitleLabel}
       </span>

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  EmptyPlaceholder,
-  EmptyPlaceholderAction,
-  Owner,
-  Skeleton,
-  Table,
+    Box,
+    EmptyPlaceholder,
+    EmptyPlaceholderAction,
+    Owner,
+    Skeleton,
+    Table
 } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
@@ -29,15 +29,15 @@ import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
 import {
-  DataQualityPageTabs,
-  DataQualitySubTabs,
+    DataQualityPageTabs,
+    DataQualitySubTabs
 } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
@@ -88,6 +88,7 @@ export const TestSuitesTable = ({
   emptyStateAction,
 }: TestSuitesTableProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const renderNameCell = (record: TestSuite) => {
     if (record.basic) {
@@ -162,7 +163,8 @@ export const TestSuitesTable = ({
         <Owner
           isCompactView={false}
           maxVisibleOwners={4}
-          owners={toOwnerRefs(record.owners)}
+          owners={toOwnersWithHref(record.owners)}
+          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       </Table.Cell>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import type { RenderOwnerContent } from '@openmetadata/ui-core-components';
-import { OwnerType } from '../../enums/user.enum';
 import UserPopOverCard from '../../components/common/PopOverCard/UserPopOverCard';
+import { OwnerType } from '../../enums/user.enum';
 
 /**
  * Wraps an Owner/OwnerAvatarStack chip with the app's rich, REST-backed

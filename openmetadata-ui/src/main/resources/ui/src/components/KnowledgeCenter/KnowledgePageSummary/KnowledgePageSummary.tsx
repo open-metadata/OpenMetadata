@@ -17,9 +17,9 @@ import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityUnion } from '../../../components/Explore/ExplorePage.interface';
 import {
-  KnowledgePage,
-  PageType,
-  QuickLink,
+    KnowledgePage,
+    PageType,
+    QuickLink
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';

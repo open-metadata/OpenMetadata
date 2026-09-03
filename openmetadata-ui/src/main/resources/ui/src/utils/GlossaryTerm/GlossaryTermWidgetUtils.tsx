@@ -16,17 +16,17 @@ import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import {
-  WidgetEditButton,
-  WidgetPlusButton,
+    WidgetEditButton,
+    WidgetPlusButton
 } from '../../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../components/common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { toOwnerRefs } from '../Owner/ownerConversionUtils';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 
 const CommonWidgets = withSuspenseFallback(
   lazy(() =>
@@ -98,6 +98,7 @@ const GlossaryTermOwnerWidget = () => {
   const { data, onUpdate, permissions, isVersionView, entityRules } =
     useGenericContext<{ owners?: EntityReference[]; id: string }>();
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const hasPermission = permissions?.EditOwners || permissions?.EditAll;
 
@@ -139,7 +140,12 @@ const GlossaryTermOwnerWidget = () => {
       }
       isExpandDisabled={isEmpty(data.owners)}
       title={t('label.owner-plural')}>
-      <Owner owners={toOwnerRefs(data.owners ?? [])} />
+      <Owner
+        isCompactView={false}
+        owners={toOwnersWithHref(data.owners ?? [])}
+        renderOwnerContent={renderOwnerContent}
+        showLabel={false}
+      />
     </WidgetCard>
   );
 };

@@ -18,15 +18,15 @@ import { useTranslation } from 'react-i18next';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import {
-  WidgetEditButton,
-  WidgetPlusButton,
+    WidgetEditButton,
+    WidgetPlusButton
 } from '../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../components/Customization/GenericProvider/GenericContext';
 import { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { toOwnerRefs } from './Owner/ownerConversionUtils';
+import { useOwnerDisplayProps } from '../hooks/useOwnerDisplayProps';
 
 const CommonWidgets = lazy(() =>
   import('../components/DataAssets/CommonWidgets/CommonWidgets').then((m) => ({
@@ -64,6 +64,7 @@ const OwnerWidgetFromContext = ({
   const { data, onUpdate, permissions, isVersionView, entityRules } =
     useGenericContext<{ owners?: EntityReference[]; id: string }>();
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const hasPermission =
     permissionProp ?? (permissions?.EditOwners || permissions?.EditAll);
@@ -108,7 +109,12 @@ const OwnerWidgetFromContext = ({
       }
       isExpandDisabled={isEmpty(data.owners)}
       title={t('label.owner-plural')}>
-      <Owner owners={toOwnerRefs(data.owners ?? [])} />
+      <Owner
+        isCompactView={false}
+        owners={toOwnersWithHref(data.owners ?? [])}
+        renderOwnerContent={renderOwnerContent}
+        showLabel={false}
+      />
     </WidgetCard>
   );
 };

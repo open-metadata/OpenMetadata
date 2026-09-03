@@ -12,14 +12,14 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
-import { ComponentProps } from 'react';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
-import { useMemo } from 'react';
+import { ComponentProps, useMemo } from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import Loader from '../Loader/Loader';
@@ -110,6 +110,20 @@ const ProfilePicture = ({
       {character}
     </span>
   );
+
+  if (isTeam) {
+    return (
+      <Avatar
+        className={className}
+        contrastBorder={false}
+        data-testid="profile-avatar"
+        placeholderIcon={IconTeams}
+        size={avatarSize}
+        src={profileURL || undefined}
+        style={{ backgroundColor: 'transparent' }}
+      />
+    );
+  }
 
   return (
     <Avatar

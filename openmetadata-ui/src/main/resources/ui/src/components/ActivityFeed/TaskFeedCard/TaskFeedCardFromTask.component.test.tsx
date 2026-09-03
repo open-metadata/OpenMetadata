@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  resolveTask,
-  Task,
-  TaskCategory,
-  TaskEntityStatus,
-  TaskEntityType,
-  TaskPriority,
-  TaskResolutionType,
+    resolveTask,
+    Task,
+    TaskCategory,
+    TaskEntityStatus,
+    TaskEntityType,
+    TaskPriority,
+    TaskResolutionType
 } from '../../../rest/tasksAPI';
 import EntityLink from '../../../utils/EntityLink';
 import {
-  isDescriptionTaskType,
-  isRecognizerFeedbackTask,
-  isTagsTaskType,
+    isDescriptionTaskType,
+    isRecognizerFeedbackTask,
+    isTagsTaskType
 } from '../../../utils/TaskActionUtils';
 import TaskFeedCardFromTask from './TaskFeedCardFromTask.component';
 

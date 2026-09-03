@@ -12,16 +12,16 @@
  */
 
 import {
-  Box,
-  Button,
-  Dialog,
-  DialogTrigger,
-  Input,
-  Modal,
-  ModalOverlay,
-  Owner,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    Dialog,
+    DialogTrigger,
+    Input,
+    Modal,
+    ModalOverlay,
+    Owner,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
@@ -37,9 +37,8 @@ import ManageButton from '../../components/common/EntityPageInfos/ManageButton/M
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
-import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -53,6 +52,7 @@ import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.int
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
 import './test-suite-details-page.less';
 

@@ -12,19 +12,19 @@
  */
 
 import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Dot,
-  Dropdown,
-  Owner,
-  Skeleton,
-  Tabs,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Badge,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Dot,
+    Dropdown,
+    Owner,
+    Skeleton,
+    Tabs,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -63,8 +63,8 @@ import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  ContentChangeState,
-  RecentlyViewedQuickLinks,
+    ContentChangeState,
+    RecentlyViewedQuickLinks
 } from '../../../interface/knowledge-center.interface';
 import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
@@ -73,8 +73,8 @@ import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
@@ -101,6 +101,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
@@ -397,7 +398,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <Owner
               hasPermission={false}
               isCompactView={false}
-              owners={toOwnerRefs(owners)}
+              owners={toOwnersWithHref(owners)}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           </div>
@@ -448,7 +450,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={toOwnerRefs(editors)}
+                owners={toOwnersWithHref(editors)}
+                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </div>

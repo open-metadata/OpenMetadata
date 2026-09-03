@@ -13,8 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  KnowledgePage,
-  PageType,
+    KnowledgePage,
+    PageType
 } from '../../../interface/knowledge-center.interface';
 import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';

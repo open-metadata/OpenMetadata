@@ -19,9 +19,9 @@ import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { AVATAR_RENDER_SIZE_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import { AVATAR_RENDER_SIZE_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import { OwnerAvatarStackProps } from './OwnerAvatarStack.interface';
 import { OwnerStackOverflow } from './OwnerStackOverflow.component';
 

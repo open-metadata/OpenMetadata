@@ -12,14 +12,14 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
-  EntityReference,
-  TestCase,
-  TestCaseStatus,
+    EntityReference,
+    TestCase,
+    TestCaseStatus
 } from '../../../../generated/tests/testCase';
 import {
-  Severities,
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
+    Severities,
+    TestCaseResolutionStatus,
+    TestCaseResolutionStatusTypes
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityTest } from '../../../common/DataQualitySection/DataQualitySection.interface';
 import DataQualityTab from './DataQualityTab';

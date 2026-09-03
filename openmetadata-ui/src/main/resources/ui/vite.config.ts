@@ -259,6 +259,12 @@ export default defineConfig(async ({ mode }) => {
         '@react-types/shared',
         'tailwind-merge',
         'react-hook-form',
+        // i18next must share a single instance so initCoreI18n (called from
+        // index.tsx on the app's i18next) registers the `core` namespace that
+        // useCoreTranslation (in @openmetadata/ui-core-components) can read.
+        // Without dedup, the linked package resolves its own node_modules copy.
+        'i18next',
+        'react-i18next',
       ],
     },
 

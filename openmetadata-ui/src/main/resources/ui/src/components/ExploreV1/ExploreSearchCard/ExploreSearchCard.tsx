@@ -16,23 +16,25 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
-import { forwardRef, useCallback, useMemo } from 'react';
+import { forwardRef, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import {
-  EntityStatus,
-  GlossaryTerm,
+    EntityStatus,
+    GlossaryTerm
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import {
-  SearchExplanation,
-  TableColumnSearchSource,
+    SearchExplanation,
+    TableColumnSearchSource
 } from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
@@ -40,14 +42,16 @@ import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -363,6 +367,27 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
+    const toOwnersWithHref = useCallback(
+      (refs: EntityReference[]) =>
+        toOwnerRefs(refs).map((o) => ({
+          ...o,
+          href: getOwnerPath({ id: o.id, name: o.name, type: o.type } as EntityReference),
+          icon: o.type === 'team' ? IconTeams : undefined,
+        })),
+      []
+    );
+
+    const renderOwnerContent = useCallback(
+      (owner: { name?: string; type?: string }, chip: ReactNode) => (
+        <UserPopOverCard
+          type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+          userName={owner.name ?? ''}>
+          {chip}
+        </UserPopOverCard>
+      ),
+      []
+    );
+
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
         const columnSource = source as TableColumnSearchSource;
@@ -388,10 +413,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         columnDetails.push({
           key: 'Owner',
           value: (
-            <OwnerLabel
+            <Owner
               avatarSize={24}
               isCompactView={false}
-              owners={toOwnerRefs(columnSource?.owners ?? [])}
+              owners={toOwnersWithHref(columnSource?.owners ?? [])}
+              placeHolder={t('label.no-entity', {
+                entity: t('label.owner-plural'),
+              })}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           ),
@@ -435,10 +464,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel
+            <Owner
               avatarSize={24}
               isCompactView={false}
-              owners={toOwnerRefs((source?.owners as EntityReference[]) ?? [])}
+              owners={toOwnersWithHref((source?.owners as EntityReference[]) ?? [])}
+              placeHolder={t('label.no-entity', {
+                entity: t('label.owner-plural'),
+              })}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           ),

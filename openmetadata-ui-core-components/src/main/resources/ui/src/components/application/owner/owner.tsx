@@ -35,6 +35,7 @@ export const Owner = ({
   placeHolder,
   placement,
   ownerDisplayName,
+  renderOwnerContent,
   className,
   ownerLabelClassName,
   isAssignee = false,
@@ -46,6 +47,34 @@ export const Owner = ({
   const { t } = useCoreTranslation();
 
   if (owners.length === 0) {
+    // Non-compact: always render the full column layout so the label + edit button are visible
+    if (!isCompactView) {
+      const hasLabelRow = showLabel || Boolean(selectorContent);
+
+      return (
+        <div
+          className={cx(
+            'tw:flex tw:flex-col tw:items-start tw:gap-0',
+            className
+          )}
+          data-testid={dataTestId}>
+          {hasLabelRow && (
+            <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
+              {showLabel && (
+                <span className="tw:text-sm tw:font-medium tw:text-secondary">
+                  {placeHolder ?? t('label.owners')}
+                </span>
+              )}
+              {selectorContent}
+            </div>
+          )}
+          <span className="tw:text-quaternary tw:text-xs">
+            {showDashPlaceholder ? '--' : (placeHolder ?? t('label.no-owners'))}
+          </span>
+        </div>
+      );
+    }
+
     if (hasPermission && selectorContent) {
       return (
         <div
@@ -70,7 +99,7 @@ export const Owner = ({
       <div
         className={cx('tw:flex tw:items-center tw:gap-1', className)}
         data-testid={dataTestId}>
-        <span className="tw:text-tertiary tw:text-sm">
+        <span className="tw:text-quaternary tw:text-xs">
           {placeHolder ?? t('label.no-owners')}
         </span>
       </div>
@@ -89,7 +118,7 @@ export const Owner = ({
         {(showLabel || selectorContent) && (
           <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
             {showLabel && (
-              <span className="tw:text-sm tw:font-medium tw:text-brand-700">
+              <span className="tw:text-sm tw:font-medium tw:text-secondary">
                 {placeHolder ?? t('label.owners')}
               </span>
             )}
@@ -104,6 +133,7 @@ export const Owner = ({
             ownerDisplayName={ownerDisplayName}
             owners={owners}
             placement={placement}
+            renderOwnerContent={renderOwnerContent}
           />
           {isAssignee && hasPermission && onEditClick && (
             <button

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Row, Space, Steps, Typography } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import { ReactNode, useMemo } from 'react';
@@ -21,9 +22,8 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { Task } from '../../../../rest/tasksAPI';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { Owner } from '@openmetadata/ui-core-components';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
+import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';

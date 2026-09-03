@@ -33,8 +33,8 @@ export const getAvatarColorTokens = (
   const hue = Math.abs(hash % 360);
 
   return {
-    background: `hsl(${hue}, 100%, 89%)`,
+    background: `hsl(${hue}, 100%, 92%)`,
     textColor: `hsl(${hue}, 70%, 40%)`,
-    border: `hsl(${hue}, 70%, 75%)`,
+    border: `hsl(${hue}, 70%, 80%)`,
   };
 };

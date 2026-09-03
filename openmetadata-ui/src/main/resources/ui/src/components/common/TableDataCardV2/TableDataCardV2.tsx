@@ -26,12 +26,12 @@ import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {

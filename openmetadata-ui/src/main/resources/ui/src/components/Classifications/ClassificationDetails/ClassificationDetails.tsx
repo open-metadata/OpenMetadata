@@ -18,13 +18,13 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
+    forwardRef,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -50,17 +50,17 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import {
-  getClassificationExtraDropdownContent,
-  getTagsTableColumn,
+    getClassificationExtraDropdownContent,
+    getTagsTableColumn
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-  getClassificationDetailsPath,
-  getClassificationVersionsPath,
+    getClassificationDetailsPath,
+    getClassificationVersionsPath
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -73,10 +73,10 @@ import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/Mana
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
-import UserTeamSelectableList from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-  WidgetEditButton,
-  WidgetPlusButton,
+    WidgetEditButton,
+    WidgetPlusButton
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';

@@ -12,23 +12,23 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { Owner } from '@openmetadata/ui-core-components';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { AlertDetailsContentProps } from '../AlertDetailsPage.interface';
 
 function AlertDetailsContent({

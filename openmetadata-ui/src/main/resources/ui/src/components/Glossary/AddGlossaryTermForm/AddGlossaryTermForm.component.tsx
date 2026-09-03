@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
@@ -22,26 +23,25 @@ import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  CustomProperty,
-  EntityReference,
+    CustomProperty,
+    EntityReference
 } from '../../../generated/entity/type';
 import {
-  FieldKind,
-  IntakeForm,
-  IntakeFormField,
-  TargetEntityType,
+    FieldKind,
+    IntakeForm,
+    IntakeFormField,
+    TargetEntityType
 } from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-  HelperTextType,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout,
+    HelperTextType
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
-import { Owner } from '@openmetadata/ui-core-components';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
@@ -50,7 +50,7 @@ import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 import GlossaryTermIntakeFields, {
-  GlossaryTermIntakeFieldsHandle,
+    GlossaryTermIntakeFieldsHandle
 } from './GlossaryTermIntakeFields.component';
 
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
