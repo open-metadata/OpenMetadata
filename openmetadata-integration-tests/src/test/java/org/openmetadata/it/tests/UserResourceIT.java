@@ -78,6 +78,9 @@ import org.openmetadata.sdk.network.RequestOptions;
 @Execution(ExecutionMode.CONCURRENT)
 public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
+  private static final String DIRECT_USER_ASSIGNMENT_ERROR =
+      "Team is of type Department. Direct users can only be assigned to teams of type Group.";
+
   {
     // User CSV export/import is done through the Team endpoint, not User endpoint
     // The actual export is /v1/teams/name/{teamName}/export which exports users in that team
@@ -373,7 +376,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .getHttpClient()
                     .execute(HttpMethod.PUT, "/v1/users", create, User.class));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
     assertThrows(Exception.class, () -> SdkClients.adminClient().users().getByName(name));
   }
 
