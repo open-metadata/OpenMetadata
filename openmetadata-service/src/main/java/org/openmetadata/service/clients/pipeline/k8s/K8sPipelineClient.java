@@ -1259,12 +1259,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
   @VisibleForTesting
   String selectContainerName(JsonNode pod) {
     JsonNode spec = pod.get("spec");
-    JsonNode containers = spec.get("containers");
-
     if (spec == null || containers == null) {
       return CONTAINER_INGESTION;
     }
-
+    
+    JsonNode containers = spec.get("containers");
+    if (spec == null || containers == null) {
+          return CONTAINER_INGESTION;
+    }
+    
     for (JsonNode container : containers) {
       if (CONTAINER_MAIN.equals(container.path("name").asText())) {
         return CONTAINER_MAIN;
