@@ -15,6 +15,9 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Column } from 'react-data-grid';
 
+const ARIA_ROWINDEX_ATTR = 'aria-rowindex';
+const ARIA_COLINDEX_ATTR = 'aria-colindex';
+
 export type Range = {
   startRow: number;
   startCol: number;
@@ -316,8 +319,8 @@ export function useGridEditController({
       if (!(target instanceof HTMLElement)) {
         return null;
       }
-      const rowAttr = target.parentElement?.getAttribute('aria-rowindex');
-      const colAttr = target.getAttribute('aria-colindex');
+      const rowAttr = target.parentElement?.getAttribute(ARIA_ROWINDEX_ATTR);
+      const colAttr = target.getAttribute(ARIA_COLINDEX_ATTR);
       if (rowAttr !== null && colAttr !== null) {
         // Convert ARIA indices to zero-based: row = aria-rowindex - 2, col = aria-colindex - 1
         return {
@@ -530,7 +533,7 @@ export function useGridEditController({
 
           if (isInColumnHeader) {
             // Handle whole column deletion
-            const colAttr = target.getAttribute('aria-colindex');
+            const colAttr = target.getAttribute(ARIA_COLINDEX_ATTR);
             if (colAttr) {
               const colIndex = parseInt(colAttr, 10) - 1;
               const column = columns[colIndex];
@@ -547,7 +550,7 @@ export function useGridEditController({
             }
           } else if (isInRowHeader) {
             // Handle whole row deletion
-            const rowAttr = target.getAttribute('aria-rowindex');
+            const rowAttr = target.getAttribute(ARIA_ROWINDEX_ATTR);
             if (rowAttr) {
               const rowIndex = parseInt(rowAttr, 10) - 2; // -2 for header row offset
 
@@ -740,8 +743,8 @@ export function useGridEditController({
         target.classList.contains('rdg-cell') &&
         target.parentElement?.getAttribute('role') === 'row'
       ) {
-        const rowAttr = target.parentElement?.getAttribute('aria-rowindex');
-        const colAttr = target.getAttribute('aria-colindex');
+        const rowAttr = target.parentElement?.getAttribute(ARIA_ROWINDEX_ATTR);
+        const colAttr = target.getAttribute(ARIA_COLINDEX_ATTR);
         if (rowAttr && colAttr) {
           const row = parseInt(rowAttr, 10) - 2;
           const col = parseInt(colAttr, 10) - 1;

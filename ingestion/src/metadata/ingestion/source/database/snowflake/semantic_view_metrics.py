@@ -14,14 +14,12 @@ Builders that turn Snowflake semantic-view catalog rows into OpenMetadata
 
 A Snowflake semantic view's METRICS are aggregations (``SUM(...)``, ``COUNT(...)``)
 over the view's FACTS/DIMENSIONS. Each becomes a first-class OpenMetadata ``Metric``
-carrying its expression, inferred type, and the view's dimensions/facts. The
-semantic-view lineage stage links the view to the metric after both entities exist.
-Metric names are fully qualified because the ``Metric`` namespace is global
-(FQN == name).
+carrying its expression, inferred type, the view's dimensions/facts, and an
+``assets`` link back to the semantic-view table. Metric names are fully qualified
+because the ``Metric`` namespace is global (FQN == name).
 """
 
 import hashlib
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import (
@@ -33,6 +31,8 @@ from metadata.generated.schema.entity.data.metric import (
     Type,
 )
 from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
@@ -118,7 +118,7 @@ def build_metric_name(service: str, database: str, schema: str, view: str, table
     return f"{_service_prefix(service)}-{digest}"
 
 
-def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
+def infer_metric_type(expression: str | None) -> MetricType:
     """Infer the MetricType from the aggregation head of the expression."""
     result = MetricType.OTHER
     if expression:
@@ -127,7 +127,7 @@ def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
     return result
 
 
-def _semantic_description(row) -> Optional[str]:  # noqa: UP045
+def _semantic_description(row) -> str | None:
     """Description for a dimension/measure: the Snowflake ``COMMENT``, plus any
     synonyms, which have nowhere else to land."""
     parts = []
@@ -138,7 +138,7 @@ def _semantic_description(row) -> Optional[str]:  # noqa: UP045
     return " ".join(parts) or None
 
 
-def _dimension_type(data_type: Optional[str]) -> Optional[Type]:  # noqa: UP045
+def _dimension_type(data_type: str | None) -> Type | None:
     """Classify a dimension as TIME or CATEGORICAL from its Snowflake data type."""
     result = None
     if data_type:
@@ -189,8 +189,9 @@ def build_metric_request(
     schema: str,
     view: str,
     metric_row,
-    dimension_rows: List[tuple],  # noqa: UP006
-    fact_rows: List[tuple],  # noqa: UP006
+    dimension_rows: list[tuple],
+    fact_rows: list[tuple],
+    view_ref: EntityReference | None,
 ) -> CreateMetricRequest:
     """Assemble a CreateMetricRequest for a single Snowflake metric row."""
     metric = metric_row[SEMANTIC_NAME_IDX]
@@ -199,6 +200,7 @@ def build_metric_request(
     dimensions = [_dimension(row) for row in dimension_rows] or None
     measures = [_measure(row) for row in fact_rows] or None
     metric_expression = MetricExpression(language=Language.SQL, code=expression) if expression else None
+    assets = EntityReferenceList(root=[view_ref]) if view_ref is not None else None
     return CreateMetricRequest(  # pyright: ignore[reportCallIssue]
         name=EntityName(build_metric_name(service, database, schema, view, table, metric)),
         displayName=metric,
@@ -207,4 +209,5 @@ def build_metric_request(
         metricExpression=metric_expression,
         dimensions=dimensions,
         measures=measures,
+        assets=assets,
     )

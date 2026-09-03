@@ -35,6 +35,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -58,9 +59,12 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -102,7 +106,9 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -209,6 +215,7 @@ public class IngestionPipelineResource
     return listOf(
         MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
         MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS,
+        MetadataOperation.DEPLOY,
         MetadataOperation.TRIGGER);
   }
 
@@ -753,6 +760,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY);
     return deployPipelineInternal(id, uriInfo, securityContext);
   }
 
@@ -776,7 +784,10 @@ public class IngestionPipelineResource
   public List<PipelineServiceClientResponse> bulkDeployIngestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<UUID> pipelineIdList) {
+      @NotNull @Valid List<UUID> pipelineIdList) {
+    validateBulkDeployPipelineIds(pipelineIdList);
+    pipelineIdList.forEach(
+        id -> authorizePipelineOperation(securityContext, id, MetadataOperation.DEPLOY));
 
     return pipelineIdList.stream()
         .map(
@@ -793,6 +804,19 @@ public class IngestionPipelineResource
               }
             })
         .collect(Collectors.toList());
+  }
+
+  private static void validateBulkDeployPipelineIds(List<UUID> pipelineIds) {
+    if (nullOrEmpty(pipelineIds)) {
+      throw new BadRequestException("pipeline IDs must not be empty");
+    }
+    if (pipelineIds.stream().anyMatch(Objects::isNull)) {
+      throw new BadRequestException("pipeline IDs must not contain null values");
+    }
+    Set<UUID> uniquePipelineIds = new HashSet<>(pipelineIds);
+    if (uniquePipelineIds.size() != pipelineIds.size()) {
+      throw new BadRequestException("pipeline IDs must not contain duplicates");
+    }
   }
 
   @POST
@@ -842,6 +866,8 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizePipelineOperation(
+        securityContext, id, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
@@ -851,7 +877,9 @@ public class IngestionPipelineResource
     }
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
-    Response response = createOrUpdate(uriInfo, securityContext, pipeline);
+    Response response =
+        createOrUpdateAfterPipelineOperation(
+            uriInfo, securityContext, pipeline, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -1499,9 +1527,38 @@ public class IngestionPipelineResource
     PipelineServiceClientResponse status =
         repository.deployIngestionPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
-      createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+      createOrUpdateAfterPipelineOperation(
+          uriInfo, securityContext, ingestionPipeline, MetadataOperation.DEPLOY);
     }
     return status;
+  }
+
+  private void authorizePipelineOperation(
+      SecurityContext securityContext, UUID id, MetadataOperation operation) {
+    authorizer.authorizeRequests(
+        securityContext, getPipelineOperationAuthRequests(id, operation), AuthorizationLogic.ANY);
+  }
+
+  // Preserve existing EditAll access while allowing roles to grant only the scoped action.
+  private List<AuthRequest> getPipelineOperationAuthRequests(UUID id, MetadataOperation operation) {
+    ResourceContext<IngestionPipeline> resourceContext = getResourceContextById(id);
+    return List.of(
+        new AuthRequest(new OperationContext(entityType, operation), resourceContext),
+        new AuthRequest(
+            new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext));
+  }
+
+  private Response createOrUpdateAfterPipelineOperation(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      IngestionPipeline ingestionPipeline,
+      MetadataOperation operation) {
+    return createOrUpdate(
+        uriInfo,
+        securityContext,
+        getPipelineOperationAuthRequests(ingestionPipeline.getId(), operation),
+        AuthorizationLogic.ANY,
+        ingestionPipeline);
   }
 
   public PipelineServiceClientResponse triggerPipelineInternal(

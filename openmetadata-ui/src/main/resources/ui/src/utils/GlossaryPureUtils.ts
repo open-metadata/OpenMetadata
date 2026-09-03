@@ -349,7 +349,11 @@ export const findAndUpdateNested = (
 export const glossaryTermTableColumnsWidth = () => {
   return {
     name: 250,
-    description: 420,
+    descriptionMin: 420,
+    // Ceiling for the same cell: under auto table layout an unbounded cell
+    // would take its longest line's width and keep widening the column —
+    // the two-line clamp only clamps against a bounded box.
+    descriptionMax: 600,
     reviewers: 200,
     synonyms: 200,
     owners: 220,

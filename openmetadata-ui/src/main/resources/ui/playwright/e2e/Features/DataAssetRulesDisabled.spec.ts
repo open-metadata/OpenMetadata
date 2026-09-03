@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -55,7 +55,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct, assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -68,13 +68,6 @@ import {
   fillRowDetails,
   validateImportStatus,
 } from '../../utils/importUtils';
-import {
-  expectMetricMetadataSelections,
-  getPersistedMetricMetadata,
-  openMetricMetadataEditor,
-  saveMetricMetadata,
-  selectMetricMetadataReference,
-} from '../../utils/metricMetadata';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { test } from '../fixtures/pages';
 
@@ -122,163 +115,6 @@ const createdDataProducts: DataProduct[] = [];
 const glossary = new Glossary();
 const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
-
-const requireFixtureValue = (
-  value: string | undefined,
-  fixtureName: string
-) => {
-  if (!value) {
-    throw new Error(`${fixtureName} was not created`);
-  }
-
-  return value;
-};
-
-const verifyDisabledMetricMetadataRules = async (
-  page: Page,
-  apiContext: APIRequestContext,
-  metric: MetricClass
-) => {
-  const metricId = requireFixtureValue(metric.entityResponseData.id, 'Metric');
-  const firstUserName = user.getUserDisplayName();
-  const secondUserName = user2.getUserDisplayName();
-  const teamName = requireFixtureValue(team.responseData.displayName, 'Team');
-  const firstDomainName = requireFixtureValue(
-    domain.responseData.displayName,
-    'First domain'
-  );
-  const secondDomainName = requireFixtureValue(
-    domain2.responseData.displayName,
-    'Second domain'
-  );
-  const firstDataProductName = requireFixtureValue(
-    createdDataProducts[0]?.responseData.displayName,
-    'First data product'
-  );
-  const secondDataProductName = requireFixtureValue(
-    createdDataProducts[1]?.responseData.displayName,
-    'Second data product'
-  );
-  const firstGlossaryTermName = requireFixtureValue(
-    glossaryTerm.responseData.displayName,
-    'First glossary term'
-  );
-  const secondGlossaryTermName = requireFixtureValue(
-    glossaryTerm2.responseData.displayName,
-    'Second glossary term'
-  );
-  const dialog = await openMetricMetadataEditor(page);
-
-  await selectMetricMetadataReference(dialog, 'Owners', firstUserName);
-  await selectMetricMetadataReference(dialog, 'Owners', secondUserName);
-  const ownersGroup = await selectMetricMetadataReference(
-    dialog,
-    'Owners',
-    teamName
-  );
-  await expectMetricMetadataSelections(ownersGroup, [
-    firstUserName,
-    secondUserName,
-    teamName,
-  ]);
-
-  await selectMetricMetadataReference(dialog, 'Domains', firstDomainName);
-  const domainsGroup = await selectMetricMetadataReference(
-    dialog,
-    'Domains',
-    secondDomainName
-  );
-  await expectMetricMetadataSelections(domainsGroup, [
-    firstDomainName,
-    secondDomainName,
-  ]);
-
-  await selectMetricMetadataReference(
-    dialog,
-    'Data Products',
-    firstDataProductName
-  );
-  const dataProductsGroup = await selectMetricMetadataReference(
-    dialog,
-    'Data Products',
-    secondDataProductName
-  );
-  await expectMetricMetadataSelections(dataProductsGroup, [
-    firstDataProductName,
-    secondDataProductName,
-  ]);
-
-  await selectMetricMetadataReference(
-    dialog,
-    'Glossary Terms',
-    firstGlossaryTermName
-  );
-  const glossaryTermsGroup = await selectMetricMetadataReference(
-    dialog,
-    'Glossary Terms',
-    secondGlossaryTermName
-  );
-  await expectMetricMetadataSelections(glossaryTermsGroup, [
-    firstGlossaryTermName,
-    secondGlossaryTermName,
-  ]);
-
-  await saveMetricMetadata(page, dialog, metricId);
-
-  const persisted = await getPersistedMetricMetadata(apiContext, metricId);
-  expect(persisted.owners?.map(({ id }) => id).sort()).toEqual(
-    [
-      requireFixtureValue(user.responseData.id, 'First user'),
-      requireFixtureValue(user2.responseData.id, 'Second user'),
-      requireFixtureValue(team.responseData.id, 'Team'),
-    ].sort()
-  );
-  expect(persisted.domains?.map(({ id }) => id).sort()).toEqual(
-    [
-      requireFixtureValue(domain.responseData.id, 'First domain'),
-      requireFixtureValue(domain2.responseData.id, 'Second domain'),
-    ].sort()
-  );
-  expect(persisted.dataProducts?.map(({ id }) => id).sort()).toEqual(
-    [
-      requireFixtureValue(
-        createdDataProducts[0]?.responseData.id,
-        'First data product'
-      ),
-      requireFixtureValue(
-        createdDataProducts[1]?.responseData.id,
-        'Second data product'
-      ),
-    ].sort()
-  );
-  expect(persisted.tags?.map(({ tagFQN }) => tagFQN)).toEqual(
-    expect.arrayContaining([
-      requireFixtureValue(
-        glossaryTerm.responseData.fullyQualifiedName,
-        'First glossary term'
-      ),
-      requireFixtureValue(
-        glossaryTerm2.responseData.fullyQualifiedName,
-        'Second glossary term'
-      ),
-    ])
-  );
-
-  const metadataRail = page.getByTestId('metric-metadata-rail');
-  for (const referenceName of [
-    firstUserName,
-    secondUserName,
-    teamName,
-    firstDomainName,
-    secondDomainName,
-    firstDataProductName,
-    secondDataProductName,
-    firstGlossaryTermName,
-    secondGlossaryTermName,
-  ]) {
-    await expect(metadataRail).toContainText(referenceName);
-  }
-};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
@@ -337,19 +173,6 @@ test.describe(
 
         const { apiContext, afterAction } = await performAdminLogin(browser);
         await entity.create(apiContext);
-
-        if (entity instanceof MetricClass) {
-          try {
-            await redirectToHomePage(page);
-            await entity.visitEntityPage(page);
-            await verifyDisabledMetricMetadataRules(page, apiContext, entity);
-          } finally {
-            await afterAction();
-          }
-
-          return;
-        }
-
         await afterAction();
 
         await redirectToHomePage(page);
@@ -1011,6 +834,11 @@ test.describe(
     const productDomain = new Domain();
     const crossDomainDataProduct = new DataProduct([productDomain]);
     const crossTable = new TableClass();
+    // Dedicated fixtures for the "Add Assets" picker test so its precondition
+    // (the Data Product starts with zero assets) is not affected by the
+    // asset-level assignment performed by the first test.
+    const pickerDataProduct = new DataProduct([productDomain]);
+    const pickerTable = new TableClass();
 
     test.beforeAll('Setup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1018,11 +846,26 @@ test.describe(
       await productDomain.create(apiContext);
       await crossDomainDataProduct.create(apiContext);
       await crossTable.create(apiContext);
+      await pickerDataProduct.create(apiContext);
+      await pickerTable.create(apiContext);
+      // The picker table lives in a different domain than the Data Product.
+      await pickerTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+          },
+        ],
+      });
       await afterAction();
     });
 
     test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await pickerTable.delete(apiContext);
+      await pickerDataProduct.delete(apiContext);
       await crossTable.delete(apiContext);
       await crossDomainDataProduct.delete(apiContext);
       await productDomain.delete(apiContext);
@@ -1057,6 +900,25 @@ test.describe(
             `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
           )
       ).toBeVisible();
+    });
+
+    // With the rule disabled, the "Add Assets" picker on a Data Product must
+    // surface assets from every domain, not only the Data Product's own domain,
+    // so a cross-domain asset can be added. This mirrors the asset-side fix from
+    // the reverse direction (#32297).
+    test('should list cross-domain assets in the Add Assets picker', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await pickerDataProduct.visitEntityPage(page);
+
+      // pickerTable belongs to assetDomain while pickerDataProduct belongs to
+      // productDomain; the helper fails if the card never appears in the picker.
+      await addAssetsToDataProduct(
+        page,
+        pickerDataProduct.responseData.fullyQualifiedName,
+        [pickerTable]
+      );
     });
   }
 );

@@ -24,7 +24,7 @@ import {
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
   Menu,
@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../../../../components/Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
+import ThemeModeSwitcher from '../../../../components/ThemeModeSwitcher/ThemeModeSwitcher';
 import {
   HELP_ITEMS_ENUM,
   SupportItem,
@@ -43,6 +44,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { getVersion } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { languageSelectOptions } from '../../../../utils/i18next/i18nextUtil';
 import i18n from '../../../../utils/i18next/LocalUtil';
@@ -221,8 +223,23 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
   const openPanel = usePersonalSpaceStore((state) => state.open);
-  const { appVersion, currentUser, selectedPersona, setSelectedPersona } =
-    useApplicationStore();
+  const {
+    appVersion,
+    currentUser,
+    selectedPersona,
+    setAppVersion,
+    setSelectedPersona,
+  } = useApplicationStore();
+
+  useEffect(() => {
+    if (!appVersion) {
+      getVersion()
+        .then((res) => setAppVersion(res.version.replace('-SNAPSHOT', '')))
+        .catch(() => {
+          // version display is non-critical
+        });
+    }
+  }, []);
 
   const userExtras = currentUser as CurrentUserExtras | undefined;
   const displayName =
@@ -466,6 +483,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             <MenuItemRenderer item={item} key={item.id} />
           ))}
         </Dropdown.Menu>
+        <Box className="tw:border-t tw:border-secondary tw:px-4 tw:py-3">
+          <ThemeModeSwitcher className="tw:w-full" />
+        </Box>
       </Dropdown.Popover>
     </Dropdown.Root>
   );

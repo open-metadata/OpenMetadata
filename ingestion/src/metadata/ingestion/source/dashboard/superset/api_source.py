@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -218,7 +218,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     )
                 )
 
-    def _get_datasource_fqn(self, datasource_id: str, db_service_prefix: Optional[str]) -> Optional[str]:  # noqa: UP045
+    def _get_datasource_fqn(self, datasource_id: str, db_service_prefix: str | None) -> str | None:
         (
             db_service_name,
             prefix_database_name,
@@ -311,7 +311,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         )
                     )
 
-    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:  # noqa: UP006
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> list[str]:
         """
         Args:
             chart_json: FetchChart

@@ -354,34 +354,30 @@ export const readArticleInHierarchy = async (
   await hierarchyElement.hover();
   await page.mouse.wheel(0, -9999);
 
-  await page.waitForTimeout(500);
+  // The hierarchy lazy-loads nodes as it scrolls, so paginate by scrolling and
+  // re-counting. expect.poll owns the retry budget and the interval between
+  // attempts, which is what the fixed waits here used to approximate — and it
+  // fails with the observed count rather than a bare timeout.
+  await expect
+    .poll(
+      async () => {
+        if ((await article.count()) > 0) {
+          return true;
+        }
 
-  // Retry mechanism for pagination
-  let elementCount = await article.count();
-  let retryCount = 0;
-  const maxRetries = 20;
+        await hierarchyElement.hover();
+        await page.mouse.wheel(0, 500);
 
-  while (elementCount === 0 && retryCount < maxRetries) {
-    await page.locator('[data-testid="knowledge-pages-hierarchy"]').hover();
-    await page.mouse.wheel(0, 500);
-    await page.waitForTimeout(500);
+        return (await article.count()) > 0;
+      },
+      {
+        message: `article "${articleTitle}" never appeared in the hierarchy while scrolling`,
+        timeout: 30_000,
+      }
+    )
+    .toBe(true);
 
-    // Create fresh locator and check if the article is now visible after this retry
-    const freshArticle = page.getByTestId(`page-node-${articleTitle}`);
-    const count = await freshArticle.count();
-
-    // Check if the article is now visible after this retry
-    elementCount = count;
-
-    // If we found the element, validate it and break out of the loop
-    if (count > 0) {
-      await expect(freshArticle).toBeVisible();
-
-      return; // Exit the function early since we found and validated the article
-    }
-
-    retryCount++;
-  }
+  await expect(article).toBeVisible();
 };
 
 export const createMentionInConversation = async (
@@ -838,14 +834,14 @@ export const verifyTaskList = async (
 };
 
 export const toggleTask = async (
-  page: Page,
   editor: Locator,
   taskText: string
 ): Promise<void> => {
   const taskItem = editor.locator('li').filter({ hasText: taskText });
   const checkbox = taskItem.locator('input[type="checkbox"]');
+  const wasChecked = await checkbox.isChecked();
   await checkbox.click();
-  await page.waitForTimeout(100);
+  await expect(checkbox).toBeChecked({ checked: !wasChecked });
 };
 
 export const createCallout = async (
@@ -853,7 +849,7 @@ export const createCallout = async (
   text: string
 ): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.callout);
-  await page.waitForTimeout(200);
+  await expect(page.locator('[data-type="callout"]')).not.toHaveCount(0);
   await page.keyboard.type(text);
 };
 
@@ -869,7 +865,7 @@ export const verifyCallout = async (
 
 export const createTable = async (page: Page): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.table);
-  await page.waitForTimeout(300);
+  await expect(page.locator('table')).not.toHaveCount(0);
 };
 
 export const verifyTable = async (editor: Locator): Promise<void> => {
