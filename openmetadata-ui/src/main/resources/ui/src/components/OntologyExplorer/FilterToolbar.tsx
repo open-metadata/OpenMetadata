@@ -26,6 +26,8 @@ import {
   GraphViewMode,
 } from './OntologyExplorer.interface';
 
+const DISABLED_ITEM_CLASSNAME = ' tw:pointer-events-none tw:opacity-50';
+
 const VIEW_MODES: { label: string; value: GraphViewMode }[] = [
   { label: 'label.overview', value: 'overview' },
   { label: 'label.hierarchy', value: 'hierarchy' },
@@ -157,9 +159,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       <div
         className={
           'tw:flex tw:shrink-0 tw:items-center tw:gap-2' +
-          (viewModeDisabled || isLoading
-            ? ' tw:pointer-events-none tw:opacity-50'
-            : '')
+          (viewModeDisabled || isLoading ? DISABLED_ITEM_CLASSNAME : '')
         }>
         <Typography
           as="span"
@@ -194,7 +194,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       <div
         className={
           'tw:flex tw:shrink-0 tw:items-center' +
-          (isLoading ? ' tw:pointer-events-none tw:opacity-50' : '')
+          (isLoading ? DISABLED_ITEM_CLASSNAME : '')
         }
         data-testid="glossary-filter-section">
         <SearchDropdown
@@ -217,7 +217,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       <div
         className={
           'tw:flex tw:shrink-0 tw:items-center' +
-          (isLoading ? ' tw:pointer-events-none tw:opacity-50' : '')
+          (isLoading ? DISABLED_ITEM_CLASSNAME : '')
         }
         data-testid="relation-type-filter-section">
         <SearchDropdown

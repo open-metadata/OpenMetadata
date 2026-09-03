@@ -13,13 +13,11 @@
 Module to define overridden dialect methods
 """
 
-import operator  # noqa: I001
+import operator
 from collections import OrderedDict, defaultdict
 from functools import reduce
-from typing import Dict, List, Optional  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
@@ -34,13 +32,6 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeTable,
     SnowflakeTableList,
 )
-from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
-    SEMANTIC_COMMENT_IDX,
-    SEMANTIC_DATA_TYPE_IDX,
-    SEMANTIC_EXPRESSION_IDX,
-    SEMANTIC_NAME_IDX,
-)
-from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
@@ -60,6 +51,13 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
 )
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    SEMANTIC_COMMENT_IDX,
+    SEMANTIC_DATA_TYPE_IDX,
+    SEMANTIC_EXPRESSION_IDX,
+    SEMANTIC_NAME_IDX,
+)
+from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -67,12 +65,13 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 
 logger = ingestion_logger()
 
 dialect = SnowflakeDialect()
 Query = str
-QueryMap = Dict[str, Query]  # noqa: UP006
+QueryMap = dict[str, Query]
 
 
 # How many schemas' column dicts we keep in the get_schema_columns cache
@@ -114,7 +113,7 @@ SEMANTIC_VIEW_COLUMN_KINDS = (
 SEMANTIC_CATALOG_CACHE_SIZE = snowflake_settings.semantic_catalog_cache_size
 
 # A schema's semantic catalog: {catalog_view: {view_name: [row, ...]}}
-SemanticCatalog = Dict[str, Dict[str, List[tuple]]]  # noqa: UP006
+SemanticCatalog = dict[str, dict[str, list[tuple]]]
 
 
 TABLE_QUERY_MAPS = {
@@ -160,7 +159,7 @@ def _denormalize_quote_join(*idents):
     return ".".join(normalized_identifiers)
 
 
-def _quoted_name(entity_name: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _quoted_name(entity_name: str | None) -> str | None:
     if entity_name:
         return fqn.quote_name(entity_name)
 
@@ -242,7 +241,7 @@ def get_semantic_view_names_reflection(self, schema=None, **kw):
         return self.dialect.get_semantic_view_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
-def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):  # noqa: UP006, UP045
+def _get_query_map(incremental: IncrementalConfig | None, query_maps: dict[str, QueryMap]):
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
@@ -253,10 +252,10 @@ def _get_query_parameters(
     self,
     connection,
     schema: str,
-    incremental: Optional[IncrementalConfig],  # noqa: UP045
-    account_usage: Optional[str] = None,  # noqa: UP045
-    include_transient_tables: Optional[bool] = False,  # noqa: UP045
-    include_views: Optional[bool] = False,  # noqa: UP045
+    incremental: IncrementalConfig | None,
+    account_usage: str | None = None,
+    include_transient_tables: bool | None = False,
+    include_views: bool | None = False,
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
@@ -390,7 +389,7 @@ def get_semantic_view_names(self, connection, schema, **kw):
     return result  # noqa: RET504
 
 
-def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
+def _resolve_semantic_column_type(data_type: str | None):
     """Map a Snowflake INFORMATION_SCHEMA data_type string to a SQLAlchemy type.
 
     Falls back to NullType (OpenMetadata maps this to DataType.UNKNOWN) when the
@@ -412,7 +411,7 @@ def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
     return resolved
 
 
-def merge_semantic_view_column(merged: Dict[str, dict], kind: str, row) -> None:  # noqa: UP006
+def merge_semantic_view_column(merged: dict[str, dict], kind: str, row) -> None:
     """Accumulate a dimension/fact row under its column name.
 
     ``kind`` is unused: the semantic classification, owning logical table and

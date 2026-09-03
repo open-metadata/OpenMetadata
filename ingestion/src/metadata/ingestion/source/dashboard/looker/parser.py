@@ -15,7 +15,6 @@
 import fnmatch
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional  # noqa: UP035
 
 import lkml
 from pydantic import ValidationError
@@ -58,18 +57,18 @@ class LkmlParser:
     """
 
     def __init__(self, reader: Reader):
-        self._views_cache: Dict[ViewName, LookMlView] = {}  # noqa: UP006
-        self._visited_files: Dict[Includes, List[Includes]] = {}  # noqa: UP006
+        self._views_cache: dict[ViewName, LookMlView] = {}
+        self._visited_files: dict[Includes, list[Includes]] = {}
 
         # To store the raw string of the lkml explores
-        self.parsed_files: Dict[Includes, str] = {}  # noqa: UP006
+        self.parsed_files: dict[Includes, str] = {}
 
         self.reader = reader
 
-        self._file_tree: Optional[List[Includes]] = None  # noqa: UP006, UP045
+        self._file_tree: list[Includes] | None = None
 
     @property
-    def file_tree(self) -> List[Includes]:  # noqa: UP006
+    def file_tree(self) -> list[Includes]:
         """
         Parse the file tree of the repo
         """
@@ -78,7 +77,7 @@ class LkmlParser:
 
         return self._file_tree or []
 
-    def parse_file(self, path: Includes) -> Optional[List[Includes]]:  # noqa: UP006, UP045
+    def parse_file(self, path: Includes) -> list[Includes] | None:
         """
         Internal parser. Parse the file and cache the views
 
@@ -109,7 +108,7 @@ class LkmlParser:
 
         return None
 
-    def _process_file(self, path: Includes) -> Optional[List[Includes]]:  # noqa: UP006, UP045
+    def _process_file(self, path: Includes) -> list[Includes] | None:
         """
         Processing of a single path
         """
@@ -126,7 +125,7 @@ class LkmlParser:
 
         return expanded_includes
 
-    def _expand_includes(self, includes: Optional[List[Includes]]) -> Optional[List[Includes]]:  # noqa: UP006, UP045
+    def _expand_includes(self, includes: list[Includes] | None) -> list[Includes] | None:
         """
         If we have * in includes, expand them based on the file tree
         """
@@ -135,7 +134,7 @@ class LkmlParser:
 
         return [expanded for path in includes for expanded in self._expand(path)]
 
-    def _expand(self, path: Includes) -> List[Includes]:  # noqa: UP006
+    def _expand(self, path: Includes) -> list[Includes]:
         """
         Match files in tree if there's any * in the include
         """
@@ -172,7 +171,7 @@ class LkmlParser:
 
         raise ReadException(f"Error trying to read the file [{path}]")
 
-    def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:  # noqa: UP045
+    def get_view_from_cache(self, view_name: ViewName) -> LookMlView | None:
         """
         Check if view is cached, and return it.
         Otherwise, return None
@@ -183,7 +182,7 @@ class LkmlParser:
 
         return None
 
-    def find_view(self, view_name: ViewName, path: Includes) -> Optional[LookMlView]:  # noqa: UP045
+    def find_view(self, view_name: ViewName, path: Includes) -> LookMlView | None:
         """
         Parse an incoming file (either from a `source_file` or an `include`),
         cache the views and return the list of includes to parse if
