@@ -49,15 +49,17 @@ import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import {
+  Dispatch,
   FC,
   lazy,
+  SetStateAction,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
@@ -77,6 +79,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
+  ContextMemory,
   EntityReference,
   LabelType,
   MemoryType,
@@ -102,10 +105,10 @@ import {
   CreateMemoryModalProps,
   LinkedAssetsSectionProps,
   MemoryFormValues,
-  MemoryMetadataCardProps,
   MemoryModalFooterProps,
   MemoryModalHeaderProps,
   ReadOnlyBannerProps,
+  TFunc,
 } from './CreateMemoryModal.interface';
 import {
   buildMemoryFormState,
@@ -410,6 +413,27 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
     )}
   </div>
 );
+
+interface MemoryMetadataCardProps {
+  form: UseFormReturn<MemoryFormValues>;
+  isEditingVisibility: boolean;
+  setIsEditingVisibility: Dispatch<SetStateAction<boolean>>;
+  memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
+  isOwner: boolean;
+  selectedTags: TagLabel[];
+  handleRemoveTag: (tagFQN: string) => void;
+  showTagForm: boolean;
+  setShowTagForm: Dispatch<SetStateAction<boolean>>;
+  fetchTagOptions: (
+    searchText: string,
+    page: number
+  ) => ReturnType<typeof tagClassBase.getTags>;
+  handleTagSave: (
+    tags: DefaultOptionType | DefaultOptionType[]
+  ) => Promise<void>;
+  t: TFunc;
+}
 
 // "Metadata" card: visibility (badge or editable select), tags, and the
 // updated-at / connector-specific metadata rows sourced from

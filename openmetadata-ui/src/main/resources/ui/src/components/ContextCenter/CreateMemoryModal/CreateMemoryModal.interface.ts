@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
-import { DefaultOptionType } from 'antd/lib/select';
 import { Dispatch, SetStateAction } from 'react';
-import { UseFormReturn } from 'react-hook-form';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   ContextMemory,
@@ -22,7 +20,6 @@ import {
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
-import tagClassBase from '../../../utils/TagClassBase';
 
 export interface CreateMemoryModalProps {
   isOpen: boolean;
@@ -70,27 +67,6 @@ export interface LinkedAssetsSectionProps {
   linkedAssets: DataAssetOption[];
   setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
   handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
-  t: TFunc;
-}
-
-export interface MemoryMetadataCardProps {
-  form: UseFormReturn<MemoryFormValues>;
-  isEditingVisibility: boolean;
-  setIsEditingVisibility: Dispatch<SetStateAction<boolean>>;
-  memoryToEdit?: ContextMemory;
-  isViewOnly: boolean;
-  isOwner: boolean;
-  selectedTags: TagLabel[];
-  handleRemoveTag: (tagFQN: string) => void;
-  showTagForm: boolean;
-  setShowTagForm: Dispatch<SetStateAction<boolean>>;
-  fetchTagOptions: (
-    searchText: string,
-    page: number
-  ) => ReturnType<typeof tagClassBase.getTags>;
-  handleTagSave: (
-    tags: DefaultOptionType | DefaultOptionType[]
-  ) => Promise<void>;
   t: TFunc;
 }
 

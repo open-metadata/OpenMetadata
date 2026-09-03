@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FormInstance, FormProps } from 'antd';
+import { FormInstance } from 'antd';
 import { RefObject } from 'react';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
@@ -33,16 +33,6 @@ export interface AddGlossaryTermFormProps {
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
   formRef: FormInstance<CreateGlossaryTerm>;
-}
-
-export interface BuildGlossaryTermSavePayloadParams {
-  formObj: Parameters<NonNullable<FormProps['onFinish']>>[0];
-  editMode: boolean;
-  ownersList: GlossaryTermEntityReference[];
-  reviewersList: GlossaryTermEntityReference[];
-  currentUserId?: string;
-  glossaryTerm: GlossaryTerm | undefined;
-  extension: Record<string, unknown>;
 }
 
 export interface OwnersBadgeProps {
