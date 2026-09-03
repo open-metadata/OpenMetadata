@@ -15,12 +15,12 @@ class OpenSearchSearchManagerTest {
   @Test
   void allowsSearchResponseWithNoFailedShards() {
     SearchResponse<Object> response =
-        SearchResponse.of(
-            r ->
-                r.took(1)
-                    .timedOut(false)
-                    .shards(s -> s.total(1).successful(1).skipped(0).failed(0))
-                    .hits(h -> h.hits(List.of())));
+        new SearchResponse.Builder<Object>()
+            .took(1)
+            .timedOut(false)
+            .shards(s -> s.total(1).successful(1).skipped(0).failed(0))
+            .hits(h -> h.hits(List.of()))
+            .build();
 
     assertDoesNotThrow(() -> OpenSearchSearchManager.validateShardFailures(response, INDEX));
   }
@@ -28,12 +28,12 @@ class OpenSearchSearchManagerTest {
   @Test
   void rejectsSearchResponseWithFailedShards() {
     SearchResponse<Object> response =
-        SearchResponse.of(
-            r ->
-                r.took(1)
-                    .timedOut(false)
-                    .shards(s -> s.total(3).successful(2).skipped(0).failed(1))
-                    .hits(h -> h.hits(List.of())));
+        new SearchResponse.Builder<Object>()
+            .took(1)
+            .timedOut(false)
+            .shards(s -> s.total(3).successful(2).skipped(0).failed(1))
+            .hits(h -> h.hits(List.of()))
+            .build();
 
     assertThrows(
         SearchException.class,
