@@ -284,9 +284,10 @@ public final class ChangePreviewUtils {
                       && fieldChange.getNewValue() != null)
           .forEach(
               fieldChange -> {
+                // The tags value may arrive as a serialized JSON string or as a list, so read it
+                // tolerantly instead of assuming an already-structured array.
                 List<TagLabel> heldTags =
-                    JsonUtils.convertValue(
-                        fieldChange.getNewValue(), new TypeReference<List<TagLabel>>() {});
+                    JsonUtils.readOrConvertValues(fieldChange.getNewValue(), TagLabel.class);
                 List<TagLabel> mergedTags =
                     TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), heldTags);
                 // Store the resolved tags in the same JSON shape as the rest of the change

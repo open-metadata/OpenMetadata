@@ -184,6 +184,8 @@ const PendingChangesNotification = ({
   // Default the filter to the viewer's own proposal once loaded; if they have none, leave it on
   // "All". Guarded so a manual selection (including clearing back to All) is not overwritten.
   const filterDefaulted = useRef(false);
+  // Post-resolve refresh timer, tracked so it is cleared on unmount (no setState after unmount).
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchChanges = useCallback(() => {
     if (!collection || !entityId) {
@@ -216,6 +218,15 @@ const PendingChangesNotification = ({
   useEffect(() => {
     fetchChanges();
   }, [fetchChanges]);
+
+  useEffect(
+    () => () => {
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!filterDefaulted.current && changes.length > 0) {
@@ -272,8 +283,12 @@ const PendingChangesNotification = ({
           ? t('message.approved-change-from', { user: requester })
           : t('message.rejected-change-from', { user: requester })
       );
-      // Give the async workflow a moment, then refresh.
-      setTimeout(fetchChanges, 1500);
+      // Give the async workflow a moment, then refresh. Tracked so an unmount within the
+      // window cancels it instead of calling setState on an unmounted component.
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+      }
+      refreshTimer.current = setTimeout(fetchChanges, 1500);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
