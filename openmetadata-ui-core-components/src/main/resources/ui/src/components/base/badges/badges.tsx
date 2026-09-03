@@ -522,6 +522,7 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    * Whether the button is disabled.
    */
   isDisabled?: boolean;
+  'data-testid'?: string
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
@@ -569,6 +570,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         bordered && 'tw:outline-1 tw:-outline-offset-1',
         props.className
       )}
+      data-testid={props['data-testid']}
       style={props.style}>
       {children}
       <button

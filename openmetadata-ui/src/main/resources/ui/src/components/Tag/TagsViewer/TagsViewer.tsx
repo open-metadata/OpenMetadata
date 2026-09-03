@@ -100,7 +100,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             <span className={classNames('tw:inline-flex')}>
               <TagComponent
                 color={tag.style?.color}
-                data-testid="tags"
+                data-testid={`tag-${tag.tagFQN}`}
                 href={redirectLink}
                 icon={tag.style?.iconURL}
                 label={tagName}

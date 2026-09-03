@@ -129,7 +129,7 @@ const ClassificationTag: FC<BaseTagProps> = ({
         {...sharedProps}
         className={classNames(
           sharedProps.className,
-          'tw:[&_button]:text-[var(--tag-close-color)]'
+          'tw:[&_button]:text-(--tag-close-color)'
         )}
         isDisabled={disabled}
         style={
