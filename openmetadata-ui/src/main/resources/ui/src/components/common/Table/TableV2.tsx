@@ -1542,7 +1542,12 @@ const TableV2 = <T extends object>(
                               // scrolls, with 32px rows; a bare antd Menu
                               // outside a Dropdown falls back to its roomy
                               // vertical-nav metrics, so compress it here.
-                              className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg tw:max-h-[264px] tw:max-w-80 tw:overflow-auto tw:[&_.ant-menu-vertical]:border-r-0 tw:[&_.ant-menu-item]:h-8 tw:[&_.ant-menu-item]:leading-8 tw:[&_.ant-menu-item]:my-0"
+                              className={classNames(
+                                'tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
+                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto',
+                                'tw:[&_.ant-menu-vertical]:border-r-0 tw:[&_.ant-menu-item]:h-8',
+                                'tw:[&_.ant-menu-item]:leading-8 tw:[&_.ant-menu-item]:my-0'
+                              )}
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>
                               {typeof colType.filterDropdown === 'function'
