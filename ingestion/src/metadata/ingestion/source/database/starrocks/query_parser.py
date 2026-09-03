@@ -28,6 +28,9 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Matches the fallback used by CommonDbSourceService when `databaseName` is unset
+DEFAULT_DATABASE = "default"
+
 
 class StarRocksQueryParserSource(QueryParserSource, ABC):
     """
@@ -53,3 +56,15 @@ class StarRocksQueryParserSource(QueryParserSource, ABC):
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
+
+    def get_database_name(self, data: dict) -> str:  # pylint: disable=arguments-differ
+        """
+        StarRocks has no database/schema split: the audit log `db` column is what
+        the metadata workflow ingests as the OM *schema*, while the OM *database*
+        is the service-level name. Returning the audit `db` here would build FQNs
+        like `service.db.db.table`, which never resolve, so the parsed lineage is
+        silently dropped.
+
+        Mirror `CommonDbSourceService.get_database_names` so both workflows agree.
+        """
+        return self.service_connection.databaseName or DEFAULT_DATABASE
