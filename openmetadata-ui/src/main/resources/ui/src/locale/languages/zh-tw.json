@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "Most viewed: <0>{{entity}}</0>",
     "move": "移動",
     "move-anyway": "仍要移動",
+    "move-entity-to-root": "將{{entity}}移動到根目錄",
     "move-the-entity": "移動 {{entity}}",
     "move-to-folder": "移動到資料夾",
     "ms": "毫秒",

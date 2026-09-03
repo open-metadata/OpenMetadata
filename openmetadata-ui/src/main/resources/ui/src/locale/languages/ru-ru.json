@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "Больше всего просмотров: <0>{{entity}}</0>",
     "move": "Переместить",
     "move-anyway": "Переместить всё равно",
+    "move-entity-to-root": "Переместить {{entity}} в корень",
     "move-the-entity": "Переместите объект «{{entity}}»",
     "move-to-folder": "Переместить в папку",
     "ms": "Миллисекунды",

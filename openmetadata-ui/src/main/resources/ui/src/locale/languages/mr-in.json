@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "Most viewed: <0>{{entity}}</0>",
     "move": "हलवा",
     "move-anyway": "तरीही हलवा",
+    "move-entity-to-root": "{{entity}} रूटवर हलवा",
     "move-the-entity": "{{entity}} हलवा",
     "move-to-folder": "फोल्डरमध्ये हलवा",
     "ms": "मिलीसेकंद",

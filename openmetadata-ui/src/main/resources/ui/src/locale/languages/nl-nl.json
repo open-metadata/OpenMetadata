@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "Meest bekeken: <0>{{entity}}</0>",
     "move": "Verplaatsen",
     "move-anyway": "Toch verplaatsen",
+    "move-entity-to-root": "{{entity}} naar hoofdmap verplaatsen",
     "move-the-entity": "Verplaats de {{entity}}",
     "move-to-folder": "Verplaatsen naar map",
     "ms": "Milliseconden",

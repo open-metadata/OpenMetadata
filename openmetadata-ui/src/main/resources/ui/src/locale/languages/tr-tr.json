@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "Most viewed: <0>{{entity}}</0>",
     "move": "Taşı",
     "move-anyway": "Yine de taşı",
+    "move-entity-to-root": "{{entity}} öğesini köke taşı",
     "move-the-entity": "{{entity}} Taşı",
     "move-to-folder": "Klasöre taşı",
     "ms": "Milisaniye",

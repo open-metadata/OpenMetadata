@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "Máis visto: <0>{{entity}}</0>",
     "move": "Mover",
     "move-anyway": "Mover de todos os xeitos",
+    "move-entity-to-root": "Mover {{entity}} á raíz",
     "move-the-entity": "Mover o {{entity}}",
     "move-to-folder": "Mover ao cartafol",
     "ms": "Milisegundos",

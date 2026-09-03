@@ -1742,6 +1742,7 @@
     "most-viewed-entity-link": "最も閲覧された: <0>{{entity}}</0>",
     "move": "移動",
     "move-anyway": "それでも移動",
+    "move-entity-to-root": "{{entity}}をルートに移動",
     "move-the-entity": "{{entity}} を移動",
     "move-to-folder": "フォルダーへ移動",
     "ms": "ミリ秒",
