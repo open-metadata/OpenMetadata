@@ -193,6 +193,70 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   /**
+   * An update that omits {@code filteredInSearch} must not change the delivery mode. The endpoint
+   * replaces the whole rule and the field has no schema default, so a null on the wire is both "I
+   * omitted it" and "stored before the field existed" — resolving it the wrong way silently sends a
+   * scoped rule back to preloading, which is invisible until the context document grows again.
+   */
+  @Test
+  void updatingARuleWithoutTheFieldKeepsItsDeliveryMode() throws Exception {
+    String suffix = shortId();
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_mode_" + suffix)
+                .withDescription("filteredInSearch round-trip integration test"),
+            Persona.class);
+    String rulesPath = "personas/" + owned.getId() + "/aiContext/rules";
+
+    try {
+      // Created without the field: stamped scoped, because that is the default for new rules.
+      ContextRule requested =
+          scopedFqnRule("Round trip", table.getFullyQualifiedName()).withFilteredInSearch(null);
+      PersonaContextDefinition created = post(rulesPath, requested, PersonaContextDefinition.class);
+      ContextRule stored = ruleNamed(created, "Round trip");
+      assertThat(stored.getFilteredInSearch()).isTrue();
+
+      // A round-trip that drops the field must leave it scoped.
+      PersonaContextDefinition afterOmitted =
+          put(
+              rulesPath + "/" + stored.getId(),
+              requested.withFilteredInSearch(null),
+              PersonaContextDefinition.class);
+      assertThat(ruleNamed(afterOmitted, "Round trip").getFilteredInSearch())
+          .as("omitting the field must not flip a scoped rule back to preloading")
+          .isTrue();
+
+      // An explicit false still wins — carrying the stored value must not make the field
+      // unsettable.
+      PersonaContextDefinition afterExplicit =
+          put(
+              rulesPath + "/" + stored.getId(),
+              requested.withFilteredInSearch(false),
+              PersonaContextDefinition.class);
+      assertThat(ruleNamed(afterExplicit, "Round trip").getFilteredInSearch()).isFalse();
+
+      // And once explicitly preloading, omitting the field keeps it preloading.
+      PersonaContextDefinition afterOmittedAgain =
+          put(
+              rulesPath + "/" + stored.getId(),
+              requested.withFilteredInSearch(null),
+              PersonaContextDefinition.class);
+      assertThat(ruleNamed(afterOmittedAgain, "Round trip").getFilteredInSearch()).isFalse();
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private static ContextRule ruleNamed(PersonaContextDefinition definition, String name) {
+    return definition.getRules().stream()
+        .filter(rule -> name.equals(rule.getName()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  /**
    * The unit test pins the shape of the union — `minimum_should_match: 1` over one clause per rule.
    * Shape is not behaviour: a filter can be structurally OR-shaped and still not return both sets if
    * the nesting is subtly wrong, and only a real search engine can tell the difference. This drives

@@ -382,6 +382,14 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     int ruleIndex = findRule(rules, ruleId);
     ContextRule rule = sanitizedRule(requestedRule);
     rule.setId(ruleId);
+    // A null here means "leave the delivery mode alone", not "legacy". The field has no schema
+    // default, so null is also what a client sends when it simply omits it, and this endpoint
+    // replaces the whole rule — without carrying the stored value over, any round-trip that dropped
+    // the field would silently send a scoped rule back to preloading. A genuinely legacy rule is
+    // stored null, so it carries null over and keeps preloading.
+    if (rule.getFilteredInSearch() == null) {
+      rule.setFilteredInSearch(rules.get(ruleIndex).getFilteredInSearch());
+    }
     rules.set(ruleIndex, rule);
     definition.setRules(rules);
     Persona updated = persistDefinition(uriInfo, securityContext, original, definition);
