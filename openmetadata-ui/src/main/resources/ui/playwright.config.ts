@@ -207,13 +207,17 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
+        // Every SSO spec lives under Auth/ and mutates the backend's
+        // authenticationConfiguration via applyProviderConfig — the main
+        // project must never pick them up, or entity/domain/search tests
+        // would race a mid-run auth swap. The `sso-auth` project owns
+        // these specs exclusively (fullyParallel:false, workers:1).
         '**/Auth/**',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
-        '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
@@ -245,12 +249,18 @@ export default defineConfig({
         ]
       : []),
     {
+      // Isolated from the main `chromium` project — the primary project's
+      // testIgnore excludes '**/Auth/**' so nothing here can race the
+      // entity/domain/search suites on global backend config mutations
+      // (each SSO fixture calls applyProviderConfig which swaps the
+      // authenticationConfiguration server-wide). Legacy per-provider
+      // specs listed here plus the new parametrized SsoScenarios file
+      // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
       testMatch: [
+        '**/SsoScenarios.spec.ts',
         '**/OktaSelfSignupClaims.spec.ts',
-        '**/OktaSessionRenewalPublic.spec.ts',
-        '**/SSOLogin.spec.ts',
-        '**/SSORenewal.spec.ts',
+        '**/SSOSelfSignup.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },

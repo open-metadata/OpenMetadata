@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
-import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
+import {
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  ProviderCredentials,
+  restoreSecurityConfig,
+} from '../ssoAuth';
+import { SsoProviderFixture, SsoProviderSlug } from './fixture';
+import { forceTokenExpiry } from './force-token-expiry';
 import type { ProviderHelper } from './index';
 import { fetchIdpX509Certificate } from './saml-metadata';
 
@@ -24,6 +32,17 @@ export const KEYCLOAK_SAML = {
   azureRealm: process.env[SSO_ENV.KEYCLOAK_SAML_AZURE_REALM] ?? 'om-azure-saml',
   principalDomain:
     process.env[SSO_ENV.KEYCLOAK_SAML_PRINCIPAL_DOMAIN] ?? 'openmetadata.local',
+} as const;
+
+// The Keycloak realms in `docker/local-sso/keycloak-saml/realms/*.json` seed
+// exactly one test user with these creds. They aren't secrets — they're
+// checked into the repo. Fixtures fall back to these when
+// `SSO_USERNAME`/`SSO_PASSWORD` env vars are empty in CI, so the leg still
+// works even without repo-admin var configuration. Real IdPs (Okta) still
+// require actual env vars — the fallback only applies to Keycloak.
+export const KEYCLOAK_SEEDED_CREDS = {
+  username: process.env[SSO_ENV.USERNAME] || 'azure.saml@openmetadata.local',
+  password: process.env[SSO_ENV.PASSWORD] || 'OpenMetadata@123',
 } as const;
 
 interface KeycloakSamlProfile {
@@ -137,3 +156,74 @@ export const keycloakAzureSamlProviderHelper = createKeycloakSamlProviderHelper(
     providerName: 'Azure AD',
   }
 );
+
+// ── New SsoProviderFixture surface ────────────────────────────────────────
+//
+// The scenario suite consumes SsoProviderFixture. The legacy ProviderHelper
+// above stays exported for backwards compatibility (index.ts still consumes
+// it) — commit 7 removes it after all call-sites migrate.
+
+const SAML_PROFILE: KeycloakSamlProfile = {
+  realm: KEYCLOAK_SAML.azureRealm,
+  providerName: 'Azure AD',
+};
+
+// The crosssite variant swaps the IdP host to 127.0.0.1 (a different site
+// from localhost) via KEYCLOAK_SAML_BASE_URL; the callback POST is then
+// cross-site and the SameSite=Lax OM_SESSION cookie is dropped. That means
+// the browser can't observe the storage broadcast across tabs, so this
+// fixture opts out of the cross-tab scenario.
+const IS_CROSSSITE =
+  process.env[SSO_ENV.PROVIDER_TYPE] === 'keycloak-azure-saml-crosssite';
+
+export const keycloakSamlProviderFixture: SsoProviderFixture = {
+  name: IS_CROSSSITE ? 'Keycloak SAML (cross-site)' : 'Keycloak SAML',
+  slug: (IS_CROSSSITE
+    ? 'keycloak-saml-crosssite'
+    : 'keycloak-saml') as SsoProviderSlug,
+  clientType: 'public',
+  loginKind: 'redirect',
+
+  supportsCrossTab: !IS_CROSSSITE,
+  supportsSelfSignup: true,
+  supportsSilentCallback: false,
+  usesBackendRefresh: true,
+
+  signInButtonPattern: /(sign in|log in) with SAML SSO/i,
+
+  isAvailable: () => Boolean(process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL]),
+  unavailableReason: () =>
+    `Set ${SSO_ENV.KEYCLOAK_SAML_BASE_URL} to run the Keycloak SAML fixture.`,
+
+  async configureBackend(apiContext: APIRequestContext) {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    const payload = await buildConfigPayload(SAML_PROFILE);
+    await applyProviderConfig(apiContext, snapshot, payload);
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+    };
+  },
+
+  async performLogin(page: Page) {
+    await page.goto('/signin');
+    await page.getByRole('button', { name: this.signInButtonPattern }).click();
+    await performProviderLogin(page, {
+      username: KEYCLOAK_SEEDED_CREDS.username,
+      password: KEYCLOAK_SEEDED_CREDS.password,
+    });
+    await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
+      timeout: 60_000,
+    });
+  },
+
+  async performLogout(page: Page) {
+    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByTestId('confirm-logout').click();
+    await expect(page).toHaveURL(/\/signin$/);
+  },
+
+  forceTokenExpiry,
+};

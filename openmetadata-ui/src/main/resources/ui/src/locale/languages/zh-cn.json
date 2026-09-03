@@ -3268,6 +3268,7 @@
     "attribute-name-already-exists": "该概念下已存在同名属性。",
     "audio-playback-not-supported": "您的浏览器不支持音频播放。",
     "auth-configuration-missing": "Auth 配置缺失",
+    "auth-configuration-missing-fields": "Authentication configuration is missing required fields: {{fields}}. Ask an admin to fix the SSO configuration.",
     "auth-single-credential-stored": "Only the <0>{{method}}</0> credential is stored. Switching methods discards the other.",
     "authProvider-is-not-basic": "AuthProvider 不是 Basic 类型的",
     "authentication-doc-description": "A connection authenticates with exactly one credential. Choosing a method hides and clears the other, so you cannot accidentally submit both.",

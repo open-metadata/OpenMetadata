@@ -3268,6 +3268,7 @@
     "attribute-name-already-exists": "En egenskap med detta namn finns redan för detta begrepp.",
     "audio-playback-not-supported": "Din webbläsare stöder inte ljuduppspelning.",
     "auth-configuration-missing": "Autentiseringskonfigurationen saknas",
+    "auth-configuration-missing-fields": "Authentication configuration is missing required fields: {{fields}}. Ask an admin to fix the SSO configuration.",
     "auth-single-credential-stored": "Endast <0>{{method}}</0>-inloggningsuppgiften lagras. Att byta metod tar bort den andra.",
     "authProvider-is-not-basic": "AuthProvider är inte Basic",
     "authentication-doc-description": "En anslutning autentiseras med exakt en inloggningsuppgift. Att välja en metod döljer och rensar den andra, så du kan inte av misstag skicka in båda.",

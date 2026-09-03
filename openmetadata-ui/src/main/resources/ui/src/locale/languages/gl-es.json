@@ -3268,6 +3268,7 @@
     "attribute-name-already-exists": "Xa existe unha propiedade con este nome neste concepto.",
     "audio-playback-not-supported": "O teu navegador non soporta a reproducción de audio.",
     "auth-configuration-missing": "Falta a configuración de autenticación",
+    "auth-configuration-missing-fields": "Authentication configuration is missing required fields: {{fields}}. Ask an admin to fix the SSO configuration.",
     "auth-single-credential-stored": "Only the <0>{{method}}</0> credential is stored. Switching methods discards the other.",
     "authProvider-is-not-basic": "O provedor de autenticación non é Basic",
     "authentication-doc-description": "A connection authenticates with exactly one credential. Choosing a method hides and clears the other, so you cannot accidentally submit both.",

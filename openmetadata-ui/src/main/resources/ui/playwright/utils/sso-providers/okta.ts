@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
-import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
+import {
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  ProviderCredentials,
+  restoreSecurityConfig,
+} from '../ssoAuth';
+import { SsoProviderFixture } from './fixture';
+import { forceTokenExpiry } from './force-token-expiry';
 import { ProviderHelper } from './index';
 
 // Defaults target Collate's nightly test Okta tenant. These are non-secret
@@ -44,6 +52,18 @@ const buildConfigPayload = (): ProviderConfigOverride => {
       callbackUrl: `${OM_BASE_URL}/callback`,
       jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
       enableSelfSignup: true,
+      oidcConfiguration: {
+        // Mirror clientId into oidcConfiguration so the broken variant has
+        // a nested handle to drop without touching the top-level field
+        // (which the server rejects at ingest before the client sees it).
+        id: OKTA_TENANT.clientId,
+        clientId: OKTA_TENANT.clientId,
+        type: 'okta',
+        scope: 'openid email profile',
+        callbackUrl: `${OM_BASE_URL}/callback`,
+        serverUrl: OM_BASE_URL,
+        responseType: 'code',
+      },
     },
     authorizerConfiguration: {
       principalDomain: OKTA_TENANT.principalDomain,
@@ -81,4 +101,58 @@ export const oktaProviderHelper: ProviderHelper = {
   loginUrlPattern: /\.okta\.com/,
   buildConfigPayload,
   performProviderLogin,
+};
+
+// ── New SsoProviderFixture surface ────────────────────────────────────────
+
+export const oktaProviderFixture: SsoProviderFixture = {
+  name: 'Okta',
+  slug: 'okta',
+  clientType: 'public',
+  loginKind: 'redirect',
+
+  supportsCrossTab: true,
+  supportsSelfSignup: true,
+  supportsSilentCallback: false,
+  usesBackendRefresh: false,
+
+  signInButtonPattern: /(sign in|log in) with Okta/i,
+
+  isAvailable: () =>
+    Boolean(
+      process.env[SSO_ENV.OKTA_CLIENT_ID] && process.env[SSO_ENV.OKTA_DOMAIN]
+    ),
+  unavailableReason: () =>
+    `Set ${SSO_ENV.OKTA_CLIENT_ID} and ${SSO_ENV.OKTA_DOMAIN} to run the Okta fixture.`,
+
+  async configureBackend(apiContext: APIRequestContext) {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    await applyProviderConfig(apiContext, snapshot, buildConfigPayload());
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+    };
+  },
+
+  async performLogin(page: Page) {
+    await page.goto('/signin');
+    await page.getByRole('button', { name: this.signInButtonPattern }).click();
+    await performProviderLogin(page, {
+      username: process.env[SSO_ENV.USERNAME] ?? '',
+      password: process.env[SSO_ENV.PASSWORD] ?? '',
+    });
+    await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
+      timeout: 60_000,
+    });
+  },
+
+  async performLogout(page: Page) {
+    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByTestId('confirm-logout').click();
+    await expect(page).toHaveURL(/\/signin$/);
+  },
+
+  forceTokenExpiry,
 };

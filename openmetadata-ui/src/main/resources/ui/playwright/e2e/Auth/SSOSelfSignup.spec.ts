@@ -62,57 +62,65 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
   }
 };
 
-test.describe('OIDC self-signup with mapped principal claims', () => {
-  test.slow();
+// Tagged so CI legs can opt out — this spec only runs against the
+// docker-compose `mock-oidc-provider` service (see the header block above);
+// legs that don't start that container (all current SSO-matrix legs) must
+// filter this out or the beforeAll hangs on `waitForMockOidcReady`.
+test.describe(
+  'OIDC self-signup with mapped principal claims',
+  { tag: ['@self-signup-mock-oidc'] },
+  () => {
+    test.slow();
 
-  test.beforeAll(async ({ request }) => {
-    await waitForMockOidcReady(request);
-    await resetMockOidc(request);
-  });
+    test.beforeAll(async ({ request }) => {
+      await waitForMockOidcReady(request);
+      await resetMockOidc(request);
+    });
 
-  test.afterEach(async ({ request }) => {
-    await resetMockOidc(request);
-  });
+    test.afterEach(async ({ request }) => {
+      await resetMockOidc(request);
+    });
 
-  test('persists the mapped email claim instead of deriving sub@domain', async ({
-    browser,
-    request,
-  }) => {
-    await setDefaultLoginAccount(request, MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.sub);
+    test('persists the mapped email claim instead of deriving sub@domain', async ({
+      browser,
+      request,
+    }) => {
+      await setDefaultLoginAccount(request, MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.sub);
 
-    // Fresh context so the mock IdP performs a clean login as the steered
-    // account rather than reusing a prior session cookie.
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    try {
-      await completeOidcSelfSignup(page);
-
-      const { apiContext, afterAction } = await getApiContext(page);
+      // Fresh context so the mock IdP performs a clean login as the steered
+      // account rather than reusing a prior session cookie.
+      const context = await browser.newContext();
+      const page = await context.newPage();
 
       try {
-        const response = await apiContext.get('/api/v1/users/loggedInUser');
+        await completeOidcSelfSignup(page);
 
-        expect(response.status()).toBe(200);
+        const { apiContext, afterAction } = await getApiContext(page);
 
-        const user = await response.json();
+        try {
+          const response = await apiContext.get('/api/v1/users/loggedInUser');
 
-        // Username resolves from the `sub` claim. Fails loudly if the
-        // username:sub / email:email mapping is not configured on the server.
-        expect(user.name?.toLowerCase()).toBe(
-          MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.sub
-        );
-        // The created user's email must be the resolved mapped claim, never
-        // <sub>@<email-domain> (the issue #29189 regression).
-        expect(user.email?.toLowerCase()).toBe(
-          MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.email
-        );
+          expect(response.status()).toBe(200);
+
+          const user = await response.json();
+
+          // Username resolves from the `sub` claim. Fails loudly if the
+          // username:sub / email:email mapping is not configured on the server.
+          expect(user.name?.toLowerCase()).toBe(
+            MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.sub
+          );
+          // The created user's email must be the resolved mapped claim, never
+          // <sub>@<email-domain> (the issue #29189 regression).
+          expect(user.email?.toLowerCase()).toBe(
+            MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.email
+          );
+        } finally {
+          await afterAction();
+        }
       } finally {
-        await afterAction();
+        await page.close();
+        await context.close();
       }
-    } finally {
-      await page.close();
-      await context.close();
-    }
-  });
-});
+    });
+  }
+);
