@@ -84,6 +84,39 @@ interface CSVExportPollingState {
   timer?: ReturnType<typeof setTimeout>;
 }
 
+type CSVPollAttemptOutcome =
+  | { status: 'stop' }
+  | { status: 'continue'; failed: boolean };
+
+const runCSVPollAttempt = async (
+  pollingState: CSVExportPollingState,
+  jobId: string,
+  getPolledJob: () => Promise<CsvAsyncJob>,
+  applyPolledJob: (job: CsvAsyncJob) => boolean,
+  isPollingStale: (
+    pollingState: CSVExportPollingState,
+    jobId: string
+  ) => boolean
+): Promise<CSVPollAttemptOutcome> => {
+  try {
+    const job = await getPolledJob();
+
+    if (isPollingStale(pollingState, jobId)) {
+      return { status: 'stop' };
+    }
+
+    return applyPolledJob(job)
+      ? { status: 'stop' }
+      : { status: 'continue', failed: false };
+  } catch {
+    if (pollingState.abortController.signal.aborted) {
+      return { status: 'stop' };
+    }
+
+    return { status: 'continue', failed: true };
+  }
+};
+
 export const EntityExportModalProvider = ({
   children,
 }: {
@@ -486,28 +519,27 @@ export const EntityExportModalProvider = ({
             return;
           }
 
-          try {
-            const job = await getPolledJob();
+          const outcome = await runCSVPollAttempt(
+            pollingState,
+            jobId,
+            getPolledJob,
+            applyPolledJob,
+            isPollingStale
+          );
 
-            if (isPollingStale(pollingState, jobId)) {
-              return;
-            }
+          if (outcome.status === 'stop') {
+            return;
+          }
 
-            consecutiveFailures = 0;
-            if (applyPolledJob(job)) {
-              return;
-            }
-          } catch {
-            if (pollingState.abortController.signal.aborted) {
-              return;
-            }
-
+          if (outcome.failed) {
             consecutiveFailures++;
             if (
               consecutiveFailures === CSV_EXPORT_MAX_CONSECUTIVE_POLL_FAILURES
             ) {
               markCSVExportStatusUnavailable(jobId);
             }
+          } else {
+            consecutiveFailures = 0;
           }
         }
       })();

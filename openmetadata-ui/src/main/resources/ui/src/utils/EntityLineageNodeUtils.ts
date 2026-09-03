@@ -238,6 +238,23 @@ const getTracedNode = (
   return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
+// Push every node from a BFS traversal (by id) into `prevTraced` that isn't
+// already present, mutating it in place so callers see the merged history.
+const mergeNewlyTracedNodes = (
+  prevTraced: Node[],
+  visitedNodeIds: Set<string>,
+  nodes: Node[]
+): void => {
+  for (const nodeId of visitedNodeIds) {
+    if (!prevTraced.some((n) => n.id === nodeId)) {
+      const tracedNode = nodes.find((n) => n.id === nodeId);
+      if (tracedNode) {
+        prevTraced.push(tracedNode);
+      }
+    }
+  }
+};
+
 export const getAllTracedNodes = (
   node: Node,
   nodes: Node[],
@@ -270,14 +287,7 @@ export const getAllTracedNodes = (
     }
   }
 
-  for (const nodeId of visitedNodeIds) {
-    if (!prevTraced.some((n) => n.id === nodeId)) {
-      const tracedNode = nodes.find((n) => n.id === nodeId);
-      if (tracedNode) {
-        prevTraced.push(tracedNode);
-      }
-    }
-  }
+  mergeNewlyTracedNodes(prevTraced, visitedNodeIds, nodes);
 
   return result;
 };

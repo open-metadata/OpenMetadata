@@ -136,6 +136,37 @@ const buildMergedContractForPatch = (
   return mergedForPatch;
 };
 
+type ODCSSchemaObjectsResolution = {
+  objects: string[];
+  hasMultipleObjects: boolean;
+  selectedObjectName: string;
+};
+
+const resolveODCSSchemaObjects = async (
+  content: string,
+  entityName?: string
+): Promise<ODCSSchemaObjectsResolution> => {
+  try {
+    const parseResult: ODCSParseResult = await parseODCSYaml(content);
+    const objects = parseResult.schemaObjects ?? [];
+    const hasMultipleObjects = parseResult.hasMultipleObjects ?? false;
+
+    let selectedObjectName = '';
+    if (objects.length === 1) {
+      selectedObjectName = objects[0];
+    } else if (objects.length > 1) {
+      const matchingObject = entityName
+        ? objects.find((obj) => obj.toLowerCase() === entityName.toLowerCase())
+        : undefined;
+      selectedObjectName = matchingObject ?? '';
+    }
+
+    return { objects, hasMultipleObjects, selectedObjectName };
+  } catch {
+    return { objects: [], hasMultipleObjects: false, selectedObjectName: '' };
+  }
+};
+
 const ContractImportModal: React.FC<ContractImportModalProps> = ({
   visible,
   entityId,
@@ -333,27 +364,13 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           setParseError(null);
 
           if (isODCSFormat) {
-            try {
-              const parseResult: ODCSParseResult = await parseODCSYaml(content);
-              const objects = parseResult.schemaObjects ?? [];
-              setSchemaObjects(objects);
-              setHasMultipleObjects(parseResult.hasMultipleObjects ?? false);
-
-              if (objects.length === 1) {
-                setSelectedObjectName(objects[0]);
-              } else if (objects.length > 1) {
-                const matchingObject = entityName
-                  ? objects.find(
-                      (obj) => obj.toLowerCase() === entityName.toLowerCase()
-                    )
-                  : undefined;
-                setSelectedObjectName(matchingObject ?? '');
-              }
-            } catch {
-              setSchemaObjects([]);
-              setHasMultipleObjects(false);
-              setSelectedObjectName('');
-            }
+            const resolution = await resolveODCSSchemaObjects(
+              content,
+              entityName
+            );
+            setSchemaObjects(resolution.objects);
+            setHasMultipleObjects(resolution.hasMultipleObjects);
+            setSelectedObjectName(resolution.selectedObjectName);
           }
         } else {
           setParsedContract(null);
