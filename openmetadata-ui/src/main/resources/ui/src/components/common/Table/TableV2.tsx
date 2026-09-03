@@ -67,7 +67,6 @@ import {
   Button as AriaButton,
   ColumnResizer,
   Dialog,
-  DialogTrigger,
   Popover,
   ResizableTableContainer,
 } from 'react-aria-components';
@@ -289,6 +288,58 @@ const buildExpandedDetailRow = <T extends object>(
         )}
       </UntitledTable.Cell>
     </UntitledTable.Row>
+  );
+};
+
+/**
+ * The filter trigger cannot sit inside a `DialogTrigger`: a React Aria column
+ * header is itself a pressable, and its PressResponder forwards the column's
+ * press onto the first pressable child — this very button — overriding the
+ * DialogTrigger's press in a real browser (jsdom's synthetic click hides it).
+ * Owning the press and anchoring the Popover through `triggerRef` keeps the
+ * column's press machinery out of the loop.
+ */
+const HeaderFilterTrigger = ({
+  icon,
+  isOpen,
+  onOpenChange,
+  children,
+}: {
+  icon: ReactNode;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    // The press must not reach the column header: its own press/focus
+    // handling closes the popover in the same click that opened it.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <span
+      className="tw:inline-flex"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}>
+      <AriaButton
+        aria-label="filter"
+        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        data-testid="filter-trigger"
+        ref={triggerRef}
+        onPress={() => onOpenChange(!isOpen)}>
+        {icon}
+      </AriaButton>
+      <Popover
+        isOpen={isOpen}
+        placement="bottom right"
+        triggerRef={triggerRef}
+        onOpenChange={onOpenChange}>
+        <Dialog aria-label="filter" className="tw:outline-none">
+          {children}
+        </Dialog>
+      </Popover>
+    </span>
   );
 };
 
@@ -1479,83 +1530,69 @@ const TableV2 = <T extends object>(
                         data-testid="column-header-content">
                         {resolveColumnTitle(colType, propsColumns)}
                         {Boolean(colType.filters || colType.filterDropdown) && (
-                          <DialogTrigger
+                          <HeaderFilterTrigger
+                            icon={
+                              typeof colType.filterIcon === 'function'
+                                ? colType.filterIcon(
+                                    Boolean(effectiveFilterOf(filterKey).length)
+                                  )
+                                : colType.filterIcon ?? null
+                            }
                             isOpen={openFilterKey === colKey}
                             onOpenChange={(isOpen) =>
                               setOpenFilterKey(isOpen ? colKey : null)
                             }>
-                            {/*
-                              `DialogTrigger` opens its popover through a React
-                              Aria `PressResponder`, which only reaches a React
-                              Aria pressable child. A core `Button` here is not
-                              one — it warns "PressResponder was rendered
-                              without a pressable child" and the dropdown never
-                              opens. */}
-                            <AriaButton
-                              aria-label="filter"
-                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
-                              data-testid="filter-trigger">
-                              {typeof colType.filterIcon === 'function'
-                                ? colType.filterIcon(
-                                    Boolean(effectiveFilterOf(filterKey).length)
-                                  )
-                                : colType.filterIcon ?? null}
-                            </AriaButton>
-                            <Popover placement="bottom right">
-                              <Dialog className="tw:outline-none">
-                                <div
-                                  className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
-                                  data-testid="filter-dropdown"
-                                  style={{ minWidth: '200px' }}>
-                                  {typeof colType.filterDropdown === 'function'
-                                    ? colType.filterDropdown({
-                                        prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) => {
-                                          filterDraftRef.current = {
-                                            ...filterDraftRef.current,
-                                            [filterKey]: keys,
-                                          };
-                                          setFilterState((prev) => ({
-                                            ...prev,
-                                            [filterKey]: keys,
-                                          }));
-                                        },
-                                        selectedKeys:
-                                          filterState[filterKey] ??
-                                          controlledFilterState[filterKey] ??
-                                          [],
-                                        confirm: () => {
-                                          reportFilterChange({
-                                            ...filterState,
-                                            ...filterDraftRef.current,
-                                          });
-                                          setOpenFilterKey(null);
-                                        },
-                                        clearFilters: () => {
-                                          filterDraftRef.current = {
-                                            ...filterDraftRef.current,
-                                            [filterKey]: [],
-                                          };
-                                          setFilterState((prev) => {
-                                            const next = { ...prev };
-                                            delete next[filterKey];
+                            <div
+                              className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
+                              data-testid="filter-dropdown"
+                              style={{ minWidth: '200px' }}>
+                              {typeof colType.filterDropdown === 'function'
+                                ? colType.filterDropdown({
+                                    prefixCls: 'ant-table-filter-dropdown',
+                                    setSelectedKeys: (keys) => {
+                                      filterDraftRef.current = {
+                                        ...filterDraftRef.current,
+                                        [filterKey]: keys,
+                                      };
+                                      setFilterState((prev) => ({
+                                        ...prev,
+                                        [filterKey]: keys,
+                                      }));
+                                    },
+                                    selectedKeys:
+                                      filterState[filterKey] ??
+                                      controlledFilterState[filterKey] ??
+                                      [],
+                                    confirm: () => {
+                                      reportFilterChange({
+                                        ...filterState,
+                                        ...filterDraftRef.current,
+                                      });
+                                      setOpenFilterKey(null);
+                                    },
+                                    clearFilters: () => {
+                                      filterDraftRef.current = {
+                                        ...filterDraftRef.current,
+                                        [filterKey]: [],
+                                      };
+                                      setFilterState((prev) => {
+                                        const next = { ...prev };
+                                        delete next[filterKey];
 
-                                            return next;
-                                          });
-                                          reportFilterChange({
-                                            ...filterState,
-                                            ...filterDraftRef.current,
-                                          });
-                                        },
-                                        filters: colType.filters,
-                                        visible: true,
-                                        close: () => setOpenFilterKey(null),
-                                      })
-                                    : colType.filterDropdown}
-                                </div>
-                              </Dialog>
-                            </Popover>
-                          </DialogTrigger>
+                                        return next;
+                                      });
+                                      reportFilterChange({
+                                        ...filterState,
+                                        ...filterDraftRef.current,
+                                      });
+                                    },
+                                    filters: colType.filters,
+                                    visible: true,
+                                    close: () => setOpenFilterKey(null),
+                                  })
+                                : colType.filterDropdown}
+                            </div>
+                          </HeaderFilterTrigger>
                         )}
                       </div>
                       {rest.resizableColumns && (
