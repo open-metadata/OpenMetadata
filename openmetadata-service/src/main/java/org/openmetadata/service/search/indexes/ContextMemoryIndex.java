@@ -116,9 +116,6 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("rootMemory", getEntityWithDisplayName(memory.getRootMemory()));
     doc.put("parentMemory", getEntityWithDisplayName(memory.getParentMemory()));
     doc.put("sourceFile", getEntityWithDisplayName(memory.getSourceFile()));
-    if (memory.getSourceType() != null) {
-      doc.put("sourceType", memory.getSourceType().value());
-    }
   }
 
   public static Map<String, Float> getFields() {

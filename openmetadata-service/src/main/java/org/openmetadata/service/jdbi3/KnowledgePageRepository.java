@@ -158,12 +158,27 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     fetchAndSetParents(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
     fetchAndSetEditors(entities, fields);
+    fetchAndSetMemoryCounts(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (Page entity : entities) {
       setArticleFields(entity, fields);
       clearFieldsInternal(entity, fields);
     }
+  }
+
+  /**
+   * Batched memoryCount so a list response carries the same count a single GET does; the
+   * per-entity path in setFields would be one query per page here.
+   */
+  private void fetchAndSetMemoryCounts(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(MEMORY_COUNT)) {
+      return;
+    }
+    Map<UUID, Integer> countsByPageId =
+        MemoryCountFetcher.countByEntityId(
+            daoCollection, entityListToStrings(entities), KNOWLEDGE_PAGE_ENTITY);
+    entities.forEach(page -> page.setMemoryCount(countsByPageId.getOrDefault(page.getId(), 0)));
   }
 
   private void fetchAndSetParents(List<Page> entities, EntityUtil.Fields fields) {
@@ -385,6 +400,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     entity.withEditors(fields.contains(EDITORS) ? entity.getEditors() : null);
     entity.setParent(fields.contains(FIELD_PARENT) ? entity.getParent() : null);
     entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
+    if (!fields.contains(MEMORY_COUNT)) {
+      entity.setMemoryCount(null);
+    }
     if (entity.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (entity.getPage() != null) {

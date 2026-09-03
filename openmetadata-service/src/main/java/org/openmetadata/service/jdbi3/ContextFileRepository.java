@@ -106,6 +106,14 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       entities.forEach(file -> file.setFolder(folderMap.get(file.getId())));
     }
 
+    if (fields.contains("memoryCount")) {
+      // Batched: the per-entity path in setFields would be one query per file here.
+      Map<UUID, Integer> countsByFileId =
+          MemoryCountFetcher.countByEntityId(
+              daoCollection, entityListToStrings(entities), CONTEXT_FILE_ENTITY);
+      entities.forEach(file -> file.setMemoryCount(countsByFileId.getOrDefault(file.getId(), 0)));
+    }
+
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));

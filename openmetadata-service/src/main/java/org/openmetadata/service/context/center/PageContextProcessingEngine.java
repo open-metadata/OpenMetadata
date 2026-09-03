@@ -96,7 +96,11 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
    * correct).
    */
   public void schedule(UUID pageId) {
-    evictIfFull();
+    // Only a new page can grow the map: rescheduling one that is already pending replaces its
+    // entry, so evicting there would cost an unrelated page its run for no gain in headroom.
+    if (!pending.containsKey(pageId)) {
+      evictIfFull();
+    }
     AtomicReference<ScheduledFuture<?>> holder = new AtomicReference<>();
     holder.set(
         scheduler.schedule(
