@@ -13182,7 +13182,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private Optional<String> buildChangeEventJsonForBulkOperation(
+  Optional<String> buildChangeEventJsonForBulkOperation(
       T entity, EventType eventType, String userName) {
     return buildChangeEventJsonForBulkOperation(entity, eventType, userName, false);
   }
@@ -13221,7 +13221,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void insertChangeEventsBatch(List<String> changeEvents) {
+  void insertChangeEventsBatch(List<String> changeEvents) {
     if (changeEvents == null || changeEvents.isEmpty()) {
       return;
     }
