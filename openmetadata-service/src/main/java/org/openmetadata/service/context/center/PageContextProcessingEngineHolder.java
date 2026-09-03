@@ -1,4 +1,4 @@
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;

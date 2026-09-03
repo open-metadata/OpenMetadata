@@ -1,4 +1,4 @@
-package org.openmetadata.service.context;
+package org.openmetadata.service.context.entity;
 
 import org.openmetadata.schema.type.EntityReference;
 

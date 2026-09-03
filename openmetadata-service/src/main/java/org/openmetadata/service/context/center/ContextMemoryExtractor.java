@@ -1,4 +1,4 @@
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,7 +15,6 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.FullyQualifiedName;

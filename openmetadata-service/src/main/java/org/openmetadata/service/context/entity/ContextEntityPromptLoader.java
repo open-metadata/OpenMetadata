@@ -1,4 +1,4 @@
-package org.openmetadata.service.context;
+package org.openmetadata.service.context.entity;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Optional;

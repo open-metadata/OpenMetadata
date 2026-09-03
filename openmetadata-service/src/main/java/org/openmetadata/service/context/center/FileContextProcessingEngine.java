@@ -1,4 +1,4 @@
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import java.util.UUID;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;

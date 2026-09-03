@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 /**
  * Single seam for the platform's AI-backed Context Center steps. OSS ships {@link LlmAiProvider}

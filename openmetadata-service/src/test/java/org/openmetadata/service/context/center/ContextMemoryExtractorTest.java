@@ -1,4 +1,4 @@
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,7 +18,6 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
 

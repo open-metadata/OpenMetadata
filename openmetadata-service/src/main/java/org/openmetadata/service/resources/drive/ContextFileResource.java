@@ -69,7 +69,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileProcessingService;
+import org.openmetadata.service.context.center.ContextFileProcessingService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;

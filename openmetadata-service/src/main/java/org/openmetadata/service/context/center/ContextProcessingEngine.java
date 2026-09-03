@@ -1,12 +1,12 @@
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.drive.ContextMemoryReconciler.ReconcileResult;
-import org.openmetadata.service.drive.DocumentMemoryExtractor.DeriveResult;
+import org.openmetadata.service.context.center.ContextMemoryReconciler.ReconcileResult;
+import org.openmetadata.service.context.center.DocumentMemoryExtractor.DeriveResult;
 
 /**
  * Shared core of Context Center knowledge-pill extraction. Given a source entity (a ContextFile, a

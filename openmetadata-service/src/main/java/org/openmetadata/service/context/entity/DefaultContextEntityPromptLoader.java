@@ -1,4 +1,4 @@
-package org.openmetadata.service.context;
+package org.openmetadata.service.context.entity;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;

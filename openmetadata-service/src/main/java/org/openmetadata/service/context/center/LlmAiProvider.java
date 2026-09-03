@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import org.openmetadata.service.llm.LLMClientHolder;
 

@@ -11,7 +11,7 @@
  * limitations under the License.
  */
 
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 

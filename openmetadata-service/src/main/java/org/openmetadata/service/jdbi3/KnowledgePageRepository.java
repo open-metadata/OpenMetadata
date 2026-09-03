@@ -51,7 +51,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.drive.PageContextProcessingEngineHolder;
+import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;

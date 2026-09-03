@@ -1,4 +1,4 @@
-package org.openmetadata.service.drive;
+package org.openmetadata.service.context.center;
 
 import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
