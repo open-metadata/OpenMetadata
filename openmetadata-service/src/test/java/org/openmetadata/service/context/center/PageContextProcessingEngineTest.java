@@ -80,7 +80,7 @@ class PageContextProcessingEngineTest {
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
         .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0));
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
 
     ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
 
@@ -107,7 +107,7 @@ class PageContextProcessingEngineTest {
     when(extractor.derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
         .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 0, 0));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 2));
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 2, 0));
 
     ContextProcessingEngine.ExtractionOutcome outcome = engine(10).runExtraction(pageId);
 
@@ -123,7 +123,7 @@ class PageContextProcessingEngineTest {
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
         .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
-        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0));
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
 
     engine(10).runExtraction(pageId);
 

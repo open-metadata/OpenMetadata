@@ -52,8 +52,12 @@ class ContextMemoryReconcilerTest {
         .thenReturn(List.of(pills));
   }
 
+  /** No cross-source duplicates unless a test says otherwise. */
+  private MemoryDuplicateProbe probe = candidate -> List.of();
+
   private ContextMemoryReconciler.ReconcileResult reconcile(List<ContextMemory> derived) {
-    return new ContextMemoryReconciler(memoryRepository).reconcile(source, Entity.PAGE, derived);
+    return new ContextMemoryReconciler(memoryRepository, probe)
+        .reconcile(source, Entity.PAGE, derived);
   }
 
   @Test
@@ -120,6 +124,104 @@ class ContextMemoryReconcilerTest {
     ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository, times(1)).create(isNull(), captor.capture());
     assertEquals("Q2", captor.getValue().getQuestion(), "Q1 is owned by the manual pill");
+    assertEquals(1, result.created());
+  }
+
+  @Test
+  void keepsPillIdentityWhenTheQuestionIsRephrased() {
+    // Same fact, reworded question: the pill must be updated in place, not retired and recreated,
+    // so usageCount/lastUsedAt and the embedding survive a re-extraction.
+    ContextMemory original =
+        pill(
+            "How should billing totals handle refunds?",
+            "Filter to amount > 0 to exclude refunds from totals.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.ACTIVE);
+    existing(original);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(
+            List.of(
+                derived(
+                    "How should billing totals handle the refunds?",
+                    "Filter to amount > 0 to exclude refunds from totals.")));
+
+    assertEquals(0, result.created(), "a rephrase must not create a second pill");
+    assertEquals(0, result.deleted(), "a rephrase must not retire the original");
+    assertEquals(1, result.updated());
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository)
+        .update(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+    assertEquals(original.getId(), captor.getValue().getId(), "identity must be preserved");
+    assertEquals(
+        "How should billing totals handle the refunds?",
+        captor.getValue().getQuestion(),
+        "the rephrased question must be adopted");
+  }
+
+  @Test
+  void skipsCandidateAnotherSourceAlreadyStates() {
+    existing();
+    UUID otherPill = UUID.randomUUID();
+    probe =
+        candidate ->
+            List.of(
+                new MemoryDuplicateProbe.ProbeHit(
+                    otherPill,
+                    "What is the data retention window?",
+                    "Raw events are retained for 90 days.",
+                    ContextMemorySourceType.FILE_EXTRACTION.value()));
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(
+            List.of(
+                derived(
+                    "What is the data retention window?", "Raw events are retained for 90 days.")));
+
+    assertEquals(1, result.skippedDuplicates());
+    assertEquals(0, result.created());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  @Test
+  void aManualMemoryElsewhereNeverSuppressesExtraction() {
+    // A user's own note must not silence a document's knowledge; only automated pills dedup.
+    existing();
+    probe =
+        candidate ->
+            List.of(
+                new MemoryDuplicateProbe.ProbeHit(
+                    UUID.randomUUID(),
+                    "What is the data retention window?",
+                    "Raw events are retained for 90 days.",
+                    ContextMemorySourceType.MANUAL.value()));
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(
+            List.of(
+                derived(
+                    "What is the data retention window?", "Raw events are retained for 90 days.")));
+
+    assertEquals(0, result.skippedDuplicates());
+    assertEquals(1, result.created());
+  }
+
+  @Test
+  void unrelatedProbeHitDoesNotBlockCreation() {
+    existing();
+    probe =
+        candidate ->
+            List.of(
+                new MemoryDuplicateProbe.ProbeHit(
+                    UUID.randomUUID(),
+                    "Which team owns the marketing dashboard?",
+                    "The growth team owns it.",
+                    ContextMemorySourceType.FILE_EXTRACTION.value()));
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(List.of(derived("What is the SLA for ingestion?", "Four hours end to end.")));
+
+    assertEquals(0, result.skippedDuplicates());
     assertEquals(1, result.created());
   }
 }
