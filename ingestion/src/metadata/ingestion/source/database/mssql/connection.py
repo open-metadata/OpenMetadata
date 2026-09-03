@@ -15,9 +15,11 @@ Source connection handler
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.event import listen
 
 from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.checks.database import (
@@ -39,6 +41,7 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_url_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.azuresql.connection import (
@@ -121,10 +124,56 @@ SQLSERVER_ERRORS = ErrorPack(
 MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)
 
 
+# A hung read otherwise stalls a workflow forever: pytds and pymssql default to
+# no socket timeout at all and pyodbc to no query timeout, and the shared engine
+# builder sets neither. Ten minutes is well past any healthy catalogue or
+# query-log read, and mirrors how Snowflake bounds its own socket. User-supplied
+# connectionArguments win.
+DEFAULT_QUERY_TIMEOUT_SECONDS = 600
+
+
 def get_connection_url(connection: MssqlConnectionConfig) -> str:
-    if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
+    if uses_pyodbc(connection):
         return get_pyodbc_connection_url(connection)
     return get_connection_url_common(connection)
+
+
+def uses_pyodbc(connection: MssqlConnectionConfig) -> bool:
+    return connection.scheme.value == connection.scheme.mssql_pyodbc.value
+
+
+def with_default_query_timeout(connection: MssqlConnectionConfig) -> MssqlConnectionConfig:
+    """
+    Bound the query timeout for the drivers that take it as a connect argument.
+
+    pytds and pymssql both read ``timeout`` as the socket timeout applied to
+    every read. pyodbc reads it as the *login* timeout instead, so its query
+    timeout is set on the live connection by ``bound_pyodbc_query_timeout``.
+
+    The bound belongs to the engine, not to the service: a workflow with
+    storeServiceConnection on writes its connection back to the API
+    (OMetaServiceMixin.get_create_service_from_source), so mutating the one it
+    holds would persist a timeout the user never configured. Hence the copy.
+    """
+    if uses_pyodbc(connection):
+        return connection
+    connection = deepcopy(connection)
+    connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
+    if connection.connectionArguments.root is not None:
+        connection.connectionArguments.root.setdefault("timeout", DEFAULT_QUERY_TIMEOUT_SECONDS)
+    return connection
+
+
+def bound_pyodbc_query_timeout(engine: Engine, timeout_seconds: int = DEFAULT_QUERY_TIMEOUT_SECONDS) -> None:
+    """
+    Bound pyodbc's query timeout, which is a connection attribute rather than a
+    connect keyword, so it can only be set once the DBAPI connection exists.
+    """
+
+    def set_query_timeout(dbapi_connection, _connection_record) -> None:
+        dbapi_connection.timeout = timeout_seconds
+
+    listen(engine, "connect", set_query_timeout)
 
 
 class MssqlChecks:
@@ -193,10 +242,16 @@ class MssqlChecks:
 class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         engine = create_generic_db_connection(
-            connection=self.service_connection,
+            connection=with_default_query_timeout(self.service_connection),
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
+            # A pooled connection the server has since dropped otherwise fails
+            # the first query that borrows it, and MSSQL churns a fresh engine
+            # per database when ingesting all of them.
+            pool_pre_ping=True,
         )
+        if uses_pyodbc(self.service_connection):
+            bound_pyodbc_query_timeout(engine)
         self._on_close(engine.dispose)
         return engine
 

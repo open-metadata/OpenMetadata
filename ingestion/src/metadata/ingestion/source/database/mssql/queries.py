@@ -419,6 +419,20 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
+MSSQL_GET_INDEXED_VIEWS = textwrap.dedent(
+    """
+SELECT v.name AS view_name
+FROM sys.views v
+JOIN sys.schemas s
+    ON s.schema_id = v.schema_id
+JOIN sys.indexes i
+    ON i.object_id = v.object_id
+WHERE s.name = :schema_name
+  AND i.type = 1
+  AND i.is_unique = 1
+"""
+)
+
 MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(

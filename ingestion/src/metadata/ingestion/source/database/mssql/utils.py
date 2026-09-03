@@ -346,8 +346,45 @@ def get_pk_constraint(self, connection, tablename, dbname, owner=None, schema=No
 
 
 @reflection.cache
-def get_unique_constraints(self, connection, table_name, schema=None, **kw):
-    raise NotImplementedError()
+@db_plus_owner
+def get_unique_constraints(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument
+    """
+    Return the UNIQUE constraints declared on a table.
+
+    SQLAlchemy's MSSQL dialect does not reflect unique constraints and the base
+    dialect raises NotImplementedError, which the catalogue swallows, so they
+    were dropped for every MSSQL table. They live in INFORMATION_SCHEMA next to
+    the primary keys the dialect already reads, so this rides the same views and
+    returns the reflection contract: one dict per constraint, columns ordered by
+    their position in the key.
+    """
+    constraints = ischema.constraints
+    key_constraints = ischema.key_constraints.alias("C")
+
+    query_ = (
+        sql.select(
+            key_constraints.c.constraint_name,
+            key_constraints.c.column_name,
+        )
+        .where(
+            sql.and_(
+                constraints.c.constraint_name == key_constraints.c.constraint_name,
+                constraints.c.table_schema == key_constraints.c.table_schema,
+                constraints.c.constraint_type == "UNIQUE",
+                key_constraints.c.table_name == tablename,
+                key_constraints.c.table_schema == owner,
+            ),
+        )
+        .order_by(key_constraints.c.constraint_name, key_constraints.c.ordinal_position)
+    )
+    cursor = connection.execution_options(future_result=True).execute(query_)
+
+    columns_by_constraint: dict[str, list[str]] = {}
+    for row in cursor.mappings():
+        constraint_name = row[key_constraints.c.constraint_name.name]
+        columns_by_constraint.setdefault(constraint_name, []).append(row[key_constraints.c.column_name.name])
+
+    return [{"name": name, "column_names": columns} for name, columns in columns_by_constraint.items()]
 
 
 @reflection.cache

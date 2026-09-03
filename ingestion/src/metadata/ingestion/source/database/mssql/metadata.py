@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -36,7 +37,10 @@ from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
@@ -45,6 +49,7 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_GET_DATABASE_COMMENTS,
     MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
+    MSSQL_GET_INDEXED_VIEWS,
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
@@ -190,6 +195,42 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         )
         return Markdown(description) if description else None
 
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+        """
+        Report indexed views as materialized views.
+
+        An MSSQL indexed view is persisted on disk and kept up to date by the
+        engine - materialized in everything but name - so describing it as a
+        plain view understates it. Both types are handled identically everywhere
+        else in the catalogue (view definition, view lineage), so only the
+        reported type changes.
+        """
+        indexed_views = self._get_indexed_views(schema_name)
+        return [
+            TableNameAndType(
+                name=view_name,
+                type_=TableType.MaterializedView if view_name in indexed_views else TableType.View,
+            )
+            for view_name in self.inspector.get_view_names(schema_name) or []
+        ]
+
+    def _get_indexed_views(self, schema_name: str) -> set[str]:
+        """
+        Names of the views in a schema carrying the unique clustered index that
+        makes a view indexed. A failure here only costs the finer type, so it is
+        logged and every view stays a plain view.
+        """
+        try:
+            with self.engine.connect() as conn:
+                results = conn.execute(text(MSSQL_GET_INDEXED_VIEWS), {"schema_name": schema_name}).all()
+            return {row.view_name for row in results}
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not detect indexed views for schema {schema_name}; they will be reported as plain views: {exc}"
+            )
+            return set()
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
@@ -198,6 +239,12 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         Reset the per-database encrypted-procedure cache and load the description
         maps. Descriptions are optional metadata, so a failure here must not
         abort the run: it is logged and ingestion continues without them.
+
+        Every description query is scoped to the connected database (they select
+        DB_NAME() and read that database's sys catalogue), so the inspector must
+        already point at the database being ingested when this runs. Loading
+        before the switch keys the maps by the previously connected database,
+        which no lookup can ever match.
         """
         self.encrypted_procedures_cache.clear()
         description_loaders = {
@@ -215,8 +262,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
-            self._load_description_maps()
             self.set_inspector(database_name=configured_db)
+            self._load_description_maps()
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -235,8 +282,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
-                    self._load_description_maps()
                     self.set_inspector(database_name=new_database)
+                    self._load_description_maps()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
