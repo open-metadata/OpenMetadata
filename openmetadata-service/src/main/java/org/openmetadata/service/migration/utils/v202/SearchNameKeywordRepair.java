@@ -37,7 +37,12 @@ public class SearchNameKeywordRepair {
         LOG.warn("Search settings unavailable; skipping name.keyword search-field repair");
       } else {
         SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(storedSettings);
-        applyAndSaveIfChanged(storedSettings, currentSettings, seedSettings);
+        if (currentSettings == null) {
+          LOG.warn(
+              "Stored search settings could not be parsed; skipping name.keyword search-field repair");
+        } else {
+          applyAndSaveIfChanged(storedSettings, currentSettings, seedSettings);
+        }
       }
     } catch (Exception e) {
       LOG.error("Error repairing name.keyword search fields", e);

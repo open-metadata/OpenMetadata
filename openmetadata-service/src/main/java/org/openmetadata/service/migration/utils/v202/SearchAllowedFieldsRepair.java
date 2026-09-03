@@ -50,7 +50,11 @@ public class SearchAllowedFieldsRepair {
         LOG.warn("Search settings unavailable; skipping allowedFields completion");
       } else {
         SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(storedSettings);
-        applyAndSaveIfChanged(storedSettings, currentSettings, seedSettings);
+        if (currentSettings == null) {
+          LOG.warn("Stored search settings could not be parsed; skipping allowedFields completion");
+        } else {
+          applyAndSaveIfChanged(storedSettings, currentSettings, seedSettings);
+        }
       }
     } catch (Exception e) {
       LOG.error("Error completing allowedFields from seed", e);
