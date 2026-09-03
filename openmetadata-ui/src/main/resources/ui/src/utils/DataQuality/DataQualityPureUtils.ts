@@ -65,6 +65,8 @@ import { getEntityFQN } from '../FeedUtilsPure';
 import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink, getTierTags } from '../TablePureUtils';
 
+const COLUMNS_ENTITY_LINK_SEGMENT = '::columns::';
+
 export const buildTestCaseParams = (
   params: ListTestCaseParamsBySearch | undefined,
   filters: string[]
@@ -692,7 +694,7 @@ export function getColumnFilterOptions(
   items: TestCase[]
 ): SearchDropdownOption[] {
   const withColumn = items.filter((tc) =>
-    tc.entityLink?.includes('::columns::')
+    tc.entityLink?.includes(COLUMNS_ENTITY_LINK_SEGMENT)
   );
   const pairs = withColumn.map((tc) => {
     const tableFqn = getEntityFQN(tc.entityLink);
@@ -741,7 +743,7 @@ export function filterTestCasesByTableAndColumn(
   if (filterColumns.length > 0) {
     const columnSet = new Set(filterColumns);
     result = result.filter((tc) => {
-      if (!tc.entityLink?.includes('::columns::')) {
+      if (!tc.entityLink?.includes(COLUMNS_ENTITY_LINK_SEGMENT)) {
         return false;
       }
 
@@ -788,7 +790,7 @@ export function getColumnFilterEntityLink(
 ): string | undefined {
   if (
     !columnFilterKey.includes('::') ||
-    columnFilterKey.includes('::columns::') ||
+    columnFilterKey.includes(COLUMNS_ENTITY_LINK_SEGMENT) ||
     columnFilterKey.startsWith('<#E')
   ) {
     return undefined;

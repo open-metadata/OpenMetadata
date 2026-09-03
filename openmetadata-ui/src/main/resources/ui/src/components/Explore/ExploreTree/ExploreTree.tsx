@@ -68,6 +68,8 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
+const SERVICE_ICON_CLASS = 'service-icon w-4 h-4';
+
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
 const SERVICE_STYLE_TOP_HITS_SIZE = 1;
 
@@ -128,40 +130,6 @@ const getServiceStyleIcon = (bucket: Bucket) => {
   return isString(iconURL) && !isEmpty(iconURL) ? iconURL : undefined;
 };
 
-/**
- * Resolves the unfiltered-estate buckets used to derive category visibility.
- * A no-filter fetch already carries them; otherwise a cached response for the
- * same text query is reused, and only a genuinely new query/filter combo pays
- * for the extra aggregation.
- */
-const resolvePresenceBuckets = async (
-  searchQueryParam: string,
-  filterMust: unknown[],
-  countBuckets: Bucket[],
-  presenceCacheKey: string,
-  presenceCache: { key: string; buckets: Bucket[] } | null
-): Promise<Bucket[]> => {
-  if (isEmpty(filterMust)) {
-    return countBuckets;
-  }
-  if (presenceCache?.key === presenceCacheKey) {
-    return presenceCache.buckets;
-  }
-
-  return (
-    await searchQuery({
-      query: searchQueryParam ?? '',
-      pageNumber: 0,
-      pageSize: 0,
-      queryFilter: {},
-      searchIndex: SearchIndex.DATA_ASSET,
-      includeDeleted: false,
-      trackTotalHits: true,
-      fetchSource: false,
-    })
-  ).aggregations['entityType'].buckets;
-};
-
 export const getExploreTreeAggregationResponse = async ({
   bucketToFind,
   countQueryFilter,
@@ -197,74 +165,6 @@ export const getExploreTreeAggregationResponse = async ({
         trackTotalHits: true,
         fetchSource: false,
       });
-
-const resolveBucketTypeAndLogo = (
-  bucket: Bucket,
-  bucketToFind: EntityFields,
-  isEntityType: boolean,
-  isServiceType: boolean,
-  treeNode: ExploreTreeNode,
-  t: (key: string) => string
-): { type: string | null; logo: ExploreTreeNode['icon'] } => {
-  if (isEntityType) {
-    const iconClass = 'service-icon w-4 h-4';
-
-    return {
-      type: null,
-      logo: searchClassBase.getEntityIcon(bucket.key, iconClass) ?? <></>,
-    };
-  }
-  if (isServiceType) {
-    const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
-
-    return {
-      type: null,
-      logo: (
-        <img
-          alt={t('label.service')}
-          src={serviceIcon}
-          style={{ width: 18, height: 18 }}
-        />
-      ),
-    };
-  }
-  if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
-    return {
-      type: 'Database',
-      logo: searchClassBase.getEntityIcon(
-        'database',
-        'service-icon w-4 h-4'
-      ) ?? <></>,
-    };
-  }
-  if (bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME) {
-    return {
-      type: 'Database Schema',
-      logo: searchClassBase.getEntityIcon(
-        'databaseSchema',
-        'service-icon w-4 h-4'
-      ) ?? <></>,
-    };
-  }
-  if (bucketToFind === EntityFields.SERVICE) {
-    const serviceIcon = getServiceStyleIcon(bucket);
-
-    return {
-      type: null,
-      logo: serviceIcon ? (
-        <img
-          alt={t('label.service')}
-          src={serviceIcon}
-          style={{ width: 18, height: 18 }}
-        />
-      ) : (
-        treeNode.icon
-      ),
-    };
-  }
-
-  return { type: null, logo: undefined };
-};
 
 const ExploreTree = ({
   additionalQueryFilter,
@@ -411,14 +311,48 @@ const ExploreTree = ({
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-          const { type, logo } = resolveBucketTypeAndLogo(
-            bucket,
-            bucketToFind,
-            isEntityType,
-            isServiceType,
-            treeNode as ExploreTreeNode,
-            t
-          );
+          let type = null;
+          let logo = undefined;
+          if (isEntityType) {
+            const iconClass = SERVICE_ICON_CLASS;
+            logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
+              <></>
+            );
+          } else if (isServiceType) {
+            const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
+            logo = (
+              <img
+                alt={t('label.service')}
+                src={serviceIcon}
+                style={{ width: 18, height: 18 }}
+              />
+            );
+          } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+            type = 'Database';
+            logo = searchClassBase.getEntityIcon(
+              'database',
+              SERVICE_ICON_CLASS
+            ) ?? <></>;
+          } else if (
+            bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
+          ) {
+            type = 'Database Schema';
+            logo = searchClassBase.getEntityIcon(
+              'databaseSchema',
+              SERVICE_ICON_CLASS
+            ) ?? <></>;
+          } else if (bucketToFind === EntityFields.SERVICE) {
+            const serviceIcon = getServiceStyleIcon(bucket);
+            logo = serviceIcon ? (
+              <img
+                alt={t('label.service')}
+                src={serviceIcon}
+                style={{ width: 18, height: 18 }}
+              />
+            ) : (
+              treeNode.icon
+            );
+          }
 
           if (bucket.key.toLowerCase() === defaultServiceType) {
             setSelectedKeys([id]);
@@ -587,13 +521,25 @@ const ExploreTree = ({
       // cached per query: a no-filter response is reused directly, and a filter
       // change reuses the cache instead of paying for a second aggregation.
       const presenceCacheKey = searchQueryParam ?? '';
-      const presenceBuckets = await resolvePresenceBuckets(
-        searchQueryParam,
-        filterMust,
-        countBuckets,
-        presenceCacheKey,
-        presenceBucketsRef.current
-      );
+      let presenceBuckets: Bucket[];
+      if (isEmpty(filterMust)) {
+        presenceBuckets = countBuckets;
+      } else if (presenceBucketsRef.current?.key === presenceCacheKey) {
+        presenceBuckets = presenceBucketsRef.current.buckets;
+      } else {
+        presenceBuckets = (
+          await searchQuery({
+            query: searchQueryParam ?? '',
+            pageNumber: 0,
+            pageSize: 0,
+            queryFilter: {},
+            searchIndex: SearchIndex.DATA_ASSET,
+            includeDeleted: false,
+            trackTotalHits: true,
+            fetchSource: false,
+          })
+        ).aggregations['entityType'].buckets;
+      }
       // A newer filter change superseded this fetch while it was in flight —
       // drop its result so the tree reflects the latest filter, not this one.
       if (!isLatestFetch()) {

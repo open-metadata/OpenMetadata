@@ -107,6 +107,9 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
+const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ROTATE_90_CLASS = 'tw:rotate-90';
+
 interface BulkAssetsSocketMessage {
   jobId?: string;
   status?: string;
@@ -114,33 +117,6 @@ interface BulkAssetsSocketMessage {
   total?: number;
   result?: BulkOperationResult;
 }
-
-const isRelevantBulkJob = (
-  data: BulkAssetsSocketMessage,
-  activeJobId: string | null
-): boolean => Boolean(data.jobId) && data.jobId === activeJobId;
-
-const isInProgressBulkStatus = (status: string | undefined): boolean =>
-  status === 'IN_PROGRESS' || status === 'RUNNING';
-
-const isCompletedBulkStatus = (status: string | undefined): boolean =>
-  status === 'COMPLETED' || status === 'SUCCESS';
-
-const isFailedBulkStatus = (status: string | undefined): boolean =>
-  status === 'FAILED' || status === 'FAILURE';
-
-// Whether any column filter (not search) currently narrows the grid, used to
-// distinguish "no data at all" from "no data for this filter".
-const computeHasActiveFilters = (
-  filters: Record<string, unknown> | undefined
-): boolean =>
-  Boolean(
-    filters &&
-      Object.values(filters).some(
-        (filterValues: unknown) =>
-          Array.isArray(filterValues) && filterValues.length > 0
-      )
-  );
 
 interface ColumnEditFormHandle {
   getDisplayName: () => string;
@@ -189,50 +165,6 @@ const getColumnLinkTabForEntityType = (
 
   return COLUMN_GRID_COLUMN_LINK_TAB_MAP[key] ?? EntityTabs.SCHEMA;
 };
-
-// Picks the occurrence to link to: the row's own occurrence, its normalized
-// occurrenceRef, the first occurrence of its group, or (as a last resort)
-// the first occurrence of the first group on the row's gridItem.
-const resolveRowOccurrence = (
-  row: ColumnGridRowData
-): ColumnOccurrenceRef | null => {
-  if (row.occurrence) {
-    return row.occurrence;
-  }
-  if (row.occurrenceRef) {
-    return {
-      columnFQN: row.occurrenceRef.columnFQN,
-      entityType: row.occurrenceRef.entityType,
-      entityFQN: row.occurrenceRef.entityFQN,
-    } as ColumnOccurrenceRef;
-  }
-  if (row.group?.occurrences && row.group.occurrences.length > 0) {
-    return row.group.occurrences[0];
-  }
-  if (
-    row.gridItem?.groups &&
-    row.gridItem.groups.length > 0 &&
-    row.gridItem.groups[0].occurrences.length > 0
-  ) {
-    return row.gridItem.groups[0].occurrences[0];
-  }
-
-  return null;
-};
-
-// The description cell shows the pending edit's preview when the row has an
-// unsaved description edit, otherwise the row's own description preview.
-const getDescriptionDisplayValue = (entity: ColumnGridRowData): string =>
-  entity.editedDescription !== undefined
-    ? entity.editedDescriptionPreview ?? ''
-    : entity.descriptionPreview ?? '';
-
-// "(covered/total)" suffix for the coverage status label; blank when either
-// count is unknown.
-const getCoverageCountText = (entity: ColumnGridRowData): string =>
-  entity.coverageCount !== undefined && entity.totalCount !== undefined
-    ? ` (${entity.coverageCount}/${entity.totalCount})`
-    : '';
 
 const EDITED_ROW_KEYS: ReadonlyArray<
   'editedDisplayName' | 'editedDescription' | 'editedTags'
@@ -363,88 +295,6 @@ const extractRowOccurrences = (
   }
 
   return occurrences;
-};
-
-interface RowChangeFlags {
-  effectiveDisplayName: string | undefined;
-  hasDisplayNameChange: boolean;
-  hasDescriptionChange: boolean;
-}
-
-const computeRowChangeFlags = (
-  row: ColumnGridRowData,
-  pendingDisplayName: string | undefined,
-  pendingDescription: string | undefined
-): RowChangeFlags => {
-  const effectiveDisplayName = pendingDisplayName ?? row.editedDisplayName;
-  const hasDisplayNameChange =
-    effectiveDisplayName !== undefined &&
-    effectiveDisplayName !== (row.displayName ?? '');
-  const hasDescriptionChange = pendingDescription !== undefined;
-
-  return { effectiveDisplayName, hasDisplayNameChange, hasDescriptionChange };
-};
-
-// Applies one row's pending edits to a single occurrence's entry in the
-// shared update map (creating the entry on first touch).
-const applyRowChangesToOccurrence = (
-  occurrence: ColumnOccurrenceTarget,
-  row: ColumnGridRowData,
-  flags: RowChangeFlags,
-  pendingDescription: string | undefined,
-  columnUpdatesByKey: Map<string, ColumnUpdate>
-): void => {
-  const key = getOccurrenceKey(occurrence);
-  const existing = columnUpdatesByKey.get(key);
-  const update: ColumnUpdate = existing ?? {
-    columnFQN: occurrence.columnFQN,
-    entityType: occurrence.entityType,
-  };
-
-  if (flags.hasDisplayNameChange) {
-    update.displayName = flags.effectiveDisplayName;
-  }
-  if (flags.hasDescriptionChange) {
-    update.description = pendingDescription;
-  }
-  if (row.editedTags !== undefined) {
-    update.tags = row.editedTags;
-  }
-
-  columnUpdatesByKey.set(key, update);
-};
-
-// Folds one selected row's pending edits (display name / description / tags)
-// into the shared per-occurrence update map, skipping rows with no changes.
-const processRowForBulkUpdate = (
-  row: ColumnGridRowData,
-  pendingDisplayName: string | undefined,
-  pendingDescription: string | undefined,
-  columnUpdatesByKey: Map<string, ColumnUpdate>
-): void => {
-  const flags = computeRowChangeFlags(
-    row,
-    pendingDisplayName,
-    pendingDescription
-  );
-
-  if (
-    !flags.hasDisplayNameChange &&
-    !flags.hasDescriptionChange &&
-    !row.editedTags
-  ) {
-    return;
-  }
-
-  for (const occurrence of extractRowOccurrences(row)) {
-    applyRowChangesToOccurrence(
-      occurrence,
-      row,
-      flags,
-      pendingDescription,
-      columnUpdatesByKey
-    );
-  }
 };
 
 const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
@@ -899,239 +749,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Helper functions for transform
 
-  type GridItemRowContext = {
-    item: ColumnGridItem;
-    allOccurrences: ColumnOccurrenceRef[];
-    pathInfo: { primary: string; additionalCount: number };
-    coverage: { covered: number; total: number; hasAnyMetadata: boolean };
-    expandedRows: Set<string>;
-    expandedStructRows: Set<string>;
-  };
-
-  // `item.hasVariations && item.groups.length > 1`: a parent row for the
-  // column name plus one child row per group occurrence (each expandable
-  // further into its own STRUCT children) when the parent is expanded.
-  const buildVariationGroupRows = ({
-    item,
-    allOccurrences,
-    pathInfo,
-    coverage,
-    expandedRows,
-    expandedStructRows,
-  }: GridItemRowContext): ColumnGridRowData[] => {
-    const rows: ColumnGridRowData[] = [];
-    const isExpanded = expandedRows.has(item.columnName);
-    const aggregatedTags = aggregateTags(item);
-    const parentRow: ColumnGridRowData = {
-      id: item.columnName,
-      columnName: item.columnName,
-      occurrenceCount: allOccurrences.length,
-      hasVariations: true,
-      isExpanded,
-      isGroup: true,
-      gridItem: item,
-      tags: aggregatedTags,
-      path: pathInfo.primary,
-      additionalPathsCount: pathInfo.additionalCount,
-      coverageCount: coverage.covered,
-      totalCount: coverage.total,
-      hasCoverage: true,
-      hasAnyMetadata: coverage.hasAnyMetadata,
-      metadataStatus: item.metadataStatus,
-    };
-    rows.push(parentRow);
-
-    if (!isExpanded) {
-      return rows;
-    }
-
-    for (const group of item.groups) {
-      const hasStructChildren = group.children && group.children.length > 0;
-      for (const occurrence of group.occurrences) {
-        const occPath = buildPath(occurrence);
-        const childRowId = `${item.columnName}-${occurrence.columnFQN}`;
-        const isStructExpanded = expandedStructRows.has(childRowId);
-        const childRow: ColumnGridRowData = {
-          id: childRowId,
-          columnName: item.columnName,
-          displayName: group.displayName,
-          description: group.description,
-          descriptionPreview: getDescriptionPreview(group.description),
-          dataType: group.dataType,
-          tags: group.tags,
-          occurrenceCount: 1,
-          hasVariations: false,
-          groupId: group.groupId,
-          isGroup: false,
-          parentId: item.columnName,
-          group,
-          path: occPath,
-          additionalPathsCount: 0,
-          occurrence,
-          occurrenceRef: {
-            columnFQN: occurrence.columnFQN,
-            entityType: occurrence.entityType,
-            entityFQN: occurrence.entityFQN,
-          },
-          children: group.children,
-          isExpanded: isStructExpanded,
-        };
-        rows.push(childRow);
-
-        if (isStructExpanded && hasStructChildren && group.children) {
-          rows.push(
-            ...createStructChildRows(
-              group.children,
-              childRowId,
-              1,
-              expandedStructRows
-            )
-          );
-        }
-      }
-    }
-
-    return rows;
-  };
-
-  // `item.totalOccurrences > 1` (without variations): a single parent row
-  // aggregating the group, plus its STRUCT children and/or per-occurrence
-  // rows when expanded.
-  const buildMultiOccurrenceGroupRows = ({
-    item,
-    allOccurrences,
-    pathInfo,
-    coverage,
-    expandedRows,
-    expandedStructRows,
-  }: GridItemRowContext): ColumnGridRowData[] => {
-    const rows: ColumnGridRowData[] = [];
-    const isExpanded = expandedRows.has(item.columnName);
-    const group = item.groups[0];
-    const aggregatedTags = aggregateTags(item);
-    const hasStructChildren = group?.children && group.children.length > 0;
-    const isStructExpanded = expandedStructRows.has(item.columnName);
-    const parentRow: ColumnGridRowData = {
-      id: item.columnName,
-      columnName: item.columnName,
-      displayName: group?.displayName,
-      description: group?.description,
-      descriptionPreview: getDescriptionPreview(group?.description),
-      dataType: group?.dataType,
-      tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
-      occurrenceCount: allOccurrences.length,
-      hasVariations: false,
-      isExpanded,
-      isGroup: true,
-      gridItem: item,
-      path: pathInfo.primary,
-      additionalPathsCount: pathInfo.additionalCount,
-      coverageCount: coverage.covered,
-      totalCount: coverage.total,
-      hasCoverage: true,
-      hasAnyMetadata: coverage.hasAnyMetadata,
-      metadataStatus: item.metadataStatus,
-      children: group?.children,
-    };
-    rows.push(parentRow);
-
-    // Add STRUCT children if expanded (for the parent row before occurrence rows)
-    if (isStructExpanded && hasStructChildren && group?.children) {
-      rows.push(
-        ...createStructChildRows(
-          group.children,
-          item.columnName,
-          1,
-          expandedStructRows
-        )
-      );
-    }
-
-    if (isExpanded && group) {
-      for (const occurrence of group.occurrences) {
-        const occPath = buildPath(occurrence);
-        const occurrenceRow: ColumnGridRowData = {
-          id: `${item.columnName}-${occurrence.columnFQN}`,
-          columnName: item.columnName,
-          displayName: group.displayName,
-          description: group.description,
-          descriptionPreview: getDescriptionPreview(group.description),
-          dataType: group.dataType,
-          tags: group.tags,
-          occurrenceCount: 1,
-          hasVariations: false,
-          isGroup: false,
-          parentId: item.columnName,
-          group,
-          path: occPath,
-          additionalPathsCount: 0,
-          occurrence,
-          occurrenceRef: {
-            columnFQN: occurrence.columnFQN,
-            entityType: occurrence.entityType,
-            entityFQN: occurrence.entityFQN,
-          },
-          children: group.children,
-        };
-        rows.push(occurrenceRow);
-      }
-    }
-
-    return rows;
-  };
-
-  // Single occurrence: one row, plus its STRUCT children when expanded.
-  const buildSingleOccurrenceRows = ({
-    item,
-    allOccurrences,
-    pathInfo,
-    coverage,
-    expandedStructRows,
-  }: GridItemRowContext): ColumnGridRowData[] => {
-    const rows: ColumnGridRowData[] = [];
-    const group = item.groups[0];
-    const hasStructChildren = group?.children && group.children.length > 0;
-    const isStructExpanded = expandedStructRows.has(item.columnName);
-    const row: ColumnGridRowData = {
-      id: item.columnName,
-      columnName: item.columnName,
-      displayName: group?.displayName,
-      description: group?.description,
-      descriptionPreview: getDescriptionPreview(group?.description),
-      dataType: group?.dataType,
-      tags: group?.tags,
-      occurrenceCount: allOccurrences.length,
-      hasVariations: false,
-      isGroup: false,
-      gridItem: item,
-      group,
-      path: pathInfo.primary,
-      additionalPathsCount: pathInfo.additionalCount,
-      occurrence: allOccurrences[0],
-      coverageCount: coverage.covered,
-      totalCount: coverage.total,
-      hasCoverage: true,
-      hasAnyMetadata: coverage.hasAnyMetadata,
-      metadataStatus: item.metadataStatus,
-      children: group?.children,
-      isExpanded: isStructExpanded,
-    };
-    rows.push(row);
-
-    if (isStructExpanded && hasStructChildren && group?.children) {
-      rows.push(
-        ...createStructChildRows(
-          group.children,
-          item.columnName,
-          1,
-          expandedStructRows
-        )
-      );
-    }
-
-    return rows;
-  };
-
   // Transform function that will be used by the hook
   const transformGridItemsToRows = useCallback(
     (
@@ -1142,26 +759,196 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const rows: ColumnGridRowData[] = [];
 
       for (const item of items) {
+        const hasMultipleOccurrences = item.totalOccurrences > 1;
         const coverage = calculateCoverage(item);
 
         const allOccurrences: ColumnOccurrenceRef[] = [];
         item.groups.forEach((g) => allOccurrences.push(...g.occurrences));
         const pathInfo = getUniquePaths(allOccurrences);
-        const context: GridItemRowContext = {
-          item,
-          allOccurrences,
-          pathInfo,
-          coverage,
-          expandedRows,
-          expandedStructRows,
-        };
 
         if (item.hasVariations && item.groups.length > 1) {
-          rows.push(...buildVariationGroupRows(context));
-        } else if (item.totalOccurrences > 1) {
-          rows.push(...buildMultiOccurrenceGroupRows(context));
+          const isExpanded = expandedRows.has(item.columnName);
+          const aggregatedTags = aggregateTags(item);
+          const parentRow: ColumnGridRowData = {
+            id: item.columnName,
+            columnName: item.columnName,
+            occurrenceCount: allOccurrences.length,
+            hasVariations: true,
+            isExpanded,
+            isGroup: true,
+            gridItem: item,
+            tags: aggregatedTags,
+            path: pathInfo.primary,
+            additionalPathsCount: pathInfo.additionalCount,
+            coverageCount: coverage.covered,
+            totalCount: coverage.total,
+            hasCoverage: true,
+            hasAnyMetadata: coverage.hasAnyMetadata,
+            metadataStatus: item.metadataStatus,
+          };
+          rows.push(parentRow);
+
+          if (isExpanded) {
+            for (const group of item.groups) {
+              const hasStructChildren =
+                group.children && group.children.length > 0;
+              for (const occurrence of group.occurrences) {
+                const occPath = buildPath(occurrence);
+                const childRowId = `${item.columnName}-${occurrence.columnFQN}`;
+                const isStructExpanded = expandedStructRows.has(childRowId);
+                const childRow: ColumnGridRowData = {
+                  id: childRowId,
+                  columnName: item.columnName,
+                  displayName: group.displayName,
+                  description: group.description,
+                  descriptionPreview: getDescriptionPreview(group.description),
+                  dataType: group.dataType,
+                  tags: group.tags,
+                  occurrenceCount: 1,
+                  hasVariations: false,
+                  groupId: group.groupId,
+                  isGroup: false,
+                  parentId: item.columnName,
+                  group,
+                  path: occPath,
+                  additionalPathsCount: 0,
+                  occurrence,
+                  occurrenceRef: {
+                    columnFQN: occurrence.columnFQN,
+                    entityType: occurrence.entityType,
+                    entityFQN: occurrence.entityFQN,
+                  },
+                  children: group.children,
+                  isExpanded: isStructExpanded,
+                };
+                rows.push(childRow);
+
+                if (isStructExpanded && hasStructChildren && group.children) {
+                  rows.push(
+                    ...createStructChildRows(
+                      group.children,
+                      childRowId,
+                      1,
+                      expandedStructRows
+                    )
+                  );
+                }
+              }
+            }
+          }
+        } else if (hasMultipleOccurrences) {
+          const isExpanded = expandedRows.has(item.columnName);
+          const group = item.groups[0];
+          const aggregatedTags = aggregateTags(item);
+          const hasStructChildren =
+            group?.children && group.children.length > 0;
+          const isStructExpanded = expandedStructRows.has(item.columnName);
+          const parentRow: ColumnGridRowData = {
+            id: item.columnName,
+            columnName: item.columnName,
+            displayName: group?.displayName,
+            description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
+            dataType: group?.dataType,
+            tags: aggregatedTags.length > 0 ? aggregatedTags : group?.tags,
+            occurrenceCount: allOccurrences.length,
+            hasVariations: false,
+            isExpanded,
+            isGroup: true,
+            gridItem: item,
+            path: pathInfo.primary,
+            additionalPathsCount: pathInfo.additionalCount,
+            coverageCount: coverage.covered,
+            totalCount: coverage.total,
+            hasCoverage: true,
+            hasAnyMetadata: coverage.hasAnyMetadata,
+            metadataStatus: item.metadataStatus,
+            children: group?.children,
+          };
+          rows.push(parentRow);
+
+          // Add STRUCT children if expanded (for the parent row before occurrence rows)
+          if (isStructExpanded && hasStructChildren && group?.children) {
+            rows.push(
+              ...createStructChildRows(
+                group.children,
+                item.columnName,
+                1,
+                expandedStructRows
+              )
+            );
+          }
+
+          if (isExpanded && group) {
+            for (const occurrence of group.occurrences) {
+              const occPath = buildPath(occurrence);
+              const occurrenceRow: ColumnGridRowData = {
+                id: `${item.columnName}-${occurrence.columnFQN}`,
+                columnName: item.columnName,
+                displayName: group.displayName,
+                description: group.description,
+                descriptionPreview: getDescriptionPreview(group.description),
+                dataType: group.dataType,
+                tags: group.tags,
+                occurrenceCount: 1,
+                hasVariations: false,
+                isGroup: false,
+                parentId: item.columnName,
+                group,
+                path: occPath,
+                additionalPathsCount: 0,
+                occurrence,
+                occurrenceRef: {
+                  columnFQN: occurrence.columnFQN,
+                  entityType: occurrence.entityType,
+                  entityFQN: occurrence.entityFQN,
+                },
+                children: group.children,
+              };
+              rows.push(occurrenceRow);
+            }
+          }
         } else {
-          rows.push(...buildSingleOccurrenceRows(context));
+          const group = item.groups[0];
+          const hasStructChildren =
+            group?.children && group.children.length > 0;
+          const isStructExpanded = expandedStructRows.has(item.columnName);
+          const row: ColumnGridRowData = {
+            id: item.columnName,
+            columnName: item.columnName,
+            displayName: group?.displayName,
+            description: group?.description,
+            descriptionPreview: getDescriptionPreview(group?.description),
+            dataType: group?.dataType,
+            tags: group?.tags,
+            occurrenceCount: allOccurrences.length,
+            hasVariations: false,
+            isGroup: false,
+            gridItem: item,
+            group,
+            path: pathInfo.primary,
+            additionalPathsCount: pathInfo.additionalCount,
+            occurrence: allOccurrences[0],
+            coverageCount: coverage.covered,
+            totalCount: coverage.total,
+            hasCoverage: true,
+            hasAnyMetadata: coverage.hasAnyMetadata,
+            metadataStatus: item.metadataStatus,
+            children: group?.children,
+            isExpanded: isStructExpanded,
+          };
+          rows.push(row);
+
+          if (isStructExpanded && hasStructChildren && group?.children) {
+            rows.push(
+              ...createStructChildRows(
+                group.children,
+                item.columnName,
+                1,
+                expandedStructRows
+              )
+            );
+          }
         }
       }
 
@@ -1189,7 +976,25 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Get column link function - defined before use
   const getColumnLink = useCallback((row: ColumnGridRowData) => {
-    const occurrence = resolveRowOccurrence(row);
+    let occurrence: ColumnOccurrenceRef | null = null;
+
+    if (row.occurrence) {
+      occurrence = row.occurrence;
+    } else if (row.occurrenceRef) {
+      occurrence = {
+        columnFQN: row.occurrenceRef.columnFQN,
+        entityType: row.occurrenceRef.entityType,
+        entityFQN: row.occurrenceRef.entityFQN,
+      } as ColumnOccurrenceRef;
+    } else if (row.group?.occurrences && row.group.occurrences.length > 0) {
+      occurrence = row.group.occurrences[0];
+    } else if (
+      row.gridItem?.groups &&
+      row.gridItem.groups.length > 0 &&
+      row.gridItem.groups[0].occurrences.length > 0
+    ) {
+      occurrence = row.gridItem.groups[0].occurrences[0];
+    }
 
     if (!occurrence || !occurrence.columnFQN) {
       return null;
@@ -1265,10 +1070,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const renderDescriptionCellAdapter = useCallback(
     (entity: ColumnGridRowData) => {
       const hasEdit = entity.editedDescription !== undefined;
-      const displayValue = getDescriptionDisplayValue(entity);
+      const displayValue = hasEdit
+        ? entity.editedDescriptionPreview ?? ''
+        : entity.descriptionPreview ?? '';
 
       if (entity.hasCoverage && entity.metadataStatus) {
-        const countText = getCoverageCountText(entity);
+        const countText =
+          entity.coverageCount !== undefined && entity.totalCount !== undefined
+            ? ` (${entity.coverageCount}/${entity.totalCount})`
+            : '';
 
         return (
           <Typography
@@ -1413,175 +1223,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   // Update render functions to use listing data state (with correct CellRenderer signature)
-  const makeGroupExpandHandler = (entityId: string) => () => {
-    const isExpanded = columnGridListing.expandedRows.has(entityId);
-    if (isExpanded) {
-      scrollToRowIdRef.current = entityId;
-      columnGridListing.setExpandedRows((prev: Set<string>) => {
-        const newSet = new Set(prev);
-        newSet.delete(entityId);
-
-        return newSet;
-      });
-    } else {
-      columnGridListing.setExpandedRows((prev: Set<string>) => {
-        const newSet = new Set(prev);
-        newSet.add(entityId);
-
-        return newSet;
-      });
-    }
-  };
-
-  const makeStructExpandHandler = (entityId: string) => () => {
-    const isExpanded = columnGridListing.expandedStructRows.has(entityId);
-    if (isExpanded) {
-      scrollToRowIdRef.current = entityId;
-      columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-        const newSet = new Set(prev);
-        newSet.delete(entityId);
-
-        return newSet;
-      });
-    } else {
-      columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-        const newSet = new Set(prev);
-        newSet.add(entityId);
-
-        return newSet;
-      });
-    }
-  };
-
-  const renderGroupColumnNameCell = (
-    entity: ColumnGridRowData,
-    columnNameButtonClass: string
-  ) => {
-    const nameWithCount = `${entity.columnName} (${entity.occurrenceCount})`;
-    const isGroupExpanded = columnGridListing.expandedRows.has(entity.id);
-
-    return (
-      <div className={COLUMN_NAME_CELL_GRID}>
-        <div className={COLUMN_NAME_CELL_CHEVRON}>
-          <ButtonUtility
-            color="tertiary"
-            icon={
-              <ChevronRight
-                className={classNames(
-                  'tw:size-4 tw:transition-transform',
-                  isGroupExpanded && 'tw:rotate-90'
-                )}
-              />
-            }
-            size="sm"
-            onClick={makeGroupExpandHandler(entity.id)}
-          />
-        </div>
-        <Button
-          className={columnNameButtonClass}
-          color="tertiary"
-          onPress={() => {
-            handleGroupSelectRef.current(entity.id, true);
-            openDrawerRef.current();
-          }}>
-          {nameWithCount}
-        </Button>
-      </div>
-    );
-  };
-
-  const renderStructChildColumnNameCell = (
-    entity: ColumnGridRowData,
-    columnNameButtonClass: string
-  ) => {
-    const hasChildren = entity.children && entity.children.length > 0;
-    const nestedCount = entity.children?.length ?? 0;
-    const nameWithCount =
-      nestedCount > 0
-        ? `${entity.columnName} (${nestedCount})`
-        : entity.columnName;
-    const isStructExpanded = columnGridListing.expandedStructRows.has(
-      entity.id
-    );
-
-    return (
-      <div className={COLUMN_NAME_CELL_GRID}>
-        <div className={COLUMN_NAME_CELL_CHEVRON}>
-          {hasChildren ? (
-            <ButtonUtility
-              color="tertiary"
-              icon={
-                <ChevronRight
-                  className={classNames(
-                    'tw:size-4 tw:transition-transform',
-                    isStructExpanded && 'tw:rotate-90'
-                  )}
-                />
-              }
-              size="sm"
-              onClick={makeStructExpandHandler(entity.id)}
-            />
-          ) : null}
-        </div>
-        <Button
-          className={columnNameButtonClass}
-          color="tertiary"
-          onPress={() => {
-            handleSelectRef.current(entity.id, true);
-            openDrawerRef.current();
-          }}>
-          {nameWithCount}
-        </Button>
-      </div>
-    );
-  };
-
-  const renderOccurrenceColumnNameCell = (
-    entity: ColumnGridRowData,
-    columnNameButtonClass: string
-  ) => {
-    const hasStructChildren = entity.children && entity.children.length > 0;
-    const nestedCount = entity.children?.length ?? 0;
-    const nameWithCount =
-      nestedCount > 0
-        ? `${entity.columnName} (${nestedCount})`
-        : entity.columnName;
-    const isOccurrenceExpanded = columnGridListing.expandedStructRows.has(
-      entity.id
-    );
-
-    return (
-      <div className={COLUMN_NAME_CELL_GRID}>
-        <div className={COLUMN_NAME_CELL_CHEVRON}>
-          {hasStructChildren ? (
-            <ButtonUtility
-              color="tertiary"
-              icon={
-                <ChevronRight
-                  className={classNames(
-                    'tw:size-4 tw:transition-transform',
-                    isOccurrenceExpanded && 'tw:rotate-90'
-                  )}
-                />
-              }
-              size="sm"
-              onClick={makeStructExpandHandler(entity.id)}
-            />
-          ) : null}
-        </div>
-        <Button
-          className={columnNameButtonClass}
-          color="tertiary"
-          onPress={() => {
-            handleSelectRef.current(entity.id, true);
-            openDrawerRef.current();
-          }}>
-          {nameWithCount}
-        </Button>
-      </div>
-    );
-  };
-
   const renderColumnNameCellFinal = useCallback(
     (entity: ColumnGridRowData) => {
       const columnNameButtonClass = classNames(
@@ -1590,23 +1231,171 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
 
       if (entity.isGroup && entity.occurrenceCount > 1) {
-        return renderGroupColumnNameCell(entity, columnNameButtonClass);
+        const expandHandler = () => {
+          const isExpanded = columnGridListing.expandedRows.has(entity.id);
+          if (isExpanded) {
+            scrollToRowIdRef.current = entity.id;
+            columnGridListing.setExpandedRows((prev: Set<string>) => {
+              const newSet = new Set(prev);
+              newSet.delete(entity.id);
+
+              return newSet;
+            });
+          } else {
+            columnGridListing.setExpandedRows((prev: Set<string>) => {
+              const newSet = new Set(prev);
+              newSet.add(entity.id);
+
+              return newSet;
+            });
+          }
+        };
+
+        const nameWithCount = `${entity.columnName} (${entity.occurrenceCount})`;
+
+        const isGroupExpanded = columnGridListing.expandedRows.has(entity.id);
+
+        return (
+          <div className={COLUMN_NAME_CELL_GRID}>
+            <div className={COLUMN_NAME_CELL_CHEVRON}>
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <ChevronRight
+                    className={classNames(
+                      ICON_TRANSITION_CLASS,
+                      isGroupExpanded && ROTATE_90_CLASS
+                    )}
+                  />
+                }
+                size="sm"
+                onClick={expandHandler}
+              />
+            </div>
+            <Button
+              className={columnNameButtonClass}
+              color="tertiary"
+              onPress={() => {
+                handleGroupSelectRef.current(entity.id, true);
+                openDrawerRef.current();
+              }}>
+              {nameWithCount}
+            </Button>
+          </div>
+        );
       }
+
+      const structExpandHandler = () => {
+        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
+        if (isExpanded) {
+          scrollToRowIdRef.current = entity.id;
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.delete(entity.id);
+
+            return newSet;
+          });
+        } else {
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.add(entity.id);
+
+            return newSet;
+          });
+        }
+      };
 
       if (entity.isStructChild) {
-        return renderStructChildColumnNameCell(entity, columnNameButtonClass);
+        const hasChildren = entity.children && entity.children.length > 0;
+        const nestedCount = entity.children?.length ?? 0;
+        const nameWithCount =
+          nestedCount > 0
+            ? `${entity.columnName} (${nestedCount})`
+            : entity.columnName;
+
+        const isStructExpanded = columnGridListing.expandedStructRows.has(
+          entity.id
+        );
+
+        return (
+          <div className={COLUMN_NAME_CELL_GRID}>
+            <div className={COLUMN_NAME_CELL_CHEVRON}>
+              {hasChildren ? (
+                <ButtonUtility
+                  color="tertiary"
+                  icon={
+                    <ChevronRight
+                      className={classNames(
+                        ICON_TRANSITION_CLASS,
+                        isStructExpanded && ROTATE_90_CLASS
+                      )}
+                    />
+                  }
+                  size="sm"
+                  onClick={structExpandHandler}
+                />
+              ) : null}
+            </div>
+            <Button
+              className={columnNameButtonClass}
+              color="tertiary"
+              onPress={() => {
+                handleSelectRef.current(entity.id, true);
+                openDrawerRef.current();
+              }}>
+              {nameWithCount}
+            </Button>
+          </div>
+        );
       }
 
-      return renderOccurrenceColumnNameCell(entity, columnNameButtonClass);
+      const hasStructChildren = entity.children && entity.children.length > 0;
+      const nestedCount = entity.children?.length ?? 0;
+      const nameWithCount =
+        nestedCount > 0
+          ? `${entity.columnName} (${nestedCount})`
+          : entity.columnName;
+
+      const isOccurrenceExpanded = columnGridListing.expandedStructRows.has(
+        entity.id
+      );
+
+      return (
+        <div className={COLUMN_NAME_CELL_GRID}>
+          <div className={COLUMN_NAME_CELL_CHEVRON}>
+            {hasStructChildren ? (
+              <ButtonUtility
+                color="tertiary"
+                icon={
+                  <ChevronRight
+                    className={classNames(
+                      ICON_TRANSITION_CLASS,
+                      isOccurrenceExpanded && ROTATE_90_CLASS
+                    )}
+                  />
+                }
+                size="sm"
+                onClick={structExpandHandler}
+              />
+            ) : null}
+          </div>
+          <Button
+            className={columnNameButtonClass}
+            color="tertiary"
+            onPress={() => {
+              handleSelectRef.current(entity.id, true);
+              openDrawerRef.current();
+            }}>
+            {nameWithCount}
+          </Button>
+        </div>
+      );
     },
     [
       columnGridListing.expandedRows,
       columnGridListing.expandedStructRows,
       columnGridListing.setExpandedRows,
       columnGridListing.setExpandedStructRows,
-      renderGroupColumnNameCell,
-      renderStructChildColumnNameCell,
-      renderOccurrenceColumnNameCell,
     ]
   );
 
@@ -1702,12 +1491,38 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const columnUpdatesByKey = new Map<string, ColumnUpdate>();
 
       for (const row of selectedRowsData) {
-        processRowForBulkUpdate(
-          row,
-          pendingDisplayName,
-          pendingDescription,
-          columnUpdatesByKey
-        );
+        const effectiveDisplayName =
+          pendingDisplayName ?? row.editedDisplayName;
+        const hasDisplayNameChange =
+          effectiveDisplayName !== undefined &&
+          effectiveDisplayName !== (row.displayName ?? '');
+
+        const hasDescriptionChange = pendingDescription !== undefined;
+
+        if (!hasDisplayNameChange && !hasDescriptionChange && !row.editedTags) {
+          continue;
+        }
+
+        for (const occurrence of extractRowOccurrences(row)) {
+          const key = getOccurrenceKey(occurrence);
+          const existing = columnUpdatesByKey.get(key);
+          const update: ColumnUpdate = existing ?? {
+            columnFQN: occurrence.columnFQN,
+            entityType: occurrence.entityType,
+          };
+
+          if (hasDisplayNameChange) {
+            update.displayName = effectiveDisplayName;
+          }
+          if (hasDescriptionChange) {
+            update.description = pendingDescription;
+          }
+          if (row.editedTags !== undefined) {
+            update.tags = row.editedTags;
+          }
+
+          columnUpdatesByKey.set(key, update);
+        }
       }
 
       const columnUpdates = Array.from(columnUpdatesByKey.values());
@@ -1799,7 +1614,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return;
       }
 
-      if (!isRelevantBulkJob(data, activeJobIdRef.current)) {
+      if (!data.jobId || data.jobId !== activeJobIdRef.current) {
         return;
       }
 
@@ -1829,7 +1644,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return;
       }
 
-      if (isInProgressBulkStatus(status)) {
+      if (status === 'IN_PROGRESS' || status === 'RUNNING') {
         setIsUpdating(true);
         setBulkUpdateProgress((prev) => {
           const incomingProgress = Math.max(0, data.progress ?? 0);
@@ -1852,7 +1667,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return;
       }
 
-      if (isCompletedBulkStatus(status)) {
+      if (status === 'COMPLETED' || status === 'SUCCESS') {
         setBulkUpdateProgress((prev) => {
           const resultProcessed = data.result?.numberOfRowsPassed;
           const resultTotal = data.result?.numberOfRowsProcessed;
@@ -1899,7 +1714,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           showErrorToast(t('server.entity-updating-error'));
           clearJobState();
         }
-      } else if (isFailedBulkStatus(status)) {
+      } else if (status === 'FAILED' || status === 'FAILURE') {
         showErrorToast(t('server.entity-updating-error'));
         clearJobState();
         pendingHighlightRowIdsRef.current = new Set();
@@ -2126,8 +1941,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.urlState?.searchQuery?.trim()
   );
 
-  const hasActiveFilters = computeHasActiveFilters(
-    columnGridListing.urlState?.filters
+  const hasActiveFilters = Boolean(
+    columnGridListing.urlState?.filters &&
+      Object.values(columnGridListing.urlState.filters).some(
+        (filterValues: unknown) =>
+          Array.isArray(filterValues) && filterValues.length > 0
+      )
   );
 
   const hasActiveFiltersOrSearch = hasActiveSearch || hasActiveFilters;

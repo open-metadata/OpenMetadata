@@ -56,10 +56,10 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -127,339 +127,6 @@ import { DataProductMetadataModal } from '../DataProductMetadataModal';
 import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
-
-type TFunc = ReturnType<typeof useTranslation>['t'];
-
-// Resolve the cover image's vertical anchor from the data product style, if any.
-const getCoverImagePosition = (
-  style: DataProduct['style']
-): { y: string } | undefined => {
-  const coverImage = (style as Style & { coverImage?: { position?: string } })
-    ?.coverImage;
-
-  return coverImage?.position ? { y: coverImage.position } : undefined;
-};
-
-const resolveFqn = (fqn?: string): string => fqn ?? '';
-
-const getQueryFilterForDomainAssets = (
-  dataProduct: DataProduct
-): QueryFilterInterface =>
-  getQueryFilterToIncludeDomain(
-    dataProduct.domains
-      ?.map((domain) => domain.fullyQualifiedName)
-      .join(', ') ?? '',
-    resolveFqn(dataProduct.fullyQualifiedName)
-  ) as QueryFilterInterface;
-
-interface ManageButtonContext {
-  t: TFunc;
-  editAllPermission: boolean;
-  editDisplayNamePermission: boolean | undefined;
-  deleteDataProductPermission: boolean | undefined;
-  dataProduct: DataProduct;
-  setShowActions: (value: boolean) => void;
-  handleOpenAnnouncementDrawer: () => void;
-  setIsNameEditing: (value: boolean) => void;
-  setIsStyleEditing: (value: boolean) => void;
-  setIsMetadataEditing: (value: boolean) => void;
-  setIsDelete: (value: boolean) => void;
-  setIsOdpsImportOpen: (value: boolean) => void;
-}
-
-const getManageButtonContent = (ctx: ManageButtonContext): ItemType[] => {
-  const {
-    t,
-    editAllPermission,
-    editDisplayNamePermission,
-    deleteDataProductPermission,
-    dataProduct,
-    setShowActions,
-    handleOpenAnnouncementDrawer,
-    setIsNameEditing,
-    setIsStyleEditing,
-    setIsMetadataEditing,
-    setIsDelete,
-    setIsOdpsImportOpen,
-  } = ctx;
-
-  return [
-    ...(editAllPermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
-                id="announcement-button"
-                name={t('label.announcement-plural')}
-              />
-            ),
-            key: 'announcement-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              handleOpenAnnouncementDrawer();
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    ...(editDisplayNamePermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.rename-entity', {
-                  entity: t('label.data-product'),
-                })}
-                icon={EditIcon}
-                id="rename-button"
-                name={t('label.rename')}
-              />
-            ),
-            key: 'rename-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsNameEditing(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    ...(editAllPermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.edit-entity-style-description', {
-                  entity: t('label.data-product'),
-                })}
-                icon={StyleIcon}
-                id="rename-button"
-                name={t('label.style')}
-              />
-            ),
-            key: 'edit-style-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsStyleEditing(true);
-              setShowActions(false);
-            },
-          },
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.edit-metadata-description')}
-                icon={EditIcon}
-                id="edit-metadata-button"
-                name={t('label.edit-metadata')}
-              />
-            ),
-            key: 'edit-metadata-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsMetadataEditing(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    ...(deleteDataProductPermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t(
-                  'message.delete-entity-type-action-description',
-                  {
-                    entityType: t('label.data-product'),
-                  }
-                )}
-                icon={DeleteIcon}
-                id="delete-button"
-                name={t('label.delete')}
-              />
-            ),
-            key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDelete(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.export-entity-as-odps-description')}
-          icon={ExportIcon}
-          id="export-odps-button"
-          name={t('label.export-as-odps')}
-        />
-      ),
-      key: 'export-odps-button',
-      onClick: async (e) => {
-        e.domEvent.stopPropagation();
-        setShowActions(false);
-        try {
-          const yaml = await exportDataProductToODPSYaml(dataProduct.id ?? '');
-          downloadFile(
-            yaml,
-            `${dataProduct.name}.odps.yaml`,
-            'application/yaml'
-          );
-        } catch (err) {
-          showErrorToast(err as AxiosError);
-        }
-      },
-    },
-    ...(editAllPermission
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.import-odps-description')}
-                icon={ImportIcon}
-                id="import-odps-button"
-                name={t('label.import-from-odps')}
-              />
-            ),
-            key: 'import-odps-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsOdpsImportOpen(true);
-              setShowActions(false);
-            },
-          },
-        ] as ItemType[])
-      : []),
-  ];
-};
-
-interface DataProductActionsContext {
-  t: TFunc;
-  isVersionsView: boolean;
-  canCreateAsset: boolean;
-  openAssetDrawer: () => void;
-  onUpdateVote?: DataProductsDetailsPageProps['onUpdateVote'];
-  voteStatus: ReturnType<typeof getEntityVoteStatus>;
-  votes: DataProduct['votes'];
-  handleVoteChange: (data: VotingDataProps) => Promise<void>;
-  dataProductVersion?: DataProduct['version'];
-  versionParam?: string;
-  handleVersionClick: () => Promise<void>;
-  manageButtonContent: ItemType[];
-  showActions: boolean;
-  setShowActions: (value: boolean) => void;
-}
-
-const getAddAssetButton = (
-  ctx: DataProductActionsContext
-): JSX.Element | null =>
-  !ctx.isVersionsView && ctx.canCreateAsset ? (
-    <Button
-      data-testid="data-product-details-add-button"
-      type="primary"
-      onClick={ctx.openAssetDrawer}>
-      {ctx.t('label.add-entity', {
-        entity: ctx.t('label.asset-plural'),
-      })}
-    </Button>
-  ) : null;
-
-const getVotingButton = (ctx: DataProductActionsContext): JSX.Element | null =>
-  ctx.onUpdateVote ? (
-    <Voting
-      voteStatus={ctx.voteStatus}
-      votes={ctx.votes}
-      onUpdateVote={ctx.handleVoteChange}
-    />
-  ) : null;
-
-const getVersionButton = (ctx: DataProductActionsContext): JSX.Element | null =>
-  ctx.dataProductVersion ? (
-    <Tooltip
-      title={ctx.t(
-        `label.${
-          ctx.isVersionsView ? 'exit-version-history' : 'version-plural-history'
-        }`
-      )}>
-      <Button
-        className={classNames('', {
-          'text-primary border-primary': ctx.versionParam,
-        })}
-        data-testid="version-button"
-        icon={<Icon component={VersionIcon} />}
-        onClick={ctx.handleVersionClick}>
-        <Typography.Text
-          className={classNames('', {
-            'text-primary': ctx.versionParam,
-          })}>
-          {toString(ctx.dataProductVersion)}
-        </Typography.Text>
-      </Button>
-    </Tooltip>
-  ) : null;
-
-const getManageDropdown = (
-  ctx: DataProductActionsContext
-): JSX.Element | null =>
-  !ctx.isVersionsView && ctx.manageButtonContent.length > 0 ? (
-    <Dropdown
-      align={{ targetOffset: [-12, 0] }}
-      className="m-l-xs"
-      menu={{
-        items: ctx.manageButtonContent,
-      }}
-      open={ctx.showActions}
-      overlayClassName="domain-manage-dropdown-list-container"
-      overlayStyle={{ width: '350px' }}
-      placement="bottomRight"
-      trigger={['click']}
-      onOpenChange={ctx.setShowActions}>
-      <Tooltip
-        placement="topRight"
-        title={ctx.t('label.manage-entity', {
-          entity: ctx.t('label.data-product'),
-        })}>
-        <Button
-          className="domain-manage-dropdown-button tw-px-1.5"
-          data-testid="manage-button"
-          icon={
-            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-          }
-          onClick={() => ctx.setShowActions(true)}
-        />
-      </Tooltip>
-    </Dropdown>
-  ) : null;
-
-const getAnnouncementCardElement = (
-  activeAnnouncement: AnnouncementEntity | undefined,
-  handleOpenAnnouncementDrawer: () => void
-): JSX.Element | null =>
-  activeAnnouncement ? (
-    <AnnouncementCard
-      announcement={activeAnnouncement}
-      onClick={handleOpenAnnouncementDrawer}
-    />
-  ) : null;
-
-const getTabBarExtraContent = (
-  isExpandViewSupported: boolean,
-  isTabExpanded: boolean,
-  toggleTabExpanded: () => void,
-  t: TFunc
-): JSX.Element | false =>
-  isExpandViewSupported && (
-    <AlignRightIconButton
-      className={isTabExpanded ? 'rotate-180' : ''}
-      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-      onClick={toggleTabExpanded}
-    />
-  );
-
 const DataProductsDetailsPage = ({
   dataProduct,
   isVersionsView = false,
@@ -484,6 +151,14 @@ const DataProductsDetailsPage = ({
     version: string;
   }>();
   const { fqn: dataProductFqn } = useFqn();
+  // The "Data Product Domain Validation" rule is a cross-cutting data-asset
+  // rule; read it against TABLE as a representative asset type since the "Add
+  // Assets" picker spans every asset type. Hold the strict domain-scoped
+  // default until the rules actually load (an empty rule set from the backend
+  // is indistinguishable from "not fetched yet").
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TABLE);
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -748,20 +423,158 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct.fullyQualifiedName]);
 
-  const manageButtonContent: ItemType[] = getManageButtonContent({
-    t,
-    editAllPermission,
-    editDisplayNamePermission,
-    deleteDataProductPermission,
-    dataProduct,
-    setShowActions,
-    handleOpenAnnouncementDrawer,
-    setIsNameEditing,
-    setIsStyleEditing,
-    setIsMetadataEditing,
-    setIsDelete,
-    setIsOdpsImportOpen,
-  });
+  const manageButtonContent: ItemType[] = [
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={IconAnnouncementsBlack}
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
+            ),
+            key: 'announcement-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleOpenAnnouncementDrawer();
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(editDisplayNamePermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: t('label.data-product'),
+                })}
+                icon={EditIcon}
+                id="rename-button"
+                name={t('label.rename')}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-entity-style-description', {
+                  entity: t('label.data-product'),
+                })}
+                icon={StyleIcon}
+                id="rename-button"
+                name={t('label.style')}
+              />
+            ),
+            key: 'edit-style-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-metadata-description')}
+                icon={EditIcon}
+                id="edit-metadata-button"
+                name={t('label.edit-metadata')}
+              />
+            ),
+            key: 'edit-metadata-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsMetadataEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    ...(deleteDataProductPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: t('label.data-product'),
+                  }
+                )}
+                icon={DeleteIcon}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.export-entity-as-odps-description')}
+          icon={ExportIcon}
+          id="export-odps-button"
+          name={t('label.export-as-odps')}
+        />
+      ),
+      key: 'export-odps-button',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        try {
+          const yaml = await exportDataProductToODPSYaml(dataProduct.id ?? '');
+          downloadFile(
+            yaml,
+            `${dataProduct.name}.odps.yaml`,
+            'application/yaml'
+          );
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      },
+    },
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-odps-description')}
+                icon={ImportIcon}
+                id="import-odps-button"
+                name={t('label.import-from-odps')}
+              />
+            ),
+            key: 'import-odps-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOdpsImportOpen(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
+  ];
 
   const handleAssetSave = () => {
     fetchDataProductAssets();
@@ -848,23 +661,6 @@ const DataProductsDetailsPage = ({
         );
 
     navigate(path);
-  };
-
-  const dataProductActionsContext: DataProductActionsContext = {
-    t,
-    isVersionsView,
-    canCreateAsset: dataProductPermission.Create,
-    openAssetDrawer,
-    onUpdateVote,
-    voteStatus,
-    votes: dataProduct.votes,
-    handleVoteChange,
-    dataProductVersion: dataProduct?.version,
-    versionParam: version,
-    handleVersionClick,
-    manageButtonContent,
-    showActions,
-    setShowActions,
   };
 
   const handleAssetClick = useCallback(
@@ -1016,7 +812,22 @@ const DataProductsDetailsPage = ({
             (dataProduct.style as Style & { coverImage?: { url?: string } })
               ?.coverImage?.url
           }
-          position={getCoverImagePosition(dataProduct.style)}
+          position={
+            (
+              dataProduct.style as Style & {
+                coverImage?: { position?: string };
+              }
+            )?.coverImage?.position
+              ? {
+                  y:
+                    (
+                      dataProduct.style as Style & {
+                        coverImage?: { position?: string };
+                      }
+                    )?.coverImage?.position ?? '',
+                }
+              : undefined
+          }
         />
         <GenericProvider<DataProduct>
           newTagsUI
@@ -1053,21 +864,90 @@ const DataProductsDetailsPage = ({
               <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
                 {dataProductClassBase.getRequestDataAccessButton()}
 
-                {getAddAssetButton(dataProductActionsContext)}
+                {!isVersionsView && dataProductPermission.Create && (
+                  <Button
+                    data-testid="data-product-details-add-button"
+                    type="primary"
+                    onClick={openAssetDrawer}>
+                    {t('label.add-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                  </Button>
+                )}
 
                 <ButtonGroup className="spaced" size="small">
                   {dataContractLatestResultButton}
 
-                  {getVotingButton(dataProductActionsContext)}
+                  {onUpdateVote && (
+                    <Voting
+                      voteStatus={voteStatus}
+                      votes={dataProduct.votes}
+                      onUpdateVote={handleVoteChange}
+                    />
+                  )}
 
-                  {getVersionButton(dataProductActionsContext)}
+                  {dataProduct?.version && (
+                    <Tooltip
+                      title={t(
+                        `label.${
+                          isVersionsView
+                            ? 'exit-version-history'
+                            : 'version-plural-history'
+                        }`
+                      )}>
+                      <Button
+                        className={classNames('', {
+                          'text-primary border-primary': version,
+                        })}
+                        data-testid="version-button"
+                        icon={<Icon component={VersionIcon} />}
+                        onClick={handleVersionClick}>
+                        <Typography.Text
+                          className={classNames('', {
+                            'text-primary': version,
+                          })}>
+                          {toString(dataProduct.version)}
+                        </Typography.Text>
+                      </Button>
+                    </Tooltip>
+                  )}
 
-                  {getManageDropdown(dataProductActionsContext)}
+                  {!isVersionsView && manageButtonContent.length > 0 && (
+                    <Dropdown
+                      align={{ targetOffset: [-12, 0] }}
+                      className="m-l-xs"
+                      menu={{
+                        items: manageButtonContent,
+                      }}
+                      open={showActions}
+                      overlayClassName="domain-manage-dropdown-list-container"
+                      overlayStyle={{ width: '350px' }}
+                      placement="bottomRight"
+                      trigger={['click']}
+                      onOpenChange={setShowActions}>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.data-product'),
+                        })}>
+                        <Button
+                          className="domain-manage-dropdown-button tw-px-1.5"
+                          data-testid="manage-button"
+                          icon={
+                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                          }
+                          onClick={() => setShowActions(true)}
+                        />
+                      </Tooltip>
+                    </Dropdown>
+                  )}
                 </ButtonGroup>
 
-                {getAnnouncementCardElement(
-                  activeAnnouncement,
-                  handleOpenAnnouncementDrawer
+                {activeAnnouncement && (
+                  <AnnouncementCard
+                    announcement={activeAnnouncement}
+                    onClick={handleOpenAnnouncementDrawer}
+                  />
                 )}
               </div>
             </div>
@@ -1083,12 +963,17 @@ const DataProductsDetailsPage = ({
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
-                tabBarExtraContent={getTabBarExtraContent(
-                  isExpandViewSupported,
-                  isTabExpanded,
-                  toggleTabExpanded,
-                  t
-                )}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
                 onChange={handleTabChange}
               />
             </div>
@@ -1124,7 +1009,13 @@ const DataProductsDetailsPage = ({
         })}
         entityFqn={dataProductFqn}
         open={isAssetDrawerOpen}
-        queryFilter={getQueryFilterForDomainAssets(dataProduct)}
+        queryFilter={getQueryFilterToIncludeDomain(
+          dataProduct.domains
+            ?.map((domain) => domain.fullyQualifiedName ?? '')
+            .filter(Boolean) ?? [],
+          dataProduct.fullyQualifiedName ?? '',
+          requireDomainForDataProduct
+        )}
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={closeAssetDrawer}
         onSave={() => {
@@ -1143,7 +1034,7 @@ const DataProductsDetailsPage = ({
 
       <AnnouncementDrawer
         createPermission={editAllPermission}
-        entityFQN={resolveFqn(dataProduct.fullyQualifiedName)}
+        entityFQN={dataProduct.fullyQualifiedName ?? ''}
         entityType={EntityType.DATA_PRODUCT}
         open={isAnnouncementDrawerOpen}
         onClose={handleCloseAnnouncementDrawer}

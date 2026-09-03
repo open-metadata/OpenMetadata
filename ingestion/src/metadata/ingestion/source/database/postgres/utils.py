@@ -16,7 +16,6 @@ Postgres SQLAlchemy util methods
 
 import re
 import traceback
-from typing import Dict, Optional, Tuple  # noqa: UP035
 
 from packaging import version
 from sqlalchemy import sql, text, util
@@ -263,7 +262,7 @@ def _get_numeric_args(charlen):
     return ()
 
 
-def _get_interval_args(charlen, attype, kwargs: Dict):  # noqa: UP006
+def _get_interval_args(charlen, attype, kwargs: dict):
     field_match = re.match(r"interval (.+)", attype, re.I)
     if charlen:
         kwargs["precision"] = int(charlen)
@@ -281,7 +280,7 @@ def _get_bit_var_args(charlen, kwargs):
     return (), kwargs
 
 
-def get_column_args(charlen: str, args: Tuple, kwargs: Dict, attype: str) -> Tuple[Tuple, Dict]:  # noqa: UP006
+def get_column_args(charlen: str, args: tuple, kwargs: dict, attype: str) -> tuple[tuple, dict]:
     """
     Method to determine the args and kwargs
     """
@@ -472,7 +471,7 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):
     )
 
 
-def get_postgres_version(engine) -> Optional[str]:  # noqa: UP045
+def get_postgres_version(engine) -> str | None:
     """
     return the postgres version in major.minor.patch format
     """

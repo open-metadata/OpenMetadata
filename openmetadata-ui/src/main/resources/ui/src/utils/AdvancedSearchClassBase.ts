@@ -53,6 +53,8 @@ import { t } from './i18next/LocalUtil';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchPureUtils';
+
+const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
 // Custom-property types whose sub-field needs an async fetch (select/multiselect).
@@ -957,12 +959,12 @@ class AdvancedSearchClassBase {
             q: buildTermQuery(
               [
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'tier',
                   negate: true,
                 },
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'certification',
                   negate: true,
                 },
@@ -997,7 +999,7 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'certification',
               },
               true
@@ -1017,7 +1019,7 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'tier',
               },
               true

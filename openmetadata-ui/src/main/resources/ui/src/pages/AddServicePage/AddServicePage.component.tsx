@@ -74,6 +74,8 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
+const SERVICE_NAME_ID = 'service-name';
+
 const ConnectionConfigForm = lazy(
   () =>
     import(
@@ -274,7 +276,7 @@ const AddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
-      document.getElementById('service-name')?.focus();
+      document.getElementById(SERVICE_NAME_ID)?.focus();
 
       return;
     }
@@ -429,152 +431,32 @@ const AddServicePage = () => {
   const footerNextDisabled =
     activeServiceStep === 2 ? isStep2NextDisabled : isSavingService;
 
-  const renderFooter = () =>
-    showFooter ? (
-      <>
-        <Button
-          color="secondary"
-          data-testid="previous-button"
-          isDisabled={isSavingService}
-          size="sm"
-          type="button"
-          onPress={handleFooterBack}>
-          {t('label.back')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="next-button"
-          isDisabled={footerNextDisabled || isSavingService}
-          size="sm"
-          type="button"
-          onPress={handleFooterNext}>
-          {footerNextText}
-        </Button>
-      </>
-    ) : undefined;
-
-  const renderServiceHeader = () =>
-    serviceConfig.serviceType ? (
-      <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
-        {getServiceLogo(
-          serviceConfig.serviceType || '',
-          'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
-        )}
-        <Typography
-          className="tw:m-0"
-          data-testid="header"
-          size="text-xl"
-          weight="semibold">
-          {`${serviceConfig.serviceType} ${t('label.service')}`}
-        </Typography>
-      </div>
-    ) : (
-      <Typography
-        className="tw:m-0"
-        data-testid="header"
-        size="text-xl"
-        weight="semibold">
-        {t('label.add-new-entity', { entity: t('label.service') })}
-      </Typography>
-    );
-
-  const renderStep1 = () =>
-    activeServiceStep === 1 ? (
-      <SelectServiceType
-        handleServiceTypeClick={handleServiceTypeClick}
-        serviceCategory={serviceCategoryParam}
-        serviceCategoryHandler={handleServiceCategoryChange}
-        showError={showErrorMessage.serviceType}
-      />
-    ) : null;
-
-  const renderStep2 = () =>
-    activeServiceStep === 2 ? (
-      <Suspense fallback={<Loader />}>
-        <div className="tw:flex tw:flex-col tw:gap-4">
-          <ServiceNameCard
-            description={serviceConfig.description}
-            name={serviceConfig.name}
-            nameError={nameError}
-            serviceType={serviceConfig.serviceType}
-            onBlur={handleFieldBlur}
-            onDescriptionChange={(description) =>
-              setServiceConfig((prev) => ({ ...prev, description }))
-            }
-            onFocus={handleFieldFocus}
-            onNameChange={(name) => {
-              resetNameValidation();
-              setServiceConfig((prev) => ({ ...prev, name }));
-            }}
-          />
-          <ConnectionConfigForm
-            hideFooter
-            additionalMissingFieldsCount={
-              !serviceConfig.name.trim() ||
-              Boolean(nameError) ||
-              isServiceNameChecking
-                ? 1
-                : 0
-            }
-            data={serviceConfig as ServicesType}
-            isAdditionalValidationPending={isServiceNameChecking}
-            isSubmitDisabled={isStep2NextDisabled}
-            ref={connectionFormRef}
-            serviceCategory={serviceCategory}
-            serviceType={serviceConfig.serviceType}
-            status={saveServiceState}
-            onBlur={handleFieldBlur}
-            onFocus={handleFieldFocus}
-            onSave={async (e) => {
-              e.formData && (await handleConfigUpdate(e.formData));
-            }}
-            onTestConnectionStatusChange={setIsConnectionVerified}
-            onValidateAdditionalRequiredFields={() => {
-              if (!serviceConfig.name.trim()) {
-                setNameError(
-                  t('message.field-text-is-required', {
-                    fieldText: t('label.service-name'),
-                  })
-                );
-                document.getElementById('service-name')?.focus();
-
-                return false;
-              }
-
-              if (nameError || isServiceNameChecking) {
-                document.getElementById('service-name')?.focus();
-
-                return false;
-              }
-
-              return true;
-            }}
-          />
-        </div>
-      </Suspense>
-    ) : null;
-
-  const renderStep3 = () =>
-    activeServiceStep === 3 ? (
-      <Suspense fallback={<Loader />}>
-        <FiltersConfigForm
-          hideFooter
-          data={serviceConfig as ServicesType}
-          ref={filtersFormRef}
-          serviceCategory={serviceCategory}
-          serviceType={serviceConfig.serviceType}
-          showConnectedMessage={isConnectionVerified}
-          status={saveServiceState}
-          onFocus={handleFieldFocus}
-          onSave={async (e) => {
-            e.formData && handleFiltersInputNextClick(e.formData);
-          }}
-        />
-      </Suspense>
-    ) : null;
-
   const firstPanelChildren = (
-    <FormPanelBody footer={renderFooter()}>
+    <FormPanelBody
+      footer={
+        showFooter ? (
+          <>
+            <Button
+              color="secondary"
+              data-testid="previous-button"
+              isDisabled={isSavingService}
+              size="sm"
+              type="button"
+              onPress={handleFooterBack}>
+              {t('label.back')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="next-button"
+              isDisabled={footerNextDisabled || isSavingService}
+              size="sm"
+              type="button"
+              onPress={handleFooterNext}>
+              {footerNextText}
+            </Button>
+          </>
+        ) : undefined
+      }>
       <>
         <Breadcrumbs
           items={serviceBreadcrumb}
@@ -582,7 +464,29 @@ const AddServicePage = () => {
         />
         <div className="tw:mt-4">
           <div data-testid="add-new-service-container">
-            {renderServiceHeader()}
+            {serviceConfig.serviceType ? (
+              <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+                {getServiceLogo(
+                  serviceConfig.serviceType || '',
+                  'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+                )}
+                <Typography
+                  className="tw:m-0"
+                  data-testid="header"
+                  size="text-xl"
+                  weight="semibold">
+                  {`${serviceConfig.serviceType} ${t('label.service')}`}
+                </Typography>
+              </div>
+            ) : (
+              <Typography
+                className="tw:m-0"
+                data-testid="header"
+                size="text-xl"
+                weight="semibold">
+                {t('label.add-new-entity', { entity: t('label.service') })}
+              </Typography>
+            )}
 
             <ServiceFlowStepper
               activeStep={activeServiceStep}
@@ -590,11 +494,95 @@ const AddServicePage = () => {
               steps={translatedSteps}
             />
             <div className="tw:mt-7">
-              {renderStep1()}
+              {activeServiceStep === 1 && (
+                <SelectServiceType
+                  handleServiceTypeClick={handleServiceTypeClick}
+                  serviceCategory={serviceCategoryParam}
+                  serviceCategoryHandler={handleServiceCategoryChange}
+                  showError={showErrorMessage.serviceType}
+                />
+              )}
 
-              {renderStep2()}
+              <Suspense fallback={<Loader />}>
+                {activeServiceStep === 2 && (
+                  <div className="tw:flex tw:flex-col tw:gap-4">
+                    <ServiceNameCard
+                      description={serviceConfig.description}
+                      name={serviceConfig.name}
+                      nameError={nameError}
+                      serviceType={serviceConfig.serviceType}
+                      onBlur={handleFieldBlur}
+                      onDescriptionChange={(description) =>
+                        setServiceConfig((prev) => ({ ...prev, description }))
+                      }
+                      onFocus={handleFieldFocus}
+                      onNameChange={(name) => {
+                        resetNameValidation();
+                        setServiceConfig((prev) => ({ ...prev, name }));
+                      }}
+                    />
+                    <ConnectionConfigForm
+                      hideFooter
+                      additionalMissingFieldsCount={
+                        !serviceConfig.name.trim() ||
+                        Boolean(nameError) ||
+                        isServiceNameChecking
+                          ? 1
+                          : 0
+                      }
+                      data={serviceConfig as ServicesType}
+                      isAdditionalValidationPending={isServiceNameChecking}
+                      isSubmitDisabled={isStep2NextDisabled}
+                      ref={connectionFormRef}
+                      serviceCategory={serviceCategory}
+                      serviceType={serviceConfig.serviceType}
+                      status={saveServiceState}
+                      onBlur={handleFieldBlur}
+                      onFocus={handleFieldFocus}
+                      onSave={async (e) => {
+                        e.formData && (await handleConfigUpdate(e.formData));
+                      }}
+                      onTestConnectionStatusChange={setIsConnectionVerified}
+                      onValidateAdditionalRequiredFields={() => {
+                        if (!serviceConfig.name.trim()) {
+                          setNameError(
+                            t('message.field-text-is-required', {
+                              fieldText: t('label.service-name'),
+                            })
+                          );
+                          document.getElementById(SERVICE_NAME_ID)?.focus();
 
-              {renderStep3()}
+                          return false;
+                        }
+
+                        if (nameError || isServiceNameChecking) {
+                          document.getElementById(SERVICE_NAME_ID)?.focus();
+
+                          return false;
+                        }
+
+                        return true;
+                      }}
+                    />
+                  </div>
+                )}
+
+                {activeServiceStep === 3 && (
+                  <FiltersConfigForm
+                    hideFooter
+                    data={serviceConfig as ServicesType}
+                    ref={filtersFormRef}
+                    serviceCategory={serviceCategory}
+                    serviceType={serviceConfig.serviceType}
+                    showConnectedMessage={isConnectionVerified}
+                    status={saveServiceState}
+                    onFocus={handleFieldFocus}
+                    onSave={async (e) => {
+                      e.formData && handleFiltersInputNextClick(e.formData);
+                    }}
+                  />
+                )}
+              </Suspense>
             </div>
           </div>
         </div>

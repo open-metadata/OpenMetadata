@@ -980,7 +980,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
       <Card.Content className="tw:p-5 lineage-container tw:overflow-y-auto">
         <TableV2
-          bordered
           className="h-full"
           columns={columns}
           customPaginationProps={pagingProps}
@@ -1000,6 +999,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               : 'docId'
           }
           staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
+          // None of these columns carry a width, so a fixed layout splits the
+          // table into equal shares and stops short of the card. Auto sizes
+          // them to their content and stretches to fill, which is how this
+          // table has always looked.
+          tableLayout="auto"
         />
       </Card.Content>
     </Card>

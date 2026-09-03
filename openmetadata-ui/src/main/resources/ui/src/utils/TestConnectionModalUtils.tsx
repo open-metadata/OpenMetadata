@@ -47,6 +47,8 @@ import {
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
+const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
+
 const STEP_LABEL_KEYS: Record<string, string> = {
   CheckAccess: 'message.test-connection-step-check-access',
   GetDatabases: 'message.test-connection-step-get-databases',
@@ -417,97 +419,6 @@ const GATE_STEPS = [
 
 type GatePillState = 'pass' | 'fail' | 'running' | 'queued';
 
-/**
- * Consolidates the gate's boolean sub-states into one place so the render
- * function and the class/icon/pill-state helpers below share a single
- * definition instead of re-deriving `gateFailed` (and its API-error-before-
- * workflow-ran edge case) independently.
- */
-const getGateVisualState = (
-  gateResult: TestConnectionStepResult | undefined,
-  isFailed: boolean,
-  isTestingConnection: boolean
-) => {
-  const isIdle = !gateResult && !isFailed;
-  const isPassed = Boolean(gateResult?.passed);
-  // When the test is done+failed but no step results came back (API error before
-  // the workflow ran), treat the gate as failed so it doesn't stay blue/spinning.
-  const gateFailed =
-    (gateResult && !gateResult.passed) || (!gateResult && isFailed);
-  const isRunningPill = !gateResult && isTestingConnection;
-
-  return { isIdle, isPassed, gateFailed: Boolean(gateFailed), isRunningPill };
-};
-
-const getGateIcon = (
-  isIdle: boolean,
-  isPassed: boolean,
-  gateFailed: boolean
-): JSX.Element | undefined => {
-  if (isIdle) {
-    return <Loader size="small" />;
-  }
-  if (isPassed) {
-    return (
-      <span className="tw:flex tw:items-center" data-testid="success-badge">
-        <IcCheckCircle
-          className="tw:text-fg-success-secondary"
-          height={18}
-          width={18}
-        />
-      </span>
-    );
-  }
-  if (gateFailed) {
-    return (
-      <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail className="tw:text-fg-error-primary" height={18} width={18} />
-      </span>
-    );
-  }
-
-  return undefined;
-};
-
-const getPillState = (
-  isRunningPill: boolean,
-  isPassed: boolean,
-  gateFailed: boolean
-): GatePillState => {
-  if (isRunningPill) {
-    return 'running';
-  }
-  if (isPassed) {
-    return 'pass';
-  }
-  if (gateFailed) {
-    return 'fail';
-  }
-
-  return 'queued';
-};
-
-const PILL_ICON_BY_STATE: Record<GatePillState, () => JSX.Element | null> = {
-  pass: () => (
-    <IcCheckCircle
-      className="tw:shrink-0 tw:text-fg-success-secondary"
-      data-testid="pill-icon-pass"
-      height={12}
-      width={12}
-    />
-  ),
-  fail: () => (
-    <IcTcFail
-      className="tw:shrink-0 tw:text-fg-error-primary"
-      data-testid="pill-icon-fail"
-      height={12}
-      width={12}
-    />
-  ),
-  running: () => <Loader size="x-small" />,
-  queued: () => null,
-};
-
 export function ConnectionGateCard(
   props: Readonly<{
     gateDescription: string;
@@ -529,17 +440,18 @@ export function ConnectionGateCard(
     t,
   } = props;
 
-  const { isIdle, isPassed, gateFailed, isRunningPill } = getGateVisualState(
-    gateResult,
-    isFailed,
-    isTestingConnection
-  );
+  // When the test is done+failed but no step results came back (API error before
+  // the workflow ran), treat the gate as failed so it doesn't stay blue/spinning.
+  const gateFailed =
+    (gateResult && !gateResult.passed) || (!gateResult && isFailed);
 
   const gateCardClass = classNames(
     'tw:overflow-hidden tw:rounded-xl tw:border',
     {
-      'tw:border-utility-brand-200 tw:bg-utility-brand-50': isIdle,
-      'tw:border-utility-success-200 tw:bg-utility-success-50': isPassed,
+      'tw:border-utility-brand-200 tw:bg-utility-brand-50':
+        !gateResult && !isFailed,
+      'tw:border-utility-success-200 tw:bg-utility-success-50':
+        gateResult?.passed,
       'tw:border-utility-error-200 tw:bg-utility-error-50': gateFailed,
     }
   );
@@ -549,21 +461,51 @@ export function ConnectionGateCard(
     'tw:text-xs tw:font-semibold tw:leading-4',
     {
       'tw:border-utility-brand-200 tw:bg-white tw:text-utility-brand-700':
-        isIdle,
+        !gateResult && !isFailed,
       'tw:border-utility-success-200 tw:bg-white tw:text-utility-success-700':
-        isPassed,
+        gateResult?.passed,
       'tw:border-utility-error-200 tw:bg-white tw:text-utility-error-700':
         gateFailed,
     }
   );
 
-  const gateIcon = getGateIcon(isIdle, isPassed, gateFailed);
+  let gateIcon: JSX.Element | undefined;
+
+  if (!gateResult && !isFailed) {
+    gateIcon = <Loader size="small" />;
+  } else if (gateResult?.passed) {
+    gateIcon = (
+      <span className="tw:flex tw:items-center" data-testid="success-badge">
+        <IcCheckCircle
+          className="tw:text-fg-success-secondary"
+          height={18}
+          width={18}
+        />
+      </span>
+    );
+  } else if (gateFailed) {
+    gateIcon = (
+      <span className="tw:flex tw:items-center" data-testid="fail-badge">
+        <IcTcFail className="tw:text-fg-error-primary" height={18} width={18} />
+      </span>
+    );
+  }
 
   const descriptionClass = classNames('tw:text-tertiary tw:text-xs', {
     'tw:text-utility-error-700': gateFailed,
   });
 
-  const pillState = getPillState(isRunningPill, isPassed, gateFailed);
+  let pillState: GatePillState | undefined;
+
+  if (!gateResult && isTestingConnection) {
+    pillState = 'running';
+  } else if (gateResult?.passed) {
+    pillState = 'pass';
+  } else if (gateFailed) {
+    pillState = 'fail';
+  } else {
+    pillState = 'queued';
+  }
 
   const pillClass = classNames(
     'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium',
@@ -578,7 +520,31 @@ export function ConnectionGateCard(
     }
   );
 
-  const pillIcon = PILL_ICON_BY_STATE[pillState]();
+  let pillIcon: JSX.Element | null;
+
+  if (pillState === 'pass') {
+    pillIcon = (
+      <IcCheckCircle
+        className="tw:shrink-0 tw:text-fg-success-secondary"
+        data-testid="pill-icon-pass"
+        height={12}
+        width={12}
+      />
+    );
+  } else if (pillState === 'fail') {
+    pillIcon = (
+      <IcTcFail
+        className="tw:shrink-0 tw:text-fg-error-primary"
+        data-testid="pill-icon-fail"
+        height={12}
+        width={12}
+      />
+    );
+  } else if (pillState === 'running') {
+    pillIcon = <Loader size="x-small" />;
+  } else {
+    pillIcon = null;
+  }
 
   return (
     <div className={gateCardClass} data-testid="connection-gate-phase">
@@ -624,45 +590,6 @@ export function ConnectionGateCard(
     </div>
   );
 }
-
-const renderStepResultDetails = (result: TestConnectionStepResult) => (
-  <div className="tw:border-t tw:border-border-secondary">
-    <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
-      {result.executedCommand &&
-        renderColoredLines(
-          `> ${result.executedCommand}`,
-          'tw:text-brand-300',
-          'cmd-'
-        )}
-      {(result.resultSummary || result.message) &&
-        renderColoredLines(
-          `  ${result.resultSummary || result.message}${
-            result.durationMs ? ` (${result.durationMs} ms)` : ''
-          }`,
-          'tw:text-utility-success-300',
-          'sum-'
-        )}
-      {result.errorLog &&
-        renderColoredLines(
-          result.errorLog,
-          'tw:text-utility-error-300',
-          'err-'
-        )}
-      {result.diagnosis &&
-        renderColoredLines(
-          [
-            result.diagnosis.title,
-            result.diagnosis.remediation,
-            result.diagnosis.docUrl,
-          ]
-            .filter(Boolean)
-            .join('\n'),
-          'tw:text-utility-warning-300',
-          'diag-'
-        )}
-    </pre>
-  </div>
-);
 
 export function ConnectionCapabilitySection(
   props: Readonly<{
@@ -842,7 +769,46 @@ export function ConnectionCapabilitySection(
                 </div>
               </AccordionHeader>
               <AccordionPanel unmountOnCollapse className="tw:p-0">
-                {result && renderStepResultDetails(result)}
+                {result && (
+                  <div className="tw:border-t tw:border-border-secondary">
+                    <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
+                      {result.executedCommand &&
+                        renderColoredLines(
+                          `> ${result.executedCommand}`,
+                          'tw:text-brand-300',
+                          'cmd-'
+                        )}
+                      {(result.resultSummary || result.message) &&
+                        renderColoredLines(
+                          `  ${result.resultSummary || result.message}${
+                            result.durationMs
+                              ? ` (${result.durationMs} ms)`
+                              : ''
+                          }`,
+                          'tw:text-utility-success-300',
+                          'sum-'
+                        )}
+                      {result.errorLog &&
+                        renderColoredLines(
+                          result.errorLog,
+                          TEXT_UTILITY_ERROR_300_CLASS,
+                          'err-'
+                        )}
+                      {result.diagnosis &&
+                        renderColoredLines(
+                          [
+                            result.diagnosis.title,
+                            result.diagnosis.remediation,
+                            result.diagnosis.docUrl,
+                          ]
+                            .filter(Boolean)
+                            .join('\n'),
+                          'tw:text-utility-warning-300',
+                          'diag-'
+                        )}
+                    </pre>
+                  </div>
+                )}
               </AccordionPanel>
             </AccordionItem>
           );
@@ -929,7 +895,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   result.errorLog,
-                  'tw:text-utility-error-300',
+                  TEXT_UTILITY_ERROR_300_CLASS,
                   `${stepIdx}-err-`
                 )
               );
@@ -1044,57 +1010,6 @@ export function ConnectionFooterActions(
   );
 }
 
-/** The first mandatory capability step whose result explicitly failed (`passed === false`,
- * not merely absent), used as the remediation source when the gate itself passed. */
-const getMandatoryFailureResult = (
-  capabilitySteps: TestConnectionStep[],
-  getConnectionStepResult: (
-    step: TestConnectionStep
-  ) => TestConnectionStepResult | undefined
-): TestConnectionStepResult | undefined => {
-  const failed = capabilitySteps.find(
-    (s) => s.mandatory && getConnectionStepResult(s)?.passed === false
-  );
-
-  return failed ? getConnectionStepResult(failed) : undefined;
-};
-
-const renderRemediationBody = (
-  diagnosis: TestConnectionStepResult['diagnosis'] | undefined,
-  errorContent: string,
-  t: TranslateFn
-) => {
-  if (diagnosis) {
-    return (
-      <div className="tw:flex tw:flex-col tw:gap-1 tw:text-xs">
-        {diagnosis.remediation && (
-          <Typography className="tw:text-secondary" size="text-xs">
-            {diagnosis.remediation}
-          </Typography>
-        )}
-        {diagnosis.docUrl && (
-          <a
-            className="tw:mt-1 tw:font-medium tw:text-primary tw:underline"
-            href={diagnosis.docUrl}
-            rel="noopener noreferrer"
-            target="_blank">
-            {t('label.learn-more')}
-          </a>
-        )}
-      </div>
-    );
-  }
-  if (errorContent) {
-    return (
-      <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
-        {renderColoredLines(errorContent, 'tw:text-utility-error-300', 'rem-')}
-      </pre>
-    );
-  }
-
-  return null;
-};
-
 export function ConnectionRemediationCard(
   props: Readonly<{
     connectionFailed: boolean;
@@ -1114,12 +1029,27 @@ export function ConnectionRemediationCard(
     t,
   } = props;
 
-  const failureResult = connectionFailed
-    ? gateResult
-    : getMandatoryFailureResult(capabilitySteps, getConnectionStepResult);
+  const errorContent = connectionFailed
+    ? gateResult?.errorLog || gateResult?.message || ''
+    : (() => {
+        const failed = capabilitySteps.find(
+          (s) => s.mandatory && getConnectionStepResult(s)?.passed === false
+        );
+        const r = failed ? getConnectionStepResult(failed) : undefined;
 
-  const errorContent = failureResult?.errorLog || failureResult?.message || '';
-  const diagnosis = failureResult?.diagnosis;
+        return r?.errorLog || r?.message || '';
+      })();
+
+  const diagnosis = connectionFailed
+    ? gateResult?.diagnosis
+    : (() => {
+        const failed = capabilitySteps.find(
+          (s) => s.mandatory && getConnectionStepResult(s)?.passed === false
+        );
+        const r = failed ? getConnectionStepResult(failed) : undefined;
+
+        return r?.diagnosis;
+      })();
 
   if (!errorContent) {
     return null;
@@ -1148,7 +1078,33 @@ export function ConnectionRemediationCard(
           {titleText}
         </span>
       </div>
-      {renderRemediationBody(diagnosis, errorContent, t)}
+      {diagnosis && (
+        <div className="tw:flex tw:flex-col tw:gap-1 tw:text-xs">
+          {diagnosis.remediation && (
+            <Typography className="tw:text-secondary" size="text-xs">
+              {diagnosis.remediation}
+            </Typography>
+          )}
+          {diagnosis.docUrl && (
+            <a
+              className="tw:mt-1 tw:font-medium tw:text-primary tw:underline"
+              href={diagnosis.docUrl}
+              rel="noopener noreferrer"
+              target="_blank">
+              {t('label.learn-more')}
+            </a>
+          )}
+        </div>
+      )}
+      {!diagnosis && errorContent && (
+        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
+          {renderColoredLines(
+            errorContent,
+            TEXT_UTILITY_ERROR_300_CLASS,
+            'rem-'
+          )}
+        </pre>
+      )}
     </div>
   );
 }

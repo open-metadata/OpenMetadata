@@ -13,7 +13,6 @@ OMeta client create helpers
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -37,7 +36,7 @@ class OMetaClientInitError(ValueError):
 
 def create_ometa_client(
     metadata_config: OpenMetadataConnection,
-    user_agent: Optional[str] = None,  # noqa: UP045
+    user_agent: str | None = None,
 ) -> OpenMetadata[T, C]:  # pyright: ignore[reportInvalidTypeVarUse]
     """Create an OpenMetadata client
 
@@ -70,7 +69,7 @@ def get_chart_entities_from_id(
     chart_ids: list[str],
     metadata: OpenMetadata,
     service_name: str,
-) -> List[FullyQualifiedEntityName]:  # noqa: UP006
+) -> list[FullyQualifiedEntityName]:
     """
     Method to get the chart entity using get_by_name api
     """

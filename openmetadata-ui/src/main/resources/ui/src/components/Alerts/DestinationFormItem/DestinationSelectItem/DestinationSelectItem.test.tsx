@@ -12,15 +12,14 @@
  */
 
 import {
-  findByRole,
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Form, FormInstance } from 'antd';
-import { isString } from 'lodash';
-import { act } from 'react';
+import { forwardRef, ReactNode } from 'react';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import {
   Status,
   SubscriptionCategory,
@@ -29,1317 +28,709 @@ import {
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
-const MOCK_DESTINATION_SELECT_ITEM_PROPS: DestinationSelectItemProps = {
+jest.mock('@openmetadata/ui-core-components', () => {
+  const SelectItem = ({
+    id,
+    children,
+  }: {
+    id: string;
+    children?: ReactNode;
+  }) => <option value={id}>{children}</option>;
+
+  const ComboBox = ({
+    onSelectionChange,
+    selectedKey,
+    items = [],
+    isDisabled,
+    'data-testid': tid,
+  }: {
+    onSelectionChange?: (key: string) => void;
+    selectedKey?: string | null;
+    items?: { id: string; label?: string; isDisabled?: boolean }[];
+    isDisabled?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <select
+      data-testid={tid}
+      disabled={isDisabled}
+      value={selectedKey ?? ''}
+      onChange={(e) => onSelectionChange?.(e.target.value)}>
+      <option aria-label="Empty option" value="" />
+      {items.map((item) => (
+        <option disabled={item.isDisabled} key={item.id} value={item.id}>
+          {item.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  const SelectBase = ({
+    onSelectionChange,
+    selectedKey,
+    children,
+    'data-testid': tid,
+    isRequired,
+    isDisabled,
+    placeholder,
+  }: {
+    onSelectionChange?: (key: string) => void;
+    selectedKey?: string | null;
+    children?: ReactNode;
+    'data-testid'?: string;
+    isRequired?: boolean;
+    isDisabled?: boolean;
+    placeholder?: string;
+  }) => (
+    <select
+      data-testid={tid}
+      disabled={isDisabled}
+      required={isRequired}
+      value={selectedKey ?? ''}
+      onChange={(e) => onSelectionChange?.(e.target.value)}>
+      {placeholder && <option value="">{placeholder}</option>}
+      {children}
+    </select>
+  );
+
+  SelectBase.Item = SelectItem;
+  SelectBase.ComboBox = ComboBox;
+
+  const GridItem = ({ children }: { children?: ReactNode }) => (
+    <div>{children}</div>
+  );
+  const Grid = ({ children }: { children?: ReactNode }) => (
+    <div>{children}</div>
+  );
+
+  Grid.Item = GridItem;
+
+  return {
+    Alert: ({
+      title,
+      variant,
+      closable,
+      onClose,
+    }: {
+      title: ReactNode;
+      variant?: string;
+      closable?: boolean;
+      onClose?: () => void;
+    }) => (
+      <div data-testid={`alert-${variant}`}>
+        {title}
+        {closable && (
+          <button aria-label="Close alert" type="button" onClick={onClose}>
+            Close
+          </button>
+        )}
+      </div>
+    ),
+    Button: ({
+      onPress,
+      children,
+      isDisabled,
+      'data-testid': tid,
+    }: {
+      onPress?: () => void;
+      children?: ReactNode;
+      isDisabled?: boolean;
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={tid} disabled={isDisabled} onClick={onPress}>
+        {children}
+      </button>
+    ),
+    Grid,
+    Input: forwardRef<
+      HTMLInputElement,
+      {
+        onChange?: (val: string) => void;
+        value?: string;
+        'data-testid'?: string;
+        inputDataTestId?: string;
+        label?: ReactNode;
+        type?: string;
+        isDisabled?: boolean;
+      }
+    >(
+      (
+        { onChange, value, inputDataTestId, label, type, isDisabled, ...props },
+        ref
+      ) => {
+        const tid = props['data-testid'];
+
+        return (
+          <div>
+            <label htmlFor={inputDataTestId ?? tid}>
+              {label}
+              <input
+                aria-label="Input"
+                data-testid={inputDataTestId ?? tid}
+                disabled={isDisabled}
+                id={inputDataTestId ?? tid}
+                ref={ref}
+                type={type}
+                value={value ?? ''}
+                onChange={(e) => onChange?.(e.target.value)}
+              />
+            </label>
+          </div>
+        );
+      }
+    ),
+    Select: SelectBase,
+    Toggle: ({
+      onChange,
+      isSelected,
+      label,
+      isDisabled,
+    }: {
+      onChange?: (checked: boolean) => void;
+      isSelected?: boolean;
+      label?: ReactNode;
+      isDisabled?: boolean;
+    }) => (
+      <label htmlFor="notify-downstream-toggle">
+        <input
+          aria-label="Notify downstream"
+          checked={isSelected ?? false}
+          data-testid="notify-downstream-toggle"
+          disabled={isDisabled}
+          id="notify-downstream-toggle"
+          type="checkbox"
+          onChange={(e) => onChange?.(e.target.checked)}
+        />
+        {label}
+      </label>
+    ),
+  };
+});
+
+jest.mock('@untitledui/icons', () => ({
+  X: () => <span>X</span>,
+}));
+
+jest.mock('../../../../utils/ObservabilityUtils', () => ({
+  checkIfDestinationIsInternal: jest
+    .fn()
+    .mockImplementation((value: string) =>
+      ['Owners', 'Followers', 'Admins', 'Teams', 'Users'].includes(value)
+    ),
+  getConfigFieldFromDestinationType: jest.fn().mockReturnValue(null),
+  getAlertDestinationCategoryIcons: jest.fn().mockReturnValue(null),
+}));
+
+jest.mock('../../../../utils/Alerts/AlertsUtil', () => ({
+  getDestinationStatusAlertData: jest.fn().mockReturnValue({
+    statusLabel: 'Success',
+    alertClassName: '',
+    alertIcon: null,
+  }),
+}));
+
+jest.mock('../../../../utils/Alerts/AlertsUtilPure', () => ({
+  ...jest.requireActual('../../../../utils/Alerts/AlertsUtilPure'),
+  getFilteredDestinationOptions: jest
+    .fn()
+    .mockImplementation((key: string) =>
+      key === 'internal'
+        ? [{ value: SubscriptionCategory.Admins }]
+        : [{ value: SubscriptionType.Email }, { value: SubscriptionType.Slack }]
+    ),
+  getSubscriptionTypeOptions: jest.fn().mockReturnValue([
+    { value: 'ActivityFeed', disabled: false },
+    { value: 'Email', disabled: false },
+  ]),
+}));
+
+jest.mock('./DestinationConfigField/DestinationConfigField', () => {
+  const { Controller: MockController, useFormContext: useMockFormContext } =
+    jest.requireActual('react-hook-form');
+
+  return jest
+    .fn()
+    .mockImplementation(
+      ({
+        fieldName,
+        isViewMode,
+      }: {
+        fieldName: number;
+        isViewMode?: boolean;
+      }) => {
+        const { control } = useMockFormContext();
+
+        return (
+          <div
+            data-testid="destination-config-field"
+            data-view-mode={String(Boolean(isViewMode))}>
+            <MockController
+              control={control}
+              name={`destinations.${fieldName}.config.endpoint`}
+              render={({ field }: { field: { value?: string } }) => (
+                <span data-testid="registered-endpoint">{field.value}</span>
+              )}
+            />
+          </div>
+        );
+      }
+    );
+});
+
+const MOCK_PROPS: DestinationSelectItemProps = {
   selectorKey: 0,
   id: 0,
   remove: jest.fn(),
   isDestinationStatusLoading: false,
 };
 
-const isDestinationFieldPath = (
-  val: string | string[],
-  length: number
-): val is string[] =>
-  Array.isArray(val) &&
-  val.length === length &&
-  val[0] === 'destinations' &&
-  Number(val[1]) === 0;
+function renderWithForm(
+  ui: React.ReactElement,
+  defaultValues: Record<string, unknown> = {}
+) {
+  function Wrapper({ children }: { children: ReactNode }) {
+    const methods = useForm({ defaultValues });
 
-jest.mock('../../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
-}));
+    return <FormProvider {...methods}>{children}</FormProvider>;
+  }
 
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
+  return render(ui, { wrapper: Wrapper });
+}
 
-  return {
-    ...antd,
-    Form: {
-      ...antd.Form,
-      useFormInstance: jest.fn().mockImplementation(() => ({
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) =>
-            isString(val) ? [{ category: 'External' }] : ''
-          ),
-      })),
-    },
-  };
-});
+function renderValidationForm(onSubmit: jest.Mock) {
+  function Wrapper() {
+    const methods = useForm({ defaultValues: { destinations: [{}] } });
 
-jest.mock('../../../../utils/i18next/LocalUtil', () => ({
-  Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
-    return <span>{i18nKey}</span>;
-  }),
-  __esModule: true,
-  default: {
-    t: jest.fn().mockImplementation((key) => key),
-  },
-  t: jest.fn().mockImplementation((key) => key),
-}));
-
-describe('DestinationSelectItem component', () => {
-  it('should show internal tab by default in the dropdown', async () => {
-    render(
-      <Form initialValues={{ destinations: [{}] }}>
-        <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-      </Form>
+    return (
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(onSubmit)}>
+          <DestinationSelectItem {...MOCK_PROPS} />
+          <button data-testid="submit" type="submit">
+            Submit
+          </button>
+        </form>
+      </FormProvider>
     );
+  }
 
-    const id = MOCK_DESTINATION_SELECT_ITEM_PROPS.id;
-    const selectorKey = MOCK_DESTINATION_SELECT_ITEM_PROPS.selectorKey;
+  return render(<Wrapper />);
+}
 
-    expect(screen.getByTestId(`destination-${id}`)).toBeInTheDocument();
-
-    const categorySelect = await findByRole(
-      screen.getByTestId(`destination-category-select-${id}`),
-      'combobox'
-    );
-
-    // Handle click and dropdown rendering
-    await act(async () => {
-      fireEvent.focus(categorySelect);
-      fireEvent.keyDown(categorySelect, {
-        key: 'ArrowDown',
-        code: 'ArrowDown',
-      });
+function renderWithDestinationValue(
+  defaultValues: Record<string, unknown> = {}
+) {
+  function Wrapper() {
+    const methods = useForm({ defaultValues });
+    const destination = useWatch({
+      control: methods.control,
+      name: 'destinations.0',
     });
 
-    // Wait for the dropdown to be rendered in the portal
-    await waitFor(async () => {
+    return (
+      <FormProvider {...methods}>
+        <DestinationSelectItem {...MOCK_PROPS} />
+        <output data-testid="destination-value">
+          {JSON.stringify(destination)}
+        </output>
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
+describe('DestinationSelectItem', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders the destination category combobox', () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />);
+
+    expect(
+      screen.getByTestId(`destination-category-select-${MOCK_PROPS.id}`)
+    ).toBeInTheDocument();
+  });
+
+  it('filters destination categories for the selected source', () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      resources: ['table'],
+    });
+
+    expect(
+      screen.getByRole('option', { name: SubscriptionCategory.Admins })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: SubscriptionCategory.Owners })
+    ).not.toBeInTheDocument();
+  });
+
+  it('requires a destination category before submission', async () => {
+    const onSubmit = jest.fn();
+    renderValidationForm(onSubmit);
+
+    fireEvent.click(screen.getByTestId('submit'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('renders remove button and calls remove on click', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />);
+
+    const removeBtn = screen.getByTestId(`remove-destination-${MOCK_PROPS.id}`);
+
+    await act(async () => {
+      fireEvent.click(removeBtn);
+    });
+
+    expect(MOCK_PROPS.remove).toHaveBeenCalledWith(MOCK_PROPS.id);
+  });
+
+  it('hides remove button in view mode', () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />);
+
+    expect(
+      screen.queryByTestId(`remove-destination-${MOCK_PROPS.id}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it('disables destination controls in view mode', () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Slack,
+          notifyDownstream: true,
+        },
+      ],
+    });
+
+    expect(
+      screen.getByTestId(`destination-category-select-${MOCK_PROPS.id}`)
+    ).toBeDisabled();
+    expect(screen.getByTestId('destination-config-field')).toHaveAttribute(
+      'data-view-mode',
+      'true'
+    );
+    expect(screen.getByTestId('notify-downstream-toggle')).toBeDisabled();
+    expect(
+      screen.getByTestId(`destination-downstream-depth-input-${MOCK_PROPS.id}`)
+    ).toBeDisabled();
+  });
+
+  it('shows config field when external destination is selected', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [{ destinationType: SubscriptionType.Slack }],
+    });
+
+    await waitFor(() => {
       expect(
-        await screen.findByTestId(
-          `destination-category-dropdown-${selectorKey}`
+        screen.getByTestId('destination-config-field')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('shows internal type select when internal destination is selected', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [{ destinationType: SubscriptionCategory.Owners }],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`destination-type-select-${MOCK_PROPS.id}`)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('shows owner-selection warning for Owners with non-Email subscription type', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Owners,
+          type: SubscriptionType.ActivityFeed,
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.destination-owner-selection-warning')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('shows generic selection warning for Owners with Email subscription type', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Owners,
+          type: SubscriptionType.Email,
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.destination-selection-warning')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('shows generic selection warning for non-Owners internal destination', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Admins,
+          type: SubscriptionType.Email,
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.destination-selection-warning')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('dismisses the internal destination selection warning', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Teams,
+          type: SubscriptionType.Email,
+        },
+      ],
+    });
+
+    expect(
+      await screen.findByText('message.destination-selection-warning')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close alert' }));
+
+    expect(
+      screen.queryByText('message.destination-selection-warning')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the warning again when the subscription type changes', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Teams,
+          type: SubscriptionType.Email,
+        },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Close alert' }));
+    fireEvent.change(
+      screen.getByTestId(`destination-type-select-${MOCK_PROPS.id}`),
+      { target: { value: SubscriptionType.ActivityFeed } }
+    );
+
+    expect(
+      await screen.findByText('message.destination-selection-warning')
+    ).toBeInTheDocument();
+  });
+
+  it('shows notify downstream toggle when a destination is selected', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Slack,
+          category: SubscriptionCategory.External,
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('label.notify-downstream')).toBeInTheDocument();
+    });
+  });
+
+  it('shows downstream depth input when notify downstream is enabled', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Slack,
+          notifyDownstream: true,
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(
+          `destination-downstream-depth-input-${MOCK_PROPS.id}`
         )
       ).toBeInTheDocument();
     });
-
-    expect(
-      await screen.findByTestId('Admins-internal-option')
-    ).toHaveTextContent('Admins');
-    expect(
-      await screen.findByTestId('Followers-internal-option')
-    ).toHaveTextContent('Followers');
-    expect(
-      await screen.findByTestId('Owners-internal-option')
-    ).toHaveTextContent('Owners');
-    expect(
-      await screen.findByTestId('Teams-internal-option')
-    ).toHaveTextContent('Teams');
-    expect(
-      await screen.findByTestId('Users-internal-option')
-    ).toHaveTextContent('Users');
   });
 
-  it('should show external tab by default when selected destination type is external', async () => {
-    jest.spyOn(Form, 'useFormInstance').mockImplementationOnce(() => ({
-      ...Form.useFormInstance(),
-      setFieldValue: jest.fn(),
-      getFieldValue: jest
-        .fn()
-        .mockImplementation((val: string | string[]) =>
-          isString(val)
-            ? [{ category: 'External', destinationType: 'Teams' }]
-            : ''
-        ),
-    }));
-
-    const id = MOCK_DESTINATION_SELECT_ITEM_PROPS.id;
-    const selectorKey = MOCK_DESTINATION_SELECT_ITEM_PROPS.selectorKey;
-
-    await act(async () => {
-      render(
-        <Form initialValues={{ destinations: [{}] }}>
-          <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-        </Form>
-      );
+  it('hides downstream depth input when notify downstream is disabled', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Slack,
+          notifyDownstream: false,
+        },
+      ],
     });
 
-    const categorySelect = await findByRole(
-      screen.getByTestId(`destination-category-select-${id}`),
-      'combobox'
-    );
-
-    // Handle initial focus and state updates
-    await act(async () => {
-      fireEvent.focus(categorySelect);
-      fireEvent.keyDown(categorySelect, {
-        key: 'ArrowDown',
-        code: 'ArrowDown',
-      });
-    });
-
-    // Wait for the dropdown to be rendered in the portal
     await waitFor(() => {
       expect(
-        screen.getByTestId(`destination-category-dropdown-${selectorKey}`)
-      ).toBeInTheDocument();
-    });
-
-    expect(
-      await screen.findByTestId('Email-external-option')
-    ).toHaveTextContent('Email');
-    expect(
-      await screen.findByTestId('G Chat-external-option')
-    ).toHaveTextContent('G Chat');
-    expect(
-      await screen.findByTestId('Webhook-external-option')
-    ).toHaveTextContent('Webhook');
-    expect(
-      await screen.findByTestId('Ms Teams-external-option')
-    ).toHaveTextContent('Ms Teams');
-    expect(
-      await screen.findByTestId('Slack-external-option')
-    ).toHaveTextContent('Slack');
-  });
-
-  it('should call remove method with correct id on click of remove field button', async () => {
-    const id = MOCK_DESTINATION_SELECT_ITEM_PROPS.id;
-
-    await act(async () => {
-      render(
-        <Form initialValues={{ destinations: [{}] }}>
-          <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-        </Form>
-      );
-    });
-
-    const removeFieldButton = screen.getByTestId(`remove-destination-${id}`);
-
-    await act(async () => {
-      fireEvent.click(removeFieldButton);
-    });
-
-    expect(MOCK_DESTINATION_SELECT_ITEM_PROPS.remove).toHaveBeenCalledWith(id);
-  });
-
-  describe('Warning message display logic', () => {
-    it('should show destination-owner-selection-warning when destinationType is Owners and subscriptionType is not Email', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: 'External' }];
-            }
-            if (isDestinationFieldPath(val, 3)) {
-              if (val[2] === 'destinationType') {
-                return SubscriptionCategory.Owners;
-              }
-              if (val[2] === 'type') {
-                return SubscriptionType.ActivityFeed;
-              }
-            }
-            if (isDestinationFieldPath(val, 2)) {
-              return {
-                destinationType: SubscriptionCategory.Owners,
-                type: SubscriptionType.ActivityFeed,
-              };
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              destinationType: SubscriptionCategory.Owners,
-              type: SubscriptionType.ActivityFeed,
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                destinationType: SubscriptionCategory.Owners,
-                type: SubscriptionType.ActivityFeed,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  destinationType: SubscriptionCategory.Owners,
-                  type: SubscriptionType.ActivityFeed,
-                },
-              ],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('message.destination-owner-selection-warning')
-        ).toBeInTheDocument();
-      });
-      useWatchMock.mockRestore();
-    });
-
-    it('should show destination-selection-warning when destinationType is Owners but subscriptionType is Email', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: 'External' }];
-            }
-            if (isDestinationFieldPath(val, 3)) {
-              if (val[2] === 'destinationType') {
-                return SubscriptionCategory.Owners;
-              }
-              if (val[2] === 'type') {
-                return SubscriptionType.Email;
-              }
-            }
-            if (isDestinationFieldPath(val, 2)) {
-              return {
-                destinationType: SubscriptionCategory.Owners,
-                type: SubscriptionType.Email,
-              };
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              destinationType: SubscriptionCategory.Owners,
-              type: SubscriptionType.Email,
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                destinationType: SubscriptionCategory.Owners,
-                type: SubscriptionType.Email,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  destinationType: SubscriptionCategory.Owners,
-                  type: SubscriptionType.Email,
-                },
-              ],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('message.destination-selection-warning')
-        ).toBeInTheDocument();
-      });
-      useWatchMock.mockRestore();
-    });
-
-    it('should show destination-selection-warning when destinationType is not Owners', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: 'External' }];
-            }
-            if (isDestinationFieldPath(val, 3)) {
-              if (val[2] === 'destinationType') {
-                return SubscriptionCategory.Admins;
-              }
-              if (val[2] === 'type') {
-                return SubscriptionType.ActivityFeed;
-              }
-            }
-            if (isDestinationFieldPath(val, 2)) {
-              return {
-                destinationType: SubscriptionCategory.Admins,
-                type: SubscriptionType.ActivityFeed,
-              };
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              destinationType: SubscriptionCategory.Admins,
-              type: SubscriptionType.ActivityFeed,
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                destinationType: SubscriptionCategory.Admins,
-                type: SubscriptionType.ActivityFeed,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  destinationType: SubscriptionCategory.Admins,
-                  type: SubscriptionType.ActivityFeed,
-                },
-              ],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('message.destination-selection-warning')
-        ).toBeInTheDocument();
-      });
-      useWatchMock.mockRestore();
-    });
-
-    it('should not show warning message when destinationType is not an internal destination', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: 'External' }];
-            }
-            if (isDestinationFieldPath(val, 3)) {
-              if (val[2] === 'destinationType') {
-                return SubscriptionType.Webhook;
-              }
-              if (val[2] === 'type') {
-                return SubscriptionType.Webhook;
-              }
-            }
-            if (isDestinationFieldPath(val, 2)) {
-              return {
-                destinationType: SubscriptionType.Webhook,
-                type: SubscriptionType.Webhook,
-              };
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              destinationType: SubscriptionType.Webhook,
-              type: SubscriptionType.Webhook,
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                destinationType: SubscriptionType.Webhook,
-                type: SubscriptionType.Webhook,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  destinationType: SubscriptionType.Webhook,
-                  type: SubscriptionType.Webhook,
-                },
-              ],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText('message.destination-owner-selection-warning')
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText('message.destination-selection-warning')
-        ).not.toBeInTheDocument();
-      });
-      useWatchMock.mockRestore();
+        screen.queryByTestId(
+          `destination-downstream-depth-input-${MOCK_PROPS.id}`
+        )
+      ).not.toBeInTheDocument();
     });
   });
 
-  describe('Notify Downstream functionality', () => {
-    it('should show notify downstream switch when a destination is selected', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [
-                {
-                  category: SubscriptionCategory.External,
-                  type: SubscriptionType.Email,
-                  destinationType: SubscriptionType.Email,
-                },
-              ];
-            }
-            if (Array.isArray(val) && val[0] === 'resources') {
-              return ['test-resource'];
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              category: SubscriptionCategory.External,
-              type: SubscriptionType.Email,
-              destinationType: SubscriptionType.Email,
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                category: SubscriptionCategory.External,
-                type: SubscriptionType.Email,
-                destinationType: SubscriptionType.Email,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  category: SubscriptionCategory.External,
-                  type: SubscriptionType.Email,
-                  destinationType: SubscriptionType.Email,
-                },
-              ],
-              resources: ['test-resource'],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const notifyDownstreamLabel = screen.getByText(
-          'label.notify-downstream'
-        );
-
-        expect(notifyDownstreamLabel).toBeInTheDocument();
-      });
-
-      useWatchMock.mockRestore();
-    });
-
-    it('should show downstream depth input when notify downstream is enabled', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [
-                {
-                  category: 'External',
-                  type: SubscriptionType.Email,
-                  notifyDownstream: true,
-                },
-              ];
-            }
-            if (isDestinationFieldPath(val, 2)) {
-              return {
-                category: 'External',
-                type: SubscriptionType.Email,
-                notifyDownstream: true,
-              };
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              category: 'External',
-              type: SubscriptionType.Email,
-              notifyDownstream: true,
-            };
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  category: 'External',
-                  type: SubscriptionType.Email,
-                  notifyDownstream: true,
-                },
-              ],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const downstreamDepthLabel = screen.getByText('label.downstream-depth');
-
-        expect(downstreamDepthLabel).toBeInTheDocument();
-
-        const downstreamDepthInput = screen.getByTestId(
-          'destination-downstream-depth-0'
-        );
-
-        expect(downstreamDepthInput).toBeInTheDocument();
-        expect(downstreamDepthInput).toHaveAttribute('type', 'number');
-        expect(downstreamDepthInput).toHaveAttribute('value', '1');
-      });
-
-      useWatchMock.mockRestore();
-    });
-
-    it('should not show downstream depth input when notify downstream is disabled', async () => {
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [
-                {
-                  category: 'External',
-                  type: SubscriptionType.Email,
-                  notifyDownstream: false,
-                },
-              ];
-            }
-            if (isDestinationFieldPath(val, 2)) {
-              return {
-                category: 'External',
-                type: SubscriptionType.Email,
-                notifyDownstream: false,
-              };
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              category: 'External',
-              type: SubscriptionType.Email,
-              notifyDownstream: false,
-            };
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  category: 'External',
-                  type: SubscriptionType.Email,
-                  notifyDownstream: false,
-                },
-              ],
-            }}>
-            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const downstreamDepthLabel = screen.queryByText(
-          'label.downstream-depth'
-        );
-
-        expect(downstreamDepthLabel).not.toBeInTheDocument();
-
-        const downstreamDepthInput = screen.queryByTestId(
-          'destination-downstream-depth-0'
-        );
-
-        expect(downstreamDepthInput).not.toBeInTheDocument();
-      });
-
-      useWatchMock.mockRestore();
-    });
-
-    it('should clear downstream depth when notify downstream is toggled off', async () => {
-      const setFieldValueSpy = jest.fn();
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: setFieldValueSpy,
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [
-                {
-                  category: SubscriptionCategory.External,
-                  type: SubscriptionType.Email,
-                  destinationType: SubscriptionType.Email,
-                  notifyDownstream: true,
-                  downstreamDepth: 3,
-                },
-              ];
-            }
-            if (Array.isArray(val) && val[0] === 'resources') {
-              return ['test-resource'];
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              category: SubscriptionCategory.External,
-              type: SubscriptionType.Email,
-              destinationType: SubscriptionType.Email,
-              notifyDownstream: true,
-              downstreamDepth: 3,
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                category: SubscriptionCategory.External,
-                type: SubscriptionType.Email,
-                destinationType: SubscriptionType.Email,
-                notifyDownstream: true,
-                downstreamDepth: 3,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      render(
-        <Form
-          initialValues={{
-            destinations: [
-              {
-                category: SubscriptionCategory.External,
-                type: SubscriptionType.Email,
-                destinationType: SubscriptionType.Email,
-                notifyDownstream: true,
-                downstreamDepth: 3,
-              },
-            ],
-            resources: ['test-resource'],
-          }}>
-          <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
-        </Form>
-      );
-
-      const notifySwitch = screen.getByRole('switch');
-
-      // Since the switch is not initially checked but the test data suggests it should be,
-      // we should manually verify the component logic is working as expected.
-      // Let's skip the checked state verification and directly test the toggle functionality
-
-      // Click the switch to toggle its state
-      await act(async () => {
-        fireEvent.click(notifySwitch);
-      });
-
-      // Since the switch wasn't initially checked, clicking it should check it (turn on)
-      // We need to simulate turning it on first, then off to test the clear functionality
-      await waitFor(() => {
-        expect(notifySwitch).toBeChecked();
-      });
-
-      // Click again to turn it off (this should trigger the clear function)
-      await act(async () => {
-        fireEvent.click(notifySwitch);
-      });
-
-      expect(setFieldValueSpy).toHaveBeenCalledWith(
-        ['destinations', 0, 'downstreamDepth'],
-        undefined
-      );
-
-      useWatchMock.mockRestore();
-    });
-  });
-
-  describe('Destination Status Details Comparison', () => {
-    it('should correctly match destination status when headers and queryParams are present', async () => {
-      const mockDestinationsWithStatus = [
-        {
-          type: SubscriptionType.Webhook,
-          category: SubscriptionCategory.External,
-          config: {
-            endpoint: 'https://example.com/webhook',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: 'Bearer token123',
-            },
-            queryParams: {
-              param1: 'value1',
-            },
-          },
-          statusDetails: {
-            status: Status.Success,
-            statusCode: 200,
-            reason: 'OK',
-          },
+  it('shows success status alert when destination status matches', async () => {
+    const destinationsWithStatus = [
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Success,
+          statusCode: 200,
+          reason: 'OK',
         },
-      ];
+      },
+    ];
 
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: SubscriptionCategory.External }];
-            }
+    renderWithForm(
+      <DestinationSelectItem
+        {...MOCK_PROPS}
+        destinationsWithStatus={destinationsWithStatus}
+      />,
+      {
+        destinations: [
+          {
+            type: SubscriptionType.Slack,
+            category: SubscriptionCategory.External,
+            config: { endpoint: 'https://hooks.slack.com' },
+          },
+        ],
+      }
+    );
 
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              type: SubscriptionType.Webhook,
-              category: SubscriptionCategory.External,
-              config: {
-                endpoint: 'https://example.com/webhook',
-                headers: [
-                  { key: 'Content-Type', value: 'application/json' },
-                  { key: 'Authorization', value: 'Bearer token123' },
-                ],
-                queryParams: [{ key: 'param1', value: 'value1' }],
-              },
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                type: SubscriptionType.Webhook,
-                category: SubscriptionCategory.External,
-                destinationType: SubscriptionType.Webhook,
-                config: {
-                  endpoint: 'https://example.com/webhook',
-                },
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  type: SubscriptionType.Webhook,
-                  category: SubscriptionCategory.External,
-                  destinationType: SubscriptionType.Webhook,
-                  config: {
-                    endpoint: 'https://example.com/webhook',
-                    headers: [
-                      { key: 'Content-Type', value: 'application/json' },
-                      { key: 'Authorization', value: 'Bearer token123' },
-                    ],
-                    queryParams: [{ key: 'param1', value: 'value1' }],
-                  },
-                },
-              ],
-              resources: ['test-resource'],
-            }}>
-            <DestinationSelectItem
-              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
-              destinationsWithStatus={mockDestinationsWithStatus}
-            />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const statusMessage = screen.getByText(/200/);
-
-        expect(statusMessage).toBeInTheDocument();
-      });
-
-      useWatchMock.mockRestore();
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-success')).toBeInTheDocument();
     });
+  });
 
-    it('should correctly match destination status after modifying advanced configurations (headers/queryParams)', async () => {
-      const mockDestinationsWithStatus = [
-        {
-          type: SubscriptionType.Webhook,
-          category: SubscriptionCategory.External,
-          config: {
-            endpoint: 'https://example.com/webhook',
-            headers: {
-              'X-Custom-Header': 'custom-value',
-            },
-            queryParams: {
-              apiKey: 'key123',
-              version: 'v2',
-            },
-          },
-          statusDetails: {
-            status: Status.Success,
-            statusCode: 200,
-            reason: 'OK',
-          },
+  it('shows status when empty advanced fields were omitted from the test request', async () => {
+    const destinationsWithStatus = [
+      {
+        type: SubscriptionType.GChat,
+        category: SubscriptionCategory.External,
+        config: {
+          endpoint: 'https://chat.googleapis.com',
+          httpMethod: 'POST',
         },
-      ];
+        statusDetails: {
+          status: Status.Failed,
+          statusCode: 500,
+          reason: 'Connection refused',
+        },
+      },
+    ];
 
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: SubscriptionCategory.External }];
-            }
+    renderWithForm(
+      <DestinationSelectItem
+        {...MOCK_PROPS}
+        destinationsWithStatus={destinationsWithStatus}
+      />,
+      {
+        destinations: [
+          {
+            type: SubscriptionType.GChat,
+            category: SubscriptionCategory.External,
+            config: {
+              endpoint: 'https://chat.googleapis.com',
+              headers: [],
+              httpMethod: 'POST',
+              queryParams: [],
+            },
+          },
+        ],
+      }
+    );
 
-            return '';
-          }),
-      };
+    expect(await screen.findByTestId('alert-error')).toBeInTheDocument();
+  });
 
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              type: SubscriptionType.Webhook,
-              category: SubscriptionCategory.External,
-              config: {
-                endpoint: 'https://example.com/webhook',
-                headers: [{ key: 'X-Custom-Header', value: 'custom-value' }],
-                queryParams: [
-                  { key: 'apiKey', value: 'key123' },
-                  { key: 'version', value: 'v2' },
-                ],
-              },
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                type: SubscriptionType.Webhook,
-                category: SubscriptionCategory.External,
-                destinationType: SubscriptionType.Webhook,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  type: SubscriptionType.Webhook,
-                  category: SubscriptionCategory.External,
-                  destinationType: SubscriptionType.Webhook,
-                  config: {
-                    endpoint: 'https://example.com/webhook',
-                    headers: [
-                      { key: 'X-Custom-Header', value: 'custom-value' },
-                    ],
-                    queryParams: [
-                      { key: 'apiKey', value: 'key123' },
-                      { key: 'version', value: 'v2' },
-                    ],
-                  },
-                },
-              ],
-              resources: ['test-resource'],
-            }}>
-            <DestinationSelectItem
-              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
-              destinationsWithStatus={mockDestinationsWithStatus}
-            />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const statusMessage = screen.getByText(/200/);
-
-        expect(statusMessage).toBeInTheDocument();
-        expect(statusMessage).toHaveTextContent('200');
-      });
-
-      useWatchMock.mockRestore();
-    });
-
-    it('should not display status when destination does not match', async () => {
-      const mockDestinationsWithStatus = [
+  it('clears destination-specific values when destination type changes', async () => {
+    renderWithDestinationValue({
+      destinations: [
         {
+          destinationType: SubscriptionType.Slack,
           type: SubscriptionType.Slack,
           category: SubscriptionCategory.External,
           config: {
-            endpoint: 'https://slack.com/webhook',
+            endpoint: 'https://hooks.slack.com',
+            headers: [{ key: 'Authorization', value: 'secret' }],
           },
-          statusDetails: {
-            status: Status.Success,
-            statusCode: 200,
-            reason: 'OK',
-          },
+          downstreamDepth: 3,
+          notifyDownstream: true,
         },
-      ];
-
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: SubscriptionCategory.External }];
-            }
-
-            return '';
-          }),
-      };
-
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              type: SubscriptionType.Webhook,
-              category: SubscriptionCategory.External,
-              config: {
-                endpoint: 'https://example.com/webhook',
-              },
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                type: SubscriptionType.Webhook,
-                category: SubscriptionCategory.External,
-                destinationType: SubscriptionType.Webhook,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
-
-          return undefined;
-        });
-
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  type: SubscriptionType.Webhook,
-                  category: SubscriptionCategory.External,
-                  destinationType: SubscriptionType.Webhook,
-                  config: {
-                    endpoint: 'https://example.com/webhook',
-                  },
-                },
-              ],
-              resources: ['test-resource'],
-            }}>
-            <DestinationSelectItem
-              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
-              destinationsWithStatus={mockDestinationsWithStatus}
-            />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const statusAlert = screen.queryByText(/200/);
-
-        expect(statusAlert).not.toBeInTheDocument();
-      });
-
-      useWatchMock.mockRestore();
+      ],
     });
 
-    it('should handle empty headers and queryParams correctly', async () => {
-      const mockDestinationsWithStatus = [
-        {
-          type: SubscriptionType.Webhook,
+    fireEvent.change(
+      screen.getByTestId(`destination-category-select-${MOCK_PROPS.id}`),
+      { target: { value: SubscriptionType.Email } }
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('destination-value')).toHaveTextContent(
+        JSON.stringify({
+          destinationType: SubscriptionType.Email,
           category: SubscriptionCategory.External,
-          config: {
-            endpoint: 'https://example.com/webhook',
+          type: SubscriptionType.Email,
+        })
+      )
+    );
+  });
+
+  it('shows loading skeleton when destination status is loading', async () => {
+    renderWithForm(
+      <DestinationSelectItem {...MOCK_PROPS} isDestinationStatusLoading />,
+      {
+        destinations: [
+          {
+            destinationType: SubscriptionType.Slack,
+            category: SubscriptionCategory.External,
           },
-          statusDetails: {
-            status: Status.Success,
-            statusCode: 200,
-            reason: 'OK',
-          },
-        },
-      ];
+        ],
+      }
+    );
 
-      const mockFormInstance: Partial<FormInstance> = {
-        setFieldValue: jest.fn(),
-        getFieldValue: jest
-          .fn()
-          .mockImplementation((val: string | string[]) => {
-            if (isString(val)) {
-              return [{ category: SubscriptionCategory.External }];
-            }
+    await waitFor(() => {
+      expect(document.querySelector('.tw\\:animate-pulse')).toBeInTheDocument();
+    });
+  });
 
-            return '';
-          }),
-      };
+  it('shows config field when category is changed via combobox', async () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />);
 
-      jest
-        .spyOn(Form, 'useFormInstance')
-        .mockImplementation(() => mockFormInstance as FormInstance);
-      const useWatchMock = jest
-        .spyOn(Form, 'useWatch')
-        .mockImplementation((name: string | string[]) => {
-          if (
-            Array.isArray(name) &&
-            name[0] === 'destinations' &&
-            Number(name[1]) === 0
-          ) {
-            return {
-              type: SubscriptionType.Webhook,
-              category: SubscriptionCategory.External,
-              config: {
-                endpoint: 'https://example.com/webhook',
-              },
-            };
-          }
-          if (name === 'destinations') {
-            return [
-              {
-                type: SubscriptionType.Webhook,
-                category: SubscriptionCategory.External,
-                destinationType: SubscriptionType.Webhook,
-              },
-            ];
-          }
-          if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
-          }
+    const comboBox = screen.getByTestId(
+      `destination-category-select-${MOCK_PROPS.id}`
+    );
 
-          return undefined;
-        });
+    await act(async () => {
+      fireEvent.change(comboBox, { target: { value: SubscriptionType.Slack } });
+    });
 
-      await act(async () => {
-        render(
-          <Form
-            initialValues={{
-              destinations: [
-                {
-                  type: SubscriptionType.Webhook,
-                  category: SubscriptionCategory.External,
-                  destinationType: SubscriptionType.Webhook,
-                  config: {
-                    endpoint: 'https://example.com/webhook',
-                  },
-                },
-              ],
-              resources: ['test-resource'],
-            }}>
-            <DestinationSelectItem
-              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
-              destinationsWithStatus={mockDestinationsWithStatus}
-            />
-          </Form>
-        );
-      });
-
-      await waitFor(() => {
-        const statusMessage = screen.getByText(/200/);
-
-        expect(statusMessage).toBeInTheDocument();
-      });
-
-      useWatchMock.mockRestore();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('destination-config-field')
+      ).toBeInTheDocument();
     });
   });
 });
