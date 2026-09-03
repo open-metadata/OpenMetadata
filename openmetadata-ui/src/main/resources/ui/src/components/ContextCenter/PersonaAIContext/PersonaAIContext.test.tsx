@@ -61,11 +61,54 @@ describe('PersonaAIContext', () => {
     expect(
       await screen.findByText('message.no-ai-context-rules')
     ).toBeInTheDocument();
-    expect(screen.getByText('label.preview-context')).toBeInTheDocument();
     expect(screen.queryByText('label.add-rule')).not.toBeInTheDocument();
+    // Preview materializes the document, which the server serves to admins only.
+    expect(screen.queryByText('label.preview-context')).not.toBeInTheDocument();
+  });
+
+  it('shows the rules a read-only user cannot edit', async () => {
+    mockedGetPersonaAIContext.mockResolvedValue({
+      rules: [
+        {
+          entityType: 'table',
+          id: '33333333-3333-4333-8333-333333333333',
+          name: 'Gold tables',
+        },
+      ],
+    });
+
+    render(<PersonaAIContext canEdit={false} persona={persona} />);
+
+    expect(await screen.findByText('Gold tables')).toBeInTheDocument();
+    expect(screen.queryByText('label.add-rule')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.preview-context')).not.toBeInTheDocument();
+    // Pins the rendered attribute the Playwright permission spec asserts on.
+    expect(
+      screen.getByTestId('persona-ai-context-settings-card')
+    ).toHaveAttribute('data-disabled', 'true');
   });
 
   it('shows rule creation actions to editors', async () => {
+    mockedGetPersonaAIContext.mockResolvedValue({
+      rules: [
+        {
+          entityType: 'table',
+          id: '33333333-3333-4333-8333-333333333333',
+          name: 'Gold tables',
+        },
+      ],
+    });
+
+    render(<PersonaAIContext canEdit persona={persona} />);
+
+    expect(await screen.findByText('label.add-rule')).toBeInTheDocument();
+    expect(screen.getByText('label.preview-context')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('persona-ai-context-settings-card')
+    ).toHaveAttribute('data-disabled', 'false');
+  });
+
+  it('offers both add-rule entry points while the rule list is empty', async () => {
     render(<PersonaAIContext canEdit persona={persona} />);
 
     expect(await screen.findAllByText('label.add-rule')).toHaveLength(2);

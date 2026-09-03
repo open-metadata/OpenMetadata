@@ -303,22 +303,26 @@ export const PersonaAIContext = ({
               })}
             </Typography>
           )}
-          <Button
-            color="secondary"
-            data-testid="preview-persona-context"
-            iconLeading={Eye}
-            isDisabled={!hasRules}
-            onClick={() => setPreviewOpen(true)}>
-            {t('label.preview-context')}
-          </Button>
+          {/* Preview renders the materialized document, which the server only serves to admins
+              because it searches without an RBAC filter — so it is gated with the edit actions. */}
           {canEdit && (
-            <Button
-              color="primary"
-              data-testid="add-context-rule"
-              iconLeading={Plus}
-              onClick={openAddRule}>
-              {t('label.add-rule')}
-            </Button>
+            <>
+              <Button
+                color="secondary"
+                data-testid="preview-persona-context"
+                iconLeading={Eye}
+                isDisabled={!hasRules}
+                onClick={() => setPreviewOpen(true)}>
+                {t('label.preview-context')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="add-context-rule"
+                iconLeading={Plus}
+                onClick={openAddRule}>
+                {t('label.add-rule')}
+              </Button>
+            </>
           )}
         </Box>
       </Box>
