@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -68,6 +69,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  @VisibleForTesting
   EmailPublisher(
       EventSubscription eventSubscription,
       SubscriptionDestination subscriptionDestination,
