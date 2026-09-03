@@ -13,24 +13,145 @@
 Source connection handler
 """
 
-from functools import partial
-from typing import Any
+from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Any
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
+from metadata.core.connections.test_connection import ErrorPack, Evidence, Matchers, check, when
+from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.checks.database import DatabaseStep, targets_in_scope
+from metadata.core.connections.test_connection.checks.probe import probe_targets
+from metadata.core.connections.test_connection.checks.summary import count, enumerated
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.records import Diagnosis
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection as CouchbaseConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+
+
+# The SDK is an optional dependency imported lazily in `_get_client`, so the
+# rules match on message text rather than on exception types - importing
+# couchbase.exceptions here would make this module unimportable without it.
+COUCHBASE_ERRORS = ErrorPack(
+    when(Matchers.contains("authentication")).diagnose(
+        "Authentication failed",
+        fix="Check the username and password of the Couchbase user.",
+    ),
+    when(Matchers.any_of(Matchers.contains("no access"), Matchers.contains("forbidden"))).diagnose(
+        "Not authorized",
+        fix="Grant the user a role that can read the buckets it should ingest "
+        "(`data_reader` plus `views_reader` on those buckets), or set `bucket` to one it can read.",
+    ),
+    when(Matchers.contains("bucket_not_found")).diagnose(
+        "Bucket not found",
+        fix="The configured `bucket` does not exist on this cluster; check it for typos.",
+    ),
+    when(Matchers.contains("unambiguoustimeout")).diagnose(
+        "Cluster did not respond in time",
+        fix="Check that hostport points at the cluster and that the Couchbase ports are reachable "
+        "from where ingestion runs; `couchbases://` is required for a TLS-only cluster.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+class CouchbaseChecks:
+    """Test-connection checks for Couchbase.
+
+    Buckets are ingested as OpenMetadata databases and scopes as its schemas, so
+    the `bucket` field is what says which bucket a run would read. It is
+    deliberately the only narrowing applied: `databaseFilterPattern` is not
+    honoured by `CouchbaseSource.get_database_names`, so probing by it would fail
+    connections whose ingestion reads those buckets anyway.
+    """
+
+    errors = COUCHBASE_ERRORS
+
+    def __init__(self, cluster: Borrowed[Any], bucket: str | None) -> None:
+        self._cluster = cluster
+        self._bucket = bucket
+        self._targeted: list[str] | None = None
+
+    def _targeted_buckets(self) -> list[str]:
+        """The buckets the configured scope would read.
+
+        Memoized, and resolved lazily so no listing runs ahead of the gate step.
+        A pinned bucket needs no listing, so the cluster is pinged instead - the
+        gate has to dial the cluster either way, or an unreachable one would pass
+        it and surface only in the next step.
+        """
+        if self._targeted is None:
+            if self._bucket:
+                self._cluster.client.ping()
+                self._targeted = targets_in_scope([], pinned=self._bucket)
+            else:
+                buckets = self._cluster.client.buckets().get_all_buckets()
+                self._targeted = targets_in_scope(bucket.name for bucket in buckets)
+        return self._targeted
+
+    @check(DatabaseStep.GetDatabases)
+    def get_databases(self) -> Evidence:
+        command = "ping()" if self._bucket else "buckets.get_all_buckets()"
+        try:
+            targeted = self._targeted_buckets()
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
+        return Evidence(
+            summary=enumerated(len(targeted), "bucket"),
+            command=command,
+            caveat=None if targeted else _no_buckets(),
+        )
+
+    @check(DatabaseStep.GetCollections)
+    def get_collections(self) -> Evidence:
+        """Read the scopes of the targeted buckets, passing on the first that answers.
+
+        A user granted data access on only the buckets it ingests is refused on the
+        others, so one bucket refusing the read must not fail the step - only every
+        targeted bucket refusing it does.
+        """
+        targeted = self._targeted_buckets()
+        command = "bucket(<name>).collections().get_all_scopes()"
+        if not targeted:
+            return Evidence(summary="no bucket in scope to read scopes from", command=command, caveat=_no_buckets())
+
+        def probe(bucket_name: str) -> int:
+            # A bucket with no scope still answers - the user can read it - so the
+            # count is accepted either way and reported as a caveat when it is 0.
+            collections = self._cluster.client.bucket(bucket_name).collections()
+            return len(list(collections.get_all_scopes()))
+
+        try:
+            answered = probe_targets(targeted, probe)
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
+
+        bucket_name, number = answered if answered else (None, 0)
+        return Evidence(
+            summary=f"{count(number, 'scope')} in bucket '{bucket_name}'",
+            command=command,
+            caveat=None if number else _no_scopes(str(bucket_name)),
+        )
+
+
+def _no_buckets() -> Diagnosis:
+    return Diagnosis(
+        title="No bucket in scope",
+        remediation="The cluster exposes no bucket to this user. Grant it access to the buckets it "
+        "should ingest, or check the `bucket` setting. Ingestion would collect nothing as configured.",
+    )
+
+
+def _no_scopes(bucket_name: str) -> Diagnosis:
+    return Diagnosis(
+        title="No scopes visible",
+        remediation=f"The read succeeded but bucket '{bucket_name}' exposes no scope. Confirm the "
+        "bucket is not empty and that the user can see its collections.",
+    )
 
 
 class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
@@ -47,47 +168,7 @@ class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
         self._on_close(cluster.close)
         return cluster
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: AutomationWorkflow | None = None,
-        timeout_seconds: int | None = THREE_MIN,
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        # pylint: disable=import-outside-toplevel
-        from couchbase.cluster import Cluster
-
-        client = self.client
-
-        class SchemaHolder(BaseModel):
-            database: str | None = None
-
-        holder = SchemaHolder()
-
-        def test_get_databases(client: Cluster, holder: SchemaHolder):
-            buckets = client.buckets()
-            list_bucket = buckets.get_all_buckets()
-            for database in list_bucket:
-                holder.database = database.name
-                break
-
-        def test_get_collections(client: Cluster, holder: SchemaHolder):
-            database = client.bucket(holder.database)  # pyright: ignore[reportArgumentType]
-            collection_manager = database.collections()
-            collection_manager.get_all_scopes()
-
-        test_fn = {
-            "GetDatabases": partial(test_get_databases, client, holder),
-            "GetCollections": partial(test_get_collections, client, holder),
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
-        )
+    def checks(self) -> ChecksProvider:
+        # Borrowed, not built: reading the client is what dials the cluster, so a
+        # connection failure lands inside the gate step.
+        return CouchbaseChecks(cluster=self.borrow(), bucket=self.service_connection.bucket)
