@@ -11,89 +11,87 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
+import {
+  Button,
+  Card,
+  Divider,
+  Grid,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined } from 'lodash';
-import { Fragment, useMemo, useState } from 'react';
+import { isEmpty, isNil } from 'lodash';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Controller,
+  useFieldArray,
+  useFormContext,
+  useWatch,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
-import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
-import {
-  CreateEventSubscription,
-  SubscriptionCategory,
-} from '../../../generated/events/api/createEventSubscription';
-import { Destination } from '../../../generated/events/eventSubscription';
+
+import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
-import {
-  getConnectionTimeoutField,
-  getReadTimeoutField,
-} from '../../../utils/Alerts/AlertsUtil';
 import {
   getDestinationsWithTestStatus,
   getFormattedDestinations,
-  listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './destination-form-item.less';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
+import {
+  getTestableExternalDestinations,
+  hasExternalDestination,
+} from './DestinationFormItem.utils';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
-function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
+function DestinationFormItem({
+  isViewMode = false,
+  isRequired = false,
+}: Readonly<DestinationFormItemProps>) {
   const { t } = useTranslation();
-  const form = Form.useFormInstance();
+  const { control, setError, clearErrors, formState } = useFormContext();
+
+  const { fields, append, remove } = useFieldArray({
+    name: 'destinations',
+    control,
+  });
+
   const [destinationsWithStatus, setDestinationsWithStatus] =
-    useState<Destination[]>();
+    useState<ModifiedDestination[]>();
   const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
-    useState<boolean>(false);
+    useState(false);
+  // Nested header/query-param arrays can remount a destination row. Keeping
+  // expansion here preserves the user's open panel across those updates.
+  const [expandedDestinationConfigs, setExpandedDestinationConfigs] = useState<
+    Set<number>
+  >(new Set());
 
-  const [selectedSource] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+  const selectedResources: string[] =
+    useWatch({ name: 'resources', control }) ?? [];
+  const destinations: ModifiedDestination[] =
+    (useWatch({ name: 'destinations', control }) as ModifiedDestination[]) ??
     [];
-  const destinations =
-    Form.useWatch<CreateEventSubscription['destinations']>(
-      ['destinations'],
-      form
-    ) ?? [];
 
-  const handleTestDestinationClick = async () => {
-    try {
-      setIsDestinationStatusLoading(true);
-      const destinations = form.getFieldValue('destinations');
-      const formattedDestinations = getFormattedDestinations(destinations);
-      if (!isUndefined(formattedDestinations)) {
-        const externalDestinations = formattedDestinations.filter(
-          (destination) =>
-            destination.category === SubscriptionCategory.External &&
-            !isEmpty(destination?.config)
-        );
+  const selectedSource = selectedResources[0];
 
-        const results = await testAlertDestination({
-          destinations: externalDestinations,
-        });
-
-        setDestinationsWithStatus(
-          getDestinationsWithTestStatus(externalDestinations, results)
-        );
-      }
-    } catch (e) {
-      showErrorToast(e as AxiosError);
-    } finally {
-      setIsDestinationStatusLoading(false);
+  useEffect(() => {
+    if (fields.length === 0 && isRequired) {
+      setError('destinations', {
+        type: 'manual',
+        message: t('message.minimum-count-error', {
+          field: t('label.destination'),
+          count: 1,
+        }),
+      });
+    } else {
+      clearErrors('destinations');
     }
-  };
+  }, [fields.length, setError, clearErrors, t, isRequired]);
 
   const isExternalDestinationSelected = useMemo(
-    () =>
-      destinations.some((destination) => {
-        const externalDestinationTypes = EXTERNAL_CATEGORY_OPTIONS.map(
-          (option) => option.value
-        );
-
-        return (
-          destination.category === SubscriptionCategory.External &&
-          externalDestinationTypes.includes(destination.type)
-        );
-      }),
+    () => hasExternalDestination(destinations),
     [destinations]
   );
 
@@ -105,86 +103,202 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
     [selectedSource, isExternalDestinationSelected]
   );
 
+  const handleDestinationConfigExpandedChange = useCallback(
+    (index: number, isExpanded: boolean) => {
+      setExpandedDestinationConfigs((current) => {
+        const updated = new Set(current);
+        if (isExpanded) {
+          updated.add(index);
+        } else {
+          updated.delete(index);
+        }
+
+        return updated;
+      });
+    },
+    []
+  );
+
+  const handleRemoveDestination = useCallback(
+    (index: number) => {
+      remove(index);
+      // Destination indexes shift after removal, so stale UI-only expansion
+      // state must not be applied to a different destination.
+      setExpandedDestinationConfigs(new Set());
+    },
+    [remove]
+  );
+
+  const handleTestDestinationClick = useCallback(async () => {
+    try {
+      setIsDestinationStatusLoading(true);
+      const formattedDestinations = getFormattedDestinations(destinations);
+      if (formattedDestinations) {
+        const externalDestinations = getTestableExternalDestinations(
+          formattedDestinations
+        );
+        const results = await testAlertDestination({
+          destinations: externalDestinations,
+        });
+        setDestinationsWithStatus(
+          getDestinationsWithTestStatus(
+            externalDestinations,
+            results
+          ) as ModifiedDestination[]
+        );
+      }
+    } catch (e) {
+      showErrorToast(e as AxiosError);
+    } finally {
+      setIsDestinationStatusLoading(false);
+    }
+  }, [destinations]);
+
+  const destinationListError = (
+    formState.errors.destinations as { message?: string } | undefined
+  )?.message;
+
   return (
-    <FormCardSection
-      heading={t('label.destination')}
-      subHeading={t('message.alerts-destination-description')}>
-      {getConnectionTimeoutField()}
-      {getReadTimeoutField()}
-      <Form.List
-        name={['destinations']}
-        rules={[
-          {
-            validator: listLengthValidator(t('label.destination')),
-          },
-        ]}>
-        {(fields, { add, remove }, { errors }) => {
-          return (
-            <Row
-              className="destination-list"
-              data-testid="destination-list"
-              gutter={[16, 16]}
-              key="destinations">
-              {fields.map(({ key, name }, index) => (
-                <Fragment key={key}>
-                  <DestinationSelectItem
-                    destinationsWithStatus={destinationsWithStatus}
-                    id={name}
-                    isDestinationStatusLoading={isDestinationStatusLoading}
-                    isViewMode={isViewMode}
-                    remove={remove}
-                    selectorKey={key}
-                  />
-                  {index < fields.length - 1 && (
-                    <Col span={24}>
-                      <Divider className="m-y-xs p-x-xs" />
-                    </Col>
-                  )}
-                </Fragment>
-              ))}
-
-              {!isViewMode && (
-                <Col span={24}>
-                  <Row gutter={[16, 16]}>
-                    <Col>
-                      <Button
-                        data-testid="add-destination-button"
-                        disabled={
-                          isEmpty(selectedSource) || isNil(selectedSource)
-                        }
-                        type="primary"
-                        onClick={() => add({})}>
-                        {t('label.add-entity', {
-                          entity: t('label.destination'),
-                        })}
-                      </Button>
-                    </Col>
-                    <Col>
-                      <Tooltip
-                        placement="right"
-                        title={t('message.external-destination-selection')}>
-                        <Button
-                          data-testid="test-destination-button"
-                          disabled={disableTestDestinationButton}
-                          onClick={handleTestDestinationClick}>
-                          {t('label.test-entity', {
-                            entity: t('label.destination-plural'),
-                          })}
-                        </Button>
-                      </Tooltip>
-                    </Col>
-                  </Row>
-                </Col>
+    <Card variant="default">
+      <Card.Header
+        subtitle={t('message.alerts-destination-description')}
+        title={t('label.destination')}
+      />
+      <Card.Content>
+        <Grid colGap="4" rowGap="4">
+          <Grid.Item span={7}>
+            <Typography as="span" size="text-sm">
+              {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={1}>
+            <Typography as="span" size="text-sm">
+              :
+            </Typography>
+          </Grid.Item>
+          <Grid.Item data-testid="connection-timeout" span={16}>
+            <Controller
+              control={control}
+              defaultValue={10}
+              name="timeout"
+              render={({ field }) => (
+                <Input
+                  inputDataTestId="connection-timeout-input"
+                  isDisabled={isViewMode}
+                  placeholder={`${t('label.connection-timeout')} (${t(
+                    'label.second-plural'
+                  )})`}
+                  ref={field.ref}
+                  type="number"
+                  value={field.value === undefined ? '' : String(field.value)}
+                  onBlur={field.onBlur}
+                  onChange={(val) => field.onChange(val)}
+                />
               )}
+            />
+          </Grid.Item>
 
-              <Col span={24}>
-                <Form.ErrorList errors={errors} />
-              </Col>
-            </Row>
-          );
-        }}
-      </Form.List>
-    </FormCardSection>
+          <Grid.Item span={7}>
+            <Typography as="span" size="text-sm">
+              {`${t('label.read-type', { type: t('label.timeout') })} (${t(
+                'label.second-plural'
+              )})`}
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={1}>
+            <Typography as="span" size="text-sm">
+              :
+            </Typography>
+          </Grid.Item>
+          <Grid.Item data-testid="read-timeout" span={16}>
+            <Controller
+              control={control}
+              defaultValue={DEFAULT_READ_TIMEOUT}
+              name="readTimeout"
+              render={({ field }) => (
+                <Input
+                  inputDataTestId="read-timeout-input"
+                  isDisabled={isViewMode}
+                  placeholder={`${t('label.read-type', {
+                    type: t('label.timeout'),
+                  })} (${t('label.second-plural')})`}
+                  ref={field.ref}
+                  type="number"
+                  value={field.value === undefined ? '' : String(field.value)}
+                  onBlur={field.onBlur}
+                  onChange={(val) => field.onChange(val)}
+                />
+              )}
+            />
+          </Grid.Item>
+
+          <Grid.Item span={24}>
+            <Divider />
+          </Grid.Item>
+
+          <Grid.Item
+            className="tw:flex tw:flex-col tw:gap-4"
+            data-testid="destination-list"
+            span={24}>
+            {fields.map(({ id: fieldId }, index) => (
+              <Fragment key={fieldId}>
+                <DestinationSelectItem
+                  destinationsWithStatus={destinationsWithStatus}
+                  id={index}
+                  isConfigExpanded={expandedDestinationConfigs.has(index)}
+                  isDestinationStatusLoading={isDestinationStatusLoading}
+                  isViewMode={isViewMode}
+                  remove={handleRemoveDestination}
+                  selectorKey={index}
+                  onConfigExpandedChange={(isExpanded) =>
+                    handleDestinationConfigExpandedChange(index, isExpanded)
+                  }
+                />
+                {index < fields.length - 1 && <Divider />}
+              </Fragment>
+            ))}
+          </Grid.Item>
+
+          {destinationListError && (
+            <Grid.Item span={24}>
+              <Typography
+                as="p"
+                className="tw:text-error-primary"
+                size="text-sm">
+                {destinationListError}
+              </Typography>
+            </Grid.Item>
+          )}
+
+          {!isViewMode && (
+            <Grid.Item span={24}>
+              <div className="tw:flex tw:gap-4">
+                <Button
+                  color="primary"
+                  data-testid="add-destination-button"
+                  isDisabled={isEmpty(selectedSource) || isNil(selectedSource)}
+                  onPress={() => append({})}>
+                  {t('label.add-entity', { entity: t('label.destination') })}
+                </Button>
+                <Tooltip
+                  placement="right"
+                  title={t('message.external-destination-selection')}>
+                  <Button
+                    color="secondary"
+                    data-testid="test-destination-button"
+                    isDisabled={disableTestDestinationButton}
+                    onPress={handleTestDestinationClick}>
+                    {t('label.test-entity', {
+                      entity: t('label.destination-plural'),
+                    })}
+                  </Button>
+                </Tooltip>
+              </div>
+            </Grid.Item>
+          )}
+        </Grid>
+      </Card.Content>
+    </Card>
   );
 }
 

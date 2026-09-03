@@ -24,6 +24,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
@@ -104,6 +105,7 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'openmetadata-i18n': openMetadataI18n,
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
       sonarjs,
@@ -332,7 +334,11 @@ export default [
       // backlog at the time of writing; they only go down. Each is promoted to
       // error by its own cleanup PR once its violations reach zero.
       'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
-      'sonarjs/no-duplicate-string': 'warn', // 640
+      // Stock sonarjs flags i18n translation keys (t('label.…')), which must
+      // stay inline. Replaced by the i18n-aware variant below, which ignores
+      // t() keys and label./message./server. strings and is enforced at error.
+      'sonarjs/no-duplicate-string': 'off',
+      'openmetadata-i18n/no-duplicate-string': 'error',
       'sonarjs/cognitive-complexity': ['warn', 15], // 85
 
       // Complexity and structure. SonarCloud gates these on new code; these
@@ -623,7 +629,22 @@ export default [
     ],
     rules: {
       'i18next/no-literal-string': 'off',
-      'sonarjs/no-duplicate-string': 'off',
+      'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
+  // Mock and fixture data legitimately repeats sample strings; no-duplicate-string
+  // targets production maintainability, so scope it off for these files (production
+  // constants/utils are NOT exempt — their duplicates are extracted to constants).
+  {
+    files: [
+      'src/**/*.mock.{ts,tsx}',
+      'src/**/mocks/**/*.{ts,tsx}',
+      'src/**/__mocks__/**/*.{ts,tsx}',
+      'src/constants/mockTourData.constants.ts',
+    ],
+    rules: {
+      'openmetadata-i18n/no-duplicate-string': 'off',
     },
   },
 

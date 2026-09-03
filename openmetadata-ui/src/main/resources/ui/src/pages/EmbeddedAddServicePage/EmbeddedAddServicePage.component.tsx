@@ -89,6 +89,8 @@ const ServiceDocPanel = lazy(
 // Fallback "back" target when a deep-link does not specify one (e.g. the
 // onboarding connector picker), instead of the connector grid the user skipped.
 const DEFAULT_BACK_PATH = '/';
+const ADD_SERVICE = 'add-service';
+const SERVICE_NAME = 'service-name';
 
 const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
@@ -180,7 +182,7 @@ const EmbeddedAddServicePage = () => {
               label: t('label.add-new-entity', {
                 entity: t('label.service'),
               }),
-              id: 'add-service',
+              id: ADD_SERVICE,
             },
             {
               label: serviceConfig.serviceType,
@@ -197,7 +199,7 @@ const EmbeddedAddServicePage = () => {
                 entity: t('label.service'),
               }),
               href: '',
-              id: 'add-service',
+              id: ADD_SERVICE,
             },
           ],
     [
@@ -292,7 +294,7 @@ const EmbeddedAddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
-      document.getElementById('service-name')?.focus();
+      document.getElementById(SERVICE_NAME)?.focus();
 
       return;
     }
@@ -398,7 +400,7 @@ const EmbeddedAddServicePage = () => {
 
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
-      if (id === 'add-service') {
+      if (id === ADD_SERVICE) {
         if (preselectedServiceType) {
           navigate(backPath);
         } else if (activeServiceStepRef.current > 1) {
@@ -576,13 +578,13 @@ const EmbeddedAddServicePage = () => {
                               fieldText: t('label.service-name'),
                             })
                           );
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME)?.focus();
 
                           return false;
                         }
 
                         if (nameError || isServiceNameChecking) {
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME)?.focus();
 
                           return false;
                         }
