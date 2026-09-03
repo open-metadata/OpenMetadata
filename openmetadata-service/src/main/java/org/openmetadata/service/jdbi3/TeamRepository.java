@@ -1123,7 +1123,7 @@ public class TeamRepository extends EntityRepository<Team> {
   private void validateDirectUserAddition(Team team, List<EntityReference> users) {
     if (!GROUP.equals(team.getTeamType()) && !nullOrEmpty(users)) {
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
+          CatalogExceptionMessage.invalidTeamDirectUserAssignment(team.getTeamType()));
     }
   }
 
@@ -1154,7 +1154,9 @@ public class TeamRepository extends EntityRepository<Team> {
             .collect(Collectors.toList());
 
     validateDirectUserAddition(team, addedUsers);
-    Optional.of(addedUsers).ifPresent(this::validateUsers);
+    if (!nullOrEmpty(addedUsers)) {
+      validateUsers(addedUsers);
+    }
 
     List<UUID> addedUserIds =
         updatedUsers.stream()

@@ -527,7 +527,7 @@ public class UserRepository extends EntityRepository<User> {
         Team team = Entity.getEntity(TEAM, teamReference.getId(), "teamType", ALL);
         if (!TeamType.GROUP.equals(team.getTeamType())) {
           throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
+              CatalogExceptionMessage.invalidTeamDirectUserAssignment(team.getTeamType()));
         }
       }
     }
