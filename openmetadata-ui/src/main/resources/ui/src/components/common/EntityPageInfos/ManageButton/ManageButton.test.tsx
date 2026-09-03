@@ -180,7 +180,8 @@ describe('Test manage button component', () => {
   });
 
   it('Should call restore callback on click of restore option', async () => {
-    const mockPropsData = { ...mockProps, deleted: true };
+    mockOnRestoreEntity.mockResolvedValueOnce(true);
+    const mockPropsData = { ...mockProps, canRestore: true, deleted: true };
     render(<ManageButton {...mockPropsData} />);
 
     const manageButton = await screen.findByTestId('manage-button');
@@ -203,5 +204,86 @@ describe('Test manage button component', () => {
     fireEvent.click(modalRestoreButton[1]);
 
     expect(mockOnRestoreEntity).toHaveBeenCalled();
+  });
+
+  it('should keep the restore modal open when the callback reports failure', async () => {
+    mockOnRestoreEntity.mockResolvedValueOnce(false);
+    render(<ManageButton {...mockProps} canRestore deleted />);
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+    const modalRestoreButton = await screen.findAllByText('label.restore');
+    fireEvent.click(modalRestoreButton[1]);
+
+    await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
+
+    expect(screen.getByTestId('restore-modal-body')).toBeInTheDocument();
+  });
+
+  it('should keep the restore modal open without explicit success', async () => {
+    mockOnRestoreEntity.mockResolvedValueOnce(undefined);
+    render(<ManageButton {...mockProps} canRestore deleted />);
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+    const modalRestoreButton = await screen.findAllByText('label.restore');
+    fireEvent.click(modalRestoreButton[1]);
+
+    await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
+
+    expect(screen.getByTestId('restore-modal-body')).toBeInTheDocument();
+  });
+
+  it('should not infer restore permission from delete permission', async () => {
+    render(<ManageButton {...mockProps} canDelete deleted />);
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument();
+    expect(mockOnRestoreEntity).not.toHaveBeenCalled();
+  });
+
+  it('should not open the restore modal without a restore handler', async () => {
+    render(
+      <ManageButton
+        {...mockProps}
+        canRestore
+        deleted
+        onRestoreEntity={undefined}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument();
+  });
+
+  it('should close an open restore modal if its handler is removed', async () => {
+    const { rerender } = render(
+      <ManageButton {...mockProps} canRestore deleted />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(await screen.findByTestId('restore-modal-body')).toBeInTheDocument();
+
+    rerender(
+      <ManageButton
+        {...mockProps}
+        canRestore
+        deleted
+        onRestoreEntity={undefined}
+      />
+    );
+
+    const modalRestoreButton = await screen.findAllByText('label.restore');
+    fireEvent.click(modalRestoreButton[1]);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument()
+    );
   });
 });
