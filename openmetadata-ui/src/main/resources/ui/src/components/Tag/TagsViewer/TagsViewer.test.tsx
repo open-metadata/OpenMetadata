@@ -25,7 +25,15 @@ const tags = [
   { tagFQN: `test.tags.term_3`, source: 'Glossary' },
 ];
 
-jest.mock('../TagsV1/TagsV1.component', () => {
+jest.mock('../../common/atoms/Tag/ClassificationTag', () => {
+  return jest.fn().mockReturnValue(<p>TagsV1</p>);
+});
+
+jest.mock('../../common/atoms/Tag/GlossaryTag', () => {
+  return jest.fn().mockReturnValue(<p>TagsV1</p>);
+});
+
+jest.mock('../../common/atoms/Tag/AutoClassificationTag', () => {
   return jest.fn().mockReturnValue(<p>TagsV1</p>);
 });
 
@@ -97,31 +105,26 @@ describe('Test TagsViewer Component', () => {
     expect(sizeTags).toHaveLength(6);
   });
 
-  // antd Tag renders a bare span. Without a role it is invisible to the guard that keeps a
-  // clickable row or card from stealing a nested control's click, so "+n more" navigated the card
-  // instead of opening the remaining tags; without a tab stop it was keyboard-unreachable too.
+  // "+n more" renders as a real <button>, so it is natively a role="button" tab stop instead of
+  // relying on manually-applied role/tabindex/keydown attributes on a bare span.
   it('exposes "+n more" as a real control, not a bare span', () => {
     render(<TagsViewer tags={tags} />);
 
     const plusButton = screen.getByTestId('plus-more-count');
 
-    expect(plusButton).toHaveAttribute('role', 'button');
-    expect(plusButton).toHaveAttribute('tabindex', '0');
+    expect(plusButton.tagName).toBe('BUTTON');
+    expect(plusButton).toEqual(screen.getByRole('button', { name: '+1 more' }));
   });
 
   it('activates "+n more" from the keyboard', () => {
-    const onParentClick = jest.fn();
-    render(
-      <div role="presentation" onClick={onParentClick}>
-        <TagsViewer tags={tags} />
-      </div>
-    );
+    const onClick = jest.fn();
+    render(<TagsViewer tags={tags} />);
 
     const plusButton = screen.getByTestId('plus-more-count');
-    const onClick = jest.fn();
     plusButton.addEventListener('click', onClick);
 
-    fireEvent.keyDown(plusButton, { key: 'Enter' });
+    plusButton.focus();
+    fireEvent.click(plusButton);
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });

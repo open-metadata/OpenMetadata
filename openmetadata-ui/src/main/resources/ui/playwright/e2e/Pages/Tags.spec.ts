@@ -431,7 +431,7 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="edit-button"]');
 
-    await page.click('[data-testid="remove-tags"]');
+    await page.locator('[data-testid="selected-tag-PersonalData.Personal"] button').click();
 
     const removeTags = page.waitForResponse(
       (response) =>

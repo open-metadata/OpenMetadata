@@ -55,8 +55,13 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
+
+jest.mock('../../common/atoms/Tag/ClassificationTag', () =>
+  jest.fn(() => <div data-testid="classification-tag" />)
+);
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest.fn(({ userName }: { userName: string }) => <span>{userName}</span>)

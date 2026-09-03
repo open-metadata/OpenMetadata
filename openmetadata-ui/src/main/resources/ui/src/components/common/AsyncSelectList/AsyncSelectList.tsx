@@ -22,7 +22,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce, isEmpty, isUndefined, pick } from 'lodash';
+import { debounce, isEmpty, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,9 +31,9 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
-import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import GlossaryTag from '../atoms/Tag/GlossaryTag';
@@ -208,12 +208,7 @@ const AsyncSelectList: FC<
       (tag) => tag.value === data.label
     );
 
-    if (isUndefined(selectedTag?.data)) {
-      return tagRender(data);
-    }
-
     const { label, onClose } = data;
-    const tagLabel = getTagDisplay(label as string);
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -224,20 +219,22 @@ const AsyncSelectList: FC<
         'style',
         'tagFQN'
       ),
-    } as TagLabel;
+      } as TagLabel;
+      const tagDisplayName = getTagDisplay(label as string);
+      const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
-      (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
+      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
     const isGlossary =
-      (selectedTag?.data as TagLabel).source === TagSource.Glossary;
+      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary;
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
       <TagComponent
         color={tag.style?.color}
-        data-testid={`selected-tag-${tagLabel}`}
+        data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
-        label={tagLabel ?? tag.tagFQN}
+        label={tagLabel}
         maxWidth={140}
         size="sm"
         onDelete={

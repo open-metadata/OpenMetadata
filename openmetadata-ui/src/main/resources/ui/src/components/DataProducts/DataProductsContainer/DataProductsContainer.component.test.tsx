@@ -79,11 +79,6 @@ jest.mock('../../common/WidgetCard/WidgetCard', () => ({
   )),
 }));
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => <div>Tag</div>),
-}));
-
 const domains: EntityReference[] = [
   { id: 'd-1', fullyQualifiedName: 'domainA', type: 'domain' },
 ];

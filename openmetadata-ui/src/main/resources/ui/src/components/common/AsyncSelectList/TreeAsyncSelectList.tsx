@@ -15,7 +15,7 @@ import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
+import { debounce, get, isEmpty, isNull, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import {
   FC,
@@ -25,7 +25,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
@@ -38,20 +38,19 @@ import {
   getGlossariesList,
   ListGlossaryTermsParams,
   queryGlossaryTerms,
-  searchGlossaryTerms,
+  searchGlossaryTerms
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   filterTreeNodeOptions,
-  findItemByFqn,
+  findItemByFqn
 } from '../../../utils/GlossaryPureUtils';
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
-  getEncodedFqn,
+  getEncodedFqn
 } from '../../../utils/StringUtils';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
-import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import ClassificationTag from '../atoms/Tag/ClassificationTag';
@@ -61,7 +60,7 @@ import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
   AsyncSelectListProps,
-  SelectOption,
+  SelectOption
 } from './AsyncSelectList.interface';
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
@@ -226,12 +225,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       (tag) => tag.value === data.value
     );
 
-    if (isUndefined(selectedTag?.data)) {
-      return tagRender(data);
-    }
-
-    const { value, onClose } = data;
-    const tagLabel = getTagDisplay(value as string);
+    const { label, onClose } = data;
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -243,19 +237,22 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         'tagFQN'
       ),
     } as TagLabel;
+    
+    const tagDisplayName = getTagDisplay(label as string)
+    const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
-      (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
+      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
     const isGlossary =
-      (selectedTag?.data as TagLabel).source === TagSource.Glossary;
+      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary;
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
       <TagComponent
         color={tag.style?.color}
-        data-testid={`selected-tag-${tagLabel}`}
+        data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
-        label={tagLabel ?? tag.tagFQN}
+        label={tagLabel}
         size="sm"
         onDelete={
           isDerived

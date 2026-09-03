@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -172,7 +172,7 @@ test.describe('Tag Page with Admin Roles', () => {
       .getByRole('button', { name: 'Cube01', exact: true })
       .click();
     await adminPage
-      .getByRole('button', { name: 'Select color #F14C75' })
+      .getByRole('button', { name: 'Select color #B93815' })
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
