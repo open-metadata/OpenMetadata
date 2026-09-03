@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
-import { Badge, BadgeWithButton } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  BadgeWithButton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../Icon/Icon';
 import { BaseTagProps, DEFAULT_TAG_COLOR } from './Tag.interface';
-import {
-  computeTagColors,
-  ICON_PX,
-  SIZE_CLASS,
-} from './Tag.utils';
+import { computeTagColors, ICON_PX, SIZE_CLASS } from './Tag.utils';
 
 /**
  * Glossary term tag — fully rounded pill with tinted background and border.
@@ -37,10 +39,14 @@ const GlossaryTag: FC<BaseTagProps> = ({
   maxWidth,
   disabled,
   className,
+  tooltip,
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
-  const resolved = useMemo(() => computeTagColors(resolvedColor), [resolvedColor]);
+  const resolved = useMemo(
+    () => computeTagColors(resolvedColor),
+    [resolvedColor]
+  );
 
   const inlineStyle: CSSProperties = useMemo(
     () => ({
@@ -54,20 +60,26 @@ const GlossaryTag: FC<BaseTagProps> = ({
   );
 
   const iconNode = icon ? (
-    <Icon iconValue={icon} imageStyle={{ color: resolvedColor }} size={ICON_PX[size]} />
+    <Icon
+      iconValue={icon}
+      imageStyle={{ color: resolvedColor }}
+      size={ICON_PX[size]}
+    />
   ) : null;
 
   const labelNode = (
     <div style={{ maxWidth }}>
-      <span
-        className={classNames('tw:truncate', SIZE_CLASS[size])}
-        style={{ color: resolvedColor, fontWeight: 400 }}>
+      <Typography
+        ellipsis
+        className={classNames(SIZE_CLASS[size])}
+        style={{ color: resolvedColor }}
+        weight="regular">
         {label}
-      </span>
+      </Typography>
     </div>
   );
 
-  const content = (
+  const innerContent = (
     <>
       {iconNode && (
         <span
@@ -87,6 +99,16 @@ const GlossaryTag: FC<BaseTagProps> = ({
         labelNode
       )}
     </>
+  );
+
+  const content = tooltip ? (
+    <Tooltip delay={500} title={tooltip}>
+      <TooltipTrigger className="tw:flex tw:items-center tw:gap-1">
+        {innerContent}
+      </TooltipTrigger>
+    </Tooltip>
+  ) : (
+    <div className="tw:flex tw:items-center tw:gap-1">{innerContent}</div>
   );
 
   const sharedProps = {
@@ -111,7 +133,10 @@ const GlossaryTag: FC<BaseTagProps> = ({
         )}
         isDisabled={disabled}
         style={
-          { ...inlineStyle, '--tag-close-color': resolved.closeIcon } as CSSProperties
+          {
+            ...inlineStyle,
+            '--tag-close-color': resolved.closeIcon,
+          } as CSSProperties
         }
         onButtonClick={(e: MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -176,7 +177,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                   icon={tag.style?.iconURL}
                   key={tag.tagFQN}
                   label={getTagName(tag)}
+                  maxWidth={200}
                   size="sm"
+                  tooltip={getTagName(tag)}
                 />
               ))}
             </div>
@@ -231,12 +234,15 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
               icon={tag.style?.iconURL}
               key={tag.tagFQN}
               label={getTagName(tag)}
+              maxWidth={200}
               size="sm"
+              tooltip={getTagName(tag)}
             />
           ))}
           {nonTierTags.length > maxVisibleTags && (
-            <button
-              className="show-more-tags-button"
+            <Button
+              color="link-color"
+              size="xs"
               type="button"
               onClick={() => setShowAllTags(!showAllTags)}>
               {showAllTags
@@ -244,7 +250,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                 : `+${nonTierTags.length - maxVisibleTags} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Button>
           )}
         </div>
       </div>

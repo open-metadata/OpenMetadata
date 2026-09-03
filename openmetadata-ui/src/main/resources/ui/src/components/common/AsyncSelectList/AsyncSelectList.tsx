@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import {
   Button,
   Empty,
@@ -34,7 +35,6 @@ import Fqn from '../../../utils/Fqn';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { Tooltip } from '@openmetadata/ui-core-components';
 import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import Loader from '../Loader/Loader';
@@ -243,6 +243,7 @@ const AsyncSelectList: FC<
           data-testid={`selected-tag-${tagLabel}`}
           icon={tag.style?.iconURL}
           label={tagLabel ?? tag.tagFQN}
+          maxWidth={140}
           size="sm"
           onDelete={
             isDerived

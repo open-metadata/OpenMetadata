@@ -41,6 +41,7 @@ export interface BaseTagProps {
   maxWidth?: string | number;
   disabled?: boolean;
   className?: string;
+  tooltip?: string;
   'data-testid'?: string;
   'data-tag-index'?: number;
 }
