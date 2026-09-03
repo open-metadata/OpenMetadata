@@ -148,7 +148,7 @@ export class OverviewPageObject extends RightPanelBase {
       .locator('[data-testid="select-owner-tabs"] [role="tab"]')
       .first();
     this.selectOwnerTabsLoader = this.page.locator(
-      '[data-testid="select-owner-tabs"] .ant-spin-dot'
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]'
     );
     this.selectOwnerUsersTab = this.selectOwnerTabs.getByRole('tab', {
       name: 'Users',

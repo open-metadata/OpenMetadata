@@ -348,6 +348,7 @@ export const UserTeamSelectableList = ({
         </div>
       )}
       <Tabs
+        data-testid="select-owner-tabs"
         selectedKey={activeTab}
         onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
         <Tabs.List
@@ -361,7 +362,7 @@ export const UserTeamSelectableList = ({
             {t('label.user-plural')}
           </Tabs.Item>
         </Tabs.List>
-        <Tabs.Panel id="teams">
+        <Tabs.Panel data-testid="owner-select-teams-panel" id="teams">
           <SelectableList
             customTagRenderer={TeamListItemRenderer}
             fetchOptions={fetchTeamOptions}
@@ -377,7 +378,7 @@ export const UserTeamSelectableList = ({
             onUpdate={handleUpdate}
           />
         </Tabs.Panel>
-        <Tabs.Panel id="users">
+        <Tabs.Panel data-testid="owner-select-users-panel" id="users">
           <SelectableList
             fetchOptions={fetchUserOptions}
             height={listHeight}

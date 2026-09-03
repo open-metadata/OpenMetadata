@@ -271,7 +271,7 @@ export const SelectableList = ({
           </div>
         )}
         {uniqueOptions.length > 0 && (
-          <div ref={containerRef}>
+          <ul ref={containerRef} className="tw:p-0 tw:m-0 tw:list-none" role="list">
             <VirtualList
               className="selectable-list-virtual-list tw:px-2 tw:pb-2"
               data={uniqueOptions}
@@ -280,55 +280,56 @@ export const SelectableList = ({
               itemKey="id"
               onScroll={onScroll}>
               {(item, index) => (
-                <button
-                  className={classNames(
-                    'selectable-list-item',
-                    'tw:flex tw:w-full tw:items-center tw:justify-between tw:px-2 tw:py-2 tw:rounded-md tw:cursor-pointer tw:select-none tw:bg-transparent tw:border-0 tw:text-left',
-                    'hover:tw:bg-secondary',
-                    'focus-visible:tw:outline-2 focus-visible:tw:outline-brand-500',
-                    {
-                      'tw:bg-brand-50 active': checkActiveSelectedItem(item),
-                    }
-                  )}
-                  data-testid="owner-option"
-                  key={item.id}
-                  type="button"
-                  {...getItemProps(index)}
-                  title={getEntityName(item)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    selectionHandler(item);
-                  }}>
-                  <div className="tw:flex tw:items-center tw:min-w-0 tw:flex-1">
-                    {customTagRenderer ? (
-                      customTagRenderer(item)
-                    ) : (
-                      <UserTag
-                        avatarType="outlined"
-                        id={item.name ?? ''}
-                        name={getEntityName(item)}
-                      />
+                <li key={item.id}>
+                  <button
+                    className={classNames(
+                      'selectable-list-item',
+                      'tw:flex tw:w-full tw:items-center tw:justify-between tw:px-2 tw:py-2 tw:rounded-md tw:cursor-pointer tw:select-none tw:bg-transparent tw:border-0 tw:text-left',
+                      'hover:tw:bg-secondary',
+                      'focus-visible:tw:outline-2 focus-visible:tw:outline-brand-500',
+                      {
+                        'tw:bg-brand-50 active': checkActiveSelectedItem(item),
+                      }
                     )}
-                  </div>
-                  <div className="tw:flex tw:items-center tw:shrink-0 tw:ml-2">
-                    {multiSelect ? (
-                      <CheckboxBase
-                        isSelected={checkActiveSelectedItem(item)}
-                        size="sm"
-                      />
-                    ) : (
-                      checkActiveSelectedItem(item) && (
-                        <RemoveIcon
-                          removeIconTooltipLabel={removeIconTooltipLabel}
-                          removeOwner={handleRemoveClick}
+                    data-testid="owner-option"
+                    type="button"
+                    {...getItemProps(index)}
+                    title={getEntityName(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectionHandler(item);
+                    }}>
+                    <div className="tw:flex tw:items-center tw:min-w-0 tw:flex-1">
+                      {customTagRenderer ? (
+                        customTagRenderer(item)
+                      ) : (
+                        <UserTag
+                          avatarType="outlined"
+                          id={item.name ?? ''}
+                          name={getEntityName(item)}
                         />
-                      )
-                    )}
-                  </div>
-                </button>
+                      )}
+                    </div>
+                    <div className="tw:flex tw:items-center tw:shrink-0 tw:ml-2">
+                      {multiSelect ? (
+                        <CheckboxBase
+                          isSelected={checkActiveSelectedItem(item)}
+                          size="sm"
+                        />
+                      ) : (
+                        checkActiveSelectedItem(item) && (
+                          <RemoveIcon
+                            removeIconTooltipLabel={removeIconTooltipLabel}
+                            removeOwner={handleRemoveClick}
+                          />
+                        )
+                      )}
+                    </div>
+                  </button>
+                </li>
               )}
             </VirtualList>
-          </div>
+          </ul>
         )}
       </div>
 
