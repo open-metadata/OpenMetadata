@@ -135,6 +135,9 @@ def _lineage_entities():
 
 
 class TestModeQueryMetadata:
+    def test_dashboard_name_falls_back_to_token(self, mode_source):
+        assert mode_source.get_dashboard_name({**REPORT, "name": None}) == "report-token"
+
     def test_query_becomes_registered_dashboard_data_model(self, mode_source):
         result = list(mode_source.yield_datamodel(_details(mode_source)))
 
@@ -312,3 +315,12 @@ class TestModeQueryLineage:
         result = self._run_lineage(mode_source)
 
         assert result[0].right.edge.toEntity.id == dashboard.id
+
+    def test_lineage_skips_query_when_database_is_unknown(self, mode_source):
+        self._prepare_metadata(mode_source)
+        mode_source.data_sources["source-id"].pop("database")
+
+        result = self._run_lineage(mode_source)
+
+        assert result == []
+        mode_source.metadata.search_in_any_service.assert_not_called()

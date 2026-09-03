@@ -79,6 +79,13 @@ def test_fetch_all_reports_propagates_later_page_failure(mode_client):
         mode_client.fetch_all_reports("acme")
 
 
+def test_fetch_all_reports_rejects_invalid_filter(mode_client):
+    with pytest.raises(ValueError, match="Invalid Mode filter"):
+        mode_client.fetch_all_reports("acme", "invalid")
+
+    mode_client.client.get.assert_not_called()
+
+
 def test_fetch_all_reports_rejects_repeated_full_page(mode_client):
     repeated_page = _reports("report", 30)
     mode_client.client.get.side_effect = [

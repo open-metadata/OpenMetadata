@@ -75,7 +75,7 @@ class ModeApiClient:
         )
         self.client = TrackedREST(client_config, source_name="mode")
 
-    def fetch_all_reports(self, workspace_name: str, filter: str | None = "all") -> list[dict[str, Any]] | None:
+    def fetch_all_reports(self, workspace_name: str, filter: str | None = "all") -> list[dict[str, Any]]:
         """Method to fetch all reports for Mode
         Args:
             workspace_name:
@@ -84,8 +84,7 @@ class ModeApiClient:
             dict
         """
         if filter not in ["custom", "all"]:
-            logger.warning("Invalid value for filter. Should be one of ['custom', 'all']")
-            return  # noqa: RET502
+            raise ValueError(f"Invalid Mode filter [{filter}]. Expected one of ['custom', 'all']")
 
         all_reports: list[dict[str, Any]] = []
         filter_param = f"?filter={filter}"

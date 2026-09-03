@@ -95,7 +95,7 @@ class ModeSource(DashboardServiceSource):
             raise InvalidSourceException(f"Expected ModeConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> list[ModeRecord] | None:
+    def get_dashboards_list(self) -> list[ModeRecord]:
         """
         Get List of all dashboards
         """
@@ -107,7 +107,7 @@ class ModeSource(DashboardServiceSource):
         """
         Get Dashboard Name
         """
-        return cast("str", dashboard.get(client.NAME))
+        return cast("str", dashboard.get(client.NAME) or dashboard[client.TOKEN])
 
     def _dashboard_service_name(self) -> str:
         return cast("str", cast("Any", self.context.get()).dashboard_service)
@@ -275,6 +275,13 @@ class ModeSource(DashboardServiceSource):
                     logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
                     continue
 
+                search_database_name = prefix_database_name or database_name
+                if not search_database_name:
+                    logger.warning(
+                        "Skipping Mode query lineage because its data source does not provide a database name"
+                    )
+                    continue
+
                 lineage_parser = LineageParser(
                     raw_query,
                     parser_type=self.get_query_parser_type(),
@@ -305,7 +312,7 @@ class ModeSource(DashboardServiceSource):
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=prefix_database_name or database_name or "*",
+                        database_name=search_database_name,
                         schema_name=prefix_schema_name or database_schema_name,
                         service_name=prefix_service_name or "*",
                         table_name=prefix_table_name or table,
