@@ -657,6 +657,7 @@ export default [
       'src/setupTests.js',
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/test/unit/mocks/**/*.{js,jsx,ts,tsx}',
       'playwright/**/*.spec.{js,jsx,ts,tsx}',
     ],
     rules: {
