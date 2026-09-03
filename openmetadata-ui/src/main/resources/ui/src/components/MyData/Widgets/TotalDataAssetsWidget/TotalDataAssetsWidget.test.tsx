@@ -34,6 +34,10 @@ import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ axis: '#123456' }),
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({

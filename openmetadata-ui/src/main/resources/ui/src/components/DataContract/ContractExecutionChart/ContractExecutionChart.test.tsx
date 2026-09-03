@@ -32,6 +32,10 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractExecutionChart from './ContractExecutionChart.component';
 
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
+}));
+
 jest.mock('../../../rest/contractAPI', () => ({
   getAllContractResults: jest.fn(),
 }));

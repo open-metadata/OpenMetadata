@@ -15,8 +15,7 @@ import { isString, isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
-import { GREY_200 } from '../../../constants/Color.constants';
-import { TEXT_GREY_MUTED } from '../../../constants/constants';
+import { useChartColors } from '../../../hooks/useChartColors';
 import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { CustomPieChartProps } from './Chart.interface';
 import './chart.less';
@@ -29,6 +28,7 @@ const CustomPieChart = ({
   showLegends = false,
   onSegmentClick,
 }: CustomPieChartProps) => {
+  const { emptyFill, inactive } = useChartColors();
   const hasClickHandler = Boolean(onSegmentClick);
 
   const centerLabel = useMemo(() => {
@@ -38,14 +38,14 @@ const CustomPieChart = ({
 
     if (isString(label)) {
       return (
-        <text dy={8} fill={TEXT_GREY_MUTED} textAnchor="middle" x="50%" y="50%">
+        <text dy={8} fill={inactive} textAnchor="middle" x="50%" y="50%">
           {label}
         </text>
       );
     }
 
     return label;
-  }, [label]);
+  }, [inactive, label]);
 
   return (
     <div className="custom-pie-chart">
@@ -60,13 +60,13 @@ const CustomPieChart = ({
           data={[{ value: 1 }]}
           dataKey="value"
           endAngle={-270}
-          fill={GREY_200}
+          fill={emptyFill}
           innerRadius={55}
           outerRadius={80}
           // to hide tooltip when there is no data
           pointerEvents="none"
           startAngle={90}>
-          <Cell fill={GREY_200} />
+          <Cell fill={emptyFill} />
         </Pie>
         <Pie
           className={hasClickHandler ? 'custom-pie-chart-clickable' : ''}

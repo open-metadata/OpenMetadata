@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import {
   GREEN_3,
-  GREY_200,
   RED_3,
   YELLOW_2,
 } from '../../../../constants/Color.constants';
@@ -32,6 +31,7 @@ import {
   ColumnProfile,
 } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
 import documentationLinksClassBase from '../../../../utils/DocumentationLinksClassBase';
@@ -62,6 +62,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   activeColumnFqn,
   tableDetails,
 }) => {
+  const { emptyFill } = useChartColors();
   const location = useCustomLocation();
   const {
     isProfilerDataLoading,
@@ -252,7 +253,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       // to hide tooltip when there is no data
                       pointerEvents="none"
                       startAngle={90}>
-                      <Cell fill={GREY_200} />
+                      <Cell fill={emptyFill} />
                     </Pie>
                     <Pie
                       cx="50%"
@@ -267,7 +268,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       // to hide tooltip when there is no data
                       pointerEvents="none"
                       startAngle={90}>
-                      <Cell fill={GREY_200} />
+                      <Cell fill={emptyFill} />
                     </Pie>
                     <Pie
                       cx="50%"

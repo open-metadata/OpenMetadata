@@ -27,6 +27,10 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import TestSummaryGraph from './TestSummaryGraph';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
+}));
+
 const mockProps: TestSummaryGraphProps = {
   testCaseName: 'column_values_to_be_between',
   testCaseParameterValue: [
