@@ -612,6 +612,8 @@ elasticsearch:
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}
