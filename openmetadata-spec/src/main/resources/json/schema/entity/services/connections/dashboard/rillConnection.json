@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/rillConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RillConnection",
+  "description": "Rill Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.RillConnection",
+  "definitions": {
+    "rillType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Rill"
+      ],
+      "default": "Rill"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/rillType",
+      "default": "Rill"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL of a Rill Developer runtime or Rill Cloud project endpoint.",
+      "type": "string",
+      "format": "uri"
+    },
+    "token": {
+      "title": "API Token",
+      "description": "API token to authenticate with Rill.",
+      "type": "string",
+      "format": "password"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
+}
