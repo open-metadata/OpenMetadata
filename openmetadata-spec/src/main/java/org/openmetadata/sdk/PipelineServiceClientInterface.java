@@ -46,6 +46,7 @@ public interface PipelineServiceClientInterface {
 
   String DEPLOYMENT_ERROR = "DEPLOYMENT_ERROR";
   String TRIGGER_ERROR = "TRIGGER_ERROR";
+  String LOGS_ERROR_KEY = "error";
 
   /**
    * Task key that metadata-style ingestion logs are returned under. Defined once because several
@@ -143,7 +144,8 @@ public interface PipelineServiceClientInterface {
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
   PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline);
 
-  /* Get the all last run logs of a deployed pipeline */
+  /* Get the all last run logs of a deployed pipeline. Implementations use LOGS_ERROR_KEY when
+   * logs cannot be retrieved so callers do not render the failure as pipeline output. */
   Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get logs for a specific pipeline run identified by runId.
@@ -162,6 +164,16 @@ public interface PipelineServiceClientInterface {
   default PipelineServiceClientResponse killIngestionRun(
       IngestionPipeline ingestionPipeline, String runId) {
     return new PipelineServiceClientResponse().withCode(200).withPlatform(getPlatform());
+  }
+
+  /* Whether deployPipeline captures the bot credentials into an artifact that runPipeline does not
+   * rebuild, so a caller has to re-deploy for a rotated token to reach an already deployed pipeline.
+   * Airflow does: DagDeployer writes openMetadataServerConnection into the generated DAG config at
+   * deploy time and runPipeline posts only the dag_id (issue #24806). Runners that rebuild the whole
+   * run spec from the IngestionPipeline on every run carry the current token by construction, so the
+   * default is false and re-deploying them to refresh a token is pure churn. */
+  default boolean pinsCredentialsAtDeployTime() {
+    return false;
   }
 
   String getPlatform();

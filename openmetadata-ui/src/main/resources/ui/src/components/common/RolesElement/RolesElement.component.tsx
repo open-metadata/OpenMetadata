@@ -34,8 +34,8 @@ const RolesElement = ({ userData }: RolesElementProps) => {
           <span>{TERM_ADMIN}</span>
         </div>
       )}
-      {userData?.roles?.map((role, i) => (
-        <div className="mb-2 d-flex items-center gap-2" key={i}>
+      {userData?.roles?.map((role) => (
+        <div className="mb-2 d-flex items-center gap-2" key={role.id}>
           <Icon component={IconUser} style={{ fontSize: '16px' }} />
           <Typography.Text
             className="ant-typography-ellipsis-custom w-48"

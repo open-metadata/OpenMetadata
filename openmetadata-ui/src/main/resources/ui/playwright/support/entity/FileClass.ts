@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/file';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -123,7 +124,10 @@ export class FileClass extends EntityClass {
         data: this.service,
       }
     );
-    this.serviceResponseData = await serviceResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'FileClass.create'
+    );
 
     // Create directory
     const directoryResponse = await apiContext.post(
@@ -135,7 +139,10 @@ export class FileClass extends EntityClass {
         },
       }
     );
-    this.directoryResponseData = await directoryResponse.json();
+    this.directoryResponseData = await okJson(
+      directoryResponse,
+      'FileClass.create'
+    );
 
     // Create file in directory
     const entityResponse = await apiContext.post(
@@ -147,7 +154,7 @@ export class FileClass extends EntityClass {
         },
       }
     );
-    this.entityResponseData = await entityResponse.json();
+    this.entityResponseData = await okJson(entityResponse, 'FileClass.create');
 
     this.childrenSelectorId =
       this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';
@@ -166,17 +173,19 @@ export class FileClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.File}/name/${this.entityResponseData.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.File}/name/${this.entityResponseData.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'FileClass.patch');
 
     return {
       entity: this.entityResponseData,

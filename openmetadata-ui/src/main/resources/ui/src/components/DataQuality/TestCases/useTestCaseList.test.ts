@@ -16,10 +16,10 @@ import { act } from 'react';
 import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { TestCaseStatus } from '../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseList, UseTestCaseListProps } from './useTestCaseList';
 
@@ -127,19 +127,16 @@ describe('useTestCaseList', () => {
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(lastPayload().q).toBe('*orders*');
+    expect(lastPayload().q).toBe('orders');
   });
 
-  it('should escape query_string reserved characters in searchValue so a URL does not break the shard query', async () => {
+  it('should send a reserved-character term verbatim, since the server parses q as literal text', async () => {
     const url = 'https://example.com/data-quality/test-case-results';
     renderList({ searchValue: url });
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(lastPayload().q).toBe(`*${escapeESReservedCharacters(url)}*`);
-    expect(lastPayload().q).toContain(String.raw`\:`);
-    expect(lastPayload().q).toContain(String.raw`\/`);
-    expect(lastPayload().q).not.toMatch(/[^\\][:/]/);
+    expect(lastPayload().q).toBe(url);
   });
 
   it('should pass a non-empty testCaseStatus through as-is', async () => {
@@ -220,6 +217,18 @@ describe('useTestCaseList', () => {
     });
   });
 
+  it('should normalize a single URL status for the multi-select form', async () => {
+    const { props } = renderList({
+      params: { testCaseStatus: TestCaseStatus.Failed },
+    });
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+      testCaseStatus: [TestCaseStatus.Failed],
+    });
+  });
+
   it('should change the page and refetch for the requested page when the paging handler is called', async () => {
     const { result, props } = renderList();
 
@@ -236,6 +245,29 @@ describe('useTestCaseList', () => {
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
         expect.objectContaining({ offset: 20 })
+      )
+    );
+  });
+
+  it('should move to the previous page after removing the last row on a later page', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'only-row' }],
+      paging: { total: 21 },
+    });
+    const { result, props } = renderList({ currentPage: 3 });
+
+    await waitFor(() => expect(result.current.testCase).toHaveLength(1));
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleAfterDeleteAction();
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledWith(2);
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 10 })
       )
     );
   });
@@ -271,6 +303,98 @@ describe('useTestCaseList', () => {
         })
       )
     );
+  });
+
+  it('should fetch non-deleted test cases by default', async () => {
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    expect(lastPayload().include).toBe(Include.NonDeleted);
+    expect(result.current.showDeleted).toBe(false);
+  });
+
+  it('should reset once and fetch the first deleted page when visibility changes', async () => {
+    const { result, props, rerender } = renderList({ currentPage: 3 });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+    (props.handlePageChange as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleShowDeletedChange(true);
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledTimes(1);
+    expect(props.handlePageChange).toHaveBeenCalledWith(1);
+
+    props.currentPage = 1;
+    rerender();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          include: Include.Deleted,
+          offset: 0,
+        })
+      )
+    );
+  });
+
+  it('should ignore a stale response after deleted visibility changes', async () => {
+    let resolveActive!: (value: {
+      data: TestCase[];
+      paging: { total: number };
+    }) => void;
+    let resolveDeleted!: (value: {
+      data: TestCase[];
+      paging: { total: number };
+    }) => void;
+    const activeResponse = new Promise((resolve) => {
+      resolveActive = resolve;
+    });
+    const deletedResponse = new Promise((resolve) => {
+      resolveDeleted = resolve;
+    });
+
+    (getListTestCaseBySearch as jest.Mock)
+      .mockReturnValueOnce(activeResponse)
+      .mockReturnValueOnce(deletedResponse);
+
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.handleShowDeletedChange(true);
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    await act(async () => {
+      resolveDeleted({
+        data: [{ id: 'deleted' }] as TestCase[],
+        paging: { total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolveActive({
+        data: [{ id: 'active' }] as TestCase[],
+        paging: { total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.testCase).toEqual([{ id: 'deleted' }]);
   });
 
   it('should expose a number-based pagingData wired to the injected paging bag', async () => {

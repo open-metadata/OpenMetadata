@@ -18,7 +18,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Any, Dict, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -205,7 +205,7 @@ def diag_logger():
     return logging.getLogger(Loggers.DIAGNOSTICS.value)
 
 
-def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
+def set_loggers_level(level: int | str = logging.INFO):
     """
     Set all loggers levels
     :param level: logging level
@@ -214,7 +214,7 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None,  # noqa: UP045
+    color: ANSI | None = None,
     bold: bool = False,
     message: str = "",
     level=logging.INFO,
@@ -226,7 +226,7 @@ def log_ansi_encoded_string(
 
 
 @singledispatch
-def get_log_name(record: Entity) -> Optional[str]:  # noqa: UP045
+def get_log_name(record: Entity) -> str | None:
     try:
         if hasattr(record, "name"):
             return f"{type(record).__name__} [{getattr(record, 'name').root}]"  # noqa: B009
@@ -388,7 +388,7 @@ def sanitize_url_credentials(message: str) -> str:
     return re.sub(r"https://[^@]+@", "https://****@", message)
 
 
-def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:  # noqa: UP006, UP007
+def redacted_config(config: dict[str, str | dict]) -> dict[str, str | dict]:
     config_copy = deepcopy(config)
 
     def traverse_and_modify(obj):

@@ -2,10 +2,15 @@
 # eclipse-temurin replaces the deprecated `openjdk` Docker Hub images
 # (`openjdk:17-jdk-slim` was removed from the registry — CI builds against it
 # fail with "manifest unknown"). JRE is enough since this image only runs the
-# Fuseki shell launcher; no compilation happens inside the container.
-FROM eclipse-temurin:17-jre-jammy
+# Fuseki shell launcher; no compilation happens inside the container. The JRE is
+# 21 because Fuseki 6.x is compiled with --release 21; on a 17 JRE the server
+# dies at startup with UnsupportedClassVersionError.
+FROM eclipse-temurin:21-jre-jammy
 
-ENV FUSEKI_VERSION=5.6.0
+# 6.2.0 fixes CVE-2026-61372: the SPARQL Update engine accepted LOAD source
+# URLs pointing at local resources, so an authenticated update could read data
+# off this container's filesystem. No 5.x release carries the fix.
+ENV FUSEKI_VERSION=6.2.0
 ENV FUSEKI_HOME=/fuseki
 # FUSEKI_BASE must point at the directory containing shiro.ini so Fuseki picks
 # up our auth config on boot. Without this, Fuseki falls back to its built-in
@@ -56,4 +61,10 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Run Fuseki via the entrypoint (which renders shiro.ini then execs fuseki-server)
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["./fuseki-server", "--loc=/fuseki-data", "--update", "/openmetadata"]
+# Boot from config.ttl, not --loc. With --loc Fuseki builds an ad-hoc dataset and never reads
+# /fuseki/config.ttl, so `tdb2:unionDefaultGraph true` and the Lucene text index silently do not
+# apply. OpenMetadata writes every entity into named graphs, so without the union default graph a
+# plain `?s ?p ?o` query against the dataset returns zero rows while the data sits in
+# <https://open-metadata.org/graph/knowledge> - a silent wrong answer rather than an error, and
+# exactly the shape of query the MCP knowledge-graph tools generate.
+CMD ["./fuseki-server", "--config=/fuseki/config.ttl"]

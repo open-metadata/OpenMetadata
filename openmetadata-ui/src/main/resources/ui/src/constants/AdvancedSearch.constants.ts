@@ -17,10 +17,79 @@ import { SearchIndex } from '../enums/search.enum';
 import { LabelType } from '../generated/type/tagLabel';
 import { t } from '../utils/i18next/LocalUtil';
 
+/**
+ * Aggregation field -> `_source` path used to recover the original casing of a
+ * quick-filter option.
+ *
+ * Every `.keyword` field listed here is indexed through `lowercase_normalizer`,
+ * so terms aggregations return lowercased bucket keys while `_source` keeps the
+ * value as the user typed it. Passing the `_source` path as `sourceFields` adds
+ * a `top_hits` sub-aggregation the UI reads the display label from; the bucket
+ * key stays the filter value, so query building and shared URLs are unaffected.
+ *
+ * Fields indexed without the normalizer (`columnDescriptionStatus`, `fileType`,
+ * `fileExtension`, `mlFeatures.name`) already aggregate in their original case
+ * and are deliberately absent — an entry there would only cost an extra
+ * `top_hits` round trip.
+ */
+export const QUICK_FILTER_SOURCE_FIELDS: Partial<Record<EntityFields, string>> =
+  {
+    [EntityFields.OWNERS]: 'ownerDisplayName',
+    [EntityFields.DOMAINS]: 'domains.displayName',
+    [EntityFields.DATA_PRODUCT]: 'dataProducts.displayName',
+    [EntityFields.TAG]: 'tags.tagFQN',
+    [EntityFields.COLUMN_TAG]: 'columns.tags.tagFQN',
+    [EntityFields.TIER]: 'tier.tagFQN',
+    [EntityFields.CERTIFICATION]: 'certification.tagLabel.tagFQN',
+    [EntityFields.CLASSIFICATION_TAGS]: 'classificationTags',
+    [EntityFields.GLOSSARY_TERMS]: 'glossaryTags',
+    [EntityFields.GLOSSARY]: 'glossary.name',
+    [EntityFields.CLASSIFICATION]: 'classification.name',
+    [EntityFields.SERVICE]: 'service.displayName',
+    [EntityFields.SERVICE_NAME]: 'service.name',
+    [EntityFields.DATABASE]: 'database.displayName',
+    [EntityFields.DATABASE_NAME]: 'database.name',
+    [EntityFields.DATABASE_SCHEMA]: 'databaseSchema.displayName',
+    [EntityFields.DATABASE_SCHEMA_NAME]: 'databaseSchema.name',
+    [EntityFields.TABLE_NAME]: 'table.name',
+    [EntityFields.TABLE_DISPLAY_NAME]: 'table.displayName',
+    [EntityFields.COLUMN]: 'columns.name',
+    [EntityFields.CONTAINER_COLUMN]: 'dataModel.columns.name',
+    [EntityFields.FIELD]: 'fields.name',
+    [EntityFields.SCHEMA_FIELD]: 'messageSchema.schemaFields.name',
+    [EntityFields.REQUEST_SCHEMA_FIELD]: 'requestSchema.schemaFields.name',
+    [EntityFields.RESPONSE_SCHEMA_FIELD]: 'responseSchema.schemaFields.name',
+    [EntityFields.CHART]: 'charts.displayName',
+    [EntityFields.TASK]: 'tasks.displayName',
+    [EntityFields.DATA_MODEL]: 'dataModels.displayName',
+    [EntityFields.API_COLLECTION]: 'apiCollection.displayName',
+    [EntityFields.PARENT]: 'parent.displayName',
+    [EntityFields.DIRECTORY]: 'directory.displayName',
+    [EntityFields.SPREADSHEET]: 'spreadsheet.displayName',
+    [EntityFields.PROJECT]: 'project',
+    [EntityFields.NAME_KEYWORD]: 'name',
+    [EntityFields.DISPLAY_NAME_KEYWORD]: 'displayName',
+    [EntityFields.FULLY_QUALIFIED_NAME]: 'fullyQualifiedName',
+    [EntityFields.SERVICE_TYPE]: 'serviceType',
+    [EntityFields.DATA_MODEL_TYPE]: 'dataModelType',
+    [EntityFields.DATA_PRODUCT_TYPE]: 'dataProductType',
+    [EntityFields.DOMAIN_TYPE]: 'domainType',
+    [EntityFields.VISIBILITY]: 'visibility',
+    [EntityFields.PORTFOLIO_PRIORITY]: 'portfolioPriority',
+    [EntityFields.LIFECYCLE_STAGE]: 'lifecycleStage',
+    [EntityFields.TABLE_TYPE]: 'tableType',
+    [EntityFields.DATA_TYPE]: 'dataType',
+    [EntityFields.ENTITY_STATUS]: 'entityStatus',
+  };
+
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'label.domain-plural',
     key: EntityFields.DOMAINS,
+  },
+  {
+    label: 'label.data-product-plural',
+    key: EntityFields.DATA_PRODUCT,
   },
   {
     label: 'label.owner-plural',
@@ -52,6 +121,10 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: 'label.domain-plural',
     key: EntityFields.DOMAINS,
+  },
+  {
+    label: 'label.data-product-plural',
+    key: EntityFields.DATA_PRODUCT,
   },
   {
     label: 'label.owner-plural',

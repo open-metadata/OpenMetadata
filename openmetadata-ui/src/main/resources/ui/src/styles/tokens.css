@@ -101,6 +101,9 @@
   --om-line-height-normal: 1.5;
   --om-line-height-relaxed: 1.625;
 
+  /* -- Layout -- */
+  --om-page-height: calc(100vh - var(--ant-navbar-height, 80px));
+
   /* -- Elevation -- */
   --om-shadow-xs: var(--shadow-xs, 0px 1px 2px rgba(10, 13, 18, 0.05));
   --om-shadow-sm: var(--shadow-sm, 0px 1px 3px rgba(10, 13, 18, 0.1), 0px 1px 2px -1px rgba(10, 13, 18, 0.1));
@@ -613,6 +616,7 @@
   --om-legacy-color-2f74eb: #2f74eb;
   --om-legacy-color-30-30-30-0-08: rgb(30 30 30 / 8%);
   --om-legacy-color-3062d4: #3062d4;
+  --om-legacy-color-344054: #344054;
   --om-legacy-color-349dea: #349dea;
   --om-legacy-color-356fe7: rgb(53, 111, 231);
   --om-legacy-color-37-99-235-0-12: rgba(37, 99, 235, 0.12);

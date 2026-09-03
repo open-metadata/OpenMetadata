@@ -76,7 +76,11 @@ async function verifyTabNavigation(page: Page) {
 test.describe('Entity Summary Panel', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    const dataAssetCount = page.waitForResponse(
+      '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await dataAssetCount;
   });
 
   ENTITY_TYPES.forEach((entityType) => {

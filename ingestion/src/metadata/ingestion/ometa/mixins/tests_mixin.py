@@ -16,7 +16,6 @@ To be used by OpenMetadata class
 
 import traceback
 from datetime import datetime
-from typing import List, Optional, Type, Union  # noqa: UP035
 from urllib.parse import urlencode, urljoin
 from uuid import UUID
 
@@ -85,7 +84,7 @@ class OMetaTestsMixin:
     def get_or_create_test_suite(
         self,
         test_suite_name: str,
-        test_suite_description: Optional[str] = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",  # noqa: UP045
+        test_suite_description: str | None = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
     ) -> TestSuite:
         """Get or create a TestSuite
 
@@ -117,10 +116,10 @@ class OMetaTestsMixin:
     def get_or_create_test_definition(
         self,
         test_definition_fqn: str,
-        test_definition_description: Optional[str] = None,  # noqa: UP045
-        entity_type: Optional[EntityType] = None,  # noqa: UP045
-        test_platforms: Optional[List[TestPlatform]] = None,  # noqa: UP006, UP045
-        test_case_parameter_definition: Optional[List[TestCaseParameterDefinition]] = None,  # noqa: UP006, UP045
+        test_definition_description: str | None = None,
+        entity_type: EntityType | None = None,
+        test_platforms: list[TestPlatform] | None = None,
+        test_case_parameter_definition: list[TestCaseParameterDefinition] | None = None,
     ) -> TestDefinition:
         """Get or create a test definition
 
@@ -161,10 +160,10 @@ class OMetaTestsMixin:
     def get_or_create_test_case(
         self,
         test_case_fqn: str,
-        entity_link: Optional[str] = None,  # noqa: UP045
-        test_definition_fqn: Optional[str] = None,  # noqa: UP045
-        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,  # noqa: UP006, UP045
-        description: Optional[str] = None,  # noqa: UP045
+        entity_link: str | None = None,
+        test_definition_fqn: str | None = None,
+        test_case_parameter_values: list[TestCaseParameterValue] | None = None,
+        description: str | None = None,
     ) -> TestCase:
         """Get or create a test case
 
@@ -196,7 +195,7 @@ class OMetaTestsMixin:
         )
         return test_case  # noqa: RET504
 
-    def get_executable_test_suite(self, table_fqn: str) -> Optional[TestSuite]:  # noqa: UP045
+    def get_executable_test_suite(self, table_fqn: str) -> TestSuite | None:
         """Given an entity fqn, retrieve the link test suite if it exists
 
         Args:
@@ -222,7 +221,7 @@ class OMetaTestsMixin:
             nullable=False,
         )
 
-    def get_or_create_executable_test_suite(self, entity_fqn: str) -> Union[EntityReference, TestSuite]:  # noqa: UP007
+    def get_or_create_executable_test_suite(self, entity_fqn: str) -> EntityReference | TestSuite:
         """Given an entity fqn, retrieve the link test suite if it exists or create a new one
 
         Args:
@@ -253,7 +252,7 @@ class OMetaTestsMixin:
         test_case_fqn: str,
         start_ts: int,
         end_ts: int,
-    ) -> Optional[List[TestCaseResult]]:  # noqa: UP006, UP045
+    ) -> list[TestCaseResult] | None:
         """Retrieve list of test cases
 
         Args:
@@ -294,8 +293,8 @@ class OMetaTestsMixin:
 
     def delete_executable_test_suite(
         self,
-        entity: Type[TestSuite],  # noqa: UP006
-        entity_id: Union[str, UUID],  # noqa: UP007
+        entity: type[TestSuite],
+        entity_id: str | UUID,
         recursive: bool = False,
         hard_delete: bool = False,
     ) -> None:
@@ -339,7 +338,7 @@ class OMetaTestsMixin:
         test_case: TestCase,
         failed_rows: TableData,
         validate=True,
-    ) -> Optional[TableData]:  # noqa: UP045
+    ) -> TableData | None:
         """
         PUT sample failed data for a test case.
 
@@ -373,7 +372,7 @@ class OMetaTestsMixin:
 
         return None
 
-    def get_failed_rows_sample(self, test_case: TestCase) -> Optional[TableData]:  # noqa: UP045
+    def get_failed_rows_sample(self, test_case: TestCase) -> TableData | None:
         """
         GET failed row sample data for a test case.
 
@@ -397,7 +396,7 @@ class OMetaTestsMixin:
 
         return None
 
-    def ingest_inspection_query(self, test_case: TestCase, inspection_query: str) -> Optional[TestCase]:  # noqa: UP045
+    def ingest_inspection_query(self, test_case: TestCase, inspection_query: str) -> TestCase | None:
         """
         PUT inspection query for a test case.
 

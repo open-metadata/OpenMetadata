@@ -114,7 +114,7 @@ concurrency:
   # the other does the real work; sharing a group would let the "skip" event
   # cancel an in-flight real run.
   group: playwright-rdf-pr-postgresql-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   # Fork-vs-same-repo PR arbitration. Same pattern as
@@ -218,7 +218,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Cache Maven Dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -244,7 +244,7 @@ jobs:
         run: mvn -DskipTests clean package
 
       - name: Upload OpenMetadata distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -390,7 +390,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Playwright diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:

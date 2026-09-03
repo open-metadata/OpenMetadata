@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,6 +72,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -771,6 +773,9 @@ public class TestCaseResolutionStatusResource
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
+    // The incident listing carries no single resource, so hasDomain() cannot be evaluated during
+    // authorization above; the caller's policies are enforced on the search query instead.
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     if (latest) {
       // For latest results, use aggregation grouped by test case to get the latest status per test
       // case
@@ -783,10 +788,18 @@ public class TestCaseResolutionStatusResource
           limit,
           offset,
           defaultSortField,
-          sortType);
+          sortType,
+          subjectContext);
     } else {
       return repository.listFromSearchWithOffset(
-          new Fields(null), searchListFilter, limit, offset, searchSortFilter, null, null);
+          new Fields(null),
+          searchListFilter,
+          limit,
+          offset,
+          searchSortFilter,
+          null,
+          null,
+          subjectContext);
     }
   }
 
@@ -826,6 +839,11 @@ public class TestCaseResolutionStatusResource
             entityResourceContext));
   }
 
+  /**
+   * Incident writes are allowed for {@code EditStatus} on the test case in addition to the
+   * historical {@code EditTests}/{@code EditAll} grants, so that a role can manage incidents
+   * (status, severity, assignment) without edit rights on the test case itself.
+   */
   protected static List<AuthRequest> buildEditAuthRequests(
       ResourceContextInterface testCaseResourceContext,
       ResourceContextInterface entityResourceContext) {
@@ -835,6 +853,9 @@ public class TestCaseResolutionStatusResource
             entityResourceContext),
         new AuthRequest(
             new OperationContext(Entity.TABLE, MetadataOperation.EDIT_ALL), entityResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext),
         new AuthRequest(
             new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
             testCaseResourceContext),

@@ -74,7 +74,8 @@ export const getAggregationOptions = async (
   deleted = false,
   size = 10,
   isNLPEnabled = false,
-  queryText?: string
+  queryText?: string,
+  sourceFields?: string
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -84,13 +85,14 @@ export const getAggregationOptions = async (
         query: filter,
         ...(queryText ? { queryText } : {}),
         size,
+        ...(sourceFields ? { topHits: { size: 1 } } : {}),
       })
     : getAggregateFieldOptions(
         index,
         key,
         value,
         filter,
-        undefined,
+        sourceFields,
         deleted,
         isNLPEnabled,
         queryText
@@ -249,7 +251,15 @@ export const fetchEntityData = async ({
         });
         setSearchHitCounts(counts as SearchHitCounts);
 
-        const topHitEntityType = res.hits.hits[0]?._source?.entityType;
+        // The hybrid (NLQ) count query spans the whole dataAsset alias, and OpenSearch's
+        // RRF score-ranker-processor is a phase_results_processors entry: it ranks per
+        // shard, so every single-shard member contributes its own rank-1 document and two
+        // dozen of them tie on an identical fused score. hits[0] is then arbitrary and
+        // carries no relevance signal, so only the aggregation counts below are usable.
+        // Plain BM25 ranks globally, so its top hit remains a valid tie-breaker.
+        const topHitEntityType = isNlqSearch
+          ? undefined
+          : res.hits.hits[0]?._source?.entityType;
         const topHitSearchIndex = topHitEntityType
           ? EntityTypeSearchIndexMapping[topHitEntityType as EntityType]
           : undefined;

@@ -15,6 +15,8 @@ import {
   EmptyPlaceholder,
   Skeleton,
   Table,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@untitledui/icons';
 import { useMemo } from 'react';
@@ -22,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Table as TableType } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
   Assigned,
@@ -35,6 +38,7 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { getPrioritizedEditPermission } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
@@ -85,6 +89,19 @@ const IncidentManagerTable = ({
 }: IncidentManagerTableProps) => {
   const { t } = useTranslation();
 
+  /**
+   * Incident actions (status, severity and assignee) are gated by `EditStatus` on the test case
+   * rather than `EditAll`, so a role can manage incidents while keeping read-only access to the
+   * test cases themselves. `getPrioritizedEditPermission` falls back to `EditAll` when the
+   * permission payload does not carry `EditStatus`.
+   */
+  const hasIncidentEditPermission = (permission?: TestCasePermission) =>
+    Boolean(
+      permission &&
+        getPrioritizedEditPermission(permission, Operation.EditStatus) &&
+        !tableDetails?.deleted
+    );
+
   const testCaseResolutionStatusDetailsRender = (
     value?: Assigned,
     record?: TestCaseResolutionStatus
@@ -104,7 +121,7 @@ const IncidentManagerTable = ({
         <OwnerLabel
           isCompactView
           className="m-0"
-          hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+          hasPermission={hasIncidentEditPermission(hasPermission)}
           multiple={{
             user: false,
             team: false,
@@ -141,9 +158,16 @@ const IncidentManagerTable = ({
   const loadingSkeletons = useMemo(
     () => (
       <div className="tw:p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
-        ))}
+        {Array.from({ length: 5 }, (_, i) => `incident-skeleton-${i}`).map(
+          (skeletonKey) => (
+            <Skeleton
+              className="tw:mb-2"
+              height={40}
+              key={skeletonKey}
+              width="100%"
+            />
+          )
+        )}
       </div>
     ),
     []
@@ -180,19 +204,22 @@ const IncidentManagerTable = ({
         </Table.Cell>
         {isIncidentPage && (
           <Table.Cell>
-            <Link
-              className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
-              data-testid="table-link"
-              title={getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}
-              onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(tableFqn) ?? ref?.fullyQualifiedName}
-            </Link>
+            <Tooltip placement="top" title={tableFqn}>
+              <TooltipTrigger>
+                <Link
+                  className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
+                  data-testid="table-link"
+                  to={getEntityDetailsPath(
+                    EntityType.TABLE,
+                    tableFqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.DATA_QUALITY
+                  )}
+                  onClick={(e) => e.stopPropagation()}>
+                  {getNameFromFQN(tableFqn) || ref?.fullyQualifiedName}
+                </Link>
+              </TooltipTrigger>
+            </Tooltip>
           </Table.Cell>
         )}
         <Table.Cell className="tw:whitespace-nowrap">
@@ -205,7 +232,7 @@ const IncidentManagerTable = ({
             <TestCaseIncidentManagerStatus
               isInline
               data={record}
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              hasPermission={hasIncidentEditPermission(hasPermission)}
               onSubmit={handleStatusSubmit}
             />
           )}
@@ -216,7 +243,7 @@ const IncidentManagerTable = ({
           ) : (
             <Severity
               isInline
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              hasPermission={hasIncidentEditPermission(hasPermission)}
               severity={record.severity}
               onSubmit={(severity) => handleSeveritySubmit(record, severity)}
             />

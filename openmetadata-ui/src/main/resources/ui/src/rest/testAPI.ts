@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
@@ -71,7 +71,10 @@ export type ListTestCaseParams = ListParams & {
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'testCaseStatus'
+> & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;
@@ -86,6 +89,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -144,12 +148,24 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCaseBySearch = async (
-  params?: ListTestCaseParamsBySearch
+  params?: ListTestCaseParamsBySearch,
+  config?: { signal?: AbortSignal }
 ) => {
+  // The search endpoint accepts comma-separated statuses, while Axios' default
+  // array format uses brackets that the JAX-RS query parameter does not bind.
+  const serializedParams = Array.isArray(params?.testCaseStatus)
+    ? {
+        ...params,
+        testCaseStatus: params.testCaseStatus.length
+          ? params.testCaseStatus.join(',')
+          : undefined,
+      }
+    : params;
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     `${testCaseUrl}/search/list`,
     {
-      params,
+      params: serializedParams,
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 
@@ -173,7 +189,7 @@ export const getListTestCaseResults = async (
 
 export const getTestCaseByFqn = async (
   fqn: string,
-  params?: { fields?: string[] }
+  params?: { fields?: string[]; include?: Include }
 ) => {
   const response = await APIClient.get<TestCase>(
     `/dataQuality/testCases/name/${getEncodedFqn(fqn)}`,
@@ -184,6 +200,16 @@ export const getTestCaseByFqn = async (
 
   return response.data;
 };
+
+export const restoreTestCase = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<TestCase>
+  >(`${testCaseUrl}/restore`, { id });
+
+  return response.data;
+};
+
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<
     CreateTestCase,
@@ -409,7 +435,8 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
 
 export const getTestSuiteByName = async (
   name: string,
-  params?: ListTestCaseParams
+  params?: ListTestCaseParams,
+  config?: { signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
@@ -423,6 +450,7 @@ export const getTestSuiteByName = async (
         includeRelations:
           params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
+      ...(config?.signal && { signal: config.signal }),
     }
   );
 

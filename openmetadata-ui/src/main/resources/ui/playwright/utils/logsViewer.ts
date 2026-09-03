@@ -30,12 +30,221 @@ export const LOG_VIEWER_MARKER = 'PLAYWRIGHT_LOG_MARKER';
 
 /**
  * Deterministic multi-line log text that embeds the marker on every line.
+ *
+ * `lineLength` pads each line out to that many characters. Lines wider than the
+ * viewer are what make the wrap toggle re-measure rows, so a test that exercises
+ * wrapping has to ask for them — the default short lines wrap to nothing.
  */
-export const buildMarkerLogText = (marker = LOG_VIEWER_MARKER): string =>
-  Array.from(
-    { length: 20 },
-    (_, index) => `${marker} log line ${index + 1}`
-  ).join('\n');
+export const buildMarkerLogText = (
+  marker = LOG_VIEWER_MARKER,
+  lineCount = 20,
+  lineLength = 0
+): string =>
+  Array.from({ length: lineCount }, (_, index) => {
+    const line = `${marker} log line ${index + 1}`;
+
+    return line.length >= lineLength ? line : line.padEnd(lineLength, ' .');
+  }).join('\n');
+
+/**
+ * Mirrors `SCROLL_BOTTOM_THRESHOLD_PX` in LogViewerModal.component.tsx — the
+ * slack the viewer allows before it considers the view parked off the tail.
+ */
+const LOG_VIEWER_TAIL_THRESHOLD_PX = 40;
+
+interface LogViewerScrollState {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/**
+ * Reads the scroll geometry of the virtualised log list.
+ *
+ * The scroller is created by the log viewer library, so it carries no testid —
+ * it is found by being the one overflowing scrollable box inside the body.
+ * Returns null while the body has nothing to scroll.
+ */
+export const getLogViewerScrollState = async (
+  page: Page
+): Promise<LogViewerScrollState | null> =>
+  page.getByTestId('log-viewer-body').evaluate((body) => {
+    const scroller = Array.from(body.querySelectorAll<HTMLElement>('*')).find(
+      (element) => {
+        const { overflowY } = window.getComputedStyle(element);
+
+        return (
+          element.scrollHeight > element.clientHeight + 1 &&
+          (overflowY === 'auto' || overflowY === 'scroll')
+        );
+      }
+    );
+
+    return scroller
+      ? {
+          scrollTop: scroller.scrollTop,
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight,
+        }
+      : null;
+  });
+
+/**
+ * Focuses the element that actually scrolls the log and reports whether it took
+ * focus. The viewer gives that element a tab stop at runtime, so this is also the
+ * assertion that the keyboard can reach the log at all.
+ */
+export const focusLogViewerScroller = async (page: Page): Promise<boolean> =>
+  page.getByTestId('log-viewer-body').evaluate((body) => {
+    const scroller = Array.from(body.querySelectorAll<HTMLElement>('*')).find(
+      (element) => {
+        const { overflowY } = window.getComputedStyle(element);
+
+        return (
+          element.scrollHeight > element.clientHeight + 1 &&
+          (overflowY === 'auto' || overflowY === 'scroll')
+        );
+      }
+    );
+
+    scroller?.focus();
+
+    return Boolean(scroller) && document.activeElement === scroller;
+  });
+
+/**
+ * Drags the log away from the tail without any pointer, wheel or key event —
+ * setting `scrollTop` directly is the closest stand-in for a native scrollbar
+ * drag in a browser that does not dispatch `pointerdown` for its scrollbar.
+ */
+export const dragLogViewerUpWithoutGesture = async (
+  page: Page,
+  steps = 4,
+  stepPx = 400
+): Promise<void> => {
+  // Each step yields two frames before the next one. Written back to back the
+  // browser coalesces them into a single scroll event, which is one report — a
+  // drag is a sequence of them, and the sequence is the whole point here.
+  await page.getByTestId('log-viewer-body').evaluate(
+    async (body, { totalSteps, delta }) => {
+      const nextFrame = () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve))
+        );
+
+      for (let step = 0; step < totalSteps; step++) {
+        const scroller = Array.from(
+          body.querySelectorAll<HTMLElement>('*')
+        ).find((element) => {
+          const { overflowY } = window.getComputedStyle(element);
+
+          return (
+            element.scrollHeight > element.clientHeight + 1 &&
+            (overflowY === 'auto' || overflowY === 'scroll')
+          );
+        });
+
+        if (!scroller) {
+          return;
+        }
+
+        scroller.scrollTop = Math.max(0, scroller.scrollTop - delta);
+        await nextFrame();
+      }
+    },
+    { totalSteps: steps, delta: stepPx }
+  );
+};
+
+/**
+ * The state of the live auto-follow toggle, as the user sees it.
+ */
+export const isLogViewerFollowing = async (page: Page): Promise<boolean> =>
+  (await page.getByTestId('log-viewer-follow').getAttribute('aria-pressed')) ===
+  'true';
+
+/**
+ * Whether the log viewer is parked at the tail of the log.
+ */
+export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {
+  const state = await getLogViewerScrollState(page);
+
+  if (!state) {
+    return true;
+  }
+
+  const { scrollTop, scrollHeight, clientHeight } = state;
+
+  return (
+    Math.abs(clientHeight + scrollTop - scrollHeight) <
+    LOG_VIEWER_TAIL_THRESHOLD_PX
+  );
+};
+
+/**
+ * Wheels back down until the viewer resumes following on its own.
+ *
+ * Judged by the toggle for the same reason as `scrollLogViewerAwayFromTail`: the
+ * height estimate of a virtualised list is not a dependable ruler. The fixture
+ * serving this has to trickle rather than append hundreds of lines per push, or the
+ * tail moves further per push than any wheel can cover.
+ */
+export const scrollLogViewerToTail = async (
+  page: Page,
+  deltaY = 2000,
+  maxWheels = 60
+): Promise<void> => {
+  await page.getByTestId('log-viewer-body').hover();
+
+  for (let wheel = 0; wheel < maxWheels; wheel++) {
+    if (await isLogViewerFollowing(page)) {
+      return;
+    }
+
+    await page.mouse.wheel(0, deltaY);
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- pacing synthetic input, not waiting for state: back-to-back wheel events coalesce in the browser, so without a gap the loop travels far less than its budget suggests
+    await page.waitForTimeout(60);
+  }
+
+  throw new Error(
+    `Following did not resume after ${maxWheels} wheel events towards the tail`
+  );
+};
+
+/**
+ * Scrolls up with real wheel events until the viewer hands control to the user.
+ *
+ * Deliberately asserted through the toggle rather than through scroll geometry: a
+ * virtualised list estimates its own height, and with wrapping on that estimate
+ * moves as rows are measured, so "is the view at the tail" is not a stable
+ * predicate. Whether following is paused is the guarantee the user actually has.
+ */
+export const scrollLogViewerAwayFromTail = async (
+  page: Page,
+  deltaY = -2000,
+  maxWheels = 15
+): Promise<void> => {
+  await expect
+    .poll(() => getLogViewerScrollState(page), {
+      message:
+        'the log body needs scrollable content before it can be scrolled',
+    })
+    .not.toBeNull();
+
+  await page.getByTestId('log-viewer-body').hover();
+
+  for (let wheel = 0; wheel < maxWheels; wheel++) {
+    await page.mouse.wheel(0, deltaY);
+
+    if (!(await isLogViewerFollowing(page))) {
+      return;
+    }
+  }
+
+  throw new Error(
+    `Following was still on after ${maxWheels} wheel events away from the tail`
+  );
+};
 
 /**
  * Assert the LogViewerModal is open and its body shows the injected marker.

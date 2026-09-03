@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { JsonTree, Utils } from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils } from '@react-awesome-query-builder/ui';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
@@ -93,8 +94,8 @@ const mocks = {
   },
 };
 
-jest.mock('@react-awesome-query-builder/antd', () => {
-  const actual = jest.requireActual('@react-awesome-query-builder/antd');
+jest.mock('@react-awesome-query-builder/ui', () => {
+  const actual = jest.requireActual('@react-awesome-query-builder/ui');
 
   return {
     ...actual,
@@ -106,7 +107,12 @@ jest.mock('@react-awesome-query-builder/antd', () => {
       sanitizeTree: jest.fn(() => ({ fixedTree: {} })),
       jsonLogicFormat: jest.fn(() => ({ logic: { test: 'logic' } })),
     },
-    Builder: ({ onChange, ...props }: any) => (
+    Builder: ({
+      onChange,
+      ...props
+    }: {
+      onChange?: (tree: unknown, config: unknown) => void;
+    } & Record<string, unknown>) => (
       <div data-testid="query-builder" {...props}>
         <button
           data-testid="mock-query-change"
@@ -115,7 +121,14 @@ jest.mock('@react-awesome-query-builder/antd', () => {
         </button>
       </div>
     ),
-    Query: ({ onChange, renderBuilder, ...props }: any) => {
+    Query: ({
+      onChange,
+      renderBuilder,
+      ...props
+    }: {
+      onChange?: (tree: unknown, config: unknown) => void;
+      renderBuilder: (props: Record<string, unknown>) => ReactNode;
+    } & Record<string, unknown>) => {
       const mockActions = { test: 'actions' };
 
       return (
@@ -123,7 +136,8 @@ jest.mock('@react-awesome-query-builder/antd', () => {
           {renderBuilder({
             ...props,
             actions: mockActions,
-            onChange: (tree: any, config: any) => onChange?.(tree, config),
+            onChange: (tree: unknown, config: unknown) =>
+              onChange?.(tree, config),
           })}
         </div>
       );
@@ -141,7 +155,9 @@ const mockSearchResponse = {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: any) => {
+  debounce: (
+    fn: ((...args: unknown[]) => unknown) & { cancel?: jest.Mock }
+  ) => {
     fn.cancel = jest.fn();
 
     return fn;
@@ -359,7 +375,7 @@ describe('QueryBuilderWidgetV1', () => {
     });
 
     it('should show loading skeleton while fetching count', async () => {
-      let resolveSearch: (value: any) => void;
+      let resolveSearch: (value: unknown) => void;
       const searchPromise = new Promise((resolve) => {
         resolveSearch = resolve;
       });
@@ -398,7 +414,7 @@ describe('QueryBuilderWidgetV1', () => {
       expect(searchQuery).toHaveBeenCalled();
 
       expect(
-        container.querySelector('.ant-skeleton.ant-skeleton-active')
+        container.querySelector('[aria-hidden="true"]')
       ).toBeInTheDocument();
 
       await act(async () => {
@@ -633,11 +649,11 @@ describe('QueryBuilderWidgetV1', () => {
         <QueryBuilderWidgetV1 outputType={SearchOutputType.ElasticSearch} />
       );
 
-      const col = screen
+      const innerDiv = screen
         .getByTestId('query-builder-form-field')
-        .querySelector('.ant-col');
+        .querySelector('.tw\\:pt-2');
 
-      expect(col).toHaveClass('p-t-sm');
+      expect(innerDiv).toBeInTheDocument();
     });
   });
 

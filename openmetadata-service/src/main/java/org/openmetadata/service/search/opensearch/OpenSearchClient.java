@@ -75,6 +75,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.SortOptions;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.FiltersBucket;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
@@ -102,12 +103,9 @@ import software.amazon.awssdk.regions.Region;
 public class OpenSearchClient implements SearchClient {
   private static final int REQUEST_COMPRESSION_THRESHOLD_BYTES = 8 * 1024;
 
-  // How long a caller waits for a connection from the pool. HC5 defaults this to 3 minutes,
-  // so a saturated pool blocks a Jetty thread that long before failing. Fail fast instead.
-  private static final Timeout CONNECTION_REQUEST_TIMEOUT = Timeout.ofSeconds(10);
-
   private volatile boolean isClientAvailable;
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private static final String SORT_ORDER_DESC = "desc";
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
@@ -558,6 +556,17 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter, subjectContext);
+  }
+
+  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.OPENSEARCH;
   }
@@ -917,6 +926,14 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.useSystemProperties();
 
+            // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+            // pipeline by default. opensearch-java's ApacheHttpClient5Transport also
+            // decompresses the response body itself, so leaving both enabled makes the second
+            // pass run on already-inflated bytes and throws
+            // "java.util.zip.ZipException: Not in GZIP format" out of LazyDecompressingInputStream.
+            // Disable at the transport layer and let opensearch-java own decompression.
+            httpClientBuilder.disableContentCompression();
+
             return httpClientBuilder;
           });
 
@@ -924,8 +941,9 @@ public class OpenSearchClient implements SearchClient {
           requestConfigBuilder ->
               requestConfigBuilder
                   .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
-                  .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs()))
-                  .setConnectionRequestTimeout(CONNECTION_REQUEST_TIMEOUT));
+                  .setConnectionRequestTimeout(
+                      Timeout.ofSeconds(esConfig.getConnectionRequestTimeoutSecs()))
+                  .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
 
       var defaultFactory =
           os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Options.DEFAULT
@@ -973,9 +991,20 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public String indexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return genericManager.indexTemplateFingerprint(indexPattern, mappingContent);
+  }
+
+  @Override
   public void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
     genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+  }
+
+  @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    return genericManager.getIndexTemplateFingerprints(templateNamePattern);
   }
 
   @Override
@@ -1185,20 +1214,44 @@ public class OpenSearchClient implements SearchClient {
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchy(
-      String parentFqn, String pageType, int offset, int limit) {
-    return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchyForActivePage(
-      String activeFqn, String pageType, int offset, int limit) {
-    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+  }
+
+  private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
+    List<SortOptions> sortOptions = new ArrayList<>();
+    if (sortFilter != null
+        && sortFilter.getSortField() != null
+        && !Entity.FIELD_FULLY_QUALIFIED_NAME.equals(sortFilter.getSortField())) {
+      String field = sortFilter.getSortField();
+      SortOrder order =
+          SORT_ORDER_DESC.equalsIgnoreCase(sortFilter.getSortType())
+              ? SortOrder.Desc
+              : SortOrder.Asc;
+      sortOptions.add(SortOptions.of(so -> so.field(f -> f.field(field).order(order))));
+    }
+    // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
+    // from/size pagination cannot miss/duplicate hits when the primary sort field is not unique.
+    // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
+    // indices.id_field_data.enabled=true at the cluster level.
+    sortOptions.add(
+        SortOptions.of(
+            so -> so.field(f -> f.field(Entity.FIELD_FULLY_QUALIFIED_NAME).order(SortOrder.Asc))));
+    return sortOptions;
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearch(
-      String parentFqn, String pageType, int offset, int limit) throws IOException {
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
+      throws IOException {
     Query boolQuery = buildPageHierarchyBoolQuery(parentFqn, pageType);
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
         os.org.opensearch.client.opensearch.core.SearchRequest.of(
@@ -1208,13 +1261,7 @@ public class OpenSearchClient implements SearchClient {
                             .getIndexOrAliasName(
                                 KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort so from/size pagination cannot miss/duplicate hits.
-                    // fullyQualifiedName is a keyword field with doc_values and is unique per
-                    // page (name is unique within a parent's children), so no tiebreaker is
-                    // needed. _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x
-                    // without setting indices.id_field_data.enabled=true at the cluster level.
-                    .sort(
-                        sort -> sort.field(f -> f.field("fullyQualifiedName").order(SortOrder.Asc)))
+                    .sort(sortOptions)
                     .from(offset)
                     .size(limit));
 
@@ -1230,8 +1277,10 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
-      String activeFqn, String pageType, int offset, int limit) throws IOException {
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
+      throws IOException {
     Query boolQuery = buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
         os.org.opensearch.client.opensearch.core.SearchRequest.of(
@@ -1241,9 +1290,7 @@ public class OpenSearchClient implements SearchClient {
                             .getIndexOrAliasName(
                                 KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort by fqn (keyword, unique per page). See note above on _id.
-                    .sort(
-                        sort -> sort.field(f -> f.field("fullyQualifiedName").order(SortOrder.Asc)))
+                    .sort(sortOptions)
                     .from(offset)
                     .size(limit));
 

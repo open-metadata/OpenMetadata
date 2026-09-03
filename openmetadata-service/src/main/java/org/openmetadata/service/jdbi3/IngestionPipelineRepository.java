@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
@@ -71,7 +72,9 @@ import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
@@ -82,6 +85,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -125,6 +129,209 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     this.supportsSearch = true;
     this.openMetadataApplicationConfig = config;
   }
+
+  private static final String SORT_ORDER_DESC = "desc";
+
+  /** SQL tokens for one scan direction, so the keyset queries never assemble them ad hoc. */
+  private record SortDirection(String order, String reverseOrder, String forward, String backward) {
+    static SortDirection of(boolean ascending) {
+      return ascending
+          ? new SortDirection("ASC", "DESC", ">", "<")
+          : new SortDirection("DESC", "ASC", "<", ">");
+    }
+  }
+
+  /**
+   * When the filter carries {@code sortField=displayName}, list forward ordered by the value the
+   * UI's Name column renders ({@code displayName ?? name}) instead of the raw {@code name}, keeping
+   * keyset pagination. Otherwise the default name-ordered listing applies.
+   *
+   * <p>Overriding this seam — rather than forking the resource's {@code listInternal} — keeps
+   * authorization, the domain filter and cursor validation shared with the normal list, so the two
+   * orderings cannot drift (collate#3919).
+   */
+  @Override
+  public ResultList<IngestionPipeline> listAfter(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
+    ResultList<IngestionPipeline> result;
+    if (nullOrEmpty(filter.getSortField())) {
+      result = super.listAfter(uriInfo, fields, filter, limitParam, after);
+    } else {
+      result = forwardDisplayNamePage(uriInfo, fields, filter, limitParam, after);
+    }
+    return result;
+  }
+
+  @Override
+  public ResultList<IngestionPipeline> listBefore(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    ResultList<IngestionPipeline> result;
+    if (nullOrEmpty(filter.getSortField())) {
+      result = super.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else {
+      result = beforeDisplayNamePage(uriInfo, fields, filter, limitParam, before);
+    }
+    return result;
+  }
+
+  private boolean isAscending(ListFilter filter) {
+    return !SORT_ORDER_DESC.equalsIgnoreCase(filter.getSortOrder());
+  }
+
+  /** First page (no {@code after}) or a forward page from an {@code after} cursor. */
+  private ResultList<IngestionPipeline> forwardDisplayNamePage(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    List<IngestionPipeline> entities = new ArrayList<>();
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (limitParam > 0) {
+      SortDirection direction = SortDirection.of(isAscending(filter));
+      entities =
+          hydrateByDisplayName(
+              forwardJsons(filter, direction, limitParam, after), fields, uriInfo, filter);
+      beforeCursor = forwardBeforeCursor(after, entities);
+      if (entities.size() > limitParam) {
+        entities.remove(limitParam);
+        afterCursor = displayNameCursorValue(entities.get(limitParam - 1));
+      }
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<String> forwardJsons(
+      ListFilter filter, SortDirection direction, int limitParam, String after) {
+    // getCondition registers derived bind params on the filter and the serviceType variant is a
+    // join the plain ListFilter condition cannot express, so resolve the scope once.
+    String condition = ingestionPipelineDAO().displayNameSortCondition(filter);
+    String displayExpr = ingestionPipelineDAO().displayNameSortExpression();
+    List<String> jsons;
+    if (nullOrEmpty(after)) {
+      jsons =
+          ingestionPipelineDAO()
+              .listByDisplayName(
+                  filter.getQueryParams(),
+                  condition,
+                  displayExpr,
+                  direction.order(),
+                  limitParam + 1);
+    } else {
+      DisplayNameCursor cursor = parseDisplayNameCursor(after);
+      jsons =
+          ingestionPipelineDAO()
+              .listAfterByDisplayName(
+                  filter.getQueryParams(),
+                  condition,
+                  displayExpr,
+                  direction.order(),
+                  direction.forward(),
+                  limitParam + 1,
+                  cursor.displayName(),
+                  cursor.id());
+    }
+    return jsons;
+  }
+
+  /** Backward page from a {@code before} cursor; the DAO walks reverse then re-sorts the page. */
+  private ResultList<IngestionPipeline> beforeDisplayNamePage(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    List<IngestionPipeline> entities = new ArrayList<>();
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (limitParam > 0) {
+      SortDirection direction = SortDirection.of(isAscending(filter));
+      entities =
+          hydrateByDisplayName(
+              beforeJsons(filter, direction, limitParam, before), fields, uriInfo, filter);
+      if (entities.size() > limitParam) {
+        entities.remove(0);
+        beforeCursor = displayNameCursorValue(entities.get(0));
+      }
+      // Empty page = cursor valid but every earlier row was deleted concurrently. Echo the caller's
+      // cursor rather than null, which reads as end-of-pagination. Mirrors listBefore.
+      afterCursor =
+          entities.isEmpty()
+              ? RestUtil.decodeCursor(before)
+              : displayNameCursorValue(entities.get(entities.size() - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<String> beforeJsons(
+      ListFilter filter, SortDirection direction, int limitParam, String before) {
+    String condition = ingestionPipelineDAO().displayNameSortCondition(filter);
+    String displayExpr = ingestionPipelineDAO().displayNameSortExpression();
+    DisplayNameCursor cursor = parseDisplayNameCursor(before);
+    return ingestionPipelineDAO()
+        .listBeforeByDisplayName(
+            filter.getQueryParams(),
+            condition,
+            displayExpr,
+            direction.order(),
+            direction.reverseOrder(),
+            direction.backward(),
+            limitParam + 1,
+            cursor.displayName(),
+            cursor.id());
+  }
+
+  private CollectionDAO.IngestionPipelineDAO ingestionPipelineDAO() {
+    return Entity.getCollectionDAO().ingestionPipelineDAO();
+  }
+
+  /**
+   * {@link ResultList} base64-encodes whatever cursor it is handed, so both branches have to yield
+   * the decoded form: {@link #displayNameCursorValue} produces raw JSON, and the echoed cursor
+   * arrived off the wire already encoded.
+   */
+  @VisibleForTesting
+  String forwardBeforeCursor(String after, List<IngestionPipeline> entities) {
+    String beforeCursor = null;
+    if (!nullOrEmpty(after)) {
+      beforeCursor =
+          entities.isEmpty()
+              ? RestUtil.decodeCursor(after)
+              : displayNameCursorValue(entities.get(0));
+    }
+    return beforeCursor;
+  }
+
+  private List<IngestionPipeline> hydrateByDisplayName(
+      List<String> jsons, Fields fields, UriInfo uriInfo, ListFilter filter) {
+    List<IngestionPipeline> entities = JsonUtils.readObjects(jsons, IngestionPipeline.class);
+    setFieldsInBulk(fields, entities, filter);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
+  }
+
+  @VisibleForTesting
+  DisplayNameCursor parseDisplayNameCursor(String cursor) {
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
+    String displayName = cursorMap.get("displayNameSort");
+    String id = cursorMap.get("id");
+    if (displayName == null || id == null || id.isBlank()) {
+      throw new BadRequestException("Invalid cursor for sortField pagination");
+    }
+    return new DisplayNameCursor(displayName, id);
+  }
+
+  /**
+   * Reproduces the ORDER BY expression — {@code COALESCE(NULLIF(displayName,''), name)} — as the
+   * cursor's sort key. The value is carried verbatim (no truncation and not case-folded), so it
+   * matches the un-truncated SQL expression exactly and comparison stays inside the database.
+   */
+  @VisibleForTesting
+  String displayNameCursorValue(IngestionPipeline pipeline) {
+    String displayName = pipeline.getDisplayName();
+    String sortKey = nullOrEmpty(displayName) ? pipeline.getName() : displayName;
+    return JsonUtils.pojoToJson(
+        Map.of(
+            "displayNameSort", sortKey == null ? "" : sortKey, "id", pipeline.getId().toString()));
+  }
+
+  @VisibleForTesting
+  record DisplayNameCursor(String displayName, String id) {}
 
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
@@ -304,6 +511,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
+  }
+
+  @Override
+  protected IngestionPipeline restorePatchSecrets(
+      IngestionPipeline original, IngestionPipeline updated) {
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
+    return updated;
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
@@ -520,17 +734,48 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
+  /**
+   * Removing the DAG from the orchestrator is irreversible, so it must only happen when the entity
+   * itself is going away for good. A soft delete is reversible and {@code restoreEntity} has no way
+   * to redeploy, so tearing the runner down there left a restored pipeline with no backing DAG —
+   * and, with {@code allowUnavailableRunner=false}, failed the whole soft delete outright whenever
+   * the runner happened to be down. The accepted trade-off is that nothing pauses the DAG either,
+   * so a soft-deleted pipeline keeps running on schedule and recording statuses until it is
+   * restored or hard-deleted; pausing it would need a restore-time redeploy hook that does not
+   * exist yet.
+   *
+   * <p>The teardown stays here rather than moving to {@link #entitySpecificCleanup} (where the
+   * pipeline's time series went) because it is a blocking remote call that must not run inside the
+   * real transaction {@code cleanup()} opens, and because {@code forceDelete} threads
+   * {@code allowUnavailableRunner} through the overload below and reads back the skip flag.
+   */
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
     postDelete(entity, hardDelete, false);
   }
 
+  /**
+   * Variant of {@link #postDelete(IngestionPipeline, boolean)} for {@code forceDelete}: tolerates an
+   * unreachable ingestion runner when {@code allowUnavailableRunner} is set and reports back whether
+   * the runner cleanup was skipped, so the caller can warn about the DAG left behind.
+   */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
-    deletePipelineStatuses(entity);
+    boolean wasRunnerCleanupSkipped = false;
+    if (hardDelete) {
+      wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Pipeline run history is destroyed only on hard delete: {@code entitySpecificCleanup} is reached
+   * exclusively from {@code cleanup()}, which the delete path runs on the hard-delete branch only.
+   */
+  @Override
+  protected void entitySpecificCleanup(IngestionPipeline entity) {
+    deletePipelineStatuses(entity);
   }
 
   protected boolean deleteDeployedPipeline(
@@ -1192,6 +1437,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     Map<String, String> logs = pipelineServiceClient.getLastIngestionLogs(pipeline, afterCursor);
 
     Map<String, Object> result = new HashMap<>();
+    String error = logs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+    if (error != null) {
+      result.put(PipelineServiceClientInterface.LOGS_ERROR_KEY, error);
+      return result;
+    }
     result.put("logs", DefaultLogStorage.extractLogContent(logs));
     result.put("after", logs.get("after"));
     result.put("total", logs.getOrDefault("total", "0"));

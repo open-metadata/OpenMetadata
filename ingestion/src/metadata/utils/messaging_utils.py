@@ -15,14 +15,13 @@ Helpers module for messaging sources
 
 import re
 import traceback
-from typing import Optional
 
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
-def merge_and_clean_protobuf_schema(schema_text: Optional[str]) -> Optional[str]:  # noqa: UP045
+def merge_and_clean_protobuf_schema(schema_text: str | None) -> str | None:
     """
     Remove the import and extra syntax lines for a schema with references
     """

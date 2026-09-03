@@ -12,7 +12,6 @@ import json
 import pkgutil
 import traceback
 from pathlib import Path
-from typing import Dict  # noqa: UP035
 
 import airflow
 from airflow import DAG, settings
@@ -89,7 +88,7 @@ class DagDeployer:
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
-    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> Dict[str, str]:  # noqa: UP006
+    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> dict[str, str]:
         """
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
@@ -103,7 +102,7 @@ class DagDeployer:
 
         return {"workflow_config_file": str(dag_config_file_path)}
 
-    def store_and_validate_dag_file(self, dag_runner_config: Dict[str, str]) -> str:  # noqa: UP006
+    def store_and_validate_dag_file(self, dag_runner_config: dict[str, str]) -> str:
         """
         Stores the Python file generating the DAG and returns
         the rendered strings
@@ -149,7 +148,6 @@ class DagDeployer:
         with settings.Session() as session:
             try:
                 dag_bag = get_dagbag()
-                logger.info("dagbag size {}".format(dag_bag.size()))  # noqa: UP032
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))  # noqa: UP032
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)

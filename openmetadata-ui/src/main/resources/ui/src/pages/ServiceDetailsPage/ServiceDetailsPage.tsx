@@ -1417,6 +1417,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -1424,6 +1426,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
           entity: t('label.service'),
         })
       );
+
+      return false;
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
@@ -1607,8 +1611,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [decodedServiceFQN, serviceCategory]);
 
+  // Deliberately not gated on the airflow status: pipelines are OpenMetadata entities, so the list
+  // and its run history are readable whether or not the pipeline service answers. Only the actions
+  // on them need that status — see `useAgentActionAvailability`.
   useEffect(() => {
-    if (isAirflowAvailable && !isOpenMetadataService) {
+    if (!isOpenMetadataService) {
       isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
         ? getAllIngestionWorkflows(
             {},
@@ -1616,13 +1623,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [
-    isAirflowAvailable,
-    searchText,
-    ingestionPageSize,
-    statusFilter,
-    typeFilter,
-  ]);
+  }, [searchText, ingestionPageSize, statusFilter, typeFilter]);
 
   useEffect(() => {
     if (isCollateAIWidgetSupported) {

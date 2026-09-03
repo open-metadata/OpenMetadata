@@ -92,11 +92,12 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
-import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -141,10 +142,9 @@ const LinkedAssetCard: FC<{
       className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5"
       data-testid="linked-asset-card">
       <div className="tw:shrink-0">
-        {getEntityIconWithBg(
+        {searchClassBase.getEntityIconWithBg(
           asset.reference?.type,
-          { className: 'tw:w-8 tw:h-8' },
-          { size: 18 }
+          EntityIconSize.Size18
         )}
       </div>
       <Box
@@ -596,7 +596,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       return (
         <TextArea
           data-testid="memory-content-input"
-          placeholder={t('message.what-should-ask-collate-remember')}
+          placeholder={t(
+            contextCenterClassBase.getMemoryPromptTranslationKey()
+          )}
           rows={5}
           value={field.value}
           onChange={(value) => field.onChange(value)}
@@ -763,7 +765,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               />
                               <Tooltip
                                 title={t(
-                                  'message.what-should-ask-collate-remember'
+                                  contextCenterClassBase.getMemoryPromptTranslationKey()
                                 )}>
                                 <TooltipTrigger className="tw:leading-0">
                                   <InfoCircle

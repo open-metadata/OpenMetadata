@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Config, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { Config, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
@@ -74,10 +74,8 @@ function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
     if (!must_not.every(isValidCondition)) {
       return false;
     }
-  } else if (must_not) {
-    if (!isValidCondition(must_not)) {
-      return false;
-    }
+  } else if (must_not && !isValidCondition(must_not)) {
+    return false;
   }
 
   return true;

@@ -16,11 +16,16 @@ import {
   Button,
   ButtonUtility,
   Card,
+  EmptyPlaceholder,
   Input,
   Table,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  NoFilterFunnel,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import {
   ArrowRight,
   ChevronRight,
@@ -55,11 +60,6 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
-import {
-  NoDataPlaceholder,
-  NoFilteredResultsPlaceholder,
-  NoSearchResultsPlaceholder,
-} from '../../../components/common/EmptyPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -98,7 +98,7 @@ import { stringToDOMElement } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
-import { ColumnGridTableRow } from './components/ColumnGridTableRow';
+import ColumnGridRow from './components/ColumnGridRow';
 import {
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
@@ -106,6 +106,9 @@ import {
 } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
+
+const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ROTATE_90_CLASS = 'tw:rotate-90';
 
 interface BulkAssetsSocketMessage {
   jobId?: string;
@@ -442,6 +445,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             {t('label.tag-plural')}
           </Typography>
           <AsyncSelectList
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabling select autofocus
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
             getPopupContainer={(triggerNode) => triggerNode.parentElement}
@@ -1259,8 +1263,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isGroupExpanded && 'tw:rotate-90'
+                      ICON_TRANSITION_CLASS,
+                      isGroupExpanded && ROTATE_90_CLASS
                     )}
                   />
                 }
@@ -1281,6 +1285,26 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       }
 
+      const structExpandHandler = () => {
+        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
+        if (isExpanded) {
+          scrollToRowIdRef.current = entity.id;
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.delete(entity.id);
+
+            return newSet;
+          });
+        } else {
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.add(entity.id);
+
+            return newSet;
+          });
+        }
+      };
+
       if (entity.isStructChild) {
         const hasChildren = entity.children && entity.children.length > 0;
         const nestedCount = entity.children?.length ?? 0;
@@ -1288,28 +1312,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           nestedCount > 0
             ? `${entity.columnName} (${nestedCount})`
             : entity.columnName;
-
-        const structExpandHandler = () => {
-          const isExpanded = columnGridListing.expandedStructRows.has(
-            entity.id
-          );
-          if (isExpanded) {
-            scrollToRowIdRef.current = entity.id;
-            columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-              const newSet = new Set(prev);
-              newSet.delete(entity.id);
-
-              return newSet;
-            });
-          } else {
-            columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-              const newSet = new Set(prev);
-              newSet.add(entity.id);
-
-              return newSet;
-            });
-          }
-        };
 
         const isStructExpanded = columnGridListing.expandedStructRows.has(
           entity.id
@@ -1324,8 +1326,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   icon={
                     <ChevronRight
                       className={classNames(
-                        'tw:size-4 tw:transition-transform',
-                        isStructExpanded && 'tw:rotate-90'
+                        ICON_TRANSITION_CLASS,
+                        isStructExpanded && ROTATE_90_CLASS
                       )}
                     />
                   }
@@ -1354,26 +1356,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ? `${entity.columnName} (${nestedCount})`
           : entity.columnName;
 
-      const occurrenceExpandHandler = () => {
-        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
-        if (isExpanded) {
-          scrollToRowIdRef.current = entity.id;
-          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-            const newSet = new Set(prev);
-            newSet.delete(entity.id);
-
-            return newSet;
-          });
-        } else {
-          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-            const newSet = new Set(prev);
-            newSet.add(entity.id);
-
-            return newSet;
-          });
-        }
-      };
-
       const isOccurrenceExpanded = columnGridListing.expandedStructRows.has(
         entity.id
       );
@@ -1387,13 +1369,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isOccurrenceExpanded && 'tw:rotate-90'
+                      ICON_TRANSITION_CLASS,
+                      isOccurrenceExpanded && ROTATE_90_CLASS
                     )}
                   />
                 }
                 size="sm"
-                onClick={occurrenceExpandHandler}
+                onClick={structExpandHandler}
               />
             ) : null}
           </div>
@@ -2133,7 +2115,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               columnGridListing.expandedStructRows.has(entity.id);
 
             return (
-              <ColumnGridTableRow
+              <ColumnGridRow
                 columnWidthPercent={COLUMN_WIDTH_PERCENT}
                 entity={entity}
                 isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
@@ -2376,18 +2358,41 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   // onboarding placeholder.
   const emptyPlaceholder = useMemo(() => {
     if (hasActiveSearch) {
-      return <NoSearchResultsPlaceholder />;
+      return (
+        <EmptyPlaceholder
+          description={t('message.check-spelling-or-try-shorter-term')}
+          icon={<NoSearch className="tw:text-secondary" />}
+          title={t('label.no-matching-result-plural')}
+          variant="blank"
+        />
+      );
     }
 
     if (hasActiveFilters) {
-      return <NoFilteredResultsPlaceholder onClearFilters={handleClearAll} />;
+      return (
+        <EmptyPlaceholder
+          actions={[
+            {
+              color: 'primary',
+              key: 'clear-filters',
+              label: t('label.clear-filter-plural'),
+              onPress: handleClearAll,
+            },
+          ]}
+          description={t('message.nothing-matches-current-filter')}
+          icon={<NoFilterFunnel className="tw:text-secondary" />}
+          title={t('label.no-result-for-these-filter-plural')}
+          variant="blank"
+        />
+      );
     }
 
     return (
-      <NoDataPlaceholder
+      <EmptyPlaceholder
         description={t('message.column-bulk-empty-description')}
         icon={<TableIcon className="tw:text-secondary" />}
         title={t('message.no-columns-to-work-with')}
+        variant="blank"
       />
     );
   }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);
