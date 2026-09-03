@@ -13146,7 +13146,7 @@ public interface CollectionDAO {
                 + ":actorType, :impersonatedBy, :serviceName, "
                 + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :searchText, :createdAt)",
         connectionType = MYSQL)
-    void insert(@BindBean AuditLogRecord record);
+    int insert(@BindBean AuditLogRecord record);
 
     @SqlQuery(
         "SELECT a.id, a.change_event_id, a.event_ts, a.event_type, a.user_name, "
