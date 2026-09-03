@@ -322,6 +322,7 @@ def test_usage_source_scans_full_daily_windows_without_duplicate_rows():
     source.config = SimpleNamespace(serviceName="clickzetta")
     source.source_config = SimpleNamespace(filterCondition=None, resultLimit=2)
     source.warn_if_query_log_truncated = MagicMock()
+    source.get_sql_statement = MagicMock(side_effect=source.get_sql_statement)
     rows = iter(
         [
             [{"query_text": "select 1", "query_type": "SELECT", "start_time": source.start}],
@@ -340,6 +341,11 @@ def test_usage_source_scans_full_daily_windows_without_duplicate_rows():
 
     assert [query.query for batch in batches for query in batch.queries] == ["select 1", "select 2", "select 3"]
     assert connection.execute.call_count == 3
+    assert source.get_sql_statement.call_args_list == [
+        call(source.start, source.start + timedelta(days=1)),
+        call(source.start + timedelta(days=1), source.start + timedelta(days=2)),
+        call(source.start + timedelta(days=2), source.end),
+    ]
     source.warn_if_query_log_truncated.assert_has_calls([call(1, "usage")] * 3)
 
 

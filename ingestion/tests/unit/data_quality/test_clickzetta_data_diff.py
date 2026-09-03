@@ -62,7 +62,6 @@ def test_clickzetta_data_diff_applies_thread_local_query_sequences(monkeypatch):
     class ThreadLocalSequence:
         def apply_queries(self, callback):
             self.result = callback("SELECT 1")
-            return self.result
 
     import metadata.ingestion.source.database.clickzetta.data_diff.data_diff as module
 
@@ -71,7 +70,7 @@ def test_clickzetta_data_diff_applies_thread_local_query_sequences(monkeypatch):
     database._conn = Connection()
     sequence = ThreadLocalSequence()
 
-    assert database._query(sequence) == [(1,)]
+    assert database._query(sequence) == []
 
 
 def test_clickzetta_data_diff_describe_schema_normalizes_clickzetta_types():
@@ -216,3 +215,61 @@ def test_clickzetta_data_diff_accepts_standard_or_legacy_true_configuration(monk
     )
 
     assert database._conn is connection
+
+
+@pytest.mark.parametrize("unsafe_option", ["magic_token", "arbitrary_option"])
+def test_clickzetta_data_diff_rejects_unrecognized_uri_options_before_connect(monkeypatch, unsafe_option):
+    from clickzetta.connector.v0 import dbapi
+
+    called = False
+
+    def fail_if_called(**_):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(dbapi, "connect", fail_if_called)
+
+    with pytest.raises(ValueError, match=unsafe_option):
+        ClickzettaDatabase(
+            host="instance.service",
+            workspace="workspace",
+            virtualcluster="vcluster",
+            **{unsafe_option: "secret"},
+        )
+
+    assert called is False
+
+
+def test_clickzetta_data_diff_maps_exact_dbapi_connection_kwargs(monkeypatch):
+    from clickzetta.connector.v0 import dbapi
+
+    connection = object()
+    captured = {}
+
+    def record_connect(**kwargs):
+        captured.update(kwargs)
+        return connection
+
+    monkeypatch.setattr(dbapi, "connect", record_connect)
+
+    database = ClickzettaDatabase(
+        host="instance.service:8443",
+        workspace="workspace",
+        virtualcluster="vcluster",
+        user="user",
+        password="password",
+        schema="schema",
+        protocol="http",
+    )
+
+    assert database._conn is connection
+    assert captured == {
+        "username": "user",
+        "password": "password",
+        "instance": "instance",
+        "workspace": "workspace",
+        "vcluster": "vcluster",
+        "service": "service:8443",
+        "schema": "schema",
+        "protocol": "http",
+    }

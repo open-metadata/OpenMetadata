@@ -162,6 +162,10 @@ class ClickzettaDatabase(Database):
 
         host_parts = host.split(".", 1)
         instance = extra.pop("instance", None) or (host_parts[0] if len(host_parts) == 2 else None)
+        if extra:
+            raise ValueError(
+                f"Unsupported ClickZetta data-diff connection options: {', '.join(sorted(extra))}"
+            )
         service = host_parts[1] if len(host_parts) == 2 else host_parts[0]
         if port:
             service = f"{service}:{port}"
@@ -179,13 +183,13 @@ class ClickzettaDatabase(Database):
             service=service,
             schema=self.default_schema,
             protocol=protocol,
-            **extra,
         )
 
     def _query(self, sql_code: str | ThreadLocalInterpreter) -> list:
         cursor = self._conn.cursor()
         if isinstance(sql_code, ThreadLocalInterpreter):
-            return sql_code.apply_queries(partial(query_cursor, cursor))
+            sql_code.apply_queries(partial(query_cursor, cursor))
+            return []
         cursor.execute(sql_code)
         if sql_code.lstrip().lower().startswith(("select", "show", "describe", "explain")):
             return cursor.fetchall()
