@@ -93,7 +93,10 @@ const runCSVPollAttempt = async (
   jobId: string,
   getPolledJob: () => Promise<CsvAsyncJob>,
   applyPolledJob: (job: CsvAsyncJob) => boolean,
-  isPollingStale: (pollingState: CSVExportPollingState, jobId: string) => boolean
+  isPollingStale: (
+    pollingState: CSVExportPollingState,
+    jobId: string
+  ) => boolean
 ): Promise<CSVPollAttemptOutcome> => {
   try {
     const job = await getPolledJob();

@@ -156,9 +156,7 @@ const resolveODCSSchemaObjects = async (
       selectedObjectName = objects[0];
     } else if (objects.length > 1) {
       const matchingObject = entityName
-        ? objects.find(
-            (obj) => obj.toLowerCase() === entityName.toLowerCase()
-          )
+        ? objects.find((obj) => obj.toLowerCase() === entityName.toLowerCase())
         : undefined;
       selectedObjectName = matchingObject ?? '';
     }
