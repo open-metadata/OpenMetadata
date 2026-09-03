@@ -1066,7 +1066,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private record PodSummary(
       String name, Map<String, String> labels, OffsetDateTime creationTimestamp) {}
   @VisibleForTesting
-  private List<PodSummary> parsePodSummaries(String rawJson) throws IOException {
+  List<PodSummary> parsePodSummaries(String rawJson) throws IOException {
     JsonNode items = POD_SUMMARY_MAPPER.readTree(rawJson).path("items");
     List<PodSummary> summaries = new ArrayList<>();
     for (JsonNode item : items) {
@@ -1082,13 +1082,20 @@ public class K8sPipelineClient extends PipelineServiceClient {
           .fields()
           .forEachRemaining(e -> labels.put(e.getKey(), e.getValue().asText()));
       String createdStr = metadata.path("creationTimestamp").asText(null);
-      OffsetDateTime created = createdStr != null ? OffsetDateTime.parse(createdStr) : null;
+      OffsetDateTime created = null;
+      if (createdStr != null) {
+          try {
+              created = OffsetDateTime.parse(createdStr);
+          } catch (DateTimeParseException e) {
+              LOG.warn("Unable to parse pod creation timestamp: {}", createdStr, e);
+          }
+      }
       summaries.add(new PodSummary(name, labels, created));
     }
     return summaries;
   }
   @VisibleForTesting
-  private PodSummary selectLatestPod(List<PodSummary> pods) {
+  PodSummary selectLatestPod(List<PodSummary> pods) {
     // Early return if pod list is null or empty - avoid unnecessary stream processing
     if (pods == null || pods.isEmpty()) {
       LOG.debug("No pods available for selection");
@@ -1149,15 +1156,20 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private String fetchPodMetadataRaw(
       String selectorParam, String selectorValue, String acceptHeader) throws IOException {
     ApiClient apiClient = coreApi.getApiClient();
-    HttpUrl url =
-        HttpUrl.parse(
-                apiClient.getBasePath()
-                    + "/api/v1/namespaces/"
-                    + k8sConfig.getNamespace()
-                    + "/pods")
-            .newBuilder()
-            .addQueryParameter(selectorParam, selectorValue)
-            .build();
+    HttpUrl baseUrl = HttpUrl.parse(
+        apiClient.getBasePath()
+            + "/api/v1/namespaces/"
+            + k8sConfig.getNamespace()
+            + "/pods");
+
+    if (baseUrl == null) {
+        throw new IOException(
+            "Invalid Kubernetes API base URL: " + apiClient.getBasePath());
+    }
+
+    HttpUrl url = baseUrl.newBuilder()
+        .addQueryParameter(selectorParam, selectorValue)
+        .build();
 
     Request request = new Request.Builder().url(url).get().header("Accept", acceptHeader).build();
 
@@ -1245,14 +1257,13 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
   @VisibleForTesting
-  private String selectContainerName(JsonNode pod) {
+  String selectContainerName(JsonNode pod) {
     JsonNode spec = pod.get("spec");
+    JsonNode containers = spec.get("containers");
 
-    if (spec == null || spec.get("containers") == null) {
+    if (spec == null || containers == null) {
       return CONTAINER_INGESTION;
     }
-
-    JsonNode containers = spec.get("containers");
 
     for (JsonNode container : containers) {
       if (CONTAINER_MAIN.equals(container.path("name").asText())) {
