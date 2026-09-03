@@ -159,6 +159,15 @@ CONFLUENT_TELEMETRY_WINDOW_HOURS = 24
 
 CONFLUENT_TELEMETRY_TIMEOUT_SECONDS = 60
 
+# The documented maximum number of groups per response. Higher values are currently
+# tolerated by the service but are out of spec, and the response is paginated regardless,
+# so there is nothing to gain by asking for more than the contract allows.
+CONFLUENT_TELEMETRY_PAGE_LIMIT = 1000
+
+# A cluster busy enough to need more pages than this is not one we can usefully enumerate,
+# and an unbounded follow-the-cursor loop would hang ingestion on a malformed response.
+CONFLUENT_TELEMETRY_MAX_PAGES = 50
+
 # A managed connector's producer client is named connector-producer-<connector-id>-<task>.
 # The convention is not documented, so it is matched rather than constructed, and a client
 # id that does not match yields no attribution instead of a guess.
@@ -296,6 +305,9 @@ class KafkaConnectClient:
         self._topics_endpoint_supported = None
 
         self._host_port = url
+        # The telemetry call goes through requests directly rather than the Connect client,
+        # so it has to honour this itself.
+        self._verify_ssl = ssl_verify
         # Both telemetry lookups describe the whole cluster, not one connector, so they are
         # resolved once and reused. Each is a single snapshot replaced wholesale rather
         # than a cache accumulating an entry per item, and each is reduced to the
@@ -345,7 +357,7 @@ class KafkaConnectClient:
                     result[name] = connector_id
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Unable to list Confluent connector ids: {exc}")
+            logger.debug("Unable to list Confluent connector ids: %s", exc)
 
         self._connector_ids = result
         return result
@@ -369,22 +381,42 @@ class KafkaConnectClient:
             "granularity": "ALL",
             "group_by": ["metric.topic", "metric.client_id"],
             "intervals": [interval],
-            "limit": 50000,
+            "limit": CONFLUENT_TELEMETRY_PAGE_LIMIT,
         }
-        response = requests.post(
-            CONFLUENT_TELEMETRY_URL,
-            json=payload,
-            auth=self._telemetry_auth,
-            timeout=CONFLUENT_TELEMETRY_TIMEOUT_SECONDS,
-        )
-        response.raise_for_status()
 
         by_client: dict[str, set] = {}
-        for row in (response.json() or {}).get("data") or []:
-            client_id = row.get("metric.client_id")
-            topic = row.get("metric.topic")
-            if client_id and topic:
-                by_client.setdefault(client_id, set()).add(topic)
+        page_token = None
+        for _ in range(CONFLUENT_TELEMETRY_MAX_PAGES):
+            response = requests.post(
+                CONFLUENT_TELEMETRY_URL,
+                json=payload,
+                params={"page_token": page_token} if page_token else None,
+                auth=self._telemetry_auth,
+                timeout=CONFLUENT_TELEMETRY_TIMEOUT_SECONDS,
+                verify=self._verify_ssl,
+            )
+            response.raise_for_status()
+            body = response.json() or {}
+
+            for row in body.get("data") or []:
+                client_id = row.get("metric.client_id")
+                topic = row.get("metric.topic")
+                if client_id and topic:
+                    by_client.setdefault(client_id, set()).add(topic)
+
+            # A cluster with more producer/topic pairs than fit in one page returns a
+            # cursor. Stopping at the first page would drop topics silently, and a
+            # connector resolving a partial set looks indistinguishable from a complete one.
+            page_token = ((body.get("meta") or {}).get("pagination") or {}).get("next_page_token")
+            if not page_token:
+                break
+        else:
+            logger.warning(
+                "Stopped reading Confluent telemetry after %s pages for cluster %s, topic resolution may be incomplete",
+                CONFLUENT_TELEMETRY_MAX_PAGES,
+                cluster_id,
+            )
+
         return by_client
 
     def _telemetry_topics_for_connector_ids(self, cluster_id: str) -> dict[str, set]:
@@ -400,10 +432,17 @@ class KafkaConnectClient:
             return self._telemetry_topics_by_connector_id
 
         by_connector: dict[str, set] = {}
-        for client_id, client_topics in self._query_dataflow_topics_by_client(cluster_id).items():
-            match = CONFLUENT_PRODUCER_CLIENT_PATTERN.match(client_id)
-            if match:
-                by_connector.setdefault(match.group("connector_id"), set()).update(client_topics)
+        try:
+            for client_id, client_topics in self._query_dataflow_topics_by_client(cluster_id).items():
+                match = CONFLUENT_PRODUCER_CLIENT_PATTERN.match(client_id)
+                if match:
+                    by_connector.setdefault(match.group("connector_id"), set()).update(client_topics)
+        except Exception as exc:
+            # Recorded as empty rather than left unset, so one failure does not become one
+            # failed call per connector. The API is rate limited per hour, and a large
+            # estate would spend that budget retrying a call that already failed.
+            logger.warning("Confluent telemetry unavailable for cluster %s, topics not enriched: %s", cluster_id, exc)
+            logger.debug(traceback.format_exc())
 
         self._telemetry_topics_by_connector_id = by_connector
         return by_connector
@@ -432,7 +471,7 @@ class KafkaConnectClient:
         try:
             connector_id = self._connector_id_by_name().get(connector)
             if not connector_id:
-                logger.debug(f"No Confluent connector id for '{connector}', skipping telemetry lookup")
+                logger.debug("No Confluent connector id for '%s', skipping telemetry lookup", connector)
                 return None
 
             topics = set(self._telemetry_topics_for_connector_ids(cluster_id).get(connector_id) or ())
@@ -440,13 +479,13 @@ class KafkaConnectClient:
             topics -= confluent_managed_internal_topic_names(connector_config, connector_id)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Confluent telemetry lookup failed for '{connector}': {exc}")
+            logger.debug("Confluent telemetry lookup failed for '%s': %s", connector, exc)
             return None
 
         if not topics:
             return None
 
-        logger.info(f"Resolved {len(topics)} topic(s) for '{connector}' from Confluent telemetry")
+        logger.info("Resolved %s topic(s) for '%s' from Confluent telemetry", len(topics), connector)
         return [KafkaConnectTopics(name=topic) for topic in sorted(topics)]
 
     def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> list[KafkaConnectTopics] | None:

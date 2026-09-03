@@ -2710,3 +2710,86 @@ class TestConfluentTelemetryTopics:
         assert [t.name for t in second] == ["prod.events.b_v1"]
         assert query.call_count == 1, "the telemetry query is cluster wide, so once per run"
         assert client.client.list_connectors.call_count == 1, "the connector list is cluster wide too"
+
+    @staticmethod
+    def _page(rows, next_token=None):
+        """A telemetry response page, shaped as the API returns it."""
+        page = MagicMock()
+        page.raise_for_status = MagicMock()
+        page.json = MagicMock(
+            return_value={
+                "data": rows,
+                "meta": {"pagination": {"next_page_token": next_token}} if next_token else {},
+            }
+        )
+        return page
+
+    def test_every_page_is_followed(self):
+        """
+        The API caps a query at 1000 groups and returns a cursor for the rest. Reading only
+        the first page would drop topics on a busy cluster, and a connector resolving a
+        partial topic set looks perfectly valid, which is worse than resolving nothing.
+        """
+        client = self._cloud_client()
+        pages = [
+            self._page(
+                [{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "a_v1"}],
+                next_token="TOKEN",
+            ),
+            self._page([{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "b_v1"}]),
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            side_effect=pages,
+        ) as post:
+            by_client = client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert by_client == {"connector-producer-lcc-aaa111-0": {"a_v1", "b_v1"}}
+        assert post.call_count == 2
+        assert post.call_args_list[1].kwargs["params"] == {"page_token": "TOKEN"}
+
+    def test_query_stays_within_the_documented_limit(self):
+        """The API documents a maximum of 1000 groups. Above it we rely on leniency."""
+        client = self._cloud_client()
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page([]),
+        ) as post:
+            client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert post.call_args.kwargs["json"]["limit"] <= 1000
+
+    def test_verify_ssl_is_honoured(self):
+        """A user disabling certificate verification for Connect means it for telemetry too."""
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-abc/clusters/lkc-xyz"
+        config.verifySSL = False
+        auth = MagicMock()
+        auth.username = "K"
+        auth.password.get_secret_value.return_value = "S"
+        config.KafkaConnectConfig = auth
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            client = KafkaConnectClient(config)
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page([]),
+        ) as post:
+            client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert post.call_args.kwargs["verify"] is False
+
+    def test_a_failed_query_is_not_retried_for_every_connector(self):
+        """
+        One outage must not become one failed call per connector. The API is rate limited
+        per hour, and an estate of thirty six connectors would spend that budget retrying
+        a call that already failed.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-a": "lcc-aaa111", "outbox-b": "lcc-bbb222"})
+        query = MagicMock(side_effect=Exception("telemetry down"))
+        client._query_dataflow_topics_by_client = query
+
+        assert client._list_topics_from_telemetry("outbox-a", connector_config={}) is None
+        assert client._list_topics_from_telemetry("outbox-b", connector_config={}) is None
+        assert query.call_count == 1, "a failed cluster-wide query must not be retried per connector"
