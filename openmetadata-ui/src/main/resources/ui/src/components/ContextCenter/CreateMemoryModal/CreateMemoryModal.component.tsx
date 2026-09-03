@@ -999,6 +999,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                   label={tag.tagFQN ?? ''}
                                   maxWidth={160}
                                   size="sm"
+                                  tooltip={tag.tagFQN ?? ''}
                                   onDelete={
                                     isViewOnly
                                       ? undefined

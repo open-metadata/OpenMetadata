@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from './AsyncSelectList.interface';
 import TreeAsyncSelectList from './TreeAsyncSelectList';
 
@@ -37,7 +36,6 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
 describe('TreeAsyncSelectList', () => {
   const onChange = jest.fn();
   const initialOptions: SelectOption[] = [];
-  const tagType = TagSource.Glossary;
   const isSubmitLoading = false;
   const onCancel = jest.fn();
 
@@ -46,7 +44,6 @@ describe('TreeAsyncSelectList', () => {
       <TreeAsyncSelectList
         initialOptions={initialOptions}
         isSubmitLoading={isSubmitLoading}
-        tagType={tagType}
         onCancel={onCancel}
         onChange={onChange}
       />

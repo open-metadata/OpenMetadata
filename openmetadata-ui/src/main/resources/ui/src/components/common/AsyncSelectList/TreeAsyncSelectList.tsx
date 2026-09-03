@@ -11,28 +11,28 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import {
-    Button,
-    Empty,
-    Form,
-    Space,
-    TreeSelect,
-    TreeSelectProps
+  Button,
+  Empty,
+  Form,
+  Space,
+  TreeSelect,
+  TreeSelectProps
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import {
-    FC,
-    Key,
-    ReactElement,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  Key,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
@@ -42,20 +42,20 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import {
-    getGlossariesList,
-    ListGlossaryTermsParams,
-    queryGlossaryTerms,
-    searchGlossaryTerms
+  getGlossariesList,
+  ListGlossaryTermsParams,
+  queryGlossaryTerms,
+  searchGlossaryTerms
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    filterTreeNodeOptions,
-    findItemByFqn
+  filterTreeNodeOptions,
+  findItemByFqn
 } from '../../../utils/GlossaryPureUtils';
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
-    escapeESReservedCharacters,
-    getEncodedFqn
+  escapeESReservedCharacters,
+  getEncodedFqn
 } from '../../../utils/StringUtils';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { tagRender } from '../../../utils/TagsUtils';
@@ -67,8 +67,8 @@ import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
-    AsyncSelectListProps,
-    SelectOption
+  AsyncSelectListProps,
+  SelectOption
 } from './AsyncSelectList.interface';
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
@@ -96,7 +96,6 @@ interface ExtendedTreeNode {
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
   initialOptions,
-  tagType,
   isSubmitLoading,
   filterOptions = [],
   onCancel,
@@ -258,11 +257,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
     const chip = (
-      <span
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}>
         <TagComponent
           color={tag.style?.color}
           data-testid={`selected-tag-${tagLabel}`}
@@ -278,11 +272,10 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
                 }
           }
         />
-      </span>
     );
 
     return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}>{chip}</Tooltip>
+      <Tooltip title={t('message.derived-tag-warning')}><TooltipTrigger>{chip}</TooltipTrigger></Tooltip>
     ) : (
       chip
     );
