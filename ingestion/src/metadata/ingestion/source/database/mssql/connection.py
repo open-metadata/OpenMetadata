@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
 def _mssql_number(error: BaseException) -> int | None:
@@ -151,9 +152,15 @@ class MssqlChecks:
         }
     )
 
-    def __init__(self, db: Borrowed[Engine], get_databases_statement: str) -> None:
+    def __init__(
+        self,
+        db: Borrowed[Engine],
+        get_databases_statement: str,
+        schema_filter_pattern: FilterPattern | None = None,
+    ) -> None:
         self._db = db
         self.get_databases_statement = get_databases_statement
+        self.schema_filter = schema_filter_pattern
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -173,11 +180,11 @@ class MssqlChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS, self.schema_filter)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS, self.schema_filter)
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
@@ -209,4 +216,5 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
         return MssqlChecks(
             db=self.borrow(),
             get_databases_statement=self._get_databases_statement(),
+            schema_filter_pattern=self.service_connection.schemaFilterPattern,
         )
