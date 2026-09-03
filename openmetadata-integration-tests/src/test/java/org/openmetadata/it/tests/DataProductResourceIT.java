@@ -232,7 +232,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
-  void put_deleteFollowerForSelf_200(TestNamespace ns) {
+  void delete_followerForSelf_200(TestNamespace ns) {
     DataProduct dataProduct = createEntity(createMinimalRequest(ns));
     OpenMetadataClient client = SdkClients.user2Client();
     UUID userId = testUser2().getId();
@@ -245,7 +245,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
-  void put_deleteFollowerForAnotherUserAsAdmin_200(TestNamespace ns) {
+  void delete_followerForAnotherUserAsAdmin_200(TestNamespace ns) {
     DataProduct dataProduct = createEntity(createMinimalRequest(ns));
     OpenMetadataClient client = SdkClients.adminClient();
     UUID userId = testUser3().getId();
