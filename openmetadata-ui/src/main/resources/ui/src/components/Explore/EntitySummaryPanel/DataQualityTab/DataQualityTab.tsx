@@ -63,6 +63,8 @@ import {
 } from './DataQualityTab.interface';
 import './DataQualityTab.less';
 
+const DATA_QUALITY_TAB_KEY = 'data-quality';
+
 const DetailItem: React.FC<DetailItemProps> = ({
   label,
   value,
@@ -269,7 +271,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     total: 0,
   });
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
-  const [activeTab, setActiveTab] = useState<string>('data-quality');
+  const [activeTab, setActiveTab] = useState<string>(DATA_QUALITY_TAB_KEY);
   const [searchText, setSearchText] = useState<string>('');
 
   // Incident-related state
@@ -820,16 +822,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   // Tab items configuration
   const tabItems = [
     {
-      key: 'data-quality',
+      key: DATA_QUALITY_TAB_KEY,
       label: (
         <span
           className={`tab-header-container ${
-            activeTab === 'data-quality' ? 'active' : ''
+            activeTab === DATA_QUALITY_TAB_KEY ? 'active' : ''
           }`}>
           {t('label.data-quality')}
           <span
             className={`data-quality-tab-count ${
-              activeTab === 'data-quality' ? 'active' : ''
+              activeTab === DATA_QUALITY_TAB_KEY ? 'active' : ''
             }`}>
             {statusCounts.total}
           </span>

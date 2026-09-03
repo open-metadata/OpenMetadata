@@ -19,6 +19,12 @@ import {
   getServerUrl,
 } from '../utils/SSOURLUtils';
 
+const OIDC_CALLBACK_URL_TITLE = 'OIDC Callback URL';
+const AUTHORITY_URL_PLACEHOLDER = 'e.g. https://accounts.google.com';
+const ENABLE_SELF_SIGNUP_TITLE = 'Enable Self Signup';
+const AUTO_GENERATED_CALLBACK_URL_HELP =
+  'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.';
+
 export const MAX_XML_SIZE = 1 * 1024 * 1024;
 
 // Default callback URL for SSO configuration
@@ -103,7 +109,7 @@ export const COMMON_UI_FIELDS = {
       'e.g. https://accounts.google.com/.well-known/openid_configuration',
   },
   oidcCallbackUrl: {
-    'ui:title': 'OIDC Callback URL',
+    'ui:title': OIDC_CALLBACK_URL_TITLE,
     'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
   },
   oidcServerUrl: {
@@ -133,7 +139,7 @@ export const COMMON_UI_FIELDS = {
   // Common non-OIDC fields
   authority: {
     'ui:title': 'Authority',
-    'ui:placeholder': 'e.g. https://accounts.google.com',
+    'ui:placeholder': AUTHORITY_URL_PLACEHOLDER,
   },
   callbackUrl: {
     'ui:title': 'Callback URL',
@@ -277,7 +283,7 @@ export const LDAP_UI_SCHEMA = {
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide universal settings managed in overview tab
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   // Hide clientType for LDAP as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide jwtPrincipalClaims for LDAP - default value auto-filled to prevent lockouts
@@ -362,7 +368,7 @@ export const SAML_UI_SCHEMA = {
   jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide jwtTeamClaimMapping for SAML - not used in SAML flow
   jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide root level authority and callbackUrl for SAML - will be managed via IDP/SP sections
@@ -393,10 +399,9 @@ export const OIDC_UI_SCHEMA = {
     tenant: COMMON_UI_FIELDS.oidcTenant,
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
+      'ui:title': OIDC_CALLBACK_URL_TITLE,
       'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+      'ui:help': AUTO_GENERATED_CALLBACK_URL_HELP,
     },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
@@ -432,17 +437,16 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
+      'ui:title': OIDC_CALLBACK_URL_TITLE,
       'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+      'ui:help': AUTO_GENERATED_CALLBACK_URL_HELP,
     },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -469,17 +473,16 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     tenant: COMMON_UI_FIELDS.oidcTenant,
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
+      'ui:title': OIDC_CALLBACK_URL_TITLE,
       'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+      'ui:help': AUTO_GENERATED_CALLBACK_URL_HELP,
     },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -506,17 +509,16 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
+      'ui:title': OIDC_CALLBACK_URL_TITLE,
       'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+      'ui:help': AUTO_GENERATED_CALLBACK_URL_HELP,
     },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -549,10 +551,9 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
     callbackUrl: {
-      'ui:title': 'OIDC Callback URL',
+      'ui:title': OIDC_CALLBACK_URL_TITLE,
       'ui:readonly': true,
-      'ui:help':
-        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+      'ui:help': AUTO_GENERATED_CALLBACK_URL_HELP,
     },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
@@ -568,7 +569,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
 };
 
 // Common field titles
@@ -583,7 +584,7 @@ export const COMMON_FIELD_TITLES = {
   },
   authority: {
     'ui:title': 'Authority',
-    'ui:placeholder': 'e.g. https://accounts.google.com',
+    'ui:placeholder': AUTHORITY_URL_PLACEHOLDER,
   },
   clientId: COMMON_UI_FIELDS.clientId,
   callbackUrl: COMMON_UI_FIELDS.callbackUrl,
@@ -603,7 +604,7 @@ export const COMMON_FIELD_TITLES = {
     'ui:placeholder':
       'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
   },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
     'ui:title': 'Client Type',
@@ -631,7 +632,7 @@ export const AUTHORIZER_FIELD_TITLES = {
   },
   principalDomain: {
     'ui:title': 'Principal Domain',
-    'ui:placeholder': 'e.g. https://accounts.google.com',
+    'ui:placeholder': AUTHORITY_URL_PLACEHOLDER,
   },
   enforcePrincipalDomain: { 'ui:title': 'Enforce Principal Domain' },
   enableSecureSocketConnection: {
@@ -786,7 +787,7 @@ export const getSSOUISchema = (
   // For existing SSO configurations, hide it (managed in overview tab)
   const enableSelfSignupSchema = hasExistingConfig
     ? { 'ui:widget': 'hidden', 'ui:hideError': true }
-    : { 'ui:title': 'Enable Self Signup' };
+    : { 'ui:title': ENABLE_SELF_SIGNUP_TITLE };
 
   const commonSchema = {
     authenticationConfiguration: {
