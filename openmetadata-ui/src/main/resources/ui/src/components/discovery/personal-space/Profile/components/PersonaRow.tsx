@@ -92,8 +92,15 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
       .catch((err) => showErrorToast(err as AxiosError));
   }, []);
 
-  // Stable so InlineEditCard's onEnterEdit effect fires the initial fetch once.
-  const handleEnterEdit = useCallback(() => fetchPersonas(''), [fetchPersonas]);
+  // `draftPersonaIds` is seeded once at mount, and ProfilePage mounts this row
+  // against the store's `currentUser` — which carries no personas until the
+  // getUserByName backfill lands. Re-seeding the draft here means the editor
+  // always opens from what the row is currently displaying, so a save can never
+  // write back a set captured before a refresh.
+  const handleEnterEdit = useCallback(() => {
+    setDraftPersonaIds(initialPersonaIds);
+    fetchPersonas('');
+  }, [fetchPersonas, initialPersonaIds]);
 
   const searchPersonasDebounced = useMemo(
     () => debounce((query: string) => fetchPersonas(query), 300),

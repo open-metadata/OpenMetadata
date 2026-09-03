@@ -16,7 +16,6 @@ Extracts header metadata (small data) with streaming where possible.
 
 import tempfile
 from functools import singledispatchmethod
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -47,7 +46,7 @@ class MF4DataFrameReader(DataFrameReader):
     """
 
     @staticmethod
-    def _extract_header_from_mdf(mdf) -> Optional[DatalakeColumnWrapper]:  # noqa: UP045
+    def _extract_header_from_mdf(mdf) -> DatalakeColumnWrapper | None:
         """Extract header properties from an opened MDF object."""
         import pandas as pd
 

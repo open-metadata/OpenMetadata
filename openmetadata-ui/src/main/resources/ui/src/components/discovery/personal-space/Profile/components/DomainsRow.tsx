@@ -153,7 +153,10 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
         />
       }
       onCancel={() => setDraftIds(initialIds)}
-      onEnterEdit={() => fetchDomains('')}
+      onEnterEdit={() => {
+        setDraftIds(initialIds);
+        fetchDomains('');
+      }}
       onSave={handleSave}
     />
   );

@@ -159,7 +159,10 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
         />
       }
       onCancel={() => setDraftTeamIds(initialTeamIds)}
-      onEnterEdit={loadTeams}
+      onEnterEdit={() => {
+        setDraftTeamIds(initialTeamIds);
+        loadTeams();
+      }}
       onSave={handleSave}
     />
   );

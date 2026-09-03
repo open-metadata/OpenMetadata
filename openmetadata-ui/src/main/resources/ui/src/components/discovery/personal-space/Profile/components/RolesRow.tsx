@@ -170,7 +170,10 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
         />
       }
       onCancel={() => setDraftRoleIds(initialRoleIds)}
-      onEnterEdit={() => fetchRoles('')}
+      onEnterEdit={() => {
+        setDraftRoleIds(initialRoleIds);
+        fetchRoles('');
+      }}
       onSave={handleSave}
     />
   );
