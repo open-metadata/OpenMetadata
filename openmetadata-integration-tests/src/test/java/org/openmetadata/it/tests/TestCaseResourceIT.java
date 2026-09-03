@@ -3053,7 +3053,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withTestCaseReference(testCase.getFullyQualifiedName())
                 .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
                 .withTestCaseResolutionStatusDetails(
-                    new org.openmetadata.schema.tests.type.Resolved()));
+                    new org.openmetadata.schema.tests.type.Resolved()
+                        .withTestCaseFailureComment("Resolved by integration test")));
 
     // A resolve carries no test result, so only the targeted search update can clear the pointer.
     Awaitility.await("search/list incidentId cleared after resolve")
@@ -3279,7 +3280,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .withTestCaseReference(testCase.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(
                 org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved)
-            .withTestCaseResolutionStatusDetails(new org.openmetadata.schema.tests.type.Resolved());
+            .withTestCaseResolutionStatusDetails(
+                new org.openmetadata.schema.tests.type.Resolved()
+                    .withTestCaseFailureComment("Resolved by integration test"));
     client.testCaseResolutionStatuses().create(resolvedStatus);
 
     Awaitility.await()
@@ -3432,7 +3435,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withTestCaseReference(testCase.getFullyQualifiedName())
                 .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
                 .withTestCaseResolutionStatusDetails(
-                    new org.openmetadata.schema.tests.type.Resolved()));
+                    new org.openmetadata.schema.tests.type.Resolved()
+                        .withTestCaseFailureComment("Resolved by integration test")));
 
     Awaitility.await("Resolved clears the ongoing incident pointer")
         .atMost(90, TimeUnit.SECONDS)
