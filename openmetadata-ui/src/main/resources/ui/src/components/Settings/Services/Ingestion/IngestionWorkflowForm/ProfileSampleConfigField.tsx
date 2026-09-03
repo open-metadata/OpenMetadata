@@ -221,6 +221,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
           <Form.Item className="m-t-md" colon={false}>
             <div className="flex items-center gap-2">
               <Switch
+                aria-label={t('label.smart-sampling')}
                 checked={config.smartSampling ?? true}
                 data-testid="smart-sampling-toggle"
                 onChange={(checked) =>
@@ -230,6 +231,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
                   })
                 }
               />
+              {/* eslint-disable-next-line jsx-a11y/label-has-for -- Switch above has its own aria-label */}
               <label>{t('label.smart-sampling')}</label>
               <Typography className="tw:text-tertiary" size="text-sm">
                 ({t('message.smart-sampling-hint')})
@@ -245,6 +247,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
                 {t('label.threshold-plural')}
               </Typography>
               {(config.thresholds ?? []).map((threshold, index) => (
+                // eslint-disable-next-line react/no-array-index-key -- index-addressed form array, no stable id
                 <Card className="m-b-sm" key={index} size="sm">
                   <Card.Header
                     extra={

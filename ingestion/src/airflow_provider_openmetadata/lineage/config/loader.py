@@ -15,7 +15,6 @@ OpenMetadata Airflow Lineage Backend
 
 import json
 import os
-from typing import List, Optional  # noqa: UP035
 
 from airflow.configuration import AirflowConfigParser
 from pydantic import BaseModel
@@ -35,10 +34,10 @@ class AirflowLineageConfig(BaseModel):
     metadata_config: OpenMetadataConnection
     only_keep_dag_lineage: bool = False
     max_status: int = 10
-    timeout: Optional[int] = None  # noqa: UP045
-    retry: Optional[int] = None  # noqa: UP045
-    retry_wait: Optional[int] = None  # noqa: UP045
-    retry_codes: Optional[List[int]] = None  # noqa: UP006, UP045
+    timeout: int | None = None
+    retry: int | None = None
+    retry_wait: int | None = None
+    retry_codes: list[int] | None = None
 
 
 def parse_airflow_config(airflow_service_name: str, conf: AirflowConfigParser) -> AirflowLineageConfig:

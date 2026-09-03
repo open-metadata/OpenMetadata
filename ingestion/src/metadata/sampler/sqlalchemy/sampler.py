@@ -14,7 +14,7 @@ for the profiler
 """
 
 import hashlib
-from typing import List, Optional, Union, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
@@ -32,11 +32,11 @@ from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.constants import ROW_COUNT
 from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.functions.table_metric_computer import (
-    ROW_COUNT,
     table_metric_computer_factory,
 )
 from metadata.profiler.processor.handle_partition import build_partition_predicate
@@ -269,7 +269,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:  # noqa: UP007
+    def get_dataset(self, column=None, **__) -> type | AliasedClass:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -295,7 +295,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         return self.get_sample_query(static, column=column)  # type: ignore
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 

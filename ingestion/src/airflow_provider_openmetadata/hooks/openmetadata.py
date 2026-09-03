@@ -14,7 +14,7 @@ an OpenMetadata server and use it for your
 operators.
 """
 
-from typing import Any, Dict  # noqa: UP035
+from typing import Any
 
 from airflow.hooks.base import BaseHook
 from airflow.models import Connection
@@ -115,7 +115,7 @@ class OpenMetadataHook(BaseHook):
             return False, str(err)
 
     @staticmethod
-    def get_ui_field_behaviour() -> Dict[str, Any]:  # noqa: UP006
+    def get_ui_field_behaviour() -> dict[str, Any]:
         """Returns custom field behaviour"""
         return {
             "hidden_fields": ["login"],

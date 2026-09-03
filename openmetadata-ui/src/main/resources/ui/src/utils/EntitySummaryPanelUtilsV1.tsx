@@ -65,6 +65,8 @@ import { t } from './i18next/LocalUtil';
 import { pruneEmptyChildren } from './TablePureUtils';
 import { showErrorToast } from './ToastUtils';
 
+const REQUEST_SCHEMA = 'request-schema' as const;
+
 const { Text } = AntTypography;
 
 // Recursive component to render nested columns
@@ -921,7 +923,7 @@ const APIEndpointSchemaV1: React.FC<{
 }> = ({ entityInfo, loading, searchText }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
-  >('request-schema');
+  >(REQUEST_SCHEMA);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const requestSchemaFields = entityInfo.requestSchema?.schemaFields || [];
@@ -930,7 +932,7 @@ const APIEndpointSchemaV1: React.FC<{
   const viewTypeOptions = [
     {
       label: t('label.request'),
-      value: 'request-schema',
+      value: REQUEST_SCHEMA,
     },
     {
       label: t('label.response'),
@@ -940,9 +942,7 @@ const APIEndpointSchemaV1: React.FC<{
 
   const activeSchemaFields = useMemo(() => {
     const fields =
-      viewType === 'request-schema'
-        ? requestSchemaFields
-        : responseSchemaFields;
+      viewType === REQUEST_SCHEMA ? requestSchemaFields : responseSchemaFields;
 
     if (!searchText) {
       return fields;
@@ -1015,7 +1015,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (name: string, record: Record<string, any>) => (
+      render: (name: string, record: Field) => (
         <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
           <span className="break-word">{record.displayName || name}</span>
         </div>
@@ -1026,7 +1026,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'dataType',
       key: 'dataType',
       width: 150,
-      render: (dataType: string, record: Record<string, any>) => (
+      render: (dataType: string, record: Field) => (
         <Typography as="span" className="tw:text-xs">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>

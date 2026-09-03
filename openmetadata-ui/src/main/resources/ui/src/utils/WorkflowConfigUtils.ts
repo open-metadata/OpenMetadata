@@ -12,11 +12,12 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
+import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
 
 export const getSelectedEntityTypes = (
   config: NodeConfig,
-  workflowDefinition: any
+  workflowDefinition: WorkflowDefinition
 ): EntityType | EntityType[] => {
   if (config.dataAssets && config.dataAssets.length > 0) {
     const entityTypes = config.dataAssets.filter(Boolean);

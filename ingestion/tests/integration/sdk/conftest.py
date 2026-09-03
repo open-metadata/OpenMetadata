@@ -3,13 +3,12 @@ Minimal conftest for SDK integration tests.
 Override the parent conftest to avoid testcontainers dependency.
 """
 
-import uuid  # noqa: I001
+import uuid
 
 import pytest
 from sqlalchemy import Column as SQAColumn
-from sqlalchemy import Integer, MetaData, String
+from sqlalchemy import Integer, MetaData, String, create_engine, text
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine, text
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from _openmetadata_testutils.postgres.conftest import postgres_container  # noqa: F401

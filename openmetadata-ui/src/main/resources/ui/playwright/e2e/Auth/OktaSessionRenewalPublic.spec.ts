@@ -12,6 +12,7 @@
  */
 import { BrowserContext, expect, Page, Request, test } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { redirectToHomePage } from '../../utils/common';
 import { decodeJwtExp, expireStoredToken } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import { swapSecurityConfig } from '../../utils/ssoAuth';
@@ -139,6 +140,11 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
     const page = userPage!;
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+
+    // Test 1 ends on the Explore page. Navigating home ensures the subsequent
+    // app-bar-item-explore click is always a real navigation that triggers an
+    // API call, a 401, and the renewal flow we are testing.
+    await redirectToHomePage(page);
 
     // renewToken reaches signInWithRedirect() both from the catch around
     // renewTokens() and from an early return when okta-auth-js holds no tokens.

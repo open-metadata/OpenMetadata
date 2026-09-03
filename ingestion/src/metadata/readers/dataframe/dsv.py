@@ -18,7 +18,7 @@ import functools
 import traceback
 from functools import singledispatchmethod
 from io import StringIO
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -50,7 +50,7 @@ class DSVDataFrameReader(DataFrameReader):
     from any source based on its init client.
     """
 
-    def _reformat_malformed_csv_data(self, chunk_list: List, parsed_columns: List, separator: str):  # noqa: UP006
+    def _reformat_malformed_csv_data(self, chunk_list: list, parsed_columns: list, separator: str):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
@@ -102,9 +102,9 @@ class DSVDataFrameReader(DataFrameReader):
     def __init__(
         self,
         config_source: ConfigSource,
-        client: Optional[Any],  # noqa: UP045
+        client: Any | None,
         separator: str = CSV_SEPARATOR,
-        session: Optional[Any] = None,  # noqa: UP045
+        session: Any | None = None,
     ):
         self.separator = separator
         super().__init__(config_source, client, session=session)
@@ -112,8 +112,8 @@ class DSVDataFrameReader(DataFrameReader):
     def read_from_pandas(
         self,
         path: str,
-        storage_options: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
-        compression: Optional[str] = None,  # noqa: UP045
+        storage_options: dict[str, Any] | None = None,
+        compression: str | None = None,
     ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
 

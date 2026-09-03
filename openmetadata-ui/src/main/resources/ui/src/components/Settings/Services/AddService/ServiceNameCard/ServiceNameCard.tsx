@@ -57,6 +57,7 @@ const ServiceNameCard = ({
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
 
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- primary input, focus on mount
         autoFocus
         isRequired
         hint={nameError ?? t('message.service-name-rule')}
@@ -73,6 +74,7 @@ const ServiceNameCard = ({
 
       {showDescription ? (
         <div className="tw:mt-4">
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-linked to rich-text editor */}
           <label
             className="tw:mb-2 tw:block tw:font-medium tw:text-secondary"
             htmlFor="service-description">

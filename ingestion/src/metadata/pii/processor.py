@@ -21,7 +21,8 @@ For migration, use TagProcessor instead:
 """
 
 import warnings
-from typing import Any, Sequence  # noqa: UP035
+from collections.abc import Sequence
+from typing import Any
 
 from metadata.pii.algorithms.presidio_patches import ResultCapturingPatcher
 from metadata.pii.algorithms.presidio_utils import explain_recognition_results

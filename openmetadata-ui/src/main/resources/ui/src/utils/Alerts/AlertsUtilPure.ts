@@ -123,6 +123,13 @@ export const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
     value,
   }));
 
+// Same shape as getSelectOptionsFromEnum, for values a resource declares at runtime
+export const getSelectOptionsFromValues = (values: string[]) =>
+  values.map((value) => ({
+    label: startCase(value),
+    value,
+  }));
+
 // Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
 // Since there is no provision for webhook subscription for users
 export const getSubscriptionTypeOptions = (destinationType: string) => {
@@ -217,17 +224,27 @@ export const getDestinationsWithTestStatus = <T extends Destination>(
   }));
 
 /**
- * @description Normalizes destination config for comparison by converting headers and queryParams to array format
+ * @description Normalizes API objects and form arrays to the same destination config shape for comparison.
  */
-export const normalizeDestinationConfig = (config?: Destination['config']) =>
-  omitBy(
+export const normalizeDestinationConfig = (
+  config?: Destination['config'] | ModifiedDestination['config']
+) => {
+  const headers = Array.isArray(config?.headers)
+    ? config.headers
+    : getConfigHeaderArrayFromObject(config?.headers);
+  const queryParams = Array.isArray(config?.queryParams)
+    ? config.queryParams
+    : getConfigQueryParamsArrayFromObject(config?.queryParams);
+
+  return omitBy(
     {
       ...config,
-      headers: getConfigHeaderArrayFromObject(config?.headers),
-      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
+      headers: isEmpty(headers) ? undefined : headers,
+      queryParams: isEmpty(queryParams) ? undefined : queryParams,
     },
     isUndefined
   );
+};
 
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
@@ -262,9 +279,8 @@ export const getFormattedDestinations = (
 
 // Destination category exclusions by entity type
 const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Default: exclude Assignees and Mentions for all non-thread entities
+  // Most entity events have neither participants nor mention recipients.
   __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  // Thread-specific exclusions
   task: [
     SubscriptionCategory.Followers,
     SubscriptionCategory.Admins,

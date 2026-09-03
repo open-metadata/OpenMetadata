@@ -21,6 +21,7 @@ import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
+  suppressWelcomeScreen,
   uuid,
 } from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
@@ -257,8 +258,22 @@ export class UserClass {
   async login(
     page: Page,
     userName = this.data.email,
-    password = this.data.password
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
   ) {
+    const { suppressWelcomeScreen: shouldSuppressWelcomeScreen = true } =
+      options;
+
+    // Seed `loggedInUsers` before the first navigation so the landing-page
+    // welcome banner never renders for this session. Prefer the authoritative
+    // entity name from create(); fall back to the login email's local-part
+    // (the server-assigned username) for a pure login such as admin. Tests that
+    // exercise the welcome banner itself (e.g. Tour) opt out with
+    // `suppressWelcomeScreen: false`.
+    if (shouldSuppressWelcomeScreen) {
+      await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
+    }
+
     await page.goto('/signin');
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });

@@ -470,7 +470,8 @@ const ContextCenterMemoriesPage: FC = () => {
           return prev;
         });
       });
-  }, [isViewModalOpen, searchParams, handleViewMemory, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, handleViewMemory, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -753,6 +754,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   <Dropdown.Popover>
                     <div className="tw:p-2 tw:border-b tw:border-secondary">
                       <Input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                         autoFocus
                         className="tw:w-full"
                         icon={SearchLg}
