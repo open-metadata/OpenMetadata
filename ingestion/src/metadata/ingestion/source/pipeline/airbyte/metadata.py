@@ -92,6 +92,12 @@ class AirbyteSource(PipelineServiceSource):
     def __init__(self, config, metadata):
         super().__init__(config, metadata)
 
+        # Job shape follows the API, not the deployment: the public API (Cloud
+        # and self-hosted `api/public/v1`) returns flat jobs, while only the
+        # internal API nests `attempts`. Route pipeline status on this so a
+        # self-hosted instance on the public API is not sent through the
+        # attempts-based path (issue #26993).
+        self.use_public_api = getattr(self.client, "_use_public_api", False)
         if isinstance(self.client, AirbyteCloudClient):
             self.airbyte_cloud = True
             self.source_url_prefix = "https://cloud.airbyte.com"
@@ -144,8 +150,8 @@ class AirbyteSource(PipelineServiceSource):
         """
         Method to get task & pipeline status
         """
-        if self.airbyte_cloud:
-            yield from self._yield_pipeline_status_cloud(pipeline_details)
+        if self.use_public_api:
+            yield from self._yield_pipeline_status_public(pipeline_details)
             return
 
         log_link = (
@@ -200,12 +206,12 @@ class AirbyteSource(PipelineServiceSource):
                     )
                 )
 
-    def _yield_pipeline_status_cloud(
+    def _yield_pipeline_status_public(
         self, pipeline_details: AirbytePipelineDetails
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """
-        Method to get task & pipeline status for Airbyte Cloud.
-        Handles flat job structure with ISO 8601 timestamps.
+        Task & pipeline status for the public API (Airbyte Cloud and self-hosted
+        `api/public/v1`): flat jobs with ISO 8601 timestamps and no `attempts`.
         """
         log_link = (
             f"{self.source_url_prefix}/workspaces/{pipeline_details.workspace.workspaceId}"
@@ -224,14 +230,24 @@ class AirbyteSource(PipelineServiceSource):
                     start_dt = datetime.fromisoformat(job.startTime.replace("Z", "+00:00"))
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.error(f"Failed to parse startTime: {exc}")
+                    logger.error("Failed to parse startTime: %s", exc)
 
             if job.lastUpdatedAt:
                 try:
                     end_dt = datetime.fromisoformat(job.lastUpdatedAt.replace("Z", "+00:00"))
                     ended_at = datetime_to_timestamp(end_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.error(f"Failed to parse lastUpdatedAt: {exc}")
+                    logger.error("Failed to parse lastUpdatedAt: %s", exc)
+
+            # PipelineStatus requires a timestamp; without a resolvable startTime
+            # constructing it would raise a ValidationError that the topology
+            # runner swallows (dropping the status silently). Skip visibly instead.
+            if created_at is None:
+                logger.warning(
+                    "Skipping job status for connection %s: job has no parseable startTime",
+                    pipeline_details.connection.connectionId,
+                )
+                continue
 
             task_status = [
                 TaskStatus(
@@ -246,7 +262,7 @@ class AirbyteSource(PipelineServiceSource):
             pipeline_status = PipelineStatus(
                 executionStatus=STATUS_MAP.get(job.status.lower(), StatusType.Pending).value,
                 taskStatus=task_status,
-                timestamp=Timestamp(created_at) if created_at else None,
+                timestamp=Timestamp(created_at),  # guaranteed non-None by the guard above
             )
 
             pipeline_fqn = fqn.build(
