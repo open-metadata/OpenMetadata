@@ -26,8 +26,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../../constants/profiler.constant';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import {
   axisTickFormatter,
   createHorizontalGridLineRenderer,
@@ -51,6 +51,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   noDataPlaceholderText,
   chartType = 'line',
 }: ProfilerDetailsCardProps) => {
+  const { grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const { showBrush, endIndex } = useMemo(() => {
@@ -103,7 +104,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 margin={{ left: 0 }}>
                 <CartesianGrid
                   horizontal={renderHorizontalGridLine}
-                  stroke={GRAPH_BACKGROUND_COLOR}
+                  stroke={grid}
                   strokeDasharray="3 3"
                   vertical={false}
                 />
@@ -138,7 +139,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     />
                   }
                   cursor={{
-                    stroke: GRAPH_BACKGROUND_COLOR,
+                    stroke: grid,
                     strokeDasharray: '3 3',
                   }}
                 />
