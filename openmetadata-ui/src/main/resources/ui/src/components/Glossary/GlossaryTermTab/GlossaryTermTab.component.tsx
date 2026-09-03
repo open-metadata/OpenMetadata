@@ -85,6 +85,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
+  getGlossaryTermRecursiveCount,
   getGlossaryTerms,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
@@ -223,6 +224,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     onAddGlossaryTerm,
     onEditGlossaryTerm,
     refreshGlossaryTerms,
+    setFilteredChildrenCount,
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
@@ -384,39 +386,55 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     try {
       let data;
       let pagingResponse: Paging | undefined;
+      // Whole-subtree count (any depth) for the Terms tab badge — independent
+      // of search text, since the badge reflects the subtree's total size,
+      // not how many rows the current search matched.
+      let recursiveChildrenTotal = 0;
 
       const isStatusFilterActive = !selectedStatus.includes('all');
       const entityStatusParam = isStatusFilterActive
         ? selectedStatus.filter((s) => s !== 'all').join(',')
         : undefined;
+      const recursiveCountPromise = getGlossaryTermRecursiveCount(
+        activeGlossary?.id ?? '',
+        entityStatusParam
+      );
 
       // Search uses offset-based paging; the first-level listing uses cursor
       // (before/after) paging. Either way the response replaces the current
       // page of rows — navigation is now explicit Previous/Next, not appending.
       if (searchTerm) {
-        const response = await searchGlossaryTermsPaginated({
-          q: searchTerm,
-          glossaryFqn: activeGlossary?.fullyQualifiedName,
-          // limit must match the pageSize used to compute the offset, else
-          // Previous/Next would skip or repeat results if pageSize changes.
-          limit: pageSize,
-          offset: options?.offset ?? 0,
-          fields:
-            'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
-          entityStatus: entityStatusParam,
-        });
+        const [response, recursiveCount] = await Promise.all([
+          searchGlossaryTermsPaginated({
+            q: searchTerm,
+            glossaryFqn: activeGlossary?.fullyQualifiedName,
+            // limit must match the pageSize used to compute the offset, else
+            // Previous/Next would skip or repeat results if pageSize changes.
+            limit: pageSize,
+            offset: options?.offset ?? 0,
+            fields:
+              'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+            entityStatus: entityStatusParam,
+          }),
+          recursiveCountPromise,
+        ]);
         data = response.data;
         pagingResponse = response.paging;
+        recursiveChildrenTotal = recursiveCount;
       } else {
-        const response = await getFirstLevelGlossaryTermsPaginated(
-          activeGlossary?.fullyQualifiedName || '',
-          pageSize,
-          options?.after,
-          entityStatusParam,
-          options?.before
-        );
+        const [response, recursiveCount] = await Promise.all([
+          getFirstLevelGlossaryTermsPaginated(
+            activeGlossary?.fullyQualifiedName || '',
+            pageSize,
+            options?.after,
+            entityStatusParam,
+            options?.before
+          ),
+          recursiveCountPromise,
+        ]);
         data = response.data;
         pagingResponse = response.paging;
+        recursiveChildrenTotal = recursiveCount;
       }
 
       // Apply the response only when it still matches the active search context.
@@ -434,13 +452,25 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
 
       if (data.length === 0 && isStatusFilterActive) {
+        // Keep the active status filter applied, else this falls back to the
+        // glossary's unfiltered total instead of the true (possibly zero) count.
         const countResponse = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
-          0
+          0,
+          undefined,
+          entityStatusParam
         );
         setTotalTermsCount(countResponse.paging?.total ?? 0);
+        setFilteredChildrenCount(
+          activeGlossary?.fullyQualifiedName ?? '',
+          recursiveChildrenTotal
+        );
       } else {
         setTotalTermsCount(pagingResponse?.total ?? data.length);
+        setFilteredChildrenCount(
+          activeGlossary?.fullyQualifiedName ?? '',
+          recursiveChildrenTotal
+        );
       }
 
       // Search mode has no cursor; clear before/after so the footer falls back

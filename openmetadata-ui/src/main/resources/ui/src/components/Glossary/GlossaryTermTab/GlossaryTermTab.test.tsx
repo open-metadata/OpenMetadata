@@ -35,6 +35,7 @@ const mockSetGlossaryChildTerms = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
+const mockGetGlossaryTermRecursiveCount = jest.fn();
 const mockListTasks = jest.fn();
 const mockResolveTask = jest.fn();
 const mockPermissionForApproveOrReject = jest.fn();
@@ -56,6 +57,11 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest
     .fn()
     .mockImplementation((...args) => mockSearchGlossaryTermsPaginated(...args)),
+  getGlossaryTermRecursiveCount: jest
+    .fn()
+    .mockImplementation((...args) =>
+      mockGetGlossaryTermRecursiveCount(...args)
+    ),
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
@@ -193,6 +199,8 @@ jest.mock('../../../utils/TableColumn.util', () => ({
   descriptionTableObject: jest.fn().mockImplementation(() => []),
 }));
 
+const mockSetFilteredChildrenCount = jest.fn();
+
 const mockUseGlossaryStore = {
   activeGlossary: mockedGlossaryTerms[0],
   glossaryChildTerms: [] as ModifiedGlossaryTerm[],
@@ -201,6 +209,7 @@ const mockUseGlossaryStore = {
   onEditGlossaryTerm: mockOnEditGlossaryTerm,
   refreshGlossaryTerms: mockRefreshGlossaryTerms,
   setGlossaryChildTerms: mockSetGlossaryChildTerms,
+  setFilteredChildrenCount: mockSetFilteredChildrenCount,
 };
 
 jest.mock('../useGlossary.store', () => ({
@@ -331,6 +340,7 @@ describe('Test GlossaryTermTab component', () => {
       data: mockedGlossaryTerms,
       paging: { after: null },
     });
+    mockGetGlossaryTermRecursiveCount.mockResolvedValue(0);
     mockGetGlossaryTermChildrenLazy.mockResolvedValue({
       data: [
         {
@@ -361,6 +371,7 @@ describe('Test GlossaryTermTab component', () => {
       onEditGlossaryTerm: mockOnEditGlossaryTerm,
       refreshGlossaryTerms: mockRefreshGlossaryTerms,
       setGlossaryChildTerms: mockSetGlossaryChildTerms,
+      setFilteredChildrenCount: mockSetFilteredChildrenCount,
     });
   });
 
@@ -576,6 +587,75 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(statusDropdown).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Filtered Children Count Badge', () => {
+    beforeEach(() => {
+      mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
+    });
+
+    it('should use the whole-subtree recursive count, not the direct-children table total, as the Terms tab badge count', async () => {
+      // Table (direct children only) total differs from the badge's recursive
+      // (any-depth) total, so a passing assertion proves the badge is fed by
+      // the recursive call and not by `pagingResponse.total`/`data.length`.
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: mockedGlossaryTerms.slice(0, 1),
+        paging: { after: null, total: 1 },
+      });
+      mockGetGlossaryTermRecursiveCount.mockResolvedValue(5);
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetFilteredChildrenCount).toHaveBeenCalledWith(
+          mockUseGlossaryStore.activeGlossary.fullyQualifiedName,
+          5
+        );
+      });
+
+      // Default filter (Approved, Draft, In Review) must reach the recursive
+      // count call too, not just the row-listing call.
+      expect(mockGetGlossaryTermRecursiveCount).toHaveBeenCalledWith(
+        mockUseGlossaryStore.activeGlossary.id,
+        'Approved,Draft,In Review'
+      );
+    });
+
+    it('should re-fetch and update the badge with the new recursive count when the status filter is switched to All', async () => {
+      mockGetGlossaryTermRecursiveCount
+        .mockResolvedValueOnce(5)
+        .mockResolvedValueOnce(9);
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetFilteredChildrenCount).toHaveBeenCalledWith(
+          mockUseGlossaryStore.activeGlossary.fullyQualifiedName,
+          5
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+      fireEvent.click(screen.getByTestId('glossary-status-option-all'));
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockSetFilteredChildrenCount).toHaveBeenCalledWith(
+          mockUseGlossaryStore.activeGlossary.fullyQualifiedName,
+          9
+        );
+      });
+
+      // Second call happens once the filter clears to "all" (no entityStatus arg).
+      expect(mockGetGlossaryTermRecursiveCount).toHaveBeenLastCalledWith(
+        mockUseGlossaryStore.activeGlossary.id,
+        undefined
+      );
     });
   });
 

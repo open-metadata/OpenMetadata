@@ -87,7 +87,8 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeGlossary: glossary } = useGlossaryStore();
+  const { activeGlossary: glossary, filteredChildrenCount } =
+    useGlossaryStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -133,12 +134,16 @@ const GlossaryDetails = ({
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+    const rawTermCount = glossary.termCount ?? glossary.childrenCount ?? 0;
 
     const items = [
       {
         label: (
           <TabsLabel
-            count={glossary.termCount ?? glossary.childrenCount ?? 0}
+            count={
+              filteredChildrenCount?.[glossary.fullyQualifiedName ?? ''] ??
+              rawTermCount
+            }
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
@@ -212,6 +217,7 @@ const GlossaryDetails = ({
     feedCount.totalTasksCount,
     activeTab,
     isVersionView,
+    filteredChildrenCount,
   ]);
 
   useEffect(() => {

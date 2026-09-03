@@ -475,6 +475,28 @@ export const getFirstLevelGlossaryTermsPaginated = async (
   return data;
 };
 
+// Recursive (whole-subtree, any depth) count for the Terms tab badge. Unlike
+// `directChildrenOf` (used for the table's own row listing), the `parent`
+// query param does not stop at one level, so this returns every descendant
+// under parentId that matches entityStatus.
+export const getGlossaryTermRecursiveCount = async (
+  parentId: string,
+  entityStatus?: string
+) => {
+  const { data } = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
+    '/glossaryTerms',
+    {
+      params: {
+        parent: parentId,
+        limit: 0,
+        entityStatus,
+      },
+    }
+  );
+
+  return data.paging?.total ?? 0;
+};
+
 export const getGlossaryTermChildrenLazy = async (
   parentFQN: string,
   limit = 50,

@@ -43,6 +43,9 @@ export interface GlossaryTermDetailPageTabProps {
   refreshActiveGlossaryTerm?: () => void;
   setAssetModalVisible: (visible: boolean) => void;
   setPreviewAsset: (asset?: EntityDetailsObjectInterface) => void;
+  // Status-filtered child term totals (fqn -> count) from useGlossaryStore,
+  // used to show the same count on the Terms tab badge as its table lists.
+  filteredChildrenCount?: Record<string, number>;
 }
 
 class GlossaryTermClassBase {

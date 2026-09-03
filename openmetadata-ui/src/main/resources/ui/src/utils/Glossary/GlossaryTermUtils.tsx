@@ -120,6 +120,7 @@ export const getGlossaryTermDetailPageTabs = (
     refreshActiveGlossaryTerm,
     setAssetModalVisible,
     setPreviewAsset,
+    filteredChildrenCount,
   } = props;
 
   // Pending terms can still reach Approved, while terminal states cannot. The disabled copy must
@@ -160,7 +161,11 @@ export const getGlossaryTermDetailPageTabs = (
                   i18n.t('label.glossary-term-plural')}
                 <span className="p-l-xs ">
                   {getCountBadge(
-                    glossaryTerm.childrenCount || 0,
+                    filteredChildrenCount?.[
+                      glossaryTerm.fullyQualifiedName ?? ''
+                    ] ??
+                      glossaryTerm.childrenCount ??
+                      0,
                     '',
                     activeTab === EntityTabs.GLOSSARY_TERMS
                   )}

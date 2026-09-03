@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   mockedGlossaries,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
+import { useGlossaryStore } from '../useGlossary.store';
 import GlossaryDetails from './GlossaryDetails.component';
 
 jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {
@@ -96,6 +97,17 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
 }));
 
 describe('Test Glossary-details component', () => {
+  afterEach(async () => {
+    await act(async () => {
+      useGlossaryStore.setState({
+        activeGlossary: {} as ReturnType<
+          typeof useGlossaryStore.getState
+        >['activeGlossary'],
+        filteredChildrenCount: {},
+      });
+    });
+  });
+
   it('Should render Glossary-details component', async () => {
     await act(async () => {
       render(<GlossaryDetails {...mockProps} />);
@@ -107,5 +119,43 @@ describe('Test Glossary-details component', () => {
     expect(headerComponent).toBeInTheDocument();
     expect(glossaryDetails).toBeInTheDocument();
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
+  });
+
+  it('shows the status-filtered children count on the Terms tab badge over the raw termCount', async () => {
+    useGlossaryStore.setState({
+      activeGlossary: {
+        ...mockedGlossaries[0],
+        fullyQualifiedName: 'GlossaryName',
+        termCount: 4,
+      },
+      filteredChildrenCount: { GlossaryName: 2 },
+    });
+
+    await act(async () => {
+      render(<GlossaryDetails {...mockProps} />);
+    });
+
+    const termsTab = await screen.findByTestId('terms');
+
+    expect(within(termsTab).getByTestId('filter-count')).toHaveTextContent('2');
+  });
+
+  it('falls back to the raw termCount when no filtered count is stored yet', async () => {
+    useGlossaryStore.setState({
+      activeGlossary: {
+        ...mockedGlossaries[0],
+        fullyQualifiedName: 'GlossaryName',
+        termCount: 4,
+      },
+      filteredChildrenCount: {},
+    });
+
+    await act(async () => {
+      render(<GlossaryDetails {...mockProps} />);
+    });
+
+    const termsTab = await screen.findByTestId('terms');
+
+    expect(within(termsTab).getByTestId('filter-count')).toHaveTextContent('4');
   });
 });
