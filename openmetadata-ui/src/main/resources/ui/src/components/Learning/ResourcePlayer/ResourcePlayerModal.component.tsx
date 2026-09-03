@@ -22,9 +22,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
 import React, { FC, useEffect, useState } from 'react';
-import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';

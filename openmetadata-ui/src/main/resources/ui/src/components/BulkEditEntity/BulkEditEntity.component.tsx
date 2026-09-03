@@ -38,13 +38,13 @@ import type {
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
-import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
+import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
-import { CSVImportJobType } from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { useFqn } from '../../hooks/useFqn';
+import { CSVImportJobType } from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import entityBulkEditConfigClassBase, {
   BulkEditNewRowConfig,
 } from '../../utils/CSV/EntityBulkEditConfigClassBase';

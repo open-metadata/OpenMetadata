@@ -28,6 +28,8 @@ import {
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { TriggerConfigSectionProps } from '../../../../interface/workflow-builder-components.interface';
+import { FormField } from '../common/FormField';
+import { CronExpressionBuilder } from './CronExpressionBuilder';
 
 const getScheduleTypeDisabled = (
   isFormDisabled: boolean,
@@ -39,8 +41,6 @@ const getScheduleTypeDisabled = (
   (lockScheduleTypeField ??
     lockPeriodicBatchFields ??
     lockNonIncludeExcludeFields);
-import { FormField } from '../common/FormField';
-import { CronExpressionBuilder } from './CronExpressionBuilder';
 
 const getFieldLabel = (v: string): string => {
   if (v.startsWith('extension.')) {

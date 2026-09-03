@@ -117,6 +117,7 @@ import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAsset
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
@@ -125,7 +126,6 @@ import {
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
-import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 
 type EntityFetchResolution =
   | { immediate: true }

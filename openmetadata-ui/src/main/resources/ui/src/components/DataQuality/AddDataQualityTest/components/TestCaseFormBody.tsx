@@ -101,6 +101,311 @@ const fqnFromSelectItem = (
   return result;
 };
 
+// Field "doc" text falls back through a couple of sources (a per-definition
+// description, the loaded field-docs map, a generic translation) — this
+// mirrors the `??` chain without spreading the decision points across every
+// field/doc definition in the component body.
+const resolveDoc = (...values: (string | undefined)[]): string | undefined =>
+  values.find((value) => value !== undefined);
+
+const getShowSchedulerSection = (
+  showOnlyParameter: boolean,
+  isEditMode: boolean,
+  selectedTableFqn: string | undefined,
+  canCreatePipeline: boolean
+): boolean =>
+  !showOnlyParameter &&
+  !isEditMode &&
+  Boolean(selectedTableFqn) &&
+  canCreatePipeline;
+
+const getTestDefinitionDoc = (
+  fieldDocs: Record<string, string>,
+  testDefinition: Pick<TestDefinition, 'name' | 'description'>
+): string | undefined =>
+  fieldDocs[testDefinition.name ?? ''] ?? testDefinition.description;
+
+// Extracted from TestCaseFormBody's render: the table/column/dimension
+// selection card, kept out of the main component to keep its complexity down.
+function TestCaseTableSelectionSection(
+  props: Readonly<{
+    isEditMode: boolean;
+    testLevelDoc: Record<string, unknown>;
+    form: TestCaseFormBodyProps['form'];
+    t: (key: string, options?: Record<string, unknown>) => string;
+    testLevelOptions: TestLevelOption[];
+    handleActiveField: (id: string) => void;
+    selectedTableField: FieldProp;
+    selectedTestLevel: string | undefined;
+    testLevelFieldValue: string | undefined;
+    selectedColumnField: FieldProp;
+    dimensionColumnsField: FieldProp;
+    topDimensionsField: FieldProp;
+  }>
+) {
+  const {
+    isEditMode,
+    testLevelDoc,
+    form,
+    t,
+    testLevelOptions,
+    handleActiveField,
+    selectedTableField,
+    selectedTestLevel,
+    testLevelFieldValue,
+    selectedColumnField,
+    dimensionColumnsField,
+    topDimensionsField,
+  } = props;
+
+  const showDimensionFields =
+    testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
+    (isEditMode && selectedTestLevel === TestLevel.COLUMN);
+
+  return (
+    <div className="form-card-section" data-testid="select-table-card">
+      {!isEditMode && (
+        <div {...testLevelDoc}>
+          <FormField control={form.control} name="testLevel">
+            {({ field }) => (
+              <>
+                <FormItemLabel
+                  required
+                  label={t('message.select-test-level')}
+                />
+                <SelectionCardGroup
+                  layout="vertical"
+                  options={testLevelOptions}
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    handleActiveField('root/testLevel');
+                  }}
+                />
+              </>
+            )}
+          </FormField>
+        </div>
+      )}
+
+      {getField(selectedTableField)}
+
+      {selectedTestLevel === TestLevel.COLUMN && getField(selectedColumnField)}
+
+      {showDimensionFields && getField(dimensionColumnsField)}
+
+      {showDimensionFields && getField(topDimensionsField)}
+    </div>
+  );
+}
+
+// Extracted from TestCaseTestTypeSection: the custom-query/select-test-type
+// toggle button shown above the test type field for table-level tests.
+function TestTypeToggleButton(
+  props: Readonly<{
+    isCustomQuery: boolean;
+    t: (key: string, options?: Record<string, unknown>) => string;
+    handleCustomQueryToggle: () => void;
+  }>
+) {
+  const { isCustomQuery, t, handleCustomQueryToggle } = props;
+
+  return (
+    <div
+      className={classNames(
+        'custom-test-type-container d-flex items-center',
+        isCustomQuery ? 'justify-between' : 'justify-end'
+      )}>
+      {isCustomQuery && <FormItemLabel label={t('label.test-type')} />}
+      <Button
+        color="link-color"
+        data-testid={isCustomQuery ? 'test-type-btn' : 'custom-query'}
+        iconLeading={Edit01}
+        size="sm"
+        onClick={handleCustomQueryToggle}>
+        {isCustomQuery ? t('label.select-test-type') : t('label.custom-query')}
+      </Button>
+    </div>
+  );
+}
+
+// Extracted from TestCaseFormBody's render: the name/description/tags/
+// glossary-terms details card, kept out of the main component to keep its
+// complexity down.
+function TestCaseDetailsSection(
+  props: Readonly<{
+    form: TestCaseFormBodyProps['form'];
+    t: (key: string, options?: Record<string, unknown>) => string;
+    testNameField: FieldProp;
+    displayNameField: FieldProp;
+    isEditMode: boolean;
+    descriptionDoc: ReturnType<typeof useFieldDoc>;
+    tagsDoc: ReturnType<typeof useFieldDoc>;
+    glossaryTermsDoc: ReturnType<typeof useFieldDoc>;
+    handleActiveField: (id: string) => void;
+  }>
+) {
+  const {
+    form,
+    t,
+    testNameField,
+    displayNameField,
+    isEditMode,
+    descriptionDoc,
+    tagsDoc,
+    glossaryTermsDoc,
+    handleActiveField,
+  } = props;
+
+  return (
+    <div
+      className="form-card-section test-details-section"
+      data-testid="test-details-card">
+      {getField(testNameField)}
+
+      {isEditMode && getField(displayNameField)}
+
+      <FormField control={form.control} name="description">
+        {({ field }) => (
+          <div
+            className="tw:flex tw:flex-col tw:gap-1"
+            data-testid="description"
+            id="root/description"
+            {...descriptionDoc}>
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              initialValue={field.value ?? ''}
+              onFocus={() => handleActiveField('root/description')}
+              onTextChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+
+      <FormField control={form.control} name="tags">
+        {({ field }) => (
+          <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
+            <TagSuggestion
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+
+      <FormField control={form.control} name="glossaryTerms">
+        {({ field }) => (
+          <div
+            data-testid="glossary-terms-selector"
+            id="root/glossaryTerms"
+            {...glossaryTermsDoc}>
+            <TagSuggestion
+              label={t('label.glossary-term-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.glossary-term-plural'),
+              })}
+              tagType={TagSource.Glossary}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+    </div>
+  );
+}
+
+// Extracted from TestCaseFormBody's render: the test-type selection card
+// (custom-query toggle, test type field, parameter fields, row-count switch),
+// kept out of the main component to keep its complexity down.
+function TestCaseTestTypeSection(
+  props: Readonly<{
+    isEditMode: boolean;
+    selectedTestLevel: string | undefined;
+    isCustomQuery: boolean;
+    t: (key: string, options?: Record<string, unknown>) => string;
+    handleCustomQueryToggle: () => void;
+    testTypeField: FieldProp;
+    additionalFields: FieldProp[];
+    showParameterFields: boolean;
+    selectedTestDefinition: TestDefinition | undefined;
+    handleActiveField: (id: string) => void;
+    selectedTestType: string | undefined;
+    form: TestCaseFormBodyProps['form'];
+    selectedTableData: Table | undefined;
+    fieldDocs: Record<string, string>;
+    isComputeRowCountFieldVisible: boolean;
+    computeRowCountField: FieldProp;
+  }>
+) {
+  const {
+    isEditMode,
+    selectedTestLevel,
+    isCustomQuery,
+    t,
+    handleCustomQueryToggle,
+    testTypeField,
+    additionalFields,
+    showParameterFields,
+    selectedTestDefinition,
+    handleActiveField,
+    selectedTestType,
+    form,
+    selectedTableData,
+    fieldDocs,
+    isComputeRowCountFieldVisible,
+    computeRowCountField,
+  } = props;
+
+  return (
+    <div
+      className="form-card-section test-type-card test-type-section"
+      data-testid="test-type-card">
+      {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
+        <TestTypeToggleButton
+          handleCustomQueryToggle={handleCustomQueryToggle}
+          isCustomQuery={isCustomQuery}
+          t={t}
+        />
+      )}
+
+      {!isCustomQuery && getField(testTypeField)}
+
+      {additionalFields.map((field) => (
+        <div key={field.name}>{getField(field)}</div>
+      ))}
+
+      {showParameterFields && selectedTestDefinition && (
+        <div
+          className="parameter-fields-wrapper"
+          onFocusCapture={() =>
+            handleActiveField(
+              selectedTestType
+                ? `root/${selectedTestType}`
+                : ROOT_TEST_TYPE_PATH
+            )
+          }>
+          <ParameterFields
+            definition={selectedTestDefinition}
+            form={form}
+            table={selectedTableData}
+            testDefinitionDoc={getTestDefinitionDoc(
+              fieldDocs,
+              selectedTestDefinition
+            )}
+          />
+        </div>
+      )}
+
+      {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+    </div>
+  );
+}
+
 const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   form,
   table,
@@ -754,154 +1059,201 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     onContextChange,
   ]);
 
-  const selectedTableField = {
-    name: 'selectedTable',
-    label: t('label.select-entity', { entity: t('label.table') }),
-    type: FieldTypes.ASYNC_SELECT,
-    required: true,
-    rules: {
-      required: t('label.please-select-entity', { entity: t('label.table') }),
-      validate: (value: unknown) => {
-        const fqn = fqnFromSelectItem(value as FormSelectItem | string | null);
-        if (!fqn || table) {
-          return true;
-        }
+  const {
+    selectedTableField,
+    selectedColumnField,
+    dimensionColumnsField,
+    topDimensionsField,
+    testTypeField,
+    computeRowCountField,
+    additionalFields,
+  } = useMemo(() => {
+    const selectedTableField = {
+      name: 'selectedTable',
+      label: t('label.select-entity', { entity: t('label.table') }),
+      type: FieldTypes.ASYNC_SELECT,
+      required: true,
+      rules: {
+        required: t('label.please-select-entity', { entity: t('label.table') }),
+        validate: (value: unknown) => {
+          const fqn = fqnFromSelectItem(
+            value as FormSelectItem | string | null
+          );
+          if (!fqn || table) {
+            return true;
+          }
 
-        return checkTablePermissions(fqn);
+          return checkTablePermissions(fqn);
+        },
       },
-    },
-    id: ROOT_TABLE_PATH,
-    doc: fieldDocs.table ?? t('message.doc-field-selected-table'),
-    placeholder: t('label.select-entity', { entity: t('label.table') }),
-    props: {
-      'data-testid': 'selectedTable',
-      isDisabled: Boolean(table) || isEditMode,
-      isLoading: isTableLoading,
-      options: tableOptions,
-      onSearchChange: debouncedFetchTables,
-      onFocus: () => {
-        if (tableOptions.length === 0) {
-          fetchTables();
-        }
-        handleActiveField(ROOT_TABLE_PATH);
-        ensureComboboxMenuOpen(
-          () => document.getElementById(ROOT_TABLE_PATH) as HTMLInputElement
-        );
+      id: ROOT_TABLE_PATH,
+      doc: resolveDoc(fieldDocs.table, t('message.doc-field-selected-table')),
+      placeholder: t('label.select-entity', { entity: t('label.table') }),
+      props: {
+        'data-testid': 'selectedTable',
+        isDisabled: Boolean(table) || isEditMode,
+        isLoading: isTableLoading,
+        options: tableOptions,
+        onSearchChange: debouncedFetchTables,
+        onFocus: () => {
+          if (tableOptions.length === 0) {
+            fetchTables();
+          }
+          handleActiveField(ROOT_TABLE_PATH);
+          ensureComboboxMenuOpen(
+            () => document.getElementById(ROOT_TABLE_PATH) as HTMLInputElement
+          );
+        },
+        // Legacy antd validated on change: surface the table permission error
+        // (and gate the scheduler) at selection time, not first at submit. The
+        // doc panel switches to the selected table's entity summary, like the
+        // legacy option onclick did.
+        onItemInserted: () => {
+          form.trigger('selectedTable');
+          handleActiveField('root/selected-entity');
+        },
+        // Clearing an unauthorized table must clear the stale permission error
+        // and switch the doc panel back to the generic table section.
+        onItemCleared: () => {
+          form.trigger('selectedTable');
+          handleActiveField(ROOT_TABLE_PATH);
+        },
       },
-      // Legacy antd validated on change: surface the table permission error
-      // (and gate the scheduler) at selection time, not first at submit. The
-      // doc panel switches to the selected table's entity summary, like the
-      // legacy option onclick did.
-      onItemInserted: () => {
-        form.trigger('selectedTable');
-        handleActiveField('root/selected-entity');
-      },
-      // Clearing an unauthorized table must clear the stale permission error
-      // and switch the doc panel back to the generic table section.
-      onItemCleared: () => {
-        form.trigger('selectedTable');
-        handleActiveField(ROOT_TABLE_PATH);
-      },
-    },
-  } as FieldProp;
+    } as FieldProp;
 
-  const selectedColumnField: FieldProp = {
-    name: 'selectedColumn',
-    label: t('label.select-entity', { entity: t('label.column') }),
-    type: FieldTypes.SELECT,
-    required: true,
-    rules: {
-      required: t('label.please-select-entity', {
-        entity: t('label.column'),
+    const selectedColumnField: FieldProp = {
+      name: 'selectedColumn',
+      label: t('label.select-entity', { entity: t('label.column') }),
+      type: FieldTypes.SELECT,
+      required: true,
+      rules: {
+        required: t('label.please-select-entity', {
+          entity: t('label.column'),
+        }),
+      },
+      id: 'root/column',
+      doc: resolveDoc(fieldDocs.column, t('message.doc-field-selected-column')),
+      placeholder: t('label.select-entity', { entity: t('label.column') }),
+      props: {
+        'data-testid': 'selectedColumn',
+        isDisabled: !selectedTableFqn || isEditMode,
+        options: columnOptions,
+      },
+    };
+
+    const dimensionColumnsField: FieldProp = {
+      name: 'dimensionColumns',
+      label: t('label.select-entity', { entity: t('label.dimension-plural') }),
+      type: FieldTypes.MULTI_SELECT,
+      id: 'root/dimensionColumns',
+      doc: resolveDoc(
+        fieldDocs.dimensionColumns,
+        t('message.doc-field-dimension-columns')
+      ),
+      placeholder: t('label.select-entity', {
+        entity: t('label.dimension-plural'),
       }),
-    },
-    id: 'root/column',
-    doc: fieldDocs.column ?? t('message.doc-field-selected-column'),
-    placeholder: t('label.select-entity', { entity: t('label.column') }),
-    props: {
-      'data-testid': 'selectedColumn',
-      isDisabled: !selectedTableFqn || isEditMode,
-      options: columnOptions,
-    },
-  };
+      props: {
+        'data-testid': 'dimensionColumns',
+        isDisabled: !selectedTableFqn,
+        options: dimensionColumnOptions,
+      },
+    };
 
-  const dimensionColumnsField: FieldProp = {
-    name: 'dimensionColumns',
-    label: t('label.select-entity', { entity: t('label.dimension-plural') }),
-    type: FieldTypes.MULTI_SELECT,
-    id: 'root/dimensionColumns',
-    doc: fieldDocs.dimensionColumns ?? t('message.doc-field-dimension-columns'),
-    placeholder: t('label.select-entity', {
-      entity: t('label.dimension-plural'),
-    }),
-    props: {
-      'data-testid': 'dimensionColumns',
-      isDisabled: !selectedTableFqn,
-      options: dimensionColumnOptions,
-    },
-  };
+    const topDimensionsField = {
+      name: 'topDimensions',
+      label: t('label.top-dimension-plural'),
+      type: FieldTypes.NUMBER,
+      id: 'root/topDimensions',
+      doc: resolveDoc(
+        fieldDocs.topDimensions,
+        t('message.doc-field-top-dimensions')
+      ),
+      placeholder: '5',
+      props: {
+        'data-testid': 'topDimensions',
+        min: 1,
+        max: 50,
+      },
+    } as FieldProp;
 
-  const topDimensionsField = {
-    name: 'topDimensions',
-    label: t('label.top-dimension-plural'),
-    type: FieldTypes.NUMBER,
-    id: 'root/topDimensions',
-    doc: fieldDocs.topDimensions ?? t('message.doc-field-top-dimensions'),
-    placeholder: '5',
-    props: {
-      'data-testid': 'topDimensions',
-      min: 1,
-      max: 50,
-    },
-  } as FieldProp;
+    const testTypeField: FieldProp = {
+      name: 'testTypeId',
+      label: t('label.select-test-type'),
+      // AUTOCOMPLETE (searchable combobox) rather than a plain SELECT: the test
+      // definitions load async, and an already-open react-aria Select never
+      // refreshes its collection when `items` arrive late — leaving the dropdown
+      // permanently empty if opened too early. Autocomplete re-derives its list on
+      // every render (and filters as you type), so late options show up.
+      type: FieldTypes.AUTOCOMPLETE,
+      required: true,
+      rules: {
+        required: t('label.select-test-type'),
+      },
+      id: selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH,
+      doc: resolveDoc(
+        selectedTestDefinition?.description,
+        fieldDocs.testType,
+        t('message.doc-field-test-type')
+      ),
+      placeholder: t('label.select-test-type'),
+      props: {
+        'data-testid': 'test-type',
+        isDisabled: isEditMode,
+        options: testTypeOptions,
+        onItemInserted: (key?: string | number | null) =>
+          handleActiveField(key ? `root/${key}` : ROOT_TEST_TYPE_PATH),
+      },
+    };
 
-  const testTypeField: FieldProp = {
-    name: 'testTypeId',
-    label: t('label.select-test-type'),
-    // AUTOCOMPLETE (searchable combobox) rather than a plain SELECT: the test
-    // definitions load async, and an already-open react-aria Select never
-    // refreshes its collection when `items` arrive late — leaving the dropdown
-    // permanently empty if opened too early. Autocomplete re-derives its list on
-    // every render (and filters as you type), so late options show up.
-    type: FieldTypes.AUTOCOMPLETE,
-    required: true,
-    rules: {
-      required: t('label.select-test-type'),
-    },
-    id: selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH,
-    doc:
-      selectedTestDefinition?.description ??
-      fieldDocs.testType ??
-      t('message.doc-field-test-type'),
-    placeholder: t('label.select-test-type'),
-    props: {
-      'data-testid': 'test-type',
-      isDisabled: isEditMode,
-      options: testTypeOptions,
-      onItemInserted: (key?: string | number | null) =>
-        handleActiveField(key ? `root/${key}` : ROOT_TEST_TYPE_PATH),
-    },
-  };
+    const computeRowCountField = {
+      name: 'computePassedFailedRowCount',
+      label: t('label.compute-row-count'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      helperText: t('message.compute-row-count-helper-text'),
+      helperTextType: HelperTextType.TOOLTIP,
+      id: 'root/computePassedFailedRowCount',
+      formItemLayout: FormItemLayout.HORIZONTAL,
+      props: {
+        'data-testid': 'compute-passed-failed-row-count',
+      },
+    } as FieldProp;
 
-  const computeRowCountField = {
-    name: 'computePassedFailedRowCount',
-    label: t('label.compute-row-count'),
-    type: FieldTypes.SWITCH,
-    required: false,
-    helperText: t('message.compute-row-count-helper-text'),
-    helperTextType: HelperTextType.TOOLTIP,
-    id: 'root/computePassedFailedRowCount',
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    props: {
-      'data-testid': 'compute-passed-failed-row-count',
-    },
-  } as FieldProp;
+    // Schema capabilities are shared for API and import compatibility, so
+    // distribution-only controls must be supplied through the class-base hook.
+    const additionalFields = testCaseClassBase.createFormAdditionalFields(
+      selectedTestDefinition?.supportsDynamicAssertion ?? false
+    );
 
-  // Schema capabilities are shared for API and import compatibility, so
-  // distribution-only controls must be supplied through the class-base hook.
-  const additionalFields = testCaseClassBase.createFormAdditionalFields(
-    selectedTestDefinition?.supportsDynamicAssertion ?? false
-  );
+    return {
+      selectedTableField,
+      selectedColumnField,
+      dimensionColumnsField,
+      topDimensionsField,
+      testTypeField,
+      computeRowCountField,
+      additionalFields,
+    };
+  }, [
+    t,
+    fieldDocs,
+    table,
+    isEditMode,
+    checkTablePermissions,
+    isTableLoading,
+    tableOptions,
+    debouncedFetchTables,
+    fetchTables,
+    handleActiveField,
+    form,
+    selectedTableFqn,
+    columnOptions,
+    dimensionColumnOptions,
+    selectedTestType,
+    selectedTestDefinition,
+    testTypeOptions,
+  ]);
 
   const testNameField: FieldProp = {
     name: 'testName',
@@ -909,7 +1261,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.TEXT,
     required: false,
     id: 'root/name',
-    doc: fieldDocs.name ?? t('message.doc-field-test-case-name'),
+    doc: resolveDoc(fieldDocs.name, t('message.doc-field-test-case-name')),
     placeholder: t('message.enter-test-case-name'),
     rules: {
       pattern: {
@@ -958,30 +1310,33 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const testLevelDoc = useFieldDoc({
     name: 'testLevel',
     label: t('message.select-test-level'),
-    doc: fieldDocs.testLevel ?? t('message.doc-field-test-level'),
+    doc: resolveDoc(fieldDocs.testLevel, t('message.doc-field-test-level')),
   });
 
   const tagsDoc = useFieldDoc({
     name: 'tags',
     label: t('label.tag-plural'),
-    doc: fieldDocs.tags ?? t('message.doc-field-tags'),
+    doc: resolveDoc(fieldDocs.tags, t('message.doc-field-tags')),
   });
 
   const glossaryTermsDoc = useFieldDoc({
     name: 'glossaryTerms',
     label: t('label.glossary-term-plural'),
-    doc: fieldDocs.glossaryTerms ?? t('message.doc-field-glossary-terms'),
+    doc: resolveDoc(
+      fieldDocs.glossaryTerms,
+      t('message.doc-field-glossary-terms')
+    ),
   });
 
   const pipelineDoc = useFieldDoc({
     name: 'pipeline',
     label: t('label.pipeline'),
-    doc: fieldDocs.createPipeline ?? t('message.doc-field-pipeline'),
+    doc: resolveDoc(fieldDocs.createPipeline, t('message.doc-field-pipeline')),
   });
   const descriptionDoc = useFieldDoc({
     name: 'description',
     label: t('label.description'),
-    doc: fieldDocs.description ?? t('message.doc-field-description'),
+    doc: resolveDoc(fieldDocs.description, t('message.doc-field-description')),
   });
 
   // Seed the hint panel with the first field actually on screen so it isn't
@@ -1008,6 +1363,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  const showSchedulerSection = getShowSchedulerSection(
+    showOnlyParameter,
+    isEditMode,
+    selectedTableFqn,
+    canCreatePipeline
+  );
+
   return (
     <div
       className="test-case-form-v1 drawer-mode test-case-form-body"
@@ -1027,178 +1389,69 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       )}
 
       {!showOnlyParameter && (
-        <div className="form-card-section" data-testid="select-table-card">
-          {!isEditMode && (
-            <div {...testLevelDoc}>
-              <FormField control={form.control} name="testLevel">
-                {({ field }) => (
-                  <>
-                    <FormItemLabel
-                      required
-                      label={t('message.select-test-level')}
-                    />
-                    <SelectionCardGroup
-                      layout="vertical"
-                      options={testLevelOptions}
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        handleActiveField('root/testLevel');
-                      }}
-                    />
-                  </>
-                )}
-              </FormField>
-            </div>
-          )}
-
-          {getField(selectedTableField)}
-
-          {selectedTestLevel === TestLevel.COLUMN &&
-            getField(selectedColumnField)}
-
-          {(testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
-            (isEditMode && selectedTestLevel === TestLevel.COLUMN)) &&
-            getField(dimensionColumnsField)}
-
-          {(testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
-            (isEditMode && selectedTestLevel === TestLevel.COLUMN)) &&
-            getField(topDimensionsField)}
-        </div>
+        <TestCaseTableSelectionSection
+          dimensionColumnsField={dimensionColumnsField}
+          form={form}
+          handleActiveField={handleActiveField}
+          isEditMode={isEditMode}
+          selectedColumnField={selectedColumnField}
+          selectedTableField={selectedTableField}
+          selectedTestLevel={selectedTestLevel}
+          t={t}
+          testLevelDoc={testLevelDoc}
+          testLevelFieldValue={testLevelFieldValue}
+          testLevelOptions={testLevelOptions}
+          topDimensionsField={topDimensionsField}
+        />
       )}
 
-      <div
-        className="form-card-section test-type-card test-type-section"
-        data-testid="test-type-card">
-        {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
-          <div
-            className={classNames(
-              'custom-test-type-container d-flex items-center',
-              isCustomQuery ? 'justify-between' : 'justify-end'
-            )}>
-            {isCustomQuery && <FormItemLabel label={t('label.test-type')} />}
-            <Button
-              color="link-color"
-              data-testid={isCustomQuery ? 'test-type-btn' : 'custom-query'}
-              iconLeading={Edit01}
-              size="sm"
-              onClick={handleCustomQueryToggle}>
-              {isCustomQuery
-                ? t('label.select-test-type')
-                : t('label.custom-query')}
-            </Button>
-          </div>
-        )}
-
-        {!isCustomQuery && getField(testTypeField)}
-
-        {additionalFields.map((field) => (
-          <div key={field.name}>{getField(field)}</div>
-        ))}
-
-        {showParameterFields && selectedTestDefinition && (
-          <div
-            className="parameter-fields-wrapper"
-            onFocusCapture={() =>
-              handleActiveField(
-                selectedTestType
-                  ? `root/${selectedTestType}`
-                  : ROOT_TEST_TYPE_PATH
-              )
-            }>
-            <ParameterFields
-              definition={selectedTestDefinition}
-              form={form}
-              table={selectedTableData}
-              testDefinitionDoc={
-                fieldDocs[selectedTestDefinition.name ?? ''] ??
-                selectedTestDefinition.description
-              }
-            />
-          </div>
-        )}
-
-        {isComputeRowCountFieldVisible && getField(computeRowCountField)}
-      </div>
+      <TestCaseTestTypeSection
+        additionalFields={additionalFields}
+        computeRowCountField={computeRowCountField}
+        fieldDocs={fieldDocs}
+        form={form}
+        handleActiveField={handleActiveField}
+        handleCustomQueryToggle={handleCustomQueryToggle}
+        isComputeRowCountFieldVisible={isComputeRowCountFieldVisible}
+        isCustomQuery={isCustomQuery}
+        isEditMode={isEditMode}
+        selectedTableData={selectedTableData}
+        selectedTestDefinition={selectedTestDefinition}
+        selectedTestLevel={selectedTestLevel}
+        selectedTestType={selectedTestType}
+        showParameterFields={showParameterFields}
+        t={t}
+        testTypeField={testTypeField}
+      />
 
       {!showOnlyParameter && (
-        <div
-          className="form-card-section test-details-section"
-          data-testid="test-details-card">
-          {getField(testNameField)}
-
-          {isEditMode && getField(displayNameField)}
-
-          <FormField control={form.control} name="description">
-            {({ field }) => (
-              <div
-                className="tw:flex tw:flex-col tw:gap-1"
-                data-testid="description"
-                id="root/description"
-                {...descriptionDoc}>
-                <FormItemLabel label={t('label.description')} />
-                <RichTextEditor
-                  initialValue={field.value ?? ''}
-                  onFocus={() => handleActiveField('root/description')}
-                  onTextChange={field.onChange}
-                />
-              </div>
-            )}
-          </FormField>
-
-          <FormField control={form.control} name="tags">
-            {({ field }) => (
-              <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-                <TagSuggestion
-                  label={t('label.tag-plural')}
-                  placeholder={t('label.select-field', {
-                    field: t('label.tag-plural'),
-                  })}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              </div>
-            )}
-          </FormField>
-
-          <FormField control={form.control} name="glossaryTerms">
-            {({ field }) => (
-              <div
-                data-testid="glossary-terms-selector"
-                id="root/glossaryTerms"
-                {...glossaryTermsDoc}>
-                <TagSuggestion
-                  label={t('label.glossary-term-plural')}
-                  placeholder={t('label.select-field', {
-                    field: t('label.glossary-term-plural'),
-                  })}
-                  tagType={TagSource.Glossary}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              </div>
-            )}
-          </FormField>
-        </div>
+        <TestCaseDetailsSection
+          descriptionDoc={descriptionDoc}
+          displayNameField={displayNameField}
+          form={form}
+          glossaryTermsDoc={glossaryTermsDoc}
+          handleActiveField={handleActiveField}
+          isEditMode={isEditMode}
+          t={t}
+          tagsDoc={tagsDoc}
+          testNameField={testNameField}
+        />
       )}
 
-      {!showOnlyParameter &&
-        !isEditMode &&
-        selectedTableFqn &&
-        canCreatePipeline && (
-          <div {...pipelineDoc}>
-            <TestCaseSchedulerSection
-              canCreatePipeline={canCreatePipeline}
-              form={form}
-              hasTestSuite={hasTestSuite}
-              schedulerOptions={schedulerOptions}
-              selectedTableData={selectedTableData}
-              table={table}
-              testSuite={testSuite}
-              onActiveFieldChange={onActiveFieldChange}
-            />
-          </div>
-        )}
+      {showSchedulerSection && (
+        <div {...pipelineDoc}>
+          <TestCaseSchedulerSection
+            canCreatePipeline={canCreatePipeline}
+            form={form}
+            hasTestSuite={hasTestSuite}
+            schedulerOptions={schedulerOptions}
+            selectedTableData={selectedTableData}
+            table={table}
+            testSuite={testSuite}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </div>
+      )}
     </div>
   );
 };
