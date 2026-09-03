@@ -797,13 +797,19 @@ public class AuditLogResourceIT {
   void test_listAuditLogs_deferredJoin_backwardPaginationMatchesForward() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
+    // burstToken scopes the q= filter to this test's own rows, so concurrent tests' audit events
+    // in the same time window don't pollute the DESC-order assertions (flaky on multi-node runs).
+    String burstToken =
+        "DeferredJoinBurst" + java.util.UUID.randomUUID().toString().replace("-", "");
+
     long startTs = System.currentTimeMillis() - (60 * 60 * 1000);
-    java.util.List<String> glossaryIds = createGlossaryBurst(client, DEFERRED_JOIN_BURST_SIZE);
+    java.util.List<String> glossaryIds =
+        createGlossaryBurst(client, DEFERRED_JOIN_BURST_SIZE, burstToken);
     long endTs = System.currentTimeMillis();
 
     try {
       Map<String, Object> firstPage =
-          listWindow(client, startTs, endTs, DEFERRED_JOIN_PAGE_SIZE, null, null);
+          listWindow(client, startTs, endTs, DEFERRED_JOIN_PAGE_SIZE, null, null, burstToken);
       java.util.List<Map<String, Object>> firstPageData = dataOf(firstPage);
       String afterCursor = afterCursorOf(firstPage);
 
@@ -812,12 +818,14 @@ public class AuditLogResourceIT {
           "Expected a full first page with a forward cursor to exercise backward pagination");
 
       Map<String, Object> secondPage =
-          listWindow(client, startTs, endTs, DEFERRED_JOIN_PAGE_SIZE, afterCursor, null);
+          listWindow(
+              client, startTs, endTs, DEFERRED_JOIN_PAGE_SIZE, afterCursor, null, burstToken);
       String beforeCursor = beforeCursorOf(secondPage);
       assertNotNull(beforeCursor, "Second page should expose a backward cursor");
 
       Map<String, Object> backToFirst =
-          listWindow(client, startTs, endTs, DEFERRED_JOIN_PAGE_SIZE, null, beforeCursor);
+          listWindow(
+              client, startTs, endTs, DEFERRED_JOIN_PAGE_SIZE, null, beforeCursor, burstToken);
       java.util.List<Map<String, Object>> backToFirstData = dataOf(backToFirst);
 
       assertEquals(
@@ -837,6 +845,35 @@ public class AuditLogResourceIT {
     for (int i = 0; i < count; i++) {
       String name =
           "DeferredJoinBurst_" + java.util.UUID.randomUUID().toString().substring(0, 8) + "_" + i;
+      String createJson =
+          String.format(
+              "{\"name\": \"%s\", \"displayName\": \"Deferred Join Burst\", \"description\": \"Seed audit events for deferred-join pagination test\"}",
+              name);
+      String createResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+      Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+      ids.add(glossary.get("id").toString());
+      lastFqn = glossary.get("fullyQualifiedName").toString();
+    }
+    waitForAuditLogEntry(client, lastFqn, "glossary", "entityCreated");
+    return ids;
+  }
+
+  // burstToken variant used only by the backward-pagination test so its q= filter can isolate
+  // this test's own audit rows from concurrent tests writing into the same time window.
+  private java.util.List<String> createGlossaryBurst(
+      OpenMetadataClient client, int count, String burstToken) throws Exception {
+    java.util.List<String> ids = new java.util.ArrayList<>();
+    String lastFqn = null;
+    for (int i = 0; i < count; i++) {
+      // Use '-' instead of '_' so the FQN tokenizes into a standalone `burstToken` lexeme on
+      // both MySQL InnoDB FTS (which keeps '_' inside a token) and Postgres tsvector. A
+      // '_'-separated name would index as a single token on MySQL and prevent q=burstToken from
+      // matching, returning an empty result set and breaking the pagination assertions.
+      String name = burstToken + "-" + i;
       String createJson =
           String.format(
               "{\"name\": \"%s\", \"displayName\": \"Deferred Join Burst\", \"description\": \"Seed audit events for deferred-join pagination test\"}",
@@ -890,6 +927,37 @@ public class AuditLogResourceIT {
     }
     if (before != null) {
       params.put("before", before);
+    }
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+    return MAPPER.readValue(response, new TypeReference<>() {});
+  }
+
+  // burstToken variant used only by the backward-pagination test; see listWindow(...) above.
+  private Map<String, Object> listWindow(
+      OpenMetadataClient client,
+      long startTs,
+      long endTs,
+      int pageSize,
+      String after,
+      String before,
+      String burstToken)
+      throws Exception {
+    Map<String, String> params = new HashMap<>();
+    params.put("startTs", String.valueOf(startTs));
+    params.put("endTs", String.valueOf(endTs));
+    params.put("limit", String.valueOf(pageSize));
+    if (after != null) {
+      params.put("after", after);
+    }
+    if (before != null) {
+      params.put("before", before);
+    }
+    if (burstToken != null) {
+      // q searches across user_name, entity_fqn, service_name, entity_type. burstToken is unique
+      // to this test invocation and appears in the glossary entity_fqn, so it isolates the result
+      // set from any audit events that other concurrent test classes may insert in this window.
+      params.put("q", burstToken);
     }
     String response = executeGet(client, AUDIT_LOGS_PATH, params);
     assertNotNull(response);

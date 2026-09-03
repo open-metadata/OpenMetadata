@@ -98,7 +98,9 @@ public class IncidentManagerDomainIsolationIT {
       cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
 
       Awaitility.await("Incident manager listing honours domain isolation")
-          .atMost(Duration.ofSeconds(90))
+          // Bumped from 90s: mysql-es retry-queue lane needs more headroom for RBAC + search
+          // propagation.
+          .atMost(Duration.ofMinutes(3))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
