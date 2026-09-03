@@ -13,14 +13,13 @@
 
 /**
  * Safely read a value from a dispatch/lookup object using a dynamic (possibly
- * user-controlled) key. Only own enumerable properties are returned, so a
- * crafted key such as `constructor` or `toString` can never resolve to an
- * inherited function and be invoked as a handler.
+ * user-controlled) key. The record is copied into a `Map` and the value is read
+ * through `Map.get`, so lookup never performs a computed member access on a
+ * user-controlled name: a crafted key such as `constructor` or `__proto__` can
+ * neither resolve to an inherited member nor be invoked as a handler.
  */
 export const getOwnHandler = <T>(
   record: Record<string, T>,
   key: string | undefined
 ): T | undefined =>
-  key !== undefined && Object.prototype.hasOwnProperty.call(record, key)
-    ? record[key]
-    : undefined;
+  key === undefined ? undefined : new Map(Object.entries(record)).get(key);

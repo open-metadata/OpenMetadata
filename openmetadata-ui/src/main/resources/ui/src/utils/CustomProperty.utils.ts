@@ -290,7 +290,9 @@ interface PageHeader {
   subHeaderParams?: Record<string, string>;
 }
 
-const ENTITY_PATH_TO_PAGE_HEADER: [string, PageHeader][] = [
+// Built lazily inside the getter: dereferencing ENTITY_PATH at module scope
+// crashes when a circular import leaves ENTITY_PATH uninitialized at load time.
+const getEntityPathToPageHeader = (): [string, PageHeader][] => [
   [ENTITY_PATH.tables, PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES],
   [ENTITY_PATH.topics, PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES],
   [ENTITY_PATH.dashboards, PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES],
@@ -325,7 +327,7 @@ const ENTITY_PATH_TO_PAGE_HEADER: [string, PageHeader][] = [
 export const getCustomPropertyPageHeaderFromEntity = (
   entityType: string
 ): PageHeader =>
-  ENTITY_PATH_TO_PAGE_HEADER.find(([path]) => path === entityType)?.[1] ??
+  getEntityPathToPageHeader().find(([path]) => path === entityType)?.[1] ??
   PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
 
 export const formatTableCellValue = (value: unknown): string => {
