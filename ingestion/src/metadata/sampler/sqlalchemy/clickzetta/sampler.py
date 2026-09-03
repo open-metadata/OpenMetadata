@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Native ClickZetta sampling for profiler and data-quality workflows."""
 
-from sqlalchemy import Table, func, text
+from sqlalchemy import Column, Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
@@ -27,7 +27,9 @@ class ClickzettaSampler(SQASampler):
             return func.system
         return func.ROW
 
-    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
+    def set_tablesample(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, static: StaticSamplingConfig | None, selectable: Table
+    ):
         """Apply ClickZetta's native row-count or percentage sampling."""
 
         if static is None:
@@ -40,7 +42,9 @@ class ClickzettaSampler(SQASampler):
 
         return selectable.tablesample(sampling_method(text(f"{int(sample)} ROWS")))
 
-    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
+    def get_sample_query(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, static: StaticSamplingConfig | None, *, column: Column | None = None
+    ) -> CTE:
         """Build a sampled CTE using ClickZetta's native ``TABLESAMPLE`` clause."""
 
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
