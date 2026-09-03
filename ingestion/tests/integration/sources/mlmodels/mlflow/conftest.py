@@ -27,8 +27,8 @@ The following steps are taken:
 import io
 import time
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass
-from typing import Optional
 
 import pymysql
 import pytest
@@ -51,7 +51,7 @@ class MlflowContainerConfigs:
     backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
     artifact_bucket: str = "mlops.local.com"
     port: int = 6000
-    exposed_port: Optional[int] = None  # noqa: UP045
+    exposed_port: int | None = None
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -127,12 +127,10 @@ def mlflow_environment():
 
             mlflow_port = config.mlflow_configs.exposed_port
             for _ in range(30):
-                try:
-                    response = requests.get(f"http://localhost:{mlflow_port}/health")
-                    if response.status_code == 200:
+                with suppress(Exception):
+                    if requests.get(f"http://localhost:{mlflow_port}/health").status_code == 200:
                         break
-                except Exception:
-                    time.sleep(2)
+                time.sleep(2)
             else:
                 raise RuntimeError("MLflow server did not become ready in time.")
 
@@ -146,11 +144,14 @@ def build_and_get_mlflow_container(
 ):
     docker_client = DockerClient()
 
+    # anyio 4.15 lazily imports its submodules without exposing from_thread, which
+    # starlette's WSGIMiddleware calls, so every mlflow server response 500s. Drop the
+    # bound once anyio restores the attribute or starlette imports the submodule.
     dockerfile = io.BytesIO(
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql
+        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql "anyio<4.15"
         """
     )
 

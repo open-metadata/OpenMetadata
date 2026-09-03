@@ -13,8 +13,6 @@
 Hive E2E tests
 """
 
-from typing import List  # noqa: UP035
-
 from sqlalchemy import text
 
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
@@ -22,7 +20,7 @@ from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-    prepare_e2e: List[str] = [  # noqa: RUF012, UP006
+    prepare_e2e: list[str] = [  # noqa: RUF012
         "DROP DATABASE IF EXISTS e2e_cli_tests CASCADE",
         "CREATE DATABASE e2e_cli_tests",
         """
@@ -57,7 +55,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.persons
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         """
     INSERT INTO e2e_cli_tests.persons (person_id, full_name, birthdate) VALUES
         (1,'Peter Parker', '2004-08-10'),
@@ -136,15 +134,15 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["e2e_cli_tests"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["persons"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["my_table"]
 
     @staticmethod

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
 
@@ -319,6 +320,210 @@ public class McpIntegrationIT extends McpTestBase {
     assertThat(executeMcpRequest(call, deniedToken).toString()).doesNotContain("created_at");
   }
 
+  /**
+   * A Deny whose condition matches the asset's tag must deny lineage as well as details. An
+   * unresolved ResourceContext reads the tag as absent, so the Deny never fires and the graph comes
+   * back - the fail-open half of #31941.
+   */
+  @Test
+  void lineageToolsHonourTagBasedDeny() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table denied = createServiceDatabaseSchemaTable("mcp_lin_deny_" + suffix);
+    tagTable(denied.getId().toString(), tagFqn);
+    String token = createUserDeniedByCondition(suffix, String.format("matchAnyTag('%s')", tagFqn));
+
+    assertLineageDenied(denied, token);
+  }
+
+  /**
+   * The reported case: a Deny on everything *outside* the tagged scope. The tagged asset must stay
+   * readable. An unresolved ResourceContext reads every asset as untagged, so the Deny fires on all
+   * of them and even the explicitly-allowed one 403s.
+   */
+  @Test
+  void lineageToolsHonourNegatedTagPolicy() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table allowed = createServiceDatabaseSchemaTable("mcp_lin_allow_" + suffix);
+    tagTable(allowed.getId().toString(), tagFqn);
+    String token = createUserDeniedByCondition(suffix, String.format("!matchAnyTag('%s')", tagFqn));
+
+    JsonNode lineage =
+        executeMcpRequest(
+            McpTestUtils.createGetLineageToolCall(
+                Entity.TABLE, allowed.getFullyQualifiedName(), 1, 1),
+            token);
+    assertThat(lineage.toString())
+        .as("the tagged asset is outside the deny, so its lineage must be readable")
+        .doesNotContain("Authorization error")
+        .contains(allowed.getFullyQualifiedName());
+  }
+
+  /**
+   * Authorizing the root is not enough. Under a deny-everything-outside-the-tag policy the root is
+   * readable but its neighbour is not, and the neighbour's FQN must not appear in the graph - that
+   * identity is exactly what the policy hides.
+   */
+  @Test
+  void lineageHidesNeighboursTheCallerCannotView() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table root = createServiceDatabaseSchemaTable("mcp_lin_root_" + suffix);
+    Table upstream = createServiceDatabaseSchemaTable("mcp_lin_up_" + suffix);
+    tagTable(root.getId().toString(), tagFqn);
+    addLineageEdge(upstream, root);
+    String token = createUserDeniedByCondition(suffix, String.format("!matchAnyTag('%s')", tagFqn));
+
+    Map<String, Object> call =
+        McpTestUtils.createGetLineageToolCall(Entity.TABLE, root.getFullyQualifiedName(), 1, 1);
+
+    // Control: admin bypasses the policy and sees the neighbour, proving the edge really exists.
+    assertThat(executeMcpRequest(call).toString())
+        .as("admin must see the upstream neighbour")
+        .contains(upstream.getFullyQualifiedName());
+
+    JsonNode restrictedResponse = executeMcpRequest(call, token);
+    String restricted = restrictedResponse.toString();
+    assertThat(restricted)
+        .as("the root is tagged, so the caller reaches the graph at all")
+        .doesNotContain("Authorization error")
+        .contains(root.getFullyQualifiedName());
+    assertThat(restricted)
+        .as("the untagged neighbour is denied and must not be named")
+        .doesNotContain(upstream.getFullyQualifiedName());
+    assertThat(hiddenNodeCount(restrictedResponse))
+        .as("and the response must report the neighbour it removed, not read as complete")
+        .isEqualTo(1);
+  }
+
+  /**
+   * A pipeline is edge metadata, not a graph node, so the node filter never sees it. Both endpoint
+   * tables are readable here and the edge survives; what must not survive is the denied pipeline's
+   * identity. The relationship itself stays, so the caller still learns a pipeline joins these two.
+   */
+  @Test
+  void lineageRedactsAPipelineTheCallerCannotView() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table root = createServiceDatabaseSchemaTable("mcp_pipe_root_" + suffix);
+    Table upstream = createServiceDatabaseSchemaTable("mcp_pipe_up_" + suffix);
+    // Both tables tagged so both stay visible and the edge is returned; the pipeline is not.
+    tagTable(root.getId().toString(), tagFqn);
+    tagTable(upstream.getId().toString(), tagFqn);
+    String pipelineId = createPipeline(suffix);
+    addLineageEdge(upstream, root, pipelineId);
+    JsonNode pipeline = get("pipelines/" + pipelineId, JsonNode.class);
+    String pipelineFqn = pipeline.get("fullyQualifiedName").asText();
+    String token =
+        createUserDeniedByCondition(
+            suffix, String.format("!matchAnyTag('%s')", tagFqn), List.of("all"));
+
+    Map<String, Object> call =
+        McpTestUtils.createGetLineageToolCall(Entity.TABLE, root.getFullyQualifiedName(), 1, 1);
+
+    // Control: admin sees the pipeline, proving it is really on the edge.
+    assertThat(executeMcpRequest(call).toString())
+        .as("admin must see the pipeline that joins the two tables")
+        .contains(pipelineFqn);
+
+    // Control: the policy must genuinely deny the pipeline, or the assertions below prove nothing.
+    assertThat(
+            executeMcpRequest(
+                    McpTestUtils.createGetEntityToolCall(Entity.PIPELINE, pipelineFqn), token)
+                .toString())
+        .as("the restricted caller must not be able to read the pipeline directly")
+        .contains("Authorization error");
+
+    String restricted = executeMcpRequest(call, token).toString();
+    assertThat(restricted)
+        .as("both tables are tagged, so the edge itself must be returned")
+        .contains(root.getFullyQualifiedName())
+        .contains(upstream.getFullyQualifiedName());
+    assertThat(restricted)
+        .as("the denied pipeline must not be named")
+        .doesNotContain(pipelineFqn)
+        .doesNotContain("mcppipe_" + suffix);
+    assertThat(restricted)
+        .as("but the relationship must still say a pipeline connects them")
+        .contains("\"relationshipType\":\"pipeline\"");
+  }
+
+  private void assertLineageDenied(Table table, String token) throws Exception {
+    String lineage =
+        executeMcpRequest(
+                McpTestUtils.createGetLineageToolCall(
+                    Entity.TABLE, table.getFullyQualifiedName(), 1, 1),
+                token)
+            .toString();
+    assertThat(lineage)
+        .as("get_entity_lineage must honour the tag deny")
+        .contains("Authorization error");
+    assertThat(lineage)
+        .as("a denied lineage call must not name the asset")
+        .doesNotContain(table.getFullyQualifiedName());
+  }
+
+  /** Reads {@code hiddenNodes} out of the tool payload carried in the JSON-RPC result envelope. */
+  private int hiddenNodeCount(JsonNode response) throws Exception {
+    JsonNode content = response.at("/result/content");
+    assertThat(content.isArray()).as("tool result must carry content").isTrue();
+    JsonNode payload = OBJECT_MAPPER.readTree(content.get(0).get("text").asText());
+    assertThat(payload.has("hiddenNodes")).as("lineage must report hiddenNodes").isTrue();
+    return payload.get("hiddenNodes").asInt();
+  }
+
+  /**
+   * {@code PUT /v1/lineage} answers 200 with an empty body, so it cannot go through {@code put(...,
+   * Class)} (which parses the body) or {@code putText} (which sends text/plain).
+   */
+  private void addLineageEdge(Table from, Table to) throws Exception {
+    addLineageEdge(from, to, null);
+  }
+
+  private String createPipeline(String suffix) throws Exception {
+    String prefix = "mcppipe_" + suffix;
+    JsonNode service =
+        post(
+            "services/pipelineServices",
+            Map.of(
+                "name",
+                prefix + "_svc",
+                "serviceType",
+                "Airflow",
+                "connection",
+                Map.of("config", Map.of("type", "Airflow", "hostPort", "http://localhost:8080"))),
+            JsonNode.class);
+    JsonNode pipeline =
+        post(
+            "pipelines",
+            Map.of("name", prefix, "service", service.get("fullyQualifiedName").asText()),
+            JsonNode.class);
+    return pipeline.get("id").asText();
+  }
+
+  private void addLineageEdge(Table from, Table to, String pipelineId) throws Exception {
+    Map<String, Object> edge =
+        new java.util.HashMap<>(
+            Map.of(
+                "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
+                "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE)));
+    if (pipelineId != null) {
+      edge.put(
+          "lineageDetails", Map.of("pipeline", Map.of("id", pipelineId, "type", Entity.PIPELINE)));
+    }
+    String body = OBJECT_MAPPER.writeValueAsString(Map.of("edge", edge));
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(TestSuiteBootstrap.getBaseUrl() + "/api/v1/lineage"))
+            .header("Content-Type", "application/json")
+            .header("Authorization", authToken)
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertThat(response.statusCode()).as("lineage edge must be created").isEqualTo(200);
+  }
+
   private String createRestrictedTag(String suffix) throws Exception {
     String classification = "McpAuthz" + suffix;
     post(
@@ -343,6 +548,20 @@ public class McpIntegrationIT extends McpTestBase {
   }
 
   private String createUserDeniedByTag(String suffix, String tagFqn) throws Exception {
+    return createUserDeniedByCondition(suffix, String.format("matchAnyTag('%s')", tagFqn));
+  }
+
+  /**
+   * A DataConsumer whose extra role denies ViewAll on any table matching {@code condition}. Both
+   * polarities matter: {@code matchAnyTag(x)} denies the tagged asset, {@code !matchAnyTag(x)}
+   * denies everything else, and an unresolved ResourceContext gets the wrong answer for both.
+   */
+  private String createUserDeniedByCondition(String suffix, String condition) throws Exception {
+    return createUserDeniedByCondition(suffix, condition, List.of("table"));
+  }
+
+  private String createUserDeniedByCondition(
+      String suffix, String condition, List<String> resources) throws Exception {
     String prefix = "mcpauthz_" + suffix;
     JsonNode policy =
         post(
@@ -353,11 +572,16 @@ public class McpIntegrationIT extends McpTestBase {
                 "rules",
                 List.of(
                     Map.of(
-                        "name", prefix + "_rule",
-                        "resources", List.of("table"),
-                        "operations", List.of("ViewAll"),
-                        "effect", "deny",
-                        "condition", String.format("matchAnyTag('%s')", tagFqn)))),
+                        "name",
+                        prefix + "_rule",
+                        "resources",
+                        resources,
+                        "operations",
+                        List.of("ViewAll"),
+                        "effect",
+                        "deny",
+                        "condition",
+                        condition))),
             JsonNode.class);
     JsonNode role =
         post(

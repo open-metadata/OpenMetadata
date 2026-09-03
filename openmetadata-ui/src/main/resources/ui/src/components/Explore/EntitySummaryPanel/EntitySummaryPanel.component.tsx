@@ -126,6 +126,10 @@ import {
 } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
 
+const ONTOLOGY_EXPLORER = 'ontology-explorer';
+const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
+const DETAILS_ENTITY_TYPE_KEY = 'details.entityType';
+
 export default function EntitySummaryPanel({
   entityDetails,
   handleClosePanel,
@@ -173,7 +177,7 @@ export default function EntitySummaryPanel({
   const ontologyExplorerMinimalTwoTabNav = useMemo(
     () =>
       Boolean(
-        panelPath === 'ontology-explorer' &&
+        panelPath === ONTOLOGY_EXPLORER &&
           isSideDrawer &&
           ontologyExplorerRelationsSlot != null
       ),
@@ -183,7 +187,7 @@ export default function EntitySummaryPanel({
   const ontologyExplorerAppendRelationsTab = useMemo(
     () =>
       Boolean(
-        panelPath === 'glossary-term-assets-tab' &&
+        panelPath === GLOSSARY_TERM_ASSETS_TAB &&
           isSideDrawer &&
           ontologyExplorerRelationsSlot != null
       ),
@@ -195,21 +199,21 @@ export default function EntitySummaryPanel({
       Boolean(
         isSideDrawer &&
           ontologyExplorerRelationsSlot != null &&
-          (panelPath === 'ontology-explorer' ||
-            panelPath === 'glossary-term-assets-tab')
+          (panelPath === ONTOLOGY_EXPLORER ||
+            panelPath === GLOSSARY_TERM_ASSETS_TAB)
       ),
     [isSideDrawer, ontologyExplorerRelationsSlot, panelPath]
   );
 
   const entityType = useMemo(
-    () => get(entityDetails, 'details.entityType') as EntityType | undefined,
+    () => get(entityDetails, DETAILS_ENTITY_TYPE_KEY) as EntityType | undefined,
     [entityDetails]
   );
 
   const fetchResourcePermission = async (id: string) => {
     try {
       setIsPermissionLoading(true);
-      let type = get(entityDetails, 'details.entityType') as
+      let type = get(entityDetails, DETAILS_ENTITY_TYPE_KEY) as
         | ResourceEntity
         | undefined;
       let idForPermission = id;
@@ -235,8 +239,8 @@ export default function EntitySummaryPanel({
       // Passing that FQN to the by-ID endpoint returns empty permissions even
       // for admins.
       const isOntologyPanel =
-        panelPath === 'ontology-explorer' ||
-        panelPath === 'glossary-term-assets-tab';
+        panelPath === ONTOLOGY_EXPLORER ||
+        panelPath === GLOSSARY_TERM_ASSETS_TAB;
       const permissions =
         isOntologyPanel && fqn
           ? await getEntityPermissionByFqn(type, fqn)
@@ -871,7 +875,7 @@ export default function EntitySummaryPanel({
         />
       );
     }
-    const type = (get(entityDetails, 'details.entityType') ??
+    const type = (get(entityDetails, DETAILS_ENTITY_TYPE_KEY) ??
       EntityType.TABLE) as EntityType;
     const entity = entityData || entityDetails.details;
     const SummaryPanelComponent =
@@ -1125,8 +1129,8 @@ export default function EntitySummaryPanel({
       className={classNames('entity-summary-panel-container', {
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
-        'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
-        'ontology-explorer': panelPath === 'ontology-explorer',
+        [GLOSSARY_TERM_ASSETS_TAB]: panelPath === GLOSSARY_TERM_ASSETS_TAB,
+        [ONTOLOGY_EXPLORER]: panelPath === ONTOLOGY_EXPLORER,
       })}
       data-testid="entity-summary-panel-container">
       {isSideDrawer && (

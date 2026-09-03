@@ -17,7 +17,7 @@ Called in dag_runner.j2
 
 import pathlib
 import traceback
-from typing import Any, Dict  # noqa: UP035
+from typing import Any
 
 from airflow.models import DAG
 
@@ -76,10 +76,10 @@ class WorkflowFactory:
         return workflow
 
     @staticmethod
-    def register_dag(dag: DAG, globals_namespace: Dict[str, Any]) -> None:  # noqa: UP006
+    def register_dag(dag: DAG, globals_namespace: dict[str, Any]) -> None:
         globals_namespace[dag.dag_id]: DAG = dag
 
-    def generate_dag(self, globals_namespace: Dict[str, Any]) -> None:  # noqa: UP006
+    def generate_dag(self, globals_namespace: dict[str, Any]) -> None:
         dag = self.build_dag()
         self.dag = dag
         self.register_dag(dag, globals_namespace)

@@ -15,9 +15,9 @@ for any source.
 """
 
 import traceback
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Optional, Type  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ TEST_CONNECTION_FN_NAME = "test_connection"
 # Once we migrate all connectors we shouldn't need this.
 def _get_connection_class_from_spec(
     connection: BaseModel,
-) -> Optional[Type[BaseConnection]]:  # noqa: UP006, UP045
+) -> type[BaseConnection] | None:
     """
     Helper method to get the connection class from the connection spec.
     Returns the connection class if successful, None otherwise.
@@ -64,7 +64,7 @@ def _get_connection_class_from_spec(
     return None
 
 
-def create_connection(connection: BaseModel) -> Optional[BaseConnection]:  # noqa: UP045
+def create_connection(connection: BaseModel) -> BaseConnection | None:
     """Return the ServiceSpec ``BaseConnection`` owner, or ``None`` if the
     connection has no ``connection_class``."""
     connection_class = _get_connection_class_from_spec(connection)
@@ -78,7 +78,7 @@ def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> N
 
 
 @contextmanager
-def close_on_failure(connection: Optional[BaseConnection]) -> Iterator[None]:  # noqa: UP045
+def close_on_failure(connection: BaseConnection | None) -> Iterator[None]:
     """Release the owned connection if the wrapped verification fails. A teardown
     that fails is logged, never raised: the verification error is the one the
     caller needs."""

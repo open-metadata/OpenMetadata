@@ -14,6 +14,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
@@ -24,65 +25,37 @@ const pipelineSchemaLoaders: Partial<
   Record<PipelineServiceType, SchemaLoader>
 > = {
   [PipelineServiceType.Airbyte]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/airbyteConnection.json'),
   [PipelineServiceType.Airflow]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/airflowConnection.json'),
   [PipelineServiceType.GluePipeline]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/gluePipelineConnection.json'),
   [PipelineServiceType.KafkaConnect]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/kafkaConnectConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/kafkaConnectConnection.json'),
   [PipelineServiceType.Fivetran]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/fivetranConnection.json'),
   [PipelineServiceType.Dagster]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/dagsterConnection.json'),
   [PipelineServiceType.DBTCloud]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/dbtCloudConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/dbtCloudConnection.json'),
   [PipelineServiceType.Nifi]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/nifiConnection.json'),
   [PipelineServiceType.DomoPipeline]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/domoPipelineConnection.json'),
   [PipelineServiceType.CustomPipeline]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/customPipelineConnection.json'),
   [PipelineServiceType.DatabricksPipeline]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json'
+    loadConnectionSchema(
+      'connections/pipeline/databricksPipelineConnection.json'
     ),
   [PipelineServiceType.Spline]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/splineConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/splineConnection.json'),
   [PipelineServiceType.OpenLineage]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/openLineageConnection.json'),
   [PipelineServiceType.Flink]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/flinkConnection.json'),
   [PipelineServiceType.Prefect]: () =>
-    import(
-      '../jsons/connectionSchemas/connections/pipeline/prefectConnection.json'
-    ),
+    loadConnectionSchema('connections/pipeline/prefectConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

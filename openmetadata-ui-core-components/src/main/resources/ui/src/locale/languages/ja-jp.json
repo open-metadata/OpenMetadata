@@ -23,6 +23,7 @@
     "records": "レコード",
     "remove-filter": "フィルターを削除",
     "select-dates": "日付を選択",
+    "select-only-one-row": "1 行を選択",
     "show-hidden-breadcrumbs": "非表示のパンくずリストを表示",
     "today": "今日"
   }
