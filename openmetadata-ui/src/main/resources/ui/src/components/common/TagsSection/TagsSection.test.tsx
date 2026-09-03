@@ -96,6 +96,14 @@ jest.mock('antd', () => ({
   },
 }));
 
+jest.mock('../atoms/Tag/ClassificationTag', () =>
+  jest
+    .fn()
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    ))
+);
+
 // Mock SVG components
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">EditIcon</div>,
@@ -443,9 +451,14 @@ describe('TagsSection', () => {
     it('should render tag items with correct structure', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('tag-tag1')).toBeInTheDocument();
-      expect(screen.getByTestId('tag-tag2')).toBeInTheDocument();
-      expect(screen.getByTestId('tag-tag3')).toBeInTheDocument();
+      const visibleTags = mockTags.slice(0, defaultProps.maxDisplayCount);
+
+      visibleTags.forEach((tag) => {
+        const tagItem = screen.getByTestId(`tag-${tag.tagFQN}`);
+
+        expect(tagItem).toBeInTheDocument();
+        expect(tagItem).toHaveTextContent(tag.displayName ?? '');
+      });
     });
   });
 

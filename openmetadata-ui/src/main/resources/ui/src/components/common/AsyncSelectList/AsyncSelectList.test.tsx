@@ -12,12 +12,12 @@
  */
 
 import {
-  act,
-  findByRole,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    findByRole,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
@@ -34,8 +34,12 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div>TagsV1</div>)
+jest.mock('../atoms/Tag/ClassificationTag', () =>
+  jest.fn().mockImplementation(({ label }) => <div title={label}>{label}</div>)
+);
+
+jest.mock('../atoms/Tag/GlossaryTag', () =>
+  jest.fn().mockImplementation(({ label }) => <div title={label}>{label}</div>)
 );
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -44,7 +48,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/TagsUtils', () => ({
   getTagDisplay: jest.fn().mockReturnValue('tags'),
-  tagRender: jest.fn().mockReturnValue(<p>Tags Render</p>),
 }));
 
 const mockOnChange = jest.fn();

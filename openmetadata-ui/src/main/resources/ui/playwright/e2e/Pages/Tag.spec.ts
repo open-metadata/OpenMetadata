@@ -16,7 +16,7 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { expect, test as base } from '../../support/fixtures/base';
+import { test as base, expect } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -171,7 +171,7 @@ test.describe('Tag Page with Admin Roles', () => {
       .getByRole('button', { name: 'Cube01', exact: true })
       .click();
     await adminPage
-      .getByRole('button', { name: 'Select color #F14C75' })
+      .getByRole('button', { name: 'Select color #B93815' })
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
