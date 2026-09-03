@@ -816,8 +816,13 @@ public class ListFilter extends Filter<ListFilter> {
       toEntityCondition = " AND entity_relationship.toEntity = :ownerToEntityParam";
     }
     return String.format(
-        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId IN (%s)%s AND relation=8))",
-        entityIdColumn, inCondition, toEntityCondition);
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('%s', '%s') AND entity_relationship.fromId IN (%s)%s AND relation=%d))",
+        entityIdColumn,
+        Entity.USER,
+        Entity.TEAM,
+        inCondition,
+        toEntityCondition,
+        Relationship.OWNS.ordinal());
   }
 
   /**

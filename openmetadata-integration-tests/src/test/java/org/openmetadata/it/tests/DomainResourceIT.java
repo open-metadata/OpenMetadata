@@ -1817,17 +1817,17 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   void test_listDomains_filterByUnknownOwnerReturnsNoMatches(TestNamespace ns) {
     User owner = testUser1();
     EntityReference ownerRef = new EntityReference().withId(owner.getId()).withType("user");
-    Domain owned =
-        createEntity(
-            new CreateDomain()
-                .withName(ns.prefix("fowner_unknown"))
-                .withDomainType(DomainType.AGGREGATE)
-                .withOwners(List.of(ownerRef))
-                .withDescription("filter test domain"));
+    // A real, owned domain so the endpoint has data it could wrongly return.
+    createEntity(
+        new CreateDomain()
+            .withName(ns.prefix("fowner_unknown"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withOwners(List.of(ownerRef))
+            .withDescription("filter test domain"));
 
-    // An owner that resolves to nothing must yield no matches, not the full domain list.
+    // An owner that resolves to nothing must yield an empty result, not the full domain list.
     Set<UUID> ids = listedIds(listDomainsWithFilter("owners", ns.prefix("no_such_owner")));
-    assertFalse(ids.contains(owned.getId()), "unknown owner must not return owned domains");
+    assertTrue(ids.isEmpty(), "unknown owner must yield no matches, but got " + ids.size());
   }
 
   @Test
