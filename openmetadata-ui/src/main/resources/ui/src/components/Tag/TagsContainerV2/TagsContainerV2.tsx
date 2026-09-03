@@ -18,10 +18,10 @@ import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-    WidgetCommentButton,
-    WidgetEditButton,
-    WidgetPlusButton,
-    WidgetRequestButton
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetPlusButton,
+  WidgetRequestButton
 } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -36,8 +36,8 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { getTagPlaceholder } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import {
-    getRequestTagsPath,
-    getUpdateTagsPath
+  getRequestTagsPath,
+  getUpdateTagsPath
 } from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
@@ -73,7 +73,6 @@ const TagsContainerV2 = ({
   newLook = false,
   sizeCap = LIST_SIZE,
   useGenericControls,
-  tagNewLook = false,
   multiSelect,
 }: TagsContainerV2Props) => {
   const navigate = useNavigate();
@@ -231,7 +230,6 @@ const TagsContainerV2 = ({
           <TagsViewer
             displayType={displayType}
             entityFqn={columnData?.fqn ?? ''}
-            newLook={tagNewLook}
             showNoDataPlaceholder={showNoDataPlaceholder}
             sizeCap={sizeCap}
             tagType={tagType}
@@ -386,7 +384,6 @@ const TagsContainerV2 = ({
         <TagsViewer
           displayType={displayType}
           entityFqn={columnData?.fqn ?? ''}
-          newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
           tags={tags?.[tagType] ?? []}
