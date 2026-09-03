@@ -40,8 +40,16 @@ export interface LlmConfiguration {
      * Maximum number of concurrent LLM completion requests.
      */
     maxConcurrentRequests?: number;
-    openai?:                LlmConfigurationOpenai;
-    provider?:              LlmProvider;
+    /**
+     * Whether Context Center memory extraction (deriving knowledge pills from uploaded files
+     * and Knowledge Center articles) runs. Independent of `enabled`, which also gates
+     * embeddings and other completion features: a deployment can keep LLM features on for
+     * semantic search while leaving automatic extraction off. Extraction is unmetered in
+     * OpenMetadata, so it is opt-in.
+     */
+    memoryExtractionEnabled?: boolean;
+    openai?:                  LlmConfigurationOpenai;
+    provider?:                LlmProvider;
 }
 
 export interface Anthropic {
