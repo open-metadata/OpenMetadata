@@ -65,6 +65,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 @Execution(ExecutionMode.CONCURRENT)
 public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
+  private static final String DIRECT_USER_ASSIGNMENT_ERROR =
+      "Team is of type Department. Direct users can only be assigned to teams of type Group.";
+
   {
     supportsImportExport = true;
     supportsBatchImport = true;
@@ -266,7 +269,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     Exception exception = assertThrows(Exception.class, () -> createEntity(create));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -287,7 +290,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
                     .getHttpClient()
                     .execute(HttpMethod.PUT, "/v1/teams", create, Team.class));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -306,7 +309,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Exception exception =
         assertThrows(Exception.class, () -> patchEntity(update.getId().toString(), update));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -342,7 +345,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Exception exception =
         assertThrows(Exception.class, () -> SdkClients.adminClient().users().create(create));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -361,7 +364,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             Exception.class,
             () -> bulkAddAssetsWithResult(SdkClients.adminClient(), department.getName(), request));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -381,7 +384,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             Exception.class,
             () -> SdkClients.adminClient().users().update(user.getId().toString(), update));
 
-    assertTrue(exception.getMessage().contains("Department"));
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
