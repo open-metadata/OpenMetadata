@@ -154,6 +154,33 @@ public class LogicOps {
    * This is why we are not picking the names from the CustomLogicOps enum.
    */
   private static void addCustomPrivateOps(JsonLogic jsonLogic) {
+    // {"tableColumnValues": "extension.dpTest.rows.name"} → ["john", "jane"]
+    //
+    // Walks a dot-separated path against the evaluation context and collects every value found
+    // at that path. When a segment resolves to a list and the next segment is a non-numeric key,
+    // that key is plucked from every element and the traversal continues (lists are flattened one
+    // level per step). The UI query-builder pairs this operator with `contains` to express "any
+    // row's <col> equals <value>" against a `table-cp` custom property, whose flat
+    // {"var":"extension.dpTest.rows.name"} would otherwise throw and evaluate to false.
+    //
+    // Kept private (i.e. absent from {@link CustomLogicOps}) because it is only meaningful for the
+    // hardcoded emit path of table-type custom-property operators — never exposed as a generic
+    // user-facing operator via /system/settings/customLogicOps.
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return "tableColumnValues";
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateTableColumnValues(evaluator, arguments, data);
+          }
+        });
+
     // This is expecting the `owners` to be passed to the rule argument
     jsonLogic.addOperation(
         "multipleUsersOrSingleTeamOwnership",
