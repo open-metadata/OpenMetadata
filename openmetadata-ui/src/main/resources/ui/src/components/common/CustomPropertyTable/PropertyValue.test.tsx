@@ -515,7 +515,9 @@ describe('Test PropertyValue Component', () => {
 
     // Both edit icon and expand toggle should be accessible when content overflows
     const editIcon = await screen.findByTestId('edit-icon');
-    const toggleBtn = await screen.findByTestId(`toggle-${mockData.property.name}`);
+    const toggleBtn = await screen.findByTestId(
+      `toggle-${mockData.property.name}`
+    );
 
     expect(editIcon).toBeInTheDocument();
     expect(toggleBtn).toBeInTheDocument();
