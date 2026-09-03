@@ -3848,8 +3848,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("putEntityUpdate")) {
       entityUpdater.update();
     }
-    EventType change =
-        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFields")) {
       setInheritedFields(updated, new Fields(allowedFields));
     }
@@ -3886,8 +3885,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("putEntityUpdateImport")) {
       entityUpdater.updateForImport();
     }
-    EventType change =
-        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFieldsImport")) {
       setInheritedFields(updated, new Fields(allowedFields));
     }
@@ -4087,10 +4085,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
-    if (entityUpdater.incrementalFieldsChanged()) {
-      return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
-    }
-    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
+    return new PatchResponse<>(
+        Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
   }
 
   /**
@@ -8051,7 +8047,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected final User updatingUser;
     private boolean entityChanged = false;
     private boolean versionChanged = false;
+
+    /**
+     * Diff produced by THIS request. Every {@code EntityUpdater} entry point must populate this
+     * before its caller classifies the change: {@link #getChangeType()} reads it, and a null value
+     * is indistinguishable from "nothing changed", which silently drops the ChangeEvent (see
+     * #32092).
+     */
     @Getter protected ChangeDescription incrementalChangeDescription = null;
+
     private final ChangeSource changeSource;
     @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
@@ -8301,12 +8305,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>Skips consolidateChanges/revert — those are for interactive user sessions where the same
      * user edits the same entity multiple times within a session window. Bulk API is used by
      * ingestion connectors where each run is a distinct update.
+     *
+     * <p>Still captures the incremental change description: skipping consolidation does not mean
+     * skipping the per-request diff, which is what the caller classifies the change event from.
+     * Omitting it made every bulk update look like ENTITY_NO_CHANGE (see #32092).
      */
     @Transaction
     public final void updateWithDeferredStore() {
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
+      }
+      try (var ignored = phase("entityUpdateIncrementalChangeDeferred")) {
+        captureIncrementalFromCurrentChange();
       }
 
       versionChanged = updateVersion(original.getVersion());
@@ -9257,6 +9268,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return !incrementalChangeDescription.getFieldsAdded().isEmpty()
           || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
           || !incrementalChangeDescription.getFieldsDeleted().isEmpty();
+    }
+
+    /** Event type produced by this update: ENTITY_UPDATED when this request changed any field. */
+    public final EventType getChangeType() {
+      return incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) {
@@ -12000,7 +12016,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           for (var updater : changedUpdaters) {
             postUpdate(updater.getOriginal(), updater.getUpdated());
             updater.runDeferredReactOperations();
-            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            var changeType = updater.getChangeType();
             buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
                 .ifPresent(changeEventJsons::add);
           }
@@ -12055,7 +12071,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (updater.isVersionChanged() || updater.isEntityChanged()) {
             postUpdate(updater.getOriginal(), updater.getUpdated());
             updater.runDeferredReactOperations();
-            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            var changeType = updater.getChangeType();
             buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
                 .ifPresent(changeEventJsons::add);
           }
