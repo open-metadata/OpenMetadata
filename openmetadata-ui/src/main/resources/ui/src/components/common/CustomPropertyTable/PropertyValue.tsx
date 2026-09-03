@@ -96,6 +96,8 @@ import {
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
+
+const DATE_TIME_CP_TYPE = 'dateTime-cp';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -303,7 +305,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'date-cp':
-      case 'dateTime-cp': {
+      case DATE_TIME_CP_TYPE: {
         const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
@@ -354,7 +356,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
-                  showTime={propertyType.name === 'dateTime-cp'}
+                  showTime={propertyType.name === DATE_TIME_CP_TYPE}
                 />
               </Form.Item>
             </Form>
@@ -1083,7 +1085,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'email':
       case 'timestamp':
       case 'duration':
-      case 'dateTime-cp':
+      case DATE_TIME_CP_TYPE:
       default:
         return (
           <Typography.Text
