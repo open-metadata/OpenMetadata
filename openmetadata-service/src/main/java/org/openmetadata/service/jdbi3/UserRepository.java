@@ -1467,7 +1467,6 @@ public class UserRepository extends EntityRepository<User> {
     private void updateTeams(User original, User updated) {
       List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
       List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
-      validateGroupTeams(origTeams);
       validateGroupTeams(updatedTeams);
 
       // Remove teams from original and add teams from updated

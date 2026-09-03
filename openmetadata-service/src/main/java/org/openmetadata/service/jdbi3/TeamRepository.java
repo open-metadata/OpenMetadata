@@ -987,13 +987,6 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  private void validateUserUpdate(Team team) {
-    if (!GROUP.equals(team.getTeamType())) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
-    }
-  }
-
   private void validateSingleParent(Team team, List<EntityReference> parentRefs) {
     if (listOrEmpty(parentRefs).size() != 1) {
       throw new IllegalArgumentException(invalidParentCount(1, team.getTeamType()));
@@ -1009,9 +1002,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     Team team = Entity.getEntity(Entity.TEAM, teamId, USERS_FIELD, Include.NON_DELETED);
-    validateUserUpdate(team);
-
-    List<EntityReference> currentUsers = team.getUsers();
+    List<EntityReference> currentUsers = listOrEmpty(team.getUsers());
 
     Set<UUID> oldUserIds =
         currentUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
@@ -1022,6 +1013,7 @@ public class TeamRepository extends EntityRepository<Team> {
             .filter(user -> !oldUserIds.contains(user.getId()))
             .collect(Collectors.toList());
 
+    validateDirectUserAddition(team, addedUsers);
     Optional.of(addedUsers).ifPresent(this::validateUsers);
 
     List<UUID> addedUserIds =
@@ -1072,7 +1064,6 @@ public class TeamRepository extends EntityRepository<Team> {
   public final RestUtil.PutResponse<Team> deleteTeamUser(
       String updatedBy, UUID teamId, UUID userId) {
     Team team = find(teamId, NON_DELETED);
-    validateUserUpdate(team);
 
     // Validate user
     EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
@@ -1365,7 +1356,14 @@ public class TeamRepository extends EntityRepository<Team> {
         Team updatedTeam,
         List<EntityReference> origUsers,
         List<EntityReference> updatedUsers) {
-      validateUserUpdate(updatedTeam);
+      List<EntityReference> addedUsers =
+          updatedUsers.stream()
+              .filter(
+                  user ->
+                      origUsers.stream()
+                          .noneMatch(origUser -> origUser.getId().equals(user.getId())))
+              .toList();
+      validateDirectUserAddition(updatedTeam, addedUsers);
       updateToRelationships(
           "users",
           TEAM,
