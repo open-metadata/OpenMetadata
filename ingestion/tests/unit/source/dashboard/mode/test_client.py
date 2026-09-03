@@ -77,3 +77,17 @@ def test_fetch_all_reports_propagates_later_page_failure(mode_client):
 
     with pytest.raises(RuntimeError, match="Mode page request failed"):
         mode_client.fetch_all_reports("acme")
+
+
+def test_fetch_all_reports_rejects_repeated_full_page(mode_client):
+    repeated_page = _reports("report", 30)
+    mode_client.client.get.side_effect = [
+        _embedded("spaces", [{"token": "space-token"}]),
+        _embedded("reports", repeated_page),
+        _embedded("reports", repeated_page),
+    ]
+
+    with pytest.raises(RuntimeError, match="same report page twice"):
+        mode_client.fetch_all_reports("acme")
+
+    assert mode_client.client.get.call_args_list[-1] == call("/acme/spaces/space-token/reports?page=2")

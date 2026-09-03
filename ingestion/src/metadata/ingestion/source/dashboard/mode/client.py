@@ -96,6 +96,7 @@ class ModeApiClient:
         spaces = response_spaces[EMBEDDED][SPACES]
         for space in spaces:
             page = 1
+            previous_page_tokens = None
             while True:
                 response_reports = self.get_reports_for_space(
                     workspace_name=workspace_name,
@@ -103,9 +104,15 @@ class ModeApiClient:
                     page=page,
                 )
                 reports = response_reports[EMBEDDED][REPORTS]
+                report_tokens = tuple(report.get(TOKEN) for report in reports)
+                if reports and report_tokens == previous_page_tokens:
+                    raise RuntimeError(
+                        f"Mode returned the same report page twice for space [{space[TOKEN]}] at page [{page}]"
+                    )
                 all_reports.extend(reports)
                 if len(reports) < REPORTS_PAGE_SIZE:
                     break
+                previous_page_tokens = report_tokens
                 page += 1
         return all_reports
 

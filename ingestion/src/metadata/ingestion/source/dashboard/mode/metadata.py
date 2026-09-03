@@ -178,12 +178,13 @@ class ModeSource(DashboardServiceSource):
         yield Either(left=None, right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
-    def yield_datamodel(self, _: ModeDashboardDetails) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+    def yield_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, dashboard_details: ModeDashboardDetails
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """Yield each Mode query as a dashboard data model."""
         if not self.source_config.includeDataModels:
             return
 
-        dashboard_details = _
         dashboard_service = self._dashboard_service_name()
         report_token = cast("str", dashboard_details.report[client.TOKEN])
         for query in dashboard_details.queries:
@@ -385,13 +386,28 @@ class ModeSource(DashboardServiceSource):
     def yield_dashboard_chart(self, dashboard_details: ModeDashboardDetails) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method"""
         report_token = cast("str", dashboard_details.report[client.TOKEN])
+        dashboard_service = self._dashboard_service_name()
         for query in dashboard_details.queries:
+            query_token = cast("str | None", query.get(client.TOKEN))
+            if not query_token:
+                yield Either(
+                    left=StackTraceError(
+                        name=cast("str | None", query.get(client.NAME)) or "",
+                        error="Mode query is missing its token; charts could not be fetched",
+                        stackTrace="",
+                    ),
+                    right=None,
+                )
+                continue
             response_charts = self.client.get_all_charts(
                 workspace_name=self.workspace_name,
                 report_token=report_token,
-                query_token=query.get(client.TOKEN),
+                query_token=query_token,
             )
-            charts = response_charts[client.EMBEDDED][client.CHARTS]
+            charts = cast(
+                "list[ModeRecord]",
+                response_charts.get(client.EMBEDDED, {}).get(client.CHARTS, []) if response_charts else [],
+            )
             for chart in charts:
                 chart_name = chart[client.VIEW_VEGAS].get(client.TITLE)
                 try:
@@ -407,11 +423,11 @@ class ModeSource(DashboardServiceSource):
                     chart_path = chart[client.LINKS]["report_viz_web"][client.HREF]
                     chart_url = f"{clean_uri(self.service_connection.hostPort)}{chart_path}"
                     chart_request = CreateChartRequest(
-                        name=EntityName(chart.get(client.TOKEN)),
+                        name=EntityName(cast("str", chart.get(client.TOKEN))),
                         displayName=chart_name,
                         chartType=ChartType.Other,
                         sourceUrl=SourceUrl(chart_url),
-                        service=self.context.get().dashboard_service,
+                        service=FullyQualifiedEntityName(dashboard_service),
                     )
                     yield Either(right=chart_request)
                     self.register_record_chart(chart_request=chart_request)

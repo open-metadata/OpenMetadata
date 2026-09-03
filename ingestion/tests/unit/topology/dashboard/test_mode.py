@@ -217,6 +217,25 @@ class TestModeQueryMetadata:
         assert chart.sourceUrl.root.endswith("/acme/reports/report-token/charts/chart-token")
         mode_source.client.get_all_queries.assert_called_once()
 
+    def test_chart_stage_reports_missing_query_token_and_continues(self, mode_source):
+        query_without_token = {**QUERY, "token": None}
+        mode_source.client.get_all_charts.return_value = _embedded("charts", [])
+
+        result = list(mode_source.yield_dashboard_chart(_details(mode_source, [query_without_token, QUERY])))
+
+        assert result[0].left.name == "Revenue Query"
+        assert result[0].left.error == "Mode query is missing its token; charts could not be fetched"
+        mode_source.client.get_all_charts.assert_called_once_with(
+            workspace_name="acme",
+            report_token="report-token",
+            query_token="query-token",
+        )
+
+    def test_chart_stage_handles_failed_charts_request(self, mode_source):
+        mode_source.client.get_all_charts.return_value = None
+
+        assert list(mode_source.yield_dashboard_chart(_details(mode_source))) == []
+
     def test_queries_are_fetched_once_for_all_report_stages(self, mode_source):
         details = _details(mode_source)
 
