@@ -522,11 +522,12 @@ describe('Glossary Utils - findAndUpdateNested', () => {
 });
 
 describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
-  it('should return fixed pixel column widths matching the classification table', () => {
+  it('should return fixed pixel column widths, with description exposed as a minimum rather than a fixed width', () => {
     const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      description: 420,
+      descriptionMax: 600,
+      descriptionMin: 420,
       name: 250,
       owners: 220,
       reviewers: 200,

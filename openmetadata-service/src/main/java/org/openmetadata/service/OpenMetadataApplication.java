@@ -173,6 +173,7 @@ import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.ImpersonationCleanupFilter;
+import org.openmetadata.service.security.ImpersonationRestrictionFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -438,6 +439,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // context) after every response so state cannot leak across requests that share a Jetty
     // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+
+    // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
+    // password change, logout) - those call no authorizer, so nothing else would stop them.
+    environment.jersey().register(ImpersonationRestrictionFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);

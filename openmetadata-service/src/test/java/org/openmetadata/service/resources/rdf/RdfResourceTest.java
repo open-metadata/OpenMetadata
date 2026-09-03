@@ -78,6 +78,10 @@ class RdfResourceTest {
   private static void registerTableRepository() {
     if (!Entity.hasEntityRepository(Entity.TABLE)) {
       TableRepository tableRepository = Mockito.mock(TableRepository.class);
+      // This registration is global and never torn down, so the stand-in must answer the indexing
+      // policy hooks the way the real repository does. A bare mock answers false, which would make
+      // Entity.isSearchIndexable/isVectorEmbeddable report every table as excluded for the rest of
+      // the JVM.
       Mockito.doReturn(true).when(tableRepository).isSearchIndexable(any());
       Mockito.doReturn(true).when(tableRepository).isVectorEmbeddable(any());
       Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
