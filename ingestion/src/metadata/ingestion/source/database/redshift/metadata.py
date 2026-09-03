@@ -369,13 +369,13 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.set_external_location_map(new_database)
                     yield new_database
                 except Exception as exc:
-                    if new_database in shared_databases and self._enter_datashare_mode(new_database):
+                    if new_database in shared_databases and self._enter_datashare_mode(new_database, exc):
                         yield new_database
                         continue
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def _enter_datashare_mode(self, database_name: str) -> bool:
+    def _enter_datashare_mode(self, database_name: str, connection_error: Exception) -> bool:
         """Read a datashare database from the cross-database catalog views.
 
         The failed `set_inspector` left the source without an engine, so the
@@ -388,10 +388,14 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("Could not restore the connection to [%s]: %s", self.service_connection.database, exc)
             return False
+        # The error is logged rather than matched on: the refusal is worded
+        # differently for a datashare and for a Data Catalog ARN database, and it
+        # keeps a genuine failure - a network blip, a missing grant - diagnosable.
         logger.info(
-            "Database [%s] is shared through a datashare and does not accept connections. "
+            "Database [%s] is shared through a datashare and did not accept a connection (%s). "
             "Reading its metadata from the cross-database catalog views.",
             database_name,
+            connection_error,
         )
         self.datashare_database = database_name
         # Populated from the database we just left; nothing repopulates it while

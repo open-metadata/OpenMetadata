@@ -27,7 +27,12 @@ from metadata.ingestion.source.database.redshift.datashare import (
     _system_data_type,
     _table_type,
 )
-from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
+from metadata.ingestion.source.database.redshift.metadata import (
+    RedshiftSource,
+)
+from metadata.ingestion.source.database.redshift.metadata import (
+    logger as metadata_logger,
+)
 
 LOCAL_DATABASE = "dev"
 SHARED_DATABASE = "example_data_share_name"
@@ -146,8 +151,14 @@ class RedshiftDatashareTest(unittest.TestCase):
 
     def test_unreachable_shared_database_is_still_ingested(self):
         """The database that refused the connection is yielded in datashare mode"""
-        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
+        with self.assertLogs(metadata_logger, level="INFO") as logs:
+            self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
         self.assertEqual(self.redshift_source.datashare_database, SHARED_DATABASE)
+        # The connection error stays visible, so a genuine failure is diagnosable
+        self.assertTrue(
+            any(f'Cannot connect to shared database "{SHARED_DATABASE}"' in line for line in logs.output),
+            logs.output,
+        )
 
     def test_connectable_databases_are_untouched(self):
         """Nothing changes for a cluster whose databases all accept connections"""
