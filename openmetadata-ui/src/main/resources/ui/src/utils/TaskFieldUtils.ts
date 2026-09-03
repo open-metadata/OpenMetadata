@@ -67,10 +67,15 @@ const ENTITY_COLUMNS_DETAILS_GETTERS: Partial<
 export const getEntityColumnsDetails = (
   entityType: string,
   entityData: EntityData
-) =>
-  getOwnHandler(ENTITY_COLUMNS_DETAILS_GETTERS, entityType)?.(entityData) ??
-  (entityData as Table).columns ??
-  [];
+) => {
+  const getColumns = getOwnHandler(ENTITY_COLUMNS_DETAILS_GETTERS, entityType);
+
+  return (
+    (getColumns ? getColumns(entityData) : undefined) ??
+    (entityData as Table).columns ??
+    []
+  );
+};
 
 interface EntityColumnProps {
   description: string;

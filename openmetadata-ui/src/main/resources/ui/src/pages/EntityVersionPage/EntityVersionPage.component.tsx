@@ -331,7 +331,10 @@ const EntityVersionPage: FunctionComponent = () => {
     };
 
     try {
-      await getOwnHandler(versionFetchers, entityType)?.();
+      const fetchVersions = getOwnHandler(versionFetchers, entityType);
+      if (fetchVersions) {
+        await fetchVersions();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -419,8 +422,12 @@ const EntityVersionPage: FunctionComponent = () => {
       };
 
       try {
-        if (viewVersionPermission) {
-          await getOwnHandler(currentVersionFetchers, entityType)?.();
+        const fetchCurrentVersion = getOwnHandler(
+          currentVersionFetchers,
+          entityType
+        );
+        if (viewVersionPermission && fetchCurrentVersion) {
+          await fetchCurrentVersion();
         }
       } finally {
         setIsVersionLoading(false);

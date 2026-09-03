@@ -366,5 +366,8 @@ export const fetchEntityDetail = (
     },
   };
 
-  getOwnHandler(fetchHandlers, entityType)?.();
+  const fetchHandler = getOwnHandler(fetchHandlers, entityType);
+  if (fetchHandler) {
+    fetchHandler();
+  }
 };
