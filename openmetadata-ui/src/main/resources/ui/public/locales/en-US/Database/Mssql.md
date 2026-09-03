@@ -100,20 +100,24 @@ $$
 $$section
 ### Encrypt Connection $(id="encrypt")
 
-Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.
+Request SSL/TLS encryption for the MSSQL connection. What the drivers can enforce differs, so the connection scheme decides how far this setting goes:
 
 **Important:**
+- **mssql+pyodbc**: honoured directly (`Encrypt=yes`), with or without a certificate.
+- **mssql+pytds**: the driver enables TLS only when a CA certificate is supplied under SSL Configuration. With this ticked and no CA certificate the connection stays **unencrypted** and a warning is logged.
+- **mssql+pymssql**: the driver takes no TLS settings at all; encryption is decided by FreeTDS configuration (`encryption = require` in `freetds.conf`), so this setting is inert and a warning is logged.
 - Can be configured along with Trust Server Certificate option
-- May require additional connection arguments for fine-grained control
 - Default value is `false`
 $$
 
 $$section
 ### Trust Server Certificate $(id="trustServerCertificate")
 
-Trust the server certificate without validation When using **pyodbc** scheme.
+Trust the server certificate without validation.
 
 **Important:**
+- **mssql+pyodbc**: skips certificate validation entirely (`TrustServerCertificate=yes`).
+- **mssql+pytds**: the driver always validates the certificate chain against the CA certificate you supply; this setting drops the *host name* check only, for a certificate issued to a name other than the configured host.
 - Can be combined with Encrypt Connection option
 - Default value is `false`
 $$
@@ -125,6 +129,7 @@ SSL/TLS certificate configuration for client authentication. Provide CA certific
 
 **Important:**
 - For certificate-based authentication with **pytds** scheme, provide the CA certificate file path in the SSL Configuration
+- With **pytds** the CA certificate is what turns encryption on at all - without it the driver connects in the clear
 $$
 
 $$section
@@ -146,7 +151,9 @@ Enter the details for any additional connection arguments such as security or pr
 
 When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes. You can also configure these through the corresponding fields.
 
-When using the pytds connection scheme with a CA certificate, you might need to specify validate_host: false in the connection arguments.
+When using the pytds connection scheme with a CA certificate whose name does not match the host, tick Trust Server Certificate - it sets `validate_host: false` for you.
+
+Queries are bounded to a 12 hour timeout by default so a read that never returns cannot stall a workflow indefinitely. The default is deliberately generous because the same connection serves profiling and data quality, whose own default budget is 12 hours per table. To tighten it, set `timeout` (in seconds) in the connection arguments for the **pytds** and **pymssql** schemes; on **pyodbc** that argument is the login timeout instead, and the query timeout follows the default.
 $$
 
 ## Sample Storage AWS S3 Config

@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_INDEXED_VIEWS,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -515,6 +516,84 @@ class TestUpdateMssqlIschemaNames:
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
 
+    def test_description_maps_load_after_the_inspector_is_switched(self):
+        """Every description query reads the connected database (they select
+        DB_NAME()), so they must run once the inspector points at the database
+        being ingested. Loading first keys the maps by the previously connected
+        database and no lookup can match them."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = True
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        calls = []
+
+        with (
+            patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["db_one", "db_two"])),
+            patch.object(MssqlSource, "_load_description_maps", side_effect=lambda: calls.append("load")),
+            patch.object(
+                MssqlSource,
+                "set_inspector",
+                side_effect=lambda database_name: calls.append(f"switch:{database_name}"),
+            ),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == ["db_one", "db_two"]
+        assert calls == ["switch:db_one", "load", "switch:db_two", "load"]
+
+    def test_description_maps_load_after_the_inspector_for_a_single_database(self):
+        """The single-database path keeps the same order as the multi-database one."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        configured_database = self.mssql.config.serviceConnection.root.config.database
+        calls = []
+
+        with (
+            patch.object(MssqlSource, "_load_description_maps", side_effect=lambda: calls.append("load")),
+            patch.object(
+                MssqlSource,
+                "set_inspector",
+                side_effect=lambda database_name: calls.append(f"switch:{database_name}"),
+            ),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == [configured_database]
+        assert calls == [f"switch:{configured_database}", "load"]
+
+    @staticmethod
+    def _inspector_listing(*view_names):
+        return property(lambda _self: types.SimpleNamespace(get_view_names=lambda schema_name: list(view_names)))
+
+    def test_indexed_views_are_reported_as_materialized_views(self):
+        """An indexed view is persisted and engine-maintained, so calling it a plain
+        view understates it."""
+        with (
+            patch.object(
+                MssqlSource,
+                "inspector",
+                new_callable=lambda: self._inspector_listing("plain_view", "indexed_view"),
+            ),
+            patch.object(MssqlSource, "_get_indexed_views", return_value={"indexed_view"}),
+        ):
+            views = self.mssql.query_view_names_and_types("sales")
+
+        assert [(view.name, view.type_) for view in views] == [
+            ("plain_view", TableType.View),
+            ("indexed_view", TableType.MaterializedView),
+        ]
+
+    def test_a_failure_to_detect_indexed_views_leaves_them_as_plain_views(self):
+        """The finer type is optional metadata: losing it must not lose the views."""
+        self.mssql.engine = _raising_engine()
+
+        with patch.object(MssqlSource, "inspector", new_callable=lambda: self._inspector_listing("plain_view")):
+            views = self.mssql.query_view_names_and_types("sales")
+
+        assert [(view.name, view.type_) for view in views] == [("plain_view", TableType.View)]
+
+    def test_indexed_view_query_matches_only_a_unique_clustered_index(self):
+        """That index is what makes a view indexed, and nothing else must match."""
+        assert "i.type = 1" in MSSQL_GET_INDEXED_VIEWS
+        assert "i.is_unique = 1" in MSSQL_GET_INDEXED_VIEWS
+
 
 class MssqlIdentityColumnTest(TestCase):
     """Regression tests for identity column reflection.
@@ -864,3 +943,70 @@ class TestMssqlPerDatabaseQueryStore:
         engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
 
         assert engines == [fake_source.engine]
+
+
+def _raising_engine():
+    """An engine whose connect() fails, for the degraded paths."""
+    engine = MagicMock()
+    engine.connect.side_effect = Exception("cannot connect")
+    return engine
+
+
+class TestMssqlUniqueConstraints:
+    """``get_unique_constraints`` must report the UNIQUE constraints on a table.
+
+    SQLAlchemy's MSSQL dialect does not reflect them and the base dialect raises
+    NotImplementedError, which the catalogue swallows, so they were dropped.
+    """
+
+    @staticmethod
+    def _row(constraint_name, column_name):
+        return {"CONSTRAINT_NAME": constraint_name, "COLUMN_NAME": column_name}
+
+    @staticmethod
+    def _unique_constraints(rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_unique_constraints(MSDialect(), connection, "orders", schema="sales")
+
+    def test_a_single_column_constraint_is_reported(self):
+        assert self._unique_constraints([self._row("uq_orders_code", "code")]) == [
+            {"name": "uq_orders_code", "column_names": ["code"]}
+        ]
+
+    def test_a_composite_constraint_keeps_its_key_order(self):
+        constraints = self._unique_constraints(
+            [
+                self._row("uq_orders_region_code", "region"),
+                self._row("uq_orders_region_code", "code"),
+            ]
+        )
+
+        assert constraints == [{"name": "uq_orders_region_code", "column_names": ["region", "code"]}]
+
+    def test_constraints_are_reported_separately(self):
+        constraints = self._unique_constraints([self._row("uq_orders_code", "code"), self._row("uq_orders_ref", "ref")])
+
+        assert [constraint["name"] for constraint in constraints] == ["uq_orders_code", "uq_orders_ref"]
+
+    def test_a_table_without_unique_constraints_reports_none(self):
+        assert self._unique_constraints([]) == []
+
+    def test_only_unique_constraints_are_selected(self):
+        """Primary and foreign keys live in the same view and are read elsewhere."""
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = []
+
+        mssql_dialet.get_unique_constraints(MSDialect(), connection, "orders", schema="sales")
+
+        (query,), _ = connection.execution_options.return_value.execute.call_args
+        compiled = str(query.compile(dialect=MSDialect(), compile_kwargs={"literal_binds": True}))
+
+        assert "[CONSTRAINT_TYPE] = N'UNIQUE'" in compiled
+        assert "[C].[TABLE_NAME] = N'orders'" in compiled
+        assert "[C].[TABLE_SCHEMA] = N'sales'" in compiled

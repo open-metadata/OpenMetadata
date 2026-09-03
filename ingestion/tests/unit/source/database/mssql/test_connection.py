@@ -45,11 +45,14 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.mssql.connection import (
+    DEFAULT_QUERY_TIMEOUT_SECONDS,
     MSSQL_ERRORS,
     MssqlChecks,
     MssqlConnection,
     _mssql_number,
+    bound_pyodbc_query_timeout,
     get_connection_url,
+    with_default_query_timeout,
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
@@ -484,3 +487,82 @@ def test_get_databases_counts_the_databases_it_found():
 
 def test_get_databases_reports_a_floor_when_the_sample_is_capped():
     assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+
+
+# Query timeouts. A hung read must not stall a workflow forever, and the shared
+# engine builder sets no timeout, so the connector applies one per driver.
+
+
+@pytest.mark.parametrize("scheme", [MssqlScheme.mssql_pytds, MssqlScheme.mssql_pymssql])
+def test_the_drivers_that_take_a_query_timeout_get_one(scheme):
+    """pytds and pymssql both read `timeout` as the socket timeout on every read."""
+    connection = with_default_query_timeout(_config(scheme=scheme))
+
+    assert connection.connectionArguments.root["timeout"] == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+def test_pyodbc_is_left_alone_because_its_timeout_argument_is_the_login_one():
+    """Setting `timeout` for pyodbc would shorten the login, not bound the query."""
+    connection = with_default_query_timeout(_config(scheme=MssqlScheme.mssql_pyodbc))
+
+    assert "timeout" not in (connection.connectionArguments.root if connection.connectionArguments else {})
+
+
+def test_a_user_supplied_timeout_wins():
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pytds,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": 5},
+    )
+
+    connection = with_default_query_timeout(config)
+
+    assert connection.connectionArguments.root["timeout"] == 5
+
+
+def test_the_configured_connection_is_left_untouched():
+    """The bound belongs to the engine: a workflow that stores its service
+    connection would otherwise persist a timeout nobody configured."""
+    config = _config(scheme=MssqlScheme.mssql_pytds)
+
+    with_default_query_timeout(config)
+
+    assert config.connectionArguments is None
+
+
+def test_the_engine_is_built_with_pre_ping():
+    """A pooled connection the server has dropped must not fail the borrower."""
+    with patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection:
+        _ = MssqlConnection(_config()).client
+
+    assert mock_connection.call_args.kwargs["pool_pre_ping"] is True
+
+
+@pytest.mark.parametrize(
+    ("scheme", "bounded"),
+    [(MssqlScheme.mssql_pyodbc, True), (MssqlScheme.mssql_pytds, False)],
+)
+def test_only_pyodbc_bounds_the_query_timeout_on_the_engine(scheme, bounded):
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection"),
+        patch(f"{CONNECTION_MODULE}.bound_pyodbc_query_timeout") as mock_bound,
+    ):
+        _ = MssqlConnection(_config(scheme=scheme)).client
+
+    assert mock_bound.called is bounded
+
+
+def test_the_query_timeout_is_applied_to_every_new_connection():
+    """pyodbc exposes the query timeout as a connection attribute, so it can only
+    be set once the DBAPI connection exists - hence a listener on connect."""
+    engine = create_engine("sqlite://", poolclass=StaticPool)
+    bound_pyodbc_query_timeout(engine, timeout_seconds=42)
+    dbapi_connection = MagicMock()
+
+    (listener,) = [fn for fn in engine.pool.dispatch.connect if fn.__name__ == "set_query_timeout"]
+    listener(dbapi_connection, MagicMock())
+
+    assert dbapi_connection.timeout == 42
