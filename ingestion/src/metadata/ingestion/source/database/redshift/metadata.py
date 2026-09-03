@@ -14,6 +14,7 @@ Redshift source ingestion
 
 import traceback
 from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -107,6 +108,9 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
     get_table_ddl,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine.interfaces import ReflectedColumn
 
 logger = ingestion_logger()
 
@@ -207,7 +211,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self._clear_reflection_cache()
 
         if self.datashare_database:
-            return self._datashare_table_names_and_types(schema_name)
+            return self._datashare_table_names_and_types(self.datashare_database, schema_name)
 
         self._set_constraint_details(schema_name)
 
@@ -403,12 +407,12 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self.external_location_map.clear()
         return True
 
-    def _datashare_table_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
-        """Tables of the current datashare database from SVV_ALL_TABLES."""
+    def _datashare_table_names_and_types(self, database_name: str, schema_name: str) -> list[TableNameAndType]:
+        """Tables of a datashare database from SVV_ALL_TABLES."""
         # Constraints are not exposed across databases; clearing the map keeps the
         # previous schema's constraints from being attached to these tables.
         self.constraint_details = {}
-        tables = self.datashare.get_tables(self.datashare_database, schema_name)
+        tables = self.datashare.get_tables(database_name, schema_name)
         # Keyed by schema as well, so that tables of another schema being processed
         # in parallel keep their own remarks.
         self.datashare_table_remarks.update({(schema_name, table.name): table.remarks for table in tables})
@@ -430,13 +434,18 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         table_name: str,
         db_name: str,
         inspector: Inspector,
-        table_type: TableType = None,
-    ):
+        table_type: TableType = None,  # pyright: ignore[reportArgumentType] - matches the base signature
+    ) -> "list[ReflectedColumn]":
         if self.datashare_database:
-            return self.datashare.get_columns(self.datashare_database, schema_name, table_name)
+            return cast(
+                "list[ReflectedColumn]",
+                self.datashare.get_columns(self.datashare_database, schema_name, table_name),
+            )
         return super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
 
-    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
+    def get_table_description(  # pyright: ignore[reportIncompatibleMethodOverride] - the base is a staticmethod
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str | None:
         if self.datashare_database:
             return self.datashare_table_remarks.get((schema_name, table_name))
         return super().get_table_description(schema_name, table_name, inspector)
