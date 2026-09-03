@@ -1516,12 +1516,23 @@ class AdvancedSearchClassBase {
           return [];
         }
 
+        // Standard TEXT_FIELD_OPERATORS emit {"==":[{"var":"...rows.<col>"},<val>]} which the
+        // jsonLogic evaluator cannot resolve — `rows` is an array. Use the table_field_* operators
+        // that emit {"contains":[<val>,{"tableColumnValues":"...rows.<col>"}]} instead. See
+        // JSONLogicSearchClassBase.configOperators.
         return columns.map((columnName) => ({
           subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
             type: 'text',
             label: `${label} - ${columnName}`,
-            operators: TEXT_FIELD_OPERATORS,
+            operators: [
+              'table_field_equal',
+              'table_field_not_equal',
+              'table_field_like',
+              'table_field_not_like',
+              'is_null',
+              'is_not_null',
+            ],
             valueSources: ['value'],
           },
         }));
