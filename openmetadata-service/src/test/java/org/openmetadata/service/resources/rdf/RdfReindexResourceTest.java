@@ -14,6 +14,7 @@ package org.openmetadata.service.resources.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -22,9 +23,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.dropwizard.jersey.validation.Validators;
+import jakarta.validation.Validator;
 import jakarta.ws.rs.core.SecurityContext;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.exception.BadRequestException;
@@ -39,6 +44,10 @@ import org.openmetadata.service.security.Authorizer;
 class RdfReindexResourceTest {
 
   private static final SecurityContext SECURITY_CONTEXT = mock(SecurityContext.class);
+
+  // The Dropwizard-configured validator, so parameter paths carry the JAX-RS names the
+  // ConstraintViolationExceptionMapper reports rather than arg0/arg1.
+  private static final Validator VALIDATOR = Validators.newValidator();
 
   private record Fixture(
       RdfReindexResource resource, RdfIndexFailureDAO failureDAO, Authorizer authorizer) {}
@@ -156,6 +165,60 @@ class RdfReindexResourceTest {
         "Invalid entityType 'notAnEntityType'. Expected an RDF-indexable entity type.",
         exception.getMessage());
     verifyNoInteractions(fixture.failureDAO());
+  }
+
+  /**
+   * Runs the same executable validation Jersey applies to resource-method parameters, so the
+   * pagination bounds are exercised rather than merely declared. A direct call bypasses them:
+   * without this the annotations could be dropped and every unit test here would still pass.
+   */
+  private Set<String> paginationViolations(int offset, int limit) throws NoSuchMethodException {
+    Method getFailures =
+        RdfReindexResource.class.getMethod(
+            "getFailures", SecurityContext.class, int.class, int.class, String.class);
+    return VALIDATOR
+        .forExecutables()
+        .validateParameters(
+            fixture().resource(), getFailures, new Object[] {SECURITY_CONTEXT, offset, limit, null})
+        .stream()
+        .map(violation -> violation.getPropertyPath().toString())
+        .collect(Collectors.toSet());
+  }
+
+  @Test
+  @DisplayName("the page the UI asks for passes validation")
+  void defaultPageIsValid() throws NoSuchMethodException {
+    assertEquals(Set.of(), paginationViolations(0, 20));
+  }
+
+  @Test
+  @DisplayName("a negative offset is rejected before it reaches the DAO")
+  void negativeOffsetIsRejected() throws NoSuchMethodException {
+    // Postgres raises "OFFSET must not be negative" from inside the query, which would surface
+    // to the caller as a 500 rather than a 400.
+    assertTrue(
+        paginationViolations(-1, 50).stream().anyMatch(path -> path.endsWith("query param offset")),
+        "offset must be constrained to non-negative values");
+  }
+
+  @Test
+  @DisplayName("a negative limit is rejected before it reaches the DAO")
+  void negativeLimitIsRejected() throws NoSuchMethodException {
+    assertTrue(
+        paginationViolations(0, -1).stream().anyMatch(path -> path.endsWith("query param limit")),
+        "limit must be constrained to non-negative values");
+  }
+
+  @Test
+  @DisplayName("a limit past the page cap is rejected, and the cap itself is accepted")
+  void limitIsCappedAtMaxPageSize() throws NoSuchMethodException {
+    // Every row carries a full errorMessage and stackTrace, so an uncapped page against a run
+    // that failed wholesale would serialize the entire failure table into one response.
+    assertTrue(
+        paginationViolations(0, RdfReindexResource.MAX_PAGE_SIZE + 1).stream()
+            .anyMatch(path -> path.endsWith("query param limit")),
+        "limit must be capped at MAX_PAGE_SIZE");
+    assertEquals(Set.of(), paginationViolations(0, RdfReindexResource.MAX_PAGE_SIZE));
   }
 
   @Test

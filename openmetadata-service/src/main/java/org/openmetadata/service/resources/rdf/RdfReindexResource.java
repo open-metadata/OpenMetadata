@@ -19,6 +19,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -45,6 +47,11 @@ import org.openmetadata.service.security.Authorizer;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "rdfReindex")
 public class RdfReindexResource {
+  // Failure rows carry a full errorMessage and stackTrace (both LONGTEXT), so a page is bounded
+  // by payload size rather than row count: an unbounded limit against a run that failed wholesale
+  // would serialize the entire table into one response.
+  static final int MAX_PAGE_SIZE = 1000;
+
   private final CollectionDAO collectionDAO;
   private final Authorizer authorizer;
   private final Set<String> rdfIndexableEntityTypes;
@@ -79,19 +86,26 @@ public class RdfReindexResource {
                     schema = @Schema(implementation = RdfReindexFailuresResponse.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "entityType is not an RDF-indexable OpenMetadata entity type")
+            description =
+                "offset or limit is out of range, or entityType is not an "
+                    + "RDF-indexable OpenMetadata entity type")
       })
   public RdfReindexFailuresResponse getFailures(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Offset for pagination", schema = @Schema(type = "integer"))
+      @Parameter(
+              description = "Offset for pagination (0 or greater)",
+              schema = @Schema(type = "integer"))
           @QueryParam("offset")
           @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int offset,
       @Parameter(
-              description = "Limit the number of results returned",
+              description = "Limit the number of results returned (0 to 1000, default = 50)",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("50")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = MAX_PAGE_SIZE, message = "must be less than or equal to 1000")
           int limit,
       @Parameter(
               description = "Filter by canonical RDF-indexable entity type; blank means no filter",

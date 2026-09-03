@@ -86,6 +86,20 @@ public class RdfReindexFailuresIT {
         response.body());
   }
 
+  // The published bound, deliberately spelled out rather than read from the resource constant:
+  // widening or narrowing it is a change to the documented contract, so this should fail loudly.
+  private static final int MAX_PAGE_SIZE = 1000;
+
+  private static void assertRejectedParameter(HttpResponse<String> response, String parameter)
+      throws Exception {
+    assertEquals(400, response.statusCode(), response.body());
+    JsonNode body = MAPPER.readTree(response.body());
+    assertEquals(400, body.path("code").asInt(), response.body());
+    assertTrue(
+        body.path("message").asText().contains(parameter),
+        "message must name the rejected parameter: " + response.body());
+  }
+
   @Test
   void listFailures_admin_returnsPaginatedEnvelope() throws Exception {
     HttpResponse<String> response = get("?limit=10&offset=0", adminJwt());
@@ -145,6 +159,33 @@ public class RdfReindexFailuresIT {
     JsonNode body = MAPPER.readTree(response.body());
     assertEquals(50, body.get("limit").asInt(), "default page size");
     assertEquals(0, body.get("offset").asInt(), "default offset");
+  }
+
+  @Test
+  void listFailures_negativeOffset_returns400() throws Exception {
+    // Postgres raises "OFFSET must not be negative" from inside the DAO, which would surface as a
+    // 500; the bound has to be enforced before the query is built.
+    assertRejectedParameter(get("?offset=-1", adminJwt()), "offset");
+  }
+
+  @Test
+  void listFailures_negativeLimit_returns400() throws Exception {
+    assertRejectedParameter(get("?limit=-1", adminJwt()), "limit");
+  }
+
+  @Test
+  void listFailures_limitAboveMax_returns400() throws Exception {
+    // Each row carries a full errorMessage and stackTrace, so an unbounded page against a run that
+    // failed wholesale would serialize the entire failure table into one response.
+    assertRejectedParameter(get("?limit=" + (MAX_PAGE_SIZE + 1), adminJwt()), "limit");
+  }
+
+  @Test
+  void listFailures_limitAtMax_returns200() throws Exception {
+    HttpResponse<String> response = get("?limit=" + MAX_PAGE_SIZE, adminJwt());
+
+    assertEquals(200, response.statusCode(), response.body());
+    assertEquals(MAX_PAGE_SIZE, MAPPER.readTree(response.body()).get("limit").asInt());
   }
 
   @Test
