@@ -141,8 +141,25 @@ describe('isQueryTreeComplete', () => {
     expect(isQueryTreeComplete(seeded, config)).toBe(true);
   });
 
-  // A row the user actually added is a second row, so it stays blocked.
+  // An unfinished row beside a complete one is dropped harmlessly: the rule
+  // still filters by the finished condition, so it is not widened to
+  // everything and the save must not be blocked.
+  it('should stay complete when a finished row survives the drop', () => {
+    hasUnfinishedRule.mockReturnValue(true);
+    elasticSearchFormat.mockReturnValue({ bool: { must: [{ term: {} }] } });
+    const config = realConfig();
+    const seed = seedJson();
+    const [firstId, firstRule] = Object.entries(seed.children1)[0];
+    seed.children1 = { [firstId]: firstRule, added: firstRule };
+    const twoRows = QbUtils.checkTree(QbUtils.loadTree(seed as never), config);
+
+    expect(isQueryTreeComplete(twoRows, config)).toBe(true);
+  });
+
+  // A row the user actually added is a second row, so it stays blocked while
+  // nothing survives the drop.
   it('should stay incomplete once a second row is added', () => {
+    elasticSearchFormat.mockReturnValue(undefined);
     hasUnfinishedRule.mockReturnValue(true);
     const config = realConfig();
     const seed = seedJson();

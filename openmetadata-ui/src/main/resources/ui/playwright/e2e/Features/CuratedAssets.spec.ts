@@ -600,7 +600,7 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('tier.tier5')
+        response.url().toLowerCase().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();

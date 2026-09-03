@@ -113,13 +113,26 @@ const holdsOnlyTheSeedRow = (tree: ImmutableTree): boolean => {
 };
 
 /**
- * False while any rule is incomplete. Callers gate saving on this so a
- * half-written condition cannot be silently dropped from the emitted filter,
- * which would widen it without the user noticing.
+ * False only when an unfinished row would widen the rule to match everything.
+ *
+ * The emitted filter silently drops a half-written condition, and the warning
+ * callers show says exactly what the danger is: "an unfinished condition is
+ * ignored, which would widen this rule to match everything". That is only true
+ * when dropping it leaves nothing behind. An unfinished row sitting beside a
+ * complete one is dropped harmlessly — the rule still filters by the condition
+ * the user did finish — so blocking the save there would be a false alarm.
  */
 export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config
-): boolean =>
-  holdsOnlyTheSeedRow(tree) ||
-  !(hasUnfinishedRule(tree, config) as unknown as boolean);
+): boolean => {
+  if (!(hasUnfinishedRule(tree, config) as unknown as boolean)) {
+    return true;
+  }
+
+  if (holdsOnlyTheSeedRow(tree)) {
+    return true;
+  }
+
+  return Boolean(toElasticSearchQuery(tree, config).value);
+};
