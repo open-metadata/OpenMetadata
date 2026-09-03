@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.migration.postgres.v202;
 
+import static org.openmetadata.service.migration.utils.v202.SearchAllowedFieldsRepair.repairAllowedFields;
 import static org.openmetadata.service.migration.utils.v202.SearchNameKeywordRepair.repairNameKeywordSearchFields;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -28,5 +29,8 @@ public class Migration extends MigrationProcessImpl {
     // Backfill the name.keyword search field on existing installs; the seed default alone never
     // reaches already-migrated clusters. Idempotent.
     repairNameKeywordSearchFields();
+    // Complete allowedFields from the seed so removed search fields stay re-addable on upgraded
+    // clusters (SettingsCache refreshes it in memory but never persists it). Idempotent.
+    repairAllowedFields();
   }
 }
