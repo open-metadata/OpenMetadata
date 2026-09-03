@@ -153,7 +153,7 @@ When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments
 
 When using the pytds connection scheme with a CA certificate whose name does not match the host, tick Trust Server Certificate - it sets `validate_host: false` for you.
 
-Queries are bounded to a 10 minute timeout by default so a hung read cannot stall a workflow. To change it, set `timeout` (in seconds) in the connection arguments for the **pytds** and **pymssql** schemes; on **pyodbc** the same argument is the login timeout, and the query timeout is fixed at 10 minutes.
+Queries are bounded to a 12 hour timeout by default so a read that never returns cannot stall a workflow indefinitely. The default is deliberately generous because the same connection serves profiling and data quality, whose own default budget is 12 hours per table. To tighten it, set `timeout` (in seconds) in the connection arguments for the **pytds** and **pymssql** schemes; on **pyodbc** that argument is the login timeout instead, and the query timeout follows the default.
 $$
 
 ## Sample Storage AWS S3 Config

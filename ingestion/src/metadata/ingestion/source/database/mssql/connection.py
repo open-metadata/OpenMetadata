@@ -126,10 +126,18 @@ MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)
 
 # A hung read otherwise stalls a workflow forever: pytds and pymssql default to
 # no socket timeout at all and pyodbc to no query timeout, and the shared engine
-# builder sets neither. Ten minutes is well past any healthy catalogue or
-# query-log read, and mirrors how Snowflake bounds its own socket. User-supplied
-# connectionArguments win.
-DEFAULT_QUERY_TIMEOUT_SECONDS = 600
+# builder sets neither.
+#
+# The bound cannot be tighter than the longest read the product itself considers
+# healthy. Every workflow builds its engine here - metadata, lineage, usage, the
+# profiler and data quality all reach _get_client through get_ssl_connection -
+# and the profiler's own default budget is 12 hours per table
+# (databaseServiceProfilerPipeline.json timeoutSeconds), so anything shorter
+# would fail profiling runs that are working as designed. What it does rule out
+# is the wait that never ends, which is the failure this exists for; a dead
+# pooled connection is caught far sooner by pre-ping. Tighten it per service
+# with `timeout` in connectionArguments, which wins over this default.
+DEFAULT_QUERY_TIMEOUT_SECONDS = 43200
 
 
 def get_connection_url(connection: MssqlConnectionConfig) -> str:
