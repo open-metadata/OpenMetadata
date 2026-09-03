@@ -801,16 +801,23 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getOwnerCondition(String tableName) {
     // Generic owner filter for any entity: matches the indexed entity_relationship.fromId.
-    // Accepts one or more owner (user/team) ids as a comma-separated value.
+    // Accepts one or more owner (user/team) ids as a comma-separated value. Callers may pass an
+    // optional "ownerToEntity" to constrain the subquery to a single owned entity type.
     String ownerIds = getQueryParam("ownerId");
     if (nullOrEmpty(ownerIds)) {
       return "";
     }
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
     String inCondition = buildIndexedBindParams("ownerId", ownerIds);
+    String toEntityCondition = "";
+    String ownerToEntity = getQueryParam("ownerToEntity");
+    if (!nullOrEmpty(ownerToEntity)) {
+      queryParams.put("ownerToEntityParam", ownerToEntity);
+      toEntityCondition = " AND entity_relationship.toEntity = :ownerToEntityParam";
+    }
     return String.format(
-        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId IN (%s) AND relation=8))",
-        entityIdColumn, inCondition);
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId IN (%s)%s AND relation=8))",
+        entityIdColumn, inCondition, toEntityCondition);
   }
 
   /**
