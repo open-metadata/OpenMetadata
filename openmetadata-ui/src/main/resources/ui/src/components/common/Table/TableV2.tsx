@@ -963,12 +963,7 @@ const TableV2 = <T extends object>(
       if (typeof rest.rowKey === 'string') {
         const val = (record as Record<string, unknown>)[rest.rowKey];
 
-        // An empty string is as missing as undefined: React Aria drops a row
-        // whose id is '' — a CSV import result keys its failure rows on a blank
-        // name, and AntD still rendered them.
-        return val !== undefined && val !== null && String(val) !== ''
-          ? String(val)
-          : String(index);
+        return val !== undefined && val !== null ? String(val) : String(index);
       }
 
       return String(index);
@@ -1621,7 +1616,7 @@ const TableV2 = <T extends object>(
                     // `relative` + a real min-height contain call-site
                     // placeholders (the core EmptyPlaceholder is
                     // absolute/inset-0 and fills its nearest positioned
-                    // ancestor — without this box it escapes the table).
+                    // ancestor — without this box it escapes over the header).
                     <div className="tw:relative tw:min-h-40 tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
                       {
                         // AntD fell back to its own <Empty> illustration, not
