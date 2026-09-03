@@ -372,26 +372,37 @@ ORACLE_CONSTRAINTS = textwrap.dedent(
     """
 )
 
+# The row-limiting clause (OFFSET ... FETCH NEXT ... ROWS ONLY) is only valid
+# from Oracle 12.1 onwards. On 11g and earlier the whole statement is rejected
+# with ORA-00933 "SQL command not properly ended", so usage and lineage ingest
+# nothing at all while metadata ingestion keeps working -- the test-connection
+# probe (TEST_QUERY_HISTORY) uses ROWNUM and therefore still passes.
+# Ordering in an inline view and capping with ROWNUM is the top-N form every
+# Oracle version understands, and the optimizer resolves it to the same
+# COUNT STOPKEY plan.
+# https://github.com/open-metadata/OpenMetadata/issues/21054
 ORACLE_QUERY_HISTORY_STATEMENT = textwrap.dedent(
     """
-SELECT
-    NULL AS user_name,
-    NULL AS database_name,
-    NULL AS schema_name,
-    NULL AS aborted,
-    SQL_FULLTEXT AS query_text,
-    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
-    ELAPSED_TIME / 1000 AS duration,
-    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
-FROM gv$sql
-WHERE OBJECT_STATUS = 'VALID'
-    {filters}
-    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
-    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND')
-    < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
-ORDER BY FIRST_LOAD_TIME DESC
-OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY
+SELECT * FROM (
+    SELECT
+        NULL AS user_name,
+        NULL AS database_name,
+        NULL AS schema_name,
+        NULL AS aborted,
+        SQL_FULLTEXT AS query_text,
+        TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
+        ELAPSED_TIME / 1000 AS duration,
+        TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
+    FROM gv$sql
+    WHERE OBJECT_STATUS = 'VALID'
+        {filters}
+        AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
+        AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND')
+        < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
+    ORDER BY FIRST_LOAD_TIME DESC
+)
+WHERE ROWNUM <= {result_limit}
 """
 )

@@ -13,10 +13,10 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any, cast
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -132,7 +132,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)
-    topic_source_state: Set = set()  # noqa: RUF012, UP006
+    topic_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()
     def __init__(
@@ -200,7 +200,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_topic_list(self) -> list[Any] | None:
         """
         Get List of all topics
         """
