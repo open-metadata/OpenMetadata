@@ -11,15 +11,6 @@
  *  limitations under the License.
  */
 
-import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import {
-  createElement,
-  isValidElement,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import type { Key } from 'react-aria-components';
 import { normalizeHexColor } from '@/colors/colorValidation';
 import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
 import { Tabs } from '@/components/application/tabs/tabs';
@@ -29,6 +20,15 @@ import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import {
+  createElement,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import type { Key } from 'react-aria-components';
 import type {
   FormSelectItem,
   IconPickerFieldLabels,
@@ -107,7 +107,7 @@ export const IconPickerField = ({
   const selectedItem = items.find((item) => item.id === value);
   const backgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    ENTITY_PALETTE_HEX[6];
+    ENTITY_PALETTE_HEX[0];
   const hasCustomImage = allowUrl && value !== '' && !selectedItem;
   const onBlurRef = useRef(onBlur);
   onBlurRef.current = onBlur;
