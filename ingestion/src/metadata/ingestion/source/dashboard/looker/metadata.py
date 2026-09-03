@@ -126,6 +126,7 @@ from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
     filter_by_datamodel,
+    filter_by_project,
     filter_pattern_enabled,
 )
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
@@ -411,22 +412,29 @@ class LookerSource(DashboardServiceSource):
             # First, pick up all the LookML Models
             try:
                 all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
+                lookml_models: list[LookmlModel] = []
+                for model in all_lookml_models:
+                    project_name = model.project_name or ""
+                    if filter_by_project(self.source_config.projectFilterPattern, project_name):
+                        self.status.filter(project_name or model.name or "unknown", "Project filtered out.")
+                        continue
+                    lookml_models.append(model)
 
                 # Then, gather their information and build the parser
-                self.parser = all_lookml_models
+                self.parser = lookml_models
 
                 # Store the models for later processing of standalone views
-                self._all_lookml_models = all_lookml_models
+                self._all_lookml_models = lookml_models
 
                 manual = self.progress_tracking.manual
                 manual.set_total(
                     DashboardDataModel.__name__,
-                    self._reconcilable_explore_total(all_lookml_models),
+                    self._reconcilable_explore_total(lookml_models),
                 )
                 manual.mark_reconcilable(DashboardDataModel.__name__)
 
                 # Finally, iterate through them to ingest Explores and Views
-                yield from self.fetch_lookml_explores(all_lookml_models)
+                yield from self.fetch_lookml_explores(lookml_models)
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
@@ -993,7 +1001,7 @@ class LookerSource(DashboardServiceSource):
 
             if view.sql_table_name:
                 sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
-                sql_table_name = self._render_table_name(sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name, model_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
@@ -1103,7 +1111,7 @@ class LookerSource(DashboardServiceSource):
 
             if view.sql_table_name:
                 sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
-                sql_table_name = self._render_table_name(sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name, explore.model_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
@@ -1359,7 +1367,7 @@ class LookerSource(DashboardServiceSource):
         return resolved
 
     @staticmethod
-    def _render_table_name(table_name: str) -> str:
+    def _render_table_name(table_name: str, model_name: str | None = None) -> str:
         """
         sql_table_names might contain Liquid templates
         when defining an explore. e.g,:
@@ -1373,12 +1381,16 @@ class LookerSource(DashboardServiceSource):
             {% endif %} ;;
         we should render the template and give the option
         to render a specific value during metadata ingestion
-        using the "openmetadata" context argument
+        using the "openmetadata" context argument. Looker model conditions are
+        evaluated using the current model name.
         :param table_name: table name with possible templating
+        :param model_name: current LookML model name
         :return: rendered table name
         """
         try:
-            context = {"openmetadata": True}
+            context: dict[str, object] = {"openmetadata": True}
+            if model_name:
+                context["_model"] = {"_name": model_name}
             template = Template(table_name)
             sql_table_name = template.render(context)
         except Exception:
