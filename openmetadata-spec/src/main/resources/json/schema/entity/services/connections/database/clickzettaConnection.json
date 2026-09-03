@@ -86,14 +86,6 @@
       ],
       "default": "https"
     },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-    },
-    "connectionArguments": {
-      "title": "Connection Arguments",
-      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
-    },
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include or exclude matching schemas.",

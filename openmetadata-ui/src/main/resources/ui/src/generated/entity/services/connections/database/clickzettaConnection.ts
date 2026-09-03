@@ -17,9 +17,7 @@ export interface ClickzettaConnection {
     /**
      * Choose the ClickZetta authentication configuration.
      */
-    authType:             AuthConfigurationType;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    authType: AuthConfigurationType;
     /**
      * Regex to only include or exclude matching databases.
      */

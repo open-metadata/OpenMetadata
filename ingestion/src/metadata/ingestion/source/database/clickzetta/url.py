@@ -9,18 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from collections.abc import Mapping
 from typing import Optional
 
 from sqlalchemy.engine import URL
-
-_RESERVED_CONNECTION_OPTIONS = frozenset(
-    {
-        "virtualcluster",
-        "schema",
-        "protocol",
-    }
-)
 
 
 def _split_host_port(
@@ -43,18 +34,9 @@ def build_clickzetta_url(
     virtual_cluster: str,
     database_schema: Optional[str],  # noqa: UP045
     protocol: str,
-    connection_options: Optional[Mapping[str, str]] = None,  # noqa: UP045
 ) -> URL:
     host, port = _split_host_port(host_port)
-    option_keys = {key.casefold() for key in (connection_options or {})}
-    reserved_collisions = sorted(option_keys & _RESERVED_CONNECTION_OPTIONS)
-    if reserved_collisions:
-        raise ValueError(
-            f"ClickZetta connectionOptions cannot override reserved URL keys: {', '.join(reserved_collisions)}"
-        )
-
-    query = {key: value for key, value in (connection_options or {}).items() if value}
-    query["virtualcluster"] = virtual_cluster
+    query = {"virtualcluster": virtual_cluster}
     if database_schema:
         query["schema"] = database_schema
     if protocol == "http":

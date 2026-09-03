@@ -19,6 +19,7 @@ workflows.
 from __future__ import annotations
 
 import re
+from functools import partial
 from typing import Any, ClassVar
 
 import attrs
@@ -37,8 +38,10 @@ from data_diff.databases.base import (
     CHECKSUM_OFFSET,
     BaseDialect,
     Database,
+    ThreadLocalInterpreter,
 )
 from data_diff.databases.presto import Dialect as PrestoDialect
+from data_diff.databases.presto import query_cursor
 from data_diff.schema import RawColumnInfo
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
@@ -179,8 +182,10 @@ class ClickzettaDatabase(Database):
             **extra,
         )
 
-    def _query(self, sql_code: str) -> list:
+    def _query(self, sql_code: str | ThreadLocalInterpreter) -> list:
         cursor = self._conn.cursor()
+        if isinstance(sql_code, ThreadLocalInterpreter):
+            return sql_code.apply_queries(partial(query_cursor, cursor))
         cursor.execute(sql_code)
         if sql_code.lstrip().lower().startswith(("select", "show", "describe", "explain")):
             return cursor.fetchall()

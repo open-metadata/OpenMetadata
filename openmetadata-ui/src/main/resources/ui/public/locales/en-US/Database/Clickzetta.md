@@ -96,18 +96,9 @@ $$section
 
 Choose `https` for normal deployments. Use `http` only when the ClickZetta
 endpoint is intentionally exposed without TLS in a trusted environment.
-$$
-
-$$section
-### Connection Options $(id="connectionOptions")
-
-Add optional SQLAlchemy URL query parameters as key-value pairs.
-$$
-
-$$section
-### Connection Arguments $(id="connectionArguments")
-
-Add optional keyword arguments passed to the SQLAlchemy engine.
+The pinned driver uses its driver and system trust configuration; custom CA,
+client certificate, and TLS-verification settings are not exposed because the
+pinned driver does not support them.
 
 Profiling, tests, custom SQL, and data diff can read table data. Use
 OpenMetadata's profiler sampling settings, workflow filters, and explicitly

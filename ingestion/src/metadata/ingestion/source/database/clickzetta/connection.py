@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_options_dict,
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
@@ -57,7 +56,6 @@ def get_clickzetta_connection_url(
         virtual_cluster=connection.virtualCluster,
         database_schema=connection.databaseSchema,
         protocol=connection.protocol.value if connection.protocol else "https",
-        connection_options=get_connection_options_dict(connection),
     )
 
 
@@ -103,10 +101,4 @@ class ClickzettaConnection(BaseConnection[ClickzettaConnectionConfig, Engine]):
         connection_dict.update(
             {key: value for key, value in url.query.items() if key not in {"virtualcluster", "schema"}}
         )
-        service_connection = getattr(self, "service_connection", None)
-        arguments = getattr(service_connection, "connectionArguments", None)
-        argument_values = arguments if isinstance(arguments, dict) else getattr(arguments, "root", None) or {}
-        for key, value in argument_values.items():
-            if key not in connection_dict and value is not None:
-                connection_dict[key] = value
         return {key: value for key, value in connection_dict.items() if value is not None}

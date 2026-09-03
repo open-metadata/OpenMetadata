@@ -45,12 +45,15 @@ class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):
                     with engine.connect() as connection:
                         rows = connection.execute(text(sql_statement))
                         queries = []
+                        row_count = 0
                         for row in rows:
+                            row_count += 1
                             table_query = self.normalize_query_row(row, include_usage=True)
                             if table_query is not None:
                                 queries.append(table_query)
                         if queries:
                             yield TableQueries(queries=queries)
+                        self.warn_if_query_log_truncated(row_count, "usage")
             except Exception as exc:
                 logger.exception("ClickZetta usage query failed")
                 raise RuntimeError(f"ClickZetta usage query failed: {exc}") from exc

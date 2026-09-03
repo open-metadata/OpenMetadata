@@ -11,10 +11,10 @@
 
 import importlib
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
@@ -300,6 +300,7 @@ def test_usage_source_uses_one_bounded_window_with_a_fake_engine():
     engine = MagicMock()
     engine.connect.return_value = connection
     source.get_engine = lambda: iter([engine])
+    source.warn_if_query_log_truncated = MagicMock()
 
     batches = list(source.yield_table_queries())
 
@@ -308,6 +309,62 @@ def test_usage_source_uses_one_bounded_window_with_a_fake_engine():
     executed_sql = connection.execute.call_args.args[0].text
     assert "FROM seller_center.query_history" in executed_sql
     assert "LIMIT 2" in executed_sql
+    source.warn_if_query_log_truncated.assert_called_once_with(1, "usage")
+
+
+def test_usage_source_scans_full_daily_windows_without_duplicate_rows():
+    source = object.__new__(ClickzettaUsageSource)
+    source.start = datetime(2026, 8, 5, tzinfo=timezone.utc)
+    source.end = source.start + timedelta(days=2, hours=3)
+    source.service_connection = SimpleNamespace(
+        queryHistoryTable="seller_center.query_history", databaseName="quick_start", databaseSchema="seller_center"
+    )
+    source.config = SimpleNamespace(serviceName="clickzetta")
+    source.source_config = SimpleNamespace(filterCondition=None, resultLimit=2)
+    source.warn_if_query_log_truncated = MagicMock()
+    rows = iter(
+        [
+            [{"query_text": "select 1", "query_type": "SELECT", "start_time": source.start}],
+            [{"query_text": "select 2", "query_type": "SELECT", "start_time": source.start + timedelta(days=1)}],
+            [{"query_text": "select 3", "query_type": "SELECT", "start_time": source.start + timedelta(days=2)}],
+        ]
+    )
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.execute.side_effect = lambda _: next(rows)
+    engine = MagicMock()
+    engine.connect.return_value = connection
+    source.get_engine = lambda: iter([engine])
+
+    batches = list(source.yield_table_queries())
+
+    assert [query.query for batch in batches for query in batch.queries] == ["select 1", "select 2", "select 3"]
+    assert connection.execute.call_count == 3
+    source.warn_if_query_log_truncated.assert_has_calls([call(1, "usage")] * 3)
+
+
+def test_lineage_source_warns_when_query_log_reaches_limit():
+    source = object.__new__(ClickzettaLineageSource)
+    source.start = datetime(2026, 8, 5, tzinfo=timezone.utc)
+    source.end = source.start + timedelta(hours=1)
+    source.service_connection = SimpleNamespace(
+        queryHistoryTable="seller_center.query_history", databaseName="quick_start", databaseSchema="seller_center"
+    )
+    source.config = SimpleNamespace(serviceName="clickzetta")
+    source.source_config = SimpleNamespace(filterCondition=None, resultLimit=2)
+    source.warn_if_query_log_truncated = MagicMock()
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.execute.return_value = [
+        {"query_text": "select 1", "query_type": "SELECT", "start_time": source.start},
+        {"query_text": "select 2", "query_type": "SELECT", "start_time": source.start},
+    ]
+    engine = MagicMock()
+    engine.connect.return_value = connection
+    source.get_engine = lambda: iter([engine])
+
+    assert len(list(source.yield_table_query())) == 2
+    source.warn_if_query_log_truncated.assert_called_once_with(2, "lineage")
 
 
 def test_usage_source_propagates_query_history_errors():

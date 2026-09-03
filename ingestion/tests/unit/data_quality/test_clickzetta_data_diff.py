@@ -47,6 +47,33 @@ def test_clickzetta_data_diff_executes_describe_queries():
     assert database._query("DESCRIBE `seller_center`.`orders`") == [("id", "BIGINT", "")]
 
 
+def test_clickzetta_data_diff_applies_thread_local_query_sequences(monkeypatch):
+    class Cursor:
+        def execute(self, sql):
+            assert isinstance(sql, str)
+
+        def fetchall(self):
+            return [(1,)]
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+    class ThreadLocalSequence:
+        def apply_queries(self, callback):
+            self.result = callback("SELECT 1")
+            return self.result
+
+    import metadata.ingestion.source.database.clickzetta.data_diff.data_diff as module
+
+    monkeypatch.setattr(module, "ThreadLocalInterpreter", ThreadLocalSequence)
+    database = object.__new__(ClickzettaDatabase)
+    database._conn = Connection()
+    sequence = ThreadLocalSequence()
+
+    assert database._query(sequence) == [(1,)]
+
+
 def test_clickzetta_data_diff_describe_schema_normalizes_clickzetta_types():
     class Cursor:
         def execute(self, sql):

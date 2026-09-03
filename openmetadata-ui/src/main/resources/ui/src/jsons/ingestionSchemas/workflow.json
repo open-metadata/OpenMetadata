@@ -8920,14 +8920,6 @@
                           ],
                           "default": "https"
                         },
-                        "connectionOptions": {
-                          "title": "Connection Options",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
-                        },
-                        "connectionArguments": {
-                          "title": "Connection Arguments",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionArguments"
-                        },
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include or exclude matching schemas.",

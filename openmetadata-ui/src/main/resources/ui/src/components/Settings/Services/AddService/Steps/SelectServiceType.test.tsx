@@ -19,8 +19,10 @@ import {
 } from '@testing-library/react';
 import {
   ALL_SERVICES_CATEGORY,
+  BETA_SERVICES,
   excludedService,
 } from '../../../../../constants/Services.constant';
+import { DatabaseServiceType } from '../../../../../generated/entity/services/databaseService';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import SelectServiceType from './SelectServiceType';
@@ -177,5 +179,19 @@ describe('Test SelectServiceType component', () => {
     excludedService.forEach((type) => {
       expect(screen.queryByTestId(type)).not.toBeInTheDocument();
     });
+  });
+
+  it('classifies ClickZetta as beta in the rendered database selection', () => {
+    render(
+      <SelectServiceType
+        {...mockSelectServiceTypeProps}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+      />
+    );
+
+    expect(BETA_SERVICES).toContain(DatabaseServiceType.Clickzetta);
+    expect(screen.getByTestId(DatabaseServiceType.Clickzetta)).toHaveTextContent(
+      'label.beta'
+    );
   });
 });

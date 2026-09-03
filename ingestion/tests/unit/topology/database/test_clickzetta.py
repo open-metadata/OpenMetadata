@@ -86,7 +86,7 @@ class _ConcreteClickzettaConnection(ClickzettaConnection):
             self._client = None
 
 
-def _connection_config(connection_options=None):
+def _connection_config():
     return SimpleNamespace(
         hostPort="instance.example.clickzetta.test",
         username="catalog_reader",
@@ -95,8 +95,6 @@ def _connection_config(connection_options=None):
         virtualCluster="DEFAULT",
         databaseSchema=None,
         protocol=SimpleNamespace(value="https"),
-        connectionOptions=(SimpleNamespace(root=connection_options) if connection_options is not None else None),
-        connectionArguments=None,
     )
 
 
@@ -130,44 +128,6 @@ def test_clickzetta_connection_uses_common_builder():
     assert common_builder.call_args.kwargs["connection"] is connection_config
     assert common_builder.call_args.kwargs["get_connection_args_fn"] is get_connection_args_common
     assert common_builder.call_args.kwargs["get_connection_url_fn"].__name__ == "get_clickzetta_connection_url"
-
-
-def test_clickzetta_connection_propagates_generated_connection_options():
-    engine = MagicMock(spec=Engine)
-    connection_config = _connection_config(
-        {
-            "warehouse": "metadata",
-            "connect_timeout": "30",
-        }
-    )
-    captured_url = None
-
-    def build_engine(**kwargs):
-        nonlocal captured_url
-        captured_url = kwargs["get_connection_url_fn"](kwargs["connection"])
-        return engine
-
-    with (
-        patch(
-            f"{CONNECTION_MODULE}.create_generic_db_connection",
-            side_effect=build_engine,
-            create=True,
-        ) as common_builder,
-        patch(
-            f"{CONNECTION_MODULE}.create_engine",
-            return_value=engine,
-            create=True,
-        ),
-    ):
-        connection = _ConcreteClickzettaConnection(connection_config)
-        assert connection.client is engine
-
-    common_builder.assert_called_once()
-    assert dict(captured_url.query) == {
-        "virtualcluster": "DEFAULT",
-        "warehouse": "metadata",
-        "connect_timeout": "30",
-    }
 
 
 def test_clickzetta_connection_close_disposes_owned_engine():
@@ -225,10 +185,9 @@ def test_clickzetta_connection_exposes_a_data_diff_connection_dict():
             virtual_cluster="DEFAULT",
             database_schema="seller_center",
             protocol="https",
-            connection_options={"warehouse": "metadata"},
         )
     )
-    connection.service_connection = SimpleNamespace(connectionArguments=SimpleNamespace(root={"timeout": "5"}))
+    connection.service_connection = SimpleNamespace()
 
     connection_dict = ClickzettaConnection.get_connection_dict(connection)
 
@@ -241,8 +200,6 @@ def test_clickzetta_connection_exposes_a_data_diff_connection_dict():
         "workspace": "quick_start",
         "virtualcluster": "DEFAULT",
         "schema": "seller_center",
-        "warehouse": "metadata",
-        "timeout": "5",
     }
 
 
@@ -284,8 +241,9 @@ def test_build_clickzetta_url_adds_http_protocol_only_when_requested():
     }
 
 
-def test_build_clickzetta_url_merges_custom_connection_options():
-    url = build_clickzetta_url(
+def test_build_clickzetta_url_does_not_accept_unsafe_connection_options():
+    with pytest.raises(TypeError, match="connection_options"):
+        build_clickzetta_url(
         host_port="instance.example.clickzetta.test",
         username="catalog_reader",
         password="secret",
@@ -293,43 +251,7 @@ def test_build_clickzetta_url_merges_custom_connection_options():
         virtual_cluster="DEFAULT",
         database_schema=None,
         protocol="https",
-        connection_options={
-            "warehouse": "metadata",
-            "connect_timeout": "30",
-        },
-    )
-
-    assert dict(url.query) == {
-        "virtualcluster": "DEFAULT",
-        "warehouse": "metadata",
-        "connect_timeout": "30",
-    }
-
-
-@pytest.mark.parametrize(
-    "reserved_key",
-    [
-        "virtualcluster",
-        "schema",
-        "protocol",
-        "VirtualCluster",
-        "Schema",
-        "Protocol",
-    ],
-)
-def test_build_clickzetta_url_rejects_reserved_connection_options(
-    reserved_key,
-):
-    with pytest.raises(ValueError, match=reserved_key.casefold()):
-        build_clickzetta_url(
-            host_port="instance.example.clickzetta.test",
-            username="catalog_reader",
-            password="secret",
-            workspace="quick_start",
-            virtual_cluster="DEFAULT",
-            database_schema=None,
-            protocol="https",
-            connection_options={reserved_key: "override"},
+            connection_options={"magic_token": "do-not-log-me"},
         )
 
 
