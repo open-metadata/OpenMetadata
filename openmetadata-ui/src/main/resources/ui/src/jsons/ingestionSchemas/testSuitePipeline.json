@@ -7,7 +7,9 @@
     "testSuiteConfigType": {
       "description": "Pipeline Source Config Metadata Pipeline type",
       "type": "string",
-      "enum": ["TestSuite"],
+      "enum": [
+        "TestSuite"
+      ],
       "default": "TestSuite"
     },
     "serviceConnections": {
@@ -41,7 +43,9 @@
                         "restType": {
                           "description": "REST API type",
                           "type": "string",
-                          "enum": ["Rest"],
+                          "enum": [
+                            "Rest"
+                          ],
                           "default": "Rest"
                         }
                       },
@@ -71,7 +75,9 @@
                                   "format": "uri"
                                 }
                               },
-                              "required": ["openAPISchemaURL"],
+                              "required": [
+                                "openAPISchemaURL"
+                              ],
                               "additionalProperties": false
                             },
                             {
@@ -88,7 +94,9 @@
                                   "type": "string"
                                 }
                               },
-                              "required": ["openAPISchemaFilePath"],
+                              "required": [
+                                "openAPISchemaFilePath"
+                              ],
                               "additionalProperties": false
                             },
                             {
@@ -148,7 +156,11 @@
                           "title": "Verify SSL",
                           "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
                           "type": "string",
-                          "enum": ["no-ssl", "ignore", "validate"]
+                          "enum": [
+                            "no-ssl",
+                            "ignore",
+                            "validate"
+                          ]
                         },
                         "sslConfig": {
                           "title": "SSL Config",
@@ -218,7 +230,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["openAPISchemaConnection"]
+                      "required": [
+                        "openAPISchemaConnection"
+                      ]
                     }
                   ]
                 }
@@ -246,7 +260,9 @@
                         "lookerType": {
                           "description": "Looker service type",
                           "type": "string",
-                          "enum": ["Looker"],
+                          "enum": [
+                            "Looker"
+                          ],
                           "default": "Looker"
                         },
                         "noGitCredentials": {
@@ -307,7 +323,9 @@
                                 "githubType": {
                                   "description": "GitHub Credentials type",
                                   "type": "string",
-                                  "enum": ["GitHub"],
+                                  "enum": [
+                                    "GitHub"
+                                  ],
                                   "default": "GitHub"
                                 }
                               },
@@ -343,7 +361,10 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["repositoryOwner", "repositoryName"]
+                              "required": [
+                                "repositoryOwner",
+                                "repositoryName"
+                              ]
                             },
                             {
                               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -355,7 +376,9 @@
                                 "bitbucketType": {
                                   "description": "BitBucket Credentials type",
                                   "type": "string",
-                                  "enum": ["BitBucket"],
+                                  "enum": [
+                                    "BitBucket"
+                                  ],
                                   "default": "BitBucket"
                                 }
                               },
@@ -405,7 +428,9 @@
                                 "gitlabType": {
                                   "description": "Gitlab Credentials type",
                                   "type": "string",
-                                  "enum": ["Gitlab"],
+                                  "enum": [
+                                    "Gitlab"
+                                  ],
                                   "default": "Gitlab"
                                 }
                               },
@@ -434,7 +459,10 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["repositoryOwner", "repositoryName"]
+                              "required": [
+                                "repositoryOwner",
+                                "repositoryName"
+                              ]
                             }
                           ]
                         },
@@ -482,7 +510,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "clientId", "clientSecret"]
+                      "required": [
+                        "hostPort",
+                        "clientId",
+                        "clientSecret"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -494,7 +526,9 @@
                         "metabaseType": {
                           "description": "Metabase service type",
                           "type": "string",
-                          "enum": ["Metabase"],
+                          "enum": [
+                            "Metabase"
+                          ],
                           "default": "Metabase"
                         }
                       },
@@ -555,7 +589,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -567,7 +603,9 @@
                         "powerBiType": {
                           "description": "PowerBI service type",
                           "type": "string",
-                          "enum": ["PowerBI"],
+                          "enum": [
+                            "PowerBI"
+                          ],
                           "default": "PowerBI"
                         },
                         "localConfig": {
@@ -578,7 +616,9 @@
                             "pbitFileConfigType": {
                               "description": "pbit File Configuration type",
                               "type": "string",
-                              "enum": ["local"],
+                              "enum": [
+                                "local"
+                              ],
                               "default": "local"
                             },
                             "path": {
@@ -685,7 +725,9 @@
                                 "pbitFileConfigType": {
                                   "description": "pbit File Configuration type",
                                   "type": "string",
-                                  "enum": ["azure"],
+                                  "enum": [
+                                    "azure"
+                                  ],
                                   "default": "azure"
                                 },
                                 "securityConfig": {
@@ -720,7 +762,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["securityConfig"]
+                              "required": [
+                                "securityConfig"
+                              ]
                             },
                             {
                               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -732,7 +776,9 @@
                                 "pbitFileConfigType": {
                                   "description": "pbit File Configuration type",
                                   "type": "string",
-                                  "enum": ["gcs"],
+                                  "enum": [
+                                    "gcs"
+                                  ],
                                   "default": "gcs"
                                 },
                                 "securityConfig": {
@@ -751,7 +797,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["securityConfig"]
+                              "required": [
+                                "securityConfig"
+                              ]
                             },
                             {
                               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -763,7 +811,9 @@
                                 "pbitFileConfigType": {
                                   "description": "pbit File Configuration type",
                                   "type": "string",
-                                  "enum": ["s3"],
+                                  "enum": [
+                                    "s3"
+                                  ],
                                   "default": "s3"
                                 },
                                 "securityConfig": {
@@ -782,7 +832,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["securityConfig"]
+                              "required": [
+                                "securityConfig"
+                              ]
                             }
                           ]
                         },
@@ -812,7 +864,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["clientId", "clientSecret", "tenantId"]
+                      "required": [
+                        "clientId",
+                        "clientSecret",
+                        "tenantId"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -824,7 +880,9 @@
                         "powerBIReportServerType": {
                           "description": "PowerBIReportServer service type",
                           "type": "string",
-                          "enum": ["PowerBIReportServer"],
+                          "enum": [
+                            "PowerBIReportServer"
+                          ],
                           "default": "PowerBIReportServer"
                         }
                       },
@@ -885,7 +943,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -897,7 +959,9 @@
                         "redashType": {
                           "description": "Redash service type",
                           "type": "string",
-                          "enum": ["Redash"],
+                          "enum": [
+                            "Redash"
+                          ],
                           "default": "Redash"
                         }
                       },
@@ -959,7 +1023,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "apiKey"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "apiKey"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -971,7 +1039,9 @@
                         "supersetType": {
                           "description": "Superset service type",
                           "type": "string",
-                          "enum": ["Superset"],
+                          "enum": [
+                            "Superset"
+                          ],
                           "default": "Superset"
                         }
                       },
@@ -1004,7 +1074,10 @@
                                   "title": "Provider",
                                   "description": "Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API.",
                                   "type": "string",
-                                  "enum": ["db", "ldap"],
+                                  "enum": [
+                                    "db",
+                                    "ldap"
+                                  ],
                                   "default": "db"
                                 }
                               },
@@ -1035,7 +1108,11 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["provider", "password", "username"]
+                              "required": [
+                                "provider",
+                                "password",
+                                "username"
+                              ]
                             },
                             {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19"
@@ -1071,7 +1148,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "connection"]
+                      "required": [
+                        "hostPort",
+                        "connection"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1083,7 +1163,9 @@
                         "tableauType": {
                           "description": "Tableau service type",
                           "type": "string",
-                          "enum": ["Tableau"],
+                          "enum": [
+                            "Tableau"
+                          ],
                           "default": "Tableau"
                         }
                       },
@@ -1125,7 +1207,10 @@
                                   "format": "password"
                                 }
                               },
-                              "required": ["username", "password"],
+                              "required": [
+                                "username",
+                                "password"
+                              ],
                               "additionalProperties": false
                             },
                             {
@@ -1214,7 +1299,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1226,7 +1313,9 @@
                         "modeType": {
                           "description": "Mode service type",
                           "type": "string",
-                          "enum": ["Mode"],
+                          "enum": [
+                            "Mode"
+                          ],
                           "default": "Mode"
                         }
                       },
@@ -1309,7 +1398,9 @@
                           "title": "Service Type",
                           "description": "Custom dashboard service type",
                           "type": "string",
-                          "enum": ["CustomDashboard"],
+                          "enum": [
+                            "CustomDashboard"
+                          ],
                           "default": "CustomDashboard"
                         }
                       },
@@ -1355,7 +1446,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1367,7 +1460,9 @@
                         "domoDashboardType": {
                           "description": " service type",
                           "type": "string",
-                          "enum": ["DomoDashboard"],
+                          "enum": [
+                            "DomoDashboard"
+                          ],
                           "default": "DomoDashboard"
                         }
                       },
@@ -1435,7 +1530,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["clientId", "secretToken", "instanceDomain"]
+                      "required": [
+                        "clientId",
+                        "secretToken",
+                        "instanceDomain"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1447,7 +1546,9 @@
                         "quickSightType": {
                           "description": "QuickSight service type",
                           "type": "string",
-                          "enum": ["QuickSight"],
+                          "enum": [
+                            "QuickSight"
+                          ],
                           "default": "QuickSight"
                         }
                       },
@@ -1471,7 +1572,11 @@
                           "title": "Identity Type",
                           "description": "The authentication method that the user uses to sign in.",
                           "type": "string",
-                          "enum": ["IAM", "QUICKSIGHT", "ANONYMOUS"],
+                          "enum": [
+                            "IAM",
+                            "QUICKSIGHT",
+                            "ANONYMOUS"
+                          ],
                           "default": "IAM"
                         },
                         "namespace": {
@@ -1504,7 +1609,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig", "awsAccountId"]
+                      "required": [
+                        "awsConfig",
+                        "awsAccountId"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1516,7 +1624,9 @@
                         "qlikSenseType": {
                           "description": "Qlik sense service type",
                           "type": "string",
-                          "enum": ["QlikSense"],
+                          "enum": [
+                            "QlikSense"
+                          ],
                           "default": "QlikSense"
                         },
                         "qlikCertificatePath": {
@@ -1555,7 +1665,9 @@
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                             }
                           },
-                          "required": ["sslConfig"]
+                          "required": [
+                            "sslConfig"
+                          ]
                         }
                       },
                       "properties": {
@@ -1631,7 +1743,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "certificates"]
+                      "required": [
+                        "hostPort",
+                        "certificates"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1643,7 +1758,9 @@
                         "lightdashType": {
                           "description": "Lightdash service type",
                           "type": "string",
-                          "enum": ["Lightdash"],
+                          "enum": [
+                            "Lightdash"
+                          ],
                           "default": "Lightdash"
                         }
                       },
@@ -1727,7 +1844,9 @@
                         "microStrategyType": {
                           "description": "MicroStrategy service type",
                           "type": "string",
-                          "enum": ["MicroStrategy"],
+                          "enum": [
+                            "MicroStrategy"
+                          ],
                           "default": "MicroStrategy"
                         }
                       },
@@ -1793,7 +1912,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1805,7 +1928,9 @@
                         "qlikCloudType": {
                           "description": "Qlik Cloud service type",
                           "type": "string",
-                          "enum": ["QlikCloud"],
+                          "enum": [
+                            "QlikCloud"
+                          ],
                           "default": "QlikCloud"
                         }
                       },
@@ -1836,9 +1961,19 @@
                           "uniqueItems": true,
                           "items": {
                             "type": "string",
-                            "enum": ["Managed", "Shared", "Personal", "Data"]
+                            "enum": [
+                              "Managed",
+                              "Shared",
+                              "Personal",
+                              "Data"
+                            ]
                           },
-                          "default": ["Managed", "Shared", "Personal", "Data"],
+                          "default": [
+                            "Managed",
+                            "Shared",
+                            "Personal",
+                            "Data"
+                          ],
                           "minItems": 1
                         },
                         "dashboardFilterPattern": {
@@ -1867,7 +2002,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "token"]
+                      "required": [
+                        "hostPort",
+                        "token"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1879,7 +2017,9 @@
                         "sigmaType": {
                           "description": "Sigma service type",
                           "type": "string",
-                          "enum": ["Sigma"],
+                          "enum": [
+                            "Sigma"
+                          ],
                           "default": "Sigma"
                         }
                       },
@@ -1941,7 +2081,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "clientId", "clientSecret"]
+                      "required": [
+                        "hostPort",
+                        "clientId",
+                        "clientSecret"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1953,7 +2097,9 @@
                         "thoughtSpotType": {
                           "description": "ThoughtSpot service type",
                           "type": "string",
-                          "enum": ["ThoughtSpot"],
+                          "enum": [
+                            "ThoughtSpot"
+                          ],
                           "default": "ThoughtSpot"
                         }
                       },
@@ -1987,7 +2133,10 @@
                           "title": "API Version",
                           "description": "ThoughtSpot API version to use",
                           "type": "string",
-                          "enum": ["v1", "v2"],
+                          "enum": [
+                            "v1",
+                            "v2"
+                          ],
                           "default": "v2"
                         },
                         "orgId": {
@@ -2003,7 +2152,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "authentication"]
+                      "required": [
+                        "hostPort",
+                        "authentication"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2015,7 +2167,9 @@
                         "grafanaType": {
                           "description": "Grafana service type",
                           "type": "string",
-                          "enum": ["Grafana"],
+                          "enum": [
+                            "Grafana"
+                          ],
                           "default": "Grafana"
                         }
                       },
@@ -2068,7 +2222,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "apiKey"]
+                      "required": [
+                        "hostPort",
+                        "apiKey"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2080,7 +2237,9 @@
                         "hexType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Hex"],
+                          "enum": [
+                            "Hex"
+                          ],
                           "default": "Hex"
                         }
                       },
@@ -2103,7 +2262,10 @@
                           "title": "Token Type",
                           "description": "Type of token to use for authentication",
                           "type": "string",
-                          "enum": ["personal", "workspace"],
+                          "enum": [
+                            "personal",
+                            "workspace"
+                          ],
                           "default": "personal"
                         },
                         "token": {
@@ -2128,7 +2290,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "token"]
+                      "required": [
+                        "hostPort",
+                        "token"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2140,7 +2305,9 @@
                         "ssrsType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Ssrs"],
+                          "enum": [
+                            "Ssrs"
+                          ],
                           "default": "Ssrs"
                         }
                       },
@@ -2201,7 +2368,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2213,7 +2384,9 @@
                         "sapS4HanaType": {
                           "description": "SAP S/4HANA service type",
                           "type": "string",
-                          "enum": ["SapS4Hana"],
+                          "enum": [
+                            "SapS4Hana"
+                          ],
                           "default": "SapS4Hana"
                         },
                         "sapS4HanaBasicAuthType": {
@@ -2226,7 +2399,9 @@
                               "title": "Auth Type",
                               "description": "Authentication type identifier.",
                               "type": "string",
-                              "enum": ["basic"],
+                              "enum": [
+                                "basic"
+                              ],
                               "default": "basic"
                             },
                             "username": {
@@ -2241,7 +2416,10 @@
                               "format": "password"
                             }
                           },
-                          "required": ["username", "password"],
+                          "required": [
+                            "username",
+                            "password"
+                          ],
                           "additionalProperties": false
                         },
                         "sapS4HanaOAuthType": {
@@ -2254,7 +2432,9 @@
                               "title": "Auth Type",
                               "description": "Authentication type identifier.",
                               "type": "string",
-                              "enum": ["oauth2"],
+                              "enum": [
+                                "oauth2"
+                              ],
                               "default": "oauth2"
                             },
                             "clientId": {
@@ -2351,7 +2531,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "authType"]
+                      "required": [
+                        "hostPort",
+                        "authType"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2363,7 +2546,9 @@
                         "omniType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Omni"],
+                          "enum": [
+                            "Omni"
+                          ],
                           "default": "Omni"
                         }
                       },
@@ -2421,7 +2606,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "token"]
+                      "required": [
+                        "hostPort",
+                        "token"
+                      ]
                     }
                   ]
                 }
@@ -2448,13 +2636,17 @@
                         "bigqueryType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["BigQuery"],
+                          "enum": [
+                            "BigQuery"
+                          ],
                           "default": "BigQuery"
                         },
                         "bigqueryScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["bigquery"],
+                          "enum": [
+                            "bigquery"
+                          ],
                           "default": "bigquery"
                         }
                       },
@@ -2668,7 +2860,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["credentials"]
+                      "required": [
+                        "credentials"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2680,7 +2874,9 @@
                         "bigtableType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["BigTable"],
+                          "enum": [
+                            "BigTable"
+                          ],
                           "default": "BigTable"
                         }
                       },
@@ -2729,7 +2925,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["credentials"]
+                      "required": [
+                        "credentials"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2741,13 +2939,17 @@
                         "athenaType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Athena"],
+                          "enum": [
+                            "Athena"
+                          ],
                           "default": "Athena"
                         },
                         "athenaScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["awsathena+rest"],
+                          "enum": [
+                            "awsathena+rest"
+                          ],
                           "default": "awsathena+rest"
                         }
                       },
@@ -2847,7 +3049,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["s3StagingDir", "awsConfig", "workgroup"]
+                      "required": [
+                        "s3StagingDir",
+                        "awsConfig",
+                        "workgroup"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2859,13 +3065,17 @@
                         "azureSQLType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["AzureSQL"],
+                          "enum": [
+                            "AzureSQL"
+                          ],
                           "default": "AzureSQL"
                         },
                         "azureSQLScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mssql+pyodbc"],
+                          "enum": [
+                            "mssql+pyodbc"
+                          ],
                           "default": "mssql+pyodbc"
                         }
                       },
@@ -2998,7 +3208,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "database", "username"]
+                      "required": [
+                        "hostPort",
+                        "database",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3010,13 +3224,18 @@
                         "clickhouseType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Clickhouse"],
+                          "enum": [
+                            "Clickhouse"
+                          ],
                           "default": "Clickhouse"
                         },
                         "clickhouseScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["clickhouse+http", "clickhouse+native"],
+                          "enum": [
+                            "clickhouse+http",
+                            "clickhouse+native"
+                          ],
                           "default": "clickhouse+http"
                         }
                       },
@@ -3129,7 +3348,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3141,13 +3362,17 @@
                         "databricksType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Databricks"],
+                          "enum": [
+                            "Databricks"
+                          ],
                           "default": "Databricks"
                         },
                         "databricksScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["databricks"],
+                          "enum": [
+                            "databricks"
+                          ],
                           "default": "databricks"
                         }
                       },
@@ -3188,7 +3413,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["token"]
+                              "required": [
+                                "token"
+                              ]
                             },
                             {
                               "title": "Databricks OAuth",
@@ -3210,7 +3437,10 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["clientId", "clientSecret"]
+                              "required": [
+                                "clientId",
+                                "clientSecret"
+                              ]
                             },
                             {
                               "title": "Azure AD Setup",
@@ -3286,7 +3516,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^information_schema$"]
+                            "excludes": [
+                              "^information_schema$"
+                            ]
                           }
                         },
                         "tableFilterPattern": {
@@ -3300,7 +3532,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^system$"]
+                            "excludes": [
+                              "^system$"
+                            ]
                           }
                         },
                         "supportsUsageExtraction": {
@@ -3369,7 +3603,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "httpPath", "authType"]
+                      "required": [
+                        "hostPort",
+                        "httpPath",
+                        "authType"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3381,13 +3619,18 @@
                         "db2Type": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Db2"],
+                          "enum": [
+                            "Db2"
+                          ],
                           "default": "Db2"
                         },
                         "db2Scheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["db2+ibm_db", "ibmi"],
+                          "enum": [
+                            "db2+ibm_db",
+                            "ibmi"
+                          ],
                           "default": "db2+ibm_db"
                         }
                       },
@@ -3512,7 +3755,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "database"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3524,7 +3771,9 @@
                         "deltaLakeType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["DeltaLake"],
+                          "enum": [
+                            "DeltaLake"
+                          ],
                           "default": "DeltaLake"
                         }
                       },
@@ -3628,7 +3877,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["connection"]
+                              "required": [
+                                "connection"
+                              ]
                             },
                             {
                               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3668,7 +3919,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["connection"]
+                              "required": [
+                                "connection"
+                              ]
                             }
                           ]
                         },
@@ -3706,7 +3959,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["configSource"]
+                      "required": [
+                        "configSource"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3718,13 +3973,19 @@
                         "druidType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Druid"],
+                          "enum": [
+                            "Druid"
+                          ],
                           "default": "Druid"
                         },
                         "druidScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["druid", "druid+http", "druid+https"],
+                          "enum": [
+                            "druid",
+                            "druid+http",
+                            "druid+https"
+                          ],
                           "default": "druid"
                         }
                       },
@@ -3809,7 +4070,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3821,7 +4084,9 @@
                         "dynamoDBType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["DynamoDB"],
+                          "enum": [
+                            "DynamoDB"
+                          ],
                           "default": "DynamoDB"
                         }
                       },
@@ -3874,7 +4139,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3886,7 +4153,9 @@
                         "glueType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Glue"],
+                          "enum": [
+                            "Glue"
+                          ],
                           "default": "Glue"
                         }
                       },
@@ -3938,7 +4207,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -3950,13 +4221,19 @@
                         "hiveType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Hive"],
+                          "enum": [
+                            "Hive"
+                          ],
                           "default": "Hive"
                         },
                         "hiveScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["hive", "hive+http", "hive+https"],
+                          "enum": [
+                            "hive",
+                            "hive+http",
+                            "hive+https"
+                          ],
                           "default": "hive"
                         }
                       },
@@ -4097,7 +4374,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -4109,13 +4388,18 @@
                         "impalaType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Impala"],
+                          "enum": [
+                            "Impala"
+                          ],
                           "default": "Impala"
                         },
                         "impalaScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["impala", "impala4"],
+                          "enum": [
+                            "impala",
+                            "impala4"
+                          ],
                           "default": "impala"
                         }
                       },
@@ -4152,7 +4436,13 @@
                           "title": "Authentication Mode",
                           "description": "Authentication mode to connect to Impala.",
                           "type": "string",
-                          "enum": ["NOSASL", "PLAIN", "GSSAPI", "LDAP", "JWT"],
+                          "enum": [
+                            "NOSASL",
+                            "PLAIN",
+                            "GSSAPI",
+                            "LDAP",
+                            "JWT"
+                          ],
                           "default": "PLAIN"
                         },
                         "kerberosServiceName": {
@@ -4223,7 +4513,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -4235,13 +4527,17 @@
                         "mariaDBType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["MariaDB"],
+                          "enum": [
+                            "MariaDB"
+                          ],
                           "default": "MariaDB"
                         },
                         "mariaDBScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mysql+pymysql"],
+                          "enum": [
+                            "mysql+pymysql"
+                          ],
                           "default": "mysql+pymysql"
                         }
                       },
@@ -4336,7 +4632,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -4348,7 +4647,9 @@
                         "mssqlType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Mssql"],
+                          "enum": [
+                            "Mssql"
+                          ],
                           "default": "Mssql"
                         },
                         "mssqlScheme": {
@@ -4450,7 +4751,11 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^msdb$", "^model$", "^tempdb$"]
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
                           }
                         },
                         "storedProcedureFilterPattern": {
@@ -4459,7 +4764,11 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^sp_", "^xp_", "^ms_"]
+                            "excludes": [
+                              "^sp_",
+                              "^xp_",
+                              "^ms_"
+                            ]
                           }
                         },
                         "connectionOptions": {
@@ -4505,7 +4814,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["database"]
+                      "required": [
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -4517,7 +4828,9 @@
                         "microsoftAccessType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["MicrosoftAccess"],
+                          "enum": [
+                            "MicrosoftAccess"
+                          ],
                           "default": "MicrosoftAccess"
                         },
                         "localFilePath": {
@@ -4531,7 +4844,9 @@
                               "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
                             }
                           },
-                          "required": ["localFilePath"],
+                          "required": [
+                            "localFilePath"
+                          ],
                           "additionalProperties": false
                         }
                       },
@@ -4569,7 +4884,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["connection"]
+                      "required": [
+                        "connection"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -4581,13 +4898,17 @@
                         "mySQLType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Mysql"],
+                          "enum": [
+                            "Mysql"
+                          ],
                           "default": "Mysql"
                         },
                         "mySQLScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mysql+pymysql"],
+                          "enum": [
+                            "mysql+pymysql"
+                          ],
                           "default": "mysql+pymysql"
                         }
                       },
@@ -4784,7 +5105,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -4796,13 +5120,17 @@
                         "SQLiteType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SQLite"],
+                          "enum": [
+                            "SQLite"
+                          ],
                           "default": "SQLite"
                         },
                         "SQLiteScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["sqlite+pysqlite"],
+                          "enum": [
+                            "sqlite+pysqlite"
+                          ],
                           "default": "sqlite+pysqlite"
                         }
                       },
@@ -4904,13 +5232,18 @@
                         "oracleType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Oracle"],
+                          "enum": [
+                            "Oracle"
+                          ],
                           "default": "Oracle"
                         },
                         "oracleScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["oracle+oracledb", "oracle+cx_oracle"],
+                          "enum": [
+                            "oracle+oracledb",
+                            "oracle+cx_oracle"
+                          ],
                           "default": "oracle+oracledb"
                         },
                         "OracleDatabaseSchema": {
@@ -4923,7 +5256,9 @@
                               "type": "string"
                             }
                           },
-                          "required": ["databaseSchema"]
+                          "required": [
+                            "databaseSchema"
+                          ]
                         },
                         "OracleServiceName": {
                           "title": "Oracle Service Name",
@@ -4935,7 +5270,9 @@
                               "type": "string"
                             }
                           },
-                          "required": ["oracleServiceName"]
+                          "required": [
+                            "oracleServiceName"
+                          ]
                         },
                         "OracleTNSConnection": {
                           "title": "Oracle TNS Connection",
@@ -4947,7 +5284,9 @@
                               "type": "string"
                             }
                           },
-                          "required": ["oracleTNSConnection"]
+                          "required": [
+                            "oracleTNSConnection"
+                          ]
                         }
                       },
                       "properties": {
@@ -5086,7 +5425,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["username", "oracleConnectionType"]
+                      "required": [
+                        "username",
+                        "oracleConnectionType"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5098,13 +5440,18 @@
                         "postgresType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Postgres"],
+                          "enum": [
+                            "Postgres"
+                          ],
                           "default": "Postgres"
                         },
                         "postgresScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["postgresql+psycopg2", "pgspider+psycopg2"],
+                          "enum": [
+                            "postgresql+psycopg2",
+                            "pgspider+psycopg2"
+                          ],
                           "default": "postgresql+psycopg2"
                         }
                       },
@@ -5164,7 +5511,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^information_schema$"]
+                            "excludes": [
+                              "^information_schema$"
+                            ]
                           }
                         },
                         "tableFilterPattern": {
@@ -5178,7 +5527,10 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^template1$", "^template0$"]
+                            "excludes": [
+                              "^template1$",
+                              "^template0$"
+                            ]
                           }
                         },
                         "storedProcedureFilterPattern": {
@@ -5247,7 +5599,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "database"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5259,13 +5615,17 @@
                         "timescaleType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Timescale"],
+                          "enum": [
+                            "Timescale"
+                          ],
                           "default": "Timescale"
                         },
                         "timescaleScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["postgresql+psycopg2"],
+                          "enum": [
+                            "postgresql+psycopg2"
+                          ],
                           "default": "postgresql+psycopg2"
                         }
                       },
@@ -5342,7 +5702,10 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^template1$", "^template0$"]
+                            "excludes": [
+                              "^template1$",
+                              "^template0$"
+                            ]
                           }
                         },
                         "sslMode": {
@@ -5406,7 +5769,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "database"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5418,13 +5785,17 @@
                         "prestoType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Presto"],
+                          "enum": [
+                            "Presto"
+                          ],
                           "default": "Presto"
                         },
                         "prestoScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["presto"],
+                          "enum": [
+                            "presto"
+                          ],
                           "default": "presto"
                         }
                       },
@@ -5525,7 +5896,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5537,13 +5911,17 @@
                         "redshiftType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Redshift"],
+                          "enum": [
+                            "Redshift"
+                          ],
                           "default": "Redshift"
                         },
                         "redshiftScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["redshift+psycopg2"],
+                          "enum": [
+                            "redshift+psycopg2"
+                          ],
                           "default": "redshift+psycopg2"
                         }
                       },
@@ -5610,7 +5988,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^information_schema$"]
+                            "excludes": [
+                              "^information_schema$"
+                            ]
                           }
                         },
                         "tableFilterPattern": {
@@ -5619,7 +5999,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^(?:.*\\.)?mv_tbl__.*__\\d+$"]
+                            "excludes": [
+                              "^(?:.*\\.)?mv_tbl__.*__\\d+$"
+                            ]
                           }
                         },
                         "databaseFilterPattern": {
@@ -5628,7 +6010,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^template1$"]
+                            "excludes": [
+                              "^template1$"
+                            ]
                           }
                         },
                         "storedProcedureFilterPattern": {
@@ -5693,7 +6077,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "database"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -5705,7 +6093,9 @@
                         "salesforceType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Salesforce"],
+                          "enum": [
+                            "Salesforce"
+                          ],
                           "default": "Salesforce"
                         }
                       },
@@ -5820,13 +6210,18 @@
                         "sapSuccessFactorsType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SapSuccessFactors"],
+                          "enum": [
+                            "SapSuccessFactors"
+                          ],
                           "default": "SapSuccessFactors"
                         },
                         "authType": {
                           "description": "Authentication type to connect to SAP SuccessFactors.",
                           "type": "string",
-                          "enum": ["OAuth2Credentials", "BasicAuth"],
+                          "enum": [
+                            "OAuth2Credentials",
+                            "BasicAuth"
+                          ],
                           "default": "BasicAuth"
                         }
                       },
@@ -5923,7 +6318,11 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["baseUrl", "companyId", "username"],
+                      "required": [
+                        "baseUrl",
+                        "companyId",
+                        "username"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -5936,13 +6335,17 @@
                         "singleStoreType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SingleStore"],
+                          "enum": [
+                            "SingleStore"
+                          ],
                           "default": "SingleStore"
                         },
                         "singleStoreScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mysql+pymysql"],
+                          "enum": [
+                            "mysql+pymysql"
+                          ],
                           "default": "mysql+pymysql"
                         }
                       },
@@ -6032,7 +6435,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6044,13 +6450,17 @@
                         "snowflakeType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Snowflake"],
+                          "enum": [
+                            "Snowflake"
+                          ],
                           "default": "Snowflake"
                         },
                         "snowflakeScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["snowflake"],
+                          "enum": [
+                            "snowflake"
+                          ],
                           "default": "snowflake"
                         }
                       },
@@ -6180,7 +6590,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^information_schema$"]
+                            "excludes": [
+                              "^information_schema$"
+                            ]
                           }
                         },
                         "tableFilterPattern": {
@@ -6194,7 +6606,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^snowflake$"]
+                            "excludes": [
+                              "^snowflake$"
+                            ]
                           }
                         },
                         "storedProcedureFilterPattern": {
@@ -6268,7 +6682,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["username", "account", "warehouse"]
+                      "required": [
+                        "username",
+                        "account",
+                        "warehouse"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6280,13 +6698,17 @@
                         "trinoType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Trino"],
+                          "enum": [
+                            "Trino"
+                          ],
                           "default": "Trino"
                         },
                         "trinoScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["trino"],
+                          "enum": [
+                            "trino"
+                          ],
                           "default": "trino"
                         }
                       },
@@ -6340,7 +6762,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.common.NoConfigAuthenticationTypes",
                               "description": "Database Authentication types not requiring config.",
                               "type": "string",
-                              "enum": ["OAuth2"],
+                              "enum": [
+                                "OAuth2"
+                              ],
                               "default": "OAuth2"
                             }
                           ]
@@ -6439,7 +6863,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6451,13 +6878,17 @@
                         "verticaType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Vertica"],
+                          "enum": [
+                            "Vertica"
+                          ],
                           "default": "Vertica"
                         },
                         "verticaScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["vertica+vertica_python"],
+                          "enum": [
+                            "vertica+vertica_python"
+                          ],
                           "default": "vertica+vertica_python"
                         }
                       },
@@ -6549,7 +6980,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6561,13 +6995,19 @@
                         "pinotDBType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["PinotDB"],
+                          "enum": [
+                            "PinotDB"
+                          ],
                           "default": "PinotDB"
                         },
                         "pinotDBScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["pinot", "pinot+http", "pinot+https"],
+                          "enum": [
+                            "pinot",
+                            "pinot+http",
+                            "pinot+https"
+                          ],
                           "default": "pinot"
                         }
                       },
@@ -6657,7 +7097,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "pinotControllerHost"]
+                      "required": [
+                        "hostPort",
+                        "pinotControllerHost"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6669,7 +7112,9 @@
                         "datalakeType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Datalake"],
+                          "enum": [
+                            "Datalake"
+                          ],
                           "default": "Datalake"
                         },
                         "localConfig": {
@@ -6797,7 +7242,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["configSource"]
+                      "required": [
+                        "configSource"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6809,7 +7256,9 @@
                         "domoDatabaseType": {
                           "description": " service type",
                           "type": "string",
-                          "enum": ["DomoDatabase"],
+                          "enum": [
+                            "DomoDatabase"
+                          ],
                           "default": "DomoDatabase"
                         }
                       },
@@ -6877,7 +7326,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["clientId", "secretToken", "instanceDomain"]
+                      "required": [
+                        "clientId",
+                        "secretToken",
+                        "instanceDomain"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6890,7 +7343,9 @@
                           "title": "Service Type",
                           "description": "Custom database service type",
                           "type": "string",
-                          "enum": ["CustomDatabase"],
+                          "enum": [
+                            "CustomDatabase"
+                          ],
                           "default": "CustomDatabase"
                         }
                       },
@@ -6931,7 +7386,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -6943,13 +7400,17 @@
                         "sapHanaType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SapHana"],
+                          "enum": [
+                            "SapHana"
+                          ],
                           "default": "SapHana"
                         },
                         "sapHanaScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["hana"],
+                          "enum": [
+                            "hana"
+                          ],
                           "default": "hana"
                         }
                       },
@@ -7006,7 +7467,11 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["username", "password", "hostPort"]
+                              "required": [
+                                "username",
+                                "password",
+                                "hostPort"
+                              ]
                             },
                             {
                               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7076,7 +7541,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["connection"]
+                      "required": [
+                        "connection"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7088,13 +7555,18 @@
                         "mongoDBType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["MongoDB"],
+                          "enum": [
+                            "MongoDB"
+                          ],
                           "default": "MongoDB"
                         },
                         "mongoDBScheme": {
                           "description": "Mongo connection scheme options.",
                           "type": "string",
-                          "enum": ["mongodb", "mongodb+srv"],
+                          "enum": [
+                            "mongodb",
+                            "mongodb+srv"
+                          ],
                           "default": "mongodb"
                         }
                       },
@@ -7171,7 +7643,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         }
                       },
-                      "required": ["hostPort"],
+                      "required": [
+                        "hostPort"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -7184,7 +7658,9 @@
                         "cassandraType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Cassandra"],
+                          "enum": [
+                            "Cassandra"
+                          ],
                           "default": "Cassandra"
                         }
                       },
@@ -7301,13 +7777,17 @@
                         "couchbaseType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Couchbase"],
+                          "enum": [
+                            "Couchbase"
+                          ],
                           "default": "Couchbase"
                         },
                         "couchbaseScheme": {
                           "description": "Couchbase driver scheme options.",
                           "type": "string",
-                          "enum": ["couchbase"],
+                          "enum": [
+                            "couchbase"
+                          ],
                           "default": "couchbase"
                         }
                       },
@@ -7366,7 +7846,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostport", "username", "password"]
+                      "required": [
+                        "hostport",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7378,13 +7862,17 @@
                         "greenplumType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Greenplum"],
+                          "enum": [
+                            "Greenplum"
+                          ],
                           "default": "Greenplum"
                         },
                         "greenplumScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["postgresql+psycopg2"],
+                          "enum": [
+                            "postgresql+psycopg2"
+                          ],
                           "default": "postgresql+psycopg2"
                         }
                       },
@@ -7491,7 +7979,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "database"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7503,13 +7995,17 @@
                         "dorisType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Doris"],
+                          "enum": [
+                            "Doris"
+                          ],
                           "default": "Doris"
                         },
                         "dorisScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["doris"],
+                          "enum": [
+                            "doris"
+                          ],
                           "default": "doris"
                         }
                       },
@@ -7601,7 +8097,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7613,13 +8112,17 @@
                         "starrocksType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["StarRocks"],
+                          "enum": [
+                            "StarRocks"
+                          ],
                           "default": "StarRocks"
                         },
                         "starrocksScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mysql+pymysql"],
+                          "enum": [
+                            "mysql+pymysql"
+                          ],
                           "default": "mysql+pymysql"
                         }
                       },
@@ -7717,7 +8220,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7729,13 +8235,17 @@
                         "databricksType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["UnityCatalog"],
+                          "enum": [
+                            "UnityCatalog"
+                          ],
                           "default": "UnityCatalog"
                         },
                         "databricksScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["databricks"],
+                          "enum": [
+                            "databricks"
+                          ],
                           "default": "databricks"
                         }
                       },
@@ -7810,7 +8320,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^information_schema$"]
+                            "excludes": [
+                              "^information_schema$"
+                            ]
                           }
                         },
                         "tableFilterPattern": {
@@ -7824,7 +8336,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^system$"]
+                            "excludes": [
+                              "^system$"
+                            ]
                           }
                         },
                         "supportsUsageExtraction": {
@@ -7873,7 +8387,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "authType"]
+                      "required": [
+                        "hostPort",
+                        "authType"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -7885,7 +8402,9 @@
                         "sasType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SAS"],
+                          "enum": [
+                            "SAS"
+                          ],
                           "default": "SAS"
                         }
                       },
@@ -7992,7 +8511,11 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["username", "password", "serverHost"],
+                      "required": [
+                        "username",
+                        "password",
+                        "serverHost"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -8005,13 +8528,17 @@
                         "teradataType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Teradata"],
+                          "enum": [
+                            "Teradata"
+                          ],
                           "default": "Teradata"
                         },
                         "teradataScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["teradatasql"],
+                          "enum": [
+                            "teradatasql"
+                          ],
                           "default": "teradatasql"
                         }
                       },
@@ -8067,7 +8594,11 @@
                           "title": "Transaction mode",
                           "description": "Specifies the transaction mode for the connection",
                           "type": "string",
-                          "enum": ["ANSI", "TERA", "DEFAULT"],
+                          "enum": [
+                            "ANSI",
+                            "TERA",
+                            "DEFAULT"
+                          ],
                           "default": "DEFAULT"
                         },
                         "account": {
@@ -8124,7 +8655,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username"]
+                      "required": [
+                        "hostPort",
+                        "username"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8136,7 +8670,9 @@
                         "sapErpType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SapErp"],
+                          "enum": [
+                            "SapErp"
+                          ],
                           "default": "SapErp"
                         }
                       },
@@ -8223,13 +8759,17 @@
                         "synapseType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Synapse"],
+                          "enum": [
+                            "Synapse"
+                          ],
                           "default": "Synapse"
                         },
                         "synapseScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mssql+pyodbc"],
+                          "enum": [
+                            "mssql+pyodbc"
+                          ],
                           "default": "mssql+pyodbc"
                         }
                       },
@@ -8386,7 +8926,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "database"]
+                      "required": [
+                        "hostPort",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8398,13 +8941,17 @@
                         "exasolType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Exasol"],
+                          "enum": [
+                            "Exasol"
+                          ],
                           "default": "Exasol"
                         },
                         "exasolScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["exa+websocket"],
+                          "enum": [
+                            "exa+websocket"
+                          ],
                           "default": "exa+websocket"
                         }
                       },
@@ -8484,7 +9031,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8496,13 +9047,17 @@
                         "cockroachType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Cockroach"],
+                          "enum": [
+                            "Cockroach"
+                          ],
                           "default": "Cockroach"
                         },
                         "cockroachScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["cockroachdb+psycopg2"],
+                          "enum": [
+                            "cockroachdb+psycopg2"
+                          ],
                           "default": "cockroachdb+psycopg2"
                         }
                       },
@@ -8595,7 +9150,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "database"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "database"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8607,7 +9166,9 @@
                         "SSASType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SSAS"],
+                          "enum": [
+                            "SSAS"
+                          ],
                           "default": "SSAS"
                         }
                       },
@@ -8644,7 +9205,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["httpConnection", "username", "password"]
+                      "required": [
+                        "httpConnection",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8656,7 +9221,9 @@
                         "epicType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Epic"],
+                          "enum": [
+                            "Epic"
+                          ],
                           "default": "Epic"
                         }
                       },
@@ -8678,7 +9245,11 @@
                           "title": "FHIR Version",
                           "description": "FHIR specification version (R4, STU3, DSTU2)",
                           "type": "string",
-                          "enum": ["R4", "STU3", "DSTU2"],
+                          "enum": [
+                            "R4",
+                            "STU3",
+                            "DSTU2"
+                          ],
                           "default": "R4"
                         },
                         "databaseName": {
@@ -8714,7 +9285,9 @@
                         "serviceNowType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["ServiceNow"],
+                          "enum": [
+                            "ServiceNow"
+                          ],
                           "default": "ServiceNow"
                         }
                       },
@@ -8777,7 +9350,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8789,7 +9366,9 @@
                         "dremioType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Dremio"],
+                          "enum": [
+                            "Dremio"
+                          ],
                           "default": "Dremio"
                         }
                       },
@@ -8815,7 +9394,10 @@
                                   "title": "Cloud Region",
                                   "description": "Dremio Cloud region where your organization is hosted. Choose 'US' for United States region or 'EU' for European region.",
                                   "type": "string",
-                                  "enum": ["US", "EU"],
+                                  "enum": [
+                                    "US",
+                                    "EU"
+                                  ],
                                   "default": "US"
                                 },
                                 "personalAccessToken": {
@@ -8862,7 +9444,11 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["hostPort", "username", "password"]
+                              "required": [
+                                "hostPort",
+                                "username",
+                                "password"
+                              ]
                             }
                           ]
                         },
@@ -8902,7 +9488,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["authType"]
+                      "required": [
+                        "authType"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -8914,13 +9502,17 @@
                         "microsoftFabricType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["MicrosoftFabric"],
+                          "enum": [
+                            "MicrosoftFabric"
+                          ],
                           "default": "MicrosoftFabric"
                         },
                         "microsoftFabricScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["mssql+pyodbc"],
+                          "enum": [
+                            "mssql+pyodbc"
+                          ],
                           "default": "mssql+pyodbc"
                         }
                       },
@@ -9047,7 +9639,9 @@
                         "burstIQType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["BurstIQ"],
+                          "enum": [
+                            "BurstIQ"
+                          ],
                           "default": "BurstIQ"
                         }
                       },
@@ -9126,13 +9720,17 @@
                         "informixType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Informix"],
+                          "enum": [
+                            "Informix"
+                          ],
                           "default": "Informix"
                         },
                         "informixScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["informix"],
+                          "enum": [
+                            "informix"
+                          ],
                           "default": "informix"
                         }
                       },
@@ -9283,7 +9881,9 @@
                         "iometeType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Iomete"],
+                          "enum": [
+                            "Iomete"
+                          ],
                           "default": "Iomete"
                         }
                       },
@@ -9378,13 +9978,17 @@
                         "questDBType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["QuestDB"],
+                          "enum": [
+                            "QuestDB"
+                          ],
                           "default": "QuestDB"
                         },
                         "questDBScheme": {
                           "description": "SQLAlchemy driver scheme options.",
                           "type": "string",
-                          "enum": ["postgresql+psycopg2"],
+                          "enum": [
+                            "postgresql+psycopg2"
+                          ],
                           "default": "postgresql+psycopg2"
                         }
                       },
@@ -9443,7 +10047,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["username", "authType", "hostPort"]
+                      "required": [
+                        "username",
+                        "authType",
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -9455,7 +10063,9 @@
                         "sapBw4HanaType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SapBw4Hana"],
+                          "enum": [
+                            "SapBw4Hana"
+                          ],
                           "default": "SapBw4Hana"
                         }
                       },
@@ -9517,7 +10127,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     }
                   ]
                 }
@@ -9545,7 +10159,9 @@
                         "kafkaType": {
                           "description": "Kafka service type",
                           "type": "string",
-                          "enum": ["Kafka"],
+                          "enum": [
+                            "Kafka"
+                          ],
                           "default": "Kafka"
                         }
                       },
@@ -9647,7 +10263,11 @@
                           "title": "Default Topic Filter Pattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^__.*", "^_schemas$", "^_confluent.*"]
+                            "excludes": [
+                              "^__.*",
+                              "^_schemas$",
+                              "^_confluent.*"
+                            ]
                           }
                         },
                         "supportsMetadataExtraction": {
@@ -9660,7 +10280,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["bootstrapServers"]
+                      "required": [
+                        "bootstrapServers"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -9672,7 +10294,9 @@
                         "RedpandaType": {
                           "description": "Redpanda service type",
                           "type": "string",
-                          "enum": ["Redpanda"],
+                          "enum": [
+                            "Redpanda"
+                          ],
                           "default": "Redpanda"
                         }
                       },
@@ -9755,7 +10379,11 @@
                           "title": "Default Topic Filter Pattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["^__.*", "^_schemas$", "^_confluent.*"]
+                            "excludes": [
+                              "^__.*",
+                              "^_schemas$",
+                              "^_confluent.*"
+                            ]
                           }
                         },
                         "supportsMetadataExtraction": {
@@ -9768,7 +10396,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["bootstrapServers"]
+                      "required": [
+                        "bootstrapServers"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -9780,7 +10410,9 @@
                         "kinesisType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Kinesis"],
+                          "enum": [
+                            "Kinesis"
+                          ],
                           "default": "Kinesis"
                         }
                       },
@@ -9810,7 +10442,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -9822,7 +10456,9 @@
                         "natsType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Nats"],
+                          "enum": [
+                            "Nats"
+                          ],
                           "default": "Nats"
                         },
                         "basicAuth": {
@@ -9842,7 +10478,10 @@
                               "format": "password"
                             }
                           },
-                          "required": ["username", "password"],
+                          "required": [
+                            "username",
+                            "password"
+                          ],
                           "additionalProperties": false
                         },
                         "tokenAuth": {
@@ -9857,7 +10496,9 @@
                               "format": "password"
                             }
                           },
-                          "required": ["token"],
+                          "required": [
+                            "token"
+                          ],
                           "additionalProperties": false
                         },
                         "nkeyAuth": {
@@ -9872,7 +10513,9 @@
                               "format": "password"
                             }
                           },
-                          "required": ["nkeySeed"],
+                          "required": [
+                            "nkeySeed"
+                          ],
                           "additionalProperties": false
                         }
                       },
@@ -9947,7 +10590,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["natsServers"]
+                      "required": [
+                        "natsServers"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -9959,7 +10604,9 @@
                         "pubSubType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["PubSub"],
+                          "enum": [
+                            "PubSub"
+                          ],
                           "default": "PubSub"
                         }
                       },
@@ -10214,7 +10861,9 @@
                             }
                           },
                           "additionalProperties": false,
-                          "required": ["gcpConfig"]
+                          "required": [
+                            "gcpConfig"
+                          ]
                         },
                         "projectId": {
                           "title": "GCP Project ID",
@@ -10278,7 +10927,9 @@
                           "title": "Service Type",
                           "description": "Custom messaging service type",
                           "type": "string",
-                          "enum": ["CustomMessaging"],
+                          "enum": [
+                            "CustomMessaging"
+                          ],
                           "default": "CustomMessaging"
                         }
                       },
@@ -10309,7 +10960,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     }
                   ]
                 }
@@ -10337,7 +10990,9 @@
                         "amundsenType": {
                           "description": "Amundsen service type",
                           "type": "string",
-                          "enum": ["Amundsen"],
+                          "enum": [
+                            "Amundsen"
+                          ],
                           "default": "Amundsen"
                         }
                       },
@@ -10399,7 +11054,11 @@
                           "default": true
                         }
                       },
-                      "required": ["username", "password", "hostPort"],
+                      "required": [
+                        "username",
+                        "password",
+                        "hostPort"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -10412,7 +11071,9 @@
                         "metadataESType": {
                           "description": "Metadata to Elastic Search type",
                           "type": "string",
-                          "enum": ["MetadataES"],
+                          "enum": [
+                            "MetadataES"
+                          ],
                           "default": "MetadataES"
                         }
                       },
@@ -10455,13 +11116,21 @@
                         "runMode": {
                           "description": "This schema publisher run modes.",
                           "type": "string",
-                          "enum": ["stream", "batch"]
+                          "enum": [
+                            "stream",
+                            "batch"
+                          ]
                         },
                         "searchIndexMappingLanguage": {
                           "description": "Recreate Indexes with updated Language",
                           "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
                           "type": "string",
-                          "enum": ["EN", "JP", "ZH", "RU"],
+                          "enum": [
+                            "EN",
+                            "JP",
+                            "ZH",
+                            "RU"
+                          ],
                           "default": "EN"
                         },
                         "batchSize": {
@@ -10501,7 +11170,9 @@
                         "openmetadataType": {
                           "description": "OpenMetadata service type",
                           "type": "string",
-                          "enum": ["OpenMetadata"],
+                          "enum": [
+                            "OpenMetadata"
+                          ],
                           "default": "OpenMetadata"
                         },
                         "extraHeaders": {
@@ -10574,7 +11245,9 @@
                             }
                           },
                           "additionalProperties": false,
-                          "required": ["jwtToken"]
+                          "required": [
+                            "jwtToken"
+                          ]
                         },
                         "secretsManagerProvider": {
                           "description": "Secrets Manager Provider for OpenMetadata Server.",
@@ -10604,7 +11277,11 @@
                           "title": "Secrets Manager Client Loader",
                           "type": "string",
                           "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",
-                          "enum": ["noop", "airflow", "env"],
+                          "enum": [
+                            "noop",
+                            "airflow",
+                            "env"
+                          ],
                           "additionalProperties": false
                         },
                         "apiVersion": {
@@ -10716,7 +11393,9 @@
                             }
                           },
                           "additionalProperties": false,
-                          "required": ["type"]
+                          "required": [
+                            "type"
+                          ]
                         },
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
@@ -10749,7 +11428,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -10761,7 +11442,9 @@
                         "atlasType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Atlas"],
+                          "enum": [
+                            "Atlas"
+                          ],
                           "default": "Atlas"
                         }
                       },
@@ -10843,7 +11526,11 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["entity_type", "username", "password"],
+                      "required": [
+                        "entity_type",
+                        "username",
+                        "password"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -10856,7 +11543,9 @@
                         "alationType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Alation"],
+                          "enum": [
+                            "Alation"
+                          ],
                           "default": "Alation"
                         }
                       },
@@ -10895,7 +11584,9 @@
                                   "format": "password"
                                 }
                               },
-                              "required": ["accessToken"],
+                              "required": [
+                                "accessToken"
+                              ],
                               "additionalProperties": false
                             }
                           ]
@@ -11002,7 +11693,10 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["hostPort", "authType"],
+                      "required": [
+                        "hostPort",
+                        "authType"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -11015,7 +11709,9 @@
                         "alationSinkType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["AlationSink"],
+                          "enum": [
+                            "AlationSink"
+                          ],
                           "default": "AlationSink"
                         },
                         "datasourceLinks": {
@@ -11100,7 +11796,10 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["hostPort", "authType"],
+                      "required": [
+                        "hostPort",
+                        "authType"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -11113,7 +11812,9 @@
                         "collibraType": {
                           "description": "Collibra service type",
                           "type": "string",
-                          "enum": ["Collibra"],
+                          "enum": [
+                            "Collibra"
+                          ],
                           "default": "Collibra"
                         }
                       },
@@ -11165,7 +11866,11 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["username", "password", "hostPort"],
+                      "required": [
+                        "username",
+                        "password",
+                        "hostPort"
+                      ],
                       "additionalProperties": false
                     }
                   ]
@@ -11194,7 +11899,9 @@
                         "AirflowType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Airflow"],
+                          "enum": [
+                            "Airflow"
+                          ],
                           "default": "Airflow"
                         }
                       },
@@ -11231,7 +11938,11 @@
                                 "ApiVersion": {
                                   "description": "Airflow REST API version. Use v1 for Airflow 2.x and v2 for Airflow 3.x. Auto will detect the version automatically.",
                                   "type": "string",
-                                  "enum": ["v1", "v2", "auto"],
+                                  "enum": [
+                                    "v1",
+                                    "v2",
+                                    "auto"
+                                  ],
                                   "default": "auto"
                                 }
                               },
@@ -11240,7 +11951,9 @@
                                   "title": "Service Type",
                                   "description": "Service Type",
                                   "type": "string",
-                                  "enum": ["RestAPI"],
+                                  "enum": [
+                                    "RestAPI"
+                                  ],
                                   "default": "RestAPI"
                                 },
                                 "authConfig": {
@@ -11266,7 +11979,10 @@
                                           "format": "password"
                                         }
                                       },
-                                      "required": ["username", "password"],
+                                      "required": [
+                                        "username",
+                                        "password"
+                                      ],
                                       "additionalProperties": false
                                     },
                                     {
@@ -11283,7 +11999,9 @@
                                           "format": "password"
                                         }
                                       },
-                                      "required": ["token"],
+                                      "required": [
+                                        "token"
+                                      ],
                                       "additionalProperties": false
                                     },
                                     {
@@ -11299,7 +12017,9 @@
                                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig"
                                         }
                                       },
-                                      "required": ["credentials"],
+                                      "required": [
+                                        "credentials"
+                                      ],
                                       "additionalProperties": false
                                     },
                                     {
@@ -11333,7 +12053,9 @@
                                           "additionalProperties": false
                                         }
                                       },
-                                      "required": ["mwaaConfig"],
+                                      "required": [
+                                        "mwaaConfig"
+                                      ],
                                       "additionalProperties": false
                                     }
                                   ]
@@ -11351,7 +12073,9 @@
                                   "default": true
                                 }
                               },
-                              "required": ["authConfig"],
+                              "required": [
+                                "authConfig"
+                              ],
                               "additionalProperties": false
                             },
                             {
@@ -11364,7 +12088,9 @@
                                 "BackendType": {
                                   "description": "Service type.",
                                   "type": "string",
-                                  "enum": ["Backend"],
+                                  "enum": [
+                                    "Backend"
+                                  ],
                                   "default": "Backend"
                                 }
                               },
@@ -11405,7 +12131,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "connection"]
+                      "required": [
+                        "hostPort",
+                        "connection"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11417,7 +12146,9 @@
                         "WherescapeType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Wherescape"],
+                          "enum": [
+                            "Wherescape"
+                          ],
                           "default": "Wherescape"
                         }
                       },
@@ -11450,7 +12181,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["databaseConnection"]
+                      "required": [
+                        "databaseConnection"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11462,7 +12195,9 @@
                         "SSISType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SSIS"],
+                          "enum": [
+                            "SSIS"
+                          ],
                           "default": "SSIS"
                         },
                         "localProjectsPath": {
@@ -11501,7 +12236,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["packageConnection"]
+                      "required": [
+                        "packageConnection"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11513,7 +12250,9 @@
                         "glueType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["GluePipeline"],
+                          "enum": [
+                            "GluePipeline"
+                          ],
                           "default": "GluePipeline"
                         }
                       },
@@ -11539,7 +12278,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11551,7 +12292,9 @@
                         "kinesisFirehoseType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["KinesisFirehose"],
+                          "enum": [
+                            "KinesisFirehose"
+                          ],
                           "default": "KinesisFirehose"
                         }
                       },
@@ -11582,7 +12325,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11594,7 +12339,9 @@
                         "AirbyteType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Airbyte"],
+                          "enum": [
+                            "Airbyte"
+                          ],
                           "default": "Airbyte"
                         }
                       },
@@ -11656,7 +12403,10 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["clientId", "clientSecret"]
+                              "required": [
+                                "clientId",
+                                "clientSecret"
+                              ]
                             }
                           ]
                         },
@@ -11677,7 +12427,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11689,7 +12441,9 @@
                         "FivetranType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Fivetran"],
+                          "enum": [
+                            "Fivetran"
+                          ],
                           "default": "Fivetran"
                         }
                       },
@@ -11743,7 +12497,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["apiKey", "apiSecret"]
+                      "required": [
+                        "apiKey",
+                        "apiSecret"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11755,7 +12512,9 @@
                         "FlinkType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Flink"],
+                          "enum": [
+                            "Flink"
+                          ],
                           "default": "Flink"
                         }
                       },
@@ -11792,7 +12551,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11804,7 +12565,9 @@
                         "DagsterType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Dagster"],
+                          "enum": [
+                            "Dagster"
+                          ],
                           "default": "Dagster"
                         }
                       },
@@ -11851,7 +12614,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["host"]
+                      "required": [
+                        "host"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -11863,7 +12628,9 @@
                         "NifiType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Nifi"],
+                          "enum": [
+                            "Nifi"
+                          ],
                           "default": "Nifi"
                         },
                         "basicAuthentication": {
@@ -12000,7 +12767,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "nifiConfig"]
+                      "required": [
+                        "hostPort",
+                        "nifiConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12012,7 +12782,9 @@
                         "DomoPipelineType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["DomoPipeline"],
+                          "enum": [
+                            "DomoPipeline"
+                          ],
                           "default": "DomoPipeline"
                         }
                       },
@@ -12065,7 +12837,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["clientId", "secretToken", "instanceDomain"]
+                      "required": [
+                        "clientId",
+                        "secretToken",
+                        "instanceDomain"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12078,7 +12854,9 @@
                           "title": "Service Type",
                           "description": "Custom pipeline service type",
                           "type": "string",
-                          "enum": ["CustomPipeline"],
+                          "enum": [
+                            "CustomPipeline"
+                          ],
                           "default": "CustomPipeline"
                         }
                       },
@@ -12109,7 +12887,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12121,7 +12901,9 @@
                         "databricksType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["DatabricksPipeline"],
+                          "enum": [
+                            "DatabricksPipeline"
+                          ],
                           "default": "DatabricksPipeline"
                         }
                       },
@@ -12189,7 +12971,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "authType"]
+                      "required": [
+                        "hostPort",
+                        "authType"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12201,7 +12986,9 @@
                         "SplineType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Spline"],
+                          "enum": [
+                            "Spline"
+                          ],
                           "default": "Spline"
                         }
                       },
@@ -12237,7 +13024,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12249,7 +13038,9 @@
                         "SparkType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Spark"],
+                          "enum": [
+                            "Spark"
+                          ],
                           "default": "Spark"
                         }
                       },
@@ -12282,7 +13073,9 @@
                         "OpenLineageType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["OpenLineage"],
+                          "enum": [
+                            "OpenLineage"
+                          ],
                           "default": "OpenLineage"
                         }
                       },
@@ -12324,7 +13117,10 @@
                                   "description": "Initial Kafka consumer offset.",
                                   "default": "earliest",
                                   "type": "string",
-                                  "enum": ["earliest", "latest"],
+                                  "enum": [
+                                    "earliest",
+                                    "latest"
+                                  ],
                                   "javaEnums": [
                                     {
                                       "name": "earliest"
@@ -12405,7 +13201,10 @@
                                   }
                                 }
                               },
-                              "required": ["brokersUrl", "topicName"]
+                              "required": [
+                                "brokersUrl",
+                                "topicName"
+                              ]
                             },
                             {
                               "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12430,7 +13229,10 @@
                                   "description": "Initial Kinesis shard iterator type.",
                                   "default": "TRIM_HORIZON",
                                   "type": "string",
-                                  "enum": ["TRIM_HORIZON", "LATEST"],
+                                  "enum": [
+                                    "TRIM_HORIZON",
+                                    "LATEST"
+                                  ],
                                   "javaEnums": [
                                     {
                                       "name": "TRIM_HORIZON"
@@ -12453,7 +13255,10 @@
                                   "default": 30
                                 }
                               },
-                              "required": ["streamName", "awsConfig"]
+                              "required": [
+                                "streamName",
+                                "awsConfig"
+                              ]
                             }
                           ]
                         },
@@ -12474,7 +13279,9 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["brokerConfig"],
+                      "required": [
+                        "brokerConfig"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -12486,7 +13293,9 @@
                         "prefectType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Prefect"],
+                          "enum": [
+                            "Prefect"
+                          ],
                           "default": "Prefect"
                         }
                       },
@@ -12531,7 +13340,11 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["apiKey", "accountId", "workspaceId"]
+                              "required": [
+                                "apiKey",
+                                "accountId",
+                                "workspaceId"
+                              ]
                             },
                             {
                               "title": "Prefect Server",
@@ -12583,7 +13396,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["authType", "hostPort"]
+                      "required": [
+                        "authType",
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12595,7 +13411,9 @@
                         "KafkaConnectType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["KafkaConnect"],
+                          "enum": [
+                            "KafkaConnect"
+                          ],
                           "default": "KafkaConnect"
                         },
                         "basicAuthentication": {
@@ -12659,7 +13477,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort"]
+                      "required": [
+                        "hostPort"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12671,7 +13491,9 @@
                         "DBTCloudType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["DBTCloud"],
+                          "enum": [
+                            "DBTCloud"
+                          ],
                           "default": "DBTCloud"
                         }
                       },
@@ -12748,7 +13570,12 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["host", "discoveryAPI", "accountId", "token"]
+                      "required": [
+                        "host",
+                        "discoveryAPI",
+                        "accountId",
+                        "token"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12760,7 +13587,9 @@
                         "matillionType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Matillion"],
+                          "enum": [
+                            "Matillion"
+                          ],
                           "default": "Matillion"
                         }
                       },
@@ -12784,7 +13613,9 @@
                               "properties": {
                                 "type": {
                                   "type": "string",
-                                  "enum": ["MatillionETL"],
+                                  "enum": [
+                                    "MatillionETL"
+                                  ],
                                   "default": "MatillionETL"
                                 },
                                 "hostPort": {
@@ -12808,7 +13639,11 @@
                                   "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                                 }
                               },
-                              "required": ["hostPort", "username", "password"],
+                              "required": [
+                                "hostPort",
+                                "username",
+                                "password"
+                              ],
                               "additionalProperties": false
                             },
                             {
@@ -12820,7 +13655,9 @@
                               "properties": {
                                 "type": {
                                   "type": "string",
-                                  "enum": ["MatillionDPC"],
+                                  "enum": [
+                                    "MatillionDPC"
+                                  ],
                                   "default": "MatillionDPC"
                                 },
                                 "clientId": {
@@ -12838,7 +13675,10 @@
                                   "title": "Region",
                                   "description": "Matillion DPC region. Determines the API base URL.",
                                   "type": "string",
-                                  "enum": ["us1", "eu1"],
+                                  "enum": [
+                                    "us1",
+                                    "eu1"
+                                  ],
                                   "default": "us1"
                                 },
                                 "personalAccessToken": {
@@ -12883,7 +13723,9 @@
                         "DataFactoryType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["DataFactory"],
+                          "enum": [
+                            "DataFactory"
+                          ],
                           "default": "DataFactory"
                         }
                       },
@@ -12947,7 +13789,9 @@
                         "stitchType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Stitch"],
+                          "enum": [
+                            "Stitch"
+                          ],
                           "default": "Stitch"
                         }
                       },
@@ -12981,7 +13825,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "token"]
+                      "required": [
+                        "hostPort",
+                        "token"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12993,13 +13840,18 @@
                         "SnowplowType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Snowplow"],
+                          "enum": [
+                            "Snowplow"
+                          ],
                           "default": "Snowplow"
                         },
                         "SnowplowDeployment": {
                           "description": "Snowplow deployment type",
                           "type": "string",
-                          "enum": ["BDP", "Community"],
+                          "enum": [
+                            "BDP",
+                            "Community"
+                          ],
                           "default": "BDP"
                         }
                       },
@@ -13043,7 +13895,11 @@
                           "title": "Cloud Provider",
                           "description": "Cloud provider where Snowplow is deployed",
                           "type": "string",
-                          "enum": ["AWS", "GCP", "Azure"],
+                          "enum": [
+                            "AWS",
+                            "GCP",
+                            "Azure"
+                          ],
                           "default": "AWS"
                         },
                         "pipelineFilterPattern": {
@@ -13057,7 +13913,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["type", "deployment"],
+                      "required": [
+                        "type",
+                        "deployment"
+                      ],
                       "allOf": [
                         {
                           "if": {
@@ -13084,7 +13943,9 @@
                             }
                           },
                           "then": {
-                            "required": ["configPath"]
+                            "required": [
+                              "configPath"
+                            ]
                           }
                         }
                       ]
@@ -13099,7 +13960,9 @@
                         "MulesoftType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Mulesoft"],
+                          "enum": [
+                            "Mulesoft"
+                          ],
                           "default": "Mulesoft"
                         }
                       },
@@ -13153,7 +14016,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["authentication"]
+                      "required": [
+                        "authentication"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13165,7 +14030,9 @@
                         "MicrosoftFabricPipelineType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["MicrosoftFabricPipeline"],
+                          "enum": [
+                            "MicrosoftFabricPipeline"
+                          ],
                           "default": "MicrosoftFabricPipeline"
                         }
                       },
@@ -13231,7 +14098,9 @@
                         "sapBw4HanaPipelineType": {
                           "description": "SAP BW/4HANA pipeline service type.",
                           "type": "string",
-                          "enum": ["SapBw4HanaPipeline"],
+                          "enum": [
+                            "SapBw4HanaPipeline"
+                          ],
                           "default": "SapBw4HanaPipeline"
                         }
                       },
@@ -13276,7 +14145,11 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "username", "password"]
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
                     }
                   ]
                 }
@@ -13304,7 +14177,9 @@
                         "mlflowType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Mlflow"],
+                          "enum": [
+                            "Mlflow"
+                          ],
                           "default": "Mlflow"
                         }
                       },
@@ -13336,7 +14211,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["trackingUri", "registryUri"]
+                      "required": [
+                        "trackingUri",
+                        "registryUri"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13348,7 +14226,9 @@
                         "sklearnType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["Sklearn"],
+                          "enum": [
+                            "Sklearn"
+                          ],
                           "default": "Sklearn"
                         }
                       },
@@ -13382,7 +14262,9 @@
                           "title": "Service Type",
                           "description": "Custom Ml model service type",
                           "type": "string",
-                          "enum": ["CustomMlModel"],
+                          "enum": [
+                            "CustomMlModel"
+                          ],
                           "default": "CustomMlModel"
                         }
                       },
@@ -13413,7 +14295,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13425,7 +14309,9 @@
                         "sageMakerType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["SageMaker"],
+                          "enum": [
+                            "SageMaker"
+                          ],
                           "default": "SageMaker"
                         }
                       },
@@ -13451,7 +14337,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13463,7 +14351,9 @@
                         "vertexAIType": {
                           "description": "Service type.",
                           "type": "string",
-                          "enum": ["VertexAI"],
+                          "enum": [
+                            "VertexAI"
+                          ],
                           "default": "VertexAI"
                         }
                       },
@@ -13495,7 +14385,10 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["credentials", "location"]
+                      "required": [
+                        "credentials",
+                        "location"
+                      ]
                     }
                   ]
                 }
@@ -13523,7 +14416,9 @@
                         "s3Type": {
                           "description": "S3 service type",
                           "type": "string",
-                          "enum": ["S3"],
+                          "enum": [
+                            "S3"
+                          ],
                           "default": "S3"
                         }
                       },
@@ -13561,7 +14456,9 @@
                           "title": "Default Storage container Filter Pattern",
                           "default": {
                             "includes": [],
-                            "excludes": ["_SUCCESS"]
+                            "excludes": [
+                              "_SUCCESS"
+                            ]
                           }
                         },
                         "supportsMetadataExtraction": {
@@ -13580,7 +14477,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["awsConfig"]
+                      "required": [
+                        "awsConfig"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13592,7 +14491,9 @@
                         "azureType": {
                           "description": "ADLS service type",
                           "type": "string",
-                          "enum": ["ADLS"],
+                          "enum": [
+                            "ADLS"
+                          ],
                           "default": "ADLS"
                         }
                       },
@@ -13673,7 +14574,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["credentials"]
+                      "required": [
+                        "credentials"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13685,7 +14588,9 @@
                         "gcsType": {
                           "description": "Gcs service type",
                           "type": "string",
-                          "enum": ["GCS"],
+                          "enum": [
+                            "GCS"
+                          ],
                           "default": "GCS"
                         }
                       },
@@ -13733,7 +14638,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["credentials"]
+                      "required": [
+                        "credentials"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13746,7 +14653,9 @@
                           "title": "Service Type",
                           "description": "Custom storage service type",
                           "type": "string",
-                          "enum": ["CustomStorage"],
+                          "enum": [
+                            "CustomStorage"
+                          ],
                           "default": "CustomStorage"
                         }
                       },
@@ -13781,7 +14690,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     }
                   ]
                 }
@@ -13809,7 +14720,9 @@
                         "elasticSearchType": {
                           "description": "ElasticSearch service type",
                           "type": "string",
-                          "enum": ["ElasticSearch"],
+                          "enum": [
+                            "ElasticSearch"
+                          ],
                           "default": "ElasticSearch"
                         }
                       },
@@ -13981,7 +14894,9 @@
                         "openSearchType": {
                           "description": "OpenSearch service type",
                           "type": "string",
-                          "enum": ["OpenSearch"],
+                          "enum": [
+                            "OpenSearch"
+                          ],
                           "default": "OpenSearch"
                         }
                       },
@@ -14068,7 +14983,9 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "required": ["awsRegion"]
+                              "required": [
+                                "awsRegion"
+                              ]
                             }
                           ]
                         },
@@ -14113,7 +15030,9 @@
                           "title": "Service Type",
                           "description": "Custom search service type",
                           "type": "string",
-                          "enum": ["CustomSearch"],
+                          "enum": [
+                            "CustomSearch"
+                          ],
                           "default": "CustomSearch"
                         }
                       },
@@ -14144,7 +15063,9 @@
                         }
                       },
                       "additionalProperties": true,
-                      "required": ["type"]
+                      "required": [
+                        "type"
+                      ]
                     }
                   ]
                 }
@@ -14173,7 +15094,9 @@
                           "title": "Ranger Type",
                           "description": "Apache Ranger service type",
                           "type": "string",
-                          "enum": ["Ranger"],
+                          "enum": [
+                            "Ranger"
+                          ],
                           "default": "Ranger"
                         }
                       },
@@ -14214,14 +15137,20 @@
                                   "format": "password"
                                 }
                               },
-                              "required": ["username", "password"],
+                              "required": [
+                                "username",
+                                "password"
+                              ],
                               "additionalProperties": false
                             }
                           ]
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["hostPort", "authType"]
+                      "required": [
+                        "hostPort",
+                        "authType"
+                      ]
                     }
                   ]
                 }
@@ -14249,7 +15178,9 @@
                         "googleDriveType": {
                           "description": "Google Drive service type",
                           "type": "string",
-                          "enum": ["GoogleDrive"],
+                          "enum": [
+                            "GoogleDrive"
+                          ],
                           "default": "GoogleDrive"
                         }
                       },
@@ -14321,7 +15252,9 @@
                         }
                       },
                       "additionalProperties": false,
-                      "required": ["credentials"]
+                      "required": [
+                        "credentials"
+                      ]
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -14333,7 +15266,9 @@
                         "sharePointType": {
                           "description": "SharePoint service type",
                           "type": "string",
-                          "enum": ["SharePoint"],
+                          "enum": [
+                            "SharePoint"
+                          ],
                           "default": "SharePoint"
                         }
                       },
@@ -14428,7 +15363,9 @@
                         "sftpType": {
                           "description": "SFTP service type",
                           "type": "string",
-                          "enum": ["Sftp"],
+                          "enum": [
+                            "Sftp"
+                          ],
                           "default": "Sftp"
                         },
                         "basicAuth": {
@@ -14448,7 +15385,10 @@
                               "format": "password"
                             }
                           },
-                          "required": ["username", "password"],
+                          "required": [
+                            "username",
+                            "password"
+                          ],
                           "additionalProperties": false
                         },
                         "keyAuth": {
@@ -14475,7 +15415,10 @@
                               "format": "password"
                             }
                           },
-                          "required": ["username", "privateKey"],
+                          "required": [
+                            "username",
+                            "privateKey"
+                          ],
                           "additionalProperties": false
                         }
                       },
@@ -14516,7 +15459,9 @@
                           "items": {
                             "type": "string"
                           },
-                          "default": ["/"]
+                          "default": [
+                            "/"
+                          ]
                         },
                         "connectionOptions": {
                           "title": "Connection Options",
@@ -14553,7 +15498,10 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
-                      "required": ["host", "authType"],
+                      "required": [
+                        "host",
+                        "authType"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -14566,7 +15514,9 @@
                         "customDriveType": {
                           "description": "Custom Drive service type",
                           "type": "string",
-                          "enum": ["CustomDrive"],
+                          "enum": [
+                            "CustomDrive"
+                          ],
                           "default": "CustomDrive"
                         }
                       },
@@ -14638,7 +15588,9 @@
                         "mcpType": {
                           "description": "Service type",
                           "type": "string",
-                          "enum": ["Mcp"],
+                          "enum": [
+                            "Mcp"
+                          ],
                           "default": "Mcp"
                         },
                         "discoveryMethod": {
@@ -14667,7 +15619,11 @@
                         "transportType": {
                           "description": "MCP transport protocol type",
                           "type": "string",
-                          "enum": ["Stdio", "SSE", "StreamableHTTP"],
+                          "enum": [
+                            "Stdio",
+                            "SSE",
+                            "StreamableHTTP"
+                          ],
                           "javaEnums": [
                             {
                               "name": "Stdio",
@@ -14723,7 +15679,9 @@
                               "description": "API key for authenticated MCP servers"
                             }
                           },
-                          "required": ["name"]
+                          "required": [
+                            "name"
+                          ]
                         }
                       },
                       "properties": {
@@ -14813,7 +15771,10 @@
         }
       },
       "additionalProperties": false,
-      "required": ["serviceName", "serviceConnection"]
+      "required": [
+        "serviceName",
+        "serviceConnection"
+      ]
     }
   },
   "properties": {
@@ -14846,7 +15807,10 @@
           "title": "Sample Config Type",
           "description": "Type of sampling to apply. STATIC: fixed sample size. DYNAMIC: sample size determined at runtime based on row count thresholds.",
           "type": "string",
-          "enum": ["STATIC", "DYNAMIC"],
+          "enum": [
+            "STATIC",
+            "DYNAMIC"
+          ],
           "default": "DYNAMIC"
         },
         "config": {
@@ -14891,7 +15855,10 @@
                         "title": "Sampling Method Type"
                       }
                     },
-                    "required": ["rowCountThreshold", "profileSample"],
+                    "required": [
+                      "rowCountThreshold",
+                      "profileSample"
+                    ],
                     "additionalProperties": false
                   }
                 }
@@ -14915,14 +15882,20 @@
                   "title": "Profile Sample Type",
                   "description": "Type of Profile Sample (percentage or rows)",
                   "type": "string",
-                  "enum": ["PERCENTAGE", "ROWS"],
+                  "enum": [
+                    "PERCENTAGE",
+                    "ROWS"
+                  ],
                   "default": "PERCENTAGE"
                 },
                 "samplingMethodType": {
                   "title": "Sampling Method Type",
                   "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
                   "type": "string",
-                  "enum": ["BERNOULLI", "SYSTEM"]
+                  "enum": [
+                    "BERNOULLI",
+                    "SYSTEM"
+                  ]
                 }
               },
               "additionalProperties": false
@@ -14944,6 +15917,8 @@
       "default": null
     }
   },
-  "required": ["type"],
+  "required": [
+    "type"
+  ],
   "additionalProperties": false
 }

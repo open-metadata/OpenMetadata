@@ -8,7 +8,9 @@
     "domoDatabaseType": {
       "description": " service type",
       "type": "string",
-      "enum": ["DomoDatabase"],
+      "enum": [
+        "DomoDatabase"
+      ],
       "default": "DomoDatabase"
     }
   },
@@ -18,7 +20,9 @@
       "description": "Service Type",
       "default": "DomoDatabase",
       "type": "string",
-      "enum": ["DomoDatabase"]
+      "enum": [
+        "DomoDatabase"
+      ]
     },
     "clientId": {
       "title": "Client ID",
@@ -133,5 +137,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["clientId", "secretToken", "instanceDomain"]
+  "required": [
+    "clientId",
+    "secretToken",
+    "instanceDomain"
+  ]
 }

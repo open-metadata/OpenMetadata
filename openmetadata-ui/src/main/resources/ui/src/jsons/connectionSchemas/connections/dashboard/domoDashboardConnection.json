@@ -8,7 +8,9 @@
     "domoDashboardType": {
       "description": " service type",
       "type": "string",
-      "enum": ["DomoDashboard"],
+      "enum": [
+        "DomoDashboard"
+      ],
       "default": "DomoDashboard"
     }
   },
@@ -18,7 +20,9 @@
       "description": "Service Type",
       "default": "DomoDashboard",
       "type": "string",
-      "enum": ["DomoDashboard"]
+      "enum": [
+        "DomoDashboard"
+      ]
     },
     "clientId": {
       "title": "Client ID",
@@ -151,5 +155,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["clientId", "secretToken", "instanceDomain"]
+  "required": [
+    "clientId",
+    "secretToken",
+    "instanceDomain"
+  ]
 }

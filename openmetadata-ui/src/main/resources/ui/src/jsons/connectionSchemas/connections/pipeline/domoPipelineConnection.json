@@ -8,7 +8,9 @@
     "DomoPipelineType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["DomoPipeline"],
+      "enum": [
+        "DomoPipeline"
+      ],
       "default": "DomoPipeline"
     }
   },
@@ -18,7 +20,9 @@
       "description": "Service Type",
       "default": "DomoPipeline",
       "type": "string",
-      "enum": ["DomoPipeline"]
+      "enum": [
+        "DomoPipeline"
+      ]
     },
     "clientId": {
       "title": "Client ID",
@@ -82,5 +86,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["clientId", "secretToken", "instanceDomain"]
+  "required": [
+    "clientId",
+    "secretToken",
+    "instanceDomain"
+  ]
 }
