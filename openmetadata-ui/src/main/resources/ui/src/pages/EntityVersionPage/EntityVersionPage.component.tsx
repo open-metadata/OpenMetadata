@@ -124,6 +124,7 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import entityVersionClassBase from '../../utils/EntityVersionClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getOwnHandler } from '../../utils/RecordUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -330,7 +331,7 @@ const EntityVersionPage: FunctionComponent = () => {
     };
 
     try {
-      await versionFetchers[entityType]?.();
+      await getOwnHandler(versionFetchers, entityType)?.();
     } finally {
       setIsLoading(false);
     }
@@ -419,7 +420,7 @@ const EntityVersionPage: FunctionComponent = () => {
 
       try {
         if (viewVersionPermission) {
-          await currentVersionFetchers[entityType]?.();
+          await getOwnHandler(currentVersionFetchers, entityType)?.();
         }
       } finally {
         setIsVersionLoading(false);
@@ -854,7 +855,7 @@ const EntityVersionPage: FunctionComponent = () => {
           : null,
     };
 
-    const renderer = versionRenderers[entityType];
+    const renderer = getOwnHandler(versionRenderers, entityType);
     if (renderer) {
       return renderer();
     }

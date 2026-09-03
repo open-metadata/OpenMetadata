@@ -77,6 +77,7 @@ import {
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
+import { getOwnHandler } from './RecordUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -408,7 +409,7 @@ class EntityUtilClassBase {
       return getEntityDetailsPath(detailsType, fullyQualifiedName, tab, subTab);
     }
 
-    const handler = ENTITY_LINK_HANDLERS[indexType];
+    const handler = getOwnHandler(ENTITY_LINK_HANDLERS, indexType);
 
     if (handler) {
       return handler({

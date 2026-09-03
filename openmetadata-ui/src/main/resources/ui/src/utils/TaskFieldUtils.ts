@@ -38,6 +38,7 @@ import type {
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
+import { getOwnHandler } from './RecordUtils';
 
 type EntityColumns = Column[] | PipelineTask[] | MlFeature[] | Field[];
 
@@ -67,7 +68,7 @@ export const getEntityColumnsDetails = (
   entityType: string,
   entityData: EntityData
 ) =>
-  ENTITY_COLUMNS_DETAILS_GETTERS[entityType as EntityType]?.(entityData) ??
+  getOwnHandler(ENTITY_COLUMNS_DETAILS_GETTERS, entityType)?.(entityData) ??
   (entityData as Table).columns ??
   [];
 
@@ -328,7 +329,7 @@ export const getEntityTableName = (
     return name;
   }
 
-  const finder = ENTITY_TABLE_NAME_FINDERS[entityType];
+  const finder = getOwnHandler(ENTITY_TABLE_NAME_FINDERS, entityType);
   if (!finder) {
     return name;
   }

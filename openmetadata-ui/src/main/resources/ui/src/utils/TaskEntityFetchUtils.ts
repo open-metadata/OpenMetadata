@@ -55,6 +55,7 @@ import { getGlossaryBreadcrumbs } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
+import { getOwnHandler } from './RecordUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
@@ -227,7 +228,7 @@ export const getBreadCrumbList = (
     ],
   };
 
-  const builder = breadcrumbBuilders[entityType];
+  const builder = getOwnHandler(breadcrumbBuilders, entityType);
 
   return builder ? builder() : [];
 };
@@ -365,5 +366,5 @@ export const fetchEntityDetail = (
     },
   };
 
-  fetchHandlers[entityType]?.();
+  getOwnHandler(fetchHandlers, entityType)?.();
 };

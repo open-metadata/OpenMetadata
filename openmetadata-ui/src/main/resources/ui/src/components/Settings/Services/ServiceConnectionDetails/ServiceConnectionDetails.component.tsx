@@ -31,6 +31,7 @@ import {
   ConfigData,
   ExtraInfoType,
 } from '../../../../interface/service.interface';
+import { getOwnHandler } from '../../../../utils/RecordUtils';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import './service-connection-details.less';
@@ -94,10 +95,10 @@ const loadSchemaForServiceCategory = (
   serviceCategory: string,
   serviceFQN: string
 ): Promise<{ schema: Record<string, unknown> }> => {
-  const loader =
-    SERVICE_CONFIG_LOADER_BY_CATEGORY[
-      serviceCategory.slice(0, -1) as EntityType
-    ];
+  const loader = getOwnHandler(
+    SERVICE_CONFIG_LOADER_BY_CATEGORY,
+    serviceCategory.slice(0, -1)
+  );
 
   return loader ? loader(serviceFQN) : Promise.resolve({ schema: {} });
 };

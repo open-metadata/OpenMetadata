@@ -52,6 +52,7 @@ import { getTeamByName } from '../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../rest/testAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
 import { getUserByName } from '../rest/userAPI';
+import { getOwnHandler } from './RecordUtils';
 
 type EntityByFqnHandler = (
   entityFQN: string,
@@ -213,7 +214,7 @@ export const getEntityByFqnUtil = (
   entityFQN: string,
   fields?: string
 ): Promise<EntityUnion> | null => {
-  const handler = entityByFqnHandlers[entityType];
+  const handler = getOwnHandler(entityByFqnHandlers, entityType);
 
   return handler ? handler(entityFQN, fields) : null;
 };

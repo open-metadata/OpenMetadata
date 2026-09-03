@@ -19,6 +19,7 @@ import {
 } from '../generated/events/eventSubscription';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
+import { getOwnHandler } from './RecordUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -128,7 +129,7 @@ export const getEntityLinkFromType = (
     return getEventSubscriptionLink(fullyQualifiedName, entity);
   }
 
-  const simpleBuilder = SIMPLE_ENTITY_LINK_BUILDERS[entityType];
+  const simpleBuilder = getOwnHandler(SIMPLE_ENTITY_LINK_BUILDERS, entityType);
 
   return simpleBuilder ? simpleBuilder(fullyQualifiedName) : '';
 };

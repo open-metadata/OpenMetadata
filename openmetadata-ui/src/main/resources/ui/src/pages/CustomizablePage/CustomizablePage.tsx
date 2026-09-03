@@ -52,6 +52,7 @@ import {
   updatePersonaDocumentPage,
 } from '../../utils/CustomizePage/PersonaPage.utils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getOwnHandler } from '../../utils/RecordUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -212,7 +213,7 @@ const getCustomizePageContent = (
     renderers[type] = renderDetailsPage;
   });
 
-  const renderer = renderers[pageFqn];
+  const renderer = getOwnHandler(renderers, pageFqn);
 
   return renderer ? renderer() : <ErrorPlaceHolder />;
 };

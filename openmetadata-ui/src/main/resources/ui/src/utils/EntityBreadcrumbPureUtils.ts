@@ -76,6 +76,7 @@ import {
   getBreadcrumbForDatabaseService,
   getServiceCategoryBreadcrumb,
 } from './EntityServiceBreadcrumbUtils';
+import { getOwnHandler } from './RecordUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 
 type BreadcrumbLink = {
@@ -325,7 +326,7 @@ export const getEntityBreadcrumbs = (
     [EntityType.TABLE_COLUMN]: getBreadcrumbForTableColumn,
   };
 
-  const builder = entityType ? breadcrumbBuilders[entityType] : undefined;
+  const builder = getOwnHandler(breadcrumbBuilders, entityType);
 
   return (
     builder ??
