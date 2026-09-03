@@ -176,11 +176,10 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Wait for teams tab content to load
       await waitForAllLoadersToDisappear(page);
       await expect(
-        // AntD's empty state sits in a `cell`; TableV2 (react-aria grid)
-        // puts it in a `gridcell`.
-        page
-          .getByRole('cell', { name: 'No data' })
-          .or(page.getByRole('gridcell', { name: 'No data' }))
+        // Engine-agnostic: AntD puts the empty state in a plain cell, the
+        // react-aria grid renders it as the row's rowheader — but both sit
+        // in a row whose accessible name is the placeholder text.
+        page.getByRole('row', { name: 'No data' })
       ).toBeVisible();
 
       // click on the users tab
@@ -191,11 +190,10 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Wait for users tab content to load
       await waitForAllLoadersToDisappear(page);
       await expect(
-        // AntD's empty state sits in a `cell`; TableV2 (react-aria grid)
-        // puts it in a `gridcell`.
-        page
-          .getByRole('cell', { name: 'No data' })
-          .or(page.getByRole('gridcell', { name: 'No data' }))
+        // Engine-agnostic: AntD puts the empty state in a plain cell, the
+        // react-aria grid renders it as the row's rowheader — but both sit
+        // in a row whose accessible name is the placeholder text.
+        page.getByRole('row', { name: 'No data' })
       ).toBeVisible();
 
       // Navigate to roles list page to verify the added role
