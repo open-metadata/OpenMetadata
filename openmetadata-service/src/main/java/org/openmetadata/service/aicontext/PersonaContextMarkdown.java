@@ -118,11 +118,11 @@ final class PersonaContextMarkdown {
     }
     StringBuilder markdown = new StringBuilder("\n## Search scope\n\n");
     markdown
-        .append("Your administrator scoped this persona's asset search to ")
-        .append(String.join(", ", scope.getEntityTypes()))
+        .append("Your administrator configured default search rules for this persona. ")
         .append(
-            " matching the rules below. Search tools apply this scope by default, so assets outside"
-                + " it will not appear in results even though they exist in the platform.\n\n");
+            "Search tools are asked to apply this scope by default, so results may be narrowed to"
+                + " these assets. This is a relevance default, not a permission boundary, and a"
+                + " tool may search outside it.\n\n");
     for (SearchScopeRule rule : listOrEmpty(scope.getRules())) {
       markdown
           .append("- ")

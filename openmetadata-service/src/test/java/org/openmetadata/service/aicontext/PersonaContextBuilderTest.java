@@ -237,7 +237,9 @@ class PersonaContextBuilderTest {
                 .withRules(List.of(tableRule, dashboardRule))
                 .withEnabled(true));
 
-    assertEquals(Set.of(Entity.TABLE, Entity.DASHBOARD), scope.getEntityTypes());
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        scope.getEntityTypes());
     assertEquals(2, scope.getRules().size());
     JsonNode filter = JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter");
     assertEquals(false, filter.get(0).at("/term/deleted").asBoolean());
@@ -249,6 +251,34 @@ class PersonaContextBuilderTest {
     JsonNode dashboardClause = union.get("should").get(1).at("/bool/filter");
     assertEquals(Entity.DASHBOARD, dashboardClause.get(0).at("/term/entityType").asText());
     assertEquals(1, dashboardClause.size());
+  }
+
+  @Test
+  void searchScopeKeepsKnowledgeAndPreloadedAssetTypesSearchable() {
+    ContextRule scopedTable =
+        assetRule("Finance tables", "{\"term\":{\"domain\":\"finance\"}}")
+            .withFilteredInSearch(true);
+    ContextRule preloadedDashboard =
+        new ContextRule()
+            .withName("Executive dashboards")
+            .withEntityType(Entity.DASHBOARD)
+            .withEnabled(true)
+            .withFilteredInSearch(false);
+
+    SearchScope scope =
+        PersonaContextBuilder.searchScope(
+            new PersonaContextDefinition()
+                .withRules(List.of(scopedTable, preloadedDashboard))
+                .withEnabled(true));
+
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        scope.getEntityTypes());
+    JsonNode clauses =
+        JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should");
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        Set.copyOf(clauses.findValuesAsText("entityType")));
   }
 
   @Test
@@ -270,15 +300,15 @@ class PersonaContextBuilderTest {
 
     JsonNode union = JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool");
     assertEquals(1, union.get("minimum_should_match").asInt(), "clauses are OR-ed, not AND-ed");
-    assertEquals(2, union.get("should").size());
-    assertEquals(Set.of(Entity.TABLE), scope.getEntityTypes(), "one type, contributed twice");
+    assertEquals(5, union.get("should").size());
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        scope.getEntityTypes(),
+        "one scoped asset type plus searchable knowledge types");
   }
 
   @Test
-  void aRuleWhoseFilterMatchesNothingNarrowsTheScopeToNothing() {
-    // The flip side of the union: a single self-contradictory rule is the only way to end up with a
-    // scope that can never match, and the persona then searches nothing at all rather than
-    // everything. Worth pinning because "no results" and "no scope" must not be confused.
+  void aRuleWhoseAssetFilterMatchesNothingKeepsKnowledgeSearchable() {
     ContextRule contradictory =
         assetRule(
                 "Impossible",
@@ -292,10 +322,10 @@ class PersonaContextBuilderTest {
 
     JsonNode clause =
         JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should/0");
-    // The rule's own contradiction is preserved verbatim inside its clause — the builder never
-    // rewrites or validates it, so an unsatisfiable rule stays unsatisfiable.
     assertEquals(2, clause.at("/bool/filter/1/bool/must").size());
-    assertEquals(Set.of(Entity.TABLE), scope.getEntityTypes());
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        scope.getEntityTypes());
   }
 
   @Test
@@ -314,7 +344,9 @@ class PersonaContextBuilderTest {
                 .withRules(List.of(tables, dashboards))
                 .withEnabled(true));
 
-    assertEquals(Set.of(Entity.TABLE, Entity.DASHBOARD), scope.getEntityTypes());
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        scope.getEntityTypes());
     JsonNode should =
         JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should");
     assertEquals(Entity.TABLE, should.get(0).at("/bool/filter/0/term/entityType").asText());

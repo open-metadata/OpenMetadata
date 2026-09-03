@@ -156,7 +156,7 @@ class PersonaAIContextIT extends McpTestBase {
 
   @Test
   void searchScopedRuleIsServedAsASearchFilterInsteadOfBeingPreloaded() throws Exception {
-    ContextRule requested = tableRule("Scoped tables").withFilteredInSearch(null);
+    ContextRule requested = tableRule("Scoped tables").withFilteredInSearch(true);
     PersonaContextDefinition created =
         post(contextPath() + "/rules", requested, PersonaContextDefinition.class);
     ContextRule createdRule =
@@ -164,7 +164,6 @@ class PersonaAIContextIT extends McpTestBase {
             .filter(rule -> requested.getName().equals(rule.getName()))
             .findFirst()
             .orElseThrow();
-    // Omitting the field on create means "use the product default", which is search scoping.
     assertThat(createdRule.getFilteredInSearch()).isTrue();
 
     try {
@@ -192,6 +191,31 @@ class PersonaAIContextIT extends McpTestBase {
     }
   }
 
+  @Test
+  void ruleCreatedWithoutTheFieldKeepsLegacyPreloading() throws Exception {
+    ContextRule requested = tableRule("Legacy tables").withFilteredInSearch(null);
+    PersonaContextDefinition created =
+        post(contextPath() + "/rules", requested, PersonaContextDefinition.class);
+    ContextRule createdRule = ruleNamed(created, requested.getName());
+    assertThat(createdRule.getFilteredInSearch()).isNull();
+
+    try {
+      HttpResponse<String> response =
+          getResponse(
+              "personas/name/"
+                  + persona.getFullyQualifiedName()
+                  + "/context?format=json&refresh=true",
+              authToken);
+      assertThat(response.statusCode()).isEqualTo(200);
+      JsonNode context = OBJECT_MAPPER.readTree(response.body());
+
+      assertThat(context.path("searchScope").path("queryFilter").asText()).isBlank();
+      assertThat(context.path("rules").toString()).contains(requested.getName());
+    } finally {
+      deleteResponse(contextPath() + "/rules/" + createdRule.getId(), authToken);
+    }
+  }
+
   /**
    * An update that omits {@code filteredInSearch} must not change the delivery mode. The endpoint
    * replaces the whole rule and the field has no schema default, so a null on the wire is both "I
@@ -211,9 +235,8 @@ class PersonaAIContextIT extends McpTestBase {
     String rulesPath = "personas/" + owned.getId() + "/aiContext/rules";
 
     try {
-      // Created without the field: stamped scoped, because that is the default for new rules.
       ContextRule requested =
-          scopedFqnRule("Round trip", table.getFullyQualifiedName()).withFilteredInSearch(null);
+          scopedFqnRule("Round trip", table.getFullyQualifiedName()).withFilteredInSearch(true);
       PersonaContextDefinition created = post(rulesPath, requested, PersonaContextDefinition.class);
       ContextRule stored = ruleNamed(created, "Round trip");
       assertThat(stored.getFilteredInSearch()).isTrue();
@@ -260,7 +283,8 @@ class PersonaAIContextIT extends McpTestBase {
    * The unit test pins the shape of the union — `minimum_should_match: 1` over one clause per rule.
    * Shape is not behaviour: a filter can be structurally OR-shaped and still not return both sets if
    * the nesting is subtly wrong, and only a real search engine can tell the difference. This drives
-   * the composed filter through Elasticsearch and asserts the result set is A u B.
+   * the composed filter through Elasticsearch and asserts the selected asset set is A u B. Knowledge
+   * types deliberately pass through a scoped asset filter, so they are not part of this assertion.
    *
    * <p>Uses its own persona rather than the shared one: methods in this module run concurrently, so
    * a sibling test adding or removing a scoped rule would change the scope under this assertion.
@@ -269,6 +293,7 @@ class PersonaAIContextIT extends McpTestBase {
   void twoScopedRulesSelectTheUnionOfBothWhenTheFilterIsActuallySearched() throws Exception {
     String suffix = shortId();
     Table other = createServiceDatabaseSchemaTable("persona_union_" + suffix);
+    Table excluded = createServiceDatabaseSchemaTable("persona_excluded_" + suffix);
     Persona owned =
         post(
             "personas",
@@ -281,25 +306,36 @@ class PersonaAIContextIT extends McpTestBase {
     try {
       addRule(rulesPath, scopedFqnRule("Union first", table.getFullyQualifiedName()));
       // One rule: only its own table is in scope. This is the baseline the second rule widens.
-      awaitScopeMatches(owned, Set.of(table.getFullyQualifiedName()));
+      awaitScopeIncludes(
+          owned,
+          Set.of(table.getFullyQualifiedName()),
+          Set.of(other.getFullyQualifiedName(), excluded.getFullyQualifiedName()));
 
       addRule(rulesPath, scopedFqnRule("Union second", other.getFullyQualifiedName()));
       // Two rules: both tables. An intersection would be empty here, since no table carries both
       // FQNs — so an empty or single-entry result means the clauses are being AND-ed.
-      awaitScopeMatches(
-          owned, Set.of(table.getFullyQualifiedName(), other.getFullyQualifiedName()));
+      awaitScopeIncludes(
+          owned,
+          Set.of(table.getFullyQualifiedName(), other.getFullyQualifiedName()),
+          Set.of(excluded.getFullyQualifiedName()));
     } finally {
       deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
     }
   }
 
-  /** Polls until the served scope selects exactly {@code expected} — never longer than the wait. */
-  private static void awaitScopeMatches(Persona owner, Set<String> expected) {
-    Awaitility.await("persona search scope selects " + expected)
+  /** Polls until the served scope includes selected assets and excludes unscoped assets. */
+  private static void awaitScopeIncludes(
+      Persona owner, Set<String> selectedAssets, Set<String> excludedAssets) {
+    Awaitility.await("persona search scope selects " + selectedAssets)
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofSeconds(1))
         .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(() -> assertThat(searchWithPersonaScope(owner)).isEqualTo(expected));
+        .untilAsserted(
+            () -> {
+              Set<String> results = searchWithPersonaScope(owner);
+              assertThat(results).containsAll(selectedAssets);
+              assertThat(results).doesNotContainAnyElementsOf(excludedAssets);
+            });
   }
 
   /** Runs the persona's own compiled scope through search and returns the FQNs it selects. */
@@ -452,8 +488,6 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   private static ContextRule tableRule(String name) {
-    // Explicitly preloading: the create API stamps filteredInSearch=true when the client omits it,
-    // and a scoped rule materializes nothing, so the document assertions need this to be false.
     return new ContextRule()
         .withName(name)
         .withEntityType(Entity.TABLE)

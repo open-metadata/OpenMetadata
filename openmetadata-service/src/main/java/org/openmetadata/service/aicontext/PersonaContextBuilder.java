@@ -74,8 +74,8 @@ public class PersonaContextBuilder {
   private static final int SEARCH_BATCH_SIZE = 100;
   private static final int DATA_PRODUCT_ASSET_BATCH_SIZE = 1000;
   private static final int DEFAULT_MAX_ASSETS = 200;
-  private static final Set<String> KNOWLEDGE_ENTITY_TYPES =
-      Set.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
+  private static final List<String> KNOWLEDGE_ENTITY_TYPES =
+      List.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
   private static final Set<String> ASSET_ENTITY_TYPES =
       Set.of(
           Entity.TABLE,
@@ -285,10 +285,9 @@ public class PersonaContextBuilder {
    * preloading its entities. Absent means false so rules stored before the field keep preloading.
    *
    * <p>Knowledge rules can never be search-scoped, whatever the flag says. Their whole purpose is to
-   * be in context — scoping one would silently drop the glossary terms, articles or metrics it
-   * carries out of the document, and put a knowledge entity type into an asset-search allowlist
-   * where it means nothing. Enforced here rather than only at the API boundary so a rule stored with
-   * the flag already set cannot resurrect the behaviour.
+   * be in context, so scoping one would silently drop the glossary terms, articles or metrics it
+   * carries out of the document. Enforced here rather than only at the API boundary so a rule stored
+   * with the flag already set cannot resurrect the behaviour.
    */
   static boolean isFilteredInSearch(ContextRule rule) {
     return Boolean.TRUE.equals(rule.getFilteredInSearch())
@@ -309,25 +308,29 @@ public class PersonaContextBuilder {
     }
     List<Object> clauses = new ArrayList<>();
     Set<String> entityTypes = new LinkedHashSet<>();
+    Set<String> preloadedAssetTypes = new LinkedHashSet<>();
     for (ContextRule rule : listOrEmpty(definition.getRules())) {
-      if (!Boolean.TRUE.equals(rule.getEnabled())
-          || !isFilteredInSearch(rule)
-          || nullOrEmpty(rule.getEntityType())) {
+      if (!Boolean.TRUE.equals(rule.getEnabled()) || nullOrEmpty(rule.getEntityType())) {
         continue;
       }
-      clauses.add(scopeClause(rule));
-      entityTypes.add(rule.getEntityType());
-      scope
-          .getRules()
-          .add(
-              new SearchScopeRule()
-                  .withRuleName(rule.getName())
-                  .withEntityType(rule.getEntityType())
-                  .withQueryFilter(rule.getQueryFilter()));
+      if (isFilteredInSearch(rule)) {
+        clauses.add(scopeClause(rule));
+        entityTypes.add(rule.getEntityType());
+        scope
+            .getRules()
+            .add(
+                new SearchScopeRule()
+                    .withRuleName(rule.getName())
+                    .withEntityType(rule.getEntityType())
+                    .withQueryFilter(rule.getQueryFilter()));
+      } else if (ASSET_ENTITY_TYPES.contains(rule.getEntityType())) {
+        preloadedAssetTypes.add(rule.getEntityType());
+      }
     }
     if (clauses.isEmpty()) {
       return scope;
     }
+    addPassthroughEntityTypes(clauses, entityTypes, preloadedAssetTypes);
     Map<String, Object> union = Map.of("should", clauses, "minimum_should_match", 1);
     List<Object> filters = new ArrayList<>();
     filters.add(Map.of("term", Map.of("deleted", false)));
@@ -336,6 +339,16 @@ public class PersonaContextBuilder {
         .withEntityTypes(entityTypes)
         .withQueryFilter(
             JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("filter", filters)))));
+  }
+
+  private static void addPassthroughEntityTypes(
+      List<Object> clauses, Set<String> entityTypes, Set<String> preloadedAssetTypes) {
+    Set<String> passthroughEntityTypes = new LinkedHashSet<>(preloadedAssetTypes);
+    passthroughEntityTypes.addAll(KNOWLEDGE_ENTITY_TYPES);
+    for (String entityType : passthroughEntityTypes) {
+      clauses.add(Map.of("term", Map.of("entityType", entityType)));
+      entityTypes.add(entityType);
+    }
   }
 
   private static Object scopeClause(ContextRule rule) {
