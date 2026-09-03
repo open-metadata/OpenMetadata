@@ -73,6 +73,7 @@
         "Informix",
         "Iomete",
         "QuestDB",
+        "Data360",
         "SapBw4Hana"
       ],
       "javaEnums": [
@@ -249,6 +250,9 @@
         },
         {
           "name": "QuestDB"
+        },
+        {
+          "name": "Data360"
         },
         {
           "name": "SapBw4Hana"
@@ -432,6 +436,9 @@
             },
             {
               "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/data360Connection.json"
             },
             {
               "$ref": "./connections/database/sapBw4HanaConnection.json"

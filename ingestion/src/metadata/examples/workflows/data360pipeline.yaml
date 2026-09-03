@@ -1,0 +1,25 @@
+source:
+  type: data360pipeline
+  serviceName: local_data360pipeline
+  serviceConnection:
+    config:
+      type: Data360Pipeline
+      consumerKey: <your-connected-app-consumer-key>
+      consumerSecret: <your-connected-app-consumer-secret>
+      # salesforceDomain: login        # Default: login. Use "test" for sandboxes.
+      # salesforceApiVersion: "63.0"   # Default: 63.0
+      # paginationLimit: 10            # Default: 10. Valid range: 1-200.
+      # data360DbServiceName: local_data360  # Required for lineage resolution.
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      # includeTags: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "<ingestion-bot-jwt>"

@@ -62,6 +62,7 @@ export enum FormattedPipelineServiceType {
   Stitch = 'Stitch',
   Wherescape = 'Wherescape',
   MicrosoftFabricPipeline = 'Microsoft Fabric Pipeline',
+  Data360Pipeline = 'Salesforce Data 360 Pipeline',
 }
 export enum FormattedSearchServiceType {
   CustomSearch = 'Custom Search',
@@ -118,6 +119,7 @@ export enum FormattedDatabaseServiceType {
   Trino = 'Trino',
   UnityCatalog = 'UnityCatalog',
   Vertica = 'Vertica',
+  Data360 = 'Salesforce Data 360',
 }
 export enum FormattedDashboardServiceType {
   CustomDashboard = 'Custom Dashboard',

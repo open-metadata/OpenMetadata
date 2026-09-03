@@ -131,6 +131,14 @@ const databaseSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/database/salesforceConnection.json'
     ),
+  [DatabaseServiceType.Data360]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/database/data360Connection.json'
+    ),
+  [DatabaseServiceType.SapBw4Hana]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/database/sapBw4HanaConnection.json'
+    ),
   [DatabaseServiceType.SingleStore]: () =>
     import(
       '../jsons/connectionSchemas/connections/database/singleStoreConnection.json'

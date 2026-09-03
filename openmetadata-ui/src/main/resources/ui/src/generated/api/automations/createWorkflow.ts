@@ -302,6 +302,8 @@ export interface RequestConnection {
  *
  * QuestDB Connection Config
  *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
  * SAP BW/4HANA Database Connection Config
  *
  * Looker Connection Config
@@ -409,6 +411,8 @@ export interface RequestConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
@@ -1388,12 +1392,16 @@ export interface Connection {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -1666,7 +1674,13 @@ export interface Connection {
     /**
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
+     *
      * Pagination limit used while querying the tableau metadata API for getting data sources
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
      *
      * Pagination limit used for Alation APIs pagination
      */
@@ -2203,6 +2217,10 @@ export interface Connection {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -5248,6 +5266,8 @@ export enum AirflowConnectionType {
     CustomStorage = "CustomStorage",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360 = "Data360",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",

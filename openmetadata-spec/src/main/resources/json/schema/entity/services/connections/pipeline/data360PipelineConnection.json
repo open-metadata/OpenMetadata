@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/data360PipelineConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Data360PipelineConnection",
+  "description": "Salesforce Data 360 Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.Data360PipelineConnection",
+  "definitions": {
+    "data360PipelineType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Data360Pipeline"
+      ],
+      "default": "Data360Pipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/data360PipelineType",
+      "default": "Data360Pipeline"
+    },
+    "consumerKey": {
+      "title": "Consumer Key",
+      "description": "Consumer key provided when you setup your Salesforce connected app",
+      "type": "string",
+      "format": "password"
+    },
+    "consumerSecret": {
+      "title": "Consumer Secret",
+      "description": "Consumer secret provided when you setup your Salesforce connected app",
+      "type": "string",
+      "format": "password"
+    },
+    "salesforceApiVersion": {
+      "title": "Salesforce API Version",
+      "description": "API version of the Salesforce instance",
+      "type": "string",
+      "default": "63.0"
+    },
+    "salesforceDomain": {
+      "title": "Salesforce Domain",
+      "description": "Domain of Salesforce instance",
+      "type": "string",
+      "default": "login"
+    },
+    "data360DbServiceName": {
+      "title": "Data 360 Database Service Name",
+      "description": "Name of the Data 360 database service to use for lineage resolution",
+      "type": "string"
+    },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Pagination limit used when fetching Data 360 objects. The default value is 10, and the valid range is 1-200",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 200
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsUsageExtraction": {
+      "title": "Supports Operational data Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "consumerKey",
+    "consumerSecret"
+  ]
+}

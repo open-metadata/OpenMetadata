@@ -83,6 +83,18 @@ const pipelineSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/pipeline/prefectConnection.json'
     ),
+  [PipelineServiceType.MicrosoftFabricPipeline]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json'
+    ),
+  [PipelineServiceType.Data360Pipeline]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/pipeline/data360PipelineConnection.json'
+    ),
+  [PipelineServiceType.SapBw4HanaPipeline]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/pipeline/sapBw4HanaPipelineConnection.json'
+    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

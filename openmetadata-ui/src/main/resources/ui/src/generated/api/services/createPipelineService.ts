@@ -116,6 +116,8 @@ export interface PipelineConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
 export interface Connection {
@@ -415,6 +417,33 @@ export interface Connection {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Consumer key provided when you setup your Salesforce connected app
+     */
+    consumerKey?: string;
+    /**
+     * Consumer secret provided when you setup your Salesforce connected app
+     */
+    consumerSecret?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
+     */
+    paginationLimit?: number;
+    /**
+     * API version of the Salesforce instance
+     */
+    salesforceApiVersion?: string;
+    /**
+     * Domain of Salesforce instance
+     */
+    salesforceDomain?:          string;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
@@ -1568,6 +1597,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",

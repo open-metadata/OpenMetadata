@@ -1,0 +1,14 @@
+{
+  "name": "Data360",
+  "displayName": "Data360 Test Connection",
+  "description": "This Test Connection validates the access against the Salesforce Data 360 instance and confirms that the provided credentials are valid.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the Salesforce Data 360 instance and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to Salesforce Data 360 — please validate the Consumer Key, Consumer Secret, and Salesforce Domain.",
+      "shortCircuit": true,
+      "mandatory": true
+    }
+  ]
+}

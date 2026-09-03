@@ -752,6 +752,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return None
 
+    def _should_skip_schema_deletion(self, schema_fqn: str) -> bool:
+        """Hook for subclasses to exclude a schema from this run's deletion
+        reconciliation (e.g. because its table discovery failed and treating
+        zero fetched tables as "all deleted" would be wrong). Default: never skip."""
+        return False
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
@@ -764,6 +770,9 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
 
             for schema_fqn in schema_fqn_list:
+                if self._should_skip_schema_deletion(schema_fqn):
+                    logger.warning(f"Skipping deletion for schema [{schema_fqn}]: excluded for this run.")
+                    continue
                 yield from delete_entity_from_source(
                     metadata=self.metadata,
                     entity_type=Table,
