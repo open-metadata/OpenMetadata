@@ -1042,30 +1042,9 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     List<TagLabel> tags = new ArrayList<>();
     for (JsonNode tagData : tagsData) {
-      tags.add(parseTagLabel(tagData));
+      tags.add(ColumnAggregator.parseTagLabel(tagData));
     }
     column.setTags(tags);
-  }
-
-  private TagLabel parseTagLabel(JsonNode tagData) {
-    TagLabel tag = new TagLabel();
-    tag.setTagFQN(getTextField(tagData, "tagFQN"));
-
-    String labelType = getTextField(tagData, "labelType");
-    if (labelType != null) {
-      tag.setLabelType(TagLabel.LabelType.fromValue(labelType));
-    }
-
-    String source = getTextField(tagData, "source");
-    if (source != null) {
-      tag.setSource(TagLabel.TagSource.fromValue(source));
-    }
-
-    String state = getTextField(tagData, "state");
-    if (state != null) {
-      tag.setState(TagLabel.State.fromValue(state));
-    }
-    return tag;
   }
 
   private void parseColumnChildren(Column column, JsonNode columnData, String columnFQN) {

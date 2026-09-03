@@ -14,12 +14,15 @@
 package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
+import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +116,50 @@ public interface ColumnAggregator {
       return 0;
     }
     return (int) value;
+  }
+
+  /**
+   * Parse a {@link TagLabel} out of an ES/OS column's raw {@code tags} array entry. Reads the
+   * common fields ({@code name}, {@code displayName}, {@code description}, {@code style}) in
+   * addition to the label-specific ones, mirroring what {@code TagLabelRowMapperWithTargetFqnHash}
+   * populates for the DB-backed read path so tag icon/color render consistently everywhere.
+   */
+  static TagLabel parseTagLabel(JsonNode tagData) {
+    TagLabel tag = new TagLabel();
+    tag.setTagFQN(textField(tagData, "tagFQN"));
+    tag.setName(textField(tagData, "name"));
+    tag.setDisplayName(textField(tagData, "displayName"));
+    tag.setDescription(textField(tagData, "description"));
+
+    String labelType = textField(tagData, "labelType");
+    if (labelType != null) {
+      tag.setLabelType(TagLabel.LabelType.fromValue(labelType));
+    }
+
+    String source = textField(tagData, "source");
+    if (source != null) {
+      tag.setSource(TagLabel.TagSource.fromValue(source));
+    }
+
+    String state = textField(tagData, "state");
+    if (state != null) {
+      tag.setState(TagLabel.State.fromValue(state));
+    }
+
+    JsonNode styleNode = tagData.get("style");
+    if (styleNode != null && !styleNode.isNull()) {
+      try {
+        tag.setStyle(JsonUtils.treeToValue(styleNode, Style.class));
+      } catch (Exception e) {
+        LOG.warn("Failed to parse tag style for {}", tag.getTagFQN(), e);
+      }
+    }
+    return tag;
+  }
+
+  private static String textField(JsonNode node, String field) {
+    JsonNode fieldNode = node.get(field);
+    return fieldNode != null && !fieldNode.isNull() ? fieldNode.asText() : null;
   }
 
   /** Phase 1 result: matching column names and the total doc_count summed across buckets. */

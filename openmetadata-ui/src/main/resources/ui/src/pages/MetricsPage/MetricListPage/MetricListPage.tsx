@@ -71,6 +71,7 @@ import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
@@ -459,21 +460,8 @@ const MetricListPage = () => {
       <span className="metric-list-empty-dash">{t('label.empty-dash')}</span>
     );
 
-    const renderTagPills = (tags: TagLabel[], className: string) => (
-      <div className="metric-list-glossary">
-        {tags.length
-          ? tags.map((tag) => (
-              <Badge
-                className={className}
-                color="blue"
-                key={tag.tagFQN}
-                size="sm"
-                type="color">
-                {tag.name ?? tag.tagFQN}
-              </Badge>
-            ))
-          : emptyDash}
-      </div>
+    const renderTagPills = (tags: TagLabel[]) => (
+      <TagsViewer sizeCap={2} tags={tags}  />
     );
 
     const metricColumn = {
@@ -544,7 +532,7 @@ const MetricListPage = () => {
         key: 'glossary',
         width: 240,
         render: (tags: TagLabel[]) =>
-          renderTagPills(glossaryTerms(tags), 'metric-list-glossary-pill'),
+          renderTagPills(glossaryTerms(tags)),
       },
       entityStatus: {
         title: t('label.status'),
