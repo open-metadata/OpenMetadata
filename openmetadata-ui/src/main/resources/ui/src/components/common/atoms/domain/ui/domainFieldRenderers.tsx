@@ -26,6 +26,7 @@ import {
 } from '../../../../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
+import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
 
@@ -123,10 +124,6 @@ export const renderDomainGlossaryTagsCell = (
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity,
-  options?: { size?: TagSize }
 ): ReactNode => (
-  <TagBadgeList
-    size={options?.size}
-    tags={getClassificationTags(entity.tags)}
-  />
+  <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
 );
