@@ -12,7 +12,6 @@
  */
 
 import { Badge, BadgeWithButton } from '@openmetadata/ui-core-components';
-import { ReactComponent as DefaultIcon } from '../../../../assets/svg/ic-domain.svg';
 import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,7 +20,7 @@ import { BaseTagProps, DEFAULT_TAG_COLOR } from './Tag.interface';
 import {
   computeTagColors,
   ICON_PX,
-  SIZE_INLINE,
+  SIZE_CLASS,
 } from './Tag.utils';
 
 /**
@@ -46,7 +45,6 @@ const DomainTag: FC<BaseTagProps> = ({
 
   const inlineStyle: CSSProperties = useMemo(
     () => ({
-      ...SIZE_INLINE[size],
       borderStyle: 'solid',
       borderWidth: '1px',
       borderColor: resolved.border,
@@ -55,28 +53,18 @@ const DomainTag: FC<BaseTagProps> = ({
       backgroundColor: 'transparent',
       outline: 'none',
     }),
-    [size, resolved.border, resolvedColor]
+    [resolved.border, resolvedColor]
   );
 
   const iconNode = icon ? (
     <Icon iconValue={icon} imageStyle={{ color: resolvedColor }} size={ICON_PX[size]} />
-  ) : (
-    <DefaultIcon
-      height={ICON_PX[size]}
-      style={{ color: resolvedColor }}
-      width={ICON_PX[size]}
-    />
-  );
+  ) : null;
 
   const labelNode = (
     <div style={{ maxWidth }}>
       <span
-        className="tw:truncate"
-        style={{
-          color: resolvedColor,
-          fontSize: SIZE_INLINE[size].fontSize,
-          fontWeight: 400,
-        }}>
+        className={classNames('tw:truncate', SIZE_CLASS[size])}
+        style={{ color: resolvedColor, fontWeight: 400 }}>
         {label}
       </span>
     </div>
@@ -84,11 +72,13 @@ const DomainTag: FC<BaseTagProps> = ({
 
   const content = (
     <>
-      <span
-        aria-hidden
-        className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
-        {iconNode}
-      </span>
+      {iconNode && (
+        <span
+          aria-hidden
+          className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
+          {iconNode}
+        </span>
+      )}
       {href ? (
         <Link
           className="tw:no-underline tw:min-w-0"
@@ -104,6 +94,7 @@ const DomainTag: FC<BaseTagProps> = ({
 
   const sharedProps = {
     className: classNames(
+      SIZE_CLASS[size],
       { 'tw:cursor-not-allowed tw:opacity-50': disabled },
       className
     ),
