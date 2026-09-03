@@ -67,7 +67,7 @@ def test_get_dagbag_does_not_collect_the_dag_folder(dags_folder):
     This is the regression lock: any change that repopulates the bag from the folder
     reintroduces an O(total DAGs) cost on every deploy.
     """
-    from openmetadata_managed_apis.api import utils
+    from openmetadata_managed_apis.api import utils  # noqa: PLC0415
 
     with patch.object(utils.settings, "DAGS_FOLDER", str(dags_folder)):
         dag_bag = utils.get_dagbag()
@@ -80,7 +80,7 @@ def test_get_dagbag_does_not_collect_the_dag_folder(dags_folder):
 @patch.dict(os.environ, {"AIRFLOW_HOME": "/tmp"})
 def test_get_dagbag_never_calls_collect_dags(dags_folder):
     """DagBag collects the folder in its constructor unless told not to"""
-    from openmetadata_managed_apis.api import utils
+    from openmetadata_managed_apis.api import utils  # noqa: PLC0415
 
     with (
         patch.object(utils.settings, "DAGS_FOLDER", str(dags_folder)),
@@ -103,7 +103,7 @@ def test_process_file_bags_the_deployed_dag(dags_folder):
     `file_last_changed` for every file it walks and `process_file` then hits its
     `only_if_updated` early return.
     """
-    from openmetadata_managed_apis.api import utils
+    from openmetadata_managed_apis.api import utils  # noqa: PLC0415
 
     deployed = _write_dag_file(dags_folder, "the_deployed_dag")
 
