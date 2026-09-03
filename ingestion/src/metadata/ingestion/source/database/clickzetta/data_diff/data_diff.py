@@ -163,9 +163,7 @@ class ClickzettaDatabase(Database):
         host_parts = host.split(".", 1)
         instance = extra.pop("instance", None) or (host_parts[0] if len(host_parts) == 2 else None)
         if extra:
-            raise ValueError(
-                f"Unsupported ClickZetta data-diff connection options: {', '.join(sorted(extra))}"
-            )
+            raise ValueError(f"Unsupported ClickZetta data-diff connection options: {', '.join(sorted(extra))}")
         service = host_parts[1] if len(host_parts) == 2 else host_parts[0]
         if port:
             service = f"{service}:{port}"

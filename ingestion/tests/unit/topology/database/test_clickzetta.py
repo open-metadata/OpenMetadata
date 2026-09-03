@@ -244,13 +244,13 @@ def test_build_clickzetta_url_adds_http_protocol_only_when_requested():
 def test_build_clickzetta_url_does_not_accept_unsafe_connection_options():
     with pytest.raises(TypeError, match="connection_options"):
         build_clickzetta_url(
-        host_port="instance.example.clickzetta.test",
-        username="catalog_reader",
-        password="secret",
-        workspace="quick_start",
-        virtual_cluster="DEFAULT",
-        database_schema=None,
-        protocol="https",
+            host_port="instance.example.clickzetta.test",
+            username="catalog_reader",
+            password="secret",
+            workspace="quick_start",
+            virtual_cluster="DEFAULT",
+            database_schema=None,
+            protocol="https",
             connection_options={"magic_token": "do-not-log-me"},
         )
 
