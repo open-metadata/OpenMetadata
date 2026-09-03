@@ -88,8 +88,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   /**
    * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
    * indexes, so without this a caller can read documents they are denied on the corresponding
-   * listing. A {@code null} or exempt subject (admin, bot, access control disabled) is left
-   * unfiltered.
+   * listing. A {@code null} or exempt subject (admin, or access control disabled) is left
+   * unfiltered. Bots are not exempt: they are policy-evaluated like any other caller.
    */
   private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
     if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
