@@ -27,6 +27,7 @@ The following steps are taken:
 import io
 import time
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass
 
 import pymysql
@@ -126,12 +127,10 @@ def mlflow_environment():
 
             mlflow_port = config.mlflow_configs.exposed_port
             for _ in range(30):
-                try:
-                    response = requests.get(f"http://localhost:{mlflow_port}/health")
-                    if response.status_code == 200:
+                with suppress(Exception):
+                    if requests.get(f"http://localhost:{mlflow_port}/health").status_code == 200:
                         break
-                except Exception:
-                    time.sleep(2)
+                time.sleep(2)
             else:
                 raise RuntimeError("MLflow server did not become ready in time.")
 
