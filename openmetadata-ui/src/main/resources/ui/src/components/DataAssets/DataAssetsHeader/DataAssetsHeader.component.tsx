@@ -89,10 +89,12 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtil
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -108,8 +110,6 @@ import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import IconColorModal from '../../Modals/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
-import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -994,7 +994,9 @@ export const DataAssetsHeader = ({
                     href={getTagRedirectLink(tier)}
                     icon={tier.style?.iconURL}
                     label={getTagName(tier)}
+                    maxWidth={120}
                     size="sm"
+                    tooltip={getTagName(tier)}
                   />
                 ) : (
                   <Typography

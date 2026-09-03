@@ -22,8 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LabelType, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
-import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import AutoClassificationTag from '../../common/atoms/Tag/AutoClassificationTag';
 import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
@@ -36,7 +36,6 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   sizeCap = LIST_SIZE,
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
-  newLook = false,
   entityFqn,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
@@ -98,16 +97,14 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
           <Focusable>
             <span
-              className={classNames('tw:inline-flex', {
-                'diff-added tw-mx-1': tag?.added,
-                'diff-removed': tag?.removed,
-              })}>
+              className={classNames('tw:inline-flex')}>
               <TagComponent
                 color={tag.style?.color}
                 data-testid="tags"
                 href={redirectLink}
                 icon={tag.style?.iconURL}
                 label={tagName}
+                maxWidth={130}
                 size="sm"
               />
             </span>
@@ -137,7 +134,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             className="show-more-tags-button"
             color="link-color"
             data-testid="read-button"
-            size="sm"
+            size="xs"
             onClick={() => setIsOpen(!isOpen)}>
             {isOpen
               ? t('label.less')
@@ -167,12 +164,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             placement="bottom"
             trigger="click">
             <Button
-              className={classNames('cursor-pointer plus-more-tag', {
-                'new-look': newLook,
-              })}
               color="link-color"
               data-testid="plus-more-count"
-              size="sm">
+              size="xs">
               {`+${sortedTagsBySource.length - (sizeCap ?? 0)} more`}
             </Button>
           </Popover>

@@ -152,7 +152,9 @@ const TierSection: React.FC<TierSectionProps> = ({
                 href={getTagRedirectLink(displayTier)}
                 icon={displayTier.style?.iconURL}
                 label={getTagName(displayTier)}
+                maxWidth={200}
                 size="sm"
+                tooltip={getTagName(displayTier)}
               />
             </div>
           )}
@@ -173,7 +175,9 @@ const TierSection: React.FC<TierSectionProps> = ({
               href={getTagRedirectLink(displayTier)}
               icon={displayTier.style?.iconURL}
               label={getTagName(displayTier)}
+              maxWidth={200}
               size="sm"
+              tooltip={getTagName(displayTier)}
             />
           </div>
         ) : (

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -170,13 +171,15 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
             <div className="tw:flex tw:flex-wrap tw:gap-1">
               {editingTags.map((tag) => (
                 <ClassificationTag
-                  key={tag.tagFQN}
                   color={tag.style?.color}
                   data-testid={`tag-${tag.tagFQN}`}
                   href={getTagRedirectLink(tag)}
                   icon={tag.style?.iconURL}
+                  key={tag.tagFQN}
                   label={getTagName(tag)}
+                  maxWidth={200}
                   size="sm"
+                  tooltip={getTagName(tag)}
                 />
               ))}
             </div>
@@ -216,7 +219,6 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     );
   }, [isLoading, isEditing, loadingState, editingState, t]);
 
-  console.log(nonTierTags);
   const tagsDisplay = useMemo(
     () => (
       <div className="tags-display">
@@ -226,18 +228,21 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
             : nonTierTags.slice(0, maxVisibleTags)
           ).map((tag) => (
             <ClassificationTag
-              key={tag.tagFQN}
               color={tag.style?.color}
               data-testid={`tag-${tag.tagFQN}`}
               href={getTagRedirectLink(tag)}
               icon={tag.style?.iconURL}
+              key={tag.tagFQN}
               label={getTagName(tag)}
+              maxWidth={200}
               size="sm"
+              tooltip={getTagName(tag)}
             />
           ))}
           {nonTierTags.length > maxVisibleTags && (
-            <button
-              className="show-more-tags-button"
+            <Button
+              color="link-color"
+              size="xs"
               type="button"
               onClick={() => setShowAllTags(!showAllTags)}>
               {showAllTags
@@ -245,7 +250,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                 : `+${nonTierTags.length - maxVisibleTags} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Button>
           )}
         </div>
       </div>

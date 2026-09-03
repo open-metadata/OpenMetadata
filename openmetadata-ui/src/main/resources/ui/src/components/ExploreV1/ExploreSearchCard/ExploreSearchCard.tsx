@@ -42,15 +42,15 @@ import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUt
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
-import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
@@ -408,7 +408,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               href={getTagRedirectLink(source.tier)}
               icon={source.tier.style?.iconURL}
               label={getTagName(source.tier)}
+              maxWidth={200}
               size="sm"
+              tooltip={getTagName(source.tier)}
             />
           );
 

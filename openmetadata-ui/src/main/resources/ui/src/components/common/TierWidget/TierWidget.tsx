@@ -21,9 +21,9 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink, updateTierTag } from '../../../utils/TagsPureUtils';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import TierCard from '../TierCard/TierCard';
 import {
   WidgetEditButton,
@@ -92,7 +92,9 @@ const TierWidget = () => {
       href={getTagRedirectLink(tier)}
       icon={tier.style?.iconURL}
       label={getTagName(tier)}
+      maxWidth={200}
       size="sm"
+      tooltip={getTagName(tier)}
     />
   ) : null;
 
