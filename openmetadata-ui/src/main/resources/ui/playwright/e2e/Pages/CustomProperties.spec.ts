@@ -835,10 +835,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
       });
 
-      test('markdown edit button visible and clickable when value contains a table (regression #32477)', async ({
+      test('markdown edit button visible and clickable when value contains a table', async ({
         page,
       }) => {
-        test.slow();
         const propertyName =
           mainEntity.customPropertyValue[CustomPropertyTypeByName.MARKDOWN]
             .property.name;
