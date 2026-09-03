@@ -13,12 +13,15 @@
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
+import { Theme } from '../context/UntitledUIThemeProvider/theme-provider.interface';
 import {
   CanvasButton,
+  CanvasButtonColors,
   createCanvasButton,
   drawCanvasButton,
   ECanvasButtonType,
   isPointInButton,
+  resolveCanvasButtonColors,
 } from '../utils/CanvasButtonUtils';
 import {
   drawArrowMarker,
@@ -44,6 +47,7 @@ interface UseCanvasEdgeRendererProps {
   colors: LineageEdgeColors;
   containerWidth: number;
   containerHeight: number;
+  theme: Theme;
 }
 
 interface EdgeHitEntry {
@@ -64,6 +68,7 @@ export function useCanvasEdgeRenderer({
   colors,
   containerWidth,
   containerHeight,
+  theme,
 }: UseCanvasEdgeRendererProps) {
   const rafIdRef = useRef<number>();
   const isDirtyRef = useRef(false);
@@ -275,6 +280,9 @@ export function useCanvasEdgeRenderer({
 
     const hitPaths: EdgeHitEntry[] = [];
     const canvasButtons: CanvasButtonHitData[] = [];
+    // Resolve lazily inside the scheduled draw so the root theme class is current,
+    // while graphs without pipeline/function controls avoid unnecessary DOM probes.
+    let buttonColors: CanvasButtonColors | undefined;
 
     visibleEdges.forEach((edge) => {
       ctx.save();
@@ -319,8 +327,9 @@ export function useCanvasEdgeRenderer({
           hoveredButtonRef.current?.edgeId === edge.id &&
           hoveredButtonRef.current?.type === button.type;
 
+        buttonColors ??= resolveCanvasButtonColors();
         ctx.save();
-        drawCanvasButton(ctx, button, isHovered, isDQEnabled);
+        drawCanvasButton(ctx, button, buttonColors, isHovered, isDQEnabled);
         ctx.restore();
 
         canvasButtons.push({ button, edge });
@@ -458,6 +467,7 @@ export function useCanvasEdgeRenderer({
     selectedColumn,
     dqHighlightedEdges,
     colors,
+    theme,
   ]);
 
   useEffect(() => {
