@@ -58,6 +58,20 @@ const buildSinkConnectionValues = (sinkConfig: SinkNodeConfig) => ({
   conflictResolution: sinkConfig.conflictResolution || 'overwriteExternal',
 });
 
+const buildSinkMetaValues = (
+  data: SinkNodeData,
+  sinkConfig: SinkNodeConfig,
+  t: ReturnType<typeof useTranslation>['t']
+) => ({
+  displayName: data.displayName || data.label || '',
+  description: data.description || '',
+  commitMessageTemplate:
+    sinkConfig.commitConfig?.messageTemplate ||
+    'Sync {entityType}: {entityName}',
+  authorName: sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
+  authorEmail: sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
+});
+
 export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   node,
   onSave,
@@ -103,32 +117,17 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     []
   );
 
-  const buildSinkMetaValues = useCallback(
-    (data: SinkNodeData, sinkConfig: SinkNodeConfig) => ({
-      displayName: data.displayName || data.label || '',
-      description: data.description || '',
-      commitMessageTemplate:
-        sinkConfig.commitConfig?.messageTemplate ||
-        'Sync {entityType}: {entityName}',
-      authorName:
-        sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
-      authorEmail:
-        sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
-    }),
-    [t]
-  );
-
   useEffect(() => {
     if (node?.data) {
       const data = node.data as SinkNodeData;
       const sinkConfig = data.config?.sinkConfig ?? {};
 
       setFormData({
-        ...buildSinkMetaValues(data, sinkConfig),
+        ...buildSinkMetaValues(data, sinkConfig, t),
         ...buildSinkConnectionValues(sinkConfig),
       });
     }
-  }, [node, buildSinkMetaValues]);
+  }, [node]);
 
   const handleSave = () => {
     const sinkConfig = {
