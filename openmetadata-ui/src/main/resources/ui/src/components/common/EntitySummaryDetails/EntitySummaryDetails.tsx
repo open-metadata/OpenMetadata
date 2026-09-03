@@ -31,6 +31,7 @@ import { getTeamsUser } from '../../../utils/TeamUtils';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './entity-summary-details.style.less';
+import { RetValContext } from './EntitySummaryDetails.interface';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
@@ -41,8 +42,6 @@ export interface GetInfoElementsProps {
   allowTeamOwner?: boolean;
 }
 
-type TFunc = ReturnType<typeof useTranslation>['t'];
-
 const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
   <Tooltip title={content}>
     <Icon
@@ -52,17 +51,6 @@ const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
     />
   </Tooltip>
 );
-
-interface RetValContext {
-  data: ExtraInfo;
-  displayVal: ExtraInfo['value'];
-  userDetails: Record<string, string | undefined> | undefined;
-  isEntityDetails?: boolean;
-  isTeamOwner: boolean;
-  isOwner: boolean;
-  isTier: boolean;
-  t: TFunc;
-}
 
 const getOwnerRetVal = ({
   data,

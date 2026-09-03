@@ -48,19 +48,16 @@ import {
 import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import {
-  Dispatch,
   FC,
   lazy,
-  SetStateAction,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { useForm, UseFormReturn } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
@@ -80,7 +77,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
-  ContextMemory,
   EntityReference,
   LabelType,
   MemoryType,
@@ -90,11 +86,7 @@ import {
   TagSource,
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
-import {
-  createContextMemory,
-  deleteContextMemory,
-  updateContextMemory,
-} from '../../../rest/contextMemoryAPI';
+import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
@@ -108,8 +100,19 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
   CreateMemoryModalProps,
+  LinkedAssetsSectionProps,
   MemoryFormValues,
+  MemoryMetadataCardProps,
+  MemoryModalFooterProps,
+  MemoryModalHeaderProps,
+  ReadOnlyBannerProps,
 } from './CreateMemoryModal.interface';
+import {
+  buildMemoryFormState,
+  removeAssetByKey,
+  submitMemoryCreate,
+  submitMemoryUpdate,
+} from './CreateMemoryModal.utils';
 
 const TagSelectForm = withSuspenseFallback(
   lazy(
@@ -240,16 +243,6 @@ const VISIBILITY_ICON_MAP = {
   FileLock02: <FileLock02 size={12} strokeWidth={2} />,
 };
 
-type TFunc = (key: string, options?: Record<string, unknown>) => string;
-
-interface MemoryModalHeaderProps {
-  modalTitle: string;
-  memoryToEdit?: ContextMemory;
-  memorySource?: EntityReference;
-  memorySourceLink?: string;
-  t: TFunc;
-}
-
 // The sticky title bar: memory title, creator/updated-at, and (when the
 // memory was extracted from a source document) a link back to it.
 const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
@@ -314,14 +307,6 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
   </div>
 );
 
-interface ReadOnlyBannerProps {
-  isViewOnly: boolean;
-  isOwner: boolean;
-  canDelete: boolean;
-  memoryToEdit?: ContextMemory;
-  t: TFunc;
-}
-
 // Warns a non-owner, non-admin viewer that this memory isn't theirs to edit.
 const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
   isViewOnly,
@@ -359,24 +344,6 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
     </div>
   ) : null;
 };
-
-const getAssetKey = (asset: DataAssetOption): string =>
-  asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
-
-// Removes the linked asset whose derived key matches `fqn` (mirrors the key
-// used to render/select each `LinkedAssetCard`).
-const removeAssetByKey = (
-  assets: DataAssetOption[],
-  fqn: string
-): DataAssetOption[] => assets.filter((asset) => getAssetKey(asset) !== fqn);
-
-interface LinkedAssetsSectionProps {
-  isViewOnly: boolean;
-  linkedAssets: DataAssetOption[];
-  setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
-  handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
-  t: TFunc;
-}
 
 // Header (asset count + "link an entity" trigger) and the list/read-only
 // view of the linked data assets.
@@ -443,27 +410,6 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
     )}
   </div>
 );
-
-interface MemoryMetadataCardProps {
-  form: UseFormReturn<MemoryFormValues>;
-  isEditingVisibility: boolean;
-  setIsEditingVisibility: Dispatch<SetStateAction<boolean>>;
-  memoryToEdit?: ContextMemory;
-  isViewOnly: boolean;
-  isOwner: boolean;
-  selectedTags: TagLabel[];
-  handleRemoveTag: (tagFQN: string) => void;
-  showTagForm: boolean;
-  setShowTagForm: Dispatch<SetStateAction<boolean>>;
-  fetchTagOptions: (
-    searchText: string,
-    page: number
-  ) => ReturnType<typeof tagClassBase.getTags>;
-  handleTagSave: (
-    tags: DefaultOptionType | DefaultOptionType[]
-  ) => Promise<void>;
-  t: TFunc;
-}
 
 // "Metadata" card: visibility (badge or editable select), tags, and the
 // updated-at / connector-specific metadata rows sourced from
@@ -693,21 +639,6 @@ const MemoryMetadataCard: FC<MemoryMetadataCardProps> = ({
   </div>
 );
 
-interface MemoryModalFooterProps {
-  memoryToEdit?: ContextMemory;
-  canDelete: boolean;
-  isDeleting: boolean;
-  isSubmitting: boolean;
-  handleDelete: () => void;
-  handleClose: () => void;
-  showEditButton: boolean | undefined;
-  handleSwitchToEdit: () => void;
-  showSubmitButton: boolean | undefined;
-  isSubmitDisabled: boolean;
-  submitLabel: string;
-  t: TFunc;
-}
-
 // Sticky footer: delete (when allowed), cancel, and edit/submit depending on
 // the modal's current view/edit mode.
 const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
@@ -768,171 +699,6 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
     </div>
   </div>
 );
-
-// ─── Submit helpers ─────────────────────────────────────────────────────────
-
-interface SubmitMemoryFields {
-  title: string;
-  memory: string;
-  memoryTypeValue: MemoryType | undefined;
-  visibility: ShareVisibility;
-  selectedTags: TagLabel[];
-  primaryEntity: EntityReference | undefined;
-  relatedEntities: EntityReference[];
-}
-
-interface SubmitMemoryUpdateParams extends SubmitMemoryFields {
-  memoryToEdit: ContextMemory;
-  t: (key: string, options?: Record<string, unknown>) => string;
-  onUpdated?: () => void;
-}
-
-// Patches only the fields that actually changed, preserving a pre-existing
-// shareConfig — or adding one — only when there is a reason to (an existing
-// config, or a visibility that differs from the default).
-const submitMemoryUpdate = async ({
-  memoryToEdit,
-  title,
-  memory,
-  memoryTypeValue,
-  visibility,
-  selectedTags,
-  primaryEntity,
-  relatedEntities,
-  t,
-  onUpdated,
-}: SubmitMemoryUpdateParams): Promise<void> => {
-  const hasExistingShareConfig =
-    memoryToEdit.shareConfig?.visibility !== undefined;
-  const original = {
-    title: memoryToEdit.title ?? '',
-    summary: memoryToEdit.summary ?? '',
-    answer: memoryToEdit.answer,
-    question: memoryToEdit.question,
-    memoryType: memoryToEdit.memoryType,
-    tags: memoryToEdit.tags ?? [],
-    primaryEntity: memoryToEdit.primaryEntity,
-    relatedEntities: (memoryToEdit.relatedEntities ?? []).map((r) => ({
-      id: r.id,
-      type: r.type,
-      name: r.name,
-      displayName: r.displayName,
-      fullyQualifiedName: r.fullyQualifiedName,
-    })),
-    ...(hasExistingShareConfig
-      ? {
-          shareConfig: {
-            visibility: memoryToEdit.shareConfig?.visibility,
-          },
-        }
-      : {}),
-  };
-  const updated = {
-    title: title.trim(),
-    summary: '',
-    answer: memory.trim(),
-    question: memory.trim(),
-    memoryType: memoryTypeValue,
-    tags: selectedTags,
-    primaryEntity,
-    relatedEntities,
-    ...(hasExistingShareConfig || visibility !== ShareVisibility.Shared
-      ? { shareConfig: { visibility } }
-      : {}),
-  };
-  const patch = compare(original, updated);
-  await updateContextMemory(memoryToEdit.id, patch);
-  showSuccessToast(
-    t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
-  );
-  onUpdated?.();
-};
-
-interface SubmitMemoryCreateParams extends SubmitMemoryFields {
-  t: (key: string, options?: Record<string, unknown>) => string;
-  onCreated: () => void;
-}
-
-// Builds a URL-safe `name` from the title (falling back to the memory text)
-// and omits optional fields the API defaults sensibly without.
-const submitMemoryCreate = async ({
-  title,
-  memory,
-  memoryTypeValue,
-  visibility,
-  selectedTags,
-  primaryEntity,
-  relatedEntities,
-  t,
-  onCreated,
-}: SubmitMemoryCreateParams): Promise<void> => {
-  const name = (title.trim() || memory.trim())
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .slice(0, 64);
-
-  await createContextMemory({
-    name,
-    question: memory.trim(),
-    answer: memory.trim(),
-    ...(title.trim() ? { title: title.trim() } : {}),
-    ...(memoryTypeValue ? { memoryType: memoryTypeValue } : {}),
-    ...(selectedTags.length > 0 ? { tags: selectedTags } : {}),
-    ...(primaryEntity ? { primaryEntity } : {}),
-    ...(relatedEntities.length > 0 ? { relatedEntities } : {}),
-    shareConfig: { visibility },
-  });
-  queryClient.invalidateQueries({
-    queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
-  });
-
-  showSuccessToast(
-    t('server.create-entity-success', { entity: t(MEMORY_LABEL_KEY) })
-  );
-  onCreated();
-};
-
-interface MemoryFormState {
-  formValues: MemoryFormValues;
-  tags: TagLabel[];
-  assets: DataAssetOption[];
-}
-
-const memoryEntityToAssetOption = (ref: EntityReference): DataAssetOption => ({
-  label: ref.displayName ?? ref.name ?? '',
-  value: ref.fullyQualifiedName ?? ref.id,
-  displayName: ref.displayName ?? ref.name ?? '',
-  reference: ref,
-});
-
-// Derives the RHF form values, tags, and linked-asset options from the memory
-// being edited, so the edit modal opens pre-populated.
-const buildMemoryFormState = (
-  memoryToEdit: ContextMemory,
-  t: (key: string) => string
-): MemoryFormState => {
-  const memoryTypeOption = memoryToEdit.memoryType
-    ? MEMORY_TYPE_OPTIONS.find((opt) => opt.id === memoryToEdit.memoryType)
-    : undefined;
-
-  const formValues: MemoryFormValues = {
-    title: memoryToEdit.title ?? '',
-    memory: memoryToEdit.answer ?? memoryToEdit.question ?? '',
-    memoryType: memoryTypeOption
-      ? { id: memoryTypeOption.id, label: t(memoryTypeOption.labelKey) }
-      : null,
-    visibility: memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Shared,
-  };
-
-  const assets: DataAssetOption[] = [
-    ...(memoryToEdit.primaryEntity
-      ? [memoryEntityToAssetOption(memoryToEdit.primaryEntity)]
-      : []),
-    ...(memoryToEdit.relatedEntities ?? []).map(memoryEntityToAssetOption),
-  ];
-
-  return { formValues, tags: memoryToEdit.tags ?? [], assets };
-};
 
 // ─── Main component ───────────────────────────────────────────────────────────
 

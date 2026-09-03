@@ -63,10 +63,6 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
-import {
-  isCacheWarmupApplication,
-  isMcpApplication,
-} from '../../../../utils/ApplicationUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -85,33 +81,23 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import McpApplicationConfiguration from '../McpApplicationConfiguration/McpApplicationConfiguration';
 import './app-details.less';
-import { AppAction } from './AppDetails.interface';
+import {
+  AppAction,
+  ConfigurationTabParams,
+  LiveIndexingTabParams,
+  ManageButtonHandlers,
+  RecentRunsTabParams,
+  ScheduleTabParams,
+  TFunc,
+} from './AppDetails.interface';
+import {
+  getIsAppUnavailable,
+  getIsRuntimeDisabled,
+  getRuntimeDisabledReason,
+  getShowAppConfigTab,
+  getShowMcpConfigTab,
+} from './AppDetails.utils';
 import applicationsClassBase from './ApplicationsClassBase';
-
-type TFunc = ReturnType<typeof useTranslation>['t'];
-
-const getIsRuntimeDisabled = (appData: App | undefined): boolean =>
-  Boolean(appData?.enabled === false && !appData.deleted);
-
-const getRuntimeDisabledReason = (
-  appData: App | undefined,
-  isRuntimeDisabled: boolean,
-  t: TFunc
-): string | undefined =>
-  isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
-    ? t('message.cache-service-not-configured-message')
-    : undefined;
-
-const getIsAppUnavailable = (
-  appData: App | undefined,
-  isRuntimeDisabled: boolean
-): boolean => Boolean(appData?.deleted) || isRuntimeDisabled;
-
-interface ManageButtonHandlers {
-  setShowActions: (value: boolean) => void;
-  setAction: (value: AppAction) => void;
-  setShowDeleteModel: (value: boolean) => void;
-}
 
 const getManageButtonContent = (
   appData: App | undefined,
@@ -184,48 +170,6 @@ const getManageButtonContent = (
       ]),
 ];
 
-const getShowMcpConfigTab = (
-  appData: App | undefined,
-  isAdminUser: boolean | undefined,
-  jsonSchema: RJSFSchema | undefined,
-  isRuntimeDisabled: boolean
-): boolean =>
-  Boolean(
-    isMcpApplication(appData?.name) &&
-      isAdminUser &&
-      jsonSchema &&
-      !isRuntimeDisabled
-  );
-
-const getShowAppConfigTab = (
-  showMcpConfigTab: boolean,
-  appData: App | undefined,
-  jsonSchema: RJSFSchema | undefined,
-  isRuntimeDisabled: boolean
-): boolean =>
-  Boolean(
-    !showMcpConfigTab &&
-      appData?.appConfiguration &&
-      appData.allowConfiguration &&
-      jsonSchema &&
-      !isRuntimeDisabled
-  );
-
-interface ConfigurationTabParams {
-  showMcpConfigTab: boolean;
-  showAppConfigTab: boolean;
-  appData: App | undefined;
-  jsonSchema: RJSFSchema | undefined;
-  isSaveLoading: boolean;
-  onConfigSave: (
-    data: IChangeEvent & { ingestionRunner?: EntityReference }
-  ) => Promise<void>;
-  ApplicationConfigurationComponent: ReturnType<
-    typeof applicationsClassBase.getApplicationConfigurationComponent
-  >;
-  t: TFunc;
-}
-
 const getConfigurationTabs = ({
   showMcpConfigTab,
   showAppConfigTab,
@@ -265,20 +209,6 @@ const getConfigurationTabs = ({
     },
   ];
 };
-
-interface ScheduleTabParams {
-  showScheduleTab: boolean;
-  appData: App | undefined;
-  isRuntimeDisabled: boolean;
-  runtimeDisabledReason: string | undefined;
-  jsonSchema: RJSFSchema | undefined;
-  isRunLoading: boolean;
-  isDeployLoading: boolean;
-  onDemandTrigger: () => Promise<void>;
-  onDeployTrigger: () => Promise<void>;
-  onAppScheduleSave: (cron: string) => Promise<void>;
-  t: TFunc;
-}
 
 const getScheduleTabs = ({
   showScheduleTab,
@@ -326,14 +256,6 @@ const getScheduleTabs = ({
   ];
 };
 
-interface RecentRunsTabParams {
-  isAppUnavailable: boolean;
-  showScheduleTab: boolean;
-  appData: App | undefined;
-  jsonSchema: RJSFSchema | undefined;
-  t: TFunc;
-}
-
 const getRecentRunsTabs = ({
   isAppUnavailable,
   showScheduleTab,
@@ -363,12 +285,6 @@ const getRecentRunsTabs = ({
     },
   ];
 };
-
-interface LiveIndexingTabParams {
-  isAppUnavailable: boolean;
-  appData: App | undefined;
-  t: TFunc;
-}
 
 const getLiveIndexingTabs = ({
   isAppUnavailable,

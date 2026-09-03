@@ -49,6 +49,15 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import {
+  FeedCommentsSectionProps,
+  FeedHeaderTextRowProps,
+  FeedWidgetCardProps,
+  FeedWidgetFooterSectionProps,
+  ThreadFeedCardProps,
+  ThreadFooterSectionProps,
+} from './ActivityFeedcardNew.interface';
+import { getFeedCardClassName } from './ActivityFeedcardNew.utils';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -67,43 +76,6 @@ interface ActivityFeedCardNewProps {
   isFeedWidget?: boolean;
   isFullSizeWidget?: boolean;
   onActivityClick?: (activity: ActivityEvent) => void;
-}
-
-type EntityRefLike = { type?: string } | undefined;
-
-// Shared across both card variants: the top-level Card wrapper always mixes
-// the same "showThread || isPost || isOpenInDrawer" right-panel state with
-// the reply/active-card modifiers, only the base class differs.
-const getFeedCardClassName = (
-  basePrefix: string,
-  {
-    showThread,
-    isPost,
-    isOpenInDrawer,
-    isActive,
-  }: {
-    showThread?: boolean;
-    isPost: boolean;
-    isOpenInDrawer: boolean;
-    isActive?: boolean;
-  }
-) =>
-  classNames(
-    basePrefix,
-    {
-      'activity-feed-card-new-right-panel m-0 gap-0':
-        showThread || isPost || isOpenInDrawer,
-    },
-    { 'activity-feed-reply-card': isPost },
-    { 'active-card is-active': isActive }
-  );
-
-interface FeedHeaderTextRowProps {
-  isPost: boolean;
-  showThread?: boolean;
-  entityRef: EntityRefLike;
-  feedHeaderText: string;
-  renderEntityLink: React.ReactNode;
 }
 
 /** The "<action> <entity>" header row + entity link, hidden for reply posts. */
@@ -136,17 +108,6 @@ const FeedHeaderTextRow = ({
     </Space>
   );
 };
-
-interface FeedWidgetFooterSectionProps {
-  isFullSizeWidget?: boolean;
-  isActivityEvent: boolean;
-  feed?: Conversation;
-  activity?: ActivityEvent;
-  isForFeedTab?: boolean;
-  isPost: boolean;
-  post?: ConversationReply;
-  onActivityClick?: (activity: ActivityEvent) => void;
-}
 
 /** The feed-widget footer: a conversation reply footer or an activity-event footer, size-gated. */
 const FeedWidgetFooterSection = ({
@@ -192,16 +153,6 @@ const FeedWidgetFooterSection = ({
   return null;
 };
 
-interface ThreadFooterSectionProps {
-  isActivityEvent: boolean;
-  feed?: Conversation;
-  activity?: ActivityEvent;
-  isForFeedTab?: boolean;
-  isPost: boolean;
-  post?: ConversationReply;
-  onActivityClick?: (activity: ActivityEvent) => void;
-}
-
 /** The thread-card footer: a conversation reply footer or an activity-event footer. */
 const ThreadFooterSection = ({
   isActivityEvent,
@@ -236,22 +187,6 @@ const ThreadFooterSection = ({
 
   return null;
 };
-
-interface FeedCommentsSectionProps {
-  showThread?: boolean;
-  isOpenInDrawer: boolean;
-  showActivityFeedEditor?: boolean;
-  showFeedEditor: boolean;
-  isActivityEvent: boolean;
-  activityReplies: ConversationReply[];
-  feed?: Conversation;
-  feedId: string;
-  currentUserName: string;
-  onSave: (message: string) => void;
-  onShowEditor: () => void;
-  posts: React.ReactNode;
-  t: (key: string) => string;
-}
 
 /** The comment thread: title, editor-or-input trigger, and the replies list. */
 const FeedCommentsSection = ({
@@ -322,33 +257,6 @@ const FeedCommentsSection = ({
     </div>
   );
 };
-
-interface FeedWidgetCardProps {
-  feed?: Conversation;
-  activity?: ActivityEvent;
-  isPost: boolean;
-  post?: ConversationReply;
-  showThread?: boolean;
-  isActive?: boolean;
-  isForFeedTab?: boolean;
-  isOpenInDrawer: boolean;
-  isFeedWidget: boolean;
-  isFullSizeWidget?: boolean;
-  onActivityClick?: (activity: ActivityEvent) => void;
-  createdBy: string;
-  user: ReturnType<typeof useUserProfile>[2];
-  entityRef: EntityRefLike;
-  feedHeaderText: string;
-  renderEntityLink: React.ReactNode;
-  feedMessage: string;
-  isEditPost: boolean;
-  setIsEditPost: React.Dispatch<React.SetStateAction<boolean>>;
-  onUpdate: (message: string) => void;
-  timestamp: React.ReactNode;
-  feedActions: React.ReactNode;
-  isActivityEvent: boolean;
-  setIsHovered: (value: boolean) => void;
-}
 
 const FeedWidgetCard = ({
   feed,
@@ -465,40 +373,6 @@ const FeedWidgetCard = ({
     </Card>
   );
 };
-
-interface ThreadFeedCardProps {
-  feed?: Conversation;
-  activity?: ActivityEvent;
-  isPost: boolean;
-  post?: ConversationReply;
-  showActivityFeedEditor?: boolean;
-  showThread?: boolean;
-  isActive?: boolean;
-  isForFeedTab?: boolean;
-  isOpenInDrawer: boolean;
-  onActivityClick?: (activity: ActivityEvent) => void;
-  createdBy: string;
-  user: ReturnType<typeof useUserProfile>[2];
-  entityRef: EntityRefLike;
-  feedHeaderText: string;
-  renderEntityLink: React.ReactNode;
-  feedMessage: string;
-  isEditPost: boolean;
-  setIsEditPost: React.Dispatch<React.SetStateAction<boolean>>;
-  onUpdate: (message: string) => void;
-  timestamp: React.ReactNode;
-  feedActions: React.ReactNode;
-  isActivityEvent: boolean;
-  setIsHovered: (value: boolean) => void;
-  feedId: string;
-  showFeedEditor: boolean;
-  setShowFeedEditor: (value: boolean) => void;
-  onSave: (message: string) => void;
-  activityReplies: ConversationReply[];
-  posts: React.ReactNode;
-  currentUserName: string;
-  t: (key: string) => string;
-}
 
 const ThreadFeedCard = ({
   feed,

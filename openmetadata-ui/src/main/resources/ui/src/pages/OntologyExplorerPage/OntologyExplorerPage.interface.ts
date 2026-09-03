@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-.recent-events-collapse.ant-collapse {
-  background: none;
-  .ant-collapse-header {
-    padding: var(--om-space-8) var(--om-space-40) var(--om-space-8)
-      var(--om-space-12);
-  }
-}
+import { useTranslation } from 'react-i18next';
+
+export type TFunc = ReturnType<typeof useTranslation>['t'];

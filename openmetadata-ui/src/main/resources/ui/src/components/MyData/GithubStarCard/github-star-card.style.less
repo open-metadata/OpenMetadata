@@ -71,7 +71,11 @@
     }
 
     .github-star-button {
-      background: linear-gradient(0.5turn, var(--om-legacy-color-0-0-0-0-2), transparent);
+      background: linear-gradient(
+        0.5turn,
+        var(--om-legacy-color-0-0-0-0-2),
+        transparent
+      );
       border-right: @global-border;
 
       &:hover {
@@ -82,12 +86,14 @@
 }
 
 .github-star-popup-card-with-alert {
-  animation: scrollInWithAlert var(--om-duration-2000) normal forwards ease-in-out;
+  animation: scrollInWithAlert var(--om-duration-2000) normal forwards
+    ease-in-out;
   animation-delay: var(--om-duration-1000);
 }
 
 .github-star-popup-card-without-alert {
-  animation: scrollInWithoutAlert var(--om-duration-2000) normal forwards ease-in-out;
+  animation: scrollInWithoutAlert var(--om-duration-2000) normal forwards
+    ease-in-out;
   animation-delay: var(--om-duration-1000);
 }
 

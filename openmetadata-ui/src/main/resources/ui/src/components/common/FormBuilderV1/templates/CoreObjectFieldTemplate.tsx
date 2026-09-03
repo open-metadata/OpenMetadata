@@ -24,45 +24,31 @@ import { ChevronDown, Hexagon01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER,
-  STATIC_AWS_CREDENTIAL_PROPERTIES,
-} from '../../../../constants/CoreObjectFieldTemplate.constants';
+import { STATIC_AWS_CREDENTIAL_PROPERTIES } from '../../../../constants/CoreObjectFieldTemplate.constants';
 import {
   getAdvancedHeaderLabel,
   getFormSeperationConfig,
   getOrderedNormalProperties,
   getPropertyContent,
-  orderProperties,
   partitionProperties,
   shouldSpanFullWidth,
 } from '../../../../utils/CoreObjectFieldTemplateUtils';
 import {
   AdvancedPropertiesSectionProps,
+  NonRootTitledViewProps,
+  PropertiesContentProps,
   PropertyItemProps,
+  TFunctionType,
 } from './CoreObjectFieldTemplate.interface';
-
-type TFunctionType = ReturnType<typeof useTranslation>['t'];
-
-const getPropertyItemClassName = (
-  elementName: string,
-  flatPropertyLayout: boolean,
-  isRoot: boolean,
-  isFullWidth: boolean,
-  isToggleBanner: boolean,
-  isDisabled: boolean
-): string =>
-  classNames(
-    'core-object-field-template-property tw:min-w-0',
-    `core-object-field-template-property-${elementName}`,
-    !flatPropertyLayout && 'tw:rounded-xl tw:bg-utility-gray-blue-50',
-    !flatPropertyLayout && isRoot && 'tw:p-4',
-    isFullWidth &&
-      'core-object-field-template-property-full-width tw:[grid-column:1/-1] tw:justify-self-stretch tw:w-full',
-    isToggleBanner && 'core-object-field-template-property-toggle-banner',
-    isDisabled &&
-      'core-object-field-template-property-disabled tw:opacity-[0.58]'
-  );
+import {
+  getBodyClassName,
+  getGatedCredentialProperties,
+  getIsImpersonationOnlyDisclosure,
+  getNonRootPanelClassName,
+  getOrderedAdvancedPropertiesList,
+  getPropertyItemClassName,
+  shouldRenderNullTemplate,
+} from './CoreObjectFieldTemplate.utils';
 
 const PropertyItem: FunctionComponent<PropertyItemProps> = ({
   element,
@@ -240,104 +226,6 @@ const getAddButton = (
   );
 };
 
-const getOrderedAdvancedPropertiesList = (
-  advancedProperties: ObjectFieldTemplateProps['properties'],
-  isGatedCredentialConfig: boolean
-): ObjectFieldTemplateProps['properties'] =>
-  isGatedCredentialConfig
-    ? orderProperties(
-        advancedProperties,
-        GATED_CREDENTIAL_ADVANCED_PROPERTY_ORDER
-      )
-    : advancedProperties;
-
-const getGatedCredentialProperties = (
-  orderedNormalProperties: ObjectFieldTemplateProps['properties'],
-  isGatedCredentialConfig: boolean
-): {
-  toggleProperties: ObjectFieldTemplateProps['properties'];
-  fieldProperties: ObjectFieldTemplateProps['properties'];
-} => ({
-  toggleProperties: isGatedCredentialConfig
-    ? orderedNormalProperties.filter((property) => property.name === 'enabled')
-    : [],
-  fieldProperties: isGatedCredentialConfig
-    ? orderedNormalProperties.filter((property) => property.name !== 'enabled')
-    : [],
-});
-
-const getIsImpersonationOnlyDisclosure = (
-  isGenericNestedConfig: boolean,
-  orderedAdvancedProperties: ObjectFieldTemplateProps['properties']
-): boolean =>
-  isGenericNestedConfig &&
-  orderedAdvancedProperties.length === 1 &&
-  orderedAdvancedProperties[0].name.toLowerCase().includes('impersonate');
-
-const getBodyClassName = (
-  isGatedCredentialConfig: boolean,
-  isNestedConfigGrid: boolean
-): string => {
-  if (isGatedCredentialConfig) {
-    return 'core-object-field-template-body-gated';
-  }
-  if (isNestedConfigGrid) {
-    return 'core-object-field-template-body-grid tw:grid tw:grid-flow-row-dense tw:[grid-template-columns:repeat(3,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0';
-  }
-
-  return 'tw:flex tw:flex-col tw:gap-4';
-};
-
-const shouldRenderNullTemplate = (
-  isRoot: boolean,
-  hasAdditionalProperties: boolean,
-  normalPropertiesLength: number,
-  advancedPropertiesLength: number
-): boolean =>
-  !isRoot &&
-  !hasAdditionalProperties &&
-  normalPropertiesLength === 0 &&
-  advancedPropertiesLength === 0;
-
-const getNonRootPanelClassName = (
-  flatPropertyLayout: boolean,
-  isSampleDataSection: boolean,
-  isSampleDataConfig: boolean,
-  isAwsS3StorageConfig: boolean,
-  isGatedCredentialConfig: boolean,
-  isGenericNestedConfig: boolean
-): string =>
-  classNames(
-    'core-object-field-template core-object-field-template-non-root tw:flex tw:flex-col tw:w-full tw:min-w-0',
-    'tw:gap-4',
-    !flatPropertyLayout && 'tw:rounded-xl tw:bg-utility-gray-blue-50',
-    isSampleDataSection && 'core-object-field-template-sample-data-section',
-    isSampleDataConfig &&
-      'core-object-field-template-sample-data-config tw:mt-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4',
-    isAwsS3StorageConfig &&
-      'core-object-field-template-storage-config tw:mt-4 tw:gap-4 tw:box-border tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-4',
-    isGatedCredentialConfig &&
-      'core-object-field-template-gated-credential-block',
-    isGenericNestedConfig && 'core-object-field-template-credential-block'
-  );
-
-interface PropertiesContentProps {
-  isRoot: boolean;
-  schema: ObjectFieldTemplateProps['schema'];
-  bodyClassName: string;
-  addButton: ReactNode;
-  isGatedCredentialConfig: boolean;
-  gatedCredentialToggleProperties: ObjectFieldTemplateProps['properties'];
-  gatedCredentialFieldProperties: ObjectFieldTemplateProps['properties'];
-  orderedNormalProperties: ObjectFieldTemplateProps['properties'];
-  normalProperties: ObjectFieldTemplateProps['properties'];
-  flatPropertyLayout: boolean;
-  isIamAuthEnabled: boolean;
-  uiSchema: ObjectFieldTemplateProps['uiSchema'];
-  advancedPropertiesContent: ReactNode;
-  t: TFunctionType;
-}
-
 const PropertiesContent: FunctionComponent<PropertiesContentProps> = ({
   isRoot,
   schema,
@@ -433,21 +321,6 @@ const PropertiesContent: FunctionComponent<PropertiesContentProps> = ({
     {advancedPropertiesContent}
   </>
 );
-
-interface NonRootTitledViewProps {
-  flatPropertyLayout: boolean;
-  isSampleDataSection: boolean;
-  isSampleDataConfig: boolean;
-  isAwsS3StorageConfig: boolean;
-  isGatedCredentialConfig: boolean;
-  isGenericNestedConfig: boolean;
-  schema: ObjectFieldTemplateProps['schema'];
-  idSchema: ObjectFieldTemplateProps['idSchema'];
-  title: string | undefined;
-  shouldShowDescription: boolean;
-  description: string | undefined;
-  propertiesContent: ReactNode;
-}
 
 const NonRootTitledView: FunctionComponent<NonRootTitledViewProps> = ({
   flatPropertyLayout,

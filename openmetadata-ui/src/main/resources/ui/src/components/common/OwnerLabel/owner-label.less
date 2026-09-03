@@ -16,7 +16,8 @@
   gap: var(--om-space-6);
   border: 1px solid @grey-4;
   border-radius: var(--om-radius-20);
-  padding: var(--om-space-4) var(--om-space-8) var(--om-space-4) var(--om-space-6);
+  padding: var(--om-space-4) var(--om-space-8) var(--om-space-4)
+    var(--om-space-6);
   display: inline-flex;
 
   a {
@@ -216,14 +217,18 @@
   margin-inline-start: var(--om-space-8);
   padding: var(--om-space-4);
   background: transparent;
-  border: 1px solid var(--tw-color-border-secondary, var(--om-legacy-color-eaecf0));
+  border: 1px solid
+    var(--tw-color-border-secondary, var(--om-legacy-color-eaecf0));
   border-radius: var(--om-radius-md);
   cursor: pointer;
   color: var(--tw-color-text-tertiary, var(--om-legacy-color-667085));
   transition: background-color var(--om-duration-100) linear;
 
   &:hover {
-    background-color: var(--tw-color-bg-secondary, var(--om-color-gray-neutral-50));
+    background-color: var(
+      --tw-color-bg-secondary,
+      var(--om-color-gray-neutral-50)
+    );
     color: var(--tw-color-text-primary, var(--om-legacy-color-101828));
   }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-.recent-events-collapse.ant-collapse {
-  background: none;
-  .ant-collapse-header {
-    padding: var(--om-space-8) var(--om-space-40) var(--om-space-8)
-      var(--om-space-12);
-  }
+import { ExtraInfo } from 'Models';
+import { useTranslation } from 'react-i18next';
+
+export type TFunc = ReturnType<typeof useTranslation>['t'];
+
+export interface RetValContext {
+  data: ExtraInfo;
+  displayVal: ExtraInfo['value'];
+  userDetails: Record<string, string | undefined> | undefined;
+  isEntityDetails?: boolean;
+  isTeamOwner: boolean;
+  isOwner: boolean;
+  isTier: boolean;
+  t: TFunc;
 }
