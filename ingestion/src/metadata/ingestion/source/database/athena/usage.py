@@ -12,7 +12,7 @@
 Athena usage module
 """
 
-from typing import Iterable  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
