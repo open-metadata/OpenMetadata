@@ -91,3 +91,16 @@ def test_fetch_all_reports_rejects_repeated_full_page(mode_client):
         mode_client.fetch_all_reports("acme")
 
     assert mode_client.client.get.call_args_list[-1] == call("/acme/spaces/space-token/reports?page=2")
+
+
+def test_fetch_all_reports_allows_distinct_tokenless_pages(mode_client):
+    first_page = [{"name": f"first-{index}"} for index in range(30)]
+    second_page = [{"name": f"second-{index}"} for index in range(30)]
+    mode_client.client.get.side_effect = [
+        _embedded("spaces", [{"token": "space-token"}]),
+        _embedded("reports", first_page),
+        _embedded("reports", second_page),
+        _embedded("reports", []),
+    ]
+
+    assert mode_client.fetch_all_reports("acme") == first_page + second_page
