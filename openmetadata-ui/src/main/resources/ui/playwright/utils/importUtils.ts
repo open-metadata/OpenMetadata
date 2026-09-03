@@ -29,6 +29,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
+import { CODE_EDITOR_CONTENT } from './codeEditor';
 import {
   clickOutside,
   descriptionBox,
@@ -839,7 +840,7 @@ const editGlossaryCustomProperty = async (
     await page.getByTestId('inline-save-btn').click();
 
     await expect(
-      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+      page.getByTestId(propertyName).locator(CODE_EDITOR_CONTENT)
     ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 

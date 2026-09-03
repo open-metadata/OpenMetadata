@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import {
   clickOutside,
   createNewPage,
@@ -182,7 +183,7 @@ test('Query Entity', async ({ page }) => {
   await test.step('Update query and QueryUsedIn', async () => {
     await page.click('[data-testid="query-btn"]');
     await page.click(`[data-menu-id*="edit-query"]`);
-    await page.click('.CodeMirror-line', { clickCount: 3 });
+    await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
     await page.click('[data-testid="edit-query-used-in"]');

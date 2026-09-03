@@ -25,7 +25,6 @@ import {
   Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
-import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
 import {
   lazy,

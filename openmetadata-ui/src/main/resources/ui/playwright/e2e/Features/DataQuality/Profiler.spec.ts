@@ -20,6 +20,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
@@ -287,7 +288,7 @@ test.describe(
         await page.locator('[data-testid="exclude-column-select"]').click();
         await page.keyboard.type(`${profilerSetting.excludeColumns}`);
         await page.keyboard.press('Enter');
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page.keyboard.type(profilerSetting.profileQuery);
 
         await page.locator('[data-testid="include-column-select"]').click();

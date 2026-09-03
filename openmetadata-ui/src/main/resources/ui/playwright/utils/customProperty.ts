@@ -25,6 +25,11 @@ import {
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
+  CODE_EDITOR,
+  CODE_EDITOR_CONTENT,
+  typeInCodeEditor,
+} from './codeEditor';
+import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -177,8 +182,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await container.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -332,7 +336,7 @@ export const validateValueForProperty = async (data: {
       endValue
     );
   } else if (propertyType === 'sqlQuery') {
-    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(container.locator(CODE_EDITOR_CONTENT)).toContainText(value);
   } else if (propertyType === 'table-cp') {
     const values = value.split(',');
 
@@ -1022,7 +1026,7 @@ export const editColumnCustomProperty = async (
     await page.getByTestId('save').click();
   } else if (propertyType === 'sqlQuery') {
     const codeMirror = page.locator(
-      '.custom-properties-section-container .CodeMirror'
+      `.custom-properties-section-container ${CODE_EDITOR}`
     );
     await expect(codeMirror).toBeVisible();
     await codeMirror.click();
@@ -1467,8 +1471,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;

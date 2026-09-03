@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
+import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import { clickOutside, descriptionBox, uuid } from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 
@@ -117,8 +118,7 @@ export const updateExpression = async (
   await page.locator('[id="root\\/language"]').fill(language);
   await page.getByTitle(`${language}`, { exact: true }).click();
 
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(code);
+  await typeInCodeEditor(page, page, code);
 
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
@@ -129,7 +129,7 @@ export const updateExpression = async (
   await patchPromise;
 
   await expect(
-    page.getByLabel('Expression').locator('.CodeMirror-scroll')
+    page.getByLabel('Expression').locator(CODE_EDITOR_CONTENT)
   ).toContainText(code);
 
   await page.getByRole('tab', { name: 'Overview', exact: true }).click();
@@ -287,8 +287,7 @@ export const addMetric = async (page: Page) => {
   );
 
   // Enter the code
-  await page.locator("pre[role='presentation']").last().click();
-  await page.keyboard.type(metricData.metricExpression.code);
+  await typeInCodeEditor(page, page, metricData.metricExpression.code);
 
   const postPromise = page.waitForResponse(
     (response) => response.request().method() === 'POST'
