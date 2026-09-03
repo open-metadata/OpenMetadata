@@ -55,7 +55,8 @@ const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
           <Link
             className="tw:w-max"
             data-testid="tag-redirect-link"
-            to={redirectLink}>
+            to={redirectLink}
+            onClick={(e) => e.stopPropagation()}>
             <TagChip
               data-testid="tags"
               icon={firstTag.style?.iconURL}
