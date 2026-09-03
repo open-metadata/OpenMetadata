@@ -12,8 +12,6 @@
 Mixin class for sending progress updates and operation metrics to OpenMetadata server.
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.services.ingestionPipelines.operationMetrics import (
     OperationMetricsBatch,
 )
@@ -83,7 +81,7 @@ class OMetaProgressMixin:
         except Exception as exc:
             logger.debug("Failed to send operation metrics batch: %s%s", exc, error_detail(exc))
 
-    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> Optional[ProgressUpdate]:  # noqa: UP045
+    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> ProgressUpdate | None:
         """
         Get the current progress state for a pipeline run.
 

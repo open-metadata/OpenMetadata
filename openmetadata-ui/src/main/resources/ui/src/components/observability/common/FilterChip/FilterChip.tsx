@@ -39,6 +39,8 @@ import {
 } from '../../../DataQuality/TestCases/FilterChip.interface';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 
+const TEXT_SECONDARY_CLASS = 'tw:text-secondary';
+
 // Leading icons for single-select filter options, per the 2.0 mock. Keyed by
 // option value so it naturally extends to other filters (e.g. status).
 const FILTER_OPTION_ICONS: Partial<Record<string, typeof Table>> = {
@@ -84,7 +86,7 @@ const InputChipTrigger = ({
     <span
       className={classNames(
         'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
-        hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
+        hasSelection ? TEXT_SECONDARY_CLASS : 'tw:text-placeholder'
       )}>
       {text}
     </span>
@@ -271,7 +273,7 @@ const SelectChip = ({
                             'tw:truncate tw:text-sm',
                             state.isSelected
                               ? 'tw:text-utility-brand-700'
-                              : 'tw:text-secondary'
+                              : TEXT_SECONDARY_CLASS
                           )}>
                           {option.label}
                         </span>
@@ -416,7 +418,7 @@ const UserChip = ({
         <span
           className={classNames(
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
-            hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
+            hasSelection ? TEXT_SECONDARY_CLASS : 'tw:text-placeholder'
           )}>
           {hasSelection ? displayText : label}
         </span>

@@ -66,6 +66,8 @@ import {
   isSymmetricRelationship,
 } from '../utils/relationshipTypeUtils';
 
+const COLOR_BLUE_600 = 'var(--color-blue-600)';
+
 const STUDIO_DEFAULT_ACCENT = '#84CAFF';
 const STUDIO_COMPLIANCE_ACCENT = '#DC6803';
 const STUDIO_ISOLATED_ACCENT = '#F79009';
@@ -253,7 +255,7 @@ export function useGraphDataBuilder({
     (node: OntologyNode): string =>
       node.glossaryId && glossaryColorMap[node.glossaryId]
         ? glossaryColorMap[node.glossaryId]
-        : 'var(--color-blue-600)',
+        : COLOR_BLUE_600,
     [glossaryColorMap]
   );
 
@@ -516,8 +518,8 @@ export function useGraphDataBuilder({
           const termNode = nodesForGraph.find((n) => n.id === termId);
 
           return termNode?.glossaryId
-            ? glossaryColorMap[termNode.glossaryId] ?? 'var(--color-blue-600)'
-            : 'var(--color-blue-600)';
+            ? glossaryColorMap[termNode.glossaryId] ?? COLOR_BLUE_600
+            : COLOR_BLUE_600;
         };
         if (fromIsTerm && !toIsTerm) {
           localAssetToTermColor.set(edge.to, getTermColor(edge.from));

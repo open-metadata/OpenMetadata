@@ -33,6 +33,8 @@ import {
   deserializePeriodicBatchFilters,
 } from './WorkflowSerializationUtils';
 
+const EVENT_BASED_TRIGGER_TYPE = 'Event Based';
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 };
@@ -164,7 +166,7 @@ export const convertDisplayToBackendTriggerType = (
   displayType: string
 ): string => {
   switch (displayType) {
-    case 'Event Based':
+    case EVENT_BASED_TRIGGER_TYPE:
       return 'eventBasedEntity';
     case 'Periodic Batch':
       return 'periodicBatchEntity';
@@ -178,7 +180,7 @@ export const convertBackendToDisplayTriggerType = (
 ): string => {
   switch (backendType) {
     case 'eventBasedEntity':
-      return 'Event Based';
+      return EVENT_BASED_TRIGGER_TYPE;
     case 'periodicBatchEntity':
       return 'Periodic Batch';
     default:
@@ -278,7 +280,7 @@ export const getInitialNodeConfig = (
     name: node?.data?.displayName || node?.data?.label || '',
     description: node?.data?.description || '',
     dataAssets: [],
-    triggerType: 'Event Based',
+    triggerType: EVENT_BASED_TRIGGER_TYPE,
     eventType: ['Created', 'Updated'],
     dataAssetFilters: [],
     excludeFields: [],
