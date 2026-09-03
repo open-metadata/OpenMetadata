@@ -73,7 +73,6 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
   test('should evict the least-recently-used session once the cap is exceeded', async ({
     browser,
   }) => {
-    test.slow();
     test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS * (MAX_ACTIVE_SESSIONS + 1));
 
     // Log the same user in across CAP+1 isolated contexts. Each fresh context is

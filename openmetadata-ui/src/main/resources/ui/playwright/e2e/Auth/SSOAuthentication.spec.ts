@@ -424,26 +424,28 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate to a page that makes multiple parallel API calls
       await page.goto('/');
-      // Wait for the renewal to actually land...
-      await expect
-        .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
-          timeout: 30_000,
-        })
-        .toBeGreaterThanOrEqual(1);
+      // Poll until the renewal count has STOPPED changing, not merely started:
+      // asserting the instant the first refresh lands would miss a duplicate
+      // arriving milliseconds later, which is exactly the regression this test
+      // exists to catch. expect.poll owns the sampling and the overall bound;
+      // `settled` counts consecutive identical reads.
+      let refreshAttempts = 0;
+      let previous = -1;
+      let settled = 0;
 
-      // ...then let any duplicate in-flight renewals settle before judging the
-      // count: asserting at the instant the FIRST refresh lands would miss a
-      // duplicate arriving milliseconds later. Stable across two consecutive
-      // reads 2s apart = settled (bounded at 5 rounds).
-      let refreshAttempts = (await getMetrics(request)).refreshAttempts;
-      for (let round = 0; round < 5; round++) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        const next = (await getMetrics(request)).refreshAttempts;
-        if (next === refreshAttempts) {
-          break;
-        }
-        refreshAttempts = next;
-      }
+      await expect
+        .poll(
+          async () => {
+            const { refreshAttempts: current } = await getMetrics(request);
+            settled = current === previous ? settled + 1 : 0;
+            previous = current;
+            refreshAttempts = current;
+
+            return current >= 1 && settled >= 2;
+          },
+          { intervals: [1000, 1000, 1000, 1000, 1000], timeout: 30_000 }
+        )
+        .toBe(true);
 
       // Token endpoint should have been called (for refresh), but not N times
       // Allow 1-2 since the initial auth code exchange also counts

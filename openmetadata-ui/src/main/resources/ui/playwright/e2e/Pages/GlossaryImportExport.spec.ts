@@ -138,7 +138,6 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {
-    test.slow();
     test.setTimeout(5 * 60 * 1000);
     let glossary1CsvContent = '';
 
