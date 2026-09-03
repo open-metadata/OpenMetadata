@@ -79,7 +79,6 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { createTable } from '../../utils/KnowledgeCenter';
 import {
   addCustomPropertiesForEntity,
   createCustomPropertyForEntity,
@@ -107,6 +106,7 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
   setSliderValue,
