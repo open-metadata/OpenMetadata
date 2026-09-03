@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -82,6 +83,37 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String DI_SEARCH_INDEX_PREFIX = "di-data-assets";
 
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
+
+  /**
+   * Entity types written to the Data Insights indices that are governance artifacts rather than data
+   * assets, and so are left out of every "data assets" total.
+   */
+  public static final List<String> NON_DATA_ASSET_ENTITY_TYPES =
+      List.of("tag", "glossaryTerm", "dataProduct");
+
+  /**
+   * Restricts a Data Insights chart to data-asset documents.
+   *
+   * <p>The {@code di-data-assets-*} pattern also resolves the data-quality aliases, whose documents
+   * are time series ({@code EntityTimeSeriesInterface}) rather than entities and therefore carry no
+   * {@code entityType}. Requiring that field to exist is what keeps them out of totals: a list of
+   * {@code must_not} term clauses cannot, because a document missing the field satisfies all of
+   * them. Breakdown charts grouped on {@code entityType.keyword} drop those documents already, so
+   * both sides must agree here or the summary card outruns the breakdown it sits above (#31478).
+   */
+  public static final String DATA_ASSET_FILTER = buildDataAssetFilter();
+
+  private static String buildDataAssetFilter() {
+    String exclusions =
+        NON_DATA_ASSET_ENTITY_TYPES.stream()
+            .map(
+                entityType ->
+                    String.format("{\"term\":{\"entityType.keyword\":\"%s\"}}", entityType))
+            .collect(Collectors.joining(","));
+    return String.format(
+        "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[%s]}}}",
+        exclusions);
+  }
 
   private static final Set IGNORE_OTHER_SERVICE_CHARTS =
       Set.of(
