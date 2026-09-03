@@ -1445,7 +1445,11 @@ const TableV2 = <T extends object>(
                 // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
                 // table is squeezed into its container instead, and columns
                 // that cannot wrap spill over their neighbours.
-                scrollWidth !== undefined
+                // An empty body doesn't need the scroll width — spanning it
+                // pushes the empty-state placeholder to the centre of the
+                // overflow area (off-screen right) and raises a scrollbar
+                // under a table with nothing to scroll to.
+                scrollWidth !== undefined && flatRows.length > 0
                   ? {
                       width: scrollWidth,
                       minWidth: '100%',

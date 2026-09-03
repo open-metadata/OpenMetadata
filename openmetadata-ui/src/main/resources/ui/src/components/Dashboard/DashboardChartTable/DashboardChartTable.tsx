@@ -81,6 +81,7 @@ export const DashboardChartTable = ({
   >([]);
 
   const [charts, setCharts] = useState<ChartType[]>([]);
+  const [isChartsLoading, setIsChartsLoading] = useState<boolean>(true);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -136,6 +137,7 @@ export const DashboardChartTable = ({
 
   const initializeCharts = useCallback(async () => {
     try {
+      setIsChartsLoading(true);
       const res = await fetchCharts(
         listChartIds,
         chartFilters.showDeletedCharts
@@ -148,6 +150,8 @@ export const DashboardChartTable = ({
           entity: t('label.chart-plural'),
         })
       );
+    } finally {
+      setIsChartsLoading(false);
     }
   }, [listChartIds, chartFilters.showDeletedCharts]);
 
@@ -453,6 +457,7 @@ export const DashboardChartTable = ({
             </Typography.Text>
           </span>
         }
+        loading={isChartsLoading}
         locale={{
           emptyText: (
             <div
