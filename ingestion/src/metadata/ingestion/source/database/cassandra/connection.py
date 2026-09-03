@@ -60,7 +60,7 @@ class CassandraConnection(BaseConnection[CassandraConnectionConfig, CassandraSes
                 "secure_connect_bundle": cloud_config.secureConnectBundle,  # pyright: ignore[reportOptionalMemberAccess]
             }
             profile = ExecutionProfile(request_timeout=cloud_config.requestTimeout)  # pyright: ignore[reportOptionalMemberAccess, reportArgumentType]
-            auth_provider = PlainTextAuthProvider("token", cloud_config.token)  # pyright: ignore[reportOptionalMemberAccess]
+            auth_provider = PlainTextAuthProvider("token", cloud_config.token.get_secret_value())  # pyright: ignore[reportOptionalMemberAccess]
             cluster_config.update(
                 {
                     "cloud": cluster_cloud_config,

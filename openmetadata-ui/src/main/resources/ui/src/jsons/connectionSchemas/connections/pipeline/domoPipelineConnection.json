@@ -8,9 +8,7 @@
     "DomoPipelineType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "DomoPipeline"
-      ],
+      "enum": ["DomoPipeline"],
       "default": "DomoPipeline"
     }
   },
@@ -20,9 +18,7 @@
       "description": "Service Type",
       "default": "DomoPipeline",
       "type": "string",
-      "enum": [
-        "DomoPipeline"
-      ]
+      "enum": ["DomoPipeline"]
     },
     "clientId": {
       "title": "Client ID",
@@ -38,7 +34,8 @@
     "accessToken": {
       "title": "Access Token",
       "description": "Access token to connect to DOMO",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "apiHost": {
       "expose": true,
@@ -85,9 +82,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "clientId",
-    "secretToken",
-    "instanceDomain"
-  ]
+  "required": ["clientId", "secretToken", "instanceDomain"]
 }

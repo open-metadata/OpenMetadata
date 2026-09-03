@@ -100,7 +100,10 @@ class DomoClient:
         config: DomoDashboardConnection | DomoPipelineConnection | DomoDatabaseConnection,
     ):
         self.config = config
-        HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
+        if self.config.accessToken:
+            HEADERS["X-DOMO-Developer-Token"] = self.config.accessToken.get_secret_value()
+        else:
+            HEADERS.pop("X-DOMO-Developer-Token", None)
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.instanceDomain),
             api_version="api/",

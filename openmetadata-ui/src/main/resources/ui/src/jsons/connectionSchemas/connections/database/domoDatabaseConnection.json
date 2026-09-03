@@ -8,9 +8,7 @@
     "domoDatabaseType": {
       "description": " service type",
       "type": "string",
-      "enum": [
-        "DomoDatabase"
-      ],
+      "enum": ["DomoDatabase"],
       "default": "DomoDatabase"
     }
   },
@@ -20,9 +18,7 @@
       "description": "Service Type",
       "default": "DomoDatabase",
       "type": "string",
-      "enum": [
-        "DomoDatabase"
-      ]
+      "enum": ["DomoDatabase"]
     },
     "clientId": {
       "title": "Client ID",
@@ -38,7 +34,8 @@
     "accessToken": {
       "title": "Access Token",
       "description": "Access token to connect to DOMO",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "apiHost": {
       "expose": true,
@@ -136,9 +133,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "clientId",
-    "secretToken",
-    "instanceDomain"
-  ]
+  "required": ["clientId", "secretToken", "instanceDomain"]
 }

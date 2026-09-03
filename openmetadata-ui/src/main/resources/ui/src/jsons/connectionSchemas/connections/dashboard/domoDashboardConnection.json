@@ -8,9 +8,7 @@
     "domoDashboardType": {
       "description": " service type",
       "type": "string",
-      "enum": [
-        "DomoDashboard"
-      ],
+      "enum": ["DomoDashboard"],
       "default": "DomoDashboard"
     }
   },
@@ -20,9 +18,7 @@
       "description": "Service Type",
       "default": "DomoDashboard",
       "type": "string",
-      "enum": [
-        "DomoDashboard"
-      ]
+      "enum": ["DomoDashboard"]
     },
     "clientId": {
       "title": "Client ID",
@@ -38,7 +34,8 @@
     "accessToken": {
       "title": "Access Token",
       "description": "Access token to connect to DOMO",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "apiHost": {
       "expose": true,
@@ -154,9 +151,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "clientId",
-    "secretToken",
-    "instanceDomain"
-  ]
+  "required": ["clientId", "secretToken", "instanceDomain"]
 }

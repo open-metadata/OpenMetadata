@@ -8,9 +8,7 @@
     "cassandraType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "Cassandra"
-      ],
+      "enum": ["Cassandra"],
       "default": "Cassandra"
     }
   },
@@ -20,9 +18,7 @@
       "description": "Service Type",
       "default": "Cassandra",
       "type": "string",
-      "enum": [
-        "Cassandra"
-      ]
+      "enum": ["Cassandra"]
     },
     "username": {
       "title": "Username",
@@ -74,7 +70,8 @@
                 "token": {
                   "title": "Token",
                   "description": "The Astra DB application token used for authentication.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "secureConnectBundle": {
                   "title": "Secure Connect Bundle",
@@ -142,13 +139,7 @@
               "description": "The CA certificate used for SSL validation.",
               "type": "string",
               "format": "password",
-              "accept": [
-                ".pem",
-                ".crt",
-                ".cer",
-                ".der",
-                ".p12"
-              ],
+              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
               "uiFieldType": "fileOrInput"
             },
             "sslCertificate": {
@@ -156,13 +147,7 @@
               "description": "The SSL certificate used for client authentication.",
               "type": "string",
               "format": "password",
-              "accept": [
-                ".pem",
-                ".crt",
-                ".cer",
-                ".der",
-                ".p12"
-              ],
+              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
               "uiFieldType": "fileOrInput"
             },
             "sslKey": {
@@ -170,13 +155,7 @@
               "description": "The private key associated with the SSL certificate.",
               "type": "string",
               "format": "password",
-              "accept": [
-                ".pem",
-                ".crt",
-                ".cer",
-                ".der",
-                ".p12"
-              ],
+              "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
               "uiFieldType": "fileOrInput"
             }
           }

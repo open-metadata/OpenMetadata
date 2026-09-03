@@ -12,16 +12,37 @@
 
 from unittest.mock import MagicMock, patch
 
+from metadata.clients.domo_client import DomoClient
+from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
+    DomoDashboardConnection as DomoDashboardConnectionConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.dashboard.domodashboard.connection import (
     DomoDashboardConnection,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.domodashboard.connection"
+DEVELOPER_TOKEN = "domo-developer-token"
 
 
 def test_domodashboard_connection_is_base_connection():
     assert issubclass(DomoDashboardConnection, BaseConnection)
+
+
+def test_domo_client_sends_unwrapped_developer_token():
+    config = DomoDashboardConnectionConfig(
+        clientId="client-id",
+        secretToken="client-secret",
+        accessToken=DEVELOPER_TOKEN,
+        instanceDomain="https://example.domo.com",
+    )
+    client = DomoClient(config)
+    client.client = MagicMock()
+
+    client.test_list_cards()
+
+    headers = client.client.get.call_args.kwargs["headers"]
+    assert headers["X-DOMO-Developer-Token"] == DEVELOPER_TOKEN
 
 
 def test_get_client_builds_the_ompydomo_client():
