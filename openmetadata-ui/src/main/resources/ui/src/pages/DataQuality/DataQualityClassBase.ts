@@ -19,6 +19,8 @@ import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList
 import i18n from '../../utils/i18next/LocalUtil';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
+const SIDE_PANEL_ICONS = 'side-panel-icons';
+
 export type DataQualityLeftSideBarType = {
   key: DataQualityPageTabs;
   id: string;
@@ -37,7 +39,7 @@ class DataQualityClassBase {
         label: i18n.t('label.summary'),
         icon: DashboardIcon,
         description: i18n.t('label.data-health-overview'),
-        iconProps: { className: 'side-panel-icons' },
+        iconProps: { className: SIDE_PANEL_ICONS },
       },
       {
         key: DataQualityPageTabs.TEST_CASES,
@@ -50,7 +52,7 @@ class DataQualityClassBase {
         }),
         icon: TestCaseIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
       {
@@ -64,7 +66,7 @@ class DataQualityClassBase {
         id: 'by-test-suites',
         icon: TestSuiteIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
     ];
