@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu } from 'antd';
+import { Menu, Typography } from 'antd';
 import Checkbox, { CheckboxChangeEvent } from 'antd/lib/checkbox/Checkbox';
-import { startCase } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import React from 'react';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { FilterDropdownProps } from '../../common/Table/Table.interface';
 
 export const ColumnFilter = ({
@@ -31,6 +32,19 @@ export const ColumnFilter = ({
     }
     confirm();
   };
+
+  if (isEmpty(filters)) {
+    // AntD's built-in filter dropdown showed its empty text here; a bare
+    // empty menu renders as a blank popover.
+    return (
+      <Typography.Text
+        className="tw:block tw:px-4 tw:py-2 tw:text-sm"
+        data-testid="no-filter-options"
+        type="secondary">
+        {i18n.t('label.no-data-found')}
+      </Typography.Text>
+    );
+  }
 
   return (
     <Menu
