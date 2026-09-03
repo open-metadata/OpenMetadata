@@ -35,8 +35,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   NO_DATA,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
+  ROUTES
 } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -68,9 +67,9 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -258,21 +257,13 @@ const DataProductListPage = ({
           );
         case 'glossaryTerms':
           return (
-            <TagBadgeList
-              emptyPlaceholder={NO_DATA_PLACEHOLDER}
-              size="lg"
-              tags={getGlossaryTags(entity.tags)}
-            />
+            <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />
           );
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
           return (
-            <TagBadgeList
-              emptyPlaceholder={NO_DATA_PLACEHOLDER}
-              size="sm"
-              tags={getClassificationTags(entity.tags)}
-            />
+            <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
           );
         case 'experts':
           return (
