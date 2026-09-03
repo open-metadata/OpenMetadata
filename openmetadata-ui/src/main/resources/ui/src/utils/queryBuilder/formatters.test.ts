@@ -11,13 +11,23 @@
  *  limitations under the License.
  */
 import type { Config, ImmutableTree } from '@react-awesome-query-builder/ui';
+import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { EntityType } from '../../enums/entity.enum';
+import { buildQueryBuilderConfig } from './config';
 import {
   formatQuery,
   isQueryTreeComplete,
   toElasticSearchQuery,
   toJsonLogicQuery,
 } from './formatters';
+import { getEmptyQueryBuilderTree } from './tree';
+
+// setupTests.js globally stubs `getQbConfigs` to `{}`. The seed-row cases below
+// build a real config so `checkTree` has fields to validate against.
+jest.mock('../AdvancedSearchClassBase', () =>
+  jest.requireActual('../AdvancedSearchClassBase')
+);
 
 jest.mock('../QueryBuilderElasticsearchFormatUtils', () => ({
   elasticSearchFormat: jest.fn(),
@@ -110,6 +120,39 @@ describe('formatQuery', () => {
 });
 
 describe('isQueryTreeComplete', () => {
+  const realConfig = () =>
+    buildQueryBuilderConfig({
+      outputType: SearchOutputType.ElasticSearch,
+      entityType: EntityType.TABLE,
+    } as never);
+  const seedJson = () =>
+    getEmptyQueryBuilderTree({
+      outputType: SearchOutputType.ElasticSearch,
+    }) as unknown as { children1: Record<string, unknown> };
+
+  it('should treat the untouched seed row as complete', () => {
+    hasUnfinishedRule.mockReturnValue(true);
+    const config = realConfig();
+    const seeded = QbUtils.checkTree(
+      QbUtils.loadTree(seedJson() as never),
+      config
+    );
+
+    expect(isQueryTreeComplete(seeded, config)).toBe(true);
+  });
+
+  // A row the user actually added is a second row, so it stays blocked.
+  it('should stay incomplete once a second row is added', () => {
+    hasUnfinishedRule.mockReturnValue(true);
+    const config = realConfig();
+    const seed = seedJson();
+    const [firstId, firstRule] = Object.entries(seed.children1)[0];
+    seed.children1 = { [firstId]: firstRule, added: firstRule };
+    const twoRows = QbUtils.checkTree(QbUtils.loadTree(seed as never), config);
+
+    expect(isQueryTreeComplete(twoRows, config)).toBe(false);
+  });
+
   it('should be false while a rule is unfinished', () => {
     hasUnfinishedRule.mockReturnValue(true);
 

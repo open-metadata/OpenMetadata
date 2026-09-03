@@ -258,8 +258,12 @@ export const selectOption = async (
     // the FQN `Tier.Tier1`. react-aria puts the value on `data-key`, so this
     // keeps working however the label is presented. `data-key` is unique
     // within a listbox, so no positional locator is needed here.
+    //
+    // Matched case-insensitively (`i`): the value is the FQN as indexed
+    // (`Tier.Tier5`) while callers reasonably pass it lowercased, and
+    // `tier.tagFQN` is a normalised keyword, so case carries no meaning here.
     const byValue = listbox.locator(
-      `[role="option"][data-key="${optionTitle}"]`
+      `[role="option"][data-key="${optionTitle}" i]`
     );
     const option = (await byValue.count())
       ? byValue

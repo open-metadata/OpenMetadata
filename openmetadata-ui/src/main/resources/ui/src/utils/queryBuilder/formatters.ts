@@ -79,6 +79,39 @@ export const formatQuery = (
     ? toElasticSearchQuery(tree, config)
     : toJsonLogicQuery(tree, config);
 
+const holdsOnlyTheSeedRow = (tree: ImmutableTree): boolean => {
+  if (typeof (tree as { toJS?: unknown })?.toJS !== 'function') {
+    return false;
+  }
+
+  const rules: { properties?: { operator?: unknown } }[] = [];
+
+  const collect = (node?: {
+    type?: string;
+    properties?: { operator?: unknown };
+    children1?: unknown;
+  }): void => {
+    if (!node) {
+      return;
+    }
+
+    if (node.type === 'rule') {
+      rules.push(node);
+
+      return;
+    }
+
+    // `getTree` always hands back `children1` as an array.
+    (Array.isArray(node.children1) ? node.children1 : []).forEach((child) =>
+      collect(child as Parameters<typeof collect>[0])
+    );
+  };
+
+  collect(QbUtils.getTree(tree) as Parameters<typeof collect>[0]);
+
+  return rules.length === 1 && !rules[0]?.properties?.operator;
+};
+
 /**
  * False while any rule is incomplete. Callers gate saving on this so a
  * half-written condition cannot be silently dropped from the emitted filter,
@@ -87,4 +120,6 @@ export const formatQuery = (
 export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config
-): boolean => !(hasUnfinishedRule(tree, config) as unknown as boolean);
+): boolean =>
+  holdsOnlyTheSeedRow(tree) ||
+  !(hasUnfinishedRule(tree, config) as unknown as boolean);
