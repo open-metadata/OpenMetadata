@@ -2744,12 +2744,6 @@
       "068ec9ff58b10c2a74e457662f8c72a493033a5cbc8447024c9f1095d961e387": 1,
       "1c8bab8a8d80782adf5d3a4a5bdc78698b33a754194b6ac5b5d26bed3626dff0": 1
     },
-    "ingestion/src/metadata/parsers/protobuf_parser.py": {
-      "75c64aa566e8ff51a3d39ff86b8508f431640018870763951fba2514f07fb444": 1,
-      "b2520ce8bdf41e9e26cfeabcf44401b405408e23c8dcae67b21eecc922af4f2c": 1,
-      "edc8a3601d7ce94c4b25f2bef42c703d0dfd925eda928e60a337daa2cd8d5871": 1,
-      "f8e5b52b47b233aff013595df9af7591bf7ce692335b9f803037b9fe8de2f396": 1
-    },
     "ingestion/src/metadata/pii/algorithms/feature_extraction.py": {
       "3c7ba2b41400c4a145f687b36da8ebf2c4a9b10d5ea21043a54ee0dd7ca4177f": 1
     },

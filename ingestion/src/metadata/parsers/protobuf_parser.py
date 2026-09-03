@@ -16,6 +16,7 @@ Utils module to parse the protobuf schema
 import tempfile
 import traceback
 from enum import Enum
+from importlib.resources import files
 from pathlib import Path
 from typing import TypeVar
 
@@ -35,6 +36,7 @@ ProtobufField = TypeVar("ProtobufField", FieldModel, Column)
 
 PROTO_FILE_NAME = "schema.proto"
 DESCRIPTOR_SET_FILE_NAME = "schema.desc"
+GRPC_TOOLS_PROTO_PATH = files("grpc_tools").joinpath("_proto")
 
 
 class ProtobufDataTypes(Enum):
@@ -109,6 +111,7 @@ class ProtobufParser:
             [
                 "protoc",
                 f"--proto_path={interface_directory}",
+                f"--proto_path={GRPC_TOOLS_PROTO_PATH}",
                 f"--descriptor_set_out={descriptor_set_file}",
                 "--include_imports",
                 str(proto_file),
@@ -162,7 +165,8 @@ class ProtobufParser:
         """
 
         try:
-            temporary_parent = Path(self.config.base_file_path).expanduser() if self.config.base_file_path else None
+            base_file_path = self.config.base_file_path
+            temporary_parent = Path(base_file_path).expanduser() if base_file_path and base_file_path.strip() else None
             if temporary_parent:
                 temporary_parent.mkdir(parents=True, exist_ok=True)
 

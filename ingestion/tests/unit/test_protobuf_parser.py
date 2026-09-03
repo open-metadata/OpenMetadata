@@ -297,6 +297,56 @@ def test_none_temporary_parent_does_not_create_relative_none_directory(tmp_path,
     assert not (tmp_path / "None").exists()
 
 
+def test_whitespace_temporary_parent_uses_system_temporary_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="event",
+            schema_text='syntax = "proto3"; message Event {}',
+            base_file_path="  \t",
+        )
+    )
+
+    assert parser.parse_protobuf_schema() is not None
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_parse_well_known_type_after_reference_preprocessing(tmp_path):
+    schema_text = merge_and_clean_protobuf_schema(
+        'syntax = "proto3";\n'
+        'import "details.proto";\n'
+        'import "google/protobuf/timestamp.proto";\n'
+        "message Details { string source = 1; }\n"
+        "message Event {\n"
+        "  Details details = 1;\n"
+        "  google.protobuf.Timestamp created_at = 2;\n"
+        "}"
+    )
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="event",
+            schema_text=schema_text,
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "Event"
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children] == [
+        ("details", "RECORD"),
+        ("created_at", "RECORD"),
+    ]
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children[0].children] == [
+        ("source", "STRING"),
+    ]
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children[1].children] == [
+        ("seconds", "INT"),
+        ("nanos", "INT"),
+    ]
+
+
 def test_protoc_failure_reports_exit_code(tmp_path, caplog):
     parser = ProtobufParser(
         config=ProtobufParserConfig(
