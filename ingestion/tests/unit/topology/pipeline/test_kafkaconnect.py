@@ -18,6 +18,8 @@ from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
+import pytest
+
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
@@ -1926,6 +1928,10 @@ class TestConnectorTopicsFromRuntime:
         client.client = MagicMock()
         client.is_confluent_cloud = confluent_cloud
         client._topics_endpoint_supported = None
+        # No telemetry credentials, so the Confluent telemetry lookup is skipped and these
+        # tests exercise the runtime-to-config fallback they are about.
+        client._telemetry_auth = None
+        client._host_port = ""
         return client
 
     def test_runtime_topics_preferred_over_config(self):
@@ -2447,3 +2453,260 @@ class TestForbiddenIsNotAlwaysUnsupported:
 
         assert [t.name for t in topics] == ["prod.events.orderPlaced_v1"]
         assert client.client.list_connector_topics.call_count == 2
+
+
+class TestConfluentTelemetryTopics:
+    """
+    Topics a Confluent Cloud managed connector actually produced to.
+
+    Confluent Cloud answers KIP-558 with 404, so a connector whose destination topic is
+    chosen per row resolves nothing from config. The telemetry Data Flow dataset reports
+    the topic a producer client wrote to, and a managed connector's producer client id
+    carries its connector id, which is what closes that gap.
+    """
+
+    @staticmethod
+    def _cloud_client():
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-abc/clusters/lkc-xyz"
+        config.verifySSL = True
+        auth = MagicMock()
+        auth.username = "CLOUDKEY"
+        auth.password.get_secret_value.return_value = "cloudsecret"
+        config.KafkaConnectConfig = auth
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            return KafkaConnectClient(config)
+
+    def test_cluster_id_comes_from_the_host_port(self):
+        """The telemetry query is scoped by Kafka cluster, and hostPort already names it."""
+        client = self._cloud_client()
+
+        assert client._confluent_kafka_cluster_id() == "lkc-xyz"
+
+    def test_self_hosted_has_no_cluster_id(self):
+        """A self-hosted Connect URL names no Kafka cluster, so there is nothing to scope by."""
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "http://localhost:8083"
+        config.verifySSL = True
+        config.KafkaConnectConfig = None
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            client = KafkaConnectClient(config)
+
+        assert client._confluent_kafka_cluster_id() is None
+
+    def test_row_routed_topics_are_resolved_from_telemetry(self):
+        """
+        The case config cannot answer.
+
+        An outbox EventRouter routing by a row value publishes topic names that appear in
+        no config key. Telemetry reports them against the connector's producer client.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "prod.events.walletEntity_v1",
+                    "prod.events.instrument_v1",
+                },
+                "connector-producer-lcc-bbb222-0": {"prod.events.other_v1"},
+            }
+        )
+
+        topics = client._list_topics_from_telemetry("outbox-wallet")
+
+        assert sorted(t.name for t in topics) == [
+            "prod.events.instrument_v1",
+            "prod.events.walletEntity_v1",
+        ], "must return only the topics produced by this connector's own client"
+
+    def test_another_connectors_topics_are_never_claimed(self):
+        """Client ids are per connector, so a sibling's topics must not leak across."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={"connector-producer-lcc-bbb222-0": {"prod.events.other_v1"}}
+        )
+
+        assert client._list_topics_from_telemetry("outbox-wallet") is None
+
+    def test_schema_history_client_is_not_the_connector(self):
+        """
+        Confluent's managed schema history topic is named dbhistory.<prefix>.<cluster-id>,
+        so its name is not derivable from config and cannot be excluded by name. It is
+        produced by a separate client, which is what makes it separable at all.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"},
+                "wallet.prod-schemahistory": {"dbhistory.wallet.prod.lcc-aaa111"},
+            }
+        )
+
+        topics = client._list_topics_from_telemetry("outbox-wallet")
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+
+    def test_unknown_connector_resolves_nothing(self):
+        """A connector absent from the live id map must not be matched by substring."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={"connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"}}
+        )
+
+        assert client._list_topics_from_telemetry("outbox-wallet") is None
+
+    def test_telemetry_failure_is_not_fatal(self):
+        """Telemetry is additive. A failure must degrade to no enrichment, never raise."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(side_effect=Exception("telemetry down"))
+
+        assert client._list_topics_from_telemetry("outbox-wallet") is None
+
+    def test_telemetry_runs_before_config_but_after_runtime(self):
+        """
+        Resolution order: the runtime list wins, then telemetry, then declared config.
+        Both runtime sources describe what happened, config only what was asked for.
+        """
+        client = self._cloud_client()
+        client._list_data_topics_from_api = MagicMock(return_value=None)
+        client._list_topics_from_telemetry = MagicMock(
+            return_value=[KafkaConnectTopics(name="prod.events.walletEntity_v1")]
+        )
+        client._parse_topics_from_config = MagicMock(return_value=[KafkaConnectTopics(name="declared.in.config")])
+
+        topics = client.get_connector_topics("outbox-wallet", connector_config={})
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+        client._parse_topics_from_config.assert_not_called()
+
+    def test_config_still_used_when_telemetry_is_silent(self):
+        """An idle connector reports no flow, so the declared names must still be used."""
+        client = self._cloud_client()
+        client._list_data_topics_from_api = MagicMock(return_value=None)
+        client._list_topics_from_telemetry = MagicMock(return_value=None)
+        client._parse_topics_from_config = MagicMock(return_value=[KafkaConnectTopics(name="declared.in.config")])
+
+        topics = client.get_connector_topics("outbox-wallet", connector_config={})
+
+        assert [t.name for t in topics] == ["declared.in.config"]
+
+    def test_check_passes_for_self_hosted(self):
+        """
+        Self-hosted Connect serves the topics endpoint and never consults telemetry, so the
+        step must not report a failure the operator has no way to act on.
+        """
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "http://localhost:8083"
+        config.verifySSL = True
+        config.KafkaConnectConfig = None
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            client = KafkaConnectClient(config)
+        client._query_dataflow_topics_by_client = MagicMock()
+
+        assert client.check_confluent_telemetry() is True
+        client._query_dataflow_topics_by_client.assert_not_called()
+
+    def test_check_surfaces_the_failure_on_confluent_cloud(self):
+        """
+        The test step reports by raising, unlike the resolution path which stays silent.
+        Here the operator is the one who can fix the credentials, so they must be told.
+        """
+        client = self._cloud_client()
+        client._query_dataflow_topics_by_client = MagicMock(side_effect=Exception("401 Unauthorized"))
+
+        with pytest.raises(Exception, match="401 Unauthorized"):
+            client.check_confluent_telemetry()
+
+    def test_managed_transaction_topic_is_excluded(self):
+        """
+        Debezium's transaction metadata topic is produced by the connector's own client, so
+        client identity cannot separate it. Confluent names it <prefix>.<connector-id>.
+        transaction, which extract_internal_topic_names cannot derive from config because
+        the connector id is assigned at runtime. Emitting it would be the same class of
+        wrong edge that linking the outbox table to bookkeeping topics already was.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "prod.events.walletEntity_v1",
+                    "wallet.prod.lcc-aaa111.transaction",
+                }
+            }
+        )
+
+        topics = client._list_topics_from_telemetry("outbox-wallet", connector_config={"topic.prefix": "wallet.prod"})
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+
+    def test_configured_internal_topics_are_excluded(self):
+        """The names config does declare, such as schema history, are excluded too."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "prod.events.walletEntity_v1",
+                    "schema-history.wallet.prod",
+                }
+            }
+        )
+
+        topics = client._list_topics_from_telemetry(
+            "outbox-wallet",
+            connector_config={
+                "topic.prefix": "wallet.prod",
+                "schema.history.internal.kafka.topic": "schema-history.wallet.prod",
+            },
+        )
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+
+    def test_a_connector_producing_only_bookkeeping_resolves_nothing(self):
+        """Bookkeeping alone is not lineage, so this must fall through to config."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={"connector-producer-lcc-aaa111-0": {"wallet.prod.lcc-aaa111.transaction"}}
+        )
+
+        assert (
+            client._list_topics_from_telemetry("outbox-wallet", connector_config={"topic.prefix": "wallet.prod"})
+            is None
+        )
+
+    def test_cluster_wide_lookups_run_once_per_ingestion(self):
+        """
+        Both lookups describe the whole cluster, not one connector, so repeating them per
+        connector is pure waste. On a four connector rig they were 43 percent of ingestion
+        time, and an estate of thirty six would repeat each thirty six times against an API
+        that rate limits per hour.
+        """
+        client = self._cloud_client()
+        client.client.list_connectors = MagicMock(
+            return_value={
+                "outbox-a": {"id": {"id": "lcc-aaa111"}},
+                "outbox-b": {"id": {"id": "lcc-bbb222"}},
+            }
+        )
+        query = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {"prod.events.a_v1"},
+                "connector-producer-lcc-bbb222-0": {"prod.events.b_v1"},
+            }
+        )
+        client._query_dataflow_topics_by_client = query
+
+        first = client._list_topics_from_telemetry("outbox-a", connector_config={})
+        second = client._list_topics_from_telemetry("outbox-b", connector_config={})
+
+        assert [t.name for t in first] == ["prod.events.a_v1"]
+        assert [t.name for t in second] == ["prod.events.b_v1"]
+        assert query.call_count == 1, "the telemetry query is cluster wide, so once per run"
+        assert client.client.list_connectors.call_count == 1, "the connector list is cluster wide too"
