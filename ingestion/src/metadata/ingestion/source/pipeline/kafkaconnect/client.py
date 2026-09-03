@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 
 import requests
 from kafka_connect import KafkaConnect
+from pydantic import ValidationError
 
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
@@ -28,6 +29,7 @@ from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     ConnectorConfigKeys,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    ConfluentTelemetryRow,
     KafkaConnectColumnMapping,
     KafkaConnectPipelineDetails,
     KafkaConnectTopics,
@@ -319,15 +321,16 @@ class KafkaConnectClient:
         self._telemetry_topics_by_connector_id: dict[str, set[str]] | None = None
         # The telemetry API takes the same Confluent Cloud key as the Connect API, so no
         # separate credential is needed. Held as a tuple because that call is made with
-        # requests directly rather than through the Connect client.
-        self._telemetry_auth = (
-            (
-                config.KafkaConnectConfig.username,
-                config.KafkaConnectConfig.password.get_secret_value(),
+        # requests directly rather than through the Connect client. Both halves have to be
+        # present: telemetry has no anonymous mode, so half a credential is worth the same
+        # as none and is better refused here than sent.
+        self._telemetry_auth: tuple[str, str] | None = None
+        auth_config = config.KafkaConnectConfig
+        if auth_config and auth_config.username and auth_config.password:
+            self._telemetry_auth = (
+                auth_config.username,
+                auth_config.password.get_secret_value(),
             )
-            if config.KafkaConnectConfig
-            else None
-        )
 
     def _confluent_kafka_cluster_id(self) -> str | None:
         """The Kafka cluster id the Connect URL points at, which scopes the telemetry query."""
@@ -350,7 +353,7 @@ class KafkaConnectClient:
 
         result: dict[str, str] = {}
         try:
-            response = self.client.list_connectors(expand="id")
+            response = self.get_connectors_list(expand="id")
             for name, block in (response or {}).items():
                 connector_id = ((block or {}).get("id") or {}).get("id")
                 if connector_id:
@@ -398,11 +401,26 @@ class KafkaConnectClient:
             response.raise_for_status()
             body = response.json() or {}
 
+            skipped = 0
             for row in body.get("data") or []:
-                client_id = row.get("metric.client_id")
-                topic = row.get("metric.topic")
-                if client_id and topic:
-                    by_client.setdefault(client_id, set()).add(topic)
+                try:
+                    entry = ConfluentTelemetryRow.model_validate(row)
+                except ValidationError:
+                    # A row missing either half attributes nothing, and the rest of the
+                    # page is still usable, so it is dropped rather than raised. Counted
+                    # per page rather than logged per row: a response that changes shape
+                    # would otherwise emit a line per pair on the whole cluster.
+                    skipped += 1
+                    continue
+                by_client.setdefault(entry.client_id, set()).add(entry.topic)
+
+            if skipped:
+                logger.debug(
+                    "Skipped %s unattributable Confluent telemetry rows out of %s for cluster %s",
+                    skipped,
+                    len(body.get("data") or []),
+                    cluster_id,
+                )
 
             # A cluster with more producer/topic pairs than fit in one page returns a
             # cursor. Stopping at the first page would drop topics silently, and a

@@ -2814,3 +2814,32 @@ class TestConfluentTelemetryTopics:
         retained = client._telemetry_topics_for_connector_ids("lkc-xyz")
 
         assert set(retained) == {"lcc-live01"}, "a deleted connector's topics must not be retained"
+
+    def test_unattributable_rows_are_dropped_without_losing_the_page(self):
+        """
+        A row has to name both a client and a topic to mean anything: one without a client
+        attributes a topic to no connector, and one without a topic attributes a connector
+        to nothing. Neither can become lineage. An empty string counts as missing, since it
+        would otherwise reach the producer-id match as a real value.
+
+        The rest of the page still resolves, because discarding good pairs over a
+        malformed neighbour would silently shrink a connector's topic set, and a partial
+        set is indistinguishable from a complete one.
+        """
+        client = self._cloud_client()
+        rows = [
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "good_v1"},
+            {"metric.topic": "orphan_v1"},
+            {"metric.client_id": "connector-producer-lcc-aaa111-0"},
+            {"metric.client_id": "", "metric.topic": "blank_client_v1"},
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": ""},
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "also_good_v1"},
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page(rows),
+        ):
+            by_client = client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert by_client == {"connector-producer-lcc-aaa111-0": {"good_v1", "also_good_v1"}}
+        assert "" not in by_client, "an empty client id must not become a producer"
