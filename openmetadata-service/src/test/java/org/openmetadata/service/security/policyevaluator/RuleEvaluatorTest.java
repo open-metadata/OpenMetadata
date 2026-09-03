@@ -133,6 +133,9 @@ class RuleEvaluatorTest {
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
     Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    // A lazily-resolved ResourceContext asks the repository which fields authorization needs;
+    // the mock would otherwise hand back null. Real repositories always return a Fields.
+    Mockito.when(tableRepository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
 
     DatabaseRepository databaseRepository = stubIndexingPolicy(mock(DatabaseRepository.class));
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
@@ -759,6 +762,33 @@ class RuleEvaluatorTest {
     RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, userResourceContext);
     EvaluationContext ctx = new StandardEvaluationContext(evaluator);
     return parseExpression(condition).getValue(ctx, Boolean.class);
+  }
+
+  /**
+   * A ResourceContext built with neither an id nor a name never resolves an entity, so every
+   * attribute a policy condition reads comes back empty - and nothing reports that it did. A tag
+   * condition then answers the same way whether or not the tag is present, which makes a Deny fire
+   * on every entity in one polarity and on none in the other. This is the root cause of #31941;
+   * the fix is that callers holding a specific entity must pass its identity in.
+   */
+  @Test
+  void test_bareResourceContextCannotSeeTags() {
+    table.withTags(getTags("MCP.DEMO"));
+
+    RuleEvaluator bare =
+        new RuleEvaluator(null, subjectContext, new ResourceContext<>(Entity.TABLE));
+    EvaluationContext bareContext = new StandardEvaluationContext(bare);
+
+    assertFalse(
+        parseExpression("matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
+        "an unresolved context reads a present tag as absent");
+    assertTrue(
+        parseExpression("!matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
+        "so the negated form is true for a tagged entity, and a Deny over-blocks");
+
+    // The entity-scoped context, which is what the fixed callers build, sees the truth.
+    assertTrue(evaluateExpression("matchAnyTag('MCP.DEMO')"));
+    assertFalse(evaluateExpression("!matchAnyTag('MCP.DEMO')"));
   }
 
   private Boolean evaluateExpression(String condition) {

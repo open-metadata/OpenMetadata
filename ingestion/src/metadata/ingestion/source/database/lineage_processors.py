@@ -41,9 +41,10 @@ from metadata.ingestion.models.ometa_lineage import (
     OMetaLineageRequest,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
+from metadata.utils.db_utils import ViewLineageExtension, get_view_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -345,6 +346,30 @@ def query_lineage_processor(
                     )
 
 
+def _writes_into_view(lineage_request: LineageRequest, view_fqn: str | None) -> bool:
+    """
+    Whether a view lineage edge points at the view being processed.
+
+    `overrideViewLineage` deletes the existing view lineage of the entity an edge points
+    at before writing it. That is only safe while the edge points at the view itself:
+    an edge into another table -- a Clickhouse materialized view writing into its
+    `TO` target, for instance -- would wipe the lineage that the sibling views writing
+    into that same table just created.
+
+    Edges whose target FQN is unknown -- and views whose own FQN could not be built --
+    keep the previous behaviour of honouring the flag.
+    """
+    if not view_fqn:
+        return True
+    if isinstance(lineage_request, OMetaFQNLineageRequest):
+        target_fqn = lineage_request.to_entity_fqn
+    else:
+        target_fqn = lineage_request.edge.toEntity.fullyQualifiedName
+    if not target_fqn:
+        return True
+    return model_str(target_fqn).lower() == view_fqn.lower()
+
+
 def view_lineage_processor(
     views: list[TableView],
     queue: Queue,
@@ -356,6 +381,7 @@ def view_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
+    extension: ViewLineageExtension | None = None,
 ) -> None:
     """
     Generate lineage for a list of views
@@ -374,6 +400,7 @@ def view_lineage_processor(
                 connection_type=connectionType,
                 timeout_seconds=parsingTimeoutLimit,
                 parser_type=parser_type,
+                extension=extension,
             ):
                 if lineage.right is not None:
                     view_fqn = fqn.build(
@@ -389,7 +416,7 @@ def view_lineage_processor(
                         Either(
                             right=OMetaLineageRequest(
                                 lineage_request=lineage.right,
-                                override_lineage=overrideViewLineage,
+                                override_lineage=(overrideViewLineage and _writes_into_view(lineage.right, view_fqn)),
                                 entity_fqn=view_fqn,
                                 entity=Table,
                             )
