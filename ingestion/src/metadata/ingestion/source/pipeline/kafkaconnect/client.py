@@ -217,9 +217,16 @@ def confluent_managed_internal_topic_names(connector_config: dict | None, connec
 
     ``extract_internal_topic_names`` covers the names configuration declares. Confluent
     derives these two from the connector id instead, which is assigned at runtime and
-    appears in no config key, so they can only be reconstructed. Schema history arrives
-    under a separate producer client and is already excluded by attribution, whereas the
-    transaction topic is produced by the connector's own client and is not.
+    appears in no config key, so they can only be reconstructed.
+
+    The transaction topic is produced by the connector's own client, so attribution cannot
+    separate it and excluding it by name is the only thing that does.
+
+    Schema history arrives under a separate ``<prefix>-schemahistory`` client, which never
+    matches the connector producer pattern, so attribution already removes it and this name
+    is redundant today. It is returned anyway, because the client naming is Confluent's
+    convention rather than a guarantee, and were schema history ever to move onto the
+    connector's own client it would otherwise be emitted as lineage.
     """
     if not isinstance(connector_config, dict):
         return set()
