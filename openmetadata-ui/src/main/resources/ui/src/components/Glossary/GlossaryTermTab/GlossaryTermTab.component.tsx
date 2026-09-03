@@ -397,7 +397,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         : undefined;
       const recursiveCountPromise = getGlossaryTermRecursiveCount(
         activeGlossary?.id ?? '',
-        entityStatusParam
+        entityStatusParam,
+        isGlossary
       );
 
       // Search uses offset-based paging; the first-level listing uses cursor

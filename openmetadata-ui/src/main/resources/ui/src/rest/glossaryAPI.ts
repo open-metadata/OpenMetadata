@@ -480,14 +480,16 @@ export const getFirstLevelGlossaryTermsPaginated = async (
 // query param does not stop at one level, so this returns every descendant
 // under parentId that matches entityStatus.
 export const getGlossaryTermRecursiveCount = async (
-  parentId: string,
-  entityStatus?: string
+  id: string,
+  entityStatus?: string,
+  isGlossary = false
 ) => {
+  const key = isGlossary ? 'glossary' : 'parent';
   const { data } = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
     '/glossaryTerms',
     {
       params: {
-        parent: parentId,
+        [key]: id,
         limit: 0,
         entityStatus,
       },

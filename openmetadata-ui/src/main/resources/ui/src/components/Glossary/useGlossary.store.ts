@@ -50,6 +50,7 @@ export const useGlossaryStore = create<{
   // Terms tab's own listing fetch so the tab badge matches the table below it.
   filteredChildrenCount: Record<string, number>;
   setFilteredChildrenCount: (fqn: string, count: number) => void;
+  resetFilteredChildrenCount: () => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
@@ -132,6 +133,7 @@ export const useGlossaryStore = create<{
       filteredChildrenCount: { ...filteredChildrenCount, [fqn]: count },
     });
   },
+  resetFilteredChildrenCount: () => set({ filteredChildrenCount: {} }),
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({
       ...glossaryFunctionRef,

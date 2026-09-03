@@ -104,6 +104,7 @@ const GlossaryV1 = ({
     insertNewGlossaryTermToChildTerms,
     termsLoading,
     setTermsLoading,
+    resetFilteredChildrenCount,
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
@@ -385,6 +386,7 @@ const GlossaryV1 = ({
     if (id && !action) {
       // Clear terms and reset pagination when switching entities
       setGlossaryChildTerms([]);
+      resetFilteredChildrenCount();
       setAfterCursor(undefined);
       setHasMore(true);
       initializeGlossary();
@@ -393,6 +395,7 @@ const GlossaryV1 = ({
     // Cleanup on unmount
     return () => {
       setGlossaryChildTerms([]);
+      resetFilteredChildrenCount();
     };
   }, [id, isGlossaryActive, isVersionsView, action]);
 

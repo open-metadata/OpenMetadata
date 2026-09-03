@@ -620,7 +620,29 @@ describe('Test GlossaryTermTab component', () => {
       // count call too, not just the row-listing call.
       expect(mockGetGlossaryTermRecursiveCount).toHaveBeenCalledWith(
         mockUseGlossaryStore.activeGlossary.id,
-        'Approved,Draft,In Review'
+        'Approved,Draft,In Review',
+        false
+      );
+    });
+
+    it('should query by glossary (not parent) for a glossary’s own Terms tab, so the badge is not wrongly 0', async () => {
+      mockGetGlossaryTermRecursiveCount.mockResolvedValue(7);
+
+      render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockSetFilteredChildrenCount).toHaveBeenCalledWith(
+          mockUseGlossaryStore.activeGlossary.fullyQualifiedName,
+          7
+        );
+      });
+
+      expect(mockGetGlossaryTermRecursiveCount).toHaveBeenCalledWith(
+        mockUseGlossaryStore.activeGlossary.id,
+        'Approved,Draft,In Review',
+        true
       );
     });
 
@@ -654,7 +676,8 @@ describe('Test GlossaryTermTab component', () => {
       // Second call happens once the filter clears to "all" (no entityStatus arg).
       expect(mockGetGlossaryTermRecursiveCount).toHaveBeenLastCalledWith(
         mockUseGlossaryStore.activeGlossary.id,
-        undefined
+        undefined,
+        false
       );
     });
   });
