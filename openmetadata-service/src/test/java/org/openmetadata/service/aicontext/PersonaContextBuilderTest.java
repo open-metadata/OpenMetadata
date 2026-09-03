@@ -252,6 +252,76 @@ class PersonaContextBuilderTest {
   }
 
   @Test
+  void multipleScopedRulesUnionRatherThanIntersect() {
+    // Rules are OR-ed, so a second rule always WIDENS the scope. This is the one direction that is
+    // not obvious from the schema, and it is what makes contradictory rules harmless: two rules
+    // that
+    // disagree select the union of both, never the empty set.
+    ContextRule finance =
+        assetRule("Finance", "{\"term\":{\"service.name.keyword\":\"finance\"}}")
+            .withFilteredInSearch(true);
+    ContextRule sales =
+        assetRule("Sales", "{\"term\":{\"service.name.keyword\":\"sales\"}}")
+            .withFilteredInSearch(true);
+
+    SearchScope scope =
+        PersonaContextBuilder.searchScope(
+            new PersonaContextDefinition().withRules(List.of(finance, sales)).withEnabled(true));
+
+    JsonNode union = JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool");
+    assertEquals(1, union.get("minimum_should_match").asInt(), "clauses are OR-ed, not AND-ed");
+    assertEquals(2, union.get("should").size());
+    assertEquals(Set.of(Entity.TABLE), scope.getEntityTypes(), "one type, contributed twice");
+  }
+
+  @Test
+  void aRuleWhoseFilterMatchesNothingNarrowsTheScopeToNothing() {
+    // The flip side of the union: a single self-contradictory rule is the only way to end up with a
+    // scope that can never match, and the persona then searches nothing at all rather than
+    // everything. Worth pinning because "no results" and "no scope" must not be confused.
+    ContextRule contradictory =
+        assetRule(
+                "Impossible",
+                "{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"a\"}},"
+                    + "{\"term\":{\"service.name.keyword\":\"b\"}}]}}")
+            .withFilteredInSearch(true);
+
+    SearchScope scope =
+        PersonaContextBuilder.searchScope(
+            new PersonaContextDefinition().withRules(List.of(contradictory)).withEnabled(true));
+
+    JsonNode clause =
+        JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should/0");
+    // The rule's own contradiction is preserved verbatim inside its clause — the builder never
+    // rewrites or validates it, so an unsatisfiable rule stays unsatisfiable.
+    assertEquals(2, clause.at("/bool/filter/1/bool/must").size());
+    assertEquals(Set.of(Entity.TABLE), scope.getEntityTypes());
+  }
+
+  @Test
+  void scopedRulesOfDifferentEntityTypesEachContributeTheirOwnType() {
+    ContextRule tables = assetRule("Tables", "").withFilteredInSearch(true);
+    ContextRule dashboards =
+        new ContextRule()
+            .withName("Dashboards")
+            .withEntityType(Entity.DASHBOARD)
+            .withEnabled(true)
+            .withFilteredInSearch(true);
+
+    SearchScope scope =
+        PersonaContextBuilder.searchScope(
+            new PersonaContextDefinition()
+                .withRules(List.of(tables, dashboards))
+                .withEnabled(true));
+
+    assertEquals(Set.of(Entity.TABLE, Entity.DASHBOARD), scope.getEntityTypes());
+    JsonNode should =
+        JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should");
+    assertEquals(Entity.TABLE, should.get(0).at("/bool/filter/0/term/entityType").asText());
+    assertEquals(Entity.DASHBOARD, should.get(1).at("/bool/filter/0/term/entityType").asText());
+  }
+
+  @Test
   void knowledgeRulesAreNeverSearchScopedEvenWhenTheFlagIsSet() throws IOException {
     // A scoped knowledge rule would drop its articles/terms/metrics out of the document entirely
     // and put a knowledge type into an asset-search allowlist, where it means nothing.
