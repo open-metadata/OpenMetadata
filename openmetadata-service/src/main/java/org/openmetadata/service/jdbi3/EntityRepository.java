@@ -1837,8 +1837,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return bundle;
     }
 
-    boolean onlyNonDeleted = isReadPlanNonDeletedOnly(readPlan);
-    CachedReadBundle bundleCache = onlyNonDeleted ? CacheBundle.getCachedReadBundle() : null;
+    boolean cacheReadBundle =
+        isReadPlanNonDeletedOnly(readPlan) && isCacheableEntityType(entityType);
+    CachedReadBundle bundleCache = cacheReadBundle ? CacheBundle.getCachedReadBundle() : null;
 
     java.util.concurrent.locks.Lock loadLock = null;
     CachedReadBundle.Dto initialDto = null;
