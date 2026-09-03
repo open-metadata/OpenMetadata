@@ -176,6 +176,25 @@ const toCoreSize = (size: TableComponentProps<never>['size']) =>
  * padding every migrated table already renders with; the other steps move
  * around it.
  */
+/**
+ * AntD's fixed-column "ping" shadow: a 30px strip translated past the
+ * boundary cell carrying an inset shadow — a plain outset box-shadow reads
+ * as a hairline, not the wide soft band the AntD tables drew. The row's
+ * bottom border owns the cell's ::after, so the strip lives on ::before.
+ */
+const PING_LEFT_CLASS = classNames(
+  "tw:before:content-[''] tw:before:absolute tw:before:top-0",
+  'tw:before:-bottom-px tw:before:right-0 tw:before:w-[30px]',
+  'tw:before:translate-x-full tw:before:pointer-events-none',
+  'tw:before:shadow-[inset_10px_0_8px_-8px_rgba(5,5,5,0.15)]'
+);
+const PING_RIGHT_CLASS = classNames(
+  "tw:before:content-[''] tw:before:absolute tw:before:top-0",
+  'tw:before:-bottom-px tw:before:left-0 tw:before:w-[30px]',
+  'tw:before:-translate-x-full tw:before:pointer-events-none',
+  'tw:before:shadow-[inset_-10px_0_8px_-8px_rgba(5,5,5,0.15)]'
+);
+
 const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
   compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
   small: 'tw:p-2',
@@ -553,6 +572,36 @@ const TableV2 = <T extends object>(
   );
 
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
+
+  // AntD's "ping" shadows: the last left-fixed column casts a shadow once the
+  // wrapper is scrolled, the first right-fixed one while more content remains.
+  const scrollWrapRef = useRef<HTMLDivElement>(null);
+  const [pingLeft, setPingLeft] = useState(false);
+  const [pingRight, setPingRight] = useState(false);
+  const pingScrollerRef = useRef<HTMLElement | null>(null);
+  const syncPing = useCallback(() => {
+    const el = pingScrollerRef.current;
+    if (!el) {
+      return;
+    }
+    const left = el.scrollLeft > 0;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setPingLeft((prev) => (prev === left ? prev : left));
+    setPingRight((prev) => (prev === right ? prev : right));
+  }, []);
+  // The core table owns the horizontal scroller (its overflow-x wrapper), and
+  // scroll does not bubble — find it and listen natively. Re-checked every
+  // render: the node changes when the table remounts.
+  useEffect(() => {
+    const scroller = scrollWrapRef.current?.querySelector('table[role="grid"]')
+      ?.parentElement as HTMLElement | null;
+    if (scroller && scroller !== pingScrollerRef.current) {
+      pingScrollerRef.current?.removeEventListener('scroll', syncPing);
+      pingScrollerRef.current = scroller;
+      scroller.addEventListener('scroll', syncPing, { passive: true });
+    }
+    syncPing();
+  });
   const {
     preferences: { selectedEntityTableColumns },
     setPreference,
@@ -650,6 +699,32 @@ const TableV2 = <T extends object>(
     reorderedList,
     dropdownColumnList,
   ]);
+
+  const lastLeftFixedIdx = useMemo(
+    () =>
+      propsColumns.reduce(
+        (acc, c, idx) => ((c as ColumnType<T>).fixed === 'left' ? idx : acc),
+        -1
+      ),
+    [propsColumns]
+  );
+  const firstRightFixedIdx = useMemo(
+    () => propsColumns.findIndex((c) => (c as ColumnType<T>).fixed === 'right'),
+    [propsColumns]
+  );
+  const pingShadow = useCallback(
+    (colIdx: number, fixed: ColumnType<T>['fixed']): string => {
+      if (fixed === 'left' && colIdx === lastLeftFixedIdx && pingLeft) {
+        return PING_LEFT_CLASS;
+      }
+      if (fixed === 'right' && colIdx === firstRightFixedIdx && pingRight) {
+        return PING_RIGHT_CLASS;
+      }
+
+      return '';
+    },
+    [lastLeftFixedIdx, firstRightFixedIdx, pingLeft, pingRight]
+  );
 
   const columnKeys = useMemo(() => getColumnKeys(propsColumns), [propsColumns]);
   const columnIds = useMemo(() => getColumnIds(columnKeys), [columnKeys]);
@@ -1359,6 +1434,7 @@ const TableV2 = <T extends object>(
         // the viewport happens to be rather than over the rows it is masking.
         className="tw:relative tw:flex tw:flex-col tw:w-full"
         data-testid={dataTestId}
+        ref={scrollWrapRef}
         style={scrollStyle}>
         {rest.title && (
           // AntD's table-level title slot: a band above the table, handed the
@@ -1494,7 +1570,8 @@ const TableV2 = <T extends object>(
                         // line of a row its own cells may wrap past.
                         'tw:align-top tw:text-sm tw:text-tertiary',
                         getAlignClass(colType.align),
-                        getHeaderAlignClass(colType.align)
+                        getHeaderAlignClass(colType.align),
+                        pingShadow(colIdx, colType.fixed)
                       )}
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
@@ -1722,6 +1799,7 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              pingShadow(colIdx, colType.fixed),
                               'tw:group-data-[dragging]:opacity-40',
                               'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
                               'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
