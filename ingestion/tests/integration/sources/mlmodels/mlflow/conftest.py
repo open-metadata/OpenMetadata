@@ -145,11 +145,14 @@ def build_and_get_mlflow_container(
 ):
     docker_client = DockerClient()
 
+    # anyio 4.15 lazily imports its submodules without exposing from_thread, which
+    # starlette's WSGIMiddleware calls, so every mlflow server response 500s. Drop the
+    # bound once anyio restores the attribute or starlette imports the submodule.
     dockerfile = io.BytesIO(
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql
+        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql "anyio<4.15"
         """
     )
 
