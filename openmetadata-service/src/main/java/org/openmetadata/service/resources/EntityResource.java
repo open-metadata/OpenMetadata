@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -72,6 +73,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -157,6 +159,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Entity.withHref(uriInfo, entity.getDomains());
       Entity.withHref(uriInfo, entity.getDataProducts());
       return entity;
+    }
+  }
+
+  protected Response addFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  protected Response deleteFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  private void authorizeFollowerMutation(SecurityContext securityContext, UUID userId) {
+    if (userId == null) {
+      throw new BadRequestException("userId is required");
+    }
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!Objects.equals(subjectContext.user().getId(), userId)) {
+      authorizer.authorizeAdmin(securityContext);
     }
   }
 
