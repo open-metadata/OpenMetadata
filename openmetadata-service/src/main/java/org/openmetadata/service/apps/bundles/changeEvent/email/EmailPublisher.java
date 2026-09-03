@@ -15,7 +15,6 @@ package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -41,6 +40,8 @@ import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.util.email.DefaultEmailSender;
+import org.openmetadata.service.util.email.EmailSender;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
@@ -69,8 +70,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  @VisibleForTesting
-  EmailPublisher(
+  public EmailPublisher(
       EventSubscription eventSubscription,
       SubscriptionDestination subscriptionDestination,
       NotificationMessageEngine messageEngine,
@@ -175,23 +175,5 @@ public class EmailPublisher implements Destination<ChangeEvent> {
 
   public void close() {
     LOG.debug("Email Publisher Stopped");
-  }
-
-  interface EmailSender {
-    boolean isEnabled();
-
-    CompletableFuture<Void> send(String to, String subject, String htmlContent);
-  }
-
-  private static final class DefaultEmailSender implements EmailSender {
-    @Override
-    public boolean isEnabled() {
-      return Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer());
-    }
-
-    @Override
-    public CompletableFuture<Void> send(String to, String subject, String htmlContent) {
-      return EmailUtil.sendNotificationEmailAsync(to, subject, htmlContent);
-    }
   }
 }

@@ -37,6 +37,7 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.notifications.NotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
+import org.openmetadata.service.util.email.EmailSender;
 
 class EmailPublisherTest {
 
@@ -57,7 +58,7 @@ class EmailPublisherTest {
     NotificationMessageEngine messageEngine = mock(NotificationMessageEngine.class);
     when(messageEngine.generateMessage(event, subscription, destination)).thenReturn(message);
 
-    EmailPublisher.EmailSender emailSender = mock(EmailPublisher.EmailSender.class);
+    EmailSender emailSender = mock(EmailSender.class);
     when(emailSender.isEnabled()).thenReturn(true);
     when(emailSender.send("recipient@example.com", "subject", "<p>body</p>"))
         .thenReturn(CompletableFuture.failedFuture(new RuntimeException("SMTP unavailable")));
