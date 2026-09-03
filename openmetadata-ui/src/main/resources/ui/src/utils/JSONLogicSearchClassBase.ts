@@ -232,7 +232,10 @@ class JSONLogicSearchClassBase {
       cardinality: 1,
       valueSources: ['value'],
       jsonLogic: (field, _op, val) => ({
-        contains: [Array.isArray(val) ? val[0] : val, { tableColumnValues: extractVarPath(field) }],
+        contains: [
+          Array.isArray(val) ? val[0] : val,
+          { tableColumnValues: extractVarPath(field) },
+        ],
       }),
     },
     table_field_not_equal: {
@@ -242,7 +245,10 @@ class JSONLogicSearchClassBase {
       valueSources: ['value'],
       jsonLogic: (field, _op, val) => ({
         '!': {
-          contains: [Array.isArray(val) ? val[0] : val, { tableColumnValues: extractVarPath(field) }],
+          contains: [
+            Array.isArray(val) ? val[0] : val,
+            { tableColumnValues: extractVarPath(field) },
+          ],
         },
       }),
     },
