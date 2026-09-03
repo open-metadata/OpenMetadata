@@ -35,9 +35,11 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
   }, [externalStr]);
 
   return (
-    // `qb-number-input` is kept because Playwright already uses it.
+    // `qb-number-input` is the id Playwright locates by exact attribute match.
+    // `data-testid` holds a single id, not a space-separated list, so nothing
+    // may be appended to it here.
     <Input
-      inputDataTestId="advanced-search-value-number qb-number-input"
+      inputDataTestId="qb-number-input"
       isDisabled={readonly}
       placeholder={placeholder}
       size="sm"

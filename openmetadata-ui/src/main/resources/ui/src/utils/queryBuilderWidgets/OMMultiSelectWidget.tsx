@@ -154,7 +154,7 @@ const OMMultiSelectWidget = ({
   );
 
   return (
-    <span
+    <div
       className={VALUE_TEST_ID_WRAPPER}
       data-testid="advanced-search-value-multiselect">
       <Autocomplete
@@ -179,7 +179,7 @@ const OMMultiSelectWidget = ({
           </Autocomplete.Item>
         )}
       </Autocomplete>
-    </span>
+    </div>
   );
 };
 

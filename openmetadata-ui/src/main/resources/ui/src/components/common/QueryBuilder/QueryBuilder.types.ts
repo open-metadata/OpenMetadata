@@ -17,6 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import type { EntityType } from '../../../enums/entity.enum';
 import type { QueryFilterInterface } from '../../../interface/queryFilter.interface';
+import type { QueryBuilderButtonPreset } from './QueryBuilderButton/QueryBuilderButton.types';
 import type { QueryBuilderConfigOverrides } from '../../../utils/queryBuilder/config';
 import type {
   ConjunctionMode,
@@ -65,6 +66,8 @@ export interface QueryBuilderProps {
   // ---- escape hatch ----
   /** Merged last, after every mode flag. */
   configOverrides?: QueryBuilderConfigOverrides;
+  /** Overrides the preset the group/output mode would otherwise select. */
+  buttonPreset?: QueryBuilderButtonPreset;
 
   // ---- out ----
   onChange?: (

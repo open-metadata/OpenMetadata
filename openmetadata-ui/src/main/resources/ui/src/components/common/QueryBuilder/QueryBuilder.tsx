@@ -116,6 +116,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   showCountPreview = true,
   showExploreLink = true,
   configOverrides,
+  buttonPreset,
   onChange,
   onActionsReady,
   onValidityChange,
@@ -144,10 +145,12 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
         showLabels: groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
         useFriendlyOperatorLabels:
           groupMode !== QUERY_BUILDER_GROUP_MODE.NESTED,
-        renderButton: pickButtonRenderer(
-          groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
-          isJsonLogic
-        ),
+        renderButton: buttonPreset
+          ? createQueryBuilderButtons(buttonPreset)
+          : pickButtonRenderer(
+              groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
+              isJsonLogic
+            ),
       }),
     [
       outputType,
@@ -159,6 +162,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
       fields,
       configOverrides,
       isJsonLogic,
+      buttonPreset,
     ]
   );
 

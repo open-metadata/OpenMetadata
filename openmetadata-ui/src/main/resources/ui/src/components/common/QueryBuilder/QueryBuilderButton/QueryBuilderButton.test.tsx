@@ -18,6 +18,7 @@ import {
   COMPACT_BUTTON_PRESET,
   CONDITION_BUTTON_PRESET,
   EXPLORE_BUTTON_PRESET,
+  PERSONA_BUTTON_PRESET,
 } from './QueryBuilderButton.constants';
 
 jest.mock('react-i18next', () => ({
@@ -159,5 +160,24 @@ describe('createQueryBuilderButtons', () => {
     );
 
     expect(container).not.toBeEmptyDOMElement();
+  });
+});
+
+describe('preset testids the Playwright suites depend on', () => {
+  it.each([
+    [EXPLORE_BUTTON_PRESET, 'advanced-search-add-rule'],
+    [CONDITION_BUTTON_PRESET, 'add-condition-button'],
+    [COMPACT_BUTTON_PRESET, 'add-condition-button'],
+    [PERSONA_BUTTON_PRESET, 'add-context-condition'],
+  ])('should render the add-rule button as %#', (preset, testId) => {
+    renderButton({ type: 'addRule', onClick: jest.fn() }, preset);
+
+    expect(screen.getByTestId(testId as string)).toBeInTheDocument();
+  });
+
+  it('should keep the persona delete id shared with the form preset', () => {
+    expect(PERSONA_BUTTON_PRESET.testIds.delRule).toBe(
+      CONDITION_BUTTON_PRESET.testIds.delRule
+    );
   });
 });

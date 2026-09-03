@@ -53,3 +53,16 @@ export const COMPACT_BUTTON_PRESET: QueryBuilderButtonPreset = {
   addRuleLabel: CONDITION_BUTTON_PRESET.addRuleLabel,
   testIds: CONDITION_BUTTON_PRESET.testIds,
 };
+
+/**
+ * Persona AI Context: identical to the form-embedded preset except for the
+ * add-rule testid, which Playwright has located as `add-context-condition`
+ * since before the editor delegated its button to the shared builder.
+ */
+export const PERSONA_BUTTON_PRESET: QueryBuilderButtonPreset = {
+  ...CONDITION_BUTTON_PRESET,
+  testIds: {
+    ...CONDITION_BUTTON_PRESET.testIds,
+    addRule: 'add-context-condition',
+  },
+};

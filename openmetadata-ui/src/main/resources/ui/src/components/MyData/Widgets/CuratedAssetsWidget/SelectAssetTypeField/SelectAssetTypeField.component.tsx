@@ -11,25 +11,20 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Skeleton, TreeSelect } from 'antd';
-import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Form, TreeSelect } from 'antd';
+import { isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
-import { getSimpleExploreURLForAssetTypes } from '../../../../../utils/CuratedAssetsPureUtils';
-import {
-  AlertMessage,
-  CuratedAssetsFormSelectedAssetsInfo,
-} from '../../../../../utils/CuratedAssetsUtils';
+import { CuratedAssetsFormSelectedAssetsInfo } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 
 export const SelectAssetTypeField = ({
   fetchEntityCount,
-  selectedAssetsInfo,
 }: {
   fetchEntityCount: (args: {
     countKey: string;
@@ -42,10 +37,14 @@ export const SelectAssetTypeField = ({
   const form = Form.useFormInstance<CuratedAssetsConfig>();
 
   const { onChangeSearchIndex } = useAdvanceSearch();
-  const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
 
-  const selectedResource: Array<string> =
-    Form.useWatch<Array<string>>('resources', form) || [];
+  const watchedResources = Form.useWatch<Array<string>>('resources', form);
+  // Memoised so the `|| []` fallback does not hand every dependent hook a new
+  // array identity on each render.
+  const selectedResource: Array<string> = useMemo(
+    () => watchedResources ?? [],
+    [watchedResources]
+  );
 
   const resourcesOptions = useMemo(() => {
     const allOptions = getSourceOptionsFromResourceList(
@@ -85,31 +84,14 @@ export const SelectAssetTypeField = ({
     }));
   }, [selectedResource]);
 
-  const handleEntityCountChange = useCallback(async () => {
-    try {
-      setIsCountLoading(true);
-
-      await fetchEntityCount?.({
+  const handleEntityCountChange = useCallback(
+    () =>
+      fetchEntityCount?.({
         countKey: 'resourceCount',
         selectedResource,
         shouldUpdateResourceList: false,
-      });
-    } finally {
-      setIsCountLoading(false);
-    }
-  }, [fetchEntityCount, selectedResource]);
-
-  const queryURL = useMemo(
-    () => getSimpleExploreURLForAssetTypes(selectedResource),
-    [selectedResource]
-  );
-
-  const showFilteredResourceCount = useMemo(
-    () =>
-      !isEmpty(selectedResource) &&
-      !isUndefined(selectedAssetsInfo?.resourceCount) &&
-      !isCountLoading,
-    [selectedAssetsInfo?.resourceCount, isCountLoading, selectedResource]
+      }),
+    [fetchEntityCount, selectedResource]
   );
 
   const handleResourceChange = useCallback(
@@ -159,25 +141,6 @@ export const SelectAssetTypeField = ({
           onChange={handleResourceChange}
         />
       </Form.Item>
-      {isCountLoading && (
-        <Col span={24}>
-          <Skeleton
-            active
-            loading={isCountLoading}
-            paragraph={false}
-            title={{ style: { height: '32px' } }}
-          />
-        </Col>
-      )}
-      {showFilteredResourceCount && (
-        <Col span={24} style={{ marginBottom: 12 }}>
-          <AlertMessage
-            assetCount={selectedAssetsInfo?.resourceCount}
-            href={queryURL}
-            target="_blank"
-          />
-        </Col>
-      )}
     </>
   );
 };

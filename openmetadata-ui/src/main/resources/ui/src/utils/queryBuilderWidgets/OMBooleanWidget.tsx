@@ -22,13 +22,13 @@ const OMBooleanWidget: FC<BooleanWidgetProps> = ({
   // `tw:contents` keeps this wrapper out of layout entirely, so it is a test
   // handle and nothing else. Without it the value control can only be reached
   // through RAQB's internal `.rule--widget--*` classes.
-  <span className="tw:contents" data-testid="advanced-search-value-boolean">
+  <div className="tw:contents" data-testid="advanced-search-value-boolean">
     <Toggle
       isDisabled={readonly}
       isSelected={value === true}
       onChange={(checked: boolean) => setValue(checked)}
     />
-  </span>
+  </div>
 );
 
 export default OMBooleanWidget;

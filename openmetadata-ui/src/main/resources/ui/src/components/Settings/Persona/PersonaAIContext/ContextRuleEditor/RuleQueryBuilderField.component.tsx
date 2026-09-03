@@ -27,6 +27,7 @@ import { getRuleFilterTree } from '../../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import QueryBuilder from '../../../../common/QueryBuilder/QueryBuilder';
+import { PERSONA_BUTTON_PRESET } from '../../../../common/QueryBuilder/QueryBuilderButton/QueryBuilderButton.constants';
 import { SearchOutputType } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 interface RuleQueryBuilderFieldProps {
@@ -112,6 +113,7 @@ export const RuleQueryBuilderField = ({
     <DrawerPopupContainerProvider>
       <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
         <QueryBuilder
+          buttonPreset={PERSONA_BUTTON_PRESET}
           entityType={entityType as EntityType}
           fields={enrichedFields}
           groupMode="flat"

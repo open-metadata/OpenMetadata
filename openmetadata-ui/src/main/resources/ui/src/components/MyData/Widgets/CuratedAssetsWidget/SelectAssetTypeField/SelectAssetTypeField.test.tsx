@@ -15,7 +15,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react';
 import { Form } from 'antd';
 import React from 'react';
@@ -157,43 +156,24 @@ describe('SelectAssetTypeField', () => {
     expect(dashboardOption).toBeInTheDocument();
   });
 
-  it('displays loading skeleton when count is loading', () => {
-    const propsWithLoading = {
-      ...defaultProps,
-      selectedAssetsInfo: {
-        ...mockSelectedAssetsInfo,
-        isCountLoading: true,
-      },
-    };
+  // The asset-type count banner and its loading skeleton were removed: the
+  // modal showed two separate counts and neither is rendered any more.
+  it.each([0, 5])(
+    'should not render a count banner or skeleton for resourceCount %s',
+    (resourceCount) => {
+      render(
+        <TestWrapper>
+          <SelectAssetTypeField
+            {...defaultProps}
+            selectedAssetsInfo={{ ...mockSelectedAssetsInfo, resourceCount }}
+          />
+        </TestWrapper>
+      );
 
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...propsWithLoading} />
-      </TestWrapper>
-    );
-
-    expect(screen.getByTestId('skeleton')).toBeInTheDocument();
-  });
-
-  it('displays alert message when resource count is available', async () => {
-    const propsWithCount = {
-      ...defaultProps,
-      selectedAssetsInfo: {
-        ...mockSelectedAssetsInfo,
-        resourceCount: 5,
-      },
-    };
-
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...propsWithCount} />
-      </TestWrapper>
-    );
-
-    await waitFor(() =>
-      expect(screen.getByTestId('alert-message')).toBeInTheDocument()
-    );
-  });
+      expect(screen.queryByTestId('alert-message')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+    }
+  );
 
   it('does not display alert message when no resource count', () => {
     render(

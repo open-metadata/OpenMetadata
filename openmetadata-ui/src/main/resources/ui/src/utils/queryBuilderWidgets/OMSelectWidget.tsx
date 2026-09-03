@@ -109,7 +109,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
 
   if (useAsyncSearch && asyncFetch) {
     return (
-      <span
+      <div
         className={VALUE_TEST_ID_WRAPPER}
         data-testid="advanced-search-value-select">
         <Select.ComboBox
@@ -160,12 +160,12 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
             </Select.Item>
           )}
         </Select.ComboBox>
-      </span>
+      </div>
     );
   }
 
   return (
-    <span
+    <div
       className={VALUE_TEST_ID_WRAPPER}
       data-testid="advanced-search-value-select">
       <Select
@@ -185,7 +185,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           </Select.Item>
         )}
       </Select>
-    </span>
+    </div>
   );
 };
 
