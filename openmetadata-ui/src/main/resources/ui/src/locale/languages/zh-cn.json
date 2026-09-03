@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "查看次数最多：<0>{{entity}}</0>",
     "move": "移动",
     "move-anyway": "仍然移动",
+    "move-entity-to-root": "将{{entity}}移动到根目录",
     "move-the-entity": "移动{{entity}}",
     "move-to-folder": "移动到文件夹",
     "ms": "毫秒",

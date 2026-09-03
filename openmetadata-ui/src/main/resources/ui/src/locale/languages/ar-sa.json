@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "Most viewed: <0>{{entity}}</0>",
     "move": "نقل",
     "move-anyway": "نقل على أي حال",
+    "move-entity-to-root": "نقل {{entity}} إلى الجذر",
     "move-the-entity": "نقل {{entity}}",
     "move-to-folder": "نقل إلى المجلد",
     "ms": "مللي ثانية",

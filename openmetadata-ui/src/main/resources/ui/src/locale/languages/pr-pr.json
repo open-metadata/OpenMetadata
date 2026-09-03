@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "بیشترین بازدید: <0>{{entity}}</0>",
     "move": "Mover",
     "move-anyway": "همچنان جابجا کن",
+    "move-entity-to-root": "Mover {{entity}} para a raiz",
     "move-the-entity": "انتقال {{entity}}",
     "move-to-folder": "انتقال به پوشه",
     "ms": "میلی‌ثانیه",

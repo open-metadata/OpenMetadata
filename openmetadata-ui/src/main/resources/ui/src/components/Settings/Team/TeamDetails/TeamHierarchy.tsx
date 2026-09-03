@@ -302,6 +302,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           flow also accepted a drop on the header/search area to move a team
           to the root. The DropZone restores that surface. */}
       <DropZone
+        aria-label={t('label.move-entity-to-root', {
+          entity: t('label.team'),
+        })}
         className="tw:block"
         getDropOperation={(types) =>
           types.has(TEAM_DRAG_TYPE) ? 'move' : 'cancel'
