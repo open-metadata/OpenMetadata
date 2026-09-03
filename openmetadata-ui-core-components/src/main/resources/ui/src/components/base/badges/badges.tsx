@@ -522,7 +522,7 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    * Whether the button is disabled.
    */
   isDisabled?: boolean;
-  'data-testid'?: string
+  'data-testid'?: string;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
