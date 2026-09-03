@@ -92,12 +92,13 @@ const saveDomainViaApi = async (
   setActiveDomain: Dispatch<SetStateAction<EntityReference[]>>,
   afterDomainUpdateAction?: DomainLabelProps['afterDomainUpdateAction']
 ): Promise<void> => {
-  const entityDetails = getEntityAPIfromSource(entityType)(entityFqn, {
-    fields: 'domains',
-  });
-
   try {
-    const entityDetailsResponse = await entityDetails;
+    const entityDetailsResponse = await getEntityAPIfromSource(entityType)(
+      entityFqn,
+      {
+        fields: 'domains',
+      }
+    );
     if (!entityDetailsResponse) {
       return;
     }

@@ -20,6 +20,12 @@
  * invoked as a handler. (This is the remediation recommended by CodeQL's
  * `js/unvalidated-dynamic-method-call` rule.)
  */
+// Memoise the per-record lookup Map by record identity so a stable dispatch
+// table (the common case — module-level constant maps) is copied into a Map
+// once instead of on every call. WeakMap keeps this bounded by GC: an entry is
+// released as soon as its record object is, so no explicit size cap is needed.
+const lookupCache = new WeakMap<object, Map<string, unknown>>();
+
 export const getOwnHandler = <T>(
   record: Record<string, T>,
   key: string | undefined
@@ -28,7 +34,11 @@ export const getOwnHandler = <T>(
     return undefined;
   }
 
-  const lookup = new Map(Object.entries(record));
+  let lookup = lookupCache.get(record);
+  if (!lookup) {
+    lookup = new Map(Object.entries(record));
+    lookupCache.set(record, lookup);
+  }
 
-  return lookup.has(key) ? lookup.get(key) : undefined;
+  return lookup.has(key) ? (lookup.get(key) as T) : undefined;
 };
