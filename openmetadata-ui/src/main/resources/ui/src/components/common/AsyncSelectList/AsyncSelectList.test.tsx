@@ -12,12 +12,12 @@
  */
 
 import {
-    act,
-    findByRole,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  findByRole,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';

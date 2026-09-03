@@ -25,7 +25,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
@@ -38,7 +38,7 @@ import {
   getGlossariesList,
   ListGlossaryTermsParams,
   queryGlossaryTerms,
-  searchGlossaryTerms
+  searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -49,7 +49,7 @@ import {
 import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
-  getEncodedFqn
+  getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -61,7 +61,7 @@ import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
   AsyncSelectListProps,
-  SelectOption
+  SelectOption,
 } from './AsyncSelectList.interface';
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
@@ -337,8 +337,8 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         'tagFQN'
       ),
     } as TagLabel;
-    
-    const tagDisplayName = getTagDisplay(label as string)
+
+    const tagDisplayName = getTagDisplay(label as string);
     const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
