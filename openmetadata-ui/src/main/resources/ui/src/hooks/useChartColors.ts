@@ -29,18 +29,17 @@ const CHART_COLOR_TOKENS = {
 export const useChartColors = () => {
   const { brandColors, theme } = useTheme();
 
-  return useMemo(() => {
-    // Recharts passes these values through SVG presentation attributes, which
-    // need concrete colors and therefore must be refreshed with theme classes
-    // and runtime brand variables.
-    void brandColors;
-    void theme;
-
-    return Object.fromEntries(
-      Object.entries(CHART_COLOR_TOKENS).map(([key, [token, fallback]]) => [
-        key,
-        resolveCssColor(token, fallback),
-      ])
-    ) as Record<keyof typeof CHART_COLOR_TOKENS, string>;
-  }, [brandColors, theme]);
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(CHART_COLOR_TOKENS).map(([key, [token, fallback]]) => [
+          key,
+          resolveCssColor(token, fallback),
+        ])
+      ) as Record<keyof typeof CHART_COLOR_TOKENS, string>,
+    // CSS variables are ambient DOM state; context changes intentionally
+    // invalidate these reads even though their values are not callback inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [brandColors, theme]
+  );
 };
