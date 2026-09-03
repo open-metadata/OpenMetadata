@@ -102,6 +102,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -1013,6 +1014,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
+    authorizeGlossaryAssetsEdit(securityContext, request.getAssets());
     return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
   }
 
@@ -1063,7 +1065,38 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
+    authorizeGlossaryAssetsEdit(securityContext, request.getAssets());
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
+  /**
+   * Requires EDIT_GLOSSARY_TERMS on every target asset before its glossary tags may be changed in
+   * bulk. Authorization is per asset instance (not per entity type) so that owner- and domain-scoped
+   * grants are honored the same way the PATCH tag path honors them. Every caller is authorized the
+   * same way (admins are short-circuited inside the authorizer).
+   */
+  private void authorizeGlossaryAssetsEdit(
+      SecurityContext securityContext, List<EntityReference> assets) {
+    if (nullOrEmpty(assets)) {
+      return;
+    }
+    for (EntityReference asset : assets) {
+      OperationContext operationContext =
+          new OperationContext(assetResourceType(asset), MetadataOperation.EDIT_GLOSSARY_TERMS);
+      authorizer.authorize(securityContext, operationContext, assetResourceContext(asset));
+    }
+  }
+
+  private String assetResourceType(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType()) ? Entity.TABLE : asset.getType();
+  }
+
+  private ResourceContextInterface assetResourceContext(EntityReference asset) {
+    if (Entity.TABLE_COLUMN.equals(asset.getType())) {
+      String tableFqn = FullyQualifiedName.getTableFQN(asset.getFullyQualifiedName());
+      return new ResourceContext<>(Entity.TABLE, null, tableFqn);
+    }
+    return new ResourceContext<>(asset.getType(), asset.getId(), asset.getFullyQualifiedName());
   }
 
   @GET
