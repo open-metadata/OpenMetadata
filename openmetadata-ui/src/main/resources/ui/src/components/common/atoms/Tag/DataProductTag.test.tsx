@@ -34,10 +34,10 @@ describe('DataProductTag (atoms)', () => {
     expect(screen.getByText('Reporting Suite')).toBeInTheDocument();
   });
 
-  it('should not render an icon when no icon prop is passed', () => {
+  it('should render the default icon when no icon prop is passed', () => {
     const { container } = render(<DataProductTag label="Reporting Suite" />);
 
-    expect(container.querySelector('svg')).not.toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
   it('should render an icon when an icon prop is passed', () => {
