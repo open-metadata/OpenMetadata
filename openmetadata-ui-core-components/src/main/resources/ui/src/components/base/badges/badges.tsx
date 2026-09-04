@@ -523,6 +523,10 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    */
   isDisabled?: boolean;
   'data-testid'?: string;
+  /**
+   * The data-testid for the button.
+   */
+  buttonTestId?: string;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
@@ -535,6 +539,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     bordered = true,
     icon: Icon = CloseX,
     buttonLabel,
+    buttonTestId,
     children,
     isDisabled,
     onButtonKeyDown,
@@ -583,6 +588,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
           colors.styles[color].addonButton,
           type === 'pill-color' ? 'tw:rounded-full' : 'tw:rounded-[3px]'
         )}
+        data-testid={buttonTestId}
         disabled={isDisabled}
         type="button"
         onClick={props.onButtonClick}

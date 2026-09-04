@@ -37,4 +37,6 @@ export interface BaseTagProps {
   tooltip?: string;
   'data-testid'?: string;
   'data-tag-index'?: number;
+  /** data-testid for the close/remove button when onDelete is provided. */
+  closeButtonTestId?: string;
 }

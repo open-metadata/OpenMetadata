@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { DataProduct } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -42,6 +43,7 @@ const DataProductTag: FC<BaseTagProps> = ({
   disabled,
   className,
   tooltip,
+  closeButtonTestId,
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
@@ -69,7 +71,7 @@ const DataProductTag: FC<BaseTagProps> = ({
       imageStyle={{ color: resolvedColor }}
       size={ICON_PX[size]}
     />
-  ) : null;
+  ) : <DataProduct height={ICON_PX[size]} style={{ color: resolvedColor }} width={ICON_PX[size]} />;
 
   const labelNode = (
     <div style={{ maxWidth }}>
@@ -88,7 +90,8 @@ const DataProductTag: FC<BaseTagProps> = ({
       {iconNode && (
         <span
           aria-hidden
-          className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
+          className="tw:inline-flex tw:shrink-0 tw:items-center"
+          data-testid="data-product-icon">
           {iconNode}
         </span>
       )}
@@ -131,6 +134,7 @@ const DataProductTag: FC<BaseTagProps> = ({
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonTestId={closeButtonTestId}
         className={classNames(
           sharedProps.className,
           'tw:[&_button]:text-(--tag-close-color)'

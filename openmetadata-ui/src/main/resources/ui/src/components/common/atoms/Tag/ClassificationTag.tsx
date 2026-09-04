@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Tag } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -41,6 +42,7 @@ const ClassificationTag: FC<BaseTagProps> = ({
   disabled,
   className,
   tooltip,
+  closeButtonTestId,
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
@@ -66,7 +68,7 @@ const ClassificationTag: FC<BaseTagProps> = ({
       imageStyle={{ color: resolvedColor }}
       size={ICON_PX[size]}
     />
-  ) : null;
+  ) : <Tag height={ICON_PX[size]} style={{ color: resolvedColor }} width={ICON_PX[size]} />;
 
   const labelNode = (
     <div style={{ maxWidth }}>
@@ -85,7 +87,8 @@ const ClassificationTag: FC<BaseTagProps> = ({
       {iconNode && (
         <span
           aria-hidden
-          className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
+          className="tw:inline-flex tw:shrink-0 tw:items-center"
+          data-testid="classification-icon">
           {iconNode}
         </span>
       )}
@@ -128,6 +131,7 @@ const ClassificationTag: FC<BaseTagProps> = ({
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonTestId={closeButtonTestId}
         className={classNames(
           sharedProps.className,
           'tw:[&_button]:text-(--tag-close-color)'
