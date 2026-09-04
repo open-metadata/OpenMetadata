@@ -2591,6 +2591,54 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
   }
 
+  /**
+   * The mssql synonym-aliases design assumes the connector recomputes the full {@code aliases}
+   * list from {@code sys.synonyms} on every run and ships it inside the {@code CreateTable}
+   * request, so created/dropped/retargeted synonyms reconcile through plain PUT upsert semantics
+   * with no diffing stage. That only holds if PUT replaces {@code aliases} wholesale rather than
+   * merging it (as tags do). This test is the gate on that assumption.
+   */
+  @Test
+  void put_tableAliases_replaceNotMerge(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("aliases_replace_table"), ns)
+            .withAliases(List.of("svc.core_a.dbo.orders"));
+    Table created = createEntity(createRequest);
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        created.getAliases(),
+        "create response should echo the requested aliases");
+
+    // Re-fetch from the server (rather than trusting the create/PUT response's in-memory echo) so
+    // every assertion below reflects what was actually persisted, not just what the request or
+    // response object carried. A mapper that dropped aliases at store time only on create, for
+    // example, would still pass an echo-only assertion here.
+    Table table = client.tables().get(created.getId().toString());
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        table.getAliases(),
+        "initial aliases from the create request must be persisted, not just echoed");
+
+    // Retarget: the connector re-sends the full list, so the old alias must be gone.
+    createRequest.setAliases(List.of("svc.core_b.dbo.orders"));
+    client.tables().createOrUpdate(createRequest);
+    Table retargeted = client.tables().get(table.getId().toString());
+    assertEquals(
+        List.of("svc.core_b.dbo.orders"),
+        retargeted.getAliases(),
+        "aliases must be replaced wholesale, not merged with the previous run's list");
+
+    // Synonym dropped at the source: SynonymMap.aliases_for (ingestion/.../mssql/synonyms.py)
+    // returns None, not an empty list, on a miss, so the real connector clear path sends
+    // aliases=null rather than aliases=[]. Test that exact production path.
+    createRequest.setAliases(null);
+    client.tables().createOrUpdate(createRequest);
+    Table cleared = client.tables().get(table.getId().toString());
+    assertNull(cleared.getAliases(), "dropping every synonym must clear aliases");
+  }
+
   // ===================================================================
   // COLUMN GET VALIDATION TESTS
   // ===================================================================

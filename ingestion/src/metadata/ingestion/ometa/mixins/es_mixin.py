@@ -215,6 +215,29 @@ class ESMixin(Generic[T]):
             fields=fields,
         )
 
+    def es_search_from_alias(
+        self,
+        entity_type: type[T],
+        alias_fqn: str,
+        from_count: int = 0,
+        size: int = 10,
+        fields: str | None = None,
+    ) -> list[T] | None:
+        """
+        Find entities carrying an exact alternate FQN in their aliases field.
+
+        Matches on the keyword subfield only: an alias is resolved for lineage,
+        where a fuzzy hit would silently attach an edge to the wrong table.
+        """
+        return self._es_search_entity(
+            entity_type=entity_type,
+            field_value=alias_fqn,
+            field_name="aliases.keyword",
+            from_count=from_count,
+            size=size,
+            fields=fields,
+        )
+
     def es_search_container_by_path(
         self,
         full_path: str,

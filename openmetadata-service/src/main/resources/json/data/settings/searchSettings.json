@@ -423,6 +423,16 @@
           "field": "columnNamesFuzzy",
           "boost": 1.5,
           "matchType": "standard"
+        },
+        {
+          "field": "aliases",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "aliases.keyword",
+          "boost": 10.0,
+          "matchType": "exact"
         }
       ],
       "aggregations": [
@@ -442,7 +452,8 @@
       "highlightFields": [
         "name",
         "description",
-        "displayName"
+        "displayName",
+        "aliases"
       ],
       "fieldValueBoosts": [
         {
@@ -2885,6 +2896,14 @@
         {
           "name": "columns.description",
           "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+        },
+        {
+          "name": "aliases",
+          "description": "Alternate SQL names such as SQL Server synonyms that resolve to this table. Searching an alias returns the canonical table."
+        },
+        {
+          "name": "aliases.keyword",
+          "description": "Exact match on an alternate SQL name (alias) for precise FQN-style lookups."
         }
       ]
     },
