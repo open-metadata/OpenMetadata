@@ -447,6 +447,15 @@ class SearchUtilsTest {
         "kochi__expected_vessels__portcall_v1 | 0", // 5 sub-tokens
         "scraped/kochi/expected_vessels/parsed/portcall/v1 | 0",
         "foo-bar.baz_qux | 0", // 4 sub-tokens via mixed separators
+        // non-ASCII scripts count as sub-tokens, matching om_ngram's Unicode token_chars
+        "顧客 注文 履歴 | 0", // Japanese, 3 sub-tokens
+        "客户订单 明细 记录 | 0", // Chinese, 3 sub-tokens
+        "клиент заказ история | 0", // Russian, 3 sub-tokens
+        // accented Latin is no longer split on its accents, so these count as 2, not 3/4
+        "café münchen | 1",
+        "größe prüfung | 1",
+        // an unsegmented script still yields a single sub-token, so the guard stays off
+        "顧客注文履歴 | 1",
       })
   void getFuzzinessReturnsExpected(String query, String expected) {
     assertEquals(expected, SearchUtils.getFuzziness(query));
@@ -487,6 +496,10 @@ class SearchUtilsTest {
         "lhr__incoming_flights | 1",
         "kochi__expected_vessels__portcall_v1 | 1",
         "scraped/kochi/expected_vessels/parsed/portcall/v1 | 1",
+        // non-ASCII scripts count as sub-tokens here too
+        "顧客 注文 履歴 | 1",
+        "клиент заказ история | 1",
+        "顧客注文履歴 | 10", // unsegmented, single sub-token
       })
   void getMaxExpansionsReturnsExpected(String query, int expected) {
     assertEquals(expected, SearchUtils.getMaxExpansions(query));
