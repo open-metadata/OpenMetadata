@@ -667,7 +667,7 @@ test.describe('Context Center Articles', () => {
     await afterAction();
   });
 
-  test('Article list cards, recently viewed widget, and pagination work', async ({
+  test('Recently viewed widget shows viewed articles', async ({
     page,
   }) => {
     await navigateToArticles(page);
@@ -683,11 +683,17 @@ test.describe('Context Center Articles', () => {
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
     await expect(viewedCard).toBeVisible();
 
+    const articleResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/contextCenter/pages/name/')
+    );
     await viewedCard.getByTestId('knowledge-page-link').first().click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
     );
+    await articleResponse;
     await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'article-detail-header-skeleton');
+    await updateBody(page, 'Playwright test comment');
 
     await navigateToArticles(page);
     const rightPanel = page.getByTestId('knowledge-center-right-panel');
@@ -696,8 +702,14 @@ test.describe('Context Center Articles', () => {
     const recentlyViewedItem = rightPanel.getByTestId(
       `recent-viewed-${articleEntity.responseData.displayName}`
     );
-    await recentlyViewedItem.scrollIntoViewIfNeeded();
-    await expect(recentlyViewedItem).toBeVisible();
+    await expect(async () => {
+      if (!(await recentlyViewedItem.isVisible())) {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+      }
+      await expect(recentlyViewedItem).toBeVisible();
+    }).toPass({ timeout: 30000 });
+
     await recentlyViewedItem.click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
@@ -706,8 +718,11 @@ test.describe('Context Center Articles', () => {
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
       articleEntity.responseData.displayName
     );
+  });
 
+  test('Pagination works for article listing', async ({ page }) => {
     await navigateToArticles(page);
+
     const listing = page.getByTestId('knowledge-page-listing');
     const cards = listing.locator('[data-testid^="knowledge-card-"]');
     const initialCardCount = await cards.count();

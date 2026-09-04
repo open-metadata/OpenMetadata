@@ -444,7 +444,11 @@ const KnowledgePageListComponent = forwardRef<
       return (
         <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
           {Array.from({ length: 4 }).map(() => (
-            <Col className="knowledge-card-col" key={uniqueId()} span={24}>
+            <Col
+              className="knowledge-card-col"
+              data-testid="knowledge-card-skeleton"
+              key={uniqueId()}
+              span={24}>
               <Row gutter={[16, 16]}>
                 <Col span={24}>
                   <Space>
