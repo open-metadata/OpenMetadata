@@ -968,9 +968,11 @@ public class TaskRepository extends EntityRepository<Task> {
    * resolve the task".
    *
    * <p>For incident-style tasks ({@code TestCaseResolution}, {@code IncidentResolution}) a
-   * fallback is permitted: a non-filer user with {@code EditTests}/{@code EditAll} on the related
-   * entity can resolve the task even if the task policy alone would deny — preserving the
-   * historical behaviour that test owners can act on incidents. The filer check is intentional:
+   * fallback is permitted: a non-filer user with {@code EditStatus}, {@code EditTests} or
+   * {@code EditAll} on the related entity can resolve the task even if the task policy alone would
+   * deny — preserving the historical behaviour that test owners can act on incidents, and letting
+   * {@code EditStatus} alone grant incident management without test case edit rights. The filer
+   * check is intentional:
    * mixing the task policy and the incident fallback in a single {@code AuthorizationLogic.ANY}
    * call would let a filer who also owns the related entity bypass the {@code isTaskFiler()} deny
    * rule and approve their own task. The two checks are therefore evaluated sequentially with the
@@ -1073,38 +1075,52 @@ public class TaskRepository extends EntityRepository<Task> {
       if (testCase == null) {
         return;
       }
-      ResourceContextInterface testCaseResourceContext =
-          TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-      EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-      ResourceContextInterface entityResourceContext =
-          entityLink != null
-              ? TestCaseResourceContext.builder().entityLink(entityLink).build()
-              : TestCaseResourceContext.builder().build();
-
-      if (entityLink != null) {
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
-                entityResourceContext));
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
-                entityResourceContext));
-      }
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
-              testCaseResourceContext));
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
-              testCaseResourceContext));
+      requests.addAll(buildIncidentEditRequests(testCase));
     } catch (Exception e) {
       LOG.warn(
           "[TaskRepository] Failed to build incident permission fallback for task '{}': {}",
           task.getId(),
           e.getMessage());
     }
+  }
+
+  /**
+   * Auth requests accepted for the task-first incident fallback. {@code EditStatus} on the test
+   * case is the Incident Manager grant: it lets a user drive incident transitions (status,
+   * severity, assignment) without holding edit rights on the test case itself. The historical
+   * {@code EditTests}/{@code EditAll} grants — on the test case and on the entity under test —
+   * remain accepted.
+   */
+  static List<AuthRequest> buildIncidentEditRequests(TestCase testCase) {
+    List<AuthRequest> requests = new ArrayList<>();
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    if (entityLink != null) {
+      ResourceContextInterface entityResourceContext =
+          TestCaseResourceContext.builder().entityLink(entityLink).build();
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
+              entityResourceContext));
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+              entityResourceContext));
+    }
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+            testCaseResourceContext));
+    return requests;
   }
 
   private void validateUnderlyingEntityPermission(
