@@ -12,16 +12,19 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -36,6 +39,7 @@ import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 @ExtendWith(MockitoExtension.class)
 class PageContextProcessingEngineTest {
@@ -46,6 +50,8 @@ class PageContextProcessingEngineTest {
   @Mock private ScheduledExecutorService scheduler;
 
   private final UUID pageId = UUID.randomUUID();
+  private final EntityUtil.Fields putFields =
+      new EntityUtil.Fields(Set.of("relatedEntities"), "relatedEntities");
 
   private PageContextProcessingEngine engine(int maxPending) {
     return new PageContextProcessingEngine(
@@ -63,6 +69,11 @@ class PageContextProcessingEngineTest {
   private void pageReturns(Page page) {
     when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(page);
+  }
+
+  @BeforeEach
+  void stubPutFields() {
+    lenient().when(pageRepository.getPutFields()).thenReturn(putFields);
   }
 
   @Test
@@ -134,6 +145,19 @@ class PageContextProcessingEngineTest {
     Page stamped = capturedUpdate();
     assertEquals(PageProcessingStatus.Processed, stamped.getProcessingStatus());
     assertNull(stamped.getProcessingError());
+  }
+
+  @Test
+  void stampsReadTheFieldsTheUpdaterManagesSoRelationshipsSurvive() {
+    String body = "Onboarding runbook body";
+    pageReturns(page(body, DigestUtils.sha256Hex(body)));
+
+    engine(10).runExtraction(pageId);
+
+    // getFields("") would leave relatedEntities/parent/children null on both sides of the update,
+    // and the updater reads a null managed field as a removal.
+    verify(pageRepository, atLeastOnce())
+        .get(isNull(), eq(pageId), eq(putFields), eq(Include.NON_DELETED), eq(false));
   }
 
   @Test

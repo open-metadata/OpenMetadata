@@ -223,12 +223,19 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     return ContextMemorySourceType.PAGE_EXTRACTION;
   }
 
+  /**
+   * Loads the page with the fields its own updater manages. Fetching with {@code getFields("")}
+   * leaves the relationship-backed fields (relatedEntities, parent, children) null, and the updater
+   * reads a null managed field as a removal — so every stamp below silently deleted the article's
+   * related data assets and bumped its version. Loading them here makes the stamp a true read-
+   * modify-write.
+   */
   private Page getPage(UUID pageId) {
     Page result = null;
     try {
       result =
           pageRepository.get(
-              null, pageId, pageRepository.getFields(""), Include.NON_DELETED, false);
+              null, pageId, pageRepository.getPutFields(), Include.NON_DELETED, false);
     } catch (EntityNotFoundException e) {
       result = null;
     }
