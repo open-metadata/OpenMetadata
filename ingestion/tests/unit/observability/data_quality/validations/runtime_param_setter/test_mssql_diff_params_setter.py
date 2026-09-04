@@ -20,6 +20,9 @@ import uuid
 
 import pytest
 
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    BaseTableParameter,
+)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionOptions,
 )
@@ -154,14 +157,31 @@ class TestMssqlConnectionDict:
         with pytest.raises(SourceConnectionException, match="hostPort"):
             MssqlConnection(config).get_connection_dict()
 
-    def test_missing_host_port_is_not_swallowed_into_a_url_fallback(self):
+    def test_non_numeric_port_fails_with_a_clear_error(self):
+        """`int(port)` on a typo'd port would raise ValueError - a swallowed one.
+
+        Defaulting to 1433 instead would be just as quiet, and would connect to a
+        port the user never asked for.
+        """
+        config = _config(MssqlScheme.mssql_pymssql)
+        config.hostPort = "sqlserver.corp.local:not-a-port"
+
+        with pytest.raises(SourceConnectionException, match="non-numeric port"):
+            MssqlConnection(config).get_connection_dict()
+
+    @pytest.mark.parametrize("host_port", [None, "sqlserver.corp.local:not-a-port"])
+    def test_bad_host_port_is_not_swallowed_into_a_url_fallback(self, host_port):
         """BaseTableParameter._get_service_connection_config catches ValueError.
 
         Raising one here would be silently downgraded to the URL path, losing both
-        this message and the derived driver, so the error must sit outside that
-        tuple.
+        the message and the derived driver, so go through that method rather than
+        `get_connection_dict` directly and prove the error actually surfaces.
         """
-        assert not issubclass(SourceConnectionException, ValueError | AttributeError | NotImplementedError)
+        config = _config(MssqlScheme.mssql_pymssql)
+        config.hostPort = host_port
+
+        with pytest.raises(SourceConnectionException):
+            BaseTableParameter._get_service_connection_config(config)
 
 
 class TestMssqlTableParameter:

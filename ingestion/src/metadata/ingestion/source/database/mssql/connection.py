@@ -47,6 +47,9 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.azuresql.connection import (
+    DEFAULT_SQL_SERVER_PORT,
+)
+from metadata.ingestion.source.database.azuresql.connection import (
     get_connection_url as get_pyodbc_connection_url,
 )
 from metadata.ingestion.source.database.mssql.queries import (
@@ -64,7 +67,6 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection.records import Evidence
 
 
-DEFAULT_SQL_SERVER_PORT = 1433
 DEFAULT_ODBC_DRIVER = "ODBC Driver 18 for SQL Server"
 FREETDS_ODBC_DRIVER = "FreeTDS"
 
@@ -256,6 +258,17 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
             )
 
         host, _, port = connection.hostPort.partition(":")
+        if port and not port.isdigit():
+            # Same reasoning as above, from the other side: `int(port)` would raise
+            # ValueError, which that fallback catches, so a typo'd port would drop
+            # the diff back onto the URL path and take the derived ODBC driver with
+            # it. Quietly defaulting to 1433 is no better - it connects somewhere
+            # the user did not ask for.
+            raise SourceConnectionException(
+                f"MSSQL hostPort {connection.hostPort!r} has a non-numeric port, so the table "
+                "diff cannot connect. Set 'Host and Port' to 'host:port', or to 'host' alone "
+                f"to use the default {DEFAULT_SQL_SERVER_PORT}."
+            )
 
         return {
             # connectionOptions used to ride along as query params on the rendered
