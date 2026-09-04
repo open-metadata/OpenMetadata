@@ -48,8 +48,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _date(value: str) -> datetime | None:
-    return mq.parse_ts(f"{value}T00:00:00Z") if value else None
+def _date(value: str, end_of_day: bool = False) -> datetime | None:
+    """Parse a `YYYY-MM-DD` bound, treating the end date as inclusive.
+
+    Both bounds would otherwise land on midnight UTC, so `2026-08-28..2026-08-31`
+    would end *at the start* of the 31st and silently drop that day — measured as
+    n=17 against the n=26 the same written range is read to mean.
+    """
+    if not value:
+        return None
+    start = mq.parse_ts(f"{value}T00:00:00Z")
+    return start + timedelta(days=1, microseconds=-1) if end_of_day else start
 
 
 def main() -> int:
@@ -59,7 +68,7 @@ def main() -> int:
     args.channel = mq.require_channel(args.channel)
 
     healthy_start = _date(args.healthy_since)
-    healthy_end = _date(args.healthy_until)
+    healthy_end = _date(args.healthy_until, end_of_day=True)
     week_start = now - timedelta(days=7)
     # One paginated read covers every window; the earliest bound decides how far back.
     fetch_since = min(filter(None, [week_start, healthy_start]))

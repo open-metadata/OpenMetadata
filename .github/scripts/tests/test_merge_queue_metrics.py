@@ -16,10 +16,12 @@ import pytest
 
 
 SCRIPTS = Path(__file__).parents[1]
-sys.path.insert(0, str(SCRIPTS))
 
 
 def load_script(name: str):
+    # Registering in sys.modules *before* exec_module is what lets merge_queue_alert's
+    # `import merge_queue_metrics` resolve — the dependency is already loaded by name,
+    # so no sys.path manipulation is needed here.
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -30,6 +32,7 @@ def load_script(name: str):
 
 mq = load_script("merge_queue_metrics")
 alert = load_script("merge_queue_alert")
+daily = load_script("merge_queue_daily_report")
 
 NOW = datetime(2026, 9, 4, 18, 0, tzinfo=timezone.utc)
 WEEK_AGO = NOW - timedelta(days=7)
@@ -199,6 +202,21 @@ def test_failing_check_tally_shortens_and_sanitizes(monkeypatch):
         ("evil' &lt;!channel&gt;", 1),
         ("playwright / ci (chromium-05)", 1),
     ]
+
+
+def test_healthy_window_end_date_is_inclusive():
+    # `2026-08-28..2026-08-31` must cover the 31st. Ending at its midnight drops a
+    # whole day of the reference sample without any visible signal.
+    assert daily._date("2026-08-28") == datetime(2026, 8, 28, tzinfo=timezone.utc)
+    end = daily._date("2026-08-31", end_of_day=True)
+    assert end.date() == datetime(2026, 8, 31).date()
+    assert end.hour == 23 and end.minute == 59
+
+    merged_on_the_last_day = datetime(2026, 8, 31, 10, 0, tzinfo=timezone.utc)
+    assert daily._date("2026-08-28") <= merged_on_the_last_day <= end
+
+    assert daily._date("") is None
+    assert daily._date("", end_of_day=True) is None
 
 
 def test_percentile_of_empty_sample_is_none_not_an_error():
