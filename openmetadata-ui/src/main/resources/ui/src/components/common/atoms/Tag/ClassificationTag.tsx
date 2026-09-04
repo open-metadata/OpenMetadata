@@ -68,7 +68,13 @@ const ClassificationTag: FC<BaseTagProps> = ({
       imageStyle={{ color: resolvedColor }}
       size={ICON_PX[size]}
     />
-  ) : <Tag height={ICON_PX[size]} style={{ color: resolvedColor }} width={ICON_PX[size]} />;
+  ) : (
+    <Tag
+      height={ICON_PX[size]}
+      style={{ color: resolvedColor }}
+      width={ICON_PX[size]}
+    />
+  );
 
   const labelNode = (
     <div style={{ maxWidth }}>
