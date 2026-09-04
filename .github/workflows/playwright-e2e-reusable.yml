@@ -67,10 +67,11 @@ on:
       warm_caches_only:
         description: >-
           Build and seed the pipeline's cache assets, then stop before the test
-          shards. Used by populate-playwright-fixture-cache.yml on `main` so the
-          distribution / golden fixture / ingestion image land in the DEFAULT
-          BRANCH cache scope — the only scope every merge-queue and PR run can
-          restore from. See that workflow's header for the scoping mechanics.
+          shards. Used by populate-playwright-apt-cache.yml's warm-fixture job
+          on `main` so the distribution / golden fixture / ingestion image land
+          in the DEFAULT BRANCH cache scope — the only scope every merge-queue
+          and PR run can restore from. See that workflow's header for the
+          scoping mechanics.
         required: false
         type: boolean
         default: false

@@ -561,15 +561,24 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     assert "uses: ./.github/actions/cache-ui-dist" in ui_dist_step
     assert guard not in ui_dist_step
 
-    # populate-playwright-fixture-cache.yml is the main-scoped writer that
-    # replaces them, and it must stop before the shards.
-    warm = (
-        ROOT / ".github/workflows/populate-playwright-fixture-cache.yml"
-    ).read_text()
-    assert "branches:\n      - main" in warm
+    # populate-playwright-apt-cache.yml is the SINGLE main-scoped writer that
+    # replaces them, and its warm job must stop before the shards.
+    warm = (ROOT / ".github/workflows/populate-playwright-apt-cache.yml").read_text()
     assert "warm_caches_only: true" in warm
     assert "uses: ./.github/workflows/playwright-e2e-reusable.yml" in warm
     assert "!inputs.warm_caches_only" in workflow
+
+    # The push trigger must stay unfiltered: the fixture and distribution
+    # fingerprints span far more than the apt/yarn/browser key inputs, and a
+    # skipped warm costs every queue entry ~17 min.
+    push_trigger = warm.split("  push:", 1)[1].split("  workflow_dispatch", 1)[0]
+    assert "branches:\n      - main" in push_trigger
+    assert "paths:" not in push_trigger
+
+    # One writer, not two — a second warmer workflow is the drift the
+    # one-writer rule exists to prevent.
+    second_writer = ROOT / ".github/workflows/populate-playwright-fixture-cache.yml"
+    assert not second_writer.exists()
 
     # A push event has no PR diff to narrow against; the warm has to seed the
     # same fixture a full merge-queue run restores, ingestion image included.
