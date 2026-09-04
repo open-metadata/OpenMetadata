@@ -40,6 +40,35 @@ export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
 
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ */
+export const getDescriptionBox = (scope: Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Fill the description editor inside `scope`, asserting it is the only one
+ * there.
+ *
+ * The count assertion is deliberate: `.first()` would also silence the strict
+ * mode violation, but by typing into an arbitrary editor, so the test goes on
+ * to fail somewhere unrelated to the real ambiguity. Failing here names the
+ * scope that needs narrowing.
+ */
+export const fillDescriptionBox = async (scope: Locator, value: string) => {
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
+};
+
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',

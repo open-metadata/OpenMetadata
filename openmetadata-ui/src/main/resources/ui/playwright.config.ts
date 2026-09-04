@@ -154,7 +154,7 @@ export default defineConfig({
     ignoreHTTPSErrors: isH2Mode,
 
     /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
