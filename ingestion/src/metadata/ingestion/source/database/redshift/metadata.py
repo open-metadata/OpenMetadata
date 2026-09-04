@@ -275,7 +275,10 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name))).all()
+            results = conn.execute(
+                text(REDSHIFT_EXTERNAL_TABLE_LOCATION),
+                {"database_name": database_name},
+            ).all()
         self.external_location_map = {(database_name, row.schemaname, row.tablename): row.location for row in results}
 
     def _filtered_database_names_for_totals(self) -> list[str]:

@@ -94,7 +94,7 @@ def _get_columns(
     connection: Connection,
     table_name: str,
 ) -> list[dict[str, Any]]:
-    result = connection.execute(text(QUESTDB_GET_COLUMNS.format(table_name=table_name)))
+    result = connection.execute(text(QUESTDB_GET_COLUMNS), {"table_name": table_name})
     columns: list[dict[str, Any]] = []
     for raw in result:
         row = QuestDBColumnRow.model_validate(dict(raw._mapping))

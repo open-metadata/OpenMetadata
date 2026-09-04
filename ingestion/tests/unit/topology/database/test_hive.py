@@ -1297,19 +1297,50 @@ class TestGetTableComment:
 
         return connection
 
+    @staticmethod
+    def _dialect():
+        dialect = Mock()
+        dialect.identifier_preparer.quote_identifier.side_effect = lambda identifier: (
+            f"`{identifier.replace('`', '``')}`"
+        )
+        return dialect
+
     def test_returns_table_comment(self):
         rows = [
             ("id", "int", "customer id"),
             ("", "comment             ", "customer master     "),
         ]
 
-        result = get_table_comment(Mock(), self._connection_returning(rows), "customers", "sales_db")
+        result = get_table_comment(
+            self._dialect(),
+            self._connection_returning(rows),
+            "customers",
+            "sales_db",
+        )
 
         assert result == {"text": "customer master"}
 
     def test_returns_none_without_comment(self):
         rows = [("id", "int", "customer id")]
 
-        result = get_table_comment(Mock(), self._connection_returning(rows), "customers", "sales_db")
+        result = get_table_comment(
+            self._dialect(),
+            self._connection_returning(rows),
+            "customers",
+            "sales_db",
+        )
 
         assert result == {"text": None}
+
+    def test_quotes_catalog_names_in_describe_query(self):
+        connection = self._connection_returning([])
+
+        get_table_comment(
+            self._dialect(),
+            connection,
+            "orders`; DROP TABLE secret; --",
+            "sales`; DROP SCHEMA secret; --",
+        )
+
+        query = str(connection.execute.call_args.args[0])
+        assert ("`sales``; DROP SCHEMA secret; --`.`orders``; DROP TABLE secret; --`") in query

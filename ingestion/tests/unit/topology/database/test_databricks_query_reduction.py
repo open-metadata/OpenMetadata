@@ -20,7 +20,9 @@ from unittest.mock import MagicMock, Mock
 from metadata.ingestion.source.database.databricks.metadata import (
     DatabricksSource,
     _fetch_table_describe_json,
+    _format_identifier_query,
     _json_type_to_sql_string,
+    _qualified_identifier,
     get_columns,
     get_table_type,
     get_view_definition,
@@ -33,6 +35,19 @@ from metadata.ingestion.source.database.databricks.models import (
 )
 
 _METADATA = "metadata.ingestion.source.database.databricks.metadata"
+
+
+def test_identifier_helpers_keep_catalog_names_inside_backticks():
+    schema = "sales`; DROP SCHEMA secret; --"
+    table = "orders`; DROP TABLE secret; --"
+
+    assert _qualified_identifier(schema, table) == (
+        "`sales``; DROP SCHEMA secret; --`.`orders``; DROP TABLE secret; --`"
+    )
+    assert _format_identifier_query(
+        "SELECT * FROM {database_name}.information_schema.table_tags",
+        database_name="catalog`; DROP CATALOG secret; --",
+    ) == ("SELECT * FROM `catalog``; DROP CATALOG secret; --`.information_schema.table_tags")
 
 
 def test_get_table_type_uses_one_bulk_query_per_schema():
