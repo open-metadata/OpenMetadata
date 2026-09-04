@@ -260,12 +260,23 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
-    await pageSizeDropdown.click();
 
-    const pageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '15 / Page' });
-    await expect(pageSizeOption).toBeVisible();
+    // NextPrevious wraps the button in an Ant Dropdown with the default hover
+    // trigger, so a bare click only fires preventDefault. Hover + click-fallback
+    // + retry — a re-render that nudges the footer out from under the pointer
+    // otherwise leaves the menu closed for good.
+    const pageSizeMenu = page.getByRole('menu').filter({ hasText: '/ Page' });
+    const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
+      name: '15 / Page',
+    });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await pageSizeMenu.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+
     await pageSizeOption.click();
     await waitForAllLoadersToDisappear(page);
 

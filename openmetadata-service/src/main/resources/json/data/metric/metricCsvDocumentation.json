@@ -114,24 +114,6 @@
       "required": false,
       "description": "Custom property values in key:value format separated by ';'.",
       "examples": ["externalId:12345"]
-    },
-    {
-      "name": "parent",
-      "required": false,
-      "description": "Fully qualified name of the parent metric this metric is a variant of. The parent must already exist before the child row is imported — rows are processed in file order, so a single file cannot create a parent and its child together.",
-      "examples": ["net_sales"]
-    },
-    {
-      "name": "experts",
-      "required": false,
-      "description": "User FQNs for subject-matter experts separated by ';'.",
-      "examples": ["finance.analyst;revenue.owner"]
-    },
-    {
-      "name": "metricGroup",
-      "required": false,
-      "description": "Metric Group FQN. Child metrics inherit their parent's group.",
-      "examples": ["Profitability"]
     }
   ]
 }

@@ -63,6 +63,7 @@ import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jena.sys.JenaSystem;
 import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -171,6 +172,7 @@ import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.ImpersonationCleanupFilter;
+import org.openmetadata.service.security.ImpersonationRestrictionFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -256,6 +258,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     StartupTimer startupTimer = new StartupTimer();
     this.environment = environment;
+
+    // Initialize Jena before anything can touch org.apache.jena.vocabulary.RDF. On Jena 6.2.0
+    // InitJenaCore's TypeMapper.reset() registers the RDF 1.2 datatypes by reading RDF.dtLangString
+    // and friends, so if RDF is the first Jena class the JVM initializes, its <clinit> triggers
+    // JenaSystem.init() re-entrantly on the same thread and TypeMapper reads those fields while
+    // they
+    // are still null: NPE inside a static initializer, which then leaves *every* Jena class in the
+    // JVM permanently unusable ("Could not initialize class org.apache.jena.graph.NodeFactory").
+    // Jena 5.6.0 did not have this cycle. An explicit init here is idempotent and orders the
+    // subsystem startup ahead of the RDF resources, which construct Jena objects even when RDF is
+    // disabled. Remove once the RDF/TypeMapper init cycle is fixed upstream.
+    JenaSystem.init();
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
@@ -423,6 +437,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // context) after every response so state cannot leak across requests that share a Jetty
     // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+
+    // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
+    // password change, logout) - those call no authorizer, so nothing else would stop them.
+    environment.jersey().register(ImpersonationRestrictionFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);

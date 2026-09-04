@@ -15,7 +15,6 @@ based on the test case.
 """
 
 import sys
-from typing import Dict, Set, Type  # noqa: UP035
 
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator,
@@ -67,7 +66,7 @@ def removesuffix(s: str, suffix: str) -> str:
     return s
 
 
-def validator_name(test_case_class: Type) -> str:  # noqa: UP006
+def validator_name(test_case_class: type) -> str:
     return removesuffix(test_case_class.__name__[0].lower() + test_case_class.__name__[1:], "Validator")
 
 
@@ -77,12 +76,12 @@ class RuntimeParameterSetterFactory:
     def __init__(self) -> None:
         """Set"""
         # Map test definition FQN to param setters (for built-in validators)
-        self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {  # noqa: UP006
+        self._setter_map: dict[str, set[type[RuntimeParameterSetter]]] = {
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
             validator_name(TableCustomSQLQueryValidator): {TableCustomSQLQueryParamsSetter},
         }
         # Map validatorClass names to param setters (for rule library validators)
-        self._validator_class_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {  # noqa: UP006
+        self._validator_class_map: dict[str, set[type[RuntimeParameterSetter]]] = {
             ColumnRuleLibrarySqlExpressionValidator.__name__: {RuleLibrarySqlExpressionParamsSetter},
             TableRuleLibrarySqlExpressionValidator.__name__: {RuleLibrarySqlExpressionParamsSetter},
         }
@@ -94,7 +93,7 @@ class RuntimeParameterSetterFactory:
         service_connection_config,
         table_entity: Table,
         sampler: SamplerInterface,
-    ) -> Set[RuntimeParameterSetter]:  # noqa: UP006
+    ) -> set[RuntimeParameterSetter]:
         """Get the runtime parameter setter.
 
         First checks if the test definition FQN matches a built-in validator.
