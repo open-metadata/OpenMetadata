@@ -19,6 +19,10 @@
     "timestamp": {
       "description": "Update time of the job status.",
       "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "startingTimestamp": {
+      "description": "Point in time from which this subscription started alerting. Executions that finished before it are treated as historical and are not delivered.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
   "required": ["startingOffset", "currentOffset"],

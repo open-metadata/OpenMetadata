@@ -667,10 +667,12 @@ const SchemaTable = () => {
         key: 'name',
         label: (
           <span data-testid="sort-alphabetical">
+            {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
             {t('label.alphabetical')} (A → Z)
           </span>
         ),
         icon:
+          // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
           sortBy === 'name' ? <span className="text-primary">✓</span> : null,
       },
       {
@@ -682,6 +684,7 @@ const SchemaTable = () => {
         ),
         icon:
           sortBy === 'ordinalPosition' ? (
+            // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
             <span className="text-primary">✓</span>
           ) : null,
       },

@@ -13,7 +13,7 @@
 OpenMetadata Airflow Provider utilities
 """
 
-from typing import TYPE_CHECKING, Dict, List  # noqa: UP035
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -38,7 +38,7 @@ STATUS_MAP = {
 }
 
 
-def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):  # noqa: UP006
+def get_dag_status(all_tasks: list[str], task_status: list[TaskStatus]):
     """
     Based on the task information and the total DAG tasks, cook the
     DAG status.
@@ -64,7 +64,7 @@ def add_status(
     operator: "BaseOperator",
     pipeline: Pipeline,
     metadata: OpenMetadata,
-    context: Dict,  # noqa: UP006
+    context: dict,
 ) -> None:
     """
     Add status information for this execution date

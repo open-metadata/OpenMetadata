@@ -18,8 +18,8 @@ import json
 import os
 import shutil
 import traceback
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -76,7 +76,7 @@ class TableUsageStage(Stage):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = TableStageConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -92,7 +92,7 @@ class TableUsageStage(Stage):
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
-    def _get_user_entity(self, username: str) -> Tuple[Optional[List[str]], Optional[List[str]]]:  # noqa: UP006, UP045
+    def _get_user_entity(self, username: str) -> tuple[list[str] | None, list[str] | None]:
         """
         From the user received in the query history call - who executed the query in the db -
         return if we find any users in OM that match, plus the user that we found in the db record.

@@ -151,7 +151,7 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
 
     Map<ChangeEvent, Set<UUID>> delivered =
         AlertUtil.getFilteredEvents(
-            subscriptionFilteringOnDomain(domain.getFullyQualifiedName()), batch);
+            subscriptionFilteringOnDomain(domain.getFullyQualifiedName()), batch, null);
 
     assertTrue(
         delivered.containsKey(liveEvent),
