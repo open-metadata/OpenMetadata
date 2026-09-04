@@ -17,4 +17,3 @@ export { default as DataProductTag } from './DataProductTag';
 export { default as DomainTag } from './DomainTag';
 export { default as GlossaryTag } from './GlossaryTag';
 export type { BaseTagProps, TagSize } from './Tag.interface';
-export { DEFAULT_TAG_COLOR } from './Tag.interface';
