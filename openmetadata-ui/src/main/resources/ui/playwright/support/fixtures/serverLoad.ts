@@ -93,9 +93,11 @@ type CacheEntry = {
   response: CachedResponse;
 };
 
-// One entry per (path + query) of the paths above, so this never grows past a
-// couple of dozen. Capped and FIFO-evicted regardless, because an unbounded
-// module-level cache is an unbounded leak in a long-lived worker.
+// One entry per (identity + path + query). Ten paths, but the identity half is
+// unbounded — every fresh user that boots the app adds a set — so the cap is
+// load-bearing rather than belt-and-braces, and eviction is LRU (see the hit
+// path in serveBootConfig) so identity churn cannot evict the admin entries
+// that account for most boots.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
 
@@ -196,6 +198,15 @@ const serveBootConfig = async (route: Route) => {
   const cached = bootCache.get(key);
 
   if (cached) {
+    // Re-inserting on a hit makes eviction LRU rather than FIFO, which matters
+    // now that the Authorization header is part of the key: the key space is
+    // unbounded in identities (106 call sites build their own context, and
+    // performUserLogin mints a fresh user), while the cap is 6.4 identities'
+    // worth of entries. Under FIFO a burst of short-lived users would evict the
+    // admin entries that account for most boots, and they would all refetch.
+    bootCache.delete(key);
+    bootCache.set(key, cached);
+
     await route.fulfill(cached.response);
 
     return;
@@ -266,6 +277,25 @@ const serveStaticAsset = async (route: Route) => {
   await route.fulfill(entry);
 };
 
+/**
+ * Playwright rethrows out of a route handler (`RouteHandler._handleImpl`) and
+ * `BrowserContext._onRoute` does not catch it, so a handler that throws fails
+ * whichever test owns the route. Losing the target mid-flight is routine here
+ * rather than exceptional: boot config is fetched on every navigation, so any
+ * test that navigates away or ends while one is in flight would otherwise fail
+ * on a request nothing asserts on. Anything else still propagates — a cache
+ * that is broken for a real reason must not be silent.
+ */
+const ignoreClosedTarget = async (serve: () => Promise<void>) => {
+  try {
+    await serve();
+  } catch (error) {
+    if (!/has been closed/.test(String(error))) {
+      throw error;
+    }
+  }
+};
+
 // Playwright stacks route handlers, so installing twice on one context would
 // leave a dead handler behind on every call. Contexts are the key so entries
 // disappear with them.
@@ -289,13 +319,13 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
 
   await context.route(
     (url) => isCacheableBootRequest(url),
-    (route) => serveBootConfig(route)
+    (route) => ignoreClosedTarget(() => serveBootConfig(route))
   );
 
   if (cacheStaticAssets) {
     await context.route(
       (url) => STATIC_ASSET.test(url.pathname),
-      (route) => serveStaticAsset(route)
+      (route) => ignoreClosedTarget(() => serveStaticAsset(route))
     );
   }
 
