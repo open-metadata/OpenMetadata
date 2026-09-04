@@ -12,8 +12,7 @@
 Source connection handler
 """
 
-
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy.dialects.mysql.base import MySQLIdentifierPreparer
 from sqlalchemy.engine import Engine
