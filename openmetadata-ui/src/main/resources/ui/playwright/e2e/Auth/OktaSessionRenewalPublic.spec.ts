@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, Request, test } from '@playwright/test';
+import { BrowserContext, Page, Request } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { decodeJwtExp, expireStoredToken } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';

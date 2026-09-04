@@ -86,4 +86,5 @@ def mount_resilient_adapter(session: requests.Session) -> None:
     """Mount the keepalive + transport-retry adapter for http and https."""
     adapter = KeepAliveRetryAdapter(max_retries=build_transport_retry())
     session.mount("https://", adapter)
-    session.mount("http://", adapter)
+    # Private deployments may intentionally expose HTTP; mounting an adapter does not select the protocol.
+    session.mount("http://", adapter)  # NOSONAR(S5332)
