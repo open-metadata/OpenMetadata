@@ -143,6 +143,19 @@ const invalidateFamily = (pathname: string) => {
   }
 };
 
+/**
+ * A throw inside the `request` listener below fails whichever test happened to
+ * be mid-action, which is a lot of blast radius for a URL the cache does not
+ * even care about, so a URL it cannot parse is simply not an API write.
+ */
+const pathnameOf = (url: string) => {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return undefined;
+  }
+};
+
 const isCacheableBootRequest = (url: URL) =>
   CACHEABLE_BOOT_PATHS.includes(url.pathname);
 
@@ -291,9 +304,9 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
       return;
     }
 
-    const { pathname } = new URL(request.url());
+    const pathname = pathnameOf(request.url());
 
-    if (pathname.startsWith('/api/v1/')) {
+    if (pathname?.startsWith('/api/v1/')) {
       invalidateFamily(pathname);
     }
   });
