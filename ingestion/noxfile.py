@@ -171,6 +171,9 @@ def unit_tests(session):
         "auto",
         "--dist",
         "loadfile",
+        "--timeout=300",
+        "--timeout-method=signal",
+        "--durations=20",
     ]
 
     pytest_args.extend(test_paths or ["tests/unit/"])
