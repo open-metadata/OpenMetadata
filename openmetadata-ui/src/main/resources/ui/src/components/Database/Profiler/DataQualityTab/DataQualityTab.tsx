@@ -37,6 +37,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TestCase,
   TestCaseResult,
@@ -543,17 +544,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       (permission) =>
         permission.fullyQualifiedName === record.fullyQualifiedName
     );
-    // Bare EditAll-only read (identical mapping, no OR with another field) - per-row bulk
-    // permission, not a single entity's useEntityPermissions fetch, so derive inline rather
-    // than converting the fetch pattern (out of scope for this batch, see PR notes).
-    // `!record.deleted` gate added upstream (soft-delete support) - applied outside the
-    // derivation since it also has to cover `isEditAllowed`, not just `canEditAll`.
+    // Per-row bulk permission, not a single entity's useEntityPermissions fetch, so derive
+    // inline rather than converting the fetch pattern (out of scope for this batch, see PR
+    // notes). Incident status is gated by `EditStatus` on the test case so that incidents can
+    // be managed without test case edit permissions; `can(EditStatus)` routes through the same
+    // getPrioritizedEditPermission path, falling back to `EditAll` when the payload carries no
+    // `EditStatus`. The `!record.deleted` gate stays outside the derivation since it also has
+    // to cover `isEditAllowed`.
     const hasEditPermission = Boolean(
       !record.deleted &&
         (isEditAllowed ||
           getDerivedPermissionFlags(
             testCasePermission ?? DEFAULT_ENTITY_PERMISSION
-          ).canEditAll)
+          ).can(Operation.EditStatus))
     );
 
     return (
