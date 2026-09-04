@@ -98,7 +98,11 @@ def decide(observed: str, state: dict[str, Any], recover_runs: int,
             return {"level": "ok", "since": now.isoformat(), "below_streak": 0}, "recovered"
         return {"level": previous, "since": state.get("since"), "below_streak": streak}, None
 
-    since = state.get("since") if observed == previous else now.isoformat()
+    # `since` marks when the incident began, not when the tier last moved. Stamping it
+    # on any level change would reset it on escalation (degraded -> severe) and on
+    # de-escalation (severe -> degraded) alike, so the recovery message would report
+    # the last tier change instead of the true start and understate the outage.
+    since = now.isoformat() if previous == "ok" else state.get("since")
     next_state = {"level": observed, "since": since, "below_streak": 0}
     if LEVELS[observed] > LEVELS[previous]:
         return next_state, "escalated"
@@ -168,9 +172,14 @@ def main() -> int:
     realized: dict[str, Any] = {}
     try:
         start, end = mq.window(now, 24)
-        history = mq.fetch_history(args.owner, args.repo, args.branch, start, token)
+        history, truncated = mq.fetch_history(
+            args.owner, args.repo, args.branch, start, token
+        )
+        if truncated:
+            print(f"::warning::PR search hit the {mq.MAX_SEARCH_PAGES}-page cap; "
+                  "realized throughput is computed from a partial 24h window")
         realized = mq.realized_metrics(history, start, end)
-    except (RuntimeError, mq.TruncatedError) as exc:
+    except RuntimeError as exc:
         print(f"::warning::realized throughput unavailable: {exc}")
 
     drain_h = mq.projected_drain_h(metrics["depth"], realized.get("throughput_per_h"))

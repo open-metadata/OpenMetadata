@@ -74,13 +74,17 @@ def main() -> int:
     fetch_since = min(filter(None, [week_start, healthy_start]))
 
     try:
-        history = mq.fetch_history(args.owner, args.repo, args.branch, fetch_since, token)
-    except mq.TruncatedError as exc:
-        print(f"::warning::{exc}")
-        return 1
+        history, truncated = mq.fetch_history(
+            args.owner, args.repo, args.branch, fetch_since, token
+        )
     except RuntimeError as exc:
         print(f"::error::could not read merge-queue history: {exc}")
         return 1
+    if truncated:
+        # The digest still posts — it is documented to always post — but a partial
+        # window must never be presented as a complete one.
+        print(f"::warning::PR search hit the {mq.MAX_SEARCH_PAGES}-page cap; "
+              "the reported windows are partial")
 
     day = mq.realized_metrics(history, now - timedelta(hours=24), now)
     week = mq.realized_metrics(history, week_start, now)
@@ -110,7 +114,8 @@ def main() -> int:
         checks_error = str(exc)
         print(f"::error::{exc}")
 
-    report = _render(args, now, day, week, healthy, depth, drain_h, checks, checks_error)
+    report = _render(args, now, day, week, healthy, depth, drain_h, checks,
+                     checks_error, truncated)
     _write_summary(report["markdown"])
     args.slack_file.write_text(
         json.dumps({"channel": args.channel, "text": report["slack"]}), encoding="utf-8"
@@ -122,7 +127,8 @@ def main() -> int:
 def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
             week: dict[str, Any], healthy: dict[str, Any] | None, depth: int | None,
             drain_h: float | None, checks: list[tuple[str, int]],
-            checks_error: str | None = None) -> dict[str, str]:
+            checks_error: str | None = None,
+            truncated: bool = False) -> dict[str, str]:
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
     queue_url = f"{server}/{args.owner}/{args.repo}/queue/{args.branch}"
     ref = healthy or week
@@ -165,6 +171,9 @@ def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
         f"| metric | 24h | 7d | vs {ref_label} |",
         "|---|---|---|---|",
     ]
+    if truncated:
+        md.insert(3, "> ⚠️ **Partial data** — the PR search hit its page cap, so "
+                     "every window below undercounts.\n")
     md += [f"| {name} | {d} | {w} | {marker.strip() or '—'} |"
            for name, d, w, marker in rows]
 
@@ -188,7 +197,8 @@ def _render(args: argparse.Namespace, now: datetime, day: dict[str, Any],
 
     slack = [
         f":bar_chart: *<{queue_url}|{args.branch} merge queue>* daily digest — "
-        f"{now:%Y-%m-%d}",
+        f"{now:%Y-%m-%d}"
+        + (" :warning: _partial data, windows undercount_" if truncated else ""),
         f"• depth *{depth if depth is not None else 'n/a'}* · drain *{mq.fmt_h(drain_h, 0)}* "
         f"· throughput *{mq.fmt_rate(day['throughput_per_h'])}*"
         f"{mq.delta_marker(day['throughput_per_h'], ref['throughput_per_h'], False)}",

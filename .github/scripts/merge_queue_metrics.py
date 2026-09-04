@@ -50,10 +50,6 @@ SEARCH_PAGE_SIZE = 100
 MAX_QUEUE_EVENTS_PER_PR = 50
 
 
-class TruncatedError(RuntimeError):
-    """A paginated read hit its cap, so the window is only partially measured."""
-
-
 class ApiError(RuntimeError):
     """A GitHub API call failed. ``status`` is the HTTP status where there was one."""
 
@@ -270,7 +266,7 @@ query($q: String!, $cursor: String, $pageSize: Int!, $events: Int!) {
 
 
 def fetch_history(owner: str, repo: str, branch: str, since: datetime,
-                  token: str) -> list[dict[str, Any]]:
+                  token: str) -> tuple[list[dict[str, Any]], bool]:
     query = (
         f"repo:{owner}/{repo} is:pr base:{branch} "
         f"updated:>={since.strftime('%Y-%m-%d')}"
@@ -291,12 +287,12 @@ def fetch_history(owner: str, repo: str, branch: str, since: datetime,
         page = data["search"]
         nodes.extend(n for n in page["nodes"] if n)
         if not page["pageInfo"]["hasNextPage"]:
-            return nodes
+            return nodes, False
         cursor = page["pageInfo"]["endCursor"]
-    raise TruncatedError(
-        f"search exceeded {MAX_SEARCH_PAGES} pages ({len(nodes)} PRs read); "
-        "the window is only partially measured"
-    )
+    # Returned, not raised: a partial window said out loud beats no report at all, and
+    # the digest is documented to always post. Callers MUST surface the flag — a
+    # silently short window is indistinguishable from a quiet week.
+    return nodes, True
 
 
 def _adds(pr: dict[str, Any]) -> list[dict[str, Any]]:

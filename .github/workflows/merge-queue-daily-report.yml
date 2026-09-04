@@ -38,11 +38,15 @@ on:
         default: true
 
 permissions:
-  # checks: read is required for the failing-check join — the digest reads check runs
-  # on each dequeued merge-group commit, same as merge-queue-dequeue-report.yml.
-  # Naming any permission sets the rest to none, so this cannot be left implicit.
+  # Naming any permission sets every other one to none, so each read this workflow
+  # performs has to be declared explicitly:
+  #   checks        — the failing-check join reads check runs on dequeued merge-group
+  #                   commits, same as merge-queue-dequeue-report.yml
+  #   pull-requests — the digest is rebuilt from PR search and timelineItems
+  #   contents      — checkout
   checks: read
   contents: read
+  pull-requests: read
 
 concurrency:
   group: merge-queue-daily-report
@@ -79,7 +83,7 @@ jobs:
             --healthy-since "$HEALTHY_SINCE" \
             --healthy-until "$HEALTHY_UNTIL"
 
-      - name: "Post to #ci-cleanup"
+      - name: "Post to Slack"
         if: ${{ steps.report.outcome == 'success' && env.DRY_RUN != 'true' }}
         continue-on-error: true
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
