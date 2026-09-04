@@ -12,6 +12,7 @@
  */
 
 import { ComponentType, ReactElement, ReactNode } from 'react';
+import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
 import { Task } from '../generated/entity/tasks/task';
@@ -77,6 +78,13 @@ export const EXTENSION_POINTS = {
   // overview when its `condition(task)` matches. The core inbox renders the
   // generic overview standalone when nothing is contributed.
   INBOX_TASK_PANELS: 'inbox.task-panels',
+
+  // Connections (integration domain) — page-level slots a plugin fills with
+  // proprietary AI surfaces so OSS core never imports plugin code.
+  CONNECTIONS_PAGE_FOOTER: 'connections.page.footer',
+  SERVICE_DETAILS_FOOTER: 'service-details.footer',
+  CONNECTIONS_LIST_ONBOARDING: 'connections.list.onboarding',
+  CONNECTIONS_ROUTES: 'connections.routes',
 } as const;
 
 /**
@@ -156,6 +164,9 @@ export interface TabContribution {
   /** Optional count badge to display on tab */
   count?: number;
 
+  /** Optional sort order (ascending) among contributed tabs; unset sorts last/insertion order. */
+  order?: number;
+
   /** Condition function to determine if tab should be shown */
   condition?: (context: PluginEntityDetailsContext) => boolean;
 
@@ -200,6 +211,27 @@ export interface ActionContribution {
 
   /** Button danger flag */
   danger?: boolean;
+}
+
+/**
+ * Generic single-component slot. The consumer renders `component` in a fixed
+ * region and passes it the page context. Used for page footers, onboarding
+ * regions, and other single-widget injection points.
+ */
+export interface SlotContribution {
+  key: string;
+  component: ComponentType<PluginEntityDetailsContext>;
+}
+
+/**
+ * A route a plugin splices into a module's route table. `order` (ascending)
+ * controls placement relative to sibling contributions; the consuming module
+ * still relies on react-router specificity for final matching.
+ */
+export interface RouteContribution {
+  key: string;
+  order?: number;
+  route: PluginRouteProps;
 }
 
 // ============================================================================
