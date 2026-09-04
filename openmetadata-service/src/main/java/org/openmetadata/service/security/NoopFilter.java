@@ -37,6 +37,7 @@ public class NoopFilter implements ContainerRequestFilter {
         new CatalogPrincipal("anonymous", "anonymous@openmetadata.org");
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     String activePersona = containerRequestContext.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER);
+    String activeDomain = containerRequestContext.getHeaderString(JwtFilter.ACTIVE_DOMAIN_HEADER);
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(
             catalogPrincipal,
@@ -45,9 +46,11 @@ public class NoopFilter implements ContainerRequestFilter {
             new HashSet<>(),
             false,
             null,
-            activePersona);
+            activePersona,
+            activeDomain);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
     ActivePersonaContext.setActivePersona(activePersona);
+    ActiveDomainContext.setActiveDomain(activeDomain);
   }
 }

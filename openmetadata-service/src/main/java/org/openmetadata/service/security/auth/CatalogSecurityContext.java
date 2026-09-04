@@ -30,7 +30,8 @@ public record CatalogSecurityContext(
     Set<String> userRoles,
     boolean isBot,
     String impersonatedUser,
-    String activePersona)
+    String activePersona,
+    String activeDomain)
     implements SecurityContext {
   public static final String OPENID_AUTH = "openid";
 
@@ -56,7 +57,7 @@ public record CatalogSecurityContext(
   // Backward compatibility constructors
   public CatalogSecurityContext(
       Principal principal, String scheme, String authenticationScheme, Set<String> userRoles) {
-    this(principal, scheme, authenticationScheme, userRoles, false, null, null);
+    this(principal, scheme, authenticationScheme, userRoles, false, null, null, null);
   }
 
   public CatalogSecurityContext(
@@ -65,7 +66,7 @@ public record CatalogSecurityContext(
       String authenticationScheme,
       Set<String> userRoles,
       boolean isBot) {
-    this(principal, scheme, authenticationScheme, userRoles, isBot, null, null);
+    this(principal, scheme, authenticationScheme, userRoles, isBot, null, null, null);
   }
 
   public CatalogSecurityContext(
@@ -75,7 +76,26 @@ public record CatalogSecurityContext(
       Set<String> userRoles,
       boolean isBot,
       String impersonatedUser) {
-    this(principal, scheme, authenticationScheme, userRoles, isBot, impersonatedUser, null);
+    this(principal, scheme, authenticationScheme, userRoles, isBot, impersonatedUser, null, null);
+  }
+
+  public CatalogSecurityContext(
+      Principal principal,
+      String scheme,
+      String authenticationScheme,
+      Set<String> userRoles,
+      boolean isBot,
+      String impersonatedUser,
+      String activePersona) {
+    this(
+        principal,
+        scheme,
+        authenticationScheme,
+        userRoles,
+        isBot,
+        impersonatedUser,
+        activePersona,
+        null);
   }
 
   @Override

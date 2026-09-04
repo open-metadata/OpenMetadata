@@ -87,6 +87,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
+  public static final String ACTIVE_DOMAIN_HEADER = "X-OpenMetadata-Domain";
   private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
       Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
   @Getter private List<String> jwtPrincipalClaims;
@@ -182,6 +183,7 @@ public class JwtFilter implements ContainerRequestFilter {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
 
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
@@ -198,6 +200,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
       String impersonateUser = requestContext.getHeaderString(IMPERSONATE_USER_HEADER);
       String activePersona = requestContext.getHeaderString(ACTIVE_PERSONA_HEADER);
+      String activeDomain = requestContext.getHeaderString(ACTIVE_DOMAIN_HEADER);
       String impersonatedBy = null;
 
       if (impersonateUser != null && !impersonateUser.isEmpty()) {
@@ -222,7 +225,8 @@ public class JwtFilter implements ContainerRequestFilter {
               getUserRolesFromClaims(claims, isBotUser),
               isBotUser,
               impersonatedBy,
-              activePersona);
+              activePersona,
+              activeDomain);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -232,9 +236,11 @@ public class JwtFilter implements ContainerRequestFilter {
         ImpersonationContext.clear();
       }
       ActivePersonaContext.setActivePersona(activePersona);
+      ActiveDomainContext.setActiveDomain(activeDomain);
     } catch (Throwable t) {
       ImpersonationContext.clear();
       ActivePersonaContext.clear();
+      ActiveDomainContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);

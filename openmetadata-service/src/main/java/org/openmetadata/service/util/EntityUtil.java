@@ -74,6 +74,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -1083,14 +1084,42 @@ public final class EntityUtil {
     return result.stream().toList();
   }
 
+  // A domainId that matches nothing, used when a domain-restricted user filters on a domain they
+  // cannot access.
+  private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
+
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    // If the User is admin then no need to add domainId in the query param
-    // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    boolean restricted =
+        !subjectContext.isAdmin()
+            && !subjectContext.isBot()
+            && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+
+    // The global (navbar) domain selection arrives on the X-OpenMetadata-Domain header (a domain
+    // id).
+    // Applied only to entity types that carry a domain; otherwise a strict filter would wrongly
+    // empty
+    // a non-domain list (users, teams, roles, ...).
+    String navDomainId = ActiveDomainContext.getActiveDomain();
+    if (!nullOrEmpty(navDomainId) && entitySupportsDomains(entityType)) {
+      String requested = "'" + navDomainId.replace("'", "") + "'";
+      // STRICT narrowing (no domainAccessControl -> un-domained assets are hidden), for admins and
+      // restricted users alike. For restricted users the selection is intersected with their
+      // accessible domains so it can only narrow, never widen (a domain they cannot access -> no
+      // match).
+      String domainId =
+          restricted
+              ? intersectWithAllowedDomains(
+                  requested, getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()))
+              : requested;
+      filter.addQueryParam("domainId", domainId);
+      return;
+    }
+
+    // No navbar selection (or a non-domain entity type): keep the existing RBAC-only scoping for
+    // domain-restricted users; admins/bots stay unfiltered.
+    if (restricted) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
@@ -1100,6 +1129,49 @@ public final class EntityUtil {
         filter.addQueryParam("entityType", entityType);
       }
     }
+  }
+
+  // Governance/administration entities carry a domains field but are not data assets, so the global
+  // (navbar) domain filter must not scope their list pages -- otherwise selecting a domain would
+  // empty the Users/Teams/Policies/etc. lists.
+  private static final Set<String> NAV_DOMAIN_FILTER_EXCLUDED_TYPES =
+      Set.of(Entity.USER, Entity.TEAM, Entity.ROLE, Entity.POLICY, Entity.PERSONA, Entity.BOT);
+
+  private static boolean entitySupportsDomains(String entityType) {
+    if (NAV_DOMAIN_FILTER_EXCLUDED_TYPES.contains(entityType)) {
+      return false;
+    }
+    try {
+      return Entity.getEntityRepository(entityType).isSupportsDomains();
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  /**
+   * Intersect a requested domainId filter (from the navbar) with the domains a restricted user may
+   * access. A requested domain outside that set yields a no-match so the user never sees a domain
+   * they cannot access.
+   */
+  private static String intersectWithAllowedDomains(
+      String requestedDomainId, String allowedDomainIds) {
+    if (nullOrEmpty(requestedDomainId) || NULL_PARAM.equals(requestedDomainId)) {
+      return allowedDomainIds;
+    }
+    Set<String> allowed = splitDomainIds(allowedDomainIds);
+    List<String> narrowed =
+        splitDomainIds(requestedDomainId).stream()
+            .filter(allowed::contains)
+            .map(id -> "'" + id + "'")
+            .toList();
+    return narrowed.isEmpty() ? NO_MATCH_DOMAIN_ID : String.join(",", narrowed);
+  }
+
+  private static Set<String> splitDomainIds(String commaSeparatedQuotedIds) {
+    return Arrays.stream(commaSeparatedQuotedIds.replace("'", "").split(","))
+        .map(String::trim)
+        .filter(id -> !id.isEmpty())
+        .collect(Collectors.toSet());
   }
 
   /**
