@@ -884,7 +884,12 @@ public class AIContextBuilder {
       return null;
     }
     TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-    ResourceContext<Table> resourceContext = new ResourceContext<>(Entity.TABLE, table, repository);
+    // Resolved by id rather than wrapping the already-loaded table: the pre-resolved constructor
+    // never runs resolveEntity(), so owners and domains would be absent (TABLE_FIELDS does not ask
+    // for them) and every owner- or domain-conditioned rule would misfire — including the PII
+    // decision below, which would mask an owner's own sample data.
+    ResourceContext<Table> resourceContext =
+        new ResourceContext<>(Entity.TABLE, table.getId(), null);
     try {
       authorizer.authorize(
           securityContext,
