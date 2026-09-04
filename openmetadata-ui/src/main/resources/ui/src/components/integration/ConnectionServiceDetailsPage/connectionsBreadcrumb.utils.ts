@@ -14,16 +14,15 @@ import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { ReactComponent as ConnectionsIcon } from '../../../assets/svg/ask-collate-nav-bar/connections-default.svg';
+import { CONNECTIONS_ROUTES } from '../connections.constants';
 import {
   CATEGORY_CONFIGS,
   CATEGORY_PARAM,
   ConnectionsServiceCategory,
 } from '../ConnectionsPage/ConnectionsPage.constants';
 
-// The Connections listing's own route. Inlined rather than imported from a shared route-constants
-// module because that module (CONNECTIONS_ROUTES, owned by the connections app-mode module) is
-// registered by a later migration step; this value must match it exactly once that module lands.
-const CONNECTIONS_ROUTE = '/connections';
+// The Connections listing's own route, owned by the connections app-mode module.
+const CONNECTIONS_ROUTE = CONNECTIONS_ROUTES.CONNECTIONS;
 
 /**
  * Icon-only module crumb that heads the connection service detail breadcrumb,
