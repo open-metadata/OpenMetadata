@@ -8755,6 +8755,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
+    /**
+     * True while the diff pass being run has the persisted entity as its baseline — the state the
+     * search index and the stored lineage rows mirror. Consolidation replays the diff against
+     * reverted baselines (see {@link #flushUpdateBody}); side effects that reconcile an external
+     * store against {@code original} are only correct on a baseline pass. Defaults to true so the
+     * single-pass paths (no consolidation, bulk {@code updateWithDeferredStore}) need no opt-in.
+     */
+    private boolean indexBaselinePass = true;
+
     // Store the original FQN at construction time, before any modifications or revert.
     // This is needed because during change consolidation, revert() reassigns 'original' to
     // 'previous',
@@ -8856,6 +8865,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
       this.deferredReactExecuted = false;
+    }
+
+    /**
+     * Whether the diff pass currently running is baselined on the persisted entity. See {@link
+     * #indexBaselinePass}.
+     */
+    protected final boolean isIndexBaselinePass() {
+      return indexBaselinePass;
     }
 
     protected final void deferReactOperation(Runnable operation) {
@@ -8988,6 +9005,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // deferReactOperation; clear them so a deadlock replay does not double-enqueue.
       deferredReactOperations.clear();
       deferredReactExecuted = false;
+      indexBaselinePass = true;
       resetForRetryAttempt();
     }
 
@@ -9046,6 +9064,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
             incrementalChangeForImport();
           }
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevertImport")) {
             revertForImport();
           }
@@ -9053,6 +9072,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChange")) {
             incrementalChange();
           }
+          // Everything from here on diffs against a reverted baseline the external stores never
+          // saw: revert() inverts this request, replays it, then rebases original onto the
+          // pre-session version.
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevert")) {
             revert();
           }
@@ -10830,6 +10853,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<Column> origColumns,
         List<Column> updatedColumns,
         BiPredicate<Column, Column> columnMatch) {
+      ColumnLineageChanges lineageChanges = new ColumnLineageChanges();
+      updateColumns(fieldName, origColumns, updatedColumns, columnMatch, lineageChanges);
+      handleColumnLineageUpdates(
+          lineageChanges.deletedColumnFqns(), lineageChanges.renamedColumnFqns());
+    }
+
+    private void updateColumns(
+        String fieldName,
+        List<Column> origColumns,
+        List<Column> updatedColumns,
+        BiPredicate<Column, Column> columnMatch,
+        ColumnLineageChanges lineageChanges) {
       origColumns = listOrEmpty(origColumns);
       updatedColumns = listOrEmpty(updatedColumns);
       UUID entityId = updated.getId();
@@ -10873,18 +10908,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Added columns are skipped by the existing-column loop below.
       storeColumnExtensions(entityId, addedColumns);
 
-      // Build a lookup map from origColumns to avoid O(n²) stream search per updated column.
-      // putIfAbsent keeps the first match on a duplicate key, matching the stream findAny()
-      // this replaced — sibling columns colliding only on name case would otherwise carry
-      // forward metadata from a different column than before.
+      // Index origColumns to avoid an O(n²) stream search per updated column. ColumnKey encodes
+      // exactly what EntityUtil.columnMatch compares, so the index is equivalent to the scan for
+      // that predicate and only for it — any other predicate keeps the scan rather than silently
+      // pairing different columns than the recordListChange above did.
+      // putIfAbsent keeps the first match on a duplicate key, matching the stream findAny() this
+      // replaced — sibling columns colliding only on name case would otherwise carry forward
+      // metadata from a different column than before.
+      List<Column> scannableOrigColumns = origColumns;
       Map<ColumnKey, Column> origColumnByKey = new HashMap<>();
-      for (Column col : origColumns) {
-        origColumnByKey.putIfAbsent(columnLookupKey(col), col);
+      boolean indexedLookup = columnMatch == EntityUtil.columnMatch;
+      if (indexedLookup) {
+        for (Column col : origColumns) {
+          origColumnByKey.putIfAbsent(columnLookupKey(col), col);
+        }
       }
 
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
-        Column stored = origColumnByKey.get(columnLookupKey(updated));
+        Column stored =
+            indexedLookup
+                ? origColumnByKey.get(columnLookupKey(updated))
+                : scannableOrigColumns.stream()
+                    .filter(c -> columnMatch.test(c, updated))
+                    .findAny()
+                    .orElse(null);
         if (stored == null) { // New column added
           continue;
         }
@@ -10921,14 +10969,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          updateColumns(columnPrefix, stored.getChildren(), updated.getChildren(), columnMatch);
+          updateColumns(
+              columnPrefix,
+              stored.getChildren(),
+              updated.getChildren(),
+              columnMatch,
+              lineageChanges);
         }
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
-      List<String> deletedColumnFqnList =
-          deletedColumns.stream().map(Column::getFullyQualifiedName).toList();
-      handleColumnLineageUpdates(deletedColumnFqnList, originalUpdatedColumnFqns);
+      lineageChanges.include(deletedColumns, originalUpdatedColumnFqns);
     }
 
     protected void handleColumnLineageUpdates(
@@ -10937,6 +10988,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private record ColumnKey(String name, ColumnDataType dataType, ColumnDataType arrayDataType) {}
+
+    private static final class ColumnLineageChanges {
+      private final Set<String> deletedColumnFqns = new LinkedHashSet<>();
+      private final HashMap<String, String> renamedColumnFqns = new HashMap<>();
+
+      private void include(
+          List<Column> deletedColumns, HashMap<String, String> originalUpdatedColumnFqns) {
+        deletedColumns.stream().map(Column::getFullyQualifiedName).forEach(deletedColumnFqns::add);
+        renamedColumnFqns.putAll(originalUpdatedColumnFqns);
+      }
+
+      private List<String> deletedColumnFqns() {
+        return List.copyOf(deletedColumnFqns);
+      }
+
+      private HashMap<String, String> renamedColumnFqns() {
+        return new HashMap<>(renamedColumnFqns);
+      }
+    }
 
     private static ColumnKey columnLookupKey(Column col) {
       return new ColumnKey(

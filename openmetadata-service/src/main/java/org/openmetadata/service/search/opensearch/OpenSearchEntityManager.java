@@ -993,8 +993,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       // A missing index must not abort cleanup of the remaining ones
                       .ignoreUnavailable(true)
-                      // refresh=false: lineage cleanup needs no read-after-write consistency;
-                      // the index refresh interval covers it
+                      // refresh=false trades read-after-write for throughput: forcing a refresh
+                      // across every column-lineage index on each column-touching write is far
+                      // more expensive than the reconciliation itself. The update is applied
+                      // immediately; only its visibility waits for the index refresh interval, so
+                      // a lineage read issued right after the write can still see the old column
+                      // FQN for that interval.
                       .refresh(Refresh.False));
 
       LOG.info(
@@ -1052,8 +1056,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       // A missing index must not abort cleanup of the remaining ones
                       .ignoreUnavailable(true)
-                      // refresh=false: lineage cleanup needs no read-after-write consistency;
-                      // the index refresh interval covers it
+                      // refresh=false trades read-after-write for throughput: forcing a refresh
+                      // across every column-lineage index on each column-touching write is far
+                      // more expensive than the reconciliation itself. The update is applied
+                      // immediately; only its visibility waits for the index refresh interval, so
+                      // a lineage read issued right after the write can still see the old column
+                      // FQN for that interval.
                       .refresh(Refresh.False));
 
       LOG.info(

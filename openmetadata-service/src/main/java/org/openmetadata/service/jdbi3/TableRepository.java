@@ -35,12 +35,12 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
 import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
 import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
+import static org.openmetadata.service.lineage.ColumnLineageChildren.COLUMN_LINEAGE_SEARCH_INDICES;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
-import static org.openmetadata.service.search.SearchClient.COLUMN_LINEAGE_SEARCH_INDICES;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -61,7 +61,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2271,29 +2270,13 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
-    private final Set<String> pendingDeletedColumnFqns = new LinkedHashSet<>();
-    private final HashMap<String, String> pendingRenameColumnFqns = new HashMap<>();
-    private boolean columnLineageUpdateDeferred = false;
-    private int updatePassCount = 0;
-
     public TableUpdater(
         Table original, Table updated, Operation operation, ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
     }
 
     @Override
-    protected void resetForRetryAttempt() {
-      // The retry prologue clears deferredReactOperations; without resetting this guard the
-      // replayed attempt would never re-enqueue the lineage flush and search cleanup is lost.
-      columnLineageUpdateDeferred = false;
-      updatePassCount = 0;
-      pendingDeletedColumnFqns.clear();
-      pendingRenameColumnFqns.clear();
-    }
-
-    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updatePassCount++;
       Table origTable = original;
       Table updatedTable = updated;
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
@@ -2447,54 +2430,50 @@ public class TableRepository extends EntityRepository<Table> {
       deleteConstraintRelationship(origTable, deleted);
     }
 
+    /**
+     * Reconcile stored and indexed column lineage with a column rename/delete.
+     *
+     * <p>Both stores mirror the persisted table, so the only diff pass that yields a delta they can
+     * apply is the one baselined on it. Session consolidation replays the diff up to three more
+     * times against reverted baselines: those renames name FQNs neither store holds, and — the
+     * destructive case — the revert pass diffs the persisted table against the pre-session version,
+     * so a column added by an earlier request in the same session reads as deleted and its lineage
+     * is dropped even though the column still exists.
+     */
     @Override
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
       boolean hasDeletes = !deletedColumns.isEmpty();
 
-      // Update lineage relationships stored in the database
-      if (hasRenames || hasDeletes) {
+      if (isIndexBaselinePass() && (hasRenames || hasDeletes)) {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
               updated.getId(),
-              hasRenames ? originalUpdatedColumnFqnMap : Collections.emptyMap(),
-              hasDeletes ? deletedColumns : Collections.emptyList(),
+              originalUpdatedColumnFqnMap,
+              deletedColumns,
               updated.getSchemaDefinition(),
               updated.getUpdatedBy());
         }
-      }
-
-      // Only the first pass diffs against the persisted state that the search index reflects.
-      // Consolidation replays updateInternal() up to four times: the revert passes invert that
-      // diff, and the final pass rebases onto the pre-session version, so their FQNs match no
-      // indexed document — and a net-zero consolidation (rename away and back within the
-      // session) leaves them empty, stranding the intermediate FQN in the index. Within this
-      // first pass, addAll/putAll let every nested column level contribute to one flush.
-      boolean isSearchBaselinePass = updatePassCount <= 1;
-      if (isSearchBaselinePass) {
-        pendingDeletedColumnFqns.addAll(deletedColumns);
-        pendingRenameColumnFqns.putAll(originalUpdatedColumnFqnMap);
-        if (!columnLineageUpdateDeferred && (hasDeletes || hasRenames)) {
-          columnLineageUpdateDeferred = true;
-          deferReactOperation(this::flushPendingColumnLineageSearchUpdates);
-        }
+        List<String> deletedColumnFqns = List.copyOf(deletedColumns);
+        HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);
+        deferReactOperation(
+            () -> flushColumnLineageSearchUpdates(deletedColumnFqns, renamedColumnFqns));
       }
     }
 
-    private void flushPendingColumnLineageSearchUpdates() {
-      if (!pendingRenameColumnFqns.isEmpty()) {
+    private void flushColumnLineageSearchUpdates(
+        List<String> deletedColumnFqns, HashMap<String, String> renamedColumnFqns) {
+      if (!renamedColumnFqns.isEmpty()) {
         searchRepository
             .getSearchClient()
-            .updateColumnsInUpstreamLineage(
-                COLUMN_LINEAGE_SEARCH_INDICES, new HashMap<>(pendingRenameColumnFqns));
+            .updateColumnsInUpstreamLineage(COLUMN_LINEAGE_SEARCH_INDICES, renamedColumnFqns);
       }
-      if (!pendingDeletedColumnFqns.isEmpty()) {
+      if (!deletedColumnFqns.isEmpty()) {
         searchRepository
             .getSearchClient()
-            .deleteColumnsInUpstreamLineage(
-                COLUMN_LINEAGE_SEARCH_INDICES, List.copyOf(pendingDeletedColumnFqns));
+            .deleteColumnsInUpstreamLineage(COLUMN_LINEAGE_SEARCH_INDICES, deletedColumnFqns);
       }
     }
   }
