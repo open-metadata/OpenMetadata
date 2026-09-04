@@ -48,10 +48,7 @@ describe('AutoClassificationTag (atoms)', () => {
 
   it('should render a redirect link when href is passed', () => {
     render(
-      <AutoClassificationTag
-        href="/classification/pii"
-        label="PII.Sensitive"
-      />
+      <AutoClassificationTag href="/classification/pii" label="PII.Sensitive" />
     );
 
     const link = screen.getByTestId('tag-redirect-link');
@@ -112,7 +109,9 @@ describe('AutoClassificationTag (atoms)', () => {
   });
 
   it('should apply the default sm size class', () => {
-    const { container } = render(<AutoClassificationTag label="PII.Sensitive" />);
+    const { container } = render(
+      <AutoClassificationTag label="PII.Sensitive" />
+    );
 
     expect(container.firstChild).toHaveClass('tw:h-5', 'tw:text-xs');
   });

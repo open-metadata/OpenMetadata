@@ -23,7 +23,7 @@ import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../../assets/svg/automated-tag.svg';
 import { ICON_PX, SIZE_CLASS } from './Tag.constant';
-import { BaseTagProps, DEFAULT_TAG_COLOR } from './Tag.interface';
+import { AUTO_CLASSIFICATION_TAG_COLOR, BaseTagProps } from './Tag.interface';
 import { computeTagColors } from './Tag.utils';
 
 /**
@@ -44,7 +44,7 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
   ...otherProps
 }) => {
   const resolved = useMemo(
-    () => computeTagColors(DEFAULT_TAG_COLOR),
+    () => computeTagColors(AUTO_CLASSIFICATION_TAG_COLOR),
     []
   );
 
@@ -60,7 +60,6 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
       <Typography
         ellipsis
         className={classNames(SIZE_CLASS[size], 'tw:text-utility-brand-900')}
-        data-testid={otherProps['data-testid']}
         weight="regular">
         {label}
       </Typography>
