@@ -32,13 +32,24 @@ const executeThemeRestore = () => {
 
 describe('theme restore boot script', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
     document.documentElement.style.removeProperty('color-scheme');
   });
 
-  it('uses the OS dark theme before the application bundle loads', () => {
+  it('uses light mode before the application bundle loads without a preference', () => {
     window.matchMedia = jest.fn().mockReturnValue({ matches: true });
+
+    executeThemeRestore();
+
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+  });
+
+  it('restores an explicit dark preference before the application bundle loads', () => {
+    localStorage.setItem('ui-theme', 'dark');
+    window.matchMedia = jest.fn().mockReturnValue({ matches: false });
 
     executeThemeRestore();
 
@@ -46,9 +57,20 @@ describe('theme restore boot script', () => {
     expect(document.documentElement).toHaveStyle({ colorScheme: 'dark' });
   });
 
-  it('keeps an explicit light preference when the OS theme is dark', () => {
+  it('restores an explicit light preference before the application bundle loads', () => {
     localStorage.setItem('ui-theme', 'light');
     window.matchMedia = jest.fn().mockReturnValue({ matches: true });
+
+    executeThemeRestore();
+
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+  });
+
+  it('uses light mode when the stored preference cannot be read', () => {
+    jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('Storage is unavailable');
+    });
 
     executeThemeRestore();
 
