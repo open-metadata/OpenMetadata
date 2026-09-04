@@ -669,17 +669,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
-      String result =
-          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker, null);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
+      String result = embedder.enrich(entity, entityJson, existingEmbeddingsById, tracker, null);
 
       verify(vectorService, never()).generateEmbeddingFields(any());
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -810,17 +801,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
-      String result =
-          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker, null);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
+      String result = embedder.enrich(entity, entityJson, existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -864,20 +846,10 @@ class OpenSearchBulkSinkBehaviorTest {
               docBuilderMock, vectorServiceMock, entity, "fp-new", List.of(0.1, 0.2, 0.3), "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -917,20 +889,10 @@ class OpenSearchBulkSinkBehaviorTest {
               docBuilderMock, vectorServiceMock, entity, "fp-new", List.of(0.4, 0.5, 0.6), "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -984,20 +946,10 @@ class OpenSearchBulkSinkBehaviorTest {
               "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -1035,20 +987,10 @@ class OpenSearchBulkSinkBehaviorTest {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker, null);
 
       docBuilderMock.verify(() -> VectorDocBuilder.fromEntity(any(), any()), never());
       verify(vectorService, never()).writeEntityChunks(any(), any(), any());

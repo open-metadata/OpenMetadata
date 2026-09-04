@@ -721,17 +721,8 @@ class ElasticSearchBulkSinkBehaviorTest {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       String result =
-          (String)
-              invokePrivate(
-                  sink,
-                  "enrichWithEmbedding",
-                  new Class<?>[] {
-                    EntityInterface.class, String.class, Map.class, StageStatsTracker.class
-                  },
-                  entity,
-                  "{\"name\":\"my-table\"}",
-                  existingEmbeddingsById,
-                  tracker);
+          new ElasticSearchDocEmbedder(new ObjectMapper())
+              .enrich(entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker);
 
       verify(vectorService, never()).generateEmbeddingFields(any());
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -763,17 +754,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       String result =
-          (String)
-              invokePrivate(
-                  sink,
-                  "enrichWithEmbedding",
-                  new Class<?>[] {
-                    EntityInterface.class, String.class, Map.class, StageStatsTracker.class
-                  },
-                  entity,
-                  "{\"name\":\"t\"}",
-                  Collections.<String, JsonNode>emptyMap(),
-                  tracker);
+          new ElasticSearchDocEmbedder(new ObjectMapper())
+              .enrich(
+                  entity, "{\"name\":\"t\"}", Collections.<String, JsonNode>emptyMap(), tracker);
 
       verify(vectorService).generateEmbeddingFields(entity);
       assertEquals("fp-new", new ObjectMapper().readTree(result).get("fingerprint").asText());
@@ -806,14 +789,8 @@ class ElasticSearchBulkSinkBehaviorTest {
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
-      invokePrivate(
-          sink,
-          "enrichWithEmbedding",
-          new Class<?>[] {EntityInterface.class, String.class, Map.class, StageStatsTracker.class},
-          entity,
-          "{\"name\":\"z\"}",
-          Map.of(entityId.toString(), cached),
-          tracker);
+      new ElasticSearchDocEmbedder(new ObjectMapper())
+          .enrich(entity, "{\"name\":\"z\"}", Map.of(entityId.toString(), cached), tracker);
 
       verify(vectorService).generateEmbeddingFields(entity);
     }

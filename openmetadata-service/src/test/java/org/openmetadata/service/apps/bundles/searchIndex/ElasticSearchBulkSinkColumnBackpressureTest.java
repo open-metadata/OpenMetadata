@@ -11,7 +11,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,7 +47,7 @@ class ElasticSearchBulkSinkColumnBackpressureTest {
 
   @Test
   void columnIndexingAppliesBackpressureAtTheInFlightCap() throws Exception {
-    int permits = readStaticInt("MAX_INFLIGHT_COLUMN_TASKS");
+    int permits = ColumnIndexPipeline.maxInflightTasks();
     int taskCount = permits + 64;
 
     CountDownLatch gate = new CountDownLatch(1);
@@ -131,15 +130,9 @@ class ElasticSearchBulkSinkColumnBackpressureTest {
     return entity;
   }
 
-  private int readStaticInt(String fieldName) throws Exception {
-    Field field = ElasticSearchBulkSink.class.getDeclaredField(fieldName);
-    field.setAccessible(true);
-    return field.getInt(null);
-  }
-
   private int pendingColumnFuturesSize(ElasticSearchBulkSink sink) throws Exception {
-    Field field = ElasticSearchBulkSink.class.getDeclaredField("pendingColumnFutures");
+    Field field = ElasticSearchBulkSink.class.getDeclaredField("columnPipeline");
     field.setAccessible(true);
-    return ((ConcurrentLinkedDeque<?>) field.get(sink)).size();
+    return ((ColumnIndexPipeline) field.get(sink)).pendingTaskCount();
   }
 }

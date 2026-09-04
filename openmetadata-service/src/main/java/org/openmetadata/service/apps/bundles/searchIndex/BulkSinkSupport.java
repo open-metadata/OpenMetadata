@@ -14,6 +14,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Set;
+import org.openmetadata.service.search.ReindexContext;
 
 /**
  * The engine-neutral half of {@code ElasticSearchBulkSink} and {@code OpenSearchBulkSink}.
@@ -51,7 +52,30 @@ public final class BulkSinkSupport {
 
   private static final String SEARCH_INDEX_SUFFIX = "_search_index";
 
+  /**
+   * Bytes a bulk action's own metadata line adds on top of the document body. Both sinks and {@link
+   * ColumnIndexPipeline} size payloads against it, and a payload limit that three files disagree
+   * about is a rejected bulk nobody can explain.
+   */
+  public static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
+
   private BulkSinkSupport() {}
+
+  /**
+   * Which index to read cached embeddings from.
+   *
+   * <p>During a recreate the staged index is empty by definition, so reuse has to read the
+   * pre-recreate live index; outside a recreate it reads the canonical index. Getting this backwards
+   * costs nothing visible — every entity simply re-embeds — which is exactly why both sinks should
+   * decide it here rather than each keeping its own copy.
+   */
+  public static String resolveEmbeddingSourceIndex(
+      ReindexContext reindexContext, String entityType, String canonicalIndexName) {
+    if (reindexContext == null) {
+      return canonicalIndexName;
+    }
+    return reindexContext.getOriginalIndex(entityType).orElse(canonicalIndexName);
+  }
 
   /**
    * Whether a failed bulk attempt should be retried.

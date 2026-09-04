@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY;
 import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY;
+import static org.openmetadata.service.apps.bundles.searchIndex.BulkSinkSupport.BULK_OPERATION_METADATA_OVERHEAD;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
@@ -10,34 +11,27 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isSt
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -50,7 +44,6 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
@@ -80,19 +73,6 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final ThreadPoolExecutor DOC_BUILD_EXECUTOR =
       createDocBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
 
-  /**
-   * Dedicated pool for table column indexing, isolated from {@link #DOC_BUILD_EXECUTOR} so a burst
-   * of column work cannot starve latency-sensitive entity doc-build (which is joined per batch and
-   * shares a single FIFO queue). Also bounded + CallerRuns; in practice the column-task semaphore is
-   * the binding limit and CallerRuns is only a backstop. Capacity is kept >= the semaphore permits
-   * so the semaphore, not the queue, is what throttles.
-   */
-  private static final int COLUMN_BUILD_QUEUE_CAPACITY =
-      Math.max(16, 4 * DEFAULT_DOC_BUILD_POOL_SIZE);
-
-  private static final ThreadPoolExecutor COLUMN_BUILD_EXECUTOR =
-      createColumnBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
-
   private static ThreadPoolExecutor createDocBuildExecutor(int poolSize) {
     ThreadPoolExecutor pool =
         new ThreadPoolExecutor(
@@ -107,24 +87,10 @@ public class ElasticSearchBulkSink implements BulkSink {
     return pool;
   }
 
-  private static ThreadPoolExecutor createColumnBuildExecutor(int poolSize) {
-    ThreadPoolExecutor pool =
-        new ThreadPoolExecutor(
-            poolSize,
-            poolSize,
-            60L,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(COLUMN_BUILD_QUEUE_CAPACITY),
-            Thread.ofVirtual().name("reindex-es-column-build-", 0).factory(),
-            new ThreadPoolExecutor.CallerRunsPolicy());
-    pool.allowCoreThreadTimeOut(true);
-    return pool;
-  }
-
   public static synchronized void setDocBuildPoolSize(int size) {
     int newSize = Math.max(1, Math.min(50, size));
     resizePool(DOC_BUILD_EXECUTOR, newSize);
-    resizePool(COLUMN_BUILD_EXECUTOR, newSize);
+    ColumnIndexPipeline.setBuildPoolSize(newSize);
     LOG.info("ElasticSearch doc-build and column-build pools resized to {} threads", newSize);
   }
 
@@ -166,37 +132,11 @@ public class ElasticSearchBulkSink implements BulkSink {
   // Failure callback
   private volatile FailureCallback failureCallback;
 
-  // Column indexing: separate bulk processor with its own lifecycle
+  // Column indexing: separate bulk processor with its own lifecycle, driven by ColumnIndexPipeline
   private final ElasticSearchCustomBulkProcessor columnBulkProcessor;
-  private final AtomicLong columnSinkSubmitted = new AtomicLong(0);
-  private final AtomicLong columnSinkSuccess = new AtomicLong(0);
-  private final AtomicLong columnSinkFailed = new AtomicLong(0);
-  private final AtomicLong columnSinkWarnings = new AtomicLong(0);
-  private final AtomicLong columnBuildFailed = new AtomicLong(0);
-  private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
-      new ConcurrentLinkedDeque<>();
+  private final ColumnIndexPipeline columnPipeline;
 
-  // Vector embedding stats (incremented inline during addEntity)
-  private final AtomicLong vectorSuccess = new AtomicLong(0);
-  private final AtomicLong vectorFailed = new AtomicLong(0);
-
-  /**
-   * Process-wide upper bound on in-flight table column-index tasks. Each queued/running task retains
-   * its full {@link Table} (with every column) until it runs, so unbounded fire-and-forget
-   * submission lets a fast partition reader pin thousands of Tables at once in the {@link
-   * #COLUMN_BUILD_EXECUTOR} queue — the OOM root cause for wide tables. The semaphore turns the
-   * column path into bounded backpressure: {@link #submitColumnIndexTask} blocks the reader once this
-   * many tasks are outstanding instead of queueing another that pins a Table. This is a hard memory
-   * ceiling: it is intentionally fixed and is NOT scaled by {@link #setDocBuildPoolSize} (which tunes
-   * doc-build parallelism, not the memory bound).
-   */
-  private static final int MAX_INFLIGHT_COLUMN_TASKS = Math.max(8, 2 * DEFAULT_DOC_BUILD_POOL_SIZE);
-
-  // Static so the cap is shared across all sink instances, matching the static
-  // COLUMN_BUILD_EXECUTOR
-  // and its bounded queue: total in-flight column tasks (and retained Tables) stay bounded by
-  // MAX_INFLIGHT_COLUMN_TASKS regardless of how many sinks run concurrently.
-  private static final Semaphore columnTaskSemaphore = new Semaphore(MAX_INFLIGHT_COLUMN_TASKS);
+  private final ElasticSearchDocEmbedder docEmbedder = new ElasticSearchDocEmbedder(OBJECT_MAPPER);
 
   public ElasticSearchBulkSink(
       SearchRepository searchRepository,
@@ -215,7 +155,14 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     // Create bulk processor
     this.bulkProcessor = createBulkProcessor(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
-    this.columnBulkProcessor = createColumnBulkProcessor(maxPayloadSizeBytes);
+
+    BulkCounters columnCounters = BulkCounters.create();
+    this.columnBulkProcessor = createColumnBulkProcessor(maxPayloadSizeBytes, columnCounters);
+    // indexTableColumns, not columnPipeline::indexColumns: the sink's method stays the seam the
+    // column-backpressure regression test overrides.
+    this.columnPipeline =
+        new ColumnIndexPipeline(
+            searchRepository, this::indexTableColumns, this::addColumnDoc, columnCounters);
   }
 
   private ElasticSearchCustomBulkProcessor createBulkProcessor(
@@ -243,7 +190,8 @@ public class ElasticSearchBulkSink implements BulkSink {
         circuitBreaker);
   }
 
-  private ElasticSearchCustomBulkProcessor createColumnBulkProcessor(long maxPayloadSizeBytes) {
+  private ElasticSearchCustomBulkProcessor createColumnBulkProcessor(
+      long maxPayloadSizeBytes, BulkCounters counters) {
     BulkCircuitBreaker circuitBreaker = new BulkCircuitBreaker(5, 30_000, 10_000);
     return new ElasticSearchCustomBulkProcessor(
         searchClient,
@@ -253,12 +201,21 @@ public class ElasticSearchBulkSink implements BulkSink {
         1000,
         100,
         3,
-        columnSinkSubmitted,
-        columnSinkSuccess,
-        columnSinkFailed,
-        columnSinkWarnings,
+        counters.submitted(),
+        counters.success(),
+        counters.failed(),
+        counters.warnings(),
         () -> {},
         circuitBreaker);
+  }
+
+  /** The one Elasticsearch-specific step of {@link ColumnIndexPipeline}. */
+  private void addColumnDoc(String indexName, String docId, String json, long estimatedSizeBytes) {
+    BulkOperation operation =
+        BulkOperation.of(
+            op ->
+                op.index(idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
+    columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSizeBytes);
   }
 
   @Override
@@ -338,7 +295,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                     e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
           }
           existingEmbeddingsById =
-              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
+              docEmbedder.fetchExisting(entityInterfaces, currentById, indexName, reindexContext);
         }
         Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
 
@@ -415,8 +372,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     return null;
   }
 
-  private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
-
   private void addEntity(
       EntityInterface entity,
       String indexName,
@@ -438,7 +393,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+        json = docEmbedder.enrich(entity, json, existingEmbeddingsById, tracker);
       }
 
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
@@ -800,135 +755,20 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  /**
-   * Submit a table's column-indexing work to the shared doc-build pool under a bounded permit.
-   *
-   * <p>The permit is acquired on the calling (partition-reader) thread <em>before</em> the task is
-   * scheduled, so when {@link #MAX_INFLIGHT_COLUMN_TASKS} tasks are already outstanding the reader
-   * blocks here rather than queueing another task that pins a full {@link Table}. The permit is
-   * released exactly once when the task completes (success or failure), or here if scheduling
-   * itself fails synchronously.
-   */
+  /** Bounded submission of a table's column work; see {@link ColumnIndexPipeline#submit}. */
   private void submitColumnIndexTask(EntityInterface entity, ReindexContext reindexContext) {
-    try {
-      columnTaskSemaphore.acquire();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      // Record the skip so getColumnStats() reflects the missing work instead of counting these
-      // columns as silently successful.
-      columnBuildFailed.incrementAndGet();
-      LOG.warn(
-          "Interrupted while waiting to submit column-index task for table {}; skipping columns",
-          entity.getName());
-      return;
-    }
-
-    boolean releaseOwnedByTask = false;
-    try {
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-                  () -> indexTableColumns(entity, reindexContext), COLUMN_BUILD_EXECUTOR)
-              .exceptionally(
-                  ex -> {
-                    LOG.error("Failed to index columns for table {}", entity.getName(), ex);
-                    return null;
-                  })
-              .whenComplete((result, ex) -> columnTaskSemaphore.release());
-      releaseOwnedByTask = true;
-      pendingColumnFutures.add(future);
-      pendingColumnFutures.removeIf(CompletableFuture::isDone);
-    } finally {
-      // If scheduling threw synchronously (e.g. executor shutdown) the task's whenComplete never
-      // ran, so release the permit here to avoid leaking it.
-      if (!releaseOwnedByTask) {
-        columnTaskSemaphore.release();
-      }
-    }
+    columnPipeline.submit(entity, reindexContext);
   }
 
   // Visible for testing: overridden by the column-backpressure regression test to control task
   // timing without standing up a real cluster.
   protected void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
-    if (!(entity instanceof Table table)) {
-      return;
-    }
-
-    IndexMapping columnIndexMapping = searchRepository.getIndexMapping(Entity.TABLE_COLUMN);
-    if (columnIndexMapping == null) {
-      LOG.debug("No index mapping found for tableColumn. Skipping column indexing.");
-      return;
-    }
-
-    String columnIndexName;
-    if (reindexContext != null) {
-      Optional<String> stagedIndex = reindexContext.getStagedIndex(Entity.TABLE_COLUMN);
-      columnIndexName =
-          stagedIndex.orElse(columnIndexMapping.getIndexName(searchRepository.getClusterAlias()));
-    } else {
-      columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
-    }
-    List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
-
-    for (Column column : flattenedColumns) {
-      try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
-        Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
-        String json = JsonUtils.pojoToJson(searchIndexDoc);
-        String docId = searchIndexDoc.get("id").toString();
-
-        BulkOperation operation =
-            BulkOperation.of(
-                op ->
-                    op.index(
-                        idx ->
-                            idx.index(columnIndexName)
-                                .id(docId)
-                                .document(EsUtils.toJsonData(json))));
-        long estimatedSize =
-            (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
-        columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);
-      } catch (Exception e) {
-        columnBuildFailed.incrementAndGet();
-        LOG.error(
-            "Failed to index column {} for table {}",
-            column.getFullyQualifiedName(),
-            table.getFullyQualifiedName(),
-            e);
-      }
-    }
+    columnPipeline.indexColumns(entity, reindexContext);
   }
 
   /** Get stats for column indexing from the dedicated column bulk processor */
   public StepStats getColumnStats() {
-    long success = columnSinkSuccess.get();
-    long failed = columnSinkFailed.get() + columnBuildFailed.get();
-    long warnings = columnSinkWarnings.get();
-    return new StepStats()
-        .withTotalRecords((int) (success + failed + warnings))
-        .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed)
-        .withWarningRecords((int) warnings);
-  }
-
-  private void drainPendingColumnFutures(int timeoutSeconds) {
-    List<CompletableFuture<Void>> remaining = new ArrayList<>();
-    CompletableFuture<Void> f;
-    while ((f = pendingColumnFutures.poll()) != null) {
-      if (!f.isDone()) {
-        remaining.add(f);
-      }
-    }
-    if (!remaining.isEmpty()) {
-      try {
-        CompletableFuture.allOf(remaining.toArray(CompletableFuture[]::new))
-            .get(timeoutSeconds, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        LOG.warn("Interrupted waiting for {} in-flight column doc-build tasks", remaining.size());
-        Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        LOG.warn("Timed out waiting for {} in-flight column doc-build tasks", remaining.size());
-      }
-    }
+    return columnPipeline.stats();
   }
 
   private void updateStats() {
@@ -946,29 +786,13 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   @Override
   public StepStats getStats() {
-    // Read directly from atomic counters for accurate real-time stats
-    // Include warnings so skipped stale references are visible but not counted as failures.
-    // This handles entity build failures which increment failed but not submitted
-    long success = totalSuccess.get();
-    long failed = totalFailed.get();
-    long warnings = totalWarnings.get();
-    return new StepStats()
-        .withTotalRecords((int) (success + failed + warnings))
-        .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed)
-        .withWarningRecords((int) warnings);
+    // Read straight off the atomic counters so the stats are real-time.
+    return BulkCounters.statsOf(totalSuccess.get(), totalFailed.get(), totalWarnings.get());
   }
 
   @Override
   public StepStats getProcessStats() {
-    long success = processSuccess.get();
-    long failed = processFailed.get();
-    long warnings = processWarnings.get();
-    return new StepStats()
-        .withTotalRecords((int) (success + failed + warnings))
-        .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed)
-        .withWarningRecords((int) warnings);
+    return BulkCounters.statsOf(processSuccess.get(), processFailed.get(), processWarnings.get());
   }
 
   @Override
@@ -977,7 +801,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       bulkProcessor.flush();
 
       // Wait for in-flight column doc-build tasks before flushing the column processor
-      drainPendingColumnFutures(30);
+      columnPipeline.drainPending(30);
       columnBulkProcessor.flush();
 
       boolean terminated = bulkProcessor.awaitClose(60, TimeUnit.SECONDS);
@@ -997,8 +821,8 @@ public class ElasticSearchBulkSink implements BulkSink {
           totalSubmitted.get(),
           totalSuccess.get(),
           totalFailed.get(),
-          columnSinkSuccess.get(),
-          columnSinkFailed.get() + columnBuildFailed.get());
+          columnPipeline.successCount(),
+          columnPipeline.failedCount());
 
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
@@ -1019,7 +843,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
       long remainingNanos = deadline - System.nanoTime();
       long remainingSecs = Math.max(1, TimeUnit.NANOSECONDS.toSeconds(remainingNanos));
-      drainPendingColumnFutures((int) remainingSecs);
+      columnPipeline.drainPending(remainingSecs);
 
       remainingNanos = deadline - System.nanoTime();
       remainingSecs = Math.max(1, TimeUnit.NANOSECONDS.toSeconds(remainingNanos));
@@ -1088,91 +912,8 @@ public class ElasticSearchBulkSink implements BulkSink {
         && searchRepository.getIndexMapping(entityType) != null;
   }
 
-  private String enrichWithEmbedding(
-      EntityInterface entity,
-      String json,
-      Map<String, JsonNode> existingEmbeddingsById,
-      StageStatsTracker tracker) {
-    try {
-      // Per-instance gate, mirroring VectorEmbeddingHandler: the entity-type check above cannot
-      // see that an individual ContextMemory is Private/Shared, and the vector query path carries
-      // no per-document visibility filter.
-      if (!Entity.isVectorEmbeddable(entity)) {
-        return json;
-      }
-      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
-      if (vectorService == null) {
-        return json;
-      }
-      JsonNode parsed = OBJECT_MAPPER.readTree(json);
-      if (!(parsed instanceof ObjectNode doc)) {
-        LOG.warn(
-            "Skipping embedding enrichment for entity {} — index doc is not a JSON object",
-            entity.getId());
-        return json;
-      }
-      int expectedDimension =
-          vectorService.getEmbeddingClient() != null
-              ? vectorService.getEmbeddingClient().getDimension()
-              : -1;
-      JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (canReuseCachedEmbedding(cached, expectedDimension)) {
-        // Splice the cached embedding so the full index op carries the vector instead of stripping
-        // it; the service-layer pre-filter only admits state-matched entries.
-        doc.setAll((ObjectNode) cached);
-      } else {
-        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
-      }
-      vectorSuccess.incrementAndGet();
-      if (tracker != null) {
-        tracker.recordVector(StatsResult.SUCCESS);
-      }
-      return OBJECT_MAPPER.writeValueAsString(doc);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-      vectorFailed.incrementAndGet();
-      if (tracker != null) {
-        tracker.recordVector(StatsResult.FAILED);
-      }
-      return json;
-    }
-  }
-
-  private Map<String, JsonNode> fetchExistingEmbeddings(
-      List<EntityInterface> entities,
-      Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById,
-      String indexName,
-      ReindexContext reindexContext) {
-    try {
-      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
-      if (vectorService == null || entities.isEmpty()) {
-        return Collections.emptyMap();
-      }
-      String entityType = entities.getFirst().getEntityReference().getType();
-      // During a recreate, read from the pre-recreate live (original) index — the staged index is
-      // empty by definition. Otherwise read the canonical index passed in.
-      String sourceIndex =
-          reindexContext != null
-              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
-              : indexName;
-      return vectorService.getExistingEmbeddingsBatch(sourceIndex, currentById);
-    } catch (Exception e) {
-      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
-      return Collections.emptyMap();
-    }
-  }
-
-  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
-    return BulkSinkSupport.canReuseCachedEmbedding(cached, expectedDimension);
-  }
-
   @Override
   public StepStats getVectorStats() {
-    return new StepStats()
-        .withTotalRecords((int) (vectorSuccess.get() + vectorFailed.get()))
-        .withSuccessRecords((int) vectorSuccess.get())
-        .withFailedRecords((int) vectorFailed.get());
+    return docEmbedder.stats();
   }
 }
