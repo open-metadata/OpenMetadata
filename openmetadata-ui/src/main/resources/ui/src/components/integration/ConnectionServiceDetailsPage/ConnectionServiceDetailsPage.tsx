@@ -552,6 +552,12 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       serviceCategory: serviceCategory as ServiceCategory,
       serviceDetails,
       permissions: servicePermission,
+      // Marks this as the AI app-mode connection details frame so a plugin can
+      // gate its SERVICE_DETAILS_TABS/ACTIONS contributions to AI mode only and
+      // not have them leak onto the classic ServiceDetailsPage (which reads the
+      // same extension points with a context carrying serviceCategory +
+      // serviceDetails but no isAiMode).
+      isAiMode: true,
     }),
     [serviceCategory, serviceDetails, servicePermission]
   );
