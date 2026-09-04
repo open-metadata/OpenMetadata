@@ -129,6 +129,83 @@ def _topic_case():
     return _topic(field), field
 
 
+def _nested_columns(fqn_prefix: str) -> tuple[list[Column], list[Column]]:
+    id_column = Column(
+        name=ColumnName(root="id"),
+        dataType=DataType.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root=f"{fqn_prefix}.id"),
+    )
+    nested_email = Column(
+        name=ColumnName(root="email"),
+        dataType=DataType.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root=f"{fqn_prefix}.contact.email"),
+    )
+    city = Column(
+        name=ColumnName(root="city"),
+        dataType=DataType.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root=f"{fqn_prefix}.contact.address.city"),
+    )
+    postal_code = Column(
+        name=ColumnName(root="postal_code"),
+        dataType=DataType.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root=f"{fqn_prefix}.contact.address.postal_code"),
+    )
+    address = Column(
+        name=ColumnName(root="address"),
+        dataType=DataType.RECORD,
+        fullyQualifiedName=FullyQualifiedEntityName(root=f"{fqn_prefix}.contact.address"),
+        children=[city, postal_code],
+    )
+    parent = Column(
+        name=ColumnName(root="contact"),
+        dataType=DataType.RECORD,
+        fullyQualifiedName=FullyQualifiedEntityName(root=f"{fqn_prefix}.contact"),
+        children=[nested_email, address],
+    )
+    return [id_column, parent], [id_column, nested_email, city, postal_code]
+
+
+def _nested_table_case():
+    columns, leaves = _nested_columns("service.database.schema.table")
+    return _table(columns), leaves
+
+
+def _nested_container_case():
+    columns, leaves = _nested_columns("service.container")
+    return _container(columns), leaves
+
+
+def _nested_topic_case():
+    email = FieldModel(
+        name="email",
+        dataType=DataTypeTopic.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root="service.topic.contact.email"),
+    )
+    city = FieldModel(
+        name="city",
+        dataType=DataTypeTopic.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root="service.topic.contact.address.city"),
+    )
+    postal_code = FieldModel(
+        name="postal_code",
+        dataType=DataTypeTopic.STRING,
+        fullyQualifiedName=FullyQualifiedEntityName(root="service.topic.contact.address.postal_code"),
+    )
+    address = FieldModel(
+        name="address",
+        dataType=DataTypeTopic.RECORD,
+        fullyQualifiedName=FullyQualifiedEntityName(root="service.topic.contact.address"),
+        children=[city, postal_code],
+    )
+    parent = FieldModel(
+        name="contact",
+        dataType=DataTypeTopic.RECORD,
+        fullyQualifiedName=FullyQualifiedEntityName(root="service.topic.contact"),
+        children=[email, address],
+    )
+    return _topic(parent), [email, city, postal_code]
+
+
 def test_classifies_metadata_columns_when_sample_fields_are_empty(workflow_config):
     email_column = _column("project_manager_email_md")
     record = SamplerResponse(
@@ -170,54 +247,23 @@ def test_missing_sample_data_uses_metadata_fallback(workflow_config):
     assert processor.classifier_inputs == [(email_column, [])]
 
 
-def test_classifies_all_metadata_leaves_in_canonical_order(workflow_config):
-    id_column = _column("id")
-    nested_email = Column(
-        name=ColumnName(root="email"),
-        dataType=DataType.STRING,
-        fullyQualifiedName=FullyQualifiedEntityName(root="service.database.schema.table.contact.email"),
-    )
-    city = Column(
-        name=ColumnName(root="city"),
-        dataType=DataType.STRING,
-        fullyQualifiedName=FullyQualifiedEntityName(root="service.database.schema.table.contact.address.city"),
-    )
-    postal_code = Column(
-        name=ColumnName(root="postal_code"),
-        dataType=DataType.STRING,
-        fullyQualifiedName=FullyQualifiedEntityName(root="service.database.schema.table.contact.address.postal_code"),
-    )
-    address = Column(
-        name=ColumnName(root="address"),
-        dataType=DataType.RECORD,
-        fullyQualifiedName=FullyQualifiedEntityName(root="service.database.schema.table.contact.address"),
-        children=[city, postal_code],
-    )
-    parent = Column(
-        name=ColumnName(root="contact"),
-        dataType=DataType.RECORD,
-        fullyQualifiedName=FullyQualifiedEntityName(root="service.database.schema.table.contact"),
-        children=[nested_email, address],
-    )
+@pytest.mark.parametrize(
+    "entity_case",
+    [_nested_table_case, _nested_container_case, _nested_topic_case],
+)
+def test_classifies_all_metadata_leaves_in_canonical_order(workflow_config, entity_case):
+    entity, leaves = entity_case()
     record = SamplerResponse(
-        entity=_table([id_column, parent]),
+        entity=entity,
         sample_data=SampleData(data=TableData(columns=[], rows=[])),
     )
     processor = RecordingClassificationProcessor(workflow_config)
 
     result = processor.run(record)
 
-    assert processor.classifier_inputs == [
-        (id_column, []),
-        (nested_email, []),
-        (city, []),
-        (postal_code, []),
-    ]
+    assert processor.classifier_inputs == [(leaf, []) for leaf in leaves]
     assert [column_tag.column_fqn for column_tag in result.column_tags] == [
-        id_column.fullyQualifiedName.root,
-        nested_email.fullyQualifiedName.root,
-        city.fullyQualifiedName.root,
-        postal_code.fullyQualifiedName.root,
+        leaf.fullyQualifiedName.root for leaf in leaves
     ]
 
 
