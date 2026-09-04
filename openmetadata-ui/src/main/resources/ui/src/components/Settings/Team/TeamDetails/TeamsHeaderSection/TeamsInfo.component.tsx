@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  InfoCircleOutlined,
+    CheckOutlined,
+    CloseOutlined,
+    InfoCircleOutlined
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
@@ -24,10 +24,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
-  GRAYED_OUT_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
+    DE_ACTIVE_COLOR,
+    GRAYED_OUT_COLOR,
+    ICON_DIMENSION,
+    NO_DATA_PLACEHOLDER
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -38,14 +38,15 @@ import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
+import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
@@ -61,6 +62,7 @@ const TeamsInfo = ({
   isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -406,15 +408,22 @@ const TeamsInfo = ({
         hasPermission={hasEditPermission}
       />
       <Divider className="vertical-divider" type="vertical" />
-      <OwnerLabel
+      <Owner
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
-        multiple={{
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
-        }}
-        owners={owners}
-        onUpdate={updateOwner}
+        owners={toOwnersWithHref(owners ?? [])}
+        renderOwnerContent={renderOwnerContent}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasEditOwnerPermission)}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owner={owners}
+            onUpdate={updateOwner}
+          />
+        }
       />
       <Divider className="vertical-divider" type="vertical" />
       {emailRender}

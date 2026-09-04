@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner, OwnerChip } from '@openmetadata/ui-core-components';
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -19,14 +20,14 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
 import {
-  MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
-  MAX_VISIBLE_OWNERS_FOR_FEED_TAB,
+    MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
+    MAX_VISIBLE_OWNERS_FOR_FEED_TAB
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { OwnerItem } from '../../../../common/OwnerItem/OwnerItem';
-import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
+import { toOwnerRef } from '../../../../../utils/Owner/ownerConversionUtils';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
@@ -42,6 +43,7 @@ function ActivityOwnersFeed({
   showThread,
 }: Readonly<ActivityOwnersFeedProps>) {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const { previousOwner, updatedOwner } = useMemo(() => {
     let oldOwners: EntityReference[] = [];
@@ -113,22 +115,22 @@ function ActivityOwnersFeed({
                   'bg-white': showThread,
                 })}
                 key={owner.id}>
-                <OwnerItem
-                  isCompactView
+                <OwnerChip
                   avatarSize={24}
-                  className="owner-chip-text"
-                  owner={owner}
+                  isCompactView={false}
+                  owner={toOwnerRef(owner)}
                 />
               </div>
             )
           )}
         </Row>
       ) : (
-        <OwnerLabel
+        <Owner
           avatarSize={24}
           isCompactView={false}
           maxVisibleOwners={maxVisibleOwners}
-          owners={ownerList}
+          owners={toOwnersWithHref(ownerList)}
+          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       );

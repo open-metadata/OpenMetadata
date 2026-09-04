@@ -15,9 +15,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
 import {
-  LabelType,
-  State,
-  TagSource,
+    LabelType,
+    State,
+    TagSource
 } from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
@@ -103,8 +103,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <>OwnerLabelComponent</>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../../hooks/useEntityRules', () => ({

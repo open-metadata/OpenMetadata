@@ -12,10 +12,11 @@
  */
 
 import {
-  Avatar,
-  Box,
-  Grid,
-  Typography,
+    Avatar,
+    Box,
+    Grid,
+    Owner,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,18 +25,19 @@ import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import {
-  CARD_NAME_CLIP_CLASS,
-  CLIPPED_NAME_CLASS,
-  renderDomainClassificationTagsCell,
-  renderDomainGlossaryTagsCell,
-  renderDomainOwnersCell,
-  renderDomainTypeCell,
+    CARD_NAME_CLIP_CLASS,
+    CLIPPED_NAME_CLASS,
+    renderDomainClassificationTagsCell,
+    renderDomainGlossaryTagsCell,
+    renderDomainOwnersCell,
+    renderDomainTypeCell
 } from './domainFieldRenderers';
 
 export const useDomainCardTemplates = () => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const renderDomainCard = useCallback(
     (entity: Domain): ReactNode => (
@@ -61,7 +63,7 @@ export const useDomainCardTemplates = () => {
           <Grid.Item span={12}>
             <Box direction="col" gap={1}>
               <Typography size="text-xs">{t('label.owner')}</Typography>
-              {renderDomainOwnersCell(entity)}
+              {renderDomainOwnersCell(entity, toOwnersWithHref, renderOwnerContent)}
             </Box>
           </Grid.Item>
           <Grid.Item span={12}>
@@ -90,7 +92,7 @@ export const useDomainCardTemplates = () => {
         </Grid>
       </Box>
     ),
-    [t]
+    [t, toOwnersWithHref, renderOwnerContent]
   );
 
   const renderDataProductCard = useCallback(
@@ -132,7 +134,7 @@ export const useDomainCardTemplates = () => {
                 <Typography size="text-xs">
                   {t('label.owner-plural')}
                 </Typography>
-                {renderDomainOwnersCell(entity)}
+                {renderDomainOwnersCell(entity, toOwnersWithHref, renderOwnerContent)}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -140,10 +142,11 @@ export const useDomainCardTemplates = () => {
                 <Typography size="text-xs">
                   {t('label.expert-plural')}
                 </Typography>
-                <OwnerLabel
+                <Owner
                   isCompactView={false}
                   maxVisibleOwners={4}
-                  owners={entity.experts}
+                  owners={toOwnersWithHref(entity.experts ?? [])}
+                  renderOwnerContent={renderOwnerContent}
                   showLabel={false}
                 />
               </Box>
@@ -169,7 +172,7 @@ export const useDomainCardTemplates = () => {
         </Box>
       );
     },
-    [t]
+    [t, toOwnersWithHref, renderOwnerContent]
   );
 
   return {

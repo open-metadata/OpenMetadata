@@ -515,20 +515,6 @@ export default function EntitySummaryPanel({
     [entityData, entityDetails.details, onEntityUpdate, afterEntityUpdate]
   );
 
-  const handleOwnerUpdate = useCallback(
-    (owners: EntityReference[]) => {
-      updateEntityData({ owners });
-    },
-    [updateEntityData]
-  );
-
-  const handleDomainUpdate = useCallback(
-    (domains: EntityReference[]) => {
-      updateEntityData({ domains });
-    },
-    [updateEntityData]
-  );
-
   const handleEntityUpdate = useCallback(
     <T,>(
       result: Partial<EntityData>,
@@ -551,6 +537,51 @@ export default function EntitySummaryPanel({
       return returnValue;
     },
     [entityData, entityDetails.details, afterEntityUpdate, t]
+  );
+
+  const handleOwnerUpdate = useCallback(
+    async (owners: EntityReference[]) => {
+      if (onEntityUpdate) {
+        onEntityUpdate({ owners });
+
+        return;
+      }
+
+      const baseData = entityData ?? entityDetails.details;
+      const jsonPatch = compare(baseData, { ...baseData, owners });
+
+      if (isEmpty(jsonPatch) || isUndefined(entityType)) {
+        return;
+      }
+
+      try {
+        const apiFunc =
+          entityUpdateMap[entityType] ??
+          entityUtilClassBase.getEntityPatchAPI(entityType);
+        if (apiFunc && id) {
+          const res = await apiFunc(id, jsonPatch);
+          handleEntityUpdate(res, 'label.owner-plural');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      onEntityUpdate,
+      entityData,
+      entityDetails.details,
+      entityType,
+      id,
+      entityUpdateMap,
+      handleEntityUpdate,
+    ]
+  );
+
+  const handleDomainUpdate = useCallback(
+    (domains: EntityReference[]) => {
+      updateEntityData({ domains });
+    },
+    [updateEntityData]
   );
 
   const handleTagsUpdate = useCallback(

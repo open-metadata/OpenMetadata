@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -19,7 +20,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -28,20 +28,21 @@ import type { KnowledgePage } from '../../../interface/knowledge-center.interfac
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
+    getChangedEntityNewValue,
+    getChangedEntityOldValue,
+    getDiffByFieldName
 } from '../../../utils/EntityDiffPureUtils';
 import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
-  getCommonExtraInfoForVersionDetails,
-  getEntityVersionByField,
-  getEntityVersionTags,
+    getCommonExtraInfoForVersionDetails,
+    getEntityVersionByField,
+    getEntityVersionTags
 } from '../../../utils/EntityVersionUtilsPure';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
@@ -126,9 +127,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 <Col>
                   <Space size={4}>
                     <Space direction="vertical" size={0}>
-                      <OwnerLabel
+                      <Owner
                         ownerDisplayName={ownerDisplayName}
-                        owners={knowledgePage?.owners ?? ownerRef}
+                        owners={toOwnerRefs(knowledgePage?.owners ?? ownerRef ?? [])}
                       />
                       <span
                         className="self-center text-grey-muted"

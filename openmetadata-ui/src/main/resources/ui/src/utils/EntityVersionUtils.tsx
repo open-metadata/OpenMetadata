@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Divider, Space, Typography } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
@@ -21,25 +22,26 @@ import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import type {
-  ChangeDescription,
-  FieldChange,
+    ChangeDescription,
+    FieldChange
 } from '../generated/entity/services/databaseService';
 import type { EntityReference } from '../generated/entity/type';
 import type { TestCaseParameterValue } from '../generated/tests/testCase';
 import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
+    getChangedEntityNewValue,
+    getChangedEntityOldValue,
+    getDiffByFieldName
 } from './EntityDiffPureUtils';
 import {
-  getAddedDiffElement,
-  getDiffDisplayValue,
-  getRemovedDiffElement,
-  getTextDiffElements,
+    getAddedDiffElement,
+    getDiffDisplayValue,
+    getRemovedDiffElement,
+    getTextDiffElements
 } from './EntityDiffUtils';
 import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
+import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { isValidJSONString } from './StringUtils';
 
 const BulkImportVersionSummary = withSuspenseFallback(
@@ -47,14 +49,6 @@ const BulkImportVersionSummary = withSuspenseFallback(
     import(
       '../components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component'
     ).then((m) => ({ default: m.BulkImportVersionSummary }))
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
   )
 );
 
@@ -322,7 +316,9 @@ export const getOwnerVersionLabel = (
     );
 
     if (!isEmpty(owners)) {
-      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
+      return (
+        <Owner ownerDisplayName={ownerDisplayName} owners={toOwnerRefs(owners)} />
+      );
     }
   }
 
@@ -340,9 +336,9 @@ export const getOwnerVersionLabel = (
     });
 
     return (
-      <OwnerLabel
+      <Owner
         ownerDisplayName={ownerDisplayName}
-        owners={defaultItems}
+        owners={toOwnerRefs(defaultItems)}
         {...(ownerField === TabSpecificField.OWNERS
           ? {
               isCompactView: false,

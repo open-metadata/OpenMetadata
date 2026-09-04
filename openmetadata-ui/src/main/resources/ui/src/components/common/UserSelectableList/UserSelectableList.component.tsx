@@ -33,7 +33,7 @@ import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferen
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
-import './user-select-dropdown.less';
+// import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
 
 type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };

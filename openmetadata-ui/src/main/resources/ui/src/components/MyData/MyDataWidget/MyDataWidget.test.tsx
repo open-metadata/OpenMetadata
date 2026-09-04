@@ -13,8 +13,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_MEDIUM
 } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
@@ -85,8 +85,9 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn().mockReturnValue('/user/test'),
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <span>OwnerLabel</span>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../constants/Widgets.constant', () => ({

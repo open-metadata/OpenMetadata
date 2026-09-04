@@ -502,10 +502,6 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
 
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Teams')
-  ).toBeVisible();
-
   await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('domcontentloaded');
 
@@ -540,7 +536,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   }
 
   await page
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .locator('[data-testid="owner-select-users-panel"]')
     .getByTestId('selectable-list-update-btn')
     .click();
 
@@ -553,10 +549,6 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Users')
-  ).toBeVisible();
 
   await waitForAllLoadersToDisappear(page);
 
@@ -587,7 +579,7 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
   }
 
   await page
-    .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+    .locator('[data-testid="owner-select-teams-panel"]')
     .getByTestId('selectable-list-update-btn')
     .click();
 

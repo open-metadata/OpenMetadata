@@ -152,6 +152,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
   EmptyPlaceholder: jest
     .fn()
     .mockImplementation(
@@ -176,10 +177,6 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
-
 jest.mock('../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([
     {
@@ -187,7 +184,7 @@ jest.mock('../../../utils/TableColumn.util', () => ({
       dataIndex: 'owners',
       key: 'owners',
       width: 180,
-      render: () => <div>OwnerLabel</div>,
+      render: () => <div>Owner</div>,
     },
   ]),
   descriptionTableObject: jest.fn().mockImplementation(() => []),
@@ -495,7 +492,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const ownerLabels = screen.getAllByText('OwnerLabel');
+        const ownerLabels = screen.getAllByText('Owner');
 
         expect(ownerLabels.length).toBeGreaterThan(0);
       });

@@ -210,6 +210,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
       return Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
     })(),
+    Owner: jest.fn().mockImplementation(({ selectorContent }: { selectorContent?: React.ReactElement<{ onUpdate?: (owners: unknown[]) => void }> }) => {
+      const handleUpdate = selectorContent?.props?.onUpdate;
+
+      return (
+        <div data-testid="owner-label">
+          OwnerLabel.component
+          <button
+            data-testid="update-owner-btn"
+            onClick={() => handleUpdate?.([{ id: 'new-owner', type: 'user' }])}>
+            Update Owner
+          </button>
+        </div>
+      );
+    }),
   };
 });
 
@@ -367,18 +381,6 @@ jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => {
   };
 });
 jest.mock('../../rest/ingestionPipelineAPI');
-jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(({ onUpdate }) => (
-    <div data-testid="owner-label">
-      OwnerLabel.component
-      <button
-        data-testid="update-owner-btn"
-        onClick={() => onUpdate?.([{ id: 'new-owner', type: 'user' }])}>
-        Update Owner
-      </button>
-    </div>
-  )),
-}));
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ id, name }) => (
     <div className="w-full tabs-label-container" data-testid={id}>

@@ -14,9 +14,19 @@
 import { findByTestId, render } from '@testing-library/react';
 import ProfilePicture from './ProfilePicture';
 
-jest.mock('../AvatarComponent/Avatar', () => {
-  return jest.fn().mockImplementation(() => <div>Avatar</div>);
-});
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Avatar: jest.fn(({ src, 'data-testid': testId, ...props }) =>
+    src ? (
+      <img alt="" data-testid="profile-image" src={src} />
+    ) : (
+      <div data-testid={testId ?? 'profile-avatar'} {...props} />
+    )
+  ),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
 
 jest.mock('../../../utils/UserDataUtils', () => {
   return {

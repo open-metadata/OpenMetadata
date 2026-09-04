@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
@@ -20,19 +21,20 @@ import type { TagButtonProps } from '../../components/common/TagButton/TagButton
 import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
-  DUMMY_OWNER_LIST,
-  DUMMY_TAGS_LIST,
-  WIDGET_CUSTOM_PROPERTIES,
+    DUMMY_OWNER_LIST,
+    DUMMY_TAGS_LIST,
+    WIDGET_CUSTOM_PROPERTIES
 } from '../../constants/CustomizeWidgets.constants';
 import {
-  DetailPageWidgetKeys,
-  GlossaryTermDetailPageWidgetKeys,
+    DetailPageWidgetKeys,
+    GlossaryTermDetailPageWidgetKeys
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import type { EntityReference } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
+import { toOwnerRefs } from '../Owner/ownerConversionUtils';
 import tableClassBase from '../TableClassBase';
 
 const PropertyValue = withSuspenseFallback(
@@ -82,14 +84,6 @@ const APIEndpointSchema = withSuspenseFallback(
   lazy(
     () =>
       import('../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema')
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
   )
 );
 
@@ -279,7 +273,7 @@ export const WIDGET_COMPONENTS = {
     />
   ),
   [GlossaryTermDetailPageWidgetKeys.OWNER]: () => (
-    <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
+    <Owner hasPermission={false} isCompactView={false} owners={toOwnerRefs(DUMMY_OWNER_LIST)} showLabel={false} />
   ),
   [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
     <div className="flex gap-2 flex-col">
@@ -311,7 +305,7 @@ export const WIDGET_COMPONENTS = {
   ),
 
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
-    <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
+    <Owner hasPermission={false} isCompactView={false} owners={toOwnerRefs(DUMMY_OWNER_LIST)} showLabel={false} />
   ),
   [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
     <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
@@ -342,9 +336,11 @@ export const WIDGET_COMPONENTS = {
     <DashboardChartTable isCustomizationPage />
   ),
   [DetailPageWidgetKeys.EXPERTS]: () => (
-    <OwnerLabel
+    <Owner
       hasPermission={false}
-      owners={domainClassBase.getDummyData().experts ?? []}
+      isCompactView={false}
+      owners={toOwnerRefs(domainClassBase.getDummyData().experts ?? [])}
+      showLabel={false}
     />
   ),
   [DetailPageWidgetKeys.API_ENDPOINTS]: () => (

@@ -12,10 +12,10 @@
  */
 
 import {
-  findByTestId,
-  findByText,
-  render,
-  screen,
+    findByTestId,
+    findByText,
+    render,
+    screen
 } from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
@@ -74,8 +74,9 @@ jest.mock(
   })
 );
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../Entity/EntityRightPanel/EntityRightPanel', () => {

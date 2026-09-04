@@ -16,12 +16,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import {
-  Task,
-  TaskCategory,
-  TaskEntityStatus,
-  TaskEntityType,
-  TaskPriority,
-  TaskResolutionType,
+    Task,
+    TaskCategory,
+    TaskEntityStatus,
+    TaskEntityType,
+    TaskPriority,
+    TaskResolutionType
 } from '../../../../rest/tasksAPI';
 import { TaskTabNew } from './TaskTabNew.component';
 
@@ -404,8 +404,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
 });
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../common/IconButtons/EditIconButton', () => ({

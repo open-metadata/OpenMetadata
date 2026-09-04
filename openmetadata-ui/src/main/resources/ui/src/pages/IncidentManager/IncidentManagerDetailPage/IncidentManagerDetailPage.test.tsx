@@ -223,11 +223,16 @@ jest.mock(
   '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    Owner: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="owner-label" />),
+  };
+});
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   convertMillisecondsToHumanReadableFormat: jest.fn().mockReturnValue('23m'),
   customFormatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),

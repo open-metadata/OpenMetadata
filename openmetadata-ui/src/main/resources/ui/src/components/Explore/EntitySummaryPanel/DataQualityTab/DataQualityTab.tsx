@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -21,45 +22,45 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
+    ERROR_PLACEHOLDER_TYPE,
+    SORT_ORDER
 } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
+    TestCaseResolutionStatus,
+    TestCaseResolutionStatusTypes
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import {
-  DataQualityTabProps,
-  DetailItemProps,
-  FilterStatus,
-  IncidentFilterStatus,
-  IncidentStatusCounts,
-  TestCaseCardProps,
-  TestCaseStatusCounts,
+    DataQualityTabProps,
+    DetailItemProps,
+    FilterStatus,
+    IncidentFilterStatus,
+    IncidentStatusCounts,
+    TestCaseCardProps,
+    TestCaseStatusCounts
 } from './DataQualityTab.interface';
 import './DataQualityTab.less';
 
@@ -160,8 +161,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           label: t('label.assignee'),
           value: (
             <div className="assignee-info">
-              <OwnerLabel
-                owners={assignee ? [assignee] : []}
+              <Owner
+                owners={toOwnerRefs(assignee ? [assignee] : [])}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.assignee'),
                 })}

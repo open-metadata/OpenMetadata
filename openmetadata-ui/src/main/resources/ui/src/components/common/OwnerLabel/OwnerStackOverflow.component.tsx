@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Avatar,
-  Button,
-  Divider,
-  Typography,
+    Avatar,
+    Button,
+    Divider,
+    Typography
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import {
-  Tooltip as AriaTooltip,
-  TooltipTrigger as AriaTooltipTrigger,
+    Tooltip as AriaTooltip,
+    TooltipTrigger as AriaTooltipTrigger
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -30,8 +30,8 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import {
-  AVATAR_FONT_SIZE_MAP,
-  AVATAR_SIZE_NAME_MAP,
+    AVATAR_FONT_SIZE_MAP,
+    AVATAR_SIZE_NAME_MAP
 } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerStackOverflowProps } from './OwnerAvatarStack.interface';
@@ -105,16 +105,14 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         aria-label={t('label.view-entity', {
           entity: t('label.owner-plural'),
         })}
-        className="owner-stack-overflow-trigger"
+        className="owner-stack-overflow-trigger tw:flex tw:items-center tw:justify-center tw:leading-none"
         color="link-color"
         data-testid="owners-overflow-trigger"
-        size="xs">
+        size="xs"
+        style={{ padding: 0 }}>
         <Avatar
           className={classNames(
-            // Border on ::after: Avatar's own outline draws its inset contrast border, so an
-            // element-level outline would clobber it. This edge was a non-inset ring, so the
-            // overlay outline sits at offset 0 (outward), keeping both edges visible.
-            'tw:bg-brand-50 tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-2 tw:after:outline-white tw:text-brand-700 tw:font-medium',
+            'tw:bg-secondary tw:text-tertiary tw:font-semibold',
             fontSizeClass
           )}
           placeholder={remainingCountLabel}

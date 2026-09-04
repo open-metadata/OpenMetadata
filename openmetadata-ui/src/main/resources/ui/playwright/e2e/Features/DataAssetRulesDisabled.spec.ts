@@ -232,7 +232,7 @@ test.describe(
           `/api/v1/${entity.endpoint}/*`
         );
         await page
-          .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+          .locator('[data-testid="owner-select-teams-panel"]')
           .getByTestId('selectable-list-update-btn')
           .click();
         await patchRequest;

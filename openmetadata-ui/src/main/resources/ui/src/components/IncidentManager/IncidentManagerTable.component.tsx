@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Table,
-  Tooltip,
-  TooltipTrigger,
+    Box,
+    EmptyPlaceholder,
+    Owner,
+    Skeleton,
+    Table,
+    Tooltip,
+    TooltipTrigger
 } from '@openmetadata/ui-core-components';
 import { ShieldTick } from '@untitledui/icons';
 import { useMemo } from 'react';
@@ -27,27 +28,28 @@ import { Table as TableType } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
-  Assigned,
-  Severities,
-  TestCaseResolutionStatus,
+    Assigned,
+    Severities,
+    TestCaseResolutionStatus
 } from '../../generated/tests/testCaseResolutionStatus';
 import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  getNameFromFQN,
-  getPartialNameFromTableFQN,
+    getNameFromFQN,
+    getPartialNameFromTableFQN
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { getPrioritizedEditPermission } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-  ProfilerTabPath,
-  TestCasePermission,
+    ProfilerTabPath,
+    TestCasePermission
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -118,7 +120,7 @@ const IncidentManagerTable = ({
 
     return (
       <div data-testid="assignee">
-        <OwnerLabel
+        <Owner
           isCompactView
           className="m-0"
           hasPermission={hasIncidentEditPermission(hasPermission)}
@@ -126,15 +128,21 @@ const IncidentManagerTable = ({
             user: false,
             team: false,
           }}
-          owners={value?.assignee ? [value.assignee] : []}
+          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),
           })}
-          tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
-          })}
-          onUpdate={(assignees) =>
-            record && handleAssigneeUpdate(record, assignees)
+          selectorContent={
+            <UserTeamSelectableList
+              hasPermission={Boolean(
+                hasPermission?.EditAll && !tableDetails?.deleted
+              )}
+              multiple={{ user: false, team: false }}
+              owner={value?.assignee ? [value.assignee] : []}
+              onUpdate={(assignees) =>
+                record && handleAssigneeUpdate(record, assignees)
+              }
+            />
           }
         />
       </div>

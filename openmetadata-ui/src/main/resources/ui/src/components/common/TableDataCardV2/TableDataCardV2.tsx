@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
@@ -25,12 +26,12 @@ import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -87,7 +88,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
+            <Owner owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])} />
           ),
         },
       ];

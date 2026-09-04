@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -20,15 +21,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/widget/following.svg';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_MEDIUM,
+    ROUTES
 } from '../../../constants/constants';
 import {
-  applySortToData,
-  FOLLOWING_WIDGET_FILTER_OPTIONS,
-  getSortField,
-  getSortOrder,
+    applySortToData,
+    FOLLOWING_WIDGET_FILTER_OPTIONS,
+    getSortField,
+    getSortOrder
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -36,19 +37,19 @@ import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  WidgetCommonProps,
-  WidgetConfig,
+    WidgetCommonProps,
+    WidgetConfig
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -66,6 +67,7 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
@@ -145,9 +147,10 @@ function FollowingWidget({
       extraInfo.push({
         key: 'Owner',
         value: (
-          <OwnerLabel
+          <Owner
             isCompactView={false}
-            owners={(item.owners as EntityReference[]) ?? []}
+            owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
+            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ),

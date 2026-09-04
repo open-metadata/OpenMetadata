@@ -254,6 +254,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }: React.PropsWithChildren) => (
         <button>{children}</button>
       )),
+    Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   };
 });
 
@@ -344,9 +347,6 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
   };
 });
 
-jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 jest.mock(
   '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
   () => {

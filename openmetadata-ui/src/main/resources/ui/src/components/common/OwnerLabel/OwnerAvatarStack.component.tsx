@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { AvatarStack, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,6 +19,7 @@ import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { AVATAR_RENDER_SIZE_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerAvatarStackProps } from './OwnerAvatarStack.interface';
@@ -35,6 +36,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
   maxVisibleOwners = DEFAULT_MAX_VISIBLE_AVATARS,
 }) => {
   const isVertical = placement === 'vertical';
+  // Use the actual pixel size the Avatar component renders at for the given avatarSize.
+  // Avatar only supports discrete sizes (xxs=16, xs=24, …); passing 18 renders at 16px,
+  // so wrapper dimensions must match the real render size or the outline appears offset.
+  const renderSize = AVATAR_RENDER_SIZE_MAP[avatarSize] ?? avatarSize;
 
   const { visibleOwners, hiddenCount } = useMemo(() => {
     const visible = owners.slice(0, maxVisibleOwners);
@@ -54,13 +59,16 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
 
   const renderTeamBadge = (owner: EntityReference) => {
     const entityName = getEntityName(owner);
-    const iconSize = Math.round(avatarSize * 0.6);
+    const iconSize = Math.round(renderSize * 0.6);
 
     return (
       <span
         className="owner-avatar-stack-team"
         data-testid={entityName}
-        style={{ width: avatarSize, height: avatarSize }}>
+        style={{
+          height: renderSize,
+                    width: renderSize,
+        }}>
         <TeamsIcons
           className="owner-avatar-stack-team-icon"
           height={iconSize}
@@ -77,12 +85,15 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
       <span
         className="owner-avatar-stack-user"
         data-testid={entityName}
-        style={{ width: avatarSize, height: avatarSize }}>
+        style={{
+          height: renderSize,
+                    width: renderSize,
+        }}>
         <ProfilePicture
           displayName={entityName}
           name={owner.name ?? ''}
           type="circle"
-          width={`${avatarSize}`}
+          width={`${renderSize}`}
         />
       </span>
     );
@@ -187,26 +198,23 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
 
   return (
     <div
-      className={classNames(
-        'owner-avatar-stack tw:flex tw:items-center',
-        className
-      )}
+      className={classNames('owner-avatar-stack tw:flex tw:items-center', className)}
       data-testid="owner-avatar-stack">
-      <div className="owner-avatar-stack-list tw:flex tw:items-center">
-        {visibleOwners.map((owner) => (
-          <div className="owner-avatar-stack-item" key={owner.id}>
-            {renderStackAvatar(owner)}
-          </div>
-        ))}
-      </div>
-      {hiddenCount > 0 && (
-        <OwnerStackOverflow
-          avatarSize={avatarSize}
-          hiddenCount={hiddenCount}
-          ownerDisplayName={ownerDisplayName}
-          owners={owners}
-        />
-      )}
+      <AvatarStack
+        avatarSize={renderSize}
+        items={owners.map((owner) => renderStackAvatar(owner))}
+        maxCount={maxVisibleOwners}
+        overflowChip={
+          hiddenCount > 0 ? (
+            <OwnerStackOverflow
+              avatarSize={avatarSize}
+              hiddenCount={hiddenCount}
+              ownerDisplayName={ownerDisplayName}
+              owners={owners}
+            />
+          ) : undefined
+        }
+      />
     </div>
   );
 };

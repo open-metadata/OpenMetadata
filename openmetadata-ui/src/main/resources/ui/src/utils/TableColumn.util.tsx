@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import {
-  ColumnsType,
-  ColumnType,
+    ColumnsType,
+    ColumnType
 } from '../components/common/Table/Table.interface';
 import { TAG_LIST_SIZE } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -26,25 +27,18 @@ import { AssetCertification } from '../generated/entity/data/database';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagLabel } from '../generated/type/tagLabel';
 import i18n from './i18next/LocalUtil';
+import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import {
-  getCertificationTag,
-  getTagsWithoutCertification,
-  getTagsWithoutTier,
-  getTierTags,
+    getCertificationTag,
+    getTagsWithoutCertification,
+    getTagsWithoutTier,
+    getTierTags
 } from './TablePureUtils';
 
 const DomainLabel = withSuspenseFallback(
   lazy(() =>
     import('../components/common/DomainLabel/DomainLabel.component').then(
       (module) => ({ default: module.DomainLabel })
-    )
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (module) => ({ default: module.OwnerLabel })
     )
   )
 );
@@ -88,10 +82,10 @@ export const ownerTableObject = <
     width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
-      <OwnerLabel
+      <Owner
         isCompactView={false}
         maxVisibleOwners={4}
-        owners={owners}
+        owners={toOwnerRefs(owners ?? [])}
         showLabel={false}
       />
     ),

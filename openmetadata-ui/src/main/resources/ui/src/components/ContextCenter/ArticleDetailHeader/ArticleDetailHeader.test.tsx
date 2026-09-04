@@ -98,6 +98,15 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock(
+  '../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest.fn(
+      ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
+    ),
+  })
+);
+
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn(() => <nav data-testid="breadcrumb" />)
 );
@@ -105,12 +114,6 @@ jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
 jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn(({ name }: { name: string }) => <span>{name}</span>)
 );
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
-    <span>{owners.map((o) => o.name).join(', ')}</span>
-  )),
-}));
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest.fn(() => <div data-testid="delete-modal" />)
@@ -231,6 +234,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  Owner: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
+    <span>{owners?.map((o) => o.name).join(', ')}</span>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),

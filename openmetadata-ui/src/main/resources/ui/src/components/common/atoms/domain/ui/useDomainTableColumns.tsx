@@ -14,6 +14,7 @@
 import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
 import {
   renderDomainClassificationTagsCell,
@@ -35,6 +36,7 @@ export const useDomainTableColumns = ({
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const columns: ColumnDef[] = useMemo(
     () => [
@@ -58,7 +60,7 @@ export const useDomainTableColumns = ({
         case 'domainType':
           return renderDomainTypeCell(entity);
         case 'owners':
-          return renderDomainOwnersCell(entity);
+          return renderDomainOwnersCell(entity, toOwnersWithHref, renderOwnerContent);
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity, { size: tagSize });
         case 'tags':
@@ -67,7 +69,7 @@ export const useDomainTableColumns = ({
           return null;
       }
     },
-    [tagSize, onEntityClick]
+    [tagSize, onEntityClick, toOwnersWithHref, renderOwnerContent]
   );
 
   return { columns, renderCell };

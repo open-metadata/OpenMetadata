@@ -12,18 +12,19 @@
  */
 
 import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Dot,
-  Dropdown,
-  Skeleton,
-  Tabs,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Badge,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Dot,
+    Dropdown,
+    Owner,
+    Skeleton,
+    Tabs,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -62,8 +63,8 @@ import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
-  ContentChangeState,
-  RecentlyViewedQuickLinks,
+    ContentChangeState,
+    RecentlyViewedQuickLinks
 } from '../../../interface/knowledge-center.interface';
 import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
@@ -72,11 +73,11 @@ import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -100,6 +101,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
@@ -393,11 +395,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
         {owners.length > 0 ? (
           <div className="article-detail-owner-label">
-            <OwnerLabel
+            <Owner
               hasPermission={false}
               isCompactView={false}
-              multiple={{ user: true, team: true }}
-              owners={owners}
+              owners={toOwnersWithHref(owners)}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           </div>
@@ -445,11 +447,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               </TooltipTrigger>
             </Tooltip>
             <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                multiple={{ user: true, team: true }}
-                owners={editors}
+                owners={toOwnersWithHref(editors)}
+                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </div>

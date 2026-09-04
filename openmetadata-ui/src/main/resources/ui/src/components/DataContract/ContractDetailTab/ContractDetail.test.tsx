@@ -224,6 +224,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </Tag>
     )
   ),
+  Owner: jest.fn(({ owners }: { owners?: unknown[] }) => (
+    <div data-testid="owner-label">
+      {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
+    </div>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components').toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
 }));
 
 jest.mock('../../../rest/contractAPI', () => ({
@@ -249,16 +256,6 @@ jest.mock('../../../utils/BlockEditorPureUtils', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: function MockOwnerLabel({ owners }: { owners: unknown[] }) {
-    return (
-      <div data-testid="owner-label">
-        {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
-      </div>
-    );
-  },
 }));
 
 jest.mock('../../AlertBar/AlertBar', () => {

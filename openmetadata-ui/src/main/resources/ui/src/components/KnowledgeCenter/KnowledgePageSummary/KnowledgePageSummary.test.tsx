@@ -13,16 +13,15 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  KnowledgePage,
-  PageType,
+    KnowledgePage,
+    PageType
 } from '../../../interface/knowledge-center.interface';
 import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => {
-    return <div>OwnerLabel</div>;
-  }),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 jest.mock(
   'components/common/SummaryTagsDescription/SummaryTagsDescription.component',

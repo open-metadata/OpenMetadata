@@ -17,6 +17,7 @@ import {
   Button as CoreButton,
   EmptyPlaceholder,
   Input,
+  Owner,
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -54,7 +55,7 @@ import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-u
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -211,6 +212,7 @@ const renderGlossaryExpandIcon = (
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -969,12 +971,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
-              owners={reviewers}
+              owners={toOwnersWithHref(reviewers ?? [])}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );

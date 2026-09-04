@@ -28,7 +28,7 @@ export function useRovingFocus({
   const [focusedIndex, setFocusedIndex] = useState(() =>
     Math.min(Math.max(initialIndex, 0), totalItems - 1)
   );
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
 
   const moveFocus = (delta: number) => {
     setFocusedIndex((prev) => {

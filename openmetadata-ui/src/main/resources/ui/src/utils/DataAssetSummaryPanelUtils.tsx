@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
-import { lazy } from 'react';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
@@ -41,8 +40,8 @@ import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
+    StoredProcedure,
+    StoredProcedureCodeObject
 } from '../generated/entity/data/storedProcedure';
 import { Table, TableType, TagLabel } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
@@ -51,9 +50,9 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
 import {
-  ColumnSearchResult,
-  getTableFieldsFromTableDetails,
-  getUsageData,
+    ColumnSearchResult,
+    getTableFieldsFromTableDetails,
+    getUsageData
 } from './DataAssetSummaryPanelPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
@@ -61,17 +60,10 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
+import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
-  )
-);
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (
@@ -97,10 +89,10 @@ const getCommonOverview = (
           {
             name: i18n.t('label.owner-plural'),
             value: (
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={owners}
+                owners={toOwnerRefs(owners ?? [])}
                 showLabel={false}
               />
             ),
@@ -755,7 +747,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -796,7 +788,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -845,7 +837,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),

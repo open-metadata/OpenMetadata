@@ -466,7 +466,7 @@ export const addMultiOwner = async (data: {
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .locator('[data-testid="owner-select-users-panel"]')
     .getByTestId('clear-all-button')
     .isVisible();
 
@@ -486,7 +486,7 @@ export const addMultiOwner = async (data: {
 
   if (clearAll && isMultipleOwners) {
     const clearButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('clear-all-button');
 
     await clearButton.click();
@@ -534,7 +534,7 @@ export const addMultiOwner = async (data: {
 
   if (isMultipleOwners) {
     const updateButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('selectable-list-update-btn');
 
     if (isSelectableInsideForm) {

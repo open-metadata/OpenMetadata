@@ -11,19 +11,13 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { Popover } from 'antd';
+import { PopoverTrigger } from '@openmetadata/ui-core-components';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();
 
-jest.mock('../SelectableList/SelectableList.component', () => {
-  return {
-    SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
-  };
-});
-
-jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
-  getCountBadge: jest.fn().mockReturnValue(<div>CountBadge</div>),
+jest.mock('../SelectableList/SelectableList.component', () => ({
+  SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -34,11 +28,22 @@ jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Popover: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+  PopoverTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  Tabs: Object.assign(
+    jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    {
+      List: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+      Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+      Panel: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    }
+  ),
 }));
 
 jest.mock('../IconButtons/EditIconButton', () => ({
@@ -67,7 +72,7 @@ describe('UserTeamSelectableList Component Test', () => {
     expect(children).toBeInTheDocument();
   });
 
-  it('should pass popover props to popover component', () => {
+  it('should pass popover props to PopoverTrigger as isOpen when open is true', () => {
     render(
       <UserTeamSelectableList
         hasPermission
@@ -77,9 +82,9 @@ describe('UserTeamSelectableList Component Test', () => {
       </UserTeamSelectableList>
     );
 
-    expect(Popover).toHaveBeenLastCalledWith(
+    expect(PopoverTrigger).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        open: true,
+        isOpen: true,
       }),
       {}
     );

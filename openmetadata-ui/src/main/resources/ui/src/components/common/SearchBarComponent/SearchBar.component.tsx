@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Input, InputProps } from 'antd';
+import { Input } from '@openmetadata/ui-core-components';
+import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
 
@@ -32,7 +32,6 @@ export type SearchBarProps = {
   removeMargin?: boolean;
   showLoadingStatus?: boolean;
   showClearSearch?: boolean;
-  inputProps?: InputProps;
   searchBarDataTestId?: string;
 };
 
@@ -48,11 +47,9 @@ const Searchbar = ({
   showLoadingStatus = false,
   showClearSearch = true,
   searchBarDataTestId,
-  inputProps,
 }: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
-  const [isSearchBlur, setIsSearchBlur] = useState(true);
   const searchTextRef = useRef(searchValue ?? '');
 
   useEffect(() => {
@@ -70,13 +67,31 @@ const Searchbar = ({
     [debouncedOnSearch, typingInterval]
   );
 
-  const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
-    const searchText = e.target.value;
+  const handleChange = (searchText: string): void => {
     searchTextRef.current = searchText;
     setUserSearch(searchText);
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
     debounceOnSearch();
   };
+
+  const handleClear = (): void => {
+    searchTextRef.current = '';
+    setUserSearch('');
+    onSearch('');
+  };
+
+  const trailingSlot =
+    showClearSearch && userSearch ? (
+      <button
+        aria-label="Clear search"
+        className="tw:flex tw:items-center tw:justify-center tw:text-tertiary hover:tw:text-primary"
+        type="button"
+        onClick={handleClear}>
+        <CloseOutlined aria-hidden className="tw:size-3" />
+      </button>
+    ) : showLoadingStatus && loadingState === 'waiting' ? (
+      <Loader size="small" type="default" />
+    ) : undefined;
 
   return (
     <div
@@ -85,43 +100,16 @@ const Searchbar = ({
       })}
       data-testid="search-bar-container">
       {label !== '' && <span>{label}</span>}
-      <div className="flex relative">
-        <Input
-          allowClear={showClearSearch}
-          className={classNames('p-y-xs', inputClassName)}
-          data-testid={searchBarDataTestId ?? 'searchbar'}
-          placeholder={placeholder}
-          prefix={
-            <Icon
-              className={classNames('align-middle m-r-xss', {
-                'text-black': isSearchBlur,
-                'text-primary': !isSearchBlur,
-              })}
-              component={IconSearchV1}
-              style={{ fontSize: '16px' }}
-            />
-          }
-          suffix={
-            showLoadingStatus &&
-            loadingState === 'waiting' && (
-              <div className="absolute d-block text-center">
-                <Loader size="small" type="default" />
-              </div>
-            )
-          }
-          type="text"
-          value={userSearch}
-          onBlur={() => setIsSearchBlur(true)}
-          onChange={handleChange}
-          onFocus={() => setIsSearchBlur(false)}
-          {...inputProps}
-        />
-        {showLoadingStatus && loadingState === 'waiting' && (
-          <div className="absolute d-block text-center">
-            <Loader size="small" type="default" />
-          </div>
-        )}
-      </div>
+      <Input
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        icon={SearchMd as any}
+        inputClassName={inputClassName}
+        inputDataTestId={searchBarDataTestId ?? 'searchbar'}
+        placeholder={placeholder}
+        trailingSlot={trailingSlot}
+        value={userSearch}
+        onChange={handleChange}
+      />
     </div>
   );
 };

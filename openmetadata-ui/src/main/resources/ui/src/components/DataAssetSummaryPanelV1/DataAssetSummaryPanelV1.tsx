@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -19,8 +20,8 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
@@ -33,13 +34,15 @@ import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../utils/EntityLink';
 import { hasLineageTab } from '../../utils/EntityPermissionUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { useEntityRules } from '../../hooks/useEntityRules';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -51,13 +54,13 @@ import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSe
 import LineageSection from '../common/LineageSection/LineageSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
-import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-  DataAssetSummaryPanelProps,
-  TestCaseStatusCounts,
+    DataAssetSummaryPanelProps,
+    TestCaseStatusCounts
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export const DataAssetSummaryPanelV1 = ({
@@ -79,6 +82,8 @@ export const DataAssetSummaryPanelV1 = ({
   onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { entityRules } = useEntityRules(entityType);
   const { getEntityPermission } = usePermissionProvider();
 
   // Extract tier from tags
@@ -557,17 +562,40 @@ export const DataAssetSummaryPanelV1 = ({
                 onLineageClick={onLineageClick}
               />
             )}
-            <div>
-              <OwnersSection
-                entityId={dataAsset.id}
-                entityType={entityType}
-                hasPermission={editOwnerPermission}
-                key={`owners-${dataAsset.id}-${
-                  (dataAsset.owners as EntityReference[])?.length || 0
-                }`}
-                owners={dataAsset.owners as EntityReference[]}
-                onOwnerUpdate={onOwnerUpdate}
-              />
+            <div
+              className="domains-section"
+              key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+              <div className="domains-header">
+                <span className="domains-title">
+                  {t('label.owner-plural')}
+                </span>
+                {editOwnerPermission && (
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(editOwnerPermission)}
+                    multiple={{
+                      team: entityRules.canAddMultipleTeamOwner,
+                      user: entityRules.canAddMultipleUserOwners,
+                    }}
+                    owner={dataAsset.owners as EntityReference[]}
+
+                    onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
+                  />
+                )}
+              </div>
+              <div className="domains-content">
+                <Owner
+                  hasPermission={editOwnerPermission}
+                  isCompactView={false}
+                  owners={toOwnersWithHref(
+                    dataAsset.owners as EntityReference[]
+                  )}
+                  placeHolder={t('label.no-entity-assigned', {
+                    entity: t('label.owner-lowercase-plural'),
+                  })}
+                  renderOwnerContent={renderOwnerContent}
+                  showLabel={false}
+                />
+              </div>
             </div>
             <div>
               <DomainsSection
@@ -643,17 +671,40 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
-            <div>
-              <OwnersSection
-                entityId={dataAsset.id}
-                entityType={entityType}
-                hasPermission={editOwnerPermission}
-                key={`owners-${dataAsset.id}-${
-                  (dataAsset.owners as EntityReference[])?.length || 0
-                }`}
-                owners={dataAsset.owners as EntityReference[]}
-                onOwnerUpdate={onOwnerUpdate}
-              />
+            <div
+              className="domains-section"
+              key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+              <div className="domains-header">
+                <span className="domains-title">
+                  {t('label.owner-plural')}
+                </span>
+                {editOwnerPermission && (
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(editOwnerPermission)}
+                    multiple={{
+                      team: entityRules.canAddMultipleTeamOwner,
+                      user: entityRules.canAddMultipleUserOwners,
+                    }}
+                    owner={dataAsset.owners as EntityReference[]}
+
+                    onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
+                  />
+                )}
+              </div>
+              <div className="domains-content">
+                <Owner
+                  hasPermission={editOwnerPermission}
+                  isCompactView={false}
+                  owners={toOwnersWithHref(
+                    dataAsset.owners as EntityReference[]
+                  )}
+                  placeHolder={t('label.no-entity-assigned', {
+                    entity: t('label.owner-lowercase-plural'),
+                  })}
+                  renderOwnerContent={renderOwnerContent}
+                  showLabel={false}
+                />
+              </div>
             </div>
             <div>
               <TagsSection
@@ -691,17 +742,40 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editDescriptionPermission}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
-            <div>
-              <OwnersSection
-                entityId={dataAsset.id}
-                entityType={entityType}
-                hasPermission={editOwnerPermission}
-                key={`owners-${dataAsset.id}-${
-                  (dataAsset.owners as EntityReference[])?.length || 0
-                }`}
-                owners={dataAsset.owners as EntityReference[]}
-                onOwnerUpdate={onOwnerUpdate}
-              />
+            <div
+              className="domains-section"
+              key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+              <div className="domains-header">
+                <span className="domains-title">
+                  {t('label.owner-plural')}
+                </span>
+                {editOwnerPermission && (
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(editOwnerPermission)}
+                    multiple={{
+                      team: entityRules.canAddMultipleTeamOwner,
+                      user: entityRules.canAddMultipleUserOwners,
+                    }}
+                    owner={dataAsset.owners as EntityReference[]}
+
+                    onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
+                  />
+                )}
+              </div>
+              <div className="domains-content">
+                <Owner
+                  hasPermission={editOwnerPermission}
+                  isCompactView={false}
+                  owners={toOwnersWithHref(
+                    dataAsset.owners as EntityReference[]
+                  )}
+                  placeHolder={t('label.no-entity-assigned', {
+                    entity: t('label.owner-lowercase-plural'),
+                  })}
+                  renderOwnerContent={renderOwnerContent}
+                  showLabel={false}
+                />
+              </div>
             </div>
             <div>
               <DomainsSection
@@ -785,16 +859,26 @@ export const DataAssetSummaryPanelV1 = ({
               onLinkClick={onLinkClick}
             />
             {dataAsset.owners && (
-              <div>
-                <OwnersSection
-                  entityId={dataAsset.id}
-                  entityType={entityType}
+              <div key={`owners-${dataAsset.id}-${(dataAsset.owners as EntityReference[])?.length || 0}`}>
+                <Owner
                   hasPermission={editOwnerPermission}
-                  key={`owners-${dataAsset.id}-${
-                    (dataAsset.owners as EntityReference[])?.length || 0
-                  }`}
-                  owners={dataAsset.owners as EntityReference[]}
-                  onOwnerUpdate={onOwnerUpdate}
+                  owners={toOwnersWithHref(
+                    (dataAsset.owners as EntityReference[]) ?? []
+                  )}
+                  renderOwnerContent={renderOwnerContent}
+                  selectorContent={
+                    editOwnerPermission ? (
+                      <UserTeamSelectableList
+                        hasPermission={Boolean(editOwnerPermission)}
+                        multiple={{
+                          team: entityRules.canAddMultipleTeamOwner,
+                          user: entityRules.canAddMultipleUserOwners,
+                        }}
+                        owner={dataAsset.owners as EntityReference[]}
+                        onUpdate={(owners) => onOwnerUpdate?.(owners ?? [])}
+                      />
+                    ) : undefined
+                  }
                 />
               </div>
             )}
