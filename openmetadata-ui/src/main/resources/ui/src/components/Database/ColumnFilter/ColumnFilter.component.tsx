@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu, Typography } from 'antd';
+import { Menu } from 'antd';
 import Checkbox, { CheckboxChangeEvent } from 'antd/lib/checkbox/Checkbox';
 import { isEmpty, startCase } from 'lodash';
 import React from 'react';
@@ -37,12 +37,11 @@ export const ColumnFilter = ({
     // AntD's built-in filter dropdown showed its empty text here; a bare
     // empty menu renders as a blank popover.
     return (
-      <Typography.Text
-        className="tw:block tw:px-4 tw:py-2 tw:text-sm"
-        data-testid="no-filter-options"
-        type="secondary">
+      <span
+        className="tw:block tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary"
+        data-testid="no-filter-options">
         {i18n.t('label.no-data-found')}
-      </Typography.Text>
+      </span>
     );
   }
 
