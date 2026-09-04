@@ -1685,6 +1685,7 @@
     "messaging-service": "Meddelandetjänst",
     "metadata": "Metadata",
     "metadata-agent-plural": "Metadataagenter",
+    "metadata-detail-plural": "Metadata-detaljer",
     "metadata-ingestion": "Metadatainmatning",
     "metadata-lowercase": "metadata",
     "metadata-plural": "Metadata",

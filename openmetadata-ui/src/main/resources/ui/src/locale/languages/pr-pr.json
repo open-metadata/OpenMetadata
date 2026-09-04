@@ -1685,6 +1685,7 @@
     "messaging-service": "سرویس پیام‌رسانی",
     "metadata": "فراداده",
     "metadata-agent-plural": "Agentes de Metadatos",
+    "metadata-detail-plural": "جزئیات فراداده",
     "metadata-ingestion": "دریافت فراداده",
     "metadata-lowercase": "فراداده",
     "metadata-plural": "فراداده‌ها",

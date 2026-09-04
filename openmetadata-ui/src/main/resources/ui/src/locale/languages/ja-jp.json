@@ -1685,6 +1685,7 @@
     "messaging-service": "メッセージングサービス",
     "metadata": "メタデータ",
     "metadata-agent-plural": "メタデータエージェント",
+    "metadata-detail-plural": "メタデータの詳細",
     "metadata-ingestion": "メタデータインジェスト",
     "metadata-lowercase": "メタデータ",
     "metadata-plural": "メタデータ",

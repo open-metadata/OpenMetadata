@@ -1685,6 +1685,7 @@
     "messaging-service": "บริการส่งข้อความ",
     "metadata": "ข้อมูลเมตา",
     "metadata-agent-plural": "เอเจนต์เมตาดาตา",
+    "metadata-detail-plural": "รายละเอียดข้อมูลเมตา",
     "metadata-ingestion": "การนำเข้าข้อมูลเมตา",
     "metadata-lowercase": "ข้อมูลเมตา",
     "metadata-plural": "ข้อมูลเมตาหลายรายการ",

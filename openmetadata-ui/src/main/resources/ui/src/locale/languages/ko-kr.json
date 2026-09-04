@@ -1685,6 +1685,7 @@
     "messaging-service": "메시징 서비스",
     "metadata": "메타데이터",
     "metadata-agent-plural": "메타데이터 에이전트들",
+    "metadata-detail-plural": "메타데이터 세부정보",
     "metadata-ingestion": "메타데이터 수집",
     "metadata-lowercase": "메타데이터",
     "metadata-plural": "메타데이터",

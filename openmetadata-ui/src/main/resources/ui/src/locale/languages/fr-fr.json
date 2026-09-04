@@ -1685,6 +1685,7 @@
     "messaging-service": "Service de Messagerie",
     "metadata": "Métadonnée",
     "metadata-agent-plural": "Agents de Métadonnées",
+    "metadata-detail-plural": "Détails des Métadonnées",
     "metadata-ingestion": "Ingestion des Métadonnées",
     "metadata-lowercase": "métadonnées",
     "metadata-plural": "Métadonnées",

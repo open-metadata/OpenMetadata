@@ -1685,6 +1685,7 @@
     "messaging-service": "消息服务",
     "metadata": "元数据",
     "metadata-agent-plural": "元数据代理",
+    "metadata-detail-plural": "元数据详情",
     "metadata-ingestion": "元数据提取",
     "metadata-lowercase": "元数据",
     "metadata-plural": "元数据",

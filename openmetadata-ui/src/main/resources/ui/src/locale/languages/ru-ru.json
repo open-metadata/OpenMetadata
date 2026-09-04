@@ -1685,6 +1685,7 @@
     "messaging-service": "Сервис обмена сообщениями",
     "metadata": "Метаданные",
     "metadata-agent-plural": "Агенты метаданных",
+    "metadata-detail-plural": "Детали метаданных",
     "metadata-ingestion": "Получение метаданных",
     "metadata-lowercase": "метаданные",
     "metadata-plural": "Метаданные",
