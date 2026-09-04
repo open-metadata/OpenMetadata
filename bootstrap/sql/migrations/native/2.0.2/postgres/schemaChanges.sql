@@ -39,3 +39,17 @@ CREATE TABLE IF NOT EXISTS rdf_active_dataset (
     updatedBy VARCHAR(256),
     PRIMARY KEY (id)
 );
+
+-- Pipeline alert starting watermark - OpenMetadata 2.0.2
+
+-- Alerts must not fire for pipeline executions that finished before the alert existed (#31782).
+-- Stamp the alerting watermark on subscriptions that already have a consumer offset; subscriptions
+-- without one are stamped when that row is first created. 'timestamp' is deliberately untouched:
+-- change_event_consumers derives a NOT NULL generated column from it.
+UPDATE change_event_consumers
+SET json = jsonb_set(
+    json,
+    '{startingTimestamp}',
+    to_jsonb((EXTRACT(EPOCH FROM now()) * 1000)::bigint))
+WHERE extension = 'eventSubscription.Offset'
+  AND json ->> 'startingTimestamp' IS NULL;
