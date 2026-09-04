@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,7 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
+  private final CollectionDAO.WorkflowDAO workflowDAO;
 
   private final DataRetentionExtensionRegistry extensionRegistry;
 
@@ -58,6 +60,7 @@ public class DataRetention extends AbstractNativeApplication {
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.workflowDAO = collectionDAO.workflowDAO();
     this.extensionRegistry = DataRetentionExtensionRegistry.discover();
   }
 
@@ -130,6 +133,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
     entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
+    entityStats.withAdditionalProperty("automation_workflows", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -214,6 +218,16 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    Integer workflowRetentionPeriod = config.getWorkflowRetentionPeriod();
+    if (isRetentionEnabled(workflowRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for automation workflows with retention period: {} days.",
+          workflowRetentionPeriod);
+      cleanAutomationWorkflows(workflowRetentionPeriod);
+    } else {
+      LOG.info("Automation workflows are retained indefinitely.");
+    }
 
     LOG.info("Starting cleanup for registered retention extensions.");
     cleanExtensions(config);
@@ -469,6 +483,44 @@ public class DataRetention extends AbstractNativeApplication {
         "audit_logs", () -> auditLogDAO.deleteInBatches(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Audit logs cleanup complete.");
+  }
+
+  private void cleanAutomationWorkflows(int retentionPeriod) {
+    LOG.info("Initiating automation workflows cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executeWithStatsTracking("automation_workflows", () -> deleteExpiredWorkflows(cutoffMillis));
+
+    LOG.info("Automation workflows cleanup complete.");
+  }
+
+  /**
+   * Deletes one batch through the repository rather than with a bulk SQL delete: a Workflow holds
+   * the service connection it ran against, so dropping the row alone would strand its secrets in an
+   * external secrets manager and leave its owner relationship rows behind.
+   *
+   * <p>A workflow that cannot be deleted is charged to the run's failed count and skipped, not
+   * rethrown. Batches are ordered oldest first, so letting one bad row abort the drain would stop
+   * this cleanup from ever getting past it.
+   */
+  private int deleteExpiredWorkflows(long cutoffMillis) {
+    List<String> ids = workflowDAO.listIdsBeforeCutoff(cutoffMillis, BATCH_SIZE);
+    int deleted = 0;
+
+    for (String id : ids) {
+      try {
+        Entity.deleteEntity(
+            Entity.ADMIN_USER_NAME, Entity.WORKFLOW, UUID.fromString(id), true, true);
+        deleted++;
+      } catch (Exception ex) {
+        LOG.error("Failed to delete automation workflow {}", id, ex);
+        updateStats("automation_workflows", 0, 1);
+        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+        recordFirstFailure(ex);
+      }
+    }
+
+    return deleted;
   }
 
   private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
