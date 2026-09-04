@@ -317,7 +317,7 @@ jobs:
           # A path filter, not --exclude-dir: that matches a basename at any depth.
           MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?[[:space:]]*(\*/|--|$)|eslint-disable.*om-playwright/justified-rule-disable|/\*[[:space:]]*eslint[[:space:]][^*]*(om-)?playwright/[a-z-]+[[:space:]]*:' \
                playwright/ --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
-               | grep -v '^playwright/eslint-rules/' || true)
+               | grep -v '^playwright/eslint-rules/' | head -30 | cut -c1-300 || true)
           if [ -n "$MATCHES" ]; then
             echo "$MATCHES"
             echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
@@ -336,10 +336,28 @@ jobs:
           # warns; errorCount is what fails. Never key off the exit code alone -- it
           # is 2 even when a real violation is also present, which would swallow it.
           yarn lint:playwright -f json > /tmp/pw-lint.json 2> /tmp/pw-lint.err || true
+
+          # ESLint's json formatter emits the whole report as a SINGLE line, so grep/head over it
+          # returns one multi-megabyte "line". Written to $GITHUB_OUTPUT that overflows the job
+          # output expression limit, and the job dies at "Evaluate and set job outputs" -- which
+          # blanks every needs.checkstyle.output and leaves the PR with a red check and no comment.
+          # Render one bounded line per error here; never grep the raw JSON.
           ERRORS=$(node -e "
             const fs=require('fs');
             const m=/(\[[\s\S]*\])/.exec(fs.readFileSync('/tmp/pw-lint.json','utf8'));
             const d=m?JSON.parse(m[1]):[];
+            const cwd=process.cwd()+'/';
+            const lines=[];
+            for (const f of d) {
+              for (const x of f.messages) {
+                if (x.severity !== 2) continue;
+                lines.push(f.filePath.replace(cwd,'')+':'+x.line+':'+x.column+'  '+x.ruleId+'  '+x.message);
+              }
+            }
+            const out=lines.slice(0,30).map(function(l){return l.slice(0,300);});
+            // Trailing newline matters: this file is appended to /tmp/pw-guardrails.out, and
+            // without it the last error would be glued onto whatever line is appended next.
+            fs.writeFileSync('/tmp/pw-lint-errors.txt', out.length?out.join('\n')+'\n':'');
             console.log(d.reduce((n,f)=>n+f.errorCount,0));
           ")
           if grep -q 'suppressions left that do not occur anymore' /tmp/pw-lint.err; then
@@ -351,12 +369,20 @@ jobs:
             RESULT=0
           else
             RESULT=$?
-            [ "$ERRORS" -eq 0 ] || sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-lint.json | grep -E '"ruleId"' | head -20 >> /tmp/pw-guardrails.out
+            [ "$ERRORS" -eq 0 ] || cat /tmp/pw-lint-errors.txt >> /tmp/pw-guardrails.out
           fi
           if [ "$RESULT" -ne 0 ]; then
             cat /tmp/pw-guardrails.out
             # `|| true`: a grep matching nothing exits 1 under `bash -eo pipefail`.
-            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30) || true
+            # `cut`: this value becomes a job output, where one over-long line is enough to break
+            # job-output evaluation for the entire job.
+            # The last alternative is the rendered lint line shape (`path:line:col  rule  msg`).
+            # Without it a lint failure is filtered out entirely -- no rule message carries the
+            # word "error", so the comment would name the check and then list nothing.
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale|^[^ ]+:[0-9]+:[0-9]+ ' | head -30 | cut -c1-300) || true
+            # continue-on-error renders this step with a green check, so without an annotation the
+            # run page gives no hint which step actually failed.
+            echo "::error title=Playwright guardrails + ESLint::${ERRORS} ESLint error(s) under playwright/, or a failing guardrail check. See the UI Checkstyle comment on this PR."
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
             echo "$OUT" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
@@ -575,9 +601,18 @@ jobs:
             const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
             const eslintDetails  = ${{ toJSON(needs.checkstyle.outputs.eslint_details) }} || '';
 
+            // The checkstyle job can die before its outputs are evaluated — a step output too
+            // large for the job-output expression limit does exactly that. Every entry above is
+            // then blank, so without this branch the PR gets a red required check and no comment.
+            const jobResult = '${{ needs.checkstyle.result }}';
+            // Only a genuine failure. `cancelled` is the concurrency group superseding this run,
+            // and `skipped` is a PR with no UI changes — neither is worth a red comment.
+            const jobFailed = jobResult === 'failure';
+            const unexplained = jobFailed && failures.length === 0;
+
             // Warnings do not fail the build, so a comment posted only on
             // failure would hide them entirely — which defeats the warn tier.
-            if (failures.length === 0 && !eslintFindings) {
+            if (failures.length === 0 && !eslintFindings && !jobFailed) {
               if (commentId) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
@@ -596,9 +631,23 @@ jobs:
               return lines.join('\n');
             });
 
-            const title = failures.length
+            const title = failures.length || unexplained
               ? '### ❌ UI Checkstyle Failed'
               : '### ⚠️ UI Checkstyle passed — lint findings in changed files';
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const unexplainedSection = unexplained
+              ? [
+                  `#### ❌ The checkstyle job ended as \`${jobResult}\` before it could report`,
+                  '',
+                  'No individual check reported a result, so the job itself failed rather than a',
+                  'specific check — most often a step whose output was too large to evaluate as a',
+                  'job output. The step annotations on the run say which step it was.',
+                  '',
+                  `[View run](${runUrl})`,
+                  '',
+                ]
+              : [];
 
             const eslintSection = eslintFindings
               ? [
@@ -616,6 +665,7 @@ jobs:
               '<!-- check:ui-checkstyle-summary -->',
               title,
               '',
+              ...unexplainedSection,
               ...sections.flatMap(s => [s, '']),
               ...eslintSection,
               '---',

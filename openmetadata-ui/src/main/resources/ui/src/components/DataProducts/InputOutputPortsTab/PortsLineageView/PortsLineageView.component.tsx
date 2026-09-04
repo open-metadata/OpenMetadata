@@ -41,6 +41,8 @@ import PortNode from './PortNode.component';
 import './PortsLineageView.style.less';
 import { PortsLineageViewProps } from './PortsLineageView.types';
 
+const DATA_PRODUCT_CENTER_NODE_ID = 'data-product-center';
+
 const getPortHandleId = (port: SourceType): string => {
   return port.fullyQualifiedName ?? port.id ?? '';
 };
@@ -99,7 +101,7 @@ const PortsLineageView = ({
     const centerY = totalHeight / 2;
 
     const dataProductNode: Node = {
-      id: 'data-product-center',
+      id: DATA_PRODUCT_CENTER_NODE_ID,
       type: 'dataProductNode',
       position: { x: HORIZONTAL_SPACING + NODE_WIDTH, y: centerY - 50 },
       data: { dataProduct },
@@ -133,7 +135,7 @@ const PortsLineageView = ({
       newEdges.push({
         id: `edge-${nodeId}-to-center`,
         source: nodeId,
-        target: 'data-product-center',
+        target: DATA_PRODUCT_CENTER_NODE_ID,
         sourceHandle: handleId,
         targetHandle: `${dataProduct.id}-left`,
         type: 'smoothstep',
@@ -171,7 +173,7 @@ const PortsLineageView = ({
 
       newEdges.push({
         id: `edge-center-to-${nodeId}`,
-        source: 'data-product-center',
+        source: DATA_PRODUCT_CENTER_NODE_ID,
         target: nodeId,
         sourceHandle: `${dataProduct.id}-right`,
         targetHandle: handleId,

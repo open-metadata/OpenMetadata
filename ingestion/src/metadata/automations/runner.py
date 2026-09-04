@@ -12,8 +12,6 @@
 Run the Automation Workflow for OpenMetadata
 """
 
-from typing import Optional
-
 from metadata.automations.execute_runner import run_workflow
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
@@ -76,7 +74,7 @@ def _(
 def _test_connection(
     metadata: OpenMetadata,
     config,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    automation_workflow: AutomationWorkflow | None = None,
 ):
     """
     Test the connection

@@ -14,7 +14,6 @@ Module that handles the legacy WorkflowType until deprecation
 """
 
 from enum import Enum
-from typing import Optional
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
@@ -42,7 +41,7 @@ class WorkflowType(Enum):
 
 # TODO: Delete this method after the removal of WorkflowType in release 1.6
 # Remember to remove it where it is being used
-def workflow_type_to_pipeline_type(workflow_type: WorkflowType, source_type_name: Optional[str]) -> PipelineType:  # noqa: UP045
+def workflow_type_to_pipeline_type(workflow_type: WorkflowType, source_type_name: str | None) -> PipelineType:
     """Helper Function to Map between the Deprecated WorkflowType to PipelineType."""
 
     def _fix_ingest_type() -> PipelineType:
