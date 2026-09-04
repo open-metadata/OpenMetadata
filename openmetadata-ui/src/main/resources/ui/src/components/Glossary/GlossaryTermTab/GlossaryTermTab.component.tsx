@@ -280,6 +280,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const selectedStatusRef = useRef(selectedStatus);
   selectedStatusRef.current = selectedStatus;
+  // Tracks whether the person has ever actually saved a status-filter change,
+  // as opposed to `isStatusFilterActive` which is also true for the untouched
+  // default filter (Approved/Draft/In Review) — see handleStatusSelectionDropdownSave.
+  const hasUserChangedStatusFilterRef = useRef(false);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
@@ -395,11 +399,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       const entityStatusParam = isStatusFilterActive
         ? selectedStatus.filter((s) => s !== 'all').join(',')
         : undefined;
-      const recursiveCountPromise = getGlossaryTermRecursiveCount(
-        activeGlossary?.id ?? '',
-        entityStatusParam,
-        isGlossary
-      );
 
       // Search uses offset-based paging; the first-level listing uses cursor
       // (before/after) paging. Either way the response replaces the current
@@ -419,6 +418,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         data = response.data;
         pagingResponse = response.paging;
       } else {
+        const recursiveCountPromise = getGlossaryTermRecursiveCount(
+          activeGlossary?.id ?? '',
+          entityStatusParam,
+          isGlossary
+        );
         const [response, recursiveCount] = await Promise.all([
           getFirstLevelGlossaryTermsPaginated(
             activeGlossary?.fullyQualifiedName || '',
@@ -1159,6 +1163,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const handleStatusSelectionDropdownSave = () => {
+    hasUserChangedStatusFilterRef.current = true;
     setSelectedStatus(statusDropdownSelection);
     setIsStatusDropdownVisible(false);
   };
@@ -1759,6 +1764,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   if (
     hasNoTerms &&
     !isSearchActive &&
+    !hasUserChangedStatusFilterRef.current &&
     totalTermsCount === 0 &&
     !isTableLoading
   ) {
