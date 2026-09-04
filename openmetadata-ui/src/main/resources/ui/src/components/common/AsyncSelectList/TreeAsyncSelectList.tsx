@@ -325,7 +325,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       (tag) => tag.value === data.value
     );
 
-    const { label, onClose } = data;
+    const { value, onClose } = data;
+    const tagDisplayName = getTagDisplay(value as string);
+
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -338,7 +340,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       ),
     } as TagLabel;
 
-    const tagDisplayName = getTagDisplay(label as string);
     const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =

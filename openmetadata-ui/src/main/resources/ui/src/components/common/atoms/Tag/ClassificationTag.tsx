@@ -22,8 +22,9 @@ import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../Icon/Icon';
+import { ICON_PX, SIZE_CLASS } from './Tag.constant';
 import { BaseTagProps, DEFAULT_TAG_COLOR } from './Tag.interface';
-import { computeTagColors, ICON_PX, SIZE_CLASS } from './Tag.utils';
+import { computeTagColors } from './Tag.utils';
 
 /**
  * Classification tag chip — rounded-md badge with tinted background and border.
