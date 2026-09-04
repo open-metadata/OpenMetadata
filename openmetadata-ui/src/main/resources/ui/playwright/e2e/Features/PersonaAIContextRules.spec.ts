@@ -35,7 +35,10 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { toastNotification } from '../../utils/common';
-import { openPersonaAIContext } from '../../utils/personaAIContext';
+import {
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 // ---------------------------------------------------------------------------
 // Fixtures and shared state
@@ -384,14 +387,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await openAddRuleDrawer(page);
 
       const maxAssetsInput = page.getByTestId('context-rule-max-assets');
-      const filteredInSearch = page
-        .getByTestId('context-rule-filtered-in-search')
-        .getByRole('switch');
 
       await test.step('switch the new rule from search-scoped to preloaded', async () => {
-        await expect(filteredInSearch).toBeChecked();
-        await filteredInSearch.click();
-        await expect(filteredInSearch).not.toBeChecked();
+        await enablePersonaRulePreloading(page);
         await expect(maxAssetsInput).toBeEnabled();
       });
 
@@ -413,16 +411,29 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     }) => {
       await openPersonaContext(page);
       await openAddRuleDrawer(page);
+      await enablePersonaRulePreloading(page);
 
-      const alwaysToggle = page.getByTestId('context-rule-always-in-context');
-      const fullyToggle = page.getByTestId('context-rule-fully-rendered');
+      const alwaysToggle = page
+        .getByTestId('context-rule-always-in-context')
+        .getByRole('switch');
+      const fullyToggle = page
+        .getByTestId('context-rule-fully-rendered')
+        .getByRole('switch');
 
       await expect(alwaysToggle).toBeVisible();
+      await expect(alwaysToggle).toBeEnabled();
       await expect(fullyToggle).toBeVisible();
+      await expect(fullyToggle).toBeEnabled();
 
-      // Toggle on then back off — verifies the controls are interactive
-      await alwaysToggle.click();
-      await alwaysToggle.click();
+      await alwaysToggle.press('Space');
+      await expect(alwaysToggle).toBeChecked();
+      await alwaysToggle.press('Space');
+      await expect(alwaysToggle).not.toBeChecked();
+
+      await fullyToggle.press('Space');
+      await expect(fullyToggle).toBeChecked();
+      await fullyToggle.press('Space');
+      await expect(fullyToggle).not.toBeChecked();
 
       await page.keyboard.press('Escape');
     });

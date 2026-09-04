@@ -26,7 +26,10 @@ import {
   getDefaultAdminAPIContext,
   toastNotification,
 } from '../../utils/common';
-import { openPersonaAIContext } from '../../utils/personaAIContext';
+import {
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const dbService = new DatabaseServiceClass();
@@ -1412,6 +1415,7 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage
       .getByTestId('context-rule-name')
       .fill('sections-payload-test');
+    await enablePersonaRulePreloading(adminPage);
 
     // Scope to the drawer so we don't accidentally match checkboxes elsewhere.
     const drawer = adminPage.getByRole('dialog');
@@ -1420,6 +1424,7 @@ test.describe.serial('Persona AI Context', () => {
     });
     await descriptionCheckbox.waitFor({ state: 'visible' });
     await expect(descriptionCheckbox).toBeChecked();
+    await expect(descriptionCheckbox).toBeEnabled();
     await descriptionCheckbox.uncheck();
 
     const createRuleRequest = adminPage.waitForRequest(

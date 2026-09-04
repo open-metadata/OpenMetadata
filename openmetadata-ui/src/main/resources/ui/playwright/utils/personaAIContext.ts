@@ -20,6 +20,21 @@ import { waitForAllLoadersToDisappear } from './entity';
 // Playwright does not import application routing code outside generated types and enums.
 const AI_CONTEXT_LIST_ROUTE = '/context-center/ai-context';
 
+export const enablePersonaRulePreloading = async (
+  page: Page
+): Promise<void> => {
+  const filteredInSearch = page
+    .getByTestId('context-rule-filtered-in-search')
+    .getByRole('switch');
+
+  await expect(filteredInSearch).toBeChecked();
+  await expect(filteredInSearch).toBeEnabled();
+  // The sticky drawer footer can overlap the switch after scrolling, so use its
+  // accessible keyboard interaction instead of relying on a pointer hit target.
+  await filteredInSearch.press('Space');
+  await expect(filteredInSearch).not.toBeChecked();
+};
+
 /** Opens a persona's AI context through its supported Context Center entry point. */
 export const openPersonaAIContext = async (
   page: Page,

@@ -19,7 +19,10 @@ import {
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { getDefaultAdminAPIContext } from '../../utils/common';
-import { openPersonaAIContext } from '../../utils/personaAIContext';
+import {
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const RULE_ID = '55555555-5555-4555-8555-555555555555';
@@ -196,7 +199,9 @@ test.describe
     await openPersonaContext(adminPage);
 
     await adminPage.getByTestId('empty-add-context-rule').click();
+    await enablePersonaRulePreloading(adminPage);
     const maxAssets = adminPage.getByTestId('context-rule-max-assets');
+    await expect(maxAssets).toBeEnabled();
     await maxAssets.fill('5000');
     await maxAssets.blur();
 
