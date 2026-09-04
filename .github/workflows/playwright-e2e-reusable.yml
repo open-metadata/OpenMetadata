@@ -64,6 +64,17 @@ on:
         required: false
         type: boolean
         default: true
+      warm_caches_only:
+        description: >-
+          Build and seed the pipeline's cache assets, then stop before the test
+          shards. Used by populate-playwright-caches.yml's warm-fixture job
+          on `main` so the distribution / golden fixture / ingestion image land
+          in the DEFAULT BRANCH cache scope — the only scope every merge-queue
+          and PR run can restore from. See that workflow's header for the
+          scoping mechanics.
+        required: false
+        type: boolean
+        default: false
       retries:
         description: >-
           Playwright per-test retry count, exported to playwright.config.ts as
@@ -162,6 +173,7 @@ jobs:
   # would either double-run same-repo PRs or run fork PRs with the wrong
   # secrets. Routing:
   #   merge_group / schedule / workflow_dispatch → always run
+  #   push (main-scoped cache warm)               → always run
   #   drafts                                     → never run
   #   labeled event with label != "safe to test" → skip (spurious re-fire)
   #   same-repo PR                               → pull_request handles it
@@ -221,7 +233,7 @@ jobs:
           set -euo pipefail
           decide() { echo "should_run=$1" >> "$GITHUB_OUTPUT"; exit 0; }
           case "$EVENT" in
-            merge_group|schedule|workflow_dispatch) decide true ;;
+            merge_group|schedule|workflow_dispatch|push) decide true ;;
           esac
           if [[ "$IS_DRAFT" == "true" ]]; then decide false; fi
           if [[ "$ACTION" == "labeled" && "$LABEL" != "safe to test" ]]; then decide false; fi
@@ -461,6 +473,14 @@ jobs:
         #     `actions/actions/cache-poisoning`). Same guard lives inside the
         #     composite action for defence in depth, but CodeQL is a static
         #     analyser and needs to see it here at the workflow level.
+        #
+        # Deliberately NOT gated on merge_group, unlike every actions/cache/save
+        # step below. This one wraps `actions/cache`, whose save is a post-step:
+        # a step-level `if:` suppresses the restore too, so gating here would
+        # cost every queue entry the ~5 min frontend build to avoid writing a
+        # ~48 MB entry. Wrong trade — the queue-ref copy is cheap and
+        # prune-ephemeral-caches.yml collects it. Revisit only if this is split
+        # into cache/restore + a post-build cache/save.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           !(github.event_name == 'pull_request_target' &&
@@ -481,11 +501,14 @@ jobs:
 
       - name: Save Maven Dependencies
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # merge_group skips it too — see the dist-cache step for why an
+        # ephemeral queue ref must never write the cache.
         # The restore above stays ungated so forks are not forced into a cold
         # ~/.m2 download; only the write into main's cache scope is blocked.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           steps.maven-cache.outputs.cache-hit != 'true' &&
+          github.event_name != 'merge_group' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -508,9 +531,12 @@ jobs:
 
       - name: Save OpenMetadata distribution cache
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # merge_group skips it too — see the dist-cache step for why an
+        # ephemeral queue ref must never write the cache.
         # Restores stay unconditional: reading main's cache into a fork job is harmless.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
+          github.event_name != 'merge_group' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -638,7 +664,7 @@ jobs:
       # LRU-evicted every main-scoped cache within ~30 minutes. That
       # eviction is what kept turning cache "hits" into cold registry
       # fetches. The main-scoped copy is saved exclusively by
-      # populate-playwright-apt-cache.yml on main.
+      # populate-playwright-caches.yml on main.
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:
@@ -684,10 +710,13 @@ jobs:
 
       - name: Seed Playwright browser cache
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # merge_group skips it too — see the dist-cache step for why an
+        # ephemeral queue ref must never write the cache.
         # The restore above stays ungated: on a fork PR the shards fall back to
-        # the main-scoped entry saved by populate-playwright-apt-cache.yml.
+        # the main-scoped entry saved by populate-playwright-caches.yml.
         if: >-
           steps.seed-browser-cache.outputs.cache-hit != 'true' &&
+          github.event_name != 'merge_group' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -979,7 +1008,7 @@ jobs:
           done
 
       # Restore-only — same churn rationale as the yarn cache above. The
-      # main-scoped copy is saved by populate-playwright-apt-cache.yml; the
+      # main-scoped copy is saved by populate-playwright-caches.yml; the
       # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
@@ -1158,9 +1187,12 @@ jobs:
             "${{ needs.cache-keys.outputs.ingestion }}"
 
       # Fork PRs under pull_request_target skip both saves — actions/cache-poisoning.
+      # merge_group skips them too — see the dist-cache step for why an
+      # ephemeral queue ref must never write the cache.
       - name: Save golden fixture cache
         if: >-
           needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&
+          github.event_name != 'merge_group' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -1173,6 +1205,7 @@ jobs:
         if: >-
           needs.plan-playwright.outputs.requires_airflow == 'true' &&
           needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' &&
+          github.event_name != 'merge_group' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -1209,7 +1242,7 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # Budget breakdown: up to 30 min playwright hang-protection wrapper on
+    # Budget breakdown: up to 60 min playwright hang-protection wrapper on
     # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
     # and teardown/artifact upload. The job clock must clear the inner
     # wrapper plus setup/teardown so a slow-but-finishing shard is never
@@ -1221,8 +1254,11 @@ jobs:
     # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
     # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
     # sync when adjusting this outer ceiling.
-    timeout-minutes: 40
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
+    timeout-minutes: 75
+    # `warm_caches_only` runs the pipeline for its cache side effects alone;
+    # the shards are what makes it expensive and they prove nothing on a commit
+    # the merge queue already tested.
+    if: ${{ !cancelled() && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
       contents: read
@@ -1350,7 +1386,7 @@ jobs:
       # LRU-evicted every main-scoped cache within ~30 minutes. That
       # eviction is what kept turning cache "hits" into cold registry
       # fetches. The main-scoped copy is saved exclusively by
-      # populate-playwright-apt-cache.yml on main.
+      # populate-playwright-caches.yml on main.
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:
@@ -1514,13 +1550,35 @@ jobs:
           # ~19 min predicted; the 1500 s execution BUDGET is evaluated (and
           # signalled, never enforced) by evaluate_playwright_performance.py.
           # This wrapper exists solely so a truly wedged playwright process
-          # cannot hold the job until the 40-min job clock. It must stay well
-          # above the budget: at the old 25m it killed chromium-12 five
-          # seconds after its last test PASSED (run 32500973433 — one wedged
-          # retry teardown ate 9 min), destroying the results artifact and
-          # ejecting a green PR.
+          # cannot hold the job until the job clock.
+          #
+          # A shard that is merely SLOW must finish, not be killed. `timeout`
+          # SIGTERMs playwright before it writes its blob report, so the whole
+          # shard reports zero results, the coverage check flags every test on
+          # it as missing, and the batch is ejected — with no record of which
+          # tests passed. That has now happened twice for the same reason:
+          # run 32500973433 killed chromium-12 five seconds after its last
+          # test PASSED (one wedged retry teardown ate 9 min), and on
+          # 2026-09-04 runs 33862281607 and 33869395948 each lost the same
+          # 584 of 4464 planned tests (13.1%) to three shards clipped at
+          # exactly 1800 s while reporting 0 test failures. 27 consecutive
+          # merge_group batches were ejected and nothing merged for ~4 h.
+          #
+          # Raising 25m -> 30m was the previous response and did not hold,
+          # because the ceiling has to clear the actual tail and not the
+          # predicted one: under merge-queue contention the measured
+          # actual/predicted ratio reached 1.52 aggregate (median 1.59 per
+          # test) against 0.99 on an uncontended run of the SAME baseline. At
+          # a 19-min pack that tail needs ~29 min, i.e. the old wall sat
+          # inside the distribution it was meant to bound. 60m tolerates a
+          # 3.1x tail, so only a genuinely wedged process reaches it.
+          #
+          # Slow shards are not silent: exceeding the 1500 s budget already
+          # annotates the run and upserts the tracked issue "Playwright CI
+          # over time budget" via the `Signal Playwright budget breaches`
+          # step. Alert there, do not kill here.
           set +e
-          timeout --signal=TERM --kill-after=30s 30m \
+          timeout --signal=TERM --kill-after=30s 60m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
@@ -1834,7 +1892,7 @@ jobs:
       # LRU-evicted every main-scoped cache within ~30 minutes. That
       # eviction is what kept turning cache "hits" into cold registry
       # fetches. The main-scoped copy is saved exclusively by
-      # populate-playwright-apt-cache.yml on main.
+      # populate-playwright-caches.yml on main.
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:

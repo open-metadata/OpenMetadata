@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, Page, Request, Response, test } from '@playwright/test';
+import { Page, Request, Response } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
 import { switchToAiModeViaProfileToggle } from '../../Utils/appMode';
