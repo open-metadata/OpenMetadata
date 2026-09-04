@@ -22,8 +22,9 @@ import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../Icon/Icon';
+import { ICON_PX, SIZE_CLASS } from './Tag.constant';
 import { BaseTagProps, DEFAULT_TAG_COLOR } from './Tag.interface';
-import { computeTagColors, ICON_PX, SIZE_CLASS } from './Tag.utils';
+import { computeTagColors } from './Tag.utils';
 
 /**
  * Glossary term tag — fully rounded pill with tinted background and border.
@@ -129,7 +130,7 @@ const GlossaryTag: FC<BaseTagProps> = ({
         {...sharedProps}
         className={classNames(
           sharedProps.className,
-          'tw:[&_button]:text-[var(--tag-close-color)]'
+          'tw:[&_button]:text-(--tag-close-color)'
         )}
         isDisabled={disabled}
         style={
