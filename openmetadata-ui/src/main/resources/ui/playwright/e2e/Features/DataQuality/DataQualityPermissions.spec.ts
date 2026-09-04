@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CREATE_TEST_CASE_POLICY,
@@ -25,6 +25,7 @@ import {
   VIEW_ALL_TEST_CASE_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
