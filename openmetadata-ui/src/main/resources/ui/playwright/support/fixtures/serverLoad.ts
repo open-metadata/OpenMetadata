@@ -171,8 +171,41 @@ const pathnameOf = (url: string) => {
   }
 };
 
-const isCacheableBootRequest = (url: URL) =>
-  CACHEABLE_BOOT_PATHS.includes(url.pathname);
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The matcher has to be a RegExp rather than the obvious
+ * `(url) => CACHEABLE_BOOT_PATHS.includes(url.pathname)`, because Playwright
+ * cannot push a predicate into the browser:
+ *
+ * ```js
+ * // playwright-core/lib/client/network.js
+ * static prepareInterceptionPatterns(handlers) {
+ *   ...
+ *   if (isString(handler.url))      patterns.push({ glob: handler.url });
+ *   else if (isRegExp(handler.url)) patterns.push({ regexSource: ..., regexFlags: ... });
+ *   else                            all = true;
+ *   if (all) return [{ glob: '**\/*' }];
+ * }
+ * ```
+ *
+ * One predicate handler sets `all`, and the whole context then intercepts
+ * every request. Measured on merge_group runs of #32594, that cost the suite
+ * ~7% wall-clock and +15.6 GB of asset traffic: ~29k requests a shard
+ * round-tripped through the Node driver instead of ~8.5k, and intercepted
+ * requests miss the browser's HTTP cache (`static:304` 4,151 -> 2,239 while
+ * `static:200` rose 22.3k). A RegExp is forwarded as `regexSource`, so the
+ * browser pauses only these paths.
+ *
+ * Matched against the full URL, since that is what `urlMatches` tests a RegExp
+ * against. `[^?#]*` cannot cross a `?`, so a path that appears inside a query
+ * string is not mistaken for the path itself, and the trailing `(?:[?#]|$)`
+ * keeps `/system/config/auth` from matching `/system/config/authorizer`.
+ */
+const CACHEABLE_BOOT_PATTERN = new RegExp(
+  `^[^?#]*(?:${CACHEABLE_BOOT_PATHS.map(escapeRegExp).join('|')})(?:[?#]|$)`
+);
 
 /**
  * The cache is per worker and a worker runs many identities, so the caller's
@@ -254,12 +287,17 @@ const serveBootConfig = async (route: Route) => {
  *
  * Serving them from a per-worker cache fixes the server side, but it routes
  * ~26k requests per shard through the Playwright driver, and that per-request
- * overhead could plausibly cost more wall-clock than the saved bytes. Off by
- * default until measured: set PW_CACHE_STATIC_ASSETS=true to A/B it in CI.
+ * overhead could plausibly cost more wall-clock than the saved bytes. The
+ * merge_group measurement behind CACHEABLE_BOOT_PATTERN says it does: the same
+ * ~29k requests a shard, intercepted only so a predicate could reject them,
+ * cost ~7% wall-clock. So this stays off by default and now has a reason
+ * rather than a caveat. Set PW_CACHE_STATIC_ASSETS=true to A/B it in CI.
  */
 const cacheStaticAssets = process.env.PW_CACHE_STATIC_ASSETS === 'true';
+// Same full-URL form as CACHEABLE_BOOT_PATTERN, so it can be handed to
+// `context.route` directly instead of through a predicate.
 const STATIC_ASSET =
-  /\/assets\/.+\.(?:js|mjs|css|woff2?|png|svg|jpe?g|gif|ico|webp)$/;
+  /^[^?#]*\/assets\/[^?#]+\.(?:js|mjs|css|woff2?|png|svg|jpe?g|gif|ico|webp)(?:[?#]|$)/;
 
 const MAX_CACHED_ASSETS = 512;
 const assetCache = new Map<string, CachedResponse>();
@@ -330,15 +368,13 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
     route.fulfill({ status: 200, body: '' })
   );
 
-  await context.route(
-    (url) => isCacheableBootRequest(url),
-    (route) => ignoreClosedTarget(() => serveBootConfig(route))
+  await context.route(CACHEABLE_BOOT_PATTERN, (route) =>
+    ignoreClosedTarget(() => serveBootConfig(route))
   );
 
   if (cacheStaticAssets) {
-    await context.route(
-      (url) => STATIC_ASSET.test(url.pathname),
-      (route) => ignoreClosedTarget(() => serveStaticAsset(route))
+    await context.route(STATIC_ASSET, (route) =>
+      ignoreClosedTarget(() => serveStaticAsset(route))
     );
   }
 
