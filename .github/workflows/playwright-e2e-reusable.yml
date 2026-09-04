@@ -1245,7 +1245,7 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # Budget breakdown: up to 30 min playwright hang-protection wrapper on
+    # Budget breakdown: up to 60 min playwright hang-protection wrapper on
     # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
     # and teardown/artifact upload. The job clock must clear the inner
     # wrapper plus setup/teardown so a slow-but-finishing shard is never
@@ -1257,7 +1257,7 @@ jobs:
     # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
     # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
     # sync when adjusting this outer ceiling.
-    timeout-minutes: 40
+    timeout-minutes: 75
     # `warm_caches_only` runs the pipeline for its cache side effects alone;
     # the shards are what makes it expensive and they prove nothing on a commit
     # the merge queue already tested.
@@ -1553,13 +1553,35 @@ jobs:
           # ~19 min predicted; the 1500 s execution BUDGET is evaluated (and
           # signalled, never enforced) by evaluate_playwright_performance.py.
           # This wrapper exists solely so a truly wedged playwright process
-          # cannot hold the job until the 40-min job clock. It must stay well
-          # above the budget: at the old 25m it killed chromium-12 five
-          # seconds after its last test PASSED (run 32500973433 — one wedged
-          # retry teardown ate 9 min), destroying the results artifact and
-          # ejecting a green PR.
+          # cannot hold the job until the job clock.
+          #
+          # A shard that is merely SLOW must finish, not be killed. `timeout`
+          # SIGTERMs playwright before it writes its blob report, so the whole
+          # shard reports zero results, the coverage check flags every test on
+          # it as missing, and the batch is ejected — with no record of which
+          # tests passed. That has now happened twice for the same reason:
+          # run 32500973433 killed chromium-12 five seconds after its last
+          # test PASSED (one wedged retry teardown ate 9 min), and on
+          # 2026-09-04 runs 33862281607 and 33869395948 each lost the same
+          # 584 of 4464 planned tests (13.1%) to three shards clipped at
+          # exactly 1800 s while reporting 0 test failures. 27 consecutive
+          # merge_group batches were ejected and nothing merged for ~4 h.
+          #
+          # Raising 25m -> 30m was the previous response and did not hold,
+          # because the ceiling has to clear the actual tail and not the
+          # predicted one: under merge-queue contention the measured
+          # actual/predicted ratio reached 1.52 aggregate (median 1.59 per
+          # test) against 0.99 on an uncontended run of the SAME baseline. At
+          # a 19-min pack that tail needs ~29 min, i.e. the old wall sat
+          # inside the distribution it was meant to bound. 60m tolerates a
+          # 3.1x tail, so only a genuinely wedged process reaches it.
+          #
+          # Slow shards are not silent: exceeding the 1500 s budget already
+          # annotates the run and upserts the tracked issue "Playwright CI
+          # over time budget" via the `Signal Playwright budget breaches`
+          # step. Alert there, do not kill here.
           set +e
-          timeout --signal=TERM --kill-after=30s 30m \
+          timeout --signal=TERM --kill-after=30s 60m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
