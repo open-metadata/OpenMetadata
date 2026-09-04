@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 
 /**
  * Issue #30522 — a long Russian "No Severity" placeholder made the nowrap chip
