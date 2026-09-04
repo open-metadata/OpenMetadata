@@ -346,7 +346,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw new SearchIndexNotFoundException(
+            Response.Status.BAD_REQUEST, String.format("Failed to find index %s", index));
       } else {
         throw buildSearchException(e);
       }
@@ -550,7 +551,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw new SearchIndexNotFoundException(
+            Response.Status.BAD_REQUEST, String.format("Failed to find index %s", index));
       } else {
         throw buildSearchException(e);
       }
@@ -1217,6 +1219,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(
+            Response.Status.BAD_REQUEST,
             String.format("Failed to find index %s", request.getIndex()));
       } else {
         throw buildSearchException(e);
@@ -1358,6 +1361,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(
+            Response.Status.BAD_REQUEST,
             String.format("Failed to find index %s", request.getIndex()));
       } else {
         throw buildSearchException(e);
@@ -1637,15 +1641,18 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   private static SearchException buildSearchException(OpenSearchException e) {
     String detail = e.getMessage();
+    Response.Status status = Response.Status.INTERNAL_SERVER_ERROR;
     ErrorCause error = e.error();
     if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
+      List<String> rootCauseTypes = error.rootCause().stream().map(ErrorCause::type).toList();
       String rootCauses =
           error.rootCause().stream()
               .map(c -> c.type() + ": " + c.reason())
               .collect(Collectors.joining("; "));
       detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+      status = SearchException.statusForRootCauseTypes(rootCauseTypes);
     }
-    return new SearchException(String.format("Search failed due to %s", detail));
+    return new SearchException(status, String.format("Search failed due to %s", detail));
   }
 
   private List<?> buildSearchHierarchy(
