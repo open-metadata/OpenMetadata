@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -678,9 +681,6 @@ class BigqueryUnitTest(TestCase):
         """
         from google.auth.credentials import Credentials
 
-        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-            BigQueryConnection,
-        )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
