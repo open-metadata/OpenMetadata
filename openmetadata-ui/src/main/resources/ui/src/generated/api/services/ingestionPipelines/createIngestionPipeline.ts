@@ -7718,6 +7718,8 @@ export enum SecretsManagerProvider {
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
+    ManagedOpenbao = "managed-openbao",
+    Openbao = "openbao",
 }
 
 /**

@@ -755,7 +755,7 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp", "kubernetes"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp", "kubernetes", "managed-openbao", "openbao"
   prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
   tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
@@ -775,6 +775,20 @@ secretsManagerConfiguration:
     namespace: ${OM_SM_NAMESPACE:-"default"}
     kubeconfigPath: ${OM_SM_KUBECONFIG_PATH:-""}
     inCluster: ${OM_SM_IN_CLUSTER:-"false"}
+    ## For OpenBao / HashiCorp Vault. Keys are `bao`-prefixed because this block is a single flat
+    ## map shared by every provider - an unprefixed `namespace` would collide with Kubernetes above.
+    baoAddress: ${OM_SM_BAO_ADDRESS:-""}
+    baoMount: ${OM_SM_BAO_MOUNT:-"secret"}
+    baoNamespace: ${OM_SM_BAO_NAMESPACE:-""}
+    baoAuthMethod: ${OM_SM_BAO_AUTH_METHOD:-"token"}
+    baoToken: ${OM_SM_BAO_TOKEN:-""}
+    baoRoleId: ${OM_SM_BAO_ROLE_ID:-""}
+    baoSecretId: ${OM_SM_BAO_SECRET_ID:-""}
+    baoAuthPath: ${OM_SM_BAO_AUTH_PATH:-"approle"}
+    baoCaCertPath: ${OM_SM_BAO_CA_CERT_PATH:-""}
+    baoSkipTlsVerify: ${OM_SM_BAO_SKIP_TLS_VERIFY:-"false"}
+    baoConnectTimeoutMs: ${OM_SM_BAO_CONNECT_TIMEOUT_MS:-"5000"}
+    baoReadTimeoutMs: ${OM_SM_BAO_READ_TIMEOUT_MS:-"10000"}
 
 health:
   delayedShutdownHandlerEnabled: true

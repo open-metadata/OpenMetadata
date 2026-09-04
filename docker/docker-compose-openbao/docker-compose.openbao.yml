@@ -1,0 +1,108 @@
+# Run OpenMetadata with OpenBao (or HashiCorp Vault) as the Secrets Manager.
+#
+# This is an overlay on top of the standard quickstart compose rather than a copy
+# of it, so it cannot drift from the stack it extends. See README.md.
+#
+#   docker compose \
+#     -f ../docker-compose-quickstart/docker-compose.yml \
+#     -f docker-compose.openbao.yml \
+#     up -d
+#
+# WHAT THIS RUNS IN DEV MODE
+# OpenBao dev mode keeps everything in memory, starts unsealed, and uses the fixed
+# root token below. It is wiped on every restart. Fine for evaluating the provider;
+# never for anything you care about. For a real deployment, point `OM_SM_BAO_ADDRESS`
+# at your own OpenBao and use AppRole (see README.md) instead of a root token.
+
+services:
+  openbao:
+    image: openbao/openbao:2.6.2
+    container_name: openmetadata_openbao
+    command: server -dev
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ${OM_SM_BAO_TOKEN:-openbao-dev-root}
+      BAO_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      BAO_ADDR: http://127.0.0.1:8200
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    networks:
+      - app_net
+    healthcheck:
+      # `bao status` exits non-zero until the server is initialized and unsealed.
+      # A port check would pass before then and race the bootstrap container.
+      test: ["CMD", "bao", "status", "-address=http://127.0.0.1:8200"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Creates the KV v2 mount, a least-privilege policy and an AppRole. Idempotent.
+  openbao-init:
+    image: openbao/openbao:2.6.2
+    container_name: openmetadata_openbao_init
+    depends_on:
+      openbao:
+        condition: service_healthy
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: ${OM_SM_BAO_TOKEN:-openbao-dev-root}
+      OM_BAO_MOUNT: ${OM_SM_BAO_MOUNT:-openmetadata}
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap-openbao.sh"]
+    volumes:
+      - ./bootstrap-openbao.sh:/bootstrap/bootstrap-openbao.sh:ro
+    networks:
+      - app_net
+    restart: "no"
+
+  # The migration container initialises a secrets manager too - `migrate` ends by
+  # running SecretsManagerUpdateService. Leaving it on the default `db` while the
+  # server uses OpenBao produces a split-brain deployment, so both carry identical
+  # settings.
+  execute-migrate-all:
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+    environment: &openbao_env
+      SECRET_MANAGER: managed-openbao
+      # Keys are `bao`-prefixed because `parameters:` in openmetadata.yaml is one
+      # flat map shared by every provider - a bare `namespace` would collide with
+      # the Kubernetes provider's.
+      OM_SM_BAO_ADDRESS: ${OM_SM_BAO_ADDRESS:-http://openbao:8200}
+      OM_SM_BAO_MOUNT: ${OM_SM_BAO_MOUNT:-openmetadata}
+      OM_SM_BAO_NAMESPACE: ${OM_SM_BAO_NAMESPACE:-}
+      OM_SM_BAO_AUTH_METHOD: ${OM_SM_BAO_AUTH_METHOD:-token}
+      OM_SM_BAO_TOKEN: ${OM_SM_BAO_TOKEN:-openbao-dev-root}
+      OM_SM_BAO_ROLE_ID: ${OM_SM_BAO_ROLE_ID:-}
+      OM_SM_BAO_SECRET_ID: ${OM_SM_BAO_SECRET_ID:-}
+      OM_SM_BAO_AUTH_PATH: ${OM_SM_BAO_AUTH_PATH:-approle}
+      OM_SM_BAO_CA_CERT_PATH: ${OM_SM_BAO_CA_CERT_PATH:-}
+      OM_SM_BAO_SKIP_TLS_VERIFY: ${OM_SM_BAO_SKIP_TLS_VERIFY:-false}
+      OM_SM_BAO_CONNECT_TIMEOUT_MS: ${OM_SM_BAO_CONNECT_TIMEOUT_MS:-5000}
+      OM_SM_BAO_READ_TIMEOUT_MS: ${OM_SM_BAO_READ_TIMEOUT_MS:-10000}
+      # Decides which load_credentials branch INGESTION runs. Defaults to `noop`,
+      # under which the AIRFLOW__..._OPENBAO_* vars below are never read and every
+      # workflow fails to resolve its credentials.
+      PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER: airflow
+
+  openmetadata-server:
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+    environment: *openbao_env
+
+  ingestion:
+    environment:
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_ADDRESS: ${OM_SM_BAO_ADDRESS:-http://openbao:8200}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_MOUNT: ${OM_SM_BAO_MOUNT:-openmetadata}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_NAMESPACE: ${OM_SM_BAO_NAMESPACE:-}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_AUTH_METHOD: ${OM_SM_BAO_AUTH_METHOD:-token}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_TOKEN: ${OM_SM_BAO_TOKEN:-openbao-dev-root}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_ROLE_ID: ${OM_SM_BAO_ROLE_ID:-}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_SECRET_ID: ${OM_SM_BAO_SECRET_ID:-}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_AUTH_PATH: ${OM_SM_BAO_AUTH_PATH:-approle}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_CA_CERT_PATH: ${OM_SM_BAO_CA_CERT_PATH:-}
+      # Unquoted: conf.getboolean raises ValueError on the literal string "false".
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_SKIP_TLS_VERIFY: ${OM_SM_BAO_SKIP_TLS_VERIFY:-false}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_CONNECT_TIMEOUT_MS: ${OM_SM_BAO_CONNECT_TIMEOUT_MS:-5000}
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_READ_TIMEOUT_MS: ${OM_SM_BAO_READ_TIMEOUT_MS:-10000}
