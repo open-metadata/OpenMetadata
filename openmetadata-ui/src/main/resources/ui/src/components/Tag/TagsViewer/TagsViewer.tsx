@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Popover, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -54,6 +54,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             data-testid={`tag-${tag.tagFQN}`}
             href={redirectLink}
             label={tagName}
+            maxWidth={maxWidth ?? 130}
+            size="sm"
           />
         );
 
@@ -80,7 +82,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             key={tag.tagFQN}
             placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <Focusable>{autoChip}</Focusable>
+            <TooltipTrigger>
+              {autoChip}
+            </TooltipTrigger>
           </Tooltip>
         );
       }
@@ -112,7 +116,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         </Tooltip>
       );
     },
-    [entityFqn]
+    [entityFqn, maxWidth]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -145,7 +149,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         )}
       </div>
     ),
-    [sizeCap, isOpen, hasMoreElement, sortedTagsBySource]
+    [t, sizeCap, isOpen, hasMoreElement, sortedTagsBySource]
   );
 
   const popoverRenderElement = useMemo(
@@ -170,7 +174,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         </div>
       ),
 
-    [sizeCap, sortedTagsBySource]
+    [sizeCap, sortedTagsBySource, getTagsElement]
   );
 
   if (isEmpty(sortedTagsBySource) && showNoDataPlaceholder) {
