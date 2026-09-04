@@ -84,7 +84,11 @@ export const rules = {
           if (isOperationIdentifier(node.object)) {
             return;
           }
-          context.report({ node, messageId: 'rawPermissionAccess', data: { name } });
+          context.report({
+            node,
+            messageId: 'rawPermissionAccess',
+            data: { name },
+          });
         },
         ObjectPattern(node) {
           const parent = node.parent;
