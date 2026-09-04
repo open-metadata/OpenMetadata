@@ -22,8 +22,12 @@ import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../../assets/svg/automated-tag.svg';
-import { ICON_PX, SIZE_CLASS } from './Tag.constant';
-import { AUTO_CLASSIFICATION_TAG_COLOR, BaseTagProps } from './Tag.interface';
+import {
+  AUTO_CLASSIFICATION_TAG_COLOR,
+  ICON_PX,
+  SIZE_CLASS,
+} from './Tag.constant';
+import { BaseTagProps } from './Tag.interface';
 import { computeTagColors } from './Tag.utils';
 
 /**

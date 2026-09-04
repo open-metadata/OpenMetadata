@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import ClassificationTag from './ClassificationTag';
-import { DEFAULT_TAG_COLOR } from './Tag.interface';
+import { DEFAULT_TAG_COLOR } from './Tag.constant';
 import { computeTagColors } from './Tag.utils';
 
 jest.mock('react-router-dom', () => ({

@@ -18,14 +18,6 @@
  */
 export type TagSize = 'xs' | 'sm' | 'md';
 
-/**
- * Fallback color used when no explicit `color` prop is provided.
- * All four tag components share this default so they look consistent
- * when rendered without a palette color.
- */
-export const DEFAULT_TAG_COLOR = '#5D6B98';
-export const AUTO_CLASSIFICATION_TAG_COLOR = '#194185';
-
 export interface BaseTagProps {
   label: string;
   /** Hex color from ENTITY_PALETTE_HEX. Omit to use DEFAULT_TAG_COLOR. */

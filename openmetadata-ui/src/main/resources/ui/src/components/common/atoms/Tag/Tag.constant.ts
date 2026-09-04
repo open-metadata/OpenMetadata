@@ -27,3 +27,11 @@ export const SIZE_CLASS: Record<TagSize, string> = {
 
 /** Icon pixel size matching each tag size. */
 export const ICON_PX: Record<TagSize, number> = { xs: 10, sm: 12, md: 14 };
+
+/**
+ * Fallback color used when no explicit `color` prop is provided.
+ * All four tag components share this default so they look consistent
+ * when rendered without a palette color.
+ */
+export const DEFAULT_TAG_COLOR = '#5D6B98';
+export const AUTO_CLASSIFICATION_TAG_COLOR = '#194185';
