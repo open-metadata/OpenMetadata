@@ -52,7 +52,6 @@ ignore_imports =
     metadata.mixins.pandas.pandas_mixin -> metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween
     metadata.mixins.pandas.pandas_mixin -> metadata.readers.dataframe.models
     metadata.mixins.sqalchemy.sqa_mixin -> metadata.ingestion.source.connections
-    metadata.mixins.sqalchemy.sqa_mixin -> metadata.ingestion.source.database.snowflake.queries
     metadata.utils.datalake.datalake_utils -> metadata.ingestion.source.database.column_helpers
     metadata.utils.datalake.datalake_utils -> metadata.parsers.json_schema_parser
     metadata.utils.datalake.datalake_utils -> metadata.readers.dataframe.models
