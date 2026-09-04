@@ -12,8 +12,8 @@
 Patch the Presidio recognizer results to make adapt them to specific use cases.
 """
 
-from datetime import datetime
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
 from dateutil.parser import parse
