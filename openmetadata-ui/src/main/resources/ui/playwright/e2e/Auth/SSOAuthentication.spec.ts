@@ -23,7 +23,8 @@
  *   - OM server running with .env.sso-test (docker compose --env-file .env.sso-test up -d)
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import {
   configureMockOidc,
   forceInteractionRequired,

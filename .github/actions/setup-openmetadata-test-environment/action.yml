@@ -99,9 +99,26 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    # enable-cache is gated off for merge_group. A queue run's cache is scoped
+    # to its gh-readonly-queue ref, which GitHub deletes the moment the entry
+    # merges or is dequeued, so the entry is unreachable by every later run
+    # while still charged against the repo's 10 GB LRU budget — where it evicts
+    # the main-scoped copies runs do restore from. setup-uv's `auto` default
+    # skips non-hosted runners, tag pushes, pull_request_target, workflow_run
+    # and release, but not merge_group (upstream src/utils/inputs.ts
+    # getEnableCache).
+    #
+    # Nothing is lost by not writing: no setup-uv entry is main-scoped, so queue
+    # runs already miss and install from scratch. Measured 2026-09-04, this was
+    # 3.3 GB across 19 dead queue-ref entries — 35% of the budget — and it was
+    # evicting the assets populate-playwright-caches.yml warms 6-hourly within
+    # 15 minutes of them being written. Same reasoning as the merge_group save
+    # gates in playwright-e2e-reusable.yml; see #32613.
     - name: Install uv
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: ${{ github.event_name != 'merge_group' }}
 
     # Cache the ingestion Python venv across runs. Key on the *resolved*
     # Python patch version (setup-python may resolve "3.10" to a different

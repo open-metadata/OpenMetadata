@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, Response, test } from '@playwright/test';
+import { BrowserContext, Page, Response } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import {
   AUTH_REFRESH_PATH,
   clearServerSessionCookie,
