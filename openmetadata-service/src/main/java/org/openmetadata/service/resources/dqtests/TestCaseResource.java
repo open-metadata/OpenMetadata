@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -123,7 +124,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("testSuite,testDefinition", MetadataOperation.VIEW_BASIC);
-    return null;
+    // EditStatus governs the Incident Manager (test case resolution status, severity and incident
+    // assignment). It is advertised separately from EditTests/EditAll so that a role can grant
+    // incident management without granting edit rights on the test case itself.
+    return listOf(MetadataOperation.EDIT_STATUS);
   }
 
   public static class TestCaseList extends ResultList<TestCase> {

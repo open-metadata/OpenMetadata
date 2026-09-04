@@ -13,7 +13,6 @@ DBTcloud source to extract metadata from OM UI
 """
 
 import traceback
-from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
@@ -95,9 +94,6 @@ WILDCARD_SERVICE = "*"
 # job (~1.5s per run) while telling the user nothing the run status does not.
 DEFAULT_TASK_NAME = "Run"
 
-# Number of (job, run) observability entries kept in memory at once
-OBSERVABILITY_CACHE_SIZE = 100
-
 # Number of exact-FQN table lookups kept in memory at once
 EXACT_FQN_CACHE_SIZE = 1024
 
@@ -121,10 +117,6 @@ class DbtcloudSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        # Bounded cache for observability data: {(job_id, run_id): {pipeline_entity, runs, ...}}.
-        # Each entry retains a full Pipeline entity plus its run history, so it has to be
-        # capped: an unbounded dict grows with the number of jobs in the dbt Cloud account.
-        self.observability_cache: LRUCache = LRUCache(maxsize=OBSERVABILITY_CACHE_SIZE)
         # Bounded cache for resolved SQL dialects keyed by database service name
         self._dialect_cache: LRUCache = LRUCache(maxsize=128)
         # Bounded cache for the exact-FQN table fallback, keyed by table FQN
@@ -356,21 +348,6 @@ class DbtcloudSource(PipelineServiceSource):
             # Store pipeline FQN from entity to ensure exact match for status updates
             self.context.get().pipeline_fqn = str(pipeline_entity.fullyQualifiedName.root)
 
-            # Create cache_key once at the start
-            cache_key = (
-                (pipeline_details.id, str(self.context.get().latest_run_id))
-                if self.context.get().latest_run_id
-                else None
-            )
-
-            if cache_key:
-                self.observability_cache[cache_key] = {
-                    "pipeline_entity": pipeline_entity,
-                    "job_details": pipeline_details,
-                    "table_fqns": set(),  # Use set for O(1) lookup
-                    "runs": self.context.get().current_runs,
-                }
-
             # A node is only reported as unmatched when *no* configured database
             # service resolves it, hence the two sets rather than a counter.
             resolved_nodes = set()
@@ -393,7 +370,7 @@ class DbtcloudSource(PipelineServiceSource):
                     # the dbt node would carry the "*" wildcard as service name whenever no
                     # dbServiceNames are configured.
                     to_entity_fqn = self._table_fqn(to_entity)
-                    self._track_table_fqn(to_entity_fqn, cache_key)
+                    self._track_table_fqn(to_entity_fqn, to_entity)
 
                     if model.compiledCode:
                         yield from self._yield_column_lineage(  # pyright: ignore[reportReturnType]
@@ -416,7 +393,7 @@ class DbtcloudSource(PipelineServiceSource):
                             continue
 
                         resolved_nodes.add(unique_id)
-                        self._track_table_fqn(self._table_fqn(from_entity), cache_key)
+                        self._track_table_fqn(self._table_fqn(from_entity), from_entity)
 
                         yield Either(right=self._build_lineage_request(from_entity, to_entity, pipeline_entity))
 
@@ -466,16 +443,15 @@ class DbtcloudSource(PipelineServiceSource):
             is_candidate = False
         return is_candidate
 
-    def _track_table_fqn(self, table_fqn: str, cache_key: tuple[int, str] | None) -> None:
+    def _track_table_fqn(self, table_fqn: str, table_entity: Table) -> None:
         """
-        Record a resolved table FQN so the observability stage can attach the
-        job's run data to it, both for the pipeline being processed and for the
-        cached historical runs. Both collections are sets: a dbt job routinely
-        resolves the same table once per model that depends on it.
+        Record a resolved table FQN so the observability stage can attach this job's
+        run data to it, and keep the already-resolved entity so that stage does not
+        re-fetch it. A set: a dbt job routinely resolves the same table once per
+        model that depends on it.
         """
         self.context.get().current_table_fqns.add(table_fqn)
-        if cache_key and cache_key in self.observability_cache:
-            self.observability_cache[cache_key]["table_fqns"].add(table_fqn)
+        self.cache_table_entity(table_entity)
 
     @staticmethod
     def _build_lineage_request(from_entity: Table, to_entity: Table, pipeline_entity: Pipeline) -> AddLineageRequest:
@@ -630,74 +606,46 @@ class DbtcloudSource(PipelineServiceSource):
         self, pipeline_details: DBTJob
     ) -> Iterable[dict[str, list[PipelineObservability]]]:
         """
-        Extract pipeline observability data from cached lineage artifacts.
-        Uses context data first (current job), falls back to cache for historical data.
+        Build observability for the tables this job touches.
+
+        A ``(table, pipeline)`` observability record is fully determined by this one
+        job, and the server upserts it under ``table.pipelineObservability.<pipelineFqn>``
+        keyed on the pipeline FQN. So exactly one record per table is emitted from the
+        latest run -- replaying earlier jobs here only rewrites rows already correct.
         """
         try:
-            table_pipeline_map: dict[str, list[PipelineObservability]] = defaultdict(list)
-
             ctx = self.context.get()
-            if (
-                hasattr(ctx, "current_table_fqns")
-                and hasattr(ctx, "latest_run")
-                and hasattr(ctx, "current_pipeline_entity")
-                and ctx.latest_run
-                and ctx.current_pipeline_entity
-                and ctx.current_table_fqns
-            ):
-                logger.debug(f"Using context data for observability - {len(ctx.current_table_fqns)} tables")
 
-                schedule_interval = str(pipeline_details.schedule.cron) if pipeline_details.schedule else None
+            pipeline_entity = getattr(ctx, "current_pipeline_entity", None)
+            table_fqns = getattr(ctx, "current_table_fqns", None)
+            latest_run = getattr(ctx, "latest_run", None)
 
-                # using cached table FQNs directly from lineage processing
-                for table_fqn in ctx.current_table_fqns:
-                    observability = self._build_observability_from_run(
-                        run=ctx.latest_run,
-                        pipeline_entity=ctx.current_pipeline_entity,
-                        schedule_interval=schedule_interval,
-                    )
+            if not (pipeline_entity and table_fqns and latest_run):
+                logger.debug("No observability data to emit for job %s", pipeline_details.id)
+                return
 
-                    table_pipeline_map[table_fqn].append(observability)
+            schedule_interval = str(pipeline_details.schedule.cron) if pipeline_details.schedule else None
 
-            for cache_key, cached_data in self.observability_cache.items():
-                job_id, run_id = cache_key
+            observability = self._build_observability_from_run(
+                run=latest_run,
+                pipeline_entity=pipeline_entity,
+                schedule_interval=schedule_interval,
+            )
 
-                if hasattr(ctx, "current_job_id") and job_id == ctx.current_job_id:
-                    continue
+            table_pipeline_map: dict[str, list[PipelineObservability]] = {
+                table_fqn: [observability] for table_fqn in table_fqns
+            }
 
-                table_fqns = cached_data.get("table_fqns", set())
-                pipeline_entity = cached_data.get("pipeline_entity")
-                job_details = cached_data.get("job_details")
-                runs = cached_data.get("runs")
-
-                if not pipeline_entity or not table_fqns or not runs:
-                    continue
-
-                run = next((r for r in runs if str(r.id) == str(run_id)), None)
-
-                if not run:
-                    continue
-
-                schedule_interval = (
-                    str(job_details.schedule.cron)
-                    if job_details and job_details.schedule and job_details.schedule.cron
-                    else None
-                )
-
-                # using cached table FQNs directly from lineage processing
-                for table_fqn in table_fqns:
-                    observability = self._build_observability_from_run(
-                        run=run,
-                        pipeline_entity=pipeline_entity,
-                        schedule_interval=schedule_interval,
-                    )
-
-                    table_pipeline_map[table_fqn].append(observability)
+            logger.debug(
+                "Emitting observability for %s tables of job %s",
+                len(table_pipeline_map),
+                pipeline_details.id,
+            )
 
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")
+            logger.error("Failed to extract pipeline observability data: %s", exc)
             logger.debug(traceback.format_exc())
 
     def yield_pipeline_status(self, pipeline_details: DBTJob) -> Iterable[Either[OMetaPipelineStatus]]:

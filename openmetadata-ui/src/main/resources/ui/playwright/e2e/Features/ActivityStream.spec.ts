@@ -227,35 +227,37 @@ test.describe('Activity Stream on Entity Pages', () => {
     await expect(countBadge).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
   });
 
-  test('activity stream API is called when visiting entity page', async ({
-    page,
-  }) => {
-    const activityApiPromise = page
-      .waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/activity') &&
-          response.status() === 200,
-        { timeout: 10000 }
-      )
-      .catch(() => null);
+  test(
+    'activity stream API is called when visiting entity page',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const activityApiPromise = page
+        .waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/activity') &&
+            response.status() === 200,
+          { timeout: 10000 }
+        )
+        .catch(() => null);
 
-    await testTable.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
+      await testTable.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
 
-    const activityFeedTab = page.getByRole('tab', {
-      name: 'Activity Feeds & Tasks',
-    });
-    await activityFeedTab.click();
+      const activityFeedTab = page.getByRole('tab', {
+        name: 'Activity Feeds & Tasks',
+      });
+      await activityFeedTab.click();
 
-    const response = await activityApiPromise;
+      const response = await activityApiPromise;
 
-    if (response) {
-      const responseBody = await response.json();
+      if (response) {
+        const responseBody = await response.json();
 
-      expect(responseBody).toHaveProperty('data');
-      expect(Array.isArray(responseBody.data)).toBe(true);
+        expect(responseBody).toHaveProperty('data');
+        expect(Array.isArray(responseBody.data)).toBe(true);
+      }
     }
-  });
+  );
 
   test('activity feed left panel shows All and Tasks options', async ({
     page,

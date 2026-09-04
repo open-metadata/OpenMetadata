@@ -18,6 +18,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Annotated, Any
 
+from cachetools import LRUCache
 from pydantic import BaseModel, Field
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -54,6 +55,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -69,6 +71,11 @@ from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Table entities resolved while building lineage are reused by the observability
+# stage that runs right after, so the cache only needs to span a single pipeline's
+# tables. Anything beyond that is a cross-pipeline bonus hit.
+TABLE_ENTITY_CACHE_SIZE = 1024
 
 
 class PipelineUsage(BaseModel):
@@ -182,6 +189,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = self.config.sourceConfig.config
+
+        self._table_entity_cache: LRUCache = LRUCache(maxsize=TABLE_ENTITY_CACHE_SIZE)
 
         self._connection = create_connection(self.service_connection)
         self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
@@ -390,12 +399,30 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         This method should be implemented by each pipeline service.
         """
 
+    def cache_table_entity(self, table: Table) -> None:
+        """
+        Register a Table already resolved by the lineage stage so the observability
+        stage that follows can reuse it. Without this the same entity is re-fetched
+        once per table, per pipeline.
+        """
+        if table is not None and table.fullyQualifiedName is not None:
+            self._table_entity_cache[model_str(table.fullyQualifiedName)] = table
+
+    def _get_observability_table(self, table_fqn: str) -> Table | None:
+        """Resolve a Table for the observability stage, preferring the lineage cache."""
+        table = self._table_entity_cache.get(table_fqn)
+        if table is None:
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            if table is not None:
+                self.cache_table_entity(table)
+        return table
+
     def yield_pipeline_observability(self, pipeline_details: Any) -> Iterable[Either[TablePipelineObservability]]:
         """Method to fetch pipeline observability data"""
         try:
             for table_observability_map in self.get_table_pipeline_observability(pipeline_details) or []:
                 for table_fqn, observability_list in table_observability_map.items():
-                    table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                    table = self._get_observability_table(table_fqn)
                     if table:
                         yield Either(
                             right=TablePipelineObservability(table=table, observability_data=observability_list)
