@@ -209,12 +209,14 @@ const serveBootConfig = async (route: Route) => {
   };
 
   // Only a success is worth replaying; caching a 5xx would pin a transient
-  // failure for the rest of the worker's life.
-  if (response.ok()) {
-    remember(key, {
-      pathname: new URL(request.url()).pathname,
-      response: payload,
-    });
+  // failure for the rest of the worker's life. The pathname is parsed through
+  // the same guard as the listener: unreachable here, since Playwright already
+  // handed a parsed URL to the route predicate, but a throw inside a route
+  // handler fails the test just as readily and consistency is one line.
+  const pathname = pathnameOf(request.url());
+
+  if (response.ok() && pathname) {
+    remember(key, { pathname, response: payload });
   }
 
   await route.fulfill(payload);
