@@ -260,14 +260,8 @@ class TestAirflow(TestCase):
 
         task = AirflowTask(**mapped_task)
 
-        self.assertEqual(
-            task.inlets,
-            mapped_task["partial_kwargs"]["inlets"],
-        )
-        self.assertEqual(
-            task.outlets,
-            mapped_task["partial_kwargs"]["outlets"],
-        )
+        assert task.inlets == mapped_task["partial_kwargs"]["inlets"]
+        assert task.outlets == mapped_task["partial_kwargs"]["outlets"]
 
     def test_parsing_top_level_xlets_win_over_partial_kwargs(self):
         task = AirflowTask(
@@ -276,8 +270,8 @@ class TestAirflow(TestCase):
             partial_kwargs={"outlets": [{"__var": {"tables": ["x.y.z.w"]}, "__type": "dict"}]},
         )
 
-        self.assertEqual(task.outlets, [{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}])
-        self.assertIsNone(task.inlets)
+        assert task.outlets == [{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}]
+        assert task.inlets is None
 
     def test_get_dag_owners(self):
         """Test DAG owner extraction from tasks"""
