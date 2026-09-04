@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -140,14 +142,46 @@ public class DataAccessRequestValidationIT {
       String entityType,
       String entityFqn,
       Map<String, Object> payload) {
-    CreateTask request =
-        new CreateTask()
-            .withName(ns.prefix("dar_" + entityType + "_" + UUID.randomUUID()))
-            .withCategory(TaskCategory.DataAccess)
-            .withType(TaskEntityType.DataAccessRequest)
-            .withAbout(entityLink(entityType, entityFqn))
-            .withPayload(payload);
-    return client.tasks().create(request);
+    return client.tasks().create(dataAccessRequest(ns, entityType, entityFqn, payload));
+  }
+
+  private static CreateTask dataAccessRequest(
+      TestNamespace ns, String entityType, String entityFqn, Map<String, Object> payload) {
+    return new CreateTask()
+        .withName(ns.prefix("dar_" + entityType + "_" + UUID.randomUUID()))
+        .withCategory(TaskCategory.DataAccess)
+        .withType(TaskEntityType.DataAccessRequest)
+        .withAbout(entityLink(entityType, entityFqn))
+        .withPayload(payload);
+  }
+
+  @Test
+  void testDarAssignedToCurrentUser_filtersByAuthenticatedPrincipal(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    String tableFqn = table.getFullyQualifiedName();
+    SharedEntities shared = SharedEntities.get();
+
+    Task user1Task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                dataAccessRequest(ns, "table", tableFqn, dataAccessPayload("FullAccess"))
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+    Task user2Task =
+        SdkClients.user3Client()
+            .tasks()
+            .create(
+                dataAccessRequest(ns, "table", tableFqn, dataAccessPayload("FullAccess"))
+                    .withAssignees(List.of(shared.USER2.getFullyQualifiedName())));
+
+    var assignedToUser1 =
+        SdkClients.user1Client()
+            .tasks()
+            .listDataAccessRequests(
+                Map.of("dataset", tableFqn, "assignedToMe", "true", "limit", "50"));
+    List<UUID> taskIds = assignedToUser1.getData().stream().map(Task::getId).toList();
+    assertTrue(taskIds.contains(user1Task.getId()));
+    assertFalse(taskIds.contains(user2Task.getId()));
   }
 
   @Test
