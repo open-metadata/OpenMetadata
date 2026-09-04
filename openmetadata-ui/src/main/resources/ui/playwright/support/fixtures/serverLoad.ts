@@ -364,8 +364,11 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
 
   installed.add(context);
 
+  // Guarded like the two below: analytics beacons are fired on navigation and
+  // unload, so a `fulfill` here is more likely than either of them to land on a
+  // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
-    route.fulfill({ status: 200, body: '' })
+    ignoreClosedTarget(() => route.fulfill({ status: 200, body: '' }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>
