@@ -58,6 +58,53 @@ const dedicatedStateTestIgnore = hasDedicatedIngestionLane
       '**/*AfterReindex.spec.ts',
     ]
   : [];
+// Tests tagged @quarantine are known-flaky and must not run in any lane, so a
+// flake cannot eject a PR from the merge queue while it is still being
+// diagnosed. Each entry is listed with its evidence in
+// playwright/QUARANTINE.md and is expected to be fixed and untagged, not to
+// live there. PLAYWRIGHT_RUN_QUARANTINED=true flips this to run *only* the
+// quarantined set, for a soak lane that tracks whether they are still failing.
+//
+// This has to be applied per project, not at the top level: Playwright replaces
+// (never merges) a top-level grepInvert with a project's own, and the chromium
+// project already sets one to route @basic/@ingestion/@data-insight into their
+// dedicated lanes — so a top-level grepInvert is silently dropped for the very
+// project that runs most of the suite.
+const QUARANTINE_TAG = /@quarantine/;
+const runQuarantinedOnly = Boolean(process.env.PLAYWRIGHT_RUN_QUARANTINED);
+const asRegExpList = (value?: RegExp | RegExp[]) =>
+  value === undefined ? [] : Array.isArray(value) ? value : [value];
+
+const andQuarantine = (base: RegExp) =>
+  new RegExp(
+    `(?=.*(?:${base.source}))(?=.*(?:${QUARANTINE_TAG.source}))`,
+    [...new Set(`${base.flags}${QUARANTINE_TAG.flags}`)].join('')
+  );
+
+const applyQuarantine = <
+  T extends { grep?: RegExp | RegExp[]; grepInvert?: RegExp | RegExp[] }
+>(
+  projects: T[]
+): T[] =>
+  projects.map((project) => ({
+    ...project,
+    // grepInvert is OR-matched, so appending the tag is enough to exclude it.
+    // grep is OR-matched too, which is the wrong operator for the soak lane —
+    // replacing the project's lane-routing grep would let it pick up
+    // quarantined tests belonging to other lanes, so each alternative is
+    // AND-ed with the tag via lookaheads instead (same trick as combineGrep).
+    ...(runQuarantinedOnly
+      ? {
+          grep:
+            project.grep === undefined
+              ? QUARANTINE_TAG
+              : asRegExpList(project.grep).map(andQuarantine),
+        }
+      : {
+          grepInvert: [...asRegExpList(project.grepInvert), QUARANTINE_TAG],
+        }),
+  }));
+
 const combineGrep = (base?: RegExp) => {
   if (!base) {
     return shardGrep;
@@ -164,7 +211,7 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers */
-  projects: [
+  projects: applyQuarantine([
     {
       name: 'bundle-smoke',
       testMatch: '**/bundle.smoke.ts',
@@ -437,7 +484,7 @@ export default defineConfig({
       fullyParallel: true,
       teardown: entityTeardown,
     },
-  ],
+  ]),
 
   // Increase timeout for the test
   timeout: 60000,

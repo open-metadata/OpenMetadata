@@ -199,6 +199,65 @@ export const navigateToDashboard = async (page: Page) => {
   await section.waitFor({ state: 'visible' });
 };
 
+/**
+ * Recently-viewed is client-only state: the article detail page pushes it into
+ * the zustand `user-preferences-store` slice in localStorage, and that write
+ * lands after the render that triggered it. Navigating away before it flushes
+ * means the Recently Viewed panel renders from a store that never saw the
+ * article, so the panel assertion has nothing to auto-wait for and only passes
+ * once a retry warms the cache. Waiting on the persisted entry is the real
+ * signal, so no fixed delay is needed.
+ */
+export const readRecentlyViewed = async (
+  page: Page
+): Promise<{ displayName?: string; fqn?: string }[]> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'user-preferences-store'
+  );
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: {
+        preferences?: Record<
+          string,
+          { recentlyViewed?: { displayName?: string; fqn?: string }[] }
+        >;
+      };
+    };
+
+    return Object.values(parsed?.state?.preferences ?? {}).flatMap(
+      (slice) => slice?.recentlyViewed ?? []
+    );
+  } catch {
+    return [];
+  }
+};
+
+export const waitForRecentlyViewed = async (
+  page: Page,
+  displayName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const entries = await readRecentlyViewed(page);
+
+        return entries.some((entry) => entry?.displayName === displayName);
+      },
+      {
+        message: `Wait for "${displayName}" to be persisted into recentlyViewed`,
+        timeout: 15_000,
+        intervals: [50, 100, 200, 500],
+      }
+    )
+    .toBe(true);
+};
+
 export const navigateToArticles = async (page: Page) => {
   await page.goto(ARTICLES_URL);
   await page
