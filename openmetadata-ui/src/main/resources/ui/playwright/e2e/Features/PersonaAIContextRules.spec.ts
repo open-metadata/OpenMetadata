@@ -377,13 +377,23 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
   // -------------------------------------------------------------------------
 
   test.describe('Persona AI Context — Rule editor fields', () => {
-    test('max assets input clamps values above 1000 to 1000 on blur', async ({
+    test('max assets input clamps values above 1000 for preloaded rules', async ({
       adminPage: page,
     }) => {
       await openPersonaContext(page);
       await openAddRuleDrawer(page);
 
       const maxAssetsInput = page.getByTestId('context-rule-max-assets');
+      const filteredInSearch = page
+        .getByTestId('context-rule-filtered-in-search')
+        .getByRole('switch');
+
+      await test.step('switch the new rule from search-scoped to preloaded', async () => {
+        await expect(filteredInSearch).toBeChecked();
+        await filteredInSearch.click();
+        await expect(filteredInSearch).not.toBeChecked();
+        await expect(maxAssetsInput).toBeEnabled();
+      });
 
       await test.step('type 9999 — displayed while typing', async () => {
         await maxAssetsInput.fill('9999');
