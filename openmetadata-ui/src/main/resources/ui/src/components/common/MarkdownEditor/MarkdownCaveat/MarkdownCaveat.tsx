@@ -13,7 +13,7 @@
 
 import { AlertTriangle, Lightbulb01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import React, { FC, ReactNode } from 'react';
+import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /**
