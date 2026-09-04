@@ -69,6 +69,9 @@ logger = ingestion_logger()
 
 GRAFANA_TAG_CATEGORY = "GrafanaTags"
 
+# Datasources whose query language is not SQL, so there is nothing to hand to the lineage parser
+NON_SQL_DATASOURCE_TYPES = frozenset({"prometheus", "elasticsearch"})
+
 
 class GrafanaSource(DashboardServiceSource):
     """
@@ -404,25 +407,14 @@ class GrafanaSource(DashboardServiceSource):
             return None
 
     def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> str | None:
-        """Extract SQL query from target based on datasource type"""
-        try:
-            # Handle different datasource types
-            if datasource.type in [
-                "mysql",
-                "grafana-postgresql-datasource",
-                "mssql",
-                "clickhouse",
-            ]:
-                return target.rawSql or target.query
-            elif datasource.type in ["prometheus", "elasticsearch"]:  # noqa: RET505
-                # Prometheus and Elasticsearch queries aren't SQL
-                return None
-            else:
-                # Try generic query field
-                return target.query
-        except Exception as exc:
-            logger.debug(f"Error extracting SQL query: {exc}")
+        """Extract the SQL statement a panel target runs, if it runs one at all"""
+        # SQL plugins are an open set (trino, athena, redshift, ...) and they do not agree on
+        # where they keep the statement - rawSql, rawSQL, or plain query for older ones. So
+        # read every datasource's raw SQL field rather than allow-listing types, which is what
+        # dropped Trino panels before (#23997), and only skip the languages that are not SQL.
+        if datasource.type in NON_SQL_DATASOURCE_TYPES:
             return None
+        return target.raw_sql or target.query
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:
         """Map Grafana panel types to OpenMetadata chart types"""
