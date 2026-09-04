@@ -24,6 +24,7 @@ export type TagSize = 'xs' | 'sm' | 'md';
  * when rendered without a palette color.
  */
 export const DEFAULT_TAG_COLOR = '#5D6B98';
+export const AUTO_CLASSIFICATION_TAG_COLOR = '#194185';
 
 export interface BaseTagProps {
   label: string;

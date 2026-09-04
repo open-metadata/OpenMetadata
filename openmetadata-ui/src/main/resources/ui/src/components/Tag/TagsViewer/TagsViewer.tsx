@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { Popover, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -82,9 +86,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             key={tag.tagFQN}
             placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <TooltipTrigger>
-              {autoChip}
-            </TooltipTrigger>
+            <TooltipTrigger>{autoChip}</TooltipTrigger>
           </Tooltip>
         );
       }
