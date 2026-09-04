@@ -469,9 +469,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -500,12 +498,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(
-            securityContext.getUserPrincipal().getName(),
-            UUID.fromString(id),
-            UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, UUID.fromString(id), UUID.fromString(userId));
   }
 
   @GET

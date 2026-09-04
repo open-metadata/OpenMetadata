@@ -148,7 +148,6 @@ class AirflowSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
-        self.observability_cache: dict[tuple[str, str], dict[str, Any]] = {}
 
         # Status and lineage stages request the same DAG's runs back-to-back;
         # cache the last DAG so we query once per DAG instead of twice.
@@ -877,6 +876,22 @@ class AirflowSource(PipelineServiceSource):
                 )
             )
 
+    def _set_observability_context(
+        self,
+        pipeline_entity: Pipeline | None = None,
+        table_fqns: list[str] | None = None,
+        latest_dag_run: DagRun | None = None,
+    ) -> None:
+        """
+        Publish everything the observability stage reads. The topology context is
+        shared across sibling DAGs, so every path through lineage -- including the
+        early returns -- has to write all three, or the previous DAG's tables get
+        attributed to this one.
+        """
+        self.context.get().current_pipeline_entity = pipeline_entity  # pyright: ignore[reportAttributeAccessIssue]
+        self.context.get().current_table_fqns = table_fqns or []  # pyright: ignore[reportAttributeAccessIssue]
+        self.context.get().latest_dag_run = latest_dag_run  # pyright: ignore[reportAttributeAccessIssue]
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirflowDagDetails
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -894,6 +909,11 @@ class AirflowSource(PipelineServiceSource):
             service_name=self.context.get().pipeline_service,
             pipeline_name=self.context.get().pipeline,
         )
+        # Reset before the early return below: the context is shared across sibling
+        # DAGs, so leaving the previous DAG's values in place would attribute its
+        # tables to this one.
+        self._set_observability_context()
+
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
         if not pipeline_entity:
             return
@@ -906,16 +926,7 @@ class AirflowSource(PipelineServiceSource):
             source=LineageSource.PipelineLineage,
         )
 
-        # Initialize context for observability tracking
-        self.context.get().current_pipeline_entity = pipeline_entity
-        self.context.get().current_table_fqns = []
-
-        # Get dag runs for caching observability data
         dag_runs = self.get_pipeline_status(pipeline_details.dag_id)
-
-        # Cache dag runs in context
-        self.context.get().current_dag_runs = dag_runs
-        self.context.get().latest_dag_run = dag_runs[0] if dag_runs else None
 
         xlets: list[XLets] = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
 
@@ -927,6 +938,7 @@ class AirflowSource(PipelineServiceSource):
                     # Track table FQNs for observability
                     if from_xlet.entity == Table and from_xlet.fqn not in table_fqns:
                         table_fqns.append(from_xlet.fqn)
+                        self.cache_table_entity(from_entity)
 
                     for to_xlet in xlet.outlets or []:
                         to_entity = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)
@@ -934,6 +946,7 @@ class AirflowSource(PipelineServiceSource):
                             # Track table FQNs for observability
                             if to_xlet.entity == Table and to_xlet.fqn not in table_fqns:
                                 table_fqns.append(to_xlet.fqn)
+                                self.cache_table_entity(to_entity)
 
                             lineage = AddLineageRequest(
                                 edge=EntitiesEdge(
@@ -966,19 +979,14 @@ class AirflowSource(PipelineServiceSource):
                         f"Ensure the entity exists in OpenMetadata before running lineage ingestion."
                     )
 
-        # Cache observability data for later use
-        self.context.get().current_table_fqns = table_fqns
-
-        # Cache for historical dag runs
-        for dag_run in dag_runs:
-            if dag_run.run_id:
-                cache_key = (pipeline_details.dag_id, dag_run.run_id)
-                self.observability_cache[cache_key] = {
-                    "pipeline_entity": pipeline_entity,
-                    "pipeline_details": pipeline_details,
-                    "table_fqns": table_fqns,
-                    "dag_run": dag_run,
-                }
+        # Published only once every table is known. `get_pipeline_status` orders runs
+        # newest-first, and the server keys observability by pipeline FQN, so the newest
+        # run is the only one that ends up stored.
+        self._set_observability_context(
+            pipeline_entity=pipeline_entity,
+            table_fqns=table_fqns,
+            latest_dag_run=dag_runs[0] if dag_runs else None,
+        )
 
     def _build_observability_from_dag_run(
         self,
@@ -1011,106 +1019,59 @@ class AirflowSource(PipelineServiceSource):
         self, pipeline_details: AirflowDagDetails
     ) -> Iterable[dict[str, list[PipelineObservability]]]:
         """
-        Extract pipeline observability data from cached lineage artifacts.
-        Uses context data first (current dag), falls back to cache for historical data.
+        Build observability for the tables this DAG touches.
+
+        A ``(table, pipeline)`` observability record is fully determined by this one
+        DAG, and the server upserts it under ``table.pipelineObservability.<pipelineFqn>``
+        keyed on the pipeline FQN. So exactly one record per table is emitted, built
+        from the newest run -- replaying earlier DAGs or older runs here only rewrites
+        rows that are already correct.
         """
         try:
-            table_pipeline_map: dict[str, list[PipelineObservability]] = defaultdict(list)
-
             ctx = self.context.get()
 
-            # Process current context data (current dag being processed)
-            if (
-                hasattr(ctx, "current_table_fqns")
-                and hasattr(ctx, "current_dag_runs")
-                and hasattr(ctx, "current_pipeline_entity")
-                and ctx.current_dag_runs
-                and ctx.current_pipeline_entity
-                and ctx.current_table_fqns
-            ):
-                logger.debug(
-                    f"Processing observability for current dag {pipeline_details.dag_id} with "
-                    f"{len(ctx.current_table_fqns)} tables and {len(ctx.current_dag_runs)} runs"
+            pipeline_entity = getattr(ctx, "current_pipeline_entity", None)
+            table_fqns = getattr(ctx, "current_table_fqns", None)
+            latest_dag_run = getattr(ctx, "latest_dag_run", None)
+
+            if not (pipeline_entity and table_fqns and latest_dag_run):
+                logger.debug("No observability data to emit for dag %s", pipeline_details.dag_id)
+                return
+
+            try:
+                observability = self._build_observability_from_dag_run(
+                    dag_run=latest_dag_run,
+                    pipeline_entity=pipeline_entity,
+                    schedule_interval=pipeline_details.schedule_interval,
                 )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to build observability for dag run %s of %s: %s",
+                    latest_dag_run.run_id,
+                    pipeline_details.dag_id,
+                    exc,
+                )
+                logger.debug(traceback.format_exc())
+                return
 
-                # Process ALL dag runs (not just latest)
-                for dag_run in ctx.current_dag_runs:
-                    try:
-                        observability = self._build_observability_from_dag_run(
-                            dag_run=dag_run,
-                            pipeline_entity=ctx.current_pipeline_entity,
-                            schedule_interval=pipeline_details.schedule_interval,
-                        )
+            table_pipeline_map: dict[str, list[PipelineObservability]] = {
+                table_fqn: [observability] for table_fqn in table_fqns
+            }
 
-                        # Add observability to all tables involved in this pipeline
-                        for table_fqn in ctx.current_table_fqns:
-                            table_pipeline_map[table_fqn].append(observability)
-
-                    except Exception as exc:
-                        logger.warning(f"Failed to build observability for dag run {dag_run.run_id}: {exc}")
-                        logger.debug(traceback.format_exc())
-                        continue
-
-            # Process cached observability data (historical dags)
-            processed_cache_entries = 0
-            failed_cache_entries = 0
-
-            for cache_key, cached_data in self.observability_cache.items():
-                try:
-                    dag_id, _ = cache_key
-
-                    # Skip current dag to avoid duplicates
-                    if dag_id == pipeline_details.dag_id:
-                        continue
-
-                    # Validate cache structure
-                    if not isinstance(cached_data, dict):
-                        logger.warning(f"Invalid cache structure for {cache_key}, skipping")
-                        failed_cache_entries += 1
-                        continue
-
-                    pipeline_entity = cached_data.get("pipeline_entity")
-                    table_fqns = cached_data.get("table_fqns", [])
-                    dag_run = cached_data.get("dag_run")
-                    cached_pipeline_details = cached_data.get("pipeline_details")
-
-                    # Validate cache entry has required data
-                    if not pipeline_entity or not table_fqns or not dag_run:
-                        logger.debug(f"Incomplete cache entry for {cache_key}, skipping")
-                        continue
-
-                    # Build observability for this cached run
-                    schedule_interval = cached_pipeline_details.schedule_interval if cached_pipeline_details else None
-
-                    observability = self._build_observability_from_dag_run(
-                        dag_run=dag_run,
-                        pipeline_entity=pipeline_entity,
-                        schedule_interval=schedule_interval,
-                    )
-
-                    # Add to all tables produced by this pipeline
-                    for table_fqn in table_fqns:
-                        table_pipeline_map[table_fqn].append(observability)
-
-                    processed_cache_entries += 1
-
-                except Exception as exc:
-                    logger.warning(f"Error processing cache entry {cache_key}: {exc}")
-                    logger.debug(traceback.format_exc())
-                    failed_cache_entries += 1
-                    continue
-
-            # Summary logging
             logger.info(
-                f"Pipeline observability extraction complete for {pipeline_details.dag_id}: "
-                f"{len(table_pipeline_map)} tables, {processed_cache_entries} cache entries processed, "
-                f"{failed_cache_entries} cache entries failed"
+                "Pipeline observability extraction complete for %s: %s tables",
+                pipeline_details.dag_id,
+                len(table_pipeline_map),
             )
 
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}")
+            logger.error(
+                "Failed to extract pipeline observability data for %s: %s",
+                pipeline_details.dag_id,
+                exc,
+            )
             logger.debug(traceback.format_exc())
 
     def close(self):
