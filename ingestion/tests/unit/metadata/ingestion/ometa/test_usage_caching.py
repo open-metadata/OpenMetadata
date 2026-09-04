@@ -22,11 +22,15 @@ Covers:
 """
 
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
+from metadata.ingestion.stage.table_usage import TableUsageStage
 
 QUERY_ID = "00000000-0000-0000-0000-000000000100"
 USER_REF_NAME = "john.doe"
@@ -159,3 +163,19 @@ class TestCachedUserReference:
         assert result_a is ref_a
         assert result_b is ref_b
         assert mixin.get_entity_reference.call_count == 2
+
+
+class TestTableUsageUserReference:
+    def test_user_reference_fqn_is_returned_as_string(self):
+        stage = TableUsageStage.__new__(TableUsageStage)
+        stage.metadata = MagicMock()
+        stage.metadata.get_cached_user_reference.return_value = EntityReference(
+            id=Uuid(UUID("00000000-0000-0000-0000-000000000200")),
+            type="user",
+            fullyQualifiedName=USER_REF_NAME,
+        )
+
+        users, used_by = stage._get_user_entity(USER_REF_NAME)
+
+        assert users == [USER_REF_NAME]
+        assert used_by == [USER_REF_NAME]

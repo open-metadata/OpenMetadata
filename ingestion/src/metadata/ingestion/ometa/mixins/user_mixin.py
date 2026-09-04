@@ -97,7 +97,9 @@ class OMetaUserMixin:
         cache = self._get_user_reference_cache()
         if name in cache:
             return cache.get(name)
-        reference = self.get_entity_reference(entity=User, fqn=name)
+        reference = self.get_entity_reference(  # pyright: ignore[reportAttributeAccessIssue]
+            entity=User, fqn=name
+        )
         cache.put(name, reference)
         return reference
 
