@@ -29,7 +29,8 @@
  *  - Always in context and Fully rendered toggles
  */
 
-import { expect, Locator, Page, test as base } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
