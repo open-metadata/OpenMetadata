@@ -24,7 +24,10 @@ import {
 import i18n from '../../utils/i18next/LocalUtil';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import { AppModule } from '../platform/ai-shell/AppModule.types';
-import { PluginRouteProps, RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
+import {
+  PluginRouteProps,
+  RoutePosition,
+} from '../Settings/Applications/plugins/AppPlugin';
 import { CONNECTIONS_ROUTES } from './connections.constants';
 
 type ClassicServiceAction =

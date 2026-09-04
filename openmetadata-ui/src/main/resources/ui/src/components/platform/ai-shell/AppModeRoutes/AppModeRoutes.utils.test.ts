@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { CONNECTIONS_ROUTES } from '../../../integration/connections.constants';
-import { connectionsModule } from '../../../integration/connections.module';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { EXTENSION_POINTS } from '../../../../utils/ExtensionPointTypes';
+import { CONNECTIONS_ROUTES } from '../../../integration/connections.constants';
+import { connectionsModule } from '../../../integration/connections.module';
 import { AppModule } from '../AppModule.types';
 import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
 

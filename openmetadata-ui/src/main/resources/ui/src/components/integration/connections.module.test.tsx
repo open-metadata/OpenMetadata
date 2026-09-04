@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EXTENSION_POINTS } from '../../utils/ExtensionPointTypes';
 import { ExtensionPointRegistry } from '../../utils/ExtensionPointRegistry';
+import { EXTENSION_POINTS } from '../../utils/ExtensionPointTypes';
 import { CONNECTIONS_ROUTES } from './connections.constants';
 import { connectionsModule } from './connections.module';
 
@@ -28,9 +28,7 @@ describe('connectionsModule', () => {
 
     expect(paths).toContain(CONNECTIONS_ROUTES.CONNECTIONS);
     expect(paths).toContain(CONNECTIONS_ROUTES.CONNECTIONS_SERVICE_DETAILS);
-    expect(paths).toContain(
-      CONNECTIONS_ROUTES.CONNECTIONS_SERVICE_DETAILS_TAB
-    );
+    expect(paths).toContain(CONNECTIONS_ROUTES.CONNECTIONS_SERVICE_DETAILS_TAB);
   });
 
   it('splices contributed routes AHEAD of the :tab route', () => {
