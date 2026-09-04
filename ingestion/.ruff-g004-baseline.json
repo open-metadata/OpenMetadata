@@ -302,11 +302,7 @@
       "a472e8db2c1e4d1a4812312cb9466bf1c0fc7cfa402304d1be0a84d5c7c987b6": 1
     },
     "ingestion/src/metadata/ingestion/api/parser.py": {
-      "5e85f291ef5e6771c616e24c39b0efecf4933188813fa38b41b2c63c37a6f264": 1,
-      "8cf781a4e8a9e76fa02569f46390cfd60c66f888c7afe45339844bc79cd8d164": 1,
-      "b9f2a9c923069a806feb68111cc88b8a7f08e199f88de46d8bb96965d33b0295": 1,
-      "c106ab86df4e3fad9299036aba9803fef5c702c89eaee89f5d704010925c6251": 1,
-      "e082cc80d3384e1f24a3062e94159a51f48bf3dc4b0e97fda1820a6a4da66628": 1
+      "5e85f291ef5e6771c616e24c39b0efecf4933188813fa38b41b2c63c37a6f264": 1
     },
     "ingestion/src/metadata/ingestion/api/step.py": {
       "1b317377072cf74a2760694a5768b6bcff02a91bd8b06bdf5c105582e0c4776c": 1,
@@ -3236,9 +3232,6 @@
     },
     "ingestion/tests/load/test_resources/all_resources.py": {
       "0b161019e5e476cd0c464807cf94b7d24c333e2a02bb92fa90bd0f4d1f95a912": 1
-    },
-    "openmetadata-airflow-apis/openmetadata_managed_apis/api/error_handlers.py": {
-      "1ea3f12c439a1aa361f37b347e2a634511314520abae6e05ba452232b0a2655f": 1
     },
     "openmetadata-airflow-apis/openmetadata_managed_apis/api/routes/csrf_token.py": {
       "bf7550e65c620fc984c1811588a5f173f77ad25ef8be76e1429ad6948fa07591": 1
