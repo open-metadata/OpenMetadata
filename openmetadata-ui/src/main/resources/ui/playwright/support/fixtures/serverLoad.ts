@@ -82,13 +82,24 @@ type CachedResponse = {
   body: Buffer;
 };
 
+/**
+ * The pathname is stored alongside the response rather than parsed back out of
+ * the cache key. The key is `authorization::url`, so parsing it as a URL throws
+ * — which is exactly the bug that took out seven lanes when the identity was
+ * first folded into the key.
+ */
+type CacheEntry = {
+  pathname: string;
+  response: CachedResponse;
+};
+
 // One entry per (path + query) of the paths above, so this never grows past a
 // couple of dozen. Capped and FIFO-evicted regardless, because an unbounded
 // module-level cache is an unbounded leak in a long-lived worker.
 const MAX_CACHED_RESPONSES = 64;
-const bootCache = new Map<string, CachedResponse>();
+const bootCache = new Map<string, CacheEntry>();
 
-const remember = (key: string, value: CachedResponse) => {
+const remember = (key: string, value: CacheEntry) => {
   if (bootCache.size >= MAX_CACHED_RESPONSES) {
     const oldest = bootCache.keys().next();
 
@@ -125,8 +136,8 @@ const invalidateFamily = (pathname: string) => {
     return;
   }
 
-  for (const key of [...bootCache.keys()]) {
-    if (new URL(key).pathname.startsWith(prefix)) {
+  for (const [key, entry] of [...bootCache.entries()]) {
+    if (entry.pathname.startsWith(prefix)) {
       bootCache.delete(key);
     }
   }
@@ -172,13 +183,13 @@ const serveBootConfig = async (route: Route) => {
   const cached = bootCache.get(key);
 
   if (cached) {
-    await route.fulfill(cached);
+    await route.fulfill(cached.response);
 
     return;
   }
 
   const response = await route.fetch();
-  const entry: CachedResponse = {
+  const payload: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
     body: await response.body(),
@@ -187,10 +198,13 @@ const serveBootConfig = async (route: Route) => {
   // Only a success is worth replaying; caching a 5xx would pin a transient
   // failure for the rest of the worker's life.
   if (response.ok()) {
-    remember(key, entry);
+    remember(key, {
+      pathname: new URL(request.url()).pathname,
+      response: payload,
+    });
   }
 
-  await route.fulfill(entry);
+  await route.fulfill(payload);
 };
 
 /**
