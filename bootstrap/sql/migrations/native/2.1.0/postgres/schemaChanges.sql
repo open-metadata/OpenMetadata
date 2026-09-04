@@ -279,3 +279,14 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt BIGINT NOT NULL,
   PRIMARY KEY (name)
 );
+
+-- Approval gated pending change hold (issue #4673). Holds an edit off the entity until its
+-- governance workflow commits or discards it. `json` is the ChangeDescription shaped held diff,
+-- keyed by (entity_id, updated_by); cleaned up on commit or discard.
+CREATE TABLE IF NOT EXISTS pending_approval_change (
+    entity_id VARCHAR(36) NOT NULL,
+    updated_by VARCHAR(256) NOT NULL,
+    json JSONB NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (entity_id, updated_by)
+);

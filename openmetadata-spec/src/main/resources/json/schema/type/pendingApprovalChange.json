@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pendingApprovalChange.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PendingApprovalChange",
+  "description": "An approval-gated change held off an entity, as proposed by a single requester. The entity keeps serving its approved value; this is the proposed change awaiting commit or discard.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PendingApprovalChange",
+  "properties": {
+    "requester": {
+      "description": "User who proposed the held change (the entity `updatedBy` captured at edit time).",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description": "The held change as a change description diff: per gated field, `oldValue` is the approved value and `newValue` is the proposed value.",
+      "$ref": "entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": ["requester", "changeDescription"],
+  "additionalProperties": false
+}

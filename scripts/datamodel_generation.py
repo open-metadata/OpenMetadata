@@ -165,12 +165,24 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
 # `type` in openmetadata-spec/.../metadataIngestion/workflow.json, which would
 # resolve the union deterministically for the Java and TypeScript consumers too.
 UNION_MODE_FILE = f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
-SOURCE_CONFIG_BLOCK = re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL)
+# black may wrap the long union annotation (older layout: `config: (\n ... \n    ) = None`)
+# or the default value (newer layout: `config: ... | None = (\n        None\n    )`). Handle both
+# so a black formatting change does not silently drop the union_mode pin.
+SOURCE_CONFIG_BLOCKS = (
+    re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL),
+    re.compile(r"(class SourceConfig\(BaseModel\):.*?\| None )= \(\s*None\s*\)\n", re.DOTALL),
+)
 
 with open(UNION_MODE_FILE, "r", encoding=UTF_8) as f:
     content = f.read()
 
-content, applied = SOURCE_CONFIG_BLOCK.subn(r'\1= Field(None, union_mode="left_to_right")\n', content, count=1)
+applied = 0
+for source_config_block in SOURCE_CONFIG_BLOCKS:
+    content, applied = source_config_block.subn(
+        r'\1= Field(None, union_mode="left_to_right")\n', content, count=1
+    )
+    if applied == 1:
+        break
 if applied != 1:
     # Fail loudly: silently skipping this leaves every `type`-less workflow config
     # resolving to the wrong pipeline model at runtime.

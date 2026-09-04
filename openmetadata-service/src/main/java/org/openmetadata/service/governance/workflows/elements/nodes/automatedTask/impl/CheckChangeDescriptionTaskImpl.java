@@ -1,8 +1,11 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -21,6 +24,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
@@ -42,7 +46,9 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
               varHandler.getNamespacedVariable(
                   inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
 
-      boolean result = checkChangeDescription(execution, entityLinkStr);
+      String updatedBy =
+          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      boolean result = checkChangeDescription(execution, entityLinkStr, updatedBy);
       varHandler.setNodeVariable(RESULT_VARIABLE, result);
     } catch (Exception exc) {
       LOG.error(
@@ -52,13 +58,16 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     }
   }
 
-  private boolean checkChangeDescription(DelegateExecution execution, String entityLinkStr) {
+  private boolean checkChangeDescription(
+      DelegateExecution execution, String entityLinkStr, String updatedBy) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
 
-    // No changeDescription means it's a create event - return true
-    ChangeDescription changeDescription = entity.getChangeDescription();
+    // Evaluate the held pending change unioned with the entity's persisted change description, so
+    // this node sees the proposed (not-yet-applied) change. No change at all -> create event ->
+    // true.
+    ChangeDescription changeDescription = PendingApprovalChangeStore.effective(entity, updatedBy);
     if (changeDescription == null) {
       LOG.debug("No changeDescription found (likely a create event), returning true");
       return true;
@@ -81,11 +90,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       return true;
     }
 
-    // Collect all changed fields
+    // Collect all changed fields. A held-only change (the pending hold) carries just fieldsUpdated,
+    // leaving fieldsAdded/fieldsDeleted null, so guard each list.
     List<FieldChange> allChanges = new ArrayList<>();
-    allChanges.addAll(changeDescription.getFieldsAdded());
-    allChanges.addAll(changeDescription.getFieldsUpdated());
-    allChanges.addAll(changeDescription.getFieldsDeleted());
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsAdded()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
 
     // Check fields based on condition (AND/OR)
     boolean result;

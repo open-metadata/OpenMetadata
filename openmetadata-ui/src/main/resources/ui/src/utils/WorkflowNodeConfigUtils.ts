@@ -159,10 +159,14 @@ const addNodeSpecificConfig = (
     }
   } else if (
     (subType === NodeSubType.RollbackEntityTask ||
-      subType === NodeSubType.SinkTask) &&
+      subType === NodeSubType.SinkTask ||
+      subType === NodeSubType.ResolvePendingChangeTask) &&
     nodeData.config &&
     Object.keys(nodeData.config).length > 0
   ) {
+    // resolvePendingChangeTask requires config.action (commit, discard or hold). Carrying the
+    // config through on save keeps a load then save round trip from dropping it, which the backend
+    // would reject as a null config.
     config.config = nodeData.config;
   }
 };

@@ -29,6 +29,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import PendingChangesNotification from '../../PendingChanges/PendingChangesNotification.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import Voting from '../../../components/Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
@@ -1045,6 +1046,12 @@ const DomainDetails = ({
             )}
 
             <ButtonGroup className="spaced" size="small">
+              <PendingChangesNotification
+                entityFqn={domain.fullyQualifiedName ?? ''}
+                entityId={domain.id}
+                entityType={EntityType.DOMAIN}
+              />
+
               {onUpdateVote && (
                 <Voting
                   voteStatus={voteStatus}

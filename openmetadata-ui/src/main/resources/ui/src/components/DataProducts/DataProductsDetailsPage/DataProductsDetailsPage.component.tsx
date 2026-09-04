@@ -111,6 +111,7 @@ import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.com
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import PendingChangesNotification from '../../PendingChanges/PendingChangesNotification.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
@@ -876,6 +877,12 @@ const DataProductsDetailsPage = ({
                 )}
 
                 <ButtonGroup className="spaced" size="small">
+                  <PendingChangesNotification
+                    entityFqn={dataProduct.fullyQualifiedName ?? ''}
+                    entityId={dataProduct.id}
+                    entityType={EntityType.DATA_PRODUCT}
+                  />
+
                   {dataContractLatestResultButton}
 
                   {onUpdateVote && (

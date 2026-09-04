@@ -1,9 +1,14 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,12 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeAction;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -50,17 +58,23 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void postCreate(WorkflowDefinition entity) {
     WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    // A new workflow may add/remove approval gating for an entity type; drop the cached rules so
+    // the
+    // gate reflects it on the next edit instead of after the cache TTL.
+    GovernanceApprovalRegistry.invalidate();
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    GovernanceApprovalRegistry.invalidate();
   }
 
   @Override
   protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    GovernanceApprovalRegistry.invalidate();
   }
 
   @Override
@@ -189,8 +203,95 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
-    // 6. Restrict the values interpolated into conditional-edge JUEL expressions
+    // 6. Pending-change hold must be resolved on every terminal path
+    validatePendingChangeResolution(workflowDefinition);
+    // 7. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
+  }
+
+  /**
+   * A workflow that opts into holding approval-gated changes (by carrying at least one {@code
+   * resolvePendingChangeTask} hook) must resolve the hold on every path that can reach an end event.
+   * Otherwise a branch that ends without a commit/discard would leave the user's edit held forever
+   * (data loss). Rejects such a workflow so authors add the missing hooks.
+   */
+  private void validatePendingChangeResolution(WorkflowDefinition workflowDefinition) {
+    List<WorkflowNodeDefinitionInterface> nodes = listOrEmpty(workflowDefinition.getNodes());
+    Set<String> hooks = new HashSet<>();
+    Set<String> ends = new HashSet<>();
+    String start = null;
+    boolean hasResolvingHook = false;
+    for (WorkflowNodeDefinitionInterface node : nodes) {
+      String subType = node.getSubType();
+      if (NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(subType)) {
+        hooks.add(node.getName());
+        if (isCommitOrDiscardHook(node)) {
+          hasResolvingHook = true;
+        }
+      } else if (NodeSubType.END_EVENT.value().equals(subType)) {
+        ends.add(node.getName());
+      } else if (NodeSubType.START_EVENT.value().equals(subType)) {
+        start = node.getName();
+      }
+    }
+    if (!hooks.isEmpty() && !hasResolvingHook) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' holds approval gated changes but every resolvePendingChangeTask node "
+                  + "only holds the change. There is no commit or discard, so the edit would stay "
+                  + "held forever. Add a commit or discard hook.",
+              workflowDefinition.getName()));
+    }
+    if (!hooks.isEmpty()
+        && start != null
+        && reachesEndWithoutHook(workflowDefinition, start, hooks, ends)) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' holds approval gated changes but at least one path reaches an end "
+                  + "event without a commit or discard. Every terminal path must resolve the held "
+                  + "change or the edit would stay held forever.",
+              workflowDefinition.getName()));
+    }
+  }
+
+  // A resolvePendingChangeTask resolves the hold only when it commits or discards it; an action of
+  // hold merely parks the change, so a workflow whose hooks all hold would keep the edit held with
+  // no way to resolve it. The action lives on the node config; read it from the serialized node.
+  private boolean isCommitOrDiscardHook(WorkflowNodeDefinitionInterface node) {
+    boolean resolving = false;
+    Object config = JsonUtils.getMap(node).get("config");
+    if (config instanceof Map<?, ?> configMap) {
+      Object action = configMap.get("action");
+      resolving =
+          ResolvePendingChangeAction.COMMIT.value().equals(action)
+              || ResolvePendingChangeAction.DISCARD.value().equals(action);
+    }
+    return resolving;
+  }
+
+  private boolean reachesEndWithoutHook(
+      WorkflowDefinition workflowDefinition, String start, Set<String> hooks, Set<String> ends) {
+    Map<String, List<String>> outgoing = new HashMap<>();
+    for (EdgeDefinition edge : listOrEmpty(workflowDefinition.getEdges())) {
+      outgoing.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
+    }
+    Deque<Map.Entry<String, Boolean>> stack = new ArrayDeque<>();
+    Set<String> visited = new HashSet<>();
+    stack.push(Map.entry(start, hooks.contains(start)));
+    boolean orphanFound = false;
+    while (!stack.isEmpty() && !orphanFound) {
+      Map.Entry<String, Boolean> current = stack.pop();
+      String node = current.getKey();
+      boolean hookSeen = current.getValue();
+      if (ends.contains(node) && !hookSeen) {
+        orphanFound = true;
+      } else if (visited.add(node + "|" + hookSeen)) {
+        for (String next : listOrEmpty(outgoing.get(node))) {
+          stack.push(Map.entry(next, hookSeen || hooks.contains(next)));
+        }
+      }
+    }
+    return orphanFound;
   }
 
   private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
