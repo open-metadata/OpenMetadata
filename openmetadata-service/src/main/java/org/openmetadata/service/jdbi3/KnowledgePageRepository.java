@@ -907,24 +907,19 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
   // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
   // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. The pills track the page's lifecycle: soft-deleted with it,
-  // hard-deleted with it, restored with it. Mirrors DashboardRepository's chart cascade.
+  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
+  // so a deleted page must leave none behind in either form. Mirrors DashboardRepository's chart
+  // cascade.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, false);
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, true);
-  }
-
-  @Override
-  @Transaction
-  protected void restoreAdditionalChildren(UUID pageId, String updatedBy) {
-    contextMemoryRepository().restoreExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   private ContextMemoryRepository contextMemoryRepository() {

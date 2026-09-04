@@ -658,25 +658,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return find(ids, Include.NON_DELETED);
   }
 
-  /** Deletes every knowledge pill linked to a Context Center source, propagating the delete flag. */
-  public void deleteExtractedMemories(UUID sourceId, String sourceType, boolean hardDelete) {
-    List<EntityReference> refs =
-        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
-    for (EntityReference ref : refs) {
-      delete(Entity.ADMIN_USER_NAME, ref.getId(), false, hardDelete);
-    }
-  }
-
   /**
-   * Restores the soft-deleted knowledge pills linked to a Context Center source when that source is
-   * restored. Uses Include.ALL because the pills are deleted at lookup time; restoreEntity is a
-   * no-op on any that are already active.
+   * Hard-deletes every knowledge pill linked to a Context Center source, whichever kind of delete
+   * the source got. A pill is derived data, regenerable from its source, so a deleted source must
+   * not leave one behind in any form — a soft-deleted pill is an invisible row that still occupies
+   * an FQN and keeps its search/vector entry until something reindexes it.
+   *
+   * <p>The lookup uses {@link Include#ALL} because a hard delete runs the soft-delete pass first:
+   * by the time the hard pass reaches here the pills this method already soft-deleted are invisible
+   * to a NON_DELETED lookup, which used to leave them stranded as permanent tombstones.
    */
-  public void restoreExtractedMemories(UUID sourceId, String sourceType) {
+  public void deleteExtractedMemories(UUID sourceId, String sourceType) {
     List<EntityReference> refs =
         findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL);
     for (EntityReference ref : refs) {
-      restoreEntity(Entity.ADMIN_USER_NAME, ref.getId());
+      delete(Entity.ADMIN_USER_NAME, ref.getId(), false, true);
     }
   }
 }
