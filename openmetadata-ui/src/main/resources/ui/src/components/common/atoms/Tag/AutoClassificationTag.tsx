@@ -45,6 +45,7 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
   disabled,
   className,
   tooltip,
+  closeButtonTestId,
   ...otherProps
 }) => {
   const resolved = useMemo(
@@ -117,6 +118,7 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonTestId={closeButtonTestId}
         className={classNames(
           sharedProps.className,
           'tw:[&_button]:text-(--tag-close-color)'

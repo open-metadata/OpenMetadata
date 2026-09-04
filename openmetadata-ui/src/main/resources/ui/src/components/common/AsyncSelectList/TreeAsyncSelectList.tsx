@@ -30,6 +30,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
@@ -244,12 +245,15 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
 
     const isDerived =
       (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
-    const isGlossary =
-      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary;
-    const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
+    const isGlossaryTerm =
+      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
+      (selectedTag?.data as { entityType?: EntityType })?.entityType ===
+        EntityType.GLOSSARY_TERM;
+    const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
     const chip = (
       <TagComponent
+        closeButtonTestId="remove-tags"
         color={tag.style?.color}
         data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
