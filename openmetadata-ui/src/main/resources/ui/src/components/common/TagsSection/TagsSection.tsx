@@ -221,7 +221,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 
   const tagsDisplay = useMemo(
     () => (
-      <div className="tags-display">
+      <div className="tags-display" data-testid="tags-section-container">
         <div className="tw:flex tw:flex-wrap tw:gap-1">
           {(showAllTags
             ? nonTierTags

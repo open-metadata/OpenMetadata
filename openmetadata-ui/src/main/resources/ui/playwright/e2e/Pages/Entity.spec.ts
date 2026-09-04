@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Request, test as base } from '@playwright/test';
+import { test as base, expect, Page, Request } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -541,7 +541,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             page
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeVisible();
 
@@ -581,7 +581,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             cleanupPanelContainer
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeHidden();
 
