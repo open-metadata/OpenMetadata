@@ -26,11 +26,7 @@ import {
   getDefaultAdminAPIContext,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import {
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-} from '../../utils/persona';
+import { openPersonaAIContext } from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const dbService = new DatabaseServiceClass();
@@ -286,12 +282,7 @@ const mockPersonaContextApi = async (
 };
 
 const openPersonaContext = async (page: Page) => {
-  await navigateToPersonaSettings(page);
-  await navigateToPersonaWithPagination(page, persona.data.name, true);
-  await page.getByRole('tab', { name: 'AI Context' }).click();
-  await expect(page).toHaveURL(/#ai-context/);
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('persona-ai-context')).toBeVisible();
+  await openPersonaAIContext(page, persona.data.name);
 };
 
 /**

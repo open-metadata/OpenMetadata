@@ -12,7 +12,7 @@
  */
 
 /**
- * E2E tests for Settings → Personas → [persona] → AI Context → Rule builder.
+ * E2E tests for Context Center → AI Context → [persona] → Rule builder.
  *
  * Coverage:
  *  - Rule CRUD (create / edit / delete)
@@ -35,11 +35,7 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { toastNotification } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import {
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-} from '../../utils/persona';
+import { openPersonaAIContext } from '../../utils/personaAIContext';
 
 // ---------------------------------------------------------------------------
 // Fixtures and shared state
@@ -71,12 +67,8 @@ const comboboxField = (scope: Page | Locator, className: string): Locator =>
     .locator(className)
     .filter({ has: scope.locator('input[role="combobox"]') });
 
-const navigateToAIContextTab = async (page: Page) => {
-  await navigateToPersonaSettings(page);
-  await navigateToPersonaWithPagination(page, persona.data.name, true);
-  await page.getByRole('tab', { name: 'AI Context' }).click();
-  await waitForAllLoadersToDisappear(page);
-};
+const openPersonaContext = async (page: Page) =>
+  openPersonaAIContext(page, persona.data.name);
 
 /**
  * Opens the Add Rule drawer. Before any rules exist the empty-state button is
@@ -160,7 +152,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     const RULE_NAME = 'ai-context-crud-rule';
     const RULE_NAME_EDITED = 'ai-context-crud-rule-edited';
 
-    await navigateToAIContextTab(page);
+    await openPersonaContext(page);
 
     await test.step('empty state shows Add Rule button before any rules exist', async () => {
       await expect(page.getByTestId('empty-add-context-rule')).toBeVisible();
@@ -223,7 +215,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('incomplete condition (no field selected) blocks save with an error message', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
       await page
         .getByTestId('context-rule-name')
@@ -267,7 +259,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('fully-completed Description Contains condition allows save — regression #31564', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
       await page
         .getByTestId('context-rule-name')
@@ -324,7 +316,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('changing entity type clears an incomplete filter and unblocks save', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
       await page
         .getByTestId('context-rule-name')
@@ -359,7 +351,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     }) => {
       const DUPE_NAME = 'duplicate-name-test';
 
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
 
       await test.step('create first rule', async () => {
         await openAddRuleDrawer(page);
@@ -388,7 +380,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('max assets input clamps values above 1000 to 1000 on blur', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
 
       const maxAssetsInput = page.getByTestId('context-rule-max-assets');
@@ -409,7 +401,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('Always in context and Fully rendered toggles are visible and interactable', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
 
       const alwaysToggle = page.getByTestId('context-rule-always-in-context');
@@ -428,7 +420,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
     test('knowledge entity type forces Fully rendered on and disables it', async ({
       adminPage: page,
     }) => {
-      await navigateToAIContextTab(page);
+      await openPersonaContext(page);
       await openAddRuleDrawer(page);
 
       await test.step('switch to a knowledge entity type', async () => {

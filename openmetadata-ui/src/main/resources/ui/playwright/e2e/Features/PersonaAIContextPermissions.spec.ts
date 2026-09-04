@@ -10,60 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
 import { EntityType } from '../../../src/enums/entity.enum';
 import { ContextRule } from '../../../src/generated/type/personaContextDefinition';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import {
-  getDefaultAdminAPIContext,
-  redirectToHomePage,
-  uuid,
-} from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { getDefaultAdminAPIContext, uuid } from '../../utils/common';
+import { openPersonaAIContext } from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const RULE_NAME = `Read only tables ${uuid()}`;
-// Duplicated rather than imported: playwright/ may not pull app code from src/
-// outside generated/ and enums/. Mirrors ROUTES.CONTEXT_CENTER_AI_CONTEXT.
-const AI_CONTEXT_LIST_ROUTE = '/context-center/ai-context';
-
-const personaCardTestId = () => `ai-context-persona-${persona.data.name}`;
-
-/**
- * Opens the persona's AI context the way a user reaches it — through the Context
- * Center list — and returns the configuration response so the caller can assert
- * the status. These endpoints are unmocked on purpose: the point of this spec is
- * which server gate the caller passes, and a route mock would hide exactly that.
- */
-const openAiContextViaContextCenter = async (page: Page) => {
-  await redirectToHomePage(page);
-  await page.goto(AI_CONTEXT_LIST_ROUTE, {
-    waitUntil: 'domcontentloaded',
-  });
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(
-    page.getByTestId('context-center-ai-context-page')
-  ).toBeVisible();
-  const personaCard = page.getByTestId(personaCardTestId());
-  await expect(personaCard).toBeVisible();
-
-  const configurationResponse = page.waitForResponse(
-    (response) =>
-      response
-        .url()
-        .includes(`/personas/${persona.responseData.id}/aiContext`) &&
-      response.request().method() === 'GET'
-  );
-  await personaCard.click();
-  const response = await configurationResponse;
-
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('persona-ai-context')).toBeVisible();
-
-  return response;
-};
 
 test.describe(
   'Persona AI Context permissions',
@@ -113,7 +68,7 @@ test.describe(
       test.slow();
 
       await test.step('the configuration endpoint serves a non-admin', async () => {
-        const response = await openAiContextViaContextCenter(page);
+        const response = await openPersonaAIContext(page, persona.data.name);
 
         expect(response.status()).toBe(200);
       });
@@ -148,7 +103,7 @@ test.describe(
     }) => {
       test.slow();
 
-      const response = await openAiContextViaContextCenter(adminPage);
+      const response = await openPersonaAIContext(adminPage, persona.data.name);
 
       expect(response.status()).toBe(200);
       await expect(
