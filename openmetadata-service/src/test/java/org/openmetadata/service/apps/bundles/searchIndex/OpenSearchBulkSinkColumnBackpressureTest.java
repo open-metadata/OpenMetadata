@@ -58,8 +58,8 @@ class OpenSearchBulkSinkColumnBackpressureTest {
     AtomicInteger started = new AtomicInteger(0);
     AtomicInteger submitted = new AtomicInteger(0);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> ignored =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
 
       OpenSearchBulkSink sink =
           new OpenSearchBulkSink(searchRepository, 10, 2, 1_000L) {

@@ -77,8 +77,8 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void writeReturnsEarlyForEmptyEntitiesAndRejectsMissingEntityType() throws Exception {
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       sink.write(
@@ -97,8 +97,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     when(searchRepository.getIndexMapping(ENTITY_TYPE)).thenReturn(null);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       sink.write(
@@ -120,12 +120,11 @@ class ElasticSearchBulkSinkBehaviorTest {
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      ElasticSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
 
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       SearchIndex searchIndex = new StubSearchIndex(Map.of("field", "value"));
@@ -179,12 +178,11 @@ class ElasticSearchBulkSinkBehaviorTest {
             Map.of("testSuites", List.of(Map.of("id", "suite-id"))));
     when(searchRepository.buildBulkScriptedPartialUpdate(entity, 17L)).thenReturn(partialUpdate);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      ElasticSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
       entityMock
@@ -252,8 +250,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     SearchRepository.ScriptedPartialUpdate partialUpdate =
         new SearchRepository.ScriptedPartialUpdate("remove-null-fields", parameters, true);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       invokePrivate(
@@ -302,8 +300,8 @@ class ElasticSearchBulkSinkBehaviorTest {
         new SearchRepository.ScriptedPartialUpdate(
             "ctx._source.tests = params.tests;", Map.of("tests", "x".repeat(2048)));
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 128L);
 
       invokePrivate(
@@ -345,12 +343,11 @@ class ElasticSearchBulkSinkBehaviorTest {
     when(searchRepository.buildRelationshipDocumentUpdate(eq(entity), any()))
         .thenReturn(documentUpdate);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      ElasticSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
       entityMock
@@ -410,8 +407,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     when(entity.getId()).thenReturn(entityId);
     when(entity.getFullyQualifiedName()).thenReturn("table.fqn");
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
       sink.setFailureCallback(failureCallback);
@@ -466,12 +463,11 @@ class ElasticSearchBulkSinkBehaviorTest {
     when(successEntity.getId()).thenReturn(successId);
     when(failedEntity.getId()).thenReturn(failedId);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      ElasticSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       sink.setFailureCallback(failureCallback);
 
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
@@ -523,13 +519,11 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void flushAndCloseDelegateToProcessorAndPreserveInterrupts() throws Exception {
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
-      ElasticSearchBulkSink.CustomBulkProcessor columnProcessor =
-          processorConstruction.constructed().get(1);
+      ElasticSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
+      ElasticSearchCustomBulkProcessor columnProcessor = processorConstruction.constructed().get(1);
 
       setAtomicField(sink, "totalSubmitted", 3);
       setAtomicField(sink, "totalSuccess", 2);
@@ -565,8 +559,8 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void isVectorEmbeddingEnabledForEntityReturnsFalseWhenIndexMappingMissing() {
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<org.openmetadata.service.search.vector.ElasticSearchVectorService>
             vectorServiceMock =
                 mockStatic(
@@ -590,11 +584,10 @@ class ElasticSearchBulkSinkBehaviorTest {
 
   @Test
   void settersUpdateConfigurationAndForwardFailureCallbacks() {
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      ElasticSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
 
       sink.updateBatchSize(25);
@@ -616,8 +609,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     DocBuildContext ctxForEntity = DocBuildContext.withUpstreamLineage(edges);
     Map<UUID, DocBuildContext> docBuildContexts = Map.of(entityId, ctxForEntity);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
@@ -661,8 +654,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
@@ -720,8 +713,8 @@ class ElasticSearchBulkSinkBehaviorTest {
             "{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3],\"textToEmbed\":\"cached\"}");
     Map<String, JsonNode> existingEmbeddingsById = Map.of(entityId.toString(), cached);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<ElasticSearchVectorService> vectorServiceMock =
             mockStatic(ElasticSearchVectorService.class)) {
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
@@ -762,8 +755,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     when(vectorService.generateEmbeddingFields(entity))
         .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.9, 0.8)));
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<ElasticSearchVectorService> vectorServiceMock =
             mockStatic(ElasticSearchVectorService.class)) {
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
@@ -806,8 +799,8 @@ class ElasticSearchBulkSinkBehaviorTest {
     JsonNode cached =
         new ObjectMapper().readTree("{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3]}");
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchCustomBulkProcessor.class);
         MockedStatic<ElasticSearchVectorService> vectorServiceMock =
             mockStatic(ElasticSearchVectorService.class)) {
       vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);

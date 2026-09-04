@@ -55,8 +55,8 @@ class ElasticSearchBulkSinkColumnBackpressureTest {
     AtomicInteger started = new AtomicInteger(0);
     AtomicInteger submitted = new AtomicInteger(0);
 
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<ElasticSearchCustomBulkProcessor> ignored =
+        mockConstruction(ElasticSearchCustomBulkProcessor.class)) {
 
       ElasticSearchBulkSink sink =
           new ElasticSearchBulkSink(searchRepository, 10, 2, 1_000L) {
