@@ -15,6 +15,7 @@ Source connection handler
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from sqlalchemy.engine import Engine
@@ -24,14 +25,13 @@ from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
     list_schemas,
-    list_tables,
-    list_views,
     ping,
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
 )
@@ -49,14 +49,17 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
     MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE,
+    MSSQL_TEST_GET_TABLES,
+    MSSQL_TEST_GET_VIEWS,
 )
 from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
-    from metadata.core.connections.test_connection.records import Evidence
 
 
 def _mssql_number(error: BaseException) -> int | None:
@@ -132,25 +135,6 @@ class MssqlChecks:
 
     errors = MSSQL_ERRORS
 
-    # SQL Server system / fixed-role schemas - skipped when auto-selecting a schema
-    # to probe, so table/view checks land on a real user schema.
-    SYSTEM_SCHEMAS = frozenset(
-        {
-            "sys",
-            "information_schema",
-            "guest",
-            "db_owner",
-            "db_accessadmin",
-            "db_securityadmin",
-            "db_ddladmin",
-            "db_backupoperator",
-            "db_datareader",
-            "db_datawriter",
-            "db_denydatareader",
-            "db_denydatawriter",
-        }
-    )
-
     def __init__(self, db: Borrowed[Engine], get_databases_statement: str) -> None:
         self._db = db
         self.get_databases_statement = get_databases_statement
@@ -173,11 +157,35 @@ class MssqlChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
+        return self._probe_existence(MSSQL_TEST_GET_TABLES, "table", warn_on_empty=True)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
+        # An empty view list is normal, unlike an empty table list - stays silent
+        # on empty.
+        return self._probe_existence(MSSQL_TEST_GET_VIEWS, "view", warn_on_empty=False)
+
+    def _probe_existence(self, statement: str, kind: str, warn_on_empty: bool) -> Evidence:
+        """Whether the database has any user-created objects ``statement`` probes for.
+
+        See ``MSSQL_TEST_GET_TABLES``/``MSSQL_TEST_GET_VIEWS`` for why the query
+        is TOP 1, no ORDER BY, and filtered to ``is_ms_shipped = 0``.
+        """
+        empty_summary = f"no {kind}s visible"
+
+        def summarize(rows: Sequence[object]) -> str:
+            return empty_summary if not rows else f"{kind}s visible"
+
+        evidence = run_sql(self._db.client, statement, summarize, max_rows=1)
+        if not warn_on_empty or evidence.summary != empty_summary:
+            return evidence
+        return replace(
+            evidence,
+            caveat=Diagnosis(
+                title=f"No {kind}s visible",
+                remediation=f"Verify the login can see {kind}s (object permissions), or confirm the database is not empty.",
+            ),
+        )
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
