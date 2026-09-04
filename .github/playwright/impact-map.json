@@ -337,6 +337,24 @@
       ]
     },
     {
+      "_comment": "The application config forms are built from the UI-local application schemas by ApplicationsClassBase, and the Search Indexing form additionally fills its entity picker from GET /v1/search/entityTypes. The Settings/** entry above selects no spec that actually opens an app config form, so a change to the schemas, the loader, or the endpoint that fills them shipped unrun — the SearchIndexApplication entity-picker locator broke once the server-driven list gained tableColumn and nothing caught it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AppInstall/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
+        "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/AppStopRunModal.spec.ts",
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-service/src/main/java/org/openmetadata/service/security/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/authorization/**",

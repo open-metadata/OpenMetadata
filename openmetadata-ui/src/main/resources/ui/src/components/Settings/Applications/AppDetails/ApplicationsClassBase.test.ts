@@ -13,10 +13,76 @@
 
 import { AppType } from '../../../../generated/entity/applications/app';
 import rdfIndexAppSchema from '../../../../jsons/applicationSchemas/RdfIndexApp.json';
+import searchIndexingAppSchema from '../../../../jsons/applicationSchemas/SearchIndexingApplication.json';
+import { getSearchEntityTypes } from '../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import applicationsClassBase from './ApplicationsClassBase';
 
+jest.mock('../../../../rest/searchAPI', () => ({
+  getSearchEntityTypes: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const mockGetSearchEntityTypes = getSearchEntityTypes as jest.Mock;
+
+// importSchema resolves to `{}` upstream, so name the one shape these tests read rather
+// than reaching through it untyped.
+type EntitiesEnumSchema = {
+  properties: { entities: { items: { enum: string[] } } };
+};
+
 describe('ApplicationsClassBase', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetSearchEntityTypes.mockResolvedValue([]);
+  });
+
   describe('importSchema', () => {
+    it('should fill the SearchIndexingApplication entity list from the server', async () => {
+      mockGetSearchEntityTypes.mockResolvedValue(['dynamicAgent', 'table']);
+
+      const schema = (await applicationsClassBase.importSchema(
+        'SearchIndexingApplication'
+      )) as EntitiesEnumSchema;
+
+      // 'all' is the backend sentinel for "every registered index"; it is not an index, so the
+      // endpoint does not return it, but the ["all"] default has to validate against the enum.
+      expect(schema.properties.entities.items.enum).toEqual([
+        'all',
+        'dynamicAgent',
+        'table',
+      ]);
+    });
+
+    it('should not hardcode the entity list in the schema json', () => {
+      const { items } = searchIndexingAppSchema.properties.entities;
+
+      // A shipped enum is the bug this endpoint replaced: one list for every deployment,
+      // stale every time an entity type was added and blind to Collate-only indexes.
+      expect(items).not.toHaveProperty('enum');
+    });
+
+    it('should toast and keep only the all option when the server call fails', async () => {
+      const error = new Error('boom');
+      mockGetSearchEntityTypes.mockRejectedValue(error);
+
+      const schema = (await applicationsClassBase.importSchema(
+        'SearchIndexingApplication'
+      )) as EntitiesEnumSchema;
+
+      expect(schema.properties.entities.items.enum).toEqual(['all']);
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+    });
+
+    it('should not fetch entity types for other applications', async () => {
+      await applicationsClassBase.importSchema('RdfIndexApp');
+
+      expect(mockGetSearchEntityTypes).not.toHaveBeenCalled();
+    });
+
     it('should import pre-parsed schema', async () => {
       // Mock the dynamic import
       jest.doMock(

@@ -374,6 +374,16 @@ export const getSearchStats = async (): Promise<SearchStatsResponse> => {
   return response.data;
 };
 
+// Entity types that have a search index in this deployment, sorted. Server-driven so the
+// entity picker also lists distribution-specific (e.g. Collate-only) entity types.
+export const getSearchEntityTypes = async (): Promise<string[]> => {
+  const response: AxiosResponse<string[]> = await APIClient.get(
+    '/search/entityTypes'
+  );
+
+  return response.data;
+};
+
 export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
   const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
     '/search/stats/orphan'

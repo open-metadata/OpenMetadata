@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
+import type { RJSFSchema } from '@rjsf/utils';
+import type { AxiosError } from 'axios';
 import type { ComponentType, FC } from 'react';
 import { lazy } from 'react';
 import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
+import { SEARCH_INDEXING_APPLICATION } from '../../../../constants/explore.constants';
 import { AppType } from '../../../../generated/entity/applications/app';
+import { getSearchEntityTypes } from '../../../../rest/searchAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import type { AppPlugin } from '../plugins/AppPlugin';
@@ -33,6 +38,40 @@ const ApplicationConfiguration =
     lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
   );
 
+// The sentinel the backend expands to every registered index. It is not an index itself, so the
+// endpoint does not return it, but it has to be in the enum for the `["all"]` default to validate.
+// TreeSelectWidget filters it out of the child nodes and renders it as the synthetic "All" parent.
+const ALL_ENTITY_TYPES = 'all';
+
+/**
+ * Which entity types can be reindexed depends on the indexes the server has registered, and that
+ * differs per distribution — Collate ships indexes OSS does not. So the list is fetched instead of
+ * being an enum in the schema JSON, where every deployment shared one hardcoded copy that silently
+ * went stale as entities were added.
+ */
+const withSearchEntityTypes = async (
+  schema: RJSFSchema
+): Promise<RJSFSchema> => {
+  let entityTypes: string[] = [];
+  try {
+    entityTypes = await getSearchEntityTypes();
+  } catch (error) {
+    // Leaves the picker with only "All" selectable rather than failing the whole form.
+    showErrorToast(error as AxiosError);
+  }
+
+  return {
+    ...schema,
+    properties: {
+      ...schema.properties,
+      entities: {
+        ...(schema.properties?.entities as RJSFSchema),
+        items: { type: 'string', enum: [ALL_ENTITY_TYPES, ...entityTypes] },
+      },
+    },
+  };
+};
+
 class ApplicationsClassBase {
   public async importSchema(fqn: string) {
     const key = `../../../../jsons/applicationSchemas/${fqn}.json`;
@@ -44,11 +83,13 @@ class ApplicationsClassBase {
       throw new Error(`Application schema not found: ${fqn}`);
     }
     const module = await loader();
-
-    return (
+    const schema =
       (module as { default?: unknown }).default ??
-      (module as Record<string, unknown>)
-    );
+      (module as Record<string, unknown>);
+
+    return fqn === SEARCH_INDEXING_APPLICATION
+      ? withSearchEntityTypes(schema as RJSFSchema)
+      : schema;
   }
   public getJSONUISchema() {
     return {

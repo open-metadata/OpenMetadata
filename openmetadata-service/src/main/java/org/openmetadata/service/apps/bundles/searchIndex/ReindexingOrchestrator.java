@@ -509,7 +509,7 @@ public class ReindexingOrchestrator {
   }
 
   private Set<String> getAll() {
-    return new HashSet<>(searchRepository.getEntityIndexMap().keySet());
+    return new HashSet<>(searchRepository.getIndexedEntityTypes());
   }
 
   private boolean hasSlackConfig() {

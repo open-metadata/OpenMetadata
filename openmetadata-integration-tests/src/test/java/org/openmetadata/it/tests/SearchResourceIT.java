@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -19,10 +20,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -1984,5 +1988,75 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     String[] lines = response.body().split("\n");
     assertEquals(1, lines.length, "Export beyond results should only contain header");
+  }
+
+  // ===================================================================
+  // INDEXED ENTITY TYPES (backs the reindex entity picker)
+  // ===================================================================
+
+  @Test
+  void testEntityTypesComesFromTheIndexRegistry(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetJson("/v1/search/entityTypes");
+
+    assertEquals(200, response.statusCode());
+
+    List<String> entityTypes =
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {});
+
+    assertFalse(entityTypes.isEmpty(), "Entity types should not be empty");
+    assertTrue(entityTypes.contains("table"), "Entity types should contain table");
+    // tableColumn has an index mapping but was absent from the enum the UI used to hardcode.
+    // Its presence is what proves the list is read from the registry rather than copied.
+    assertTrue(entityTypes.contains("tableColumn"), "Entity types should contain tableColumn");
+    assertEquals(
+        entityTypes.stream().sorted().toList(), entityTypes, "Entity types should be sorted");
+  }
+
+  /**
+   * A dataConsumer JWT hits SubjectCache.getUserContext during authorization; if that user has not
+   * been created in this JVM session the lookup throws EntityNotFoundException (→404) and
+   * short-circuits the authorizer before it can reach the permission check. Pin the user up front so
+   * the result is deterministic regardless of suite ordering.
+   */
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
+
+  @Test
+  void testEntityTypesIsReadableByApplicationViewer(TestNamespace ns) throws Exception {
+    String consumerToken =
+        JwtAuthProvider.tokenFor(
+            "data-consumer@open-metadata.org",
+            "data-consumer@open-metadata.org",
+            new String[] {"DataConsumer"},
+            3600);
+
+    HttpResponse<String> response = httpGetJson("/v1/search/entityTypes", consumerToken);
+
+    // The app details page renders for anyone with Application view permission and fetches the
+    // config schema on mount, so a non-admin viewer must not get a 403 here.
+    assertEquals(
+        200, response.statusCode(), "Application viewer should be able to list entity types");
+    assertFalse(
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {}).isEmpty(),
+        "Entity types should not be empty for an Application viewer");
+  }
+
+  private HttpResponse<String> httpGetJson(String path) throws Exception {
+    return httpGetJson(path, SdkClients.getAdminToken());
+  }
+
+  private HttpResponse<String> httpGetJson(String path, String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }
