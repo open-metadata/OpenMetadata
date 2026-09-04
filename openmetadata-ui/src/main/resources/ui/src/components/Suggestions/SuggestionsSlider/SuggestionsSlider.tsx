@@ -12,12 +12,14 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 
@@ -33,7 +35,24 @@ const SuggestionsSlider = () => {
     loadingReject,
     onUpdateActiveUser,
   } = useSuggestionsContext();
+  const { permissions } = useGenericContext();
   const { t } = useTranslation();
+
+  // Accept/Reject all resolves every pending suggestion of the selected user, including
+  // the column level ones rendered inside the entity tables. Only offer the actions when
+  // the user may apply each kind of suggestion present, otherwise the API rejects the
+  // call and the entity silently reverts to its original state on the next fetch.
+  const hasSuggestionEditAccess = useMemo(() => {
+    if (permissions?.EditAll) {
+      return true;
+    }
+
+    return (
+      (isEmpty(selectedUserSuggestions?.description) ||
+        Boolean(permissions?.EditDescription)) &&
+      (isEmpty(selectedUserSuggestions?.tags) || Boolean(permissions?.EditTags))
+    );
+  }, [permissions, selectedUserSuggestions]);
 
   const suggestionLabel = useMemo(() => {
     switch (dataSuggestionType) {
@@ -68,28 +87,36 @@ const SuggestionsSlider = () => {
       )}
       {selectedUserSuggestions?.combinedData.length > 0 && (
         <Space className="slider-btn-container m-l-xs">
-          <Button
-            ghost
-            className="text-xs text-primary font-medium"
-            data-testid="accept-all-suggestions"
-            disabled={loadingAccept}
-            icon={<CheckOutlined />}
-            loading={loadingAccept}
-            type="primary"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
-            {t('label.accept-all')}
-          </Button>
-          <Button
-            ghost
-            className="text-xs text-primary font-medium"
-            data-testid="reject-all-suggestions"
-            disabled={loadingReject}
-            icon={<CloseOutlined />}
-            loading={loadingReject}
-            type="primary"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
-            {t('label.reject-all')}
-          </Button>
+          {hasSuggestionEditAccess && (
+            <>
+              <Button
+                ghost
+                className="text-xs text-primary font-medium"
+                data-testid="accept-all-suggestions"
+                disabled={loadingAccept}
+                icon={<CheckOutlined />}
+                loading={loadingAccept}
+                type="primary"
+                onClick={() =>
+                  acceptRejectAllSuggestions(SuggestionAction.Accept)
+                }>
+                {t('label.accept-all')}
+              </Button>
+              <Button
+                ghost
+                className="text-xs text-primary font-medium"
+                data-testid="reject-all-suggestions"
+                disabled={loadingReject}
+                icon={<CloseOutlined />}
+                loading={loadingReject}
+                type="primary"
+                onClick={() =>
+                  acceptRejectAllSuggestions(SuggestionAction.Reject)
+                }>
+                {t('label.reject-all')}
+              </Button>
+            </>
+          )}
           <Button
             ghost
             className="text-xs text-primary font-medium close-suggestion-btn flex-center"
