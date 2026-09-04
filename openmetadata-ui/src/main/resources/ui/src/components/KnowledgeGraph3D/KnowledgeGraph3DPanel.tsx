@@ -163,10 +163,12 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   const membersTitle =
     node.type === 'table' ? t('label.belongs-to') : t('label.member-plural');
 
-  const hasBody =
+  const hasPrimaryRelations =
     relations.mapped.length > 0 ||
     relations.shared.length > 0 ||
-    relations.hierarchy.length > 0 ||
+    relations.hierarchy.length > 0;
+  const hasBody =
+    hasPrimaryRelations ||
     relations.technical.length > 0 ||
     relations.members.length > 0;
 

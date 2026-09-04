@@ -152,7 +152,10 @@ export const useLimitStore = create<{
 
       const plan = config?.limits?.config.plan ?? 'FREE';
 
-      (softLimitExceed || hardLimitExceed || limitReached) &&
+      const isAnyLimitExceeded =
+        softLimitExceed || hardLimitExceed || limitReached;
+
+      isAnyLimitExceeded &&
         showBanner &&
         setBannerDetails({
           header: `You have reached ${

@@ -269,8 +269,9 @@ const TaskFeedCardFromTask = ({
   const isPartOfAssigneeTeam = task.assignees?.some((assignee) =>
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id ?? '') : false
   );
+  const isAdminNonApproval = isAdminUser && !isTaskApprovalRequest;
   const hasEditAccess =
-    (isAdminUser && !isTaskApprovalRequest) ||
+    isAdminNonApproval ||
     isAssignee ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 

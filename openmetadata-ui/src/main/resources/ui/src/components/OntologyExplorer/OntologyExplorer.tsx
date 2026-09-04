@@ -27,6 +27,7 @@ import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
+  Fragment,
   Key,
   useCallback,
   useEffect,
@@ -296,10 +297,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const showConceptInspector = Boolean(
     scope === 'global' && surface === 'graph' && isTermConcept && !selectedEdge
   );
+  const isEntitySurface = surface !== 'term' && !isAuthoringMode;
   const showEntityPanel = Boolean(
-    surface !== 'term' &&
+    isEntitySurface &&
       selectedNode &&
-      !isAuthoringMode &&
       (scope !== 'global' || isDataAssetLikeNode(selectedNode))
   );
   // Editing authors concepts, not the read-only data projection. Entering Edit
@@ -900,14 +901,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   }
 
-  const showOnboardingEmptyState =
+  const hasEmptyConceptGraph =
     !loading &&
     graphDataWithLocalConcept !== null &&
-    graphDataWithLocalConcept.nodes.length === 0 &&
+    graphDataWithLocalConcept.nodes.length === 0;
+  const hasNoActiveOntologyFilters =
     withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
     withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
     filters.viewMode === 'overview' &&
     !filters.searchQuery.trim();
+  const showOnboardingEmptyState =
+    hasEmptyConceptGraph && hasNoActiveOntologyFilters;
 
   return (
     <div
@@ -931,7 +935,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           {surface === 'graph' ? (
             <>
               {!showOnboardingEmptyState ? (
-                <>
+                <Fragment>
                   {explorationMode === 'data' ? (
                     <Card
                       className={classNames(
@@ -1121,7 +1125,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                       ))}
                     </Card>
                   ) : null}
-                </>
+                </Fragment>
               ) : null}
 
               <div

@@ -244,10 +244,12 @@ const SearchIndexFieldsTable = ({
         return <>{NO_DATA_PLACEHOLDER}</>;
       }
 
+      const shouldShowPlainText =
+        isReadOnly || (displayValue && displayValue.length < 25 && !isReadOnly);
+
       return (
         <div data-testid={`${record.name}-data-type`}>
-          {isReadOnly ||
-          (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+          {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
             <Tooltip title={toLower(displayValue)}>

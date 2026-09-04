@@ -185,6 +185,8 @@ const TabFilters = () => {
     });
   };
 
+  const canAddTableTest = editDataProfile || createTestCasePermission;
+
   return (
     <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
       {!isEmpty(activeColumnFqn) && (
@@ -221,7 +223,7 @@ const TabFilters = () => {
 
       {!isTableDeleted && (
         <>
-          {(editDataProfile || createTestCasePermission) && (
+          {canAddTableTest && (
             <LimitWrapper resource="dataQuality">
               <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <Button
