@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
+import { expect, test } from '../../support/fixtures/base';
 import { performZoomOut } from '../../utils/lineage';
 
 /**

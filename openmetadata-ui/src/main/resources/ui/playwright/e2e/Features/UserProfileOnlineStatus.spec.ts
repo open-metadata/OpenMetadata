@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
