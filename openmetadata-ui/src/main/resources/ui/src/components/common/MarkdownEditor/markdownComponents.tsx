@@ -92,7 +92,7 @@ export const preprocessMarkdownText = (text: string): string => {
   // Convert :::caveat[type] ... ::: directive blocks into fenced code blocks, carrying the
   // caveat kind in the fence info string so the custom `pre` renderer can style by it.
   processedText = processedText.replace(
-    /:::caveat\[(\w+)\]\s*([\s\S]*?):::/g,
+    /:::caveat\[(\w+)\]([\s\S]*?):::/g,
     (_, caveatType, content) =>
       `\`\`\`caveat-${caveatType}\n${content.trim()}\n\`\`\``
   );
