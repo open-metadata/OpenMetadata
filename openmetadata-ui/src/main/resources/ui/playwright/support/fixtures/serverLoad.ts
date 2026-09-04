@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, Route } from '@playwright/test';
+import { BrowserContext, Request, Route } from '@playwright/test';
 
 /**
  * Reduces the server load a Playwright shard generates.
@@ -50,6 +50,14 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  * - `apps/installed`, `announcements`, `users/{id}/preferences`,
  *   `contextCenter/pages`, `learning/resources` — each has a spec or support
  *   class that writes it through `apiContext` rather than the browser.
+ * - `users/loggedInUser` — identity-scoped. Worth spelling out because it is
+ *   the one exclusion that is not about writes: the cache is per worker, and a
+ *   worker runs several identities (the userPages fixtures alone cover admin,
+ *   dataConsumer, dataSteward and owner), so caching it would serve the first
+ *   identity's profile to the rest. The failure mode is a permission test
+ *   quietly seeing the admin profile and passing, which is worse than the test
+ *   not existing. The identity-keyed cache below makes this safe in principle,
+ *   but nothing about a false pass is worth 497 requests a shard.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -64,8 +72,7 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/customUiThemePreference',
   '/api/v1/system/settings/lineageSettings',
   '/api/v1/system/settings/appConfiguration',
-  // Same, under `/api/v1/users/` and `/api/v1/services/` respectively.
-  '/api/v1/users/loggedInUser',
+  // Same, under `/api/v1/services/`.
   '/api/v1/services/ingestionPipelines/status',
 ];
 
@@ -129,6 +136,16 @@ const isCacheableBootRequest = (url: URL) =>
   CACHEABLE_BOOT_PATHS.includes(url.pathname);
 
 /**
+ * The cache is per worker and a worker runs many identities, so the caller's
+ * credentials are part of the key. Every path in CACHEABLE_BOOT_PATHS is
+ * global today, which makes this redundant — it is here so that adding an
+ * identity-scoped path later degrades into a cache miss rather than into one
+ * user being served another user's response.
+ */
+const cacheKey = (request: Request) =>
+  `${request.headers()['authorization'] ?? ''}::${request.url()}`;
+
+/**
  * Playwright hands back the *decoded* body, so replaying the original
  * `content-encoding` would describe bytes that are no longer encoded and the
  * browser would fail to parse them. `content-length` is dropped for the same
@@ -151,7 +168,7 @@ const serveBootConfig = async (route: Route) => {
     return;
   }
 
-  const key = request.url();
+  const key = cacheKey(request);
   const cached = bootCache.get(key);
 
   if (cached) {
