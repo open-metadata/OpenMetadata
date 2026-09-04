@@ -47,17 +47,10 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
 import { Paging } from '../../../generated/type/paging';
-import {
-  LabelType,
-  State,
-  TagSource,
-} from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../hooks/useTableFilters';
-import {
-  ConfigData,
-  ServicesType,
-} from '../../../interface/service.interface';
+import { ConfigData, ServicesType } from '../../../interface/service.interface';
 import { ServicePageData } from '../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../../rest/dashboardAPI';
@@ -149,9 +142,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
 
-  const [activeTab, setActiveTab] = useState<TabKey>(
-    () => tab ?? 'dataAssets'
-  );
+  const [activeTab, setActiveTab] = useState<TabKey>(() => tab ?? 'dataAssets');
 
   const handleTabChange = useCallback(
     (tabKey: TabKey) => {
@@ -605,9 +596,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       });
   }, [extensionRegistry, extensionContext]);
 
-  const footerContributions = extensionRegistry.getContributions<
-    SlotContribution
-  >(EXTENSION_POINTS.SERVICE_DETAILS_FOOTER);
+  const footerContributions =
+    extensionRegistry.getContributions<SlotContribution>(
+      EXTENSION_POINTS.SERVICE_DETAILS_FOOTER
+    );
 
   // Contributed tabs (e.g. Collate's summary/insights/agents, ordered 10/20/30) sort ahead of the
   // OSS built-ins by design — `order` is the only coupling between this page and what a plugin adds,
@@ -640,9 +632,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
   }, [t, serviceCategory, pluginTabs]);
 
-  const allTabKeys = useMemo(() => tabs.map((detailsTab) => detailsTab.key), [
-    tabs,
-  ]);
+  const allTabKeys = useMemo(
+    () => tabs.map((detailsTab) => detailsTab.key),
+    [tabs]
+  );
   const defaultTabKey = tabs[0]?.key ?? 'dataAssets';
   // A plain-object extension registry (as returned by the real provider, and by a test double
   // that doesn't memoize its own return value) is a new reference on every render, which would
@@ -953,7 +946,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
           ref={footerRef}>
           {footerContributions.map((contribution) => (
-            <contribution.component key={contribution.key} {...extensionContext} />
+            <contribution.component
+              key={contribution.key}
+              {...extensionContext}
+            />
           ))}
         </div>
       )}

@@ -19,9 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import Description from '../../common/EntityDescription/Description';
-import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import TagsSectionV1 from '../../common/TagsSection/TagsSection';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -34,6 +31,9 @@ import { ServicePageData } from '../../../pages/ServiceDetailsPage/ServiceDetail
 import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMainTabContent';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
+import Description from '../../common/EntityDescription/Description';
+import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
+import TagsSectionV1 from '../../common/TagsSection/TagsSection';
 import './data-assets-tab.less';
 
 interface DataAssetsTabProps {

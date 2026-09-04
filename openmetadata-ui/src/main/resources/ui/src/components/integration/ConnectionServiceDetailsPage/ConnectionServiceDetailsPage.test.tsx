@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
@@ -252,22 +258,33 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock(
-  '../../common/HeaderShell/HeaderShell.component',
-  () => ({
-    __esModule: true,
-    default: ({ leading, title, meta, actions, footer, breadcrumb }: any) => (
-      <div data-testid="service-header">
-        {breadcrumb}
-        {leading}
-        {title}
-        {meta}
-        {actions}
-        {footer}
-      </div>
-    ),
-  })
-);
+jest.mock('../../common/HeaderShell/HeaderShell.component', () => ({
+  __esModule: true,
+  default: ({
+    leading,
+    title,
+    meta,
+    actions,
+    footer,
+    breadcrumb,
+  }: {
+    leading?: React.ReactNode;
+    title?: React.ReactNode;
+    meta?: React.ReactNode;
+    actions?: React.ReactNode;
+    footer?: React.ReactNode;
+    breadcrumb?: React.ReactNode;
+  }) => (
+    <div data-testid="service-header">
+      {breadcrumb}
+      {leading}
+      {title}
+      {meta}
+      {actions}
+      {footer}
+    </div>
+  ),
+}));
 
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () => ({
   __esModule: true,
@@ -321,13 +338,10 @@ jest.mock('./DataAssetsTab', () => ({
 // Exercises the owner/domain/tier editing UI on its own OSS primitives (DomainSelectableList,
 // OwnerLabel, TierCard, UserTeamSelectableList) — out of scope for this frame test, and rendering
 // it for real here would pull in every icon those primitives import.
-jest.mock(
-  './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow',
-  () => ({
-    __esModule: true,
-    default: () => <div data-testid="entity-meta-strip" />,
-  })
-);
+jest.mock('./DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow', () => ({
+  __esModule: true,
+  default: () => <div data-testid="entity-meta-strip" />,
+}));
 
 jest.mock('@untitledui/icons', () => ({
   Settings01: () => null,
@@ -653,18 +667,15 @@ describe('ConnectionServiceDetailsPage', () => {
 
   describe('SERVICE_DETAILS_FOOTER contributions', () => {
     it('renders nothing in the footer region when no plugin contributes one', async () => {
-      let container: HTMLElement;
       await act(async () => {
-        ({ container } = render(<ConnectionServiceDetailsPage />));
+        render(<ConnectionServiceDetailsPage />);
       });
 
       expect(mockGetContributions).toHaveBeenCalledWith(
         EXTENSION_POINTS.SERVICE_DETAILS_FOOTER
       );
       expect(
-        container!.querySelector(
-          '[data-testid="service-details-footer-slot"]'
-        )
+        screen.queryByTestId('service-details-footer-slot')
       ).not.toBeInTheDocument();
     });
 

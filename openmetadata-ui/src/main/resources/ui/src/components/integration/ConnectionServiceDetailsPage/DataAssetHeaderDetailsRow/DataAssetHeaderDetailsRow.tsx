@@ -24,13 +24,13 @@ import {
 import { Database01, Globe01, User03 } from '@untitledui/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { getTierTags } from '../../../../utils/TablePureUtils';
 import { DataAssetHeaderDetailsRowProps } from './DataAssetHeaderDetailsRow.interface';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import './DataAssetHeaderDetailsRow.less';
 
 const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
