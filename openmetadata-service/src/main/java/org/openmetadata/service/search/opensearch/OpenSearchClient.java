@@ -169,7 +169,7 @@ public class OpenSearchClient implements SearchClient {
         return null;
       }
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
-          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+          new ShardFailureAwareOpenSearchClient(transport);
 
       LOG.info(
           "Successfully initialized OpenSearch Java API client with transport: {}",
