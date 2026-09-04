@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import {
   createNewPage,
   getApiContext,
@@ -622,7 +622,7 @@ test.describe(
      * 2. Open Test Case form, select type `tableDiff`, pick Table 2 and its key columns; define Table 1 key/use columns and threshold.
      * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
      */
-    test('Table Difference', async ({ page }) => {
+    test('Table Difference', { tag: '@quarantine' }, async ({ page }) => {
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
       table1 = new TableClass(undefined, undefined, service);

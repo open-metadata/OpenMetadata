@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -25,6 +20,7 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -939,9 +935,12 @@ test.describe('Domain Search and Filter', () => {
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
 
+      const domainSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=domain*'
+      );
       await searchBox.fill(`SearchTestDomain_${uniqueId}`);
 
-      await page.waitForResponse('/api/v1/search/query?q=*&index=domain*');
+      await domainSearchResponse;
 
       await waitForAllLoadersToDisappear(page);
 

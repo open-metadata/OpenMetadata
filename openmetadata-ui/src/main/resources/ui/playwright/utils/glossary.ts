@@ -462,11 +462,13 @@ export const verifyGlossaryDetails = async (
 
   await checkName(page, glossaryDetails.name);
 
-  const viewerContainerText = await page.textContent(
-    '[data-testid="viewer-container"]'
+  // The description viewer mounts before the rich-text content hydrates, so
+  // page.textContent() — which waits for the element but not for its text —
+  // reads "" on a cold first attempt and only passes once a retry warms the
+  // bundle. toContainText polls, so it survives the hydration gap.
+  await expect(page.getByTestId('viewer-container')).toContainText(
+    glossaryDetails.description
   );
-
-  expect(viewerContainerText).toContain(glossaryDetails.description);
 
   // Owner
   if (glossaryDetails.owners.length > 0) {
@@ -2099,8 +2101,9 @@ export const navigateAndSelectGlossaryTermInTree = async (
 ) => {
   // Expand glossary
   const glossaryNode = page.locator(`[data-nodeid="${glossaryName}"]`);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
   await glossaryNode.click();
-  await page.waitForResponse('/api/v1/glossaryTerms?*');
+  await glossaryTermsResponse;
 
   // Expand parent if provided
   if (parentTermFqn) {

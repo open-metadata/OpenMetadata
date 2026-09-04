@@ -47,6 +47,8 @@ import {
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
+const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
+
 const STEP_LABEL_KEYS: Record<string, string> = {
   CheckAccess: 'message.test-connection-step-check-access',
   GetDatabases: 'message.test-connection-step-get-databases',
@@ -296,6 +298,7 @@ function renderColoredLines(
   keyPrefix = ''
 ): JSX.Element[] {
   return text.split('\n').map((line, index) => (
+    // eslint-disable-next-line react/no-array-index-key -- static log lines split by newline, fixed order, may repeat
     <span className={`tw:block ${colorClass}`} key={`${keyPrefix}${index}`}>
       {line || ' '}
     </span>
@@ -788,7 +791,7 @@ export function ConnectionCapabilitySection(
                       {result.errorLog &&
                         renderColoredLines(
                           result.errorLog,
-                          'tw:text-utility-error-300',
+                          TEXT_UTILITY_ERROR_300_CLASS,
                           'err-'
                         )}
                       {result.diagnosis &&
@@ -892,7 +895,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   result.errorLog,
-                  'tw:text-utility-error-300',
+                  TEXT_UTILITY_ERROR_300_CLASS,
                   `${stepIdx}-err-`
                 )
               );
@@ -1097,7 +1100,7 @@ export function ConnectionRemediationCard(
         <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
           {renderColoredLines(
             errorContent,
-            'tw:text-utility-error-300',
+            TEXT_UTILITY_ERROR_300_CLASS,
             'rem-'
           )}
         </pre>

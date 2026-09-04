@@ -13,7 +13,7 @@
 Cardinality Distribution Metric definition
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import case, column, desc, func, or_
 from sqlalchemy.orm import Session
@@ -56,10 +56,10 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[type],  # noqa: UP045
-        res: Dict[str, Any],  # noqa: UP006
-        session: Optional[Session] = None,  # noqa: UP045
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+        sample: type | None,
+        res: dict[str, Any],
+        session: Session | None = None,
+    ) -> dict[str, Any] | None:
         """
         Build the Cardinality Distribution metric query
         """
@@ -136,7 +136,7 @@ class CardinalityDistribution(HybridMetric):
             }
         return None
 
-    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):  # noqa: UP006
+    def df_fn(self, res: dict[str, Any], dfs: Optional["PandasRunner"] = None):
         """
         Pandas implementation for dataframes
         """

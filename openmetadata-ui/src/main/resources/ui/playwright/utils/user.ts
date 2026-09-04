@@ -23,6 +23,7 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
@@ -69,6 +70,7 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);
@@ -695,9 +697,12 @@ export const addUser = async (
   }
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const initialRolesSearchResponse = page.waitForResponse(
+    '/api/v1/roles/search?*'
+  );
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles/search?*');
+  await initialRolesSearchResponse;
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);

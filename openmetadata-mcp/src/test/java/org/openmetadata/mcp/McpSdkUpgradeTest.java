@@ -227,8 +227,7 @@ public class McpSdkUpgradeTest {
     }
   }
 
-  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
-      List.of("create_entity", "create_test_case");
+  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS = List.of("create_test_case");
 
   @Test
   void testMcpUtilsGetToolPropertiesMarksUpsertCapableCreateToolsAsDestructive() {

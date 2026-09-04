@@ -197,6 +197,10 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # -- it arrives transitively from the top-of-file apt layer -- and that layer's
 # frozen index is exactly why the image keeps shipping 2.8.2 and being reported
 # for CVE-2026-72522 while trixie-security has 2.8.3-1~deb13u1.
+# openssl follows the same cache boundary. The early apt layer can retain
+# 3.5.6-1~deb13u2, while trixie-security carries the CVE-2026-14457 fix in
+# 3.5.7-1~deb13u2. Querying the source package upgrades openssl, libssl3t64,
+# and libssl-dev together so no scanner-visible binary is left behind.
 # linux-libc-dev is the third, and the reason CVE-2026-68082 is reported against
 # this image: libc6-dev pulls the kernel headers in for build-essential, a
 # container runs the host kernel so they are a build artifact whose kernel CVEs
@@ -212,11 +216,11 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # binary it forgot, and liblastlog2-2 is exactly the one that is easy to forget.
 # Asking dpkg which installed packages came from the source cannot miss one, and
 # stays correct if Debian splits the source differently later.
-# util-linux is asserted non-empty; expat and linux-libc-dev deliberately are
-# not. util-linux is Essential, so an empty query there means dpkg-query
-# misbehaved and the build must not continue, whereas the other two are
-# transitive and an empty query is a legitimate image with nothing to patch.
-# Asserting the one package that must always be present is what the
+# util-linux and openssl are asserted non-empty; expat and linux-libc-dev
+# deliberately are not. util-linux and openssl are explicitly installed, so an
+# empty query there means dpkg-query misbehaved and the build must not continue,
+# whereas the other two are transitive and an empty query is a legitimate image
+# with nothing to patch. Asserting the required packages is what the
 # check is for -- `apt-get install --only-upgrade` with no package arguments
 # exits 0, so an all-empty query would give a green build that shipped the
 # vulnerable packages anyway. Fail closed.
@@ -229,9 +233,11 @@ RUN set -eu; \
     ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
     [ -n "$ul" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
     ex="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="expat"{print $2}')"; \
+    ossl="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="openssl"{print $2}')"; \
+    [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $ul $ex $kh; \
+    apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \

@@ -34,7 +34,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -473,7 +473,7 @@ class AbstractEventConsumerTest {
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, emailId));
 
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any(), any())).thenReturn(events);
       consumer.publishEvents(events);
     }
 
@@ -540,7 +540,7 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) -> when(mock.resolveRecipients(any(), anyList())).thenReturn(union))) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any(), any())).thenReturn(events);
 
       consumer.publishEvents(events);
 
@@ -579,7 +579,7 @@ class AbstractEventConsumerTest {
                 RecipientResolver.class,
                 (mock, ctx) ->
                     when(mock.resolveRecipients(any(), anyList())).thenReturn(Set.of()))) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any(), any())).thenReturn(events);
       consumer.publishEvents(events);
     }
 
@@ -605,7 +605,7 @@ class AbstractEventConsumerTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any(), any())).thenReturn(events);
       consumer.publishEvents(events);
 
       RecipientResolver resolver = resolverCtor.constructed().getFirst();
@@ -637,7 +637,7 @@ class AbstractEventConsumerTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any(), any())).thenReturn(events);
       consumer.publishEvents(events);
     }
 

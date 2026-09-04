@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { startCase } from 'lodash';
 import {
   assetsData,
   userWithOwnerPermission,
   userWithTagPermission,
 } from '../../constant/conditionalPermissions';
+import { test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import {
   checkViewAllPermission,

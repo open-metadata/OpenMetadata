@@ -55,7 +55,7 @@ export const renderLegend = (
         return (
           <li
             className="recharts-legend-item custom-data-insight-legend-item"
-            key={`item-${index}`}
+            key={`item-${entry.value}`}
             role="presentation"
             onClick={(e) =>
               legendData.onClick && legendData.onClick(entry, index, e)
@@ -122,7 +122,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         <ul
           className="custom-data-insight-tooltip-container"
           style={listContainerStyles}>
-          {payloadValue.map((entry, index) => {
+          {payloadValue.map((entry) => {
             const value = customValueKey
               ? entry.payload[customValueKey]
               : entry.value;
@@ -130,7 +130,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
             return (
               <li
                 className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                key={`item-${index}`}>
+                key={`item-${entry.name ?? entry.dataKey}`}>
                 <span className="flex items-center text-grey-muted">
                   <Surface
                     className="mr-2"

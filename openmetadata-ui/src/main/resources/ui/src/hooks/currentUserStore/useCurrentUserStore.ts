@@ -36,6 +36,11 @@ export interface UserPreferences {
   marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
   connectionsViewMode?: 'grid' | 'list';
   /**
+   * Persisted natural-language-search toggle — remembers the user's last
+   * NLP on/off choice on the Explore search bar across sessions.
+   */
+  isNLPActive?: boolean;
+  /**
    * Boot-time app-mode preference — the "open in this mode when I log in"
    * checkbox in the app-mode switcher. `null` means "no explicit preference,
    * fall back to persona/app-default/constant at boot." Only the switcher's

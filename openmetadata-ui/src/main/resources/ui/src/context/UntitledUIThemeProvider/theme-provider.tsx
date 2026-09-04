@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   BrandColors,
   Theme,
@@ -19,6 +26,27 @@ import {
 } from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const DEFAULT_THEME: Theme = 'light';
+
+const getStoredTheme = (storageKey: string): Theme | null => {
+  try {
+    if (typeof globalThis.localStorage === 'undefined') {
+      return null;
+    }
+
+    const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Privacy restrictions can block storage access; treat that as no preference.
+  }
+
+  return null;
+};
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -38,11 +66,6 @@ interface ThemeProviderProps {
    * @default "dark-mode"
    */
   darkModeClass?: string;
-  /**
-   * The default theme to use if no theme is stored in localStorage.
-   * @default "light"
-   */
-  defaultTheme?: Theme;
   /**
    * The key to use to store the theme in localStorage.
    * @default "ui-theme"
@@ -227,35 +250,33 @@ const clearBrandCssVars = (root: HTMLElement) => {
 export const ThemeProvider = ({
   children,
   brandColors,
-  defaultTheme = 'light',
   storageKey = 'ui-theme',
   darkModeClass = 'dark-mode',
 }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof globalThis !== 'undefined') {
-      const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+  const [theme, setThemeState] = useState<Theme>(
+    () => getStoredTheme(storageKey) ?? DEFAULT_THEME
+  );
 
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        return savedTheme;
+  const setTheme = useCallback(
+    (nextTheme: Theme) => {
+      try {
+        if (typeof globalThis.localStorage !== 'undefined') {
+          localStorage.setItem(storageKey, nextTheme);
+        }
+      } catch {
+        // Persistence failure must not block theme changes for the current session.
       }
-
-      localStorage.removeItem(storageKey);
-    }
-
-    return defaultTheme;
-  });
+      setThemeState(nextTheme);
+    },
+    [storageKey]
+  );
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
 
     root.classList.toggle(darkModeClass, theme === 'dark');
-
-    if (theme === 'dark') {
-      localStorage.setItem(storageKey, theme);
-    } else {
-      localStorage.removeItem(storageKey);
-    }
-  }, [theme, darkModeClass, storageKey]);
+    root.style.colorScheme = theme;
+  }, [theme, darkModeClass]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
@@ -276,7 +297,7 @@ export const ThemeProvider = ({
 
   const values = useMemo(
     () => ({ theme, brandColors, setTheme }),
-    [theme, brandColors]
+    [theme, brandColors, setTheme]
   );
 
   return (

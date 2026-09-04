@@ -14,7 +14,7 @@ Validator for column values to match regex test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, Tuple, cast  # noqa: UP035
+from typing import cast
 
 import pandas as pd
 
@@ -60,7 +60,7 @@ class ColumnValuesToMatchRegexValidator(
         metric: tuple[Metrics],
         column: SQALikeColumn,
         **kwargs,
-    ) -> Tuple[Optional[int], Optional[int]]:  # noqa: UP006, UP045
+    ) -> tuple[int | None, int | None]:
         """compute result of the test case
 
         Args:
@@ -80,7 +80,7 @@ class ColumnValuesToMatchRegexValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
