@@ -2,8 +2,10 @@
 
 `playwright-postgresql-e2e.yml` has two execution modes:
 
-- Pull requests run the Basic smoke list, directly changed specs, and suites selected by `impact-map.json`. Shared test infrastructure and unmapped changes add one canary from every supported project.
-- Merge queue, scheduled, and manual full-suite runs execute all projects covered by this workflow. Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
+- Pull requests, merge queue, scheduled, and manual full-suite runs execute all projects covered by this workflow. Merge-queue and scheduled runs are unconditionally full; every other event is full whenever the caller passes `full_suite: true`, which the PR gate does. Manual runs can select HTTP/1.1 or HTTP/2.
+- Targeted mode — the Basic smoke list, directly changed specs, and suites selected by `impact-map.json`, plus one canary from every supported project when shared test infrastructure or an unmapped path changes — runs when the caller passes `full_suite: false`. Point the PR gate's `full_suite` input back at `false` to restore impact-mapped PR selection.
+- PR and merge-queue runs skip the pipeline outright when the change touches no Playwright-relevant path. `check-changes` computes that `e2e` paths filter and `cache-keys`, `build`, and `detect-changes` are gated on it; everything downstream skips by dependency. The three guards must stay in lockstep — gating only some of them leaves a build burning a runner for a summary that has nothing to report. Schedule and dispatch runs never evaluate the filter and stay unconditionally full.
+- The `playwright-summary` required check stays green on such a run: `render_playwright_summary.cjs` returns early when the filter reports no relevant change *and* the build was skipped, instead of failing on "the shard matrix was unexpectedly skipped". The build condition is deliberate — any run that did build and test is always reported in full, whatever the filter said. Widen the filter in `check-changes` to change what counts as Playwright-relevant; both sides read the same output.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
 

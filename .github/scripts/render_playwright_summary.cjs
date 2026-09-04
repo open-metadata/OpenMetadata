@@ -63,6 +63,25 @@ async function renderPlaywrightSummary({ github, context, core }) {
     console.log('Playwright E2E tests not required for this PR (no relevant paths changed).');
     return;
   }
+  // Nothing ran because the change touched no Playwright-relevant path: the
+  // reusable workflow gates cache-keys/build/detect-changes on the same `e2e`
+  // paths filter forwarded here as E2E_CHANGED. Without this a path-skipped
+  // run would fail the required check on "the shard matrix was unexpectedly
+  // skipped". The filter only runs for PR and merge-queue events; schedule and
+  // dispatch leave E2E_CHANGED empty and stay unconditionally required.
+  // Requiring the build to have been skipped keeps this branch inert on any run
+  // that did build and test — those always get a real report, filter or not.
+  const isPathFilteredEvent =
+    ['pull_request', 'pull_request_target', 'merge_group'].includes(context.eventName);
+  if (
+    checkChangesResult === 'success' &&
+    isPathFilteredEvent &&
+    process.env.E2E_CHANGED !== 'true' &&
+    buildResult === 'skipped'
+  ) {
+    console.log('Playwright E2E tests not required — no Playwright-relevant path changed.');
+    return;
+  }
 
   const runId = process.env.GITHUB_RUN_ID;
   const repo = context.repo;

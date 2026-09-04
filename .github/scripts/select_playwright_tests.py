@@ -90,15 +90,23 @@ def main() -> None:
     repo_root = Path.cwd()
     impact_map = json.loads(args.impact_map.read_text(encoding="utf-8"))
     full_event = args.event_name in {"merge_group", "schedule"}
-    full_requested = (
-        args.event_name == "workflow_dispatch" and args.full_suite == "true"
-    )
+    # `--full-suite` is honoured on every event, pull requests included: the
+    # caller workflows pass the reusable's `full_suite` input straight through,
+    # so a PR gate that wants the complete suite only has to keep that input
+    # true. Restricting the flag to workflow_dispatch used to pin PRs to
+    # impact-mapped selection no matter what the caller asked for.
+    full_requested = args.full_suite == "true"
 
     if full_event or full_requested:
+        reason = (
+            f"{args.event_name} requires the complete suite"
+            if full_event
+            else f"{args.event_name} requested the complete suite"
+        )
         plan = {
             "version": 1,
             "mode": "full",
-            "reason": f"{args.event_name} requires the complete suite",
+            "reason": reason,
             "directChangedSpecs": [],
             "selectors": [],
         }
