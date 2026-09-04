@@ -126,7 +126,6 @@ const entitySupportsQuality = (entityType: string): boolean => {
 
 test.describe('Data Contracts', () => {
   const user = new UserClass();
-  test.slow(true);
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -146,7 +145,7 @@ test.describe('Data Contracts', () => {
     const testTitle = `Create Data Contract and validate for ${entityType}`;
 
     test(testTitle, testDetails, async ({ page }) => {
-      // 12-min timeout so waitForDataContractExecution completes first.
+      // 15-min timeout so waitForDataContractExecution completes first.
       test.setTimeout(900_000);
 
       const testClassification = new ClassificationClass();

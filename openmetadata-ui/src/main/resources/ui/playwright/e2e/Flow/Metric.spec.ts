@@ -55,8 +55,6 @@ test.describe(
   'Metric Entity Special Test Cases',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await adminUser.create(apiContext);

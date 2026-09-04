@@ -36,7 +36,6 @@ const password = process.env[SSO_ENV.PASSWORD] ?? '';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
-  test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
     !username || !password,

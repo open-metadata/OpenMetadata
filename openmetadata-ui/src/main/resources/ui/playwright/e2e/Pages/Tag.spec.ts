@@ -106,8 +106,6 @@ test.describe('Tag Page with Admin Roles', () => {
   const user1 = new UserClass();
   const domain = new Domain();
 
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
@@ -456,8 +454,6 @@ test.describe('Tag Page with Admin Roles', () => {
 });
 
 test.describe('Tag Page with Data Consumer Roles', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -531,8 +527,6 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 });
 
 test.describe('Tag Page with Data Steward Roles', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -585,8 +579,6 @@ test.describe('Tag Page with Data Steward Roles', () => {
 });
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
