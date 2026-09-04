@@ -33,8 +33,8 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
-          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
@@ -64,8 +64,8 @@ MSSQL_SQL_STATEMENT_CURRENT_DB = textwrap.dedent(
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
           AND t.dbid = DB_ID()
-          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
@@ -110,8 +110,8 @@ MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
           AND rs.last_execution_time BETWEEN '{start_time}' AND '{end_time}'
         GROUP BY q.query_id, qt.query_sql_text
       ) AS t
-      WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      WHERE t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+        AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
         {filters}
       ORDER BY t.start_time DESC
 """
@@ -398,8 +398,8 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
   INNER JOIN sys.databases db
     ON db.database_id = t.dbid
-  WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  WHERE t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+    AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
     AND t.dbid = DB_ID()
     AND s.last_execution_time > '{start_date}'

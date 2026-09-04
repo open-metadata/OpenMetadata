@@ -14,12 +14,21 @@ Custom OM connection headers
 """
 
 import json
+import re
 from functools import singledispatch
 from importlib.metadata import version as _pkg_version
 
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
+
+FIRST_TOKEN = re.compile(r"\S+")
 
 
 def render_query_header(ometa_version: str) -> str:
@@ -54,6 +63,39 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
     st_list = statement.split(" ")
     statement_with_header = f"{st_list[0]} {render_query_header(version)} {' '.join(st_list[1:])}"
     return statement_with_header, parameters
+
+
+def inject_inline_query_header(statement: str) -> str:
+    """Return the statement with the OpenMetadata header after its first token.
+
+    Statements that already start with a comment are returned unchanged.
+    """
+    stripped = statement.lstrip()
+    first_token = FIRST_TOKEN.match(stripped)
+    if not first_token or stripped.startswith("/*"):
+        return statement
+    leading_whitespace = statement[: len(statement) - len(stripped)]
+    token = first_token.group(0)
+    header = render_query_header(_pkg_version("openmetadata-ingestion"))
+    return f"{leading_whitespace}{token} {header}{stripped[len(token) :]}"
+
+
+@inject_query_header_by_conn.register(MssqlConnection)
+def _(_, conn, cursor, statement, parameters, context, executemany):  # pylint: disable=unused-argument
+    """
+    Query Store records one row per statement, and a leading comment belongs to
+    the batch rather than to the statement, so it is never stored. Placing the
+    header after the first token keeps it inside the statement text.
+    """
+    return inject_inline_query_header(statement), parameters
+
+
+@inject_query_header_by_conn.register(AzureSQLConnection)
+def _(_, conn, cursor, statement, parameters, context, executemany):  # pylint: disable=unused-argument
+    """
+    Azure SQL shares SQL Server's Query Store behaviour; see the Mssql override.
+    """
+    return inject_inline_query_header(statement), parameters
 
 
 def inject_query_header(conn, cursor, statement, parameters, context, executemany):  # pylint: disable=unused-argument
