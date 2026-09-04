@@ -14,8 +14,9 @@ Snowflake lineage module
 
 import json
 import traceback
+from collections.abc import Iterable, Iterator
 from datetime import datetime, timedelta
-from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 from cachetools import LRUCache
 from sqlalchemy import text
@@ -228,7 +229,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
 
     def yield_query_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Dispatch lineage extraction to either the ACCESS_HISTORY path (gated by
         the `useAccessHistory` connection field) or the legacy QUERY_HISTORY +
@@ -240,7 +241,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             return
         yield from super().yield_query_lineage()
 
-    def _iter(self, *args, **kwargs) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    def _iter(self, *args, **kwargs) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Run the base lineage producers, then append semantic view lineage.
 
         Semantic view lineage stays opt-in behind the same `includeSemanticViews`
@@ -297,7 +298,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             logger.warning("COPY_HISTORY lineage phase failed: %s", exc)
             logger.debug(traceback.format_exc())
 
-    def _iter_lineage_date_windows(self) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
+    def _iter_lineage_date_windows(self) -> Iterable[tuple[datetime, datetime]]:
         """
         Split the configured [start, end] window into `accessHistoryChunkSize`
         day chunks. A single query over a large window (e.g. queryLogDuration=180)
@@ -382,7 +383,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             )
             logger.debug(traceback.format_exc())
 
-    def _parse_access_history_row(self, raw_row: Any) -> Optional[AccessHistoryRow]:  # noqa: UP045
+    def _parse_access_history_row(self, raw_row: Any) -> AccessHistoryRow | None:
         """
         Parse one cursor row into an `AccessHistoryRow`. A single malformed row
         is logged and skipped (returns None) so it doesn't abort the rest of
@@ -395,7 +396,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             logger.debug(traceback.format_exc())
             return None
 
-    def _build_access_history_edge(self, row: AccessHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
+    def _build_access_history_edge(self, row: AccessHistoryRow) -> AddLineageRequest | None:
         """
         Resolve both sides of a table edge to OM Table entities and build the
         AddLineageRequest, attaching column lineage parsed from the row's
@@ -435,7 +436,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         )
 
     @staticmethod
-    def _parse_column_pairs(raw: object) -> List[Tuple[str, str]]:  # noqa: UP006
+    def _parse_column_pairs(raw: object) -> list[tuple[str, str]]:
         """
         Decode the `COLUMN_PAIRS` VARIANT returned by the combined SQL into
         a list of (downstream_column, upstream_column) tuples. The snowflake
@@ -451,7 +452,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
                 return []
         if not isinstance(raw, list):
             return []
-        pairs: List[Tuple[str, str]] = []  # noqa: UP006
+        pairs: list[tuple[str, str]] = []
         for item in raw:
             if not isinstance(item, dict):
                 continue
@@ -465,14 +466,14 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
     def _build_columns_lineage(
         downstream_entity: Table,
         upstream_entity: Table,
-        column_pairs: List[Tuple[str, str]],  # noqa: UP006
-    ) -> List[ColumnLineage]:  # noqa: UP006
+        column_pairs: list[tuple[str, str]],
+    ) -> list[ColumnLineage]:
         """
         Convert raw (downstream_col, upstream_col) pairs into ColumnLineage objects
         with fully qualified column names. Drops pairs where either column does
         not exist on its parent table entity.
         """
-        result: List[ColumnLineage] = []  # noqa: UP006
+        result: list[ColumnLineage] = []
         for d_col, u_col in column_pairs:
             d_fqn = get_column_fqn(downstream_entity, d_col)
             u_fqn = get_column_fqn(upstream_entity, u_col)
@@ -534,7 +535,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             failed,
         )
 
-    def _build_copy_edge(self, row: CopyHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
+    def _build_copy_edge(self, row: CopyHistoryRow) -> AddLineageRequest | None:
         """
         Resolve the downstream table and upstream container, then build the
         Container → Table lineage request. Returns None if either side is
@@ -567,7 +568,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             )
         )
 
-    def _resolve_snowflake_table(self, snowflake_fqn: str) -> Optional[Table]:  # noqa: UP045
+    def _resolve_snowflake_table(self, snowflake_fqn: str) -> Table | None:
         """
         Parse a Snowflake-style `DB.SCHEMA.TABLE` FQN into OM-style and resolve
         to a Table entity. Caches both hits and misses for the run.
@@ -579,7 +580,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         om_fqn = fqn._build(self.config.serviceName, db, schema, table)
         return self._get_table_by_fqn(om_fqn)
 
-    def _get_table_by_fqn(self, om_fqn: str) -> Optional[Table]:  # noqa: UP045
+    def _get_table_by_fqn(self, om_fqn: str) -> Table | None:
         if om_fqn in self._table_cache:
             return self._table_cache[om_fqn]
         try:
@@ -590,10 +591,10 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         self._table_cache[om_fqn] = entity
         return entity
 
-    def _get_metric_by_name(self, name: str) -> Optional[Metric]:  # noqa: UP045
+    def _get_metric_by_name(self, name: str) -> Metric | None:
         return self.metadata.get_by_name(entity=Metric, fqn=name)
 
-    def _resolve_container_by_path(self, stage_location: str) -> Optional[Container]:  # noqa: UP045
+    def _resolve_container_by_path(self, stage_location: str) -> Container | None:
         try:
             results = self.metadata.es_search_container_by_path(full_path=stage_location) or []
             return results[0] if results else None
@@ -602,7 +603,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             return None
 
     @staticmethod
-    def _split_snowflake_fqn(snowflake_fqn: str) -> Optional[Tuple[str, str, str]]:  # noqa: UP006, UP045
+    def _split_snowflake_fqn(snowflake_fqn: str) -> tuple[str, str, str] | None:
         """
         Split a Snowflake `DB.SCHEMA.TABLE` FQN into its three parts.
         Handles quoted identifiers (`"My DB"."My.Schema"."Table"`) by

@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -167,12 +168,14 @@ public class GlossaryTermRelationSettingsIT {
     assertEquals(200, response.statusCode(), "Usage counts API should return 200");
     assertNotNull(response.body(), "Response body should not be null");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Integer> usageCounts =
+    List<org.openmetadata.schema.type.RelationshipTypeUsage> usageCounts =
         MAPPER.readValue(
             response.body(),
-            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Integer>>() {});
+            new com.fasterxml.jackson.core.type.TypeReference<
+                List<org.openmetadata.schema.type.RelationshipTypeUsage>>() {});
     assertNotNull(usageCounts, "Usage counts should be parseable");
+    usageCounts.forEach(
+        usage -> assertNotNull(usage.getRelationshipType(), "Usage rows must name their type"));
     LOG.info("Usage counts: {}", usageCounts);
   }
 

@@ -50,7 +50,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. This is also how you answer 'show me everything tagged X': a 'term' clause on 'tags.tagFQN' in 'queryFilter' matches every asset carrying that classification tag OR glossary term, since both land in the 'tags' array. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -600,7 +600,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. The default response is table-level and small: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql). Transformation SQL is NOT included by default because it dominates response size; an edge that has SQL is marked with 'hasSql': true, so re-call with includeSql=true only for the specific question that needs the transformation text. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. The default response is table-level and small: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql). Transformation SQL is NOT included by default because it dominates response size; an edge that has SQL is marked with 'hasSql': true, so re-call with includeSql=true only for the specific question that needs the transformation text. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage. Lineage nodes are individually authorized: any node you lack permission to view is removed, along with any node only reachable through it, and 'hiddenNodes' reports how many - so a graph with 'hiddenNodes' above 0 is a partial view, not the complete lineage. If the graph exceeded the authorization limit, nodes past it are removed unchecked and 'hiddenNodesUnchecked' is true; reduce the depths for a fully authorized graph. An edge whose pipeline you cannot view keeps its 'relationshipType' but omits the pipeline's name, FQN and description. Temp-table hops ('tempLineageTables') are names parsed from the transformation and are returned only with includeSql=true.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -863,6 +863,187 @@
           "fqn",
           "entityType"
         ]
+      }
+    },
+    {
+      "name": "sparql_query",
+      "title": "Run SPARQL Query",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist, which is empty and disabled by default - so in a default deployment this tool never reaches outside the local graph. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default and maximum 80000 bytes, matching the MCP response budget); when it does not fit you get a prefix plus 'truncated': true and the full 'byteCount'. Narrow the query with LIMIT rather than raising maxBytes. A 'warning' field appears when the requested inferenceLevel could not be applied because the graph was too large - results are then NOT inferred. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SPARQL query string. Use https://open-metadata.org/ontology/ as the om: prefix."
+          },
+          "format": {
+            "type": "string",
+            "description": "Result format. SELECT/ASK: json (default), xml, csv, tsv. CONSTRUCT/DESCRIBE: turtle, jsonld, ntriples, rdfxml.",
+            "default": "json"
+          },
+          "inferenceLevel": {
+            "type": "string",
+            "description": "Optional. Reasoning level applied at query time: none (default), rdfs, owl, custom.",
+            "default": "none"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the response body size in bytes. Default 80000, which is also the maximum; min 1024. Values above the maximum are clamped, because a larger body is discarded wholesale by the response budget.",
+            "default": 80000
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "entity_neighborhood",
+      "title": "Get Entity Neighborhood",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Return the n-hop instance-data neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. Ontology and SHACL definition graphs are excluded so schema triples do not consume result slots. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. Each traversal branch gets its own share of 'limit', so deeper hops are always represented rather than being crowded out by a high-degree start node. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "UUID of the entity (the 'id' field on the entity)."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Entity type singular (table, dashboard, pipeline, glossaryTerm, ...)."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Hop depth, 1-3. Default 2.",
+            "default": 2
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum solution rows per traversal branch share, not a triple count. Each solution can contribute up to 'depth' triples, so the returned triple count may be a small multiple of this. Default 200, max 2000.",
+            "default": 200
+          }
+        },
+        "required": [
+          "entityId",
+          "entityType"
+        ]
+      }
+    },
+    {
+      "name": "find_by_tag",
+      "title": "Find by Tag",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Find all entities tagged with a given classification tag or glossary term FQN. Walks om:hasTag and om:hasGlossaryTerm. Use this for 'show me everything classified PII.Sensitive' or 'all assets associated with the BusinessTerms.Customer glossary term'. Optionally filter by entity type. Paginated. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tagFqn": {
+            "type": "string",
+            "description": "FQN of the tag or glossary term (e.g. 'PII.Sensitive', 'BusinessTerms.Customer')."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Optional. Restrict results to a single entity type (e.g. 'table')."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results. Default 50, max 500.",
+            "default": 50
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Page offset. Default 0.",
+            "default": 0
+          }
+        },
+        "required": [
+          "tagFqn"
+        ]
+      }
+    },
+    {
+      "name": "shacl_validate",
+      "title": "Validate with SHACL",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Run SHACL validation against either a single entity's subgraph (scoped via entityId+entityType or entityUri) or the entire dataset. Returns conforms (boolean), violationCount, and the SHACL ValidationReport in the requested RDF format. Read-only; never blocks writes. Use this to debug data-quality issues before mutating the graph. The report body is capped at maxBytes; 'conforms' and 'violationCount' are always returned in full even when the report itself is truncated. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "Optional. UUID of the entity to scope validation to."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Optional. Entity type singular. Required if entityId is provided."
+          },
+          "entityUri": {
+            "type": "string",
+            "description": "Optional alternative to entityId+entityType: full URI of the entity."
+          },
+          "fullGraph": {
+            "type": "boolean",
+            "description": "Must be set to true to validate the entire dataset when no entity scope (entityId+entityType or entityUri) is given. Whole-graph validation can be expensive, so it is opt-in.",
+            "default": false
+          },
+          "format": {
+            "type": "string",
+            "description": "Report format: turtle (default) or jsonld.",
+            "default": "turtle"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the report body size in bytes. Default 80000, which is also the maximum; min 1024.",
+            "default": 80000
+          }
+        }
+      }
+    },
+    {
+      "name": "ontology_describe",
+      "title": "Describe Ontology",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. The full ontology is roughly 65 KB, so prefer passing 'resource' for a focused DESCRIBE; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "description": "Optional. Full URI of the class or property to DESCRIBE (e.g. 'https://open-metadata.org/ontology/Column'). Omit to return the full ontology."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format. Default 'turtle'.",
+            "default": "turtle"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the body size in bytes. Default 80000, which is also the maximum; min 1024.",
+            "default": 80000
+          }
+        }
       }
     }
   ]

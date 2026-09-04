@@ -13,7 +13,7 @@ Grafana API response models
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -22,9 +22,9 @@ class GrafanaUser(BaseModel):
     """Grafana user model"""
 
     id: int
-    email: Optional[str] = None  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
-    login: Optional[str] = None  # noqa: UP045
+    email: str | None = None
+    name: str | None = None
+    login: str | None = None
 
 
 class GrafanaFolder(BaseModel):
@@ -33,39 +33,39 @@ class GrafanaFolder(BaseModel):
     id: int
     uid: str
     title: str
-    url: Optional[str] = None  # noqa: UP045
-    type: Optional[str] = None  # noqa: UP045
-    tags: Optional[List[str]] = None  # noqa: UP006, UP045
-    created: Optional[datetime] = None  # noqa: UP045
-    updated: Optional[datetime] = None  # noqa: UP045
-    createdBy: Optional[str] = None  # noqa: N815, UP045
-    updatedBy: Optional[str] = None  # noqa: N815, UP045
-    version: Optional[int] = None  # noqa: UP045
+    url: str | None = None
+    type: str | None = None
+    tags: list[str] | None = None
+    created: datetime | None = None
+    updated: datetime | None = None
+    createdBy: str | None = None  # noqa: N815
+    updatedBy: str | None = None  # noqa: N815
+    version: int | None = None
 
 
 class GrafanaDatasource(BaseModel):
     """Grafana datasource model"""
 
-    id: Optional[int] = None  # noqa: UP045
-    uid: Optional[str] = None  # noqa: UP045
+    id: int | None = None
+    uid: str | None = None
     name: str
     type: str
-    url: Optional[str] = None  # noqa: UP045
-    database: Optional[str] = None  # noqa: UP045
-    isDefault: Optional[bool] = None  # noqa: N815, UP045
-    jsonData: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
+    url: str | None = None
+    database: str | None = None
+    isDefault: bool | None = None  # noqa: N815
+    jsonData: dict[str, Any] | None = None  # noqa: N815
 
 
 class GrafanaTarget(BaseModel):
     """Grafana panel target/query model"""
 
-    refId: Optional[str] = None  # noqa: N815, UP045
-    datasource: Optional[Union[str, Dict[str, Any]]] = None  # noqa: UP006, UP007, UP045
-    rawSql: Optional[str] = None  # noqa: N815, UP045
-    query: Optional[str] = None  # noqa: UP045
-    expr: Optional[str] = None  # For Prometheus queries  # noqa: UP045
-    format: Optional[Any] = None  # noqa: UP045
-    hide: Optional[bool] = False  # noqa: UP045
+    refId: str | None = None  # noqa: N815
+    datasource: str | dict[str, Any] | None = None
+    rawSql: str | None = None  # noqa: N815
+    query: str | None = None
+    expr: str | None = None  # For Prometheus queries
+    format: Any | None = None
+    hide: bool | None = False
 
 
 class GrafanaPanel(BaseModel):
@@ -73,38 +73,38 @@ class GrafanaPanel(BaseModel):
 
     id: int
     type: str
-    title: Optional[str] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    datasource: Optional[Union[str, Dict[str, Any]]] = None  # noqa: UP006, UP007, UP045
-    targets: Optional[List[GrafanaTarget]] = Field(default_factory=list)  # noqa: UP006, UP045
-    gridPos: Optional[Dict[str, int]] = None  # noqa: N815, UP006, UP045
-    options: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    fieldConfig: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
-    transparent: Optional[bool] = None  # noqa: UP045
-    pluginVersion: Optional[str] = None  # noqa: N815, UP045
+    title: str | None = None
+    description: str | None = None
+    datasource: str | dict[str, Any] | None = None
+    targets: list[GrafanaTarget] | None = Field(default_factory=list)
+    gridPos: dict[str, int] | None = None  # noqa: N815
+    options: dict[str, Any] | None = None
+    fieldConfig: dict[str, Any] | None = None  # noqa: N815
+    transparent: bool | None = None
+    pluginVersion: str | None = None  # noqa: N815
 
 
 class GrafanaDashboard(BaseModel):
     """Grafana dashboard model"""
 
-    id: Optional[int] = None  # noqa: UP045
+    id: int | None = None
     uid: str
     title: str
-    tags: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
-    style: Optional[str] = None  # noqa: UP045
-    timezone: Optional[str] = None  # noqa: UP045
-    panels: Optional[List[GrafanaPanel]] = Field(default_factory=list)  # noqa: UP006, UP045
-    editable: Optional[bool] = None  # noqa: UP045
-    time: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    timepicker: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    templating: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    annotations: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    refresh: Optional[Union[str, bool]] = None  # noqa: UP007, UP045
-    schemaVersion: Optional[int] = None  # noqa: N815, UP045
-    version: Optional[int] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    gnetId: Optional[Any] = None  # noqa: N815, UP045
-    links: Optional[List[Dict[str, Any]]] = None  # noqa: UP006, UP045
+    tags: list[str] | None = Field(default_factory=list)
+    style: str | None = None
+    timezone: str | None = None
+    panels: list[GrafanaPanel] | None = Field(default_factory=list)
+    editable: bool | None = None
+    time: dict[str, Any] | None = None
+    timepicker: dict[str, Any] | None = None
+    templating: dict[str, Any] | None = None
+    annotations: dict[str, Any] | None = None
+    refresh: str | bool | None = None
+    schemaVersion: int | None = None  # noqa: N815
+    version: int | None = None
+    description: str | None = None
+    gnetId: Any | None = None  # noqa: N815
+    links: list[dict[str, Any]] | None = None
 
 
 class GrafanaDashboardMeta(BaseModel):
@@ -118,21 +118,21 @@ class GrafanaDashboardMeta(BaseModel):
     canDelete: bool  # noqa: N815
     slug: str
     url: str
-    expires: Optional[datetime] = None  # noqa: UP045
-    created: Optional[datetime] = None  # noqa: UP045
-    updated: Optional[datetime] = None  # noqa: UP045
-    updatedBy: Optional[str] = None  # noqa: N815, UP045
-    createdBy: Optional[str] = None  # noqa: N815, UP045
-    version: Optional[int] = None  # noqa: UP045
-    hasAcl: Optional[bool] = None  # noqa: N815, UP045
-    isFolder: Optional[bool] = None  # noqa: N815, UP045
-    folderId: Optional[int] = None  # noqa: N815, UP045
-    folderUid: Optional[str] = None  # noqa: N815, UP045
-    folderTitle: Optional[str] = None  # noqa: N815, UP045
-    folderUrl: Optional[str] = None  # noqa: N815, UP045
-    provisioned: Optional[bool] = None  # noqa: UP045
-    provisionedExternalId: Optional[str] = None  # noqa: N815, UP045
-    annotationsPermissions: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
+    expires: datetime | None = None
+    created: datetime | None = None
+    updated: datetime | None = None
+    updatedBy: str | None = None  # noqa: N815
+    createdBy: str | None = None  # noqa: N815
+    version: int | None = None
+    hasAcl: bool | None = None  # noqa: N815
+    isFolder: bool | None = None  # noqa: N815
+    folderId: int | None = None  # noqa: N815
+    folderUid: str | None = None  # noqa: N815
+    folderTitle: str | None = None  # noqa: N815
+    folderUrl: str | None = None  # noqa: N815
+    provisioned: bool | None = None
+    provisionedExternalId: str | None = None  # noqa: N815
+    annotationsPermissions: dict[str, Any] | None = None  # noqa: N815
 
 
 class GrafanaDashboardResponse(BaseModel):
@@ -152,9 +152,9 @@ class GrafanaSearchResult(BaseModel):
     url: str
     slug: str
     type: str  # "dash-db" for dashboards, "dash-folder" for folders
-    tags: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
+    tags: list[str] | None = Field(default_factory=list)
     isStarred: bool  # noqa: N815
-    folderId: Optional[int] = None  # noqa: N815, UP045
-    folderUid: Optional[str] = None  # noqa: N815, UP045
-    folderTitle: Optional[str] = None  # noqa: N815, UP045
-    folderUrl: Optional[str] = None  # noqa: N815, UP045
+    folderId: int | None = None  # noqa: N815
+    folderUid: str | None = None  # noqa: N815
+    folderTitle: str | None = None  # noqa: N815
+    folderUrl: str | None = None  # noqa: N815

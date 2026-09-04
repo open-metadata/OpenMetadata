@@ -1,0 +1,248 @@
+# Keep MAIN-scoped copies of every cache the Playwright pipeline restores.
+#
+# Why this workflow exists — two GitHub Actions cache mechanics compound:
+#
+# 1. SCOPING: a workflow run can only restore caches created on its own ref
+#    or on the default branch. Merge-queue refs (gh-readonly-queue/main/...)
+#    and PR merge refs are unique per entry and die after the run — caches
+#    saved there are unreachable by every other run. Only main-scoped copies
+#    are universally restorable.
+# 2. EVICTION: the repo cache budget is 10 GB, LRU-evicted. When ephemeral
+#    refs are allowed to SAVE caches, per-queue-entry duplicates (~700 MB
+#    yarn + ~250 MB browser each) blow the budget within the hour and evict
+#    the main-scoped copies — observed at 17.5 GB with 49/50 caches on
+#    ephemeral refs, the main apt cache evicted ~30 minutes after creation.
+#    That eviction turns every downstream "cache hit" into a cold fetch
+#    against apt mirrors / registry.yarnpkg.com / the Playwright CDN, and a
+#    bad day on any of those takes the whole matrix down (runs 32157314266,
+#    32166970973, 32209207109, 32222855561, 32233411840).
+#    Re-observed 2026-09-04 for the expensive tier: 11.34 GB active against the
+#    10 GB budget, 5.1 GB of it four ~1.28 GB ingestion images stranded on dead
+#    merge-queue refs. prune-ephemeral-caches.yml now collects those; the saves
+#    that created them are gated off merge_group in the reusable.
+#
+# The fix has two halves: playwright-e2e-reusable.yml uses RESTORE-ONLY
+# cache steps (no saves from ephemeral refs), and THIS workflow is the one
+# writer — it saves from main's scope so every downstream run gets a hit.
+#
+# It covers TWO tiers, in two independent jobs:
+#
+#   populate     apt, yarn, browser. Cheap, no build, single runner.
+#   warm-fixture the OpenMetadata distribution, the golden fixture (seeded DB +
+#                OpenSearch + auth state) and the ingestion image. These are
+#                what actually cost time: 13 consecutive merge-queue runs
+#                measured on 2026-09-04 missed the golden fixture 13 times and
+#                rebuilt it for ~17 min each — 31% of a 55 min suite, on the
+#                critical path of every entry in the queue. Warming them needs
+#                the real build-and-seed pipeline, so this job CALLS
+#                playwright-e2e-reusable.yml with `warm_caches_only: true`,
+#                which runs it for its cache side effects and stops before the
+#                shards. The commit was already tested by the queue entry that
+#                produced it; re-running the suite on main proves nothing.
+#
+# Keeping both tiers here is deliberate. A second warmer workflow would be a
+# second writer, which is exactly the drift the one-writer rule above prevents:
+# add a cache to the pipeline and you have one place to teach about it.
+#
+# STRUCTURE: each cache is warmed INDEPENDENTLY. The apt populate runs
+# first (most critical, no node/yarn dependency); the yarn and browser
+# warmers are continue-on-error so a registry or CDN outage on one cannot
+# block refreshing the others; each save is explicitly gated on its warmer
+# succeeding so a failed warm can never bake a partial cache under an
+# exact key (actions/cache never overwrites an existing key, so a partial
+# save would be permanent for that lockfile). A final step fails the job
+# if any warmer failed — full signal, but only after every cache had its
+# chance.
+#
+# Triggers:
+#   * schedule (6h)      — keeps last_accessed fresh and re-saves after any
+#                          eviction or runner-image roll.
+#   * workflow_dispatch  — populate immediately (first run / mid-incident).
+#   * push to main       — repopulate the new keys right away instead of
+#                          waiting ≤6 h.
+#
+# The push trigger carries NO `paths:` filter. It once listed the reusable
+# workflow, this file and yarn.lock, which covers the apt/yarn/browser keys —
+# but the fixture and distribution fingerprints span bootstrap/sql,
+# openmetadata-spec, the service resources, the sample-data seeds and the
+# compose files (see FIXTURE_PREFIXES / DISTRIBUTION_PREFIXES in
+# .github/scripts/playwright_cache_fingerprint.py). Restating those lists here
+# would rot, and a warm that gets skipped costs every queue entry ~17 min.
+# Unchanged fingerprints make the run cheap instead — every cache restores,
+# nothing rebuilds — so running on each main push is the safe default.
+#
+# IMPORTANT: the cache keys and the apt package list below MUST stay
+# identical to their counterparts in playwright-e2e-reusable.yml — a drifted
+# key populates a cache nobody restores. Update both files together.
+name: Populate Playwright CI caches
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# Concurrency is per-JOB, not workflow-level: the two tiers want opposite
+# cancel policies and must not serialise behind each other.
+
+jobs:
+  populate:
+    # Cheap and quick; let an in-flight warm finish rather than restart it.
+    concurrency:
+      group: populate-playwright-caches-apt
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # FIRST and independent: the apt cache is the one whose absence takes
+      # down whole matrices on Ubuntu-mirror incidents, so nothing may run
+      # before it. continue-on-error so a mirror outage during populate
+      # still lets the yarn/browser warmers below run.
+      - name: Populate Playwright system deps cache
+        id: warm-apt
+        continue-on-error: true
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        with:
+          packages: >-
+            fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
+            fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
+            xfonts-cyrillic xfonts-scalable
+            libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
+            libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
+          version: playwright-chromium-deps-v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+
+      - name: Restore yarn package cache
+        id: yarn-restore
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+
+      - name: Warm yarn cache
+        id: warm-yarn
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          corepack enable
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+
+      # Save is gated on the warmer SUCCEEDING — a failed install must never
+      # bake a partial ~/.cache/yarn under the exact lockfile key, because
+      # actions/cache cannot overwrite an existing key and the partial copy
+      # would be permanent for this lockfile.
+      - name: Save yarn package cache (main-scoped writer)
+        if: steps.warm-yarn.outcome == 'success' && steps.yarn-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      - name: Restore Playwright browser cache
+        id: browser-restore
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      # Needs node_modules from the yarn warmer (npx resolves the pinned
+      # @playwright/test from the local install) — skipped if that failed.
+      - name: Warm Chromium browser cache
+        id: warm-browser
+        if: steps.warm-yarn.outcome == 'success'
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright install chromium
+
+      - name: Save Playwright browser cache (main-scoped writer)
+        if: steps.warm-browser.outcome == 'success' && steps.browser-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      # Every warmer ran (or was skipped by a failed dependency); NOW fail
+      # the job if anything went wrong so the schedule/dispatch surface a
+      # clear signal without ever blocking a sibling cache's refresh.
+      - name: Report warm failures
+        env:
+          APT_OUTCOME: ${{ steps.warm-apt.outcome }}
+          YARN_OUTCOME: ${{ steps.warm-yarn.outcome }}
+          BROWSER_OUTCOME: ${{ steps.warm-browser.outcome }}
+        run: |
+          echo "apt=$APT_OUTCOME yarn=$YARN_OUTCOME browser=$BROWSER_OUTCOME"
+          failed=""
+          [[ "$APT_OUTCOME" == "failure" ]] && failed="$failed apt"
+          [[ "$YARN_OUTCOME" == "failure" ]] && failed="$failed yarn"
+          [[ "$BROWSER_OUTCOME" == "failure" || "$BROWSER_OUTCOME" == "skipped" ]] && failed="$failed browser"
+          if [[ -n "$failed" ]]; then
+            echo "::error::cache warmers failed:$failed — downstream runs stay on the previous main-scoped copies (or the resilient miss path) until the next populate"
+            exit 1
+          fi
+
+  # The expensive tier. Independent of `populate` above: an apt-mirror outage
+  # must not stop the fixture refreshing, and a build failure here must not
+  # stop the apt/yarn/browser copies being kept warm.
+  #
+  # COST: when the fingerprints are unchanged this is nearly free — the
+  # distribution and fixture both restore and prepare-playwright-fixture
+  # short-circuits. Only a main commit that actually changes a fixture or
+  # distribution input pays the full build-and-seed.
+  #
+  # DATABASE: postgresql only, matching the PR/merge-queue pipeline this warms
+  # for. Note the three cache keys do NOT encode the database flavour while the
+  # fixture itself is a postgres dump — safe today because the mysql nightly is
+  # workflow_dispatch-only against release branches and so never writes main's
+  # scope, but the keys should grow a flavour segment before that changes.
+  warm-fixture:
+    # Newest wins: a burst of merges to main should leave one run warming the
+    # newest tree, not a queue of runs each warming a tree already stale.
+    concurrency:
+      group: populate-playwright-caches-fixture
+      cancel-in-progress: true
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: postgresql
+      profile: postgresql-warm
+      # Reuse the PR pipeline's timing artifacts; the shard planner still runs
+      # (prepare-playwright-fixture needs its requires_airflow output) even
+      # though no shard is dispatched.
+      workflow_filename: playwright-postgresql-e2e.yml
+      warm_caches_only: true
+      # Must match what the merge queue restores, or the fingerprints differ
+      # and the warm populates keys nobody reads.
+      full_suite: true
+      protocol: http
+      coarse_bundle: true

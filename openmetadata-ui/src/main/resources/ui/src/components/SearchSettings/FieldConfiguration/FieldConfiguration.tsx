@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import {
   Badge,
   Button,
@@ -49,9 +50,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     field.matchType || MatchType.Standard
   );
 
-  const fieldDescription = entityFields.find(
+  const entityFieldConfig = entityFields.find(
     (entityField) => entityField.name === field.fieldName
-  )?.description;
+  );
+  const fieldDescription = entityFieldConfig?.description;
+  // Only analyzed text fields can be highlighted. The server derives this from the index mapping
+  // and rejects a save that targets a flattened or non-indexed path, so offering the toggle here
+  // would only produce a 400 the admin cannot act on.
+  const isHighlightAllowed = entityFieldConfig?.highlight ?? false;
 
   useEffect(() => {
     // If initialOpen is true, open this panel automatically
@@ -153,15 +159,30 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             <Typography.Text>
               {t('label.highlight-field-plural')}
             </Typography.Text>
-            <Switch
-              checked={
-                searchSettings?.highlightFields?.includes(field.fieldName) ??
-                false
-              }
-              className="m-l-xlg"
-              data-testid="highlight-field-switch"
-              onChange={() => onHighlightFieldsChange(field.fieldName)}
-            />
+            {isHighlightAllowed ? (
+              <Switch
+                checked={
+                  searchSettings?.highlightFields?.includes(field.fieldName) ??
+                  false
+                }
+                className="m-l-xlg"
+                data-testid="highlight-field-switch"
+                onChange={() => onHighlightFieldsChange(field.fieldName)}
+              />
+            ) : (
+              <Tooltip
+                placement="top"
+                title={t('message.field-cannot-be-highlighted')}>
+                <TooltipTrigger>
+                  <Switch
+                    disabled
+                    checked={false}
+                    className="m-l-xlg"
+                    data-testid="highlight-field-switch"
+                  />
+                </TooltipTrigger>
+              </Tooltip>
+            )}
           </div>
           <Divider />
 
