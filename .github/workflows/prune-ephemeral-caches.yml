@@ -21,10 +21,15 @@
 # in four ~1.28 GB ingestion images on queue refs, three of them already dead.
 #
 # playwright-e2e-reusable.yml no longer saves from merge_group, which stops the
-# Playwright assets accumulating. This workflow is the backstop: third-party
-# actions (setup-uv, cache-apt-pkgs) save unconditionally and cannot be gated
-# from the workflow, and it also clears whatever was stranded before that
-# change landed.
+# Playwright assets accumulating, and setup-uv is now gated the same way (it
+# does take an `enable-cache` input — the earlier note here claiming otherwise
+# was wrong, and it cost 3.3 GB across 19 dead queue refs). This workflow is
+# the backstop for what still cannot be gated — cache-apt-pkgs has no such
+# input — and it clears whatever was stranded before those changes landed.
+#
+# Note the backstop alone cannot win: it runs every 30 minutes while the queue
+# writes continuously, so 19 setup-uv entries came back within 19 minutes of
+# run 33878696968 deleting them. Prefer gating a save over pruning it.
 #
 # SAFETY: a cache is deleted only when its ref no longer resolves. Entries
 # still in the queue keep their caches, so an in-flight run is never forced
