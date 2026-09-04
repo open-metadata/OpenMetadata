@@ -25,7 +25,7 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import {
   CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
   INVALID_NAMES,
@@ -63,6 +63,7 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {

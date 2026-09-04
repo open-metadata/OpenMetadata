@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   ENTITY_TYPE_OPTIONS,
   FILTER_LABELS,
   TEST_PLATFORM_OPTIONS,
 } from '../../../constant/testDefinitionFilter';
+import { expect, test } from '../../../support/fixtures/base';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   closeFilterDropdown,
