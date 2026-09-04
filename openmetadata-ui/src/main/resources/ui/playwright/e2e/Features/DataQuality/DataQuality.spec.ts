@@ -1511,15 +1511,14 @@ test.describe(
           const pageSizeDropdown = page.getByTestId(
             'page-size-selection-dropdown'
           );
-          const pageSizeMenu = page.locator(
-            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
-          );
+          const pageSizeMenu = page
+            .getByRole('menu')
+            .filter({ hasText: '/ Page' });
 
           await expect(pageSizeDropdown).toBeVisible();
-          // NextPrevious inherits Ant Dropdown's hover trigger; a single hover
-          // can land while the control is still disabled by a fetch, and the
-          // menu then never mounts — retry with a click fallback, the same
-          // pattern verifyPageSizeChange uses.
+
+          // Ant Dropdown opens on hover, so a re-render that shifts the footer out
+          // from under the pointer leaves the menu closed for good.
           await expect(async () => {
             await pageSizeDropdown.hover();
             if (!(await pageSizeMenu.isVisible())) {
@@ -1527,6 +1526,7 @@ test.describe(
             }
             await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
           }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
