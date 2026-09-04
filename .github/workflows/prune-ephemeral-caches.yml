@@ -76,15 +76,28 @@ jobs:
           # /actions/caches returns an object, not an array, so --paginate
           # cannot flatten it; walk the pages by hand until one comes back empty.
           caches=$(mktemp)
+          truncated=no
           page=1
           while :; do
             body=$(gh api "repos/${GH_REPO}/actions/caches?per_page=100&page=${page}")
             count=$(jq '.actions_caches | length' <<<"$body")
-            [[ "$count" -eq 0 ]] && break
+            if [[ "$count" -eq 0 ]]; then
+              break
+            fi
             jq -r '.actions_caches[] | [.id, .ref, .size_in_bytes, .key] | @tsv' \
               <<<"$body" >> "$caches"
             page=$((page + 1))
-            [[ "$page" -gt 20 ]] && break
+            # Runaway guard. Hitting it means the listing was TRUNCATED and the
+            # sweep is incomplete, which would otherwise be indistinguishable
+            # from a clean one — say so rather than report a partial reclaim as
+            # the whole job. 2000 entries is far past the 10 GB budget, so this
+            # firing is itself the signal something else is wrong.
+            if [[ "$page" -gt 20 ]]; then
+              truncated=yes
+              listed=$(wc -l < "$caches" | tr -d ' ')
+              echo "::warning::cache listing truncated at the 20-page cap after ${listed} entries; caches beyond it were not examined and may still be stranded"
+              break
+            fi
           done
 
           deleted=0
@@ -116,4 +129,5 @@ jobs:
             echo "| caches on live queue refs (kept) | ${kept} |"
             echo "| caches on dead queue refs (deleted) | ${deleted} |"
             echo "| reclaimed | $((reclaimed / 1048576)) MB |"
+            echo "| listing truncated | \`${truncated}\` |"
           } >> "$GITHUB_STEP_SUMMARY"

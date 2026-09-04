@@ -571,7 +571,14 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     # The push trigger must stay unfiltered: the fixture and distribution
     # fingerprints span far more than the apt/yarn/browser key inputs, and a
     # skipped warm costs every queue entry ~17 min.
-    push_trigger = warm.split("  push:", 1)[1].split("  workflow_dispatch", 1)[0]
+    #
+    # Bound to the `on:` block first. `push:` is the LAST trigger, so slicing
+    # forward to a sibling key finds no terminator and silently runs to EOF —
+    # the assertions would then be inspecting the jobs, and a `paths:` added
+    # anywhere later in the file would trip the check for the wrong reason.
+    triggers = warm.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+    assert "jobs:" not in triggers
+    push_trigger = triggers.split("  push:", 1)[1]
     assert "branches:\n      - main" in push_trigger
     assert "paths:" not in push_trigger
 
