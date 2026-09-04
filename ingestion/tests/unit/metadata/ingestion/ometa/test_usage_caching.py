@@ -69,7 +69,7 @@ class TestQueryGetOrCreateCache:
         assert result_b is query_entity
         mixin.get_by_name.assert_called_once()
 
-    def test_miss_is_not_cached_so_second_table_still_checks(self):
+    def test_created_query_is_cached_for_second_table(self):
         mixin = _make_query_mixin()
         query_entity = MagicMock(spec=Query)
         mixin.get_by_name = MagicMock(return_value=None)
@@ -77,9 +77,7 @@ class TestQueryGetOrCreateCache:
         mixin.get_suffix = MagicMock(return_value="/queries")
 
         request_a = _make_create_query_request("SELECT * FROM customers")
-        with patch(
-            "metadata.ingestion.ometa.mixins.query_mixin.Query", return_value=query_entity
-        ):
+        with patch("metadata.ingestion.ometa.mixins.query_mixin.Query", return_value=query_entity):
             result_a = mixin._get_or_create_query(request_a)
 
         assert result_a is query_entity
@@ -90,6 +88,23 @@ class TestQueryGetOrCreateCache:
 
         assert result_b is query_entity
         assert mixin.get_by_name.call_count == 1, "cached hit should skip get_by_name"
+
+    def test_failed_lookup_and_create_is_not_cached(self):
+        mixin = _make_query_mixin()
+        mixin.get_by_name = MagicMock(return_value=None)
+        mixin.client.put = MagicMock(return_value=None)
+        mixin.get_suffix = MagicMock(return_value="/queries")
+
+        request_a = _make_create_query_request("SELECT * FROM customers")
+        request_b = _make_create_query_request("SELECT * FROM customers")
+
+        result_a = mixin._get_or_create_query(request_a)
+        result_b = mixin._get_or_create_query(request_b)
+
+        assert result_a is None
+        assert result_b is None
+        assert mixin.get_by_name.call_count == 2
+        assert mixin.client.put.call_count == 2
 
     def test_none_query_body_returns_none_without_caching(self):
         mixin = _make_query_mixin()

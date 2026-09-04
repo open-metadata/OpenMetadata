@@ -28,8 +28,8 @@ from metadata.ingestion.api.common import T
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.elasticsearch import ES_INDEX_MAP
-from metadata.utils.lru_cache import LRUCache
 from metadata.utils.logger import ometa_logger
+from metadata.utils.lru_cache import LRUCache
 
 USER_REFERENCE_CACHE_SIZE = 1000
 
@@ -87,7 +87,7 @@ class OMetaUserMixin:
             self._user_reference_cache_instance = cache
         return cache
 
-    def get_cached_user_reference(self, name: str) -> Optional[EntityReference]:
+    def get_cached_user_reference(self, name: str) -> EntityReference | None:
         """
         Cached lookup for a User EntityReference by name/FQN.
         Used during usage ingestion, where the same username is looked up

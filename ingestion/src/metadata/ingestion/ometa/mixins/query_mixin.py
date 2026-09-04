@@ -47,10 +47,6 @@ class OMetaQueryMixin:
 
     client: REST
 
-    def _get_query_hash(self, query: str) -> str:
-        result = hashlib.md5(query.encode())
-        return str(result.hexdigest())
-
     def _get_query_cache(self) -> SkipNoneLRUCache:
         """
         Lazily create a Query cache scoped to this specific OpenMetadata
@@ -63,7 +59,11 @@ class OMetaQueryMixin:
             self._query_cache_instance = cache
         return cache
 
-    def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
+    def _get_query_hash(self, query: str) -> str:
+        result = hashlib.md5(query.encode())
+        return str(result.hexdigest())
+
+    def _get_or_create_query(self, query: CreateQueryRequest) -> Query | None:
         if query.query.root is None:
             return None
         query_hash = self._get_query_hash(query=query.query.root)
