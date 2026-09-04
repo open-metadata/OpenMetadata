@@ -75,6 +75,7 @@ import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomPropert
 import {
   clickOutside,
   createNewPage,
+  descriptionBox,
   getApiContext,
   redirectToHomePage,
   uuid,
@@ -106,6 +107,7 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
   setSliderValue,
@@ -831,6 +833,55 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(
             container.getByTestId(`toggle-${propertyName}`)
           ).not.toBeVisible();
+        });
+      });
+
+      test('markdown edit button visible and clickable when value contains a table', async ({
+        page,
+      }) => {
+        const propertyName =
+          mainEntity.customPropertyValue[CustomPropertyTypeByName.MARKDOWN]
+            .property.name;
+
+        await test.step('Insert a TipTap table into the markdown property value', async () => {
+          await redirectToHomePage(page);
+          await mainEntity.visitEntityPage(page);
+          await waitForAllLoadersToDisappear(page);
+          await page.getByTestId('custom_properties').click();
+
+          const container = page.locator(
+            `[data-testid="custom-property-${propertyName}-card"]`
+          );
+          await container.getByTestId('edit-icon').scrollIntoViewIfNeeded();
+          await container.getByTestId('edit-icon').click();
+
+          // Move to a new paragraph at the end, then insert a table via slash command
+          const editor = page.locator(descriptionBox);
+          await editor.click();
+          await page.keyboard.press('Control+End');
+          await page.keyboard.press('Enter');
+          await createTable(page);
+
+          const patchResponse = page.waitForResponse(
+            `/api/v1/${entity.entityApiType}/*`
+          );
+          await page.locator('[data-testid="save"]').click();
+          expect((await patchResponse).status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
+        });
+
+        await test.step('Edit button visible and clickable with wide table in markdown value', async () => {
+          const container = page.locator(
+            `[data-testid="custom-property-${propertyName}-card"]`
+          );
+          const editButton = container.getByTestId('edit-icon');
+          await editButton.scrollIntoViewIfNeeded();
+          await expect(editButton).toBeVisible();
+          await expect(editButton).toBeEnabled();
+
+          // Regression for #32477: edit button must not be hidden by horizontal overflow
+          await editButton.click();
+          await expect(page.locator(descriptionBox)).toBeVisible();
         });
       });
 
