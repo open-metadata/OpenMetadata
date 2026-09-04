@@ -1543,3 +1543,8 @@ export const updateCustomPropertyInRightPanel = async (data: {
     await expect(container.getByTestId('no-data')).not.toBeVisible();
   }
 };
+
+export const createTable = async (page: Page) => {
+  await page.keyboard.type('/table');
+  await page.getByRole('option', { name: /table/i }).first().click();
+};

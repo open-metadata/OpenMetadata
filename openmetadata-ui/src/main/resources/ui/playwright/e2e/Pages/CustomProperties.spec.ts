@@ -106,7 +106,7 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { createTable } from '../../utils/KnowledgeCenter';
+import { createTable } from '../../utils/customProperty';
 import {
   openMatchingFieldsPanel,
   setSliderValue,
