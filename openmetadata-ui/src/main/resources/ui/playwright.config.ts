@@ -81,29 +81,56 @@ const andQuarantine = (base: RegExp) =>
     [...new Set(`${base.flags}${QUARANTINE_TAG.flags}`)].join('')
   );
 
+// Fixture projects hold no @quarantine tests, so the soak lane must leave their
+// grep alone. A project-level grep *is* applied to dependency projects (unlike
+// a CLI --grep, which Playwright exempts them from), so grepping them would
+// select zero tests and skip login and entity seeding entirely — every
+// quarantined test would then fail for want of admin.json rather than for the
+// flake being diagnosed, and `--list` cannot catch it because it neither runs
+// setup nor lists dependency projects.
+// Matched by file convention plus dataInsightApp.ts, which seeds the Data
+// Insight app without following it. Deliberately keyed on testMatch and not on
+// "is a dependency of something": chromium and DataAssetRulesEnabled are also
+// dependencies, but they carry real tests and must still be filtered.
+const FIXTURE_TEST_MATCH = /(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$/;
+const isFixtureProject = (project: { testMatch?: unknown }) =>
+  typeof project.testMatch === 'string' &&
+  FIXTURE_TEST_MATCH.test(project.testMatch);
+
 const applyQuarantine = <
-  T extends { grep?: RegExp | RegExp[]; grepInvert?: RegExp | RegExp[] }
+  T extends {
+    grep?: RegExp | RegExp[];
+    grepInvert?: RegExp | RegExp[];
+    testMatch?: unknown;
+  }
 >(
   projects: T[]
 ): T[] =>
-  projects.map((project) => ({
-    ...project,
+  projects.map((project) => {
     // grepInvert is OR-matched, so appending the tag is enough to exclude it.
+    if (!runQuarantinedOnly) {
+      return {
+        ...project,
+        grepInvert: [...asRegExpList(project.grepInvert), QUARANTINE_TAG],
+      };
+    }
+
+    if (isFixtureProject(project)) {
+      return { ...project };
+    }
+
     // grep is OR-matched too, which is the wrong operator for the soak lane —
     // replacing the project's lane-routing grep would let it pick up
     // quarantined tests belonging to other lanes, so each alternative is
     // AND-ed with the tag via lookaheads instead (same trick as combineGrep).
-    ...(runQuarantinedOnly
-      ? {
-          grep:
-            project.grep === undefined
-              ? QUARANTINE_TAG
-              : asRegExpList(project.grep).map(andQuarantine),
-        }
-      : {
-          grepInvert: [...asRegExpList(project.grepInvert), QUARANTINE_TAG],
-        }),
-  }));
+    return {
+      ...project,
+      grep:
+        project.grep === undefined
+          ? QUARANTINE_TAG
+          : asRegExpList(project.grep).map(andQuarantine),
+    };
+  });
 
 const combineGrep = (base?: RegExp) => {
   if (!base) {

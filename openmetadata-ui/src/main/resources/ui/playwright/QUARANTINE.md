@@ -48,7 +48,11 @@ generated variant rather than per source line.
 | `e2e/Features/ActivityStream.spec.ts` | activity stream API is called when visiting entity page | 2/11 | |
 
 Verified: `npx playwright test --list` reports 4543 tests by default (down from
-4555) and `PLAYWRIGHT_RUN_QUARANTINED=true` reports exactly these 13.
+4555) and `PLAYWRIGHT_RUN_QUARANTINED=true` reports these 13 plus the 7
+setup/teardown fixture projects, which the soak lane deliberately leaves
+unfiltered so login and entity seeding still happen — a project-level `grep`
+*is* applied to dependency projects, so filtering them would make every
+quarantined test fail for want of `admin.json` instead of for its flake.
 
 ## Not quarantined — fixed instead
 
