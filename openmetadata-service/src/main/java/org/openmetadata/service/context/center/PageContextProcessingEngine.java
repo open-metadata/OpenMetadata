@@ -154,12 +154,12 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   }
 
   /**
-   * Persists a terminal processing status from the scheduler thread (post-commit, so it never races
-   * the body edit that armed the run) for the paths the pipeline does not stamp itself: a skip
-   * (content unchanged since the last run) and a failure. The success path stamps {@link
-   * PageProcessingStatus#Processed} through {@link #stampStats} alongside the run's stats. A no-op
-   * when the page already carries the target status, so an unchanged-content skip does not churn the
-   * row.
+   * Persists a processing status from the scheduler thread (post-commit, so it never races the body
+   * edit that armed the run) for the paths the pipeline does not stamp itself: the start of a run
+   * ({@link PageProcessingStatus#Processing}), a skip (content unchanged since the last run) and a
+   * failure. The success path stamps {@link PageProcessingStatus#Processed} through {@link
+   * #stampStats} alongside the run's stats. A no-op when the page already carries the target status,
+   * so an unchanged-content skip does not churn the row.
    */
   private void stampStatus(UUID pageId, PageProcessingStatus status, String error) {
     Page current = getPage(pageId);
@@ -169,6 +169,17 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       updated.setProcessingError(error);
       pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
     }
+  }
+
+  /**
+   * An article's status is shown in the UI, and the throttle's quiet period means it would otherwise
+   * read {@link PageProcessingStatus#Queued} for minutes and then jump straight to Processed — with
+   * no way to tell a run in flight from one still waiting. Stamped only once the hash gate has
+   * decided there is work to do, so it costs one extra write per real run and none per skip.
+   */
+  @Override
+  protected void markProcessing(UUID pageId) {
+    stampStatus(pageId, PageProcessingStatus.Processing, null);
   }
 
   @Override

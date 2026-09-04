@@ -54,6 +54,7 @@ public abstract class ContextProcessingEngine {
     if (source != null) {
       ExtractionStats previous = loadStats(entityId);
       if (shouldProcess(source, previous)) {
+        markProcessing(entityId);
         outcome = extractAndReconcile(entityId, source);
       }
     }
@@ -80,6 +81,17 @@ public abstract class ContextProcessingEngine {
             .withSourceHash(source.hash());
     stampStats(entityId, stats);
     return ExtractionOutcome.processed(stats, reconciled);
+  }
+
+  /**
+   * Announces that a run has cleared the hash gate and is about to call the model, so a source whose
+   * status is user-visible can distinguish a run in flight from one merely queued. Deliberately
+   * called after {@link #shouldProcess} rather than at the top of {@link #runExtraction}, so an
+   * unchanged-content skip stays a no-op instead of writing the source twice. A no-op by default:
+   * only sources that expose a processing status override it.
+   */
+  protected void markProcessing(UUID entityId) {
+    // No-op by default.
   }
 
   protected abstract Source loadSource(UUID entityId);

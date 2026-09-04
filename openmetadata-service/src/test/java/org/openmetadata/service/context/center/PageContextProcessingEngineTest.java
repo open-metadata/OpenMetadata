@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -22,6 +25,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -133,6 +137,42 @@ class PageContextProcessingEngineTest {
   }
 
   @Test
+  void runStampsProcessingBeforeCallingTheModel() {
+    String body = "Onboarding runbook body";
+    pageReturns(page(body, "stale-hash"));
+    when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
+    when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
+
+    engine(10).runExtraction(pageId);
+
+    List<Page> writes = capturedUpdates();
+    assertEquals(PageProcessingStatus.Processing, writes.get(0).getProcessingStatus());
+    assertNull(writes.get(0).getProcessingError());
+    InOrder order = inOrder(pageRepository, extractor);
+    order.verify(pageRepository).update(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+    order.verify(extractor).derive(any(), any(), any());
+  }
+
+  @Test
+  void skippedRunNeverStampsProcessing() {
+    String body = "Onboarding runbook body";
+    Page page = page(body, DigestUtils.sha256Hex(body));
+    page.setProcessingStatus(PageProcessingStatus.Queued);
+    pageReturns(page);
+
+    engine(10).runExtraction(pageId);
+
+    verify(pageRepository, never())
+        .update(
+            isNull(),
+            any(),
+            argThat(p -> p.getProcessingStatus() == PageProcessingStatus.Processing),
+            eq(Entity.ADMIN_USER_NAME));
+  }
+
+  @Test
   void failedRunStampsFailedStatusWithError() {
     String body = "Onboarding runbook body";
     pageReturns(page(body, "stale-hash"));
@@ -171,10 +211,19 @@ class PageContextProcessingEngineTest {
     verify(extractor, never()).derive(any(), any(), any());
   }
 
+  /**
+   * The last page write of the run. A real run writes twice — Processing when it starts, then the
+   * terminal status — so the assertions below want the final one, not the only one.
+   */
   private Page capturedUpdate() {
+    return capturedUpdates().get(capturedUpdates().size() - 1);
+  }
+
+  private List<Page> capturedUpdates() {
     ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
-    verify(pageRepository).update(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
-    return captor.getValue();
+    verify(pageRepository, atLeastOnce())
+        .update(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+    return captor.getAllValues();
   }
 
   @Test
