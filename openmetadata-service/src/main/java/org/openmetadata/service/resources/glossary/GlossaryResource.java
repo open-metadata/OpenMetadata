@@ -158,6 +158,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by domain FQN", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -165,6 +168,13 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
+    if (domain != null) {
+      filter.addQueryParam(
+          "domainId",
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED)
+              .getId()
+              .toString());
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
