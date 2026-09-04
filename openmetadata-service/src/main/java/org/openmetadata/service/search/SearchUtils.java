@@ -867,7 +867,8 @@ public final class SearchUtils {
     } else if (outcome.versionConflicts() > 0) {
       LOG.warn(
           "{} in upstream lineage for index {} hit {} version conflict(s); those documents kept "
-              + "their previous column FQNs and are not retried. Updated {} of {} requested FQNs.",
+              + "their previous column FQNs and are not retried. {} document(s) updated for {} "
+              + "requested FQN(s).",
           outcome.operation(),
           outcome.indexName(),
           outcome.versionConflicts(),
@@ -875,7 +876,7 @@ public final class SearchUtils {
           outcome.requestedFqnCount());
     } else if (outcome.updatedDocuments() == 0 && outcome.requestedFqnCount() > 0) {
       LOG.warn(
-          "{} in upstream lineage matched no documents for index {} ({} FQNs requested). Expected "
+          "{} in upstream lineage matched no documents for index {} ({} FQN(s) requested). Expected "
               + "when nothing downstream references those columns; also what a missing index or an "
               + "unresolved index selector looks like.",
           outcome.operation(),
@@ -883,7 +884,7 @@ public final class SearchUtils {
           outcome.requestedFqnCount());
     } else {
       LOG.info(
-          "{} in upstream lineage for index {}: {} document(s) updated for {} requested FQNs",
+          "{} in upstream lineage for index {}: {} document(s) updated for {} requested FQN(s)",
           outcome.operation(),
           outcome.indexName(),
           outcome.updatedDocuments(),
