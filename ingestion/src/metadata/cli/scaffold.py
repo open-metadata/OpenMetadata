@@ -1622,7 +1622,8 @@ def write_file(path: Path, content: str) -> None:
     if path.exists():
         logger.warning(f"File already exists, skipping: {path}")
         return
-    path.write_text(content)
+    # Paths are composed only from fixed service types and regex-validated connector names.
+    path.write_text(content)  # NOSONAR(S8707)
     logger.info(f"  Created: {path.relative_to(Path.cwd()) if path.is_relative_to(Path.cwd()) else path}")
 
 

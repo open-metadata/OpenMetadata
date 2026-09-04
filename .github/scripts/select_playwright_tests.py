@@ -89,7 +89,11 @@ def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
     impact_map = json.loads(args.impact_map.read_text(encoding="utf-8"))
-    full_event = args.event_name in {"merge_group", "schedule"}
+    # `push` is the main-scoped cache warmer (populate-playwright-caches.yml).
+    # It carries no PR diff to narrow against, and the fixture it warms has to be
+    # the one a full merge-queue run restores — a targeted plan would leave
+    # requires_airflow false and skip warming the ingestion image entirely.
+    full_event = args.event_name in {"merge_group", "schedule", "push"}
     # `--full-suite` is honoured on every event, pull requests included: the
     # caller workflows pass the reusable's `full_suite` input straight through,
     # so a PR gate that wants the complete suite only has to keep that input

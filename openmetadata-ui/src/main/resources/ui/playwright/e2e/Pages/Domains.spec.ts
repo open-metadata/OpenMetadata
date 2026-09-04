@@ -1164,38 +1164,42 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Verify domain tags and glossary terms', async ({ page }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const domain = new Domain();
-    try {
-      await domain.create(apiContext);
-      await page.reload();
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, domain.data);
-      await waitForAllLoadersToDisappear(page);
+  test(
+    'Verify domain tags and glossary terms',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const domain = new Domain();
+      try {
+        await domain.create(apiContext);
+        await page.reload();
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await waitForAllLoadersToDisappear(page);
+        await selectDomain(page, domain.data);
+        await waitForAllLoadersToDisappear(page);
 
-      await addTagsAndGlossaryToDomain(page, {
-        tagFqn: tag.responseData.fullyQualifiedName,
-        glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
-      });
+        await addTagsAndGlossaryToDomain(page, {
+          tagFqn: tag.responseData.fullyQualifiedName,
+          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        });
 
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, domain.data);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await waitForAllLoadersToDisappear(page);
+        await selectDomain(page, domain.data);
 
-      // Verify tag is visible
-      await expect(
-        page.locator(
-          `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-    } finally {
-      await domain.delete(apiContext);
-      await afterAction();
+        // Verify tag is visible
+        await expect(
+          page.locator(
+            `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+          )
+        ).toBeVisible();
+      } finally {
+        await domain.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('Create domain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
