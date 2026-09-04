@@ -1814,6 +1814,7 @@
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",
     "no-comma-cancel": "아니오, 취소",
+    "no-connection-details": "연결 세부정보 없음",
     "no-conversation-selected": "선택된 대화 없음",
     "no-custom-properties-defined": "No custom properties defined",
     "no-data": "데이터 없음",

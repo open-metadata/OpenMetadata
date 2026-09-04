@@ -1814,6 +1814,7 @@
     "no-change": "No change",
     "no-closed-tasks-yet": "还没有已关闭的任务",
     "no-comma-cancel": "不，取消",
+    "no-connection-details": "无连接详细信息",
     "no-conversation-selected": "未选择对话",
     "no-custom-properties-defined": "No custom properties defined",
     "no-data": "无数据",

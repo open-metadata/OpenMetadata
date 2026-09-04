@@ -1814,6 +1814,7 @@
     "no-change": "No change",
     "no-closed-tasks-yet": "Todavía no hay tareas cerradas",
     "no-comma-cancel": "No, cancela",
+    "no-connection-details": "Sin detalles de conexión",
     "no-conversation-selected": "Ninguna conversación seleccionada",
     "no-custom-properties-defined": "No custom properties defined",
     "no-data": "Sin datos",

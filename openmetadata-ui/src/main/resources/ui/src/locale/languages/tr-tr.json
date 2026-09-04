@@ -1814,6 +1814,7 @@
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",
     "no-comma-cancel": "Hayır, iptal et",
+    "no-connection-details": "Bağlantı detayı yok",
     "no-conversation-selected": "Hiçbir konuşma seçilmedi",
     "no-custom-properties-defined": "No custom properties defined",
     "no-data": "Veri yok",

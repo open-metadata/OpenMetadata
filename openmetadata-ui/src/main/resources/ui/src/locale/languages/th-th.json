@@ -1814,6 +1814,7 @@
     "no-change": "No change",
     "no-closed-tasks-yet": "ยังไม่มีงานที่ปิดแล้ว",
     "no-comma-cancel": "ไม่, ยกเลิก",
+    "no-connection-details": "ไม่มีรายละเอียดการเชื่อมต่อ",
     "no-conversation-selected": "ไม่ได้เลือกการสนทนา",
     "no-custom-properties-defined": "No custom properties defined",
     "no-data": "ไม่มีข้อมูล",

@@ -1814,6 +1814,7 @@
     "no-change": "No change",
     "no-closed-tasks-yet": "完了したタスクはまだありません",
     "no-comma-cancel": "いいえ、キャンセル",
+    "no-connection-details": "接続の詳細はありません",
     "no-conversation-selected": "会話が選択されていません",
     "no-custom-properties-defined": "No custom properties defined",
     "no-data": "データなし",
