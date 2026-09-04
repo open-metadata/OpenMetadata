@@ -13,11 +13,11 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import leftSidebarClassBase from '../../../../utils/LeftSidebarClassBase';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { CONNECTIONS_ROUTES } from '../../../integration/connections.constants';
 import { connectionsModule } from '../../../integration/connections.module';
 import ApplicationsProvider from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -96,11 +96,17 @@ jest.mock('../KeepAliveRoutes/KeepAliveRoutes', () => ({
 
     return (
       <div data-testid="mounted-routes">
-        {routes.map((route, index) => (
-          <span data-testid="route-path" key={index}>
-            {Array.isArray(route.path) ? route.path.join(',') : route.path}
-          </span>
-        ))}
+        {routes.map((route) => {
+          const pathKey = Array.isArray(route.path)
+            ? route.path.join(',')
+            : route.path ?? '';
+
+          return (
+            <span data-testid="route-path" key={pathKey}>
+              {pathKey}
+            </span>
+          );
+        })}
       </div>
     );
   },
