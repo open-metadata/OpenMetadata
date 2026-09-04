@@ -8,7 +8,8 @@
       "description": "Validate that we can connect to the underlying SAP HANA database and authenticate with the given credentials.",
       "errorMessage": "Failed to connect to SAP HANA. Please validate the host, port, username, and password.",
       "shortCircuit": true,
-      "mandatory": true
+      "mandatory": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetInfoAreas",

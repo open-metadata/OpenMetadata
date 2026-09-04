@@ -98,7 +98,9 @@ SQLSERVER_ERRORS = ErrorPack(
     # as an auth failure, the only signal available.
     when(Matchers.contains("Cannot open database")).diagnose(
         "Database not found or not accessible",
-        fix="Verify the configured database exists and the login is allowed to open it.",
+        fix="SQL Server would not open the database named in Database. Check the name is spelled "
+        "correctly and exists on this server, and ask a SQL Server administrator to give the "
+        "account in Username access to it.",
     ),
     when(
         Matchers.any_of(
@@ -107,7 +109,9 @@ SQLSERVER_ERRORS = ErrorPack(
         )
     ).diagnose(
         "Authentication failed",
-        fix="Check the username and password, and that the login is allowed to connect.",
+        fix="SQL Server rejected the sign-in. Check Username and Password. If both are correct, the "
+        "account may be disabled or not allowed to sign in to this server - a SQL Server "
+        "administrator can confirm.",
     ),
     # 297's text lacks "permission was denied", so its number is the only signal.
     when(
@@ -117,7 +121,9 @@ SQLSERVER_ERRORS = ErrorPack(
         )
     ).diagnose(
         "Insufficient privileges",
-        fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
+        fix="The account signed in but is not allowed to read what this step needs. Ask a SQL "
+        "Server administrator to GRANT SELECT on those objects to it - and GRANT VIEW SERVER STATE "
+        "as well if you want query history collected.",
     ),
 )
 

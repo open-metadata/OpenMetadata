@@ -8,7 +8,8 @@
         "description": "List all the containers available to the user in the Storage Account.",
         "errorMessage": "Failed to fetch containers, please validate the credentials if the user has access to list containers in the given Storage Account.",
         "shortCircuit": true,
-        "mandatory": true
+        "mandatory": true,
+        "category": "ConnectionGate"
       }
     ]
   }

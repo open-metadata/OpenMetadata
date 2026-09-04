@@ -8,7 +8,8 @@
             "description": "Check if the database is reachable to fetch the DAG details. Skipped in file-only mode (no databaseConnection configured).",
             "errorMessage": "Failed to connect to SSIS database. If running in file-only mode, databaseConnection is not required.",
             "shortCircuit": false,
-            "mandatory": false
+            "mandatory": false,
+            "category": "ConnectionGate"
         },
         {
             "name": "SSISDBExist",
