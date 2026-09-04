@@ -14,7 +14,7 @@ Greenplum source module
 
 import traceback
 from collections import namedtuple
-from collections.abc import Iterable
+from typing import Iterable, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -44,6 +44,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
 from metadata.ingestion.source.database.greenplum.queries import (
@@ -86,7 +87,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class GreenplumSource(CommonDbSourceService, MultiDBSource):
+class GreenplumSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Greenplum Source
@@ -97,7 +98,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: str | None = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GreenplumConnection = config.serviceConnection.root.config
@@ -119,7 +120,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> str | None:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -157,7 +158,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> tuple[bool, TablePartition | None]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(GREENPLUM_PARTITION_DETAILS.format(table_name=table_name, schema_name=schema_name))

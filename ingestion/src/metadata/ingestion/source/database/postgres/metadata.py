@@ -14,7 +14,7 @@ Postgres source module
 
 import traceback
 from collections import namedtuple
-from collections.abc import Iterable
+from typing import Iterable, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -57,6 +57,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
 from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
@@ -124,7 +125,7 @@ PGDialect.get_foreign_keys = get_foreign_keys
 PGDialect.get_schema_names = get_schema_names
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -135,14 +136,14 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> str | None:
+    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the schema description
         """
@@ -165,7 +166,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> str | None:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -203,7 +204,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> tuple[bool, TablePartition]:
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:  # noqa: UP006
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(POSTGRES_PARTITION_DETAILS),
