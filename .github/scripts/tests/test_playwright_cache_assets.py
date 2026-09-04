@@ -561,9 +561,9 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     assert "uses: ./.github/actions/cache-ui-dist" in ui_dist_step
     assert guard not in ui_dist_step
 
-    # populate-playwright-apt-cache.yml is the SINGLE main-scoped writer that
+    # populate-playwright-caches.yml is the SINGLE main-scoped writer that
     # replaces them, and its warm job must stop before the shards.
-    warm = (ROOT / ".github/workflows/populate-playwright-apt-cache.yml").read_text()
+    warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
     assert "warm_caches_only: true" in warm
     assert "uses: ./.github/workflows/playwright-e2e-reusable.yml" in warm
     assert "!inputs.warm_caches_only" in workflow

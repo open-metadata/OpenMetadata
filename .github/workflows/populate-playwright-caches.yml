@@ -94,7 +94,7 @@ jobs:
   populate:
     # Cheap and quick; let an in-flight warm finish rather than restart it.
     concurrency:
-      group: populate-playwright-apt-cache
+      group: populate-playwright-caches-apt
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -224,7 +224,7 @@ jobs:
     # Newest wins: a burst of merges to main should leave one run warming the
     # newest tree, not a queue of runs each warming a tree already stale.
     concurrency:
-      group: populate-playwright-apt-cache-fixture
+      group: populate-playwright-caches-fixture
       cancel-in-progress: true
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     secrets: inherit
