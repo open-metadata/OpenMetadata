@@ -239,8 +239,11 @@ export default function EntitySummaryPanel({
   // (isUndefined(type)) return;` early-out. No error-toast effect: the old catch had none
   // (it silently fell back to DEFAULT_ENTITY_PERMISSION on any error) — the hook's own
   // `data ?? DEFAULT_ENTITY_PERMISSION` fallback already reproduces that, so nothing extra
-  // is needed here. `deleted` is required: canEditDisplayName/canEditCustomFields below are
-  // canEdit* flags.
+  // is needed here. No `deleted` option, deliberately: the two canEdit* flags consumed below
+  // (canEditDisplayName, canEditCustomFields) were derived pre-refactor by bare
+  // getPrioritizedEditPermission calls with no soft-delete gating, so passing `deleted` here
+  // would hide edit affordances that previously rendered on deleted entities — a real
+  // behavior change. DataAssetsHeader is ungated for the same reason.
   const {
     isLoading: isPermissionLoading,
     hasViewAccess: viewPermission,
@@ -256,10 +259,7 @@ export default function EntitySummaryPanel({
   } = useEntityPermissions(
     permissionResourceType ?? ResourceEntity.TABLE,
     permissionIdentifier ?? { id: '' },
-    {
-      enabled: Boolean(id) && !isUndefined(permissionResourceType),
-      deleted: Boolean(get(entityDetails, 'details.deleted')),
-    }
+    { enabled: Boolean(id) && !isUndefined(permissionResourceType) }
   );
 
   // Memoize the entity fetch map to avoid recreating it on every render

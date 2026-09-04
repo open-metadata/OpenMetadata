@@ -98,9 +98,15 @@ const toAllowedBoolean = (
       return false;
     default: {
       // Compile-time exhaustiveness: new Access members break the build here.
+      // At runtime `access` is network data, so a value the generated enum does not
+      // yet carry (backend shipped a new state before the types were regenerated)
+      // reaches this branch. It must fail CLOSED — this is the single seam every
+      // entity/resource permission flows through, so returning a truthy value here
+      // would grant access app-wide.
       const unhandled: never = access;
+      void unhandled;
 
-      return Boolean(unhandled);
+      return false;
     }
   }
 };

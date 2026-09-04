@@ -55,6 +55,27 @@ describe('conditionalAllow translation (#31783)', () => {
     }
   });
 
+  // The exhaustive switch's `never` guard is compile-time only. `access` is network data, so
+  // a state the generated enum does not yet carry (backend shipped it before the types were
+  // regenerated) reaches the default branch at runtime. It must deny — this is the single
+  // seam every entity/resource permission flows through, so failing open would grant access
+  // app-wide. The cast is the point of the test: it reproduces exactly what the type system
+  // cannot see.
+  it('denies an Access value the generated enum does not carry (fails closed)', () => {
+    const unknownAccess = 'someFutureAccessState' as Access;
+
+    expect(
+      getOperationPermissions(resourcePermission(unknownAccess))[
+        Operation.ViewAll
+      ]
+    ).toBe(false);
+    expect(
+      getOperationPermissions(resourcePermission(unknownAccess), true)[
+        Operation.ViewAll
+      ]
+    ).toBe(false);
+  });
+
   it('getUIPermission forwards allowConditional', () => {
     const ui = getUIPermission(
       [resourcePermission(Access.ConditionalAllow)],
