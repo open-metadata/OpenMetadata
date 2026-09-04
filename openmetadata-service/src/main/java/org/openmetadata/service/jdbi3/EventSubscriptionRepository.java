@@ -178,6 +178,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         new EventSubscriptionOffset()
             .withCurrentOffset(latestOffset)
             .withStartingOffset(latestOffset)
+            .withStartingTimestamp(currentTime)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()
