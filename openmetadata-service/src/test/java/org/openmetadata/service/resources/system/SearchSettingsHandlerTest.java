@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
@@ -312,6 +313,51 @@ class SearchSettingsHandlerTest {
             .withAssetType(assetType)
             .withHighlightFields(new ArrayList<>(List.of(highlightField)));
     return new SearchSettings().withAssetTypeConfigurations(new ArrayList<>(List.of(assetConfig)));
+  }
+
+  @Test
+  void testNameKeywordPresentForTopLevelNameSearchableAssets() {
+    // Top-level name-searchable assets must expose name.keyword for exact-match search,
+    // matching databaseSchema and table.
+    List<String> assetTypes = List.of("database", "storedProcedure", "query", "metric");
+    for (String assetType : assetTypes) {
+      AssetTypeConfiguration config = findAssetConfig(defaultSearchSettings, assetType);
+      assertNotNull(
+          config, "searchSettings.json must contain " + assetType + " assetTypeConfiguration");
+      Set<String> fieldNames =
+          config.getSearchFields().stream().map(FieldBoost::getField).collect(Collectors.toSet());
+      assertTrue(
+          fieldNames.contains("name.keyword"),
+          assetType + " searchFields must include 'name.keyword' for exact-match search");
+    }
+  }
+
+  @Test
+  void testAllowedFieldsCoverAllDefaultSearchFields() {
+    // A removed search field must stay re-addable: the UI add-field menu is sourced from
+    // allowedFields, so every default searchField must be present in allowedFields.
+    Map<String, Set<String>> allowedByEntity =
+        defaultSearchSettings.getAllowedFields().stream()
+            .collect(
+                Collectors.toMap(
+                    AllowedSearchFields::getEntityType,
+                    allowed ->
+                        allowed.getFields().stream()
+                            .map(Field::getName)
+                            .collect(Collectors.toSet())));
+
+    List<String> missing = new ArrayList<>();
+    for (AssetTypeConfiguration config : defaultSearchSettings.getAssetTypeConfigurations()) {
+      Set<String> allowed = allowedByEntity.getOrDefault(config.getAssetType(), Set.of());
+      for (FieldBoost searchField : config.getSearchFields()) {
+        if (!allowed.contains(searchField.getField())) {
+          missing.add(config.getAssetType() + " -> " + searchField.getField());
+        }
+      }
+    }
+    assertTrue(
+        missing.isEmpty(),
+        "Every default searchField must be re-addable via allowedFields. Missing: " + missing);
   }
 
   @Test
