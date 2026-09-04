@@ -3879,6 +3879,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
     sourceReq.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
     Table sourceTable = client.tables().create(sourceReq);
+    // Bump past 0.1 so consolidateChanges() is eligible for both PATCHes below. It is also what
+    // makes a case-only rename reach the deferred flush at all: on a non-consolidating PATCH the
+    // rename records no field change (columnMatch is case-insensitive, so the column is neither
+    // added nor deleted, and the per-column updaters never track name), so reactUpdate() treats
+    // the request as a no-op and skips the flush.
+    sourceTable.setDescription("lineage revert test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
 
     CreateTable targetReq = new CreateTable();
     targetReq.setName(ns.prefix("lineage_revert_tgt"));
@@ -3902,11 +3909,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                   getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
                       .contains(originalColFqn));
 
-      // Rename the column, paired with a description edit. A case-only rename on its own is not
-      // recorded as a field change (columnMatch is case-insensitive, so it is neither an add nor
-      // a delete, and the per-column updaters never track name), which would make reactUpdate()
-      // treat the request as a no-op and skip the deferred flush entirely.
-      sourceTable.setDescription("column renamed");
       sourceTable.setColumns(List.of(ColumnBuilder.of("REVERT_COL", "BIGINT").build()));
       sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
 
@@ -3919,12 +3921,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                   getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
                       .contains(intermediateColFqn));
 
-      // Revert within the same session: version is now > 0.1 and the updater/session match, so
-      // consolidateChanges() applies. The consolidated diff runs against the pre-session version,
-      // which still holds the original column name, so the final pass sees no column change at
-      // all -- only the first pass carries the REVERT_COL -> revert_col mapping the index needs.
-      // The description edit keeps the request from being a no-op, as above.
-      sourceTable.setDescription("column name reverted");
+      // Revert within the same session. The consolidated diff runs against the pre-session
+      // version, which still holds the original column name, so the final pass sees no column
+      // change at all -- only the first pass carries the REVERT_COL -> revert_col mapping the
+      // index needs.
       sourceTable.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
       client.tables().update(sourceTable.getId().toString(), sourceTable);
 
@@ -4192,6 +4192,18 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         .orElseThrow(() -> new AssertionError("Column not found: " + name));
   }
 
+  /**
+   * The indexed {@code upstreamLineage} of one table, serialized for substring matching.
+   *
+   * <p>Callers assert that a column FQN is absent, and returning the raw response body would let
+   * that pass for the wrong reasons: an empty hit set, an error body, or a document reindexed
+   * without {@code upstreamLineage} all contain no FQN either, and the awaits use {@code
+   * ignoreExceptions()}. So the shape is checked here, and a document that is not in a readable
+   * state raises instead of returning something the caller would read as "the FQN is gone" — the
+   * await then keeps polling and ultimately times out rather than reporting a false pass. The
+   * delete script empties a lineage entry's {@code columns} but never removes the entry, so a table
+   * that had column lineage keeps a non-empty {@code upstreamLineage} through every case here.
+   */
   private String getUpstreamLineageFromIndex(Rest5Client searchClient, String tableId)
       throws Exception {
     String query =
@@ -4201,9 +4213,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
     request.setJsonEntity(query);
     Response response = searchClient.performRequest(request);
+    String body;
     try (InputStream content = response.getEntity().getContent()) {
-      return new String(content.readAllBytes(), StandardCharsets.UTF_8);
+      body = new String(content.readAllBytes(), StandardCharsets.UTF_8);
     }
+    JsonNode hits = new ObjectMapper().readTree(body).path("hits");
+    if (hits.path("total").path("value").asInt() != 1) {
+      throw new IllegalStateException(
+          "Expected exactly one search hit for table " + tableId + ", got: " + body);
+    }
+    JsonNode upstreamLineage = hits.path("hits").get(0).path("_source").path("upstreamLineage");
+    if (!upstreamLineage.isArray() || upstreamLineage.isEmpty()) {
+      throw new IllegalStateException(
+          "upstreamLineage missing or empty for table " + tableId + ": " + body);
+    }
+    return upstreamLineage.toString();
   }
 
   // ===================================================================

@@ -1001,19 +1001,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                       // FQN for that interval.
                       .refresh(Refresh.False));
 
-      LOG.info(
-          "Successfully updated columns in upstream lineage for index: {}, updated: {}",
-          indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update columns in upstream lineage: {}", errorMessage);
-      }
+      SearchUtils.logColumnLineageFlush(
+          new SearchUtils.ColumnLineageFlushOutcome(
+              "Column rename",
+              indexName,
+              originalUpdatedColumnFqnMap.size(),
+              zeroIfNull(updateResponse.updated()),
+              zeroIfNull(updateResponse.versionConflicts()),
+              updateResponse.failures().stream()
+                  .map(BulkByScrollFailure::cause)
+                  .map(ErrorCause::reason)
+                  .toList()));
 
     } catch (Exception e) {
       LOG.error("Error while updating columns in upstream lineage: {}", e.getMessage(), e);
@@ -1064,19 +1062,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                       // FQN for that interval.
                       .refresh(Refresh.False));
 
-      LOG.info(
-          "Successfully deleted columns from upstream lineage for index: {}, updated: {}",
-          indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to delete columns from upstream lineage: {}", errorMessage);
-      }
+      SearchUtils.logColumnLineageFlush(
+          new SearchUtils.ColumnLineageFlushOutcome(
+              "Column delete",
+              indexName,
+              deletedColumns.size(),
+              zeroIfNull(updateResponse.updated()),
+              zeroIfNull(updateResponse.versionConflicts()),
+              updateResponse.failures().stream()
+                  .map(BulkByScrollFailure::cause)
+                  .map(ErrorCause::reason)
+                  .toList()));
 
     } catch (Exception e) {
       LOG.error("Error while deleting columns from upstream lineage: {}", e.getMessage(), e);
@@ -1786,5 +1782,13 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
     return Query.of(
         q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
+  }
+
+  /**
+   * Update-by-query counters are boxed and nullable in both clients. They are only ever logged, so
+   * a null must not unbox into an exception that aborts the surrounding cleanup.
+   */
+  private static long zeroIfNull(Long count) {
+    return count == null ? 0L : count;
   }
 }
