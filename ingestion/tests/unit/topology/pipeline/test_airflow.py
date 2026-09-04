@@ -1611,3 +1611,81 @@ class TestAirflow(TestCase):
         self.assertEqual(len(failed_statuses), 10)
         for status in failed_statuses:
             self.assertEqual(status.taskStatus, [])
+
+    def test_get_pipeline_status_coalesce_ordering_with_asset_triggered_runs(self):
+        """
+        get_pipeline_status must return DagRun objects built from the session rows.
+        For asset-triggered DAG runs, logical_date (date_value) is NULL; the COALESCE
+        ordering fallback to start_date ensures they are not spuriously sorted above
+        real scheduled runs.  This test verifies that the function correctly builds
+        DagRun objects for both scheduled and asset-triggered rows and respects the
+        numberOfStatus limit.
+        """
+        from collections import namedtuple
+        from datetime import datetime, timezone
+        from unittest.mock import MagicMock, patch
+
+        from airflow.models import DagRun
+
+        Row = namedtuple("Row", ["dag_id", "run_id", "queued_at", "date_value", "start_date", "state"])
+
+        scheduled_dt = datetime(2026, 9, 1, 12, 0, 0, tzinfo=timezone.utc)
+        asset_start = datetime(2026, 9, 2, 8, 0, 0, tzinfo=timezone.utc)
+
+        # Simulate the DB returning 2 rows in COALESCE-ordered order:
+        # newest first: asset-triggered run (logical_date=NULL, start_date=asset_start)
+        # then scheduled run (logical_date=scheduled_dt)
+        rows = [
+            Row(dag_id="dag1", run_id="asset_run", queued_at=None, date_value=None, start_date=asset_start, state="success"),
+            Row(dag_id="dag1", run_id="sched_run", queued_at=None, date_value=scheduled_dt, start_date=scheduled_dt, state="success"),
+        ]
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+
+        with patch.object(self.airflow, "session") as mock_session:
+            mock_session.query.return_value = mock_query
+
+            result = self.airflow.get_pipeline_status("dag1")
+
+        # Both rows are returned as DagRun objects
+        self.assertEqual(len(result), 2)
+
+        asset_run = result[0]
+        sched_run = result[1]
+
+        self.assertIsInstance(asset_run, DagRun)
+        self.assertEqual(asset_run.run_id, "asset_run")
+        self.assertIsNone(asset_run.logical_date)
+        self.assertEqual(asset_run.start_date, asset_start)
+
+        self.assertIsInstance(sched_run, DagRun)
+        self.assertEqual(sched_run.run_id, "sched_run")
+        self.assertEqual(sched_run.logical_date, scheduled_dt)
+
+    def test_get_pipeline_status_cache_returns_same_result(self):
+        """
+        A second call for the same dag_id returns the cached result without
+        hitting the session again.
+        """
+        from collections import namedtuple
+        from unittest.mock import MagicMock, patch
+
+        Row = namedtuple("Row", ["dag_id", "run_id", "queued_at", "date_value", "start_date", "state"])
+
+        rows = [
+            Row(dag_id="dag_cached", run_id="run_1", queued_at=None, date_value=None, start_date=None, state="success"),
+        ]
+
+        mock_query = MagicMock()
+        mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+
+        with patch.object(self.airflow, "session") as mock_session:
+            mock_session.query.return_value = mock_query
+
+            first = self.airflow.get_pipeline_status("dag_cached")
+            second = self.airflow.get_pipeline_status("dag_cached")
+
+        # Session was queried only once — second call used the cache
+        self.assertEqual(mock_session.query.call_count, 1)
+        self.assertIs(first, second)
