@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+export { default as AutoClassificationTag } from './AutoClassificationTag';
 export { default as ClassificationTag } from './ClassificationTag';
 export { default as DataProductTag } from './DataProductTag';
 export { default as DomainTag } from './DomainTag';

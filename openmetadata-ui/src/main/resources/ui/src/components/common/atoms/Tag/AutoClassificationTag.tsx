@@ -11,46 +11,129 @@
  *  limitations under the License.
  */
 
-import { Badge } from '@openmetadata/ui-core-components';
-import { FC } from 'react';
+import {
+  Badge,
+  BadgeWithButton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../../assets/svg/automated-tag.svg';
-
-interface AutoClassificationTagProps {
-  label: string;
-  href: string;
-  'data-testid'?: string;
-}
+import { ICON_PX, SIZE_CLASS } from './Tag.constant';
+import { BaseTagProps, DEFAULT_TAG_COLOR } from './Tag.interface';
+import { computeTagColors } from './Tag.utils';
 
 /**
  * Brand-colored chip for auto-classified (LabelType.Generated) tags.
  * Visually distinct from manually applied classification tags — uses
- * the utility-brand palette with an AutomatedTag icon.
+ * the utility-brand palette with an AutomatedTag icon. Sizing/typography
+ * matches ClassificationTag and its siblings via SIZE_CLASS/ICON_PX.
  */
-const AutoClassificationTag: FC<AutoClassificationTagProps> = ({
+const AutoClassificationTag: FC<BaseTagProps> = ({
   label,
+  size = 'sm',
+  onDelete,
   href,
+  maxWidth,
+  disabled,
+  className,
+  tooltip,
   ...otherProps
-}) => (
-  <Link className="no-underline" data-testid="tag-redirect-link" to={href}>
-    <Badge
-      className="tw:cursor-pointer tw:text-utility-brand-700 tw:outline-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50"
-      color="brand"
-      size="sm"
-      type="color">
-      <span className="tw:flex tw:items-center tw:gap-1">
-        <AutomatedTag
-          className="tw:text-utility-brand-900 tw:shrink-0"
-          width={16}
-        />
-        <span
-          className="tw:text-utility-brand-900"
-          data-testid={otherProps['data-testid']}>
-          {label}
-        </span>
+}) => {
+  const resolved = useMemo(
+    () => computeTagColors(DEFAULT_TAG_COLOR),
+    []
+  );
+
+  const iconNode = (
+    <AutomatedTag
+      className="tw:text-utility-brand-900 tw:shrink-0"
+      width={ICON_PX[size]}
+    />
+  );
+
+  const labelNode = (
+    <div style={{ maxWidth }}>
+      <Typography
+        ellipsis
+        className={classNames(SIZE_CLASS[size], 'tw:text-utility-brand-900')}
+        data-testid={otherProps['data-testid']}
+        weight="regular">
+        {label}
+      </Typography>
+    </div>
+  );
+
+  const innerContent = (
+    <>
+      <span
+        aria-hidden
+        className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
+        {iconNode}
       </span>
-    </Badge>
-  </Link>
-);
+      {href ? (
+        <Link
+          className="tw:no-underline tw:min-w-0"
+          data-testid="tag-redirect-link"
+          to={href}>
+          {labelNode}
+        </Link>
+      ) : (
+        labelNode
+      )}
+    </>
+  );
+
+  const content = tooltip ? (
+    <Tooltip delay={500} title={tooltip}>
+      <TooltipTrigger className="tw:flex tw:items-center tw:gap-1">
+        {innerContent}
+      </TooltipTrigger>
+    </Tooltip>
+  ) : (
+    <div className="tw:flex tw:items-center tw:gap-1">{innerContent}</div>
+  );
+
+  const sharedProps = {
+    className: classNames(
+      SIZE_CLASS[size],
+      'tw:cursor-pointer tw:text-utility-brand-700 tw:outline-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50',
+      { 'tw:cursor-not-allowed tw:opacity-50': disabled },
+      className
+    ),
+    color: 'brand' as const,
+    'data-testid': otherProps['data-testid'],
+    size,
+    type: 'color' as const,
+  };
+
+  if (onDelete) {
+    return (
+      <BadgeWithButton
+        {...sharedProps}
+        className={classNames(
+          sharedProps.className,
+          'tw:[&_button]:text-(--tag-close-color)'
+        )}
+        isDisabled={disabled}
+        style={
+          {
+            '--tag-close-color': resolved.closeIcon,
+          } as CSSProperties
+        }
+        onButtonClick={(e: MouseEvent<HTMLButtonElement>) => {
+          e.stopPropagation();
+          onDelete(e.nativeEvent);
+        }}>
+        {content}
+      </BadgeWithButton>
+    );
+  }
+
+  return <Badge {...sharedProps}>{content}</Badge>;
+};
 
 export default AutoClassificationTag;
