@@ -5791,8 +5791,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .map(entity -> entity.getId().toString())
             .toList();
 
+    // Batch-delete only the entities' own custom-property rows (jsonSchema "customFieldSchema") in
+    // one statement per chunk. deleteAllBatch() would delete EVERY entity_extension row for the id
+    // -- including columnExtension rows -- so a bulk import update of a table that carries
+    // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
-      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
+      daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
     }
   }
 
