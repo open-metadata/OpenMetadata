@@ -232,9 +232,13 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
+    // The team title exists twice on the page — once as the selected chip in the
+    // TreeSelect input, once as the option inside the dropdown. `.nth(1)` matched
+    // the option by DOM order but raced with the dropdown re-rendering after the
+    // hierarchy load. Scope to the dropdown so the option is unambiguous.
     await adminPage
+      .locator('.ant-tree-select-dropdown')
       .locator('[title="' + team.responseData.displayName + '"]')
-      .nth(1)
       .click();
 
     const userProfileResponse = adminPage.waitForResponse((response) =>

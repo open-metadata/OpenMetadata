@@ -28,6 +28,12 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 
 const mockGetSearchEntityTypes = getSearchEntityTypes as jest.Mock;
 
+// importSchema resolves to `{}` upstream, so name the one shape these tests read rather
+// than reaching through it untyped.
+type EntitiesEnumSchema = {
+  properties: { entities: { items: { enum: string[] } } };
+};
+
 describe('ApplicationsClassBase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -38,9 +44,9 @@ describe('ApplicationsClassBase', () => {
     it('should fill the SearchIndexingApplication entity list from the server', async () => {
       mockGetSearchEntityTypes.mockResolvedValue(['dynamicAgent', 'table']);
 
-      const schema = await applicationsClassBase.importSchema(
+      const schema = (await applicationsClassBase.importSchema(
         'SearchIndexingApplication'
-      );
+      )) as EntitiesEnumSchema;
 
       // 'all' is the backend sentinel for "every registered index"; it is not an index, so the
       // endpoint does not return it, but the ["all"] default has to validate against the enum.
@@ -63,9 +69,9 @@ describe('ApplicationsClassBase', () => {
       const error = new Error('boom');
       mockGetSearchEntityTypes.mockRejectedValue(error);
 
-      const schema = await applicationsClassBase.importSchema(
+      const schema = (await applicationsClassBase.importSchema(
         'SearchIndexingApplication'
-      );
+      )) as EntitiesEnumSchema;
 
       expect(schema.properties.entities.items.enum).toEqual(['all']);
       expect(showErrorToast).toHaveBeenCalledWith(error);
