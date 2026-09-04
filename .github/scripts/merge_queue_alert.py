@@ -92,10 +92,15 @@ def decide(observed: str, state: dict[str, Any], recover_runs: int,
 
     if observed == "ok":
         streak += 1
+        # `since` is the incident start, so it is meaningless once healthy — carrying a
+        # recovery timestamp (or an old start) in the ok state leaves a stale value that
+        # reads as an ongoing incident. Cleared here; the recovery message takes the
+        # start from the *previous* state, so nothing is lost by dropping it.
         if previous == "ok":
-            return {"level": "ok", "since": state.get("since"), "below_streak": 0}, None
+            return {"level": "ok", "since": None, "below_streak": 0}, None
         if streak >= recover_runs:
-            return {"level": "ok", "since": now.isoformat(), "below_streak": 0}, "recovered"
+            return {"level": "ok", "since": None, "below_streak": 0}, "recovered"
+        # Still breached — the streak is counting, so the incident start is preserved.
         return {"level": previous, "since": state.get("since"), "below_streak": streak}, None
 
     # `since` marks when the incident began, not when the tier last moved. Stamping it
