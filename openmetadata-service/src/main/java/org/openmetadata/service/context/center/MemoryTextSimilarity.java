@@ -15,6 +15,18 @@ final class MemoryTextSimilarity {
   /** Same bar as {@code ContextMemoryResource.DUPLICATE_THRESHOLD}. */
   static final double DUPLICATE_THRESHOLD = 0.85;
 
+  /**
+   * Bar for deciding that a freshly-derived pill is the same fact as a stored one, so it inherits
+   * that pill's identity and retrieval telemetry instead of replacing it with a new row. Lower than
+   * {@link #DUPLICATE_THRESHOLD} on purpose: these are different questions. Suppressing a duplicate
+   * means "another source already states this", which should demand near-verbatim agreement;
+   * keeping identity means "the model rephrased my fact", where roughly half the vocabulary
+   * overlapping (question-weighted) is the expected signal. At 0.85 a single reworded question
+   * orphaned the pill, so re-extraction churned most of a document's pills and lost their
+   * usageCount/lastUsedAt.
+   */
+  static final double IDENTITY_THRESHOLD = 0.5;
+
   private static final double QUESTION_WEIGHT = 0.6;
   private static final double ANSWER_WEIGHT = 0.4;
 

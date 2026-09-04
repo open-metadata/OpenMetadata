@@ -61,6 +61,63 @@ class ContextMemoryReconcilerTest {
   }
 
   @Test
+  void rephrasedQuestionKeepsThePillInsteadOfChurningIt() {
+    // Real pair from a re-extraction where only an unrelated paragraph changed. Scores 0.680 on
+    // the weighted gate: above the identity bar, far below the duplicate bar.
+    ContextMemory stored =
+        pill(
+            "Who is paged when checkout breaks and how does it escalate?",
+            "The Payments Platform team owns the checkout on-call rotation and escalates to the"
+                + " Commerce Director after 30 minutes without acknowledgement.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.ACTIVE);
+    stored.setUsageCount(42);
+    existing(stored);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(
+            List.of(
+                derived(
+                    "How does checkout on-call escalation work?",
+                    "The Payments Platform team owns the checkout on-call rotation and escalates to"
+                        + " the Commerce Director after 30 minutes without acknowledgement.")));
+
+    assertEquals(1, result.updated(), "the rephrased fact should inherit the stored pill");
+    assertEquals(0, result.created());
+    assertEquals(0, result.deleted());
+    verify(memoryRepository, never()).create(isNull(), any());
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).update(isNull(), any(), captor.capture(), any());
+    assertEquals(stored.getId(), captor.getValue().getId(), "identity is the point of the match");
+    assertEquals(42, captor.getValue().getUsageCount(), "retrieval telemetry rides the identity");
+  }
+
+  @Test
+  void unrelatedFactDoesNotClaimAnExistingPill() {
+    // Scores 0.175 on the same gate: the stored fact really is gone from the source, so it must be
+    // retired rather than overwritten by whatever is closest.
+    ContextMemory stored =
+        pill(
+            "How are incidents announced to the business?",
+            "Paging happens through Opsgenie, never through Slack alone.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.ACTIVE);
+    existing(stored);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(
+            List.of(
+                derived(
+                    "What is the maximum acceptable payment queue depth?",
+                    "Above 2000 messages the team declares a Sev-1 and disables guest checkout.")));
+
+    assertEquals(1, result.created());
+    assertEquals(1, result.deleted());
+    assertEquals(0, result.updated());
+  }
+
+  @Test
   void createsAllWhenNoExistingPills() {
     existing();
 

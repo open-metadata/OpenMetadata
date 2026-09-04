@@ -136,8 +136,9 @@ public class ContextMemoryReconciler {
 
   /**
    * Claims and returns the remaining candidate most similar to {@code pill}, or null when none
-   * clears the duplicate bar. Claimed even for a Manual pill, so a rephrased re-derivation cannot
-   * recreate a fact a human took ownership of.
+   * clears the identity bar. Always the best match above the bar rather than the first, so a loose
+   * bar cannot let a weaker candidate take a pill a closer one should own. Claimed even for a Manual
+   * pill, so a rephrased re-derivation cannot recreate a fact a human took ownership of.
    */
   private ContextMemory removeMostSimilar(
       Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
@@ -150,7 +151,7 @@ public class ContextMemoryReconciler {
               pill.getAnswer(),
               entry.getValue().getQuestion(),
               entry.getValue().getAnswer());
-      if (score >= MemoryTextSimilarity.DUPLICATE_THRESHOLD && score > bestScore) {
+      if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD && score > bestScore) {
         bestScore = score;
         bestKey = entry.getKey();
       }
