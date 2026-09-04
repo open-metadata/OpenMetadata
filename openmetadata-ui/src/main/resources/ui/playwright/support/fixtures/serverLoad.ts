@@ -33,11 +33,15 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
 /**
  * Boot endpoints safe to serve from the per-worker cache.
  *
- * Two things have to hold for a path to be listed here. It must have no writer
- * that bypasses the browser — an `apiContext.patch()` in a `beforeAll` is
- * invisible to the request listener below, so the cache would go stale with no
- * way to notice. And any write that *does* go through the browser must land
+ * Three things have to hold for a path to be listed here. It must have no
+ * writer that bypasses the browser — an `apiContext.patch()` in a `beforeAll`
+ * is invisible to the request listener below, so the cache would go stale with
+ * no way to notice. Any write that *does* go through the browser must land
  * under the same `/api/v1/<family>/` prefix, so `invalidateFamily` clears it.
+ * And the value must not change without a client write at all: invalidation is
+ * driven by observed requests, so a path whose answer moves on the server's own
+ * schedule can never be cleared. That last one is easy to miss, because such a
+ * path has no writer to find — see `ingestionPipelines/status` below.
  *
  * Deliberately excluded, with the reason, because this list is the whole
  * correctness surface:
@@ -58,6 +62,17 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   quietly seeing the admin profile and passing, which is worse than the test
  *   not existing. The identity-keyed cache below makes this safe in principle,
  *   but nothing about a false pass is worth 497 requests a shard.
+ * - `services/ingestionPipelines/status` — flagged in review, and the reason it
+ *   is unsafe is the third condition rather than a missed writer. It reports
+ *   whether the pipeline service client is reachable, which moves on its own as
+ *   the orchestrator comes up, and it reports it as a `code` *in the body* with
+ *   HTTP 200 either way (`AirflowStatusProvider` does `response.code === 200`).
+ *   So `response.ok()` is true for "Airflow is down" and the cache would pin it
+ *   for the worker's whole life, and every later ingestion or agents test in
+ *   that worker would render the Airflow setup guide instead of the UI it
+ *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
+ *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
+ *   only purpose is to see a *newer* answer than the one already held.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -72,8 +87,6 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/customUiThemePreference',
   '/api/v1/system/settings/lineageSettings',
   '/api/v1/system/settings/appConfiguration',
-  // Same, under `/api/v1/services/`.
-  '/api/v1/services/ingestionPipelines/status',
 ];
 
 type CachedResponse = {
