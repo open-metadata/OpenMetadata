@@ -184,7 +184,9 @@ const renderGlossaryExpandIcon = (
     </AriaButton>
   );
 
-  return (childrenCount ?? children?.length ?? 0) > 0 ? (
+  const totalChildrenCount = childrenCount ?? children?.length ?? 0;
+
+  return totalChildrenCount > 0 ? (
     <>
       {dragHandle}
       {isLoading ? (
@@ -882,7 +884,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <div style={{ minWidth: tableColumnsWidth.descriptionMin }}>
+            <div
+              style={{
+                maxWidth: tableColumnsWidth.descriptionMax,
+                minWidth: tableColumnsWidth.descriptionMin,
+              }}>
               {description?.trim() ? (
                 <RichTextEditorPreviewerNew
                   clampByLines
@@ -1376,11 +1382,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       rowExpandable: (record) => {
         const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
+        const hasChildren =
+          (rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0;
 
-        return (
-          !isLoadMoreRow &&
-          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
-        );
+        return !isLoadMoreRow && hasChildren;
       },
     }),
     [
@@ -1790,6 +1795,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 pagination={false}
                 rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
+                scroll={GLOSSARY_TABLE_SCROLL}
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               />

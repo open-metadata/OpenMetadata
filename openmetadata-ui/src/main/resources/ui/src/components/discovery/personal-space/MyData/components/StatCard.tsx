@@ -46,79 +46,85 @@ const StatCard: React.FC<StatCardProps> = ({
   valueClassName = 'tw:text-primary-900',
   loading = false,
   testId,
-}) => (
-  <Box
-    className="tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3.5 tw:shadow-xs"
-    data-testid={testId}
-    direction="col"
-    gap={2}>
-    <Box align="center" gap={2}>
-      <FeaturedIcon
-        className="tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600 tw:[&_svg]:stroke-[2px]"
-        color="gray"
-        shape="square"
-        size="md"
-        theme="light">
-        {icon}
-      </FeaturedIcon>
-      <Box direction="col">
-        {loading ? (
-          <Skeleton height={24} variant="rounded" width={40} />
-        ) : (
+}) => {
+  const hasBreakdown = breakdown && breakdown.length > 0;
+
+  return (
+    <Box
+      className="tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3.5 tw:shadow-xs"
+      data-testid={testId}
+      direction="col"
+      gap={2}>
+      <Box align="center" gap={2}>
+        <FeaturedIcon
+          className="tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600 tw:[&_svg]:stroke-[2px]"
+          color="gray"
+          shape="square"
+          size="md"
+          theme="light">
+          {icon}
+        </FeaturedIcon>
+        <Box direction="col">
+          {loading ? (
+            <Skeleton height={24} variant="rounded" width={40} />
+          ) : (
+            <Typography
+              className={valueClassName}
+              data-testid={testId ? `${testId}-value` : undefined}
+              size="text-xl"
+              weight="semibold">
+              {value}
+            </Typography>
+          )}
           <Typography
-            className={valueClassName}
-            data-testid={testId ? `${testId}-value` : undefined}
-            size="text-xl"
-            weight="semibold">
-            {value}
+            className="tw:text-utility-gray-700"
+            size="text-sm"
+            weight="medium">
+            {label}
           </Typography>
-        )}
-        <Typography
-          className="tw:text-utility-gray-700"
-          size="text-sm"
-          weight="medium">
-          {label}
-        </Typography>
+        </Box>
       </Box>
+
+      <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
+
+      {loading ? (
+        <Skeleton height={14} width="70%" />
+      ) : (
+        <>
+          {subtitle && (
+            <Typography
+              className="tw:block tw:max-w-full tw:truncate tw:text-utility-gray-700"
+              size="text-xs">
+              {subtitle}
+            </Typography>
+          )}
+
+          {hasBreakdown && (
+            <Box align="center" className="tw:flex-wrap" gap={1}>
+              {breakdown.map((item, idx) => (
+                <Box align="center" gap={1} key={item.label}>
+                  {idx > 0 && (
+                    <span className="tw:inline-block tw:h-1 tw:w-1 tw:rounded-full tw:bg-fg-quaternary tw:mx-1" />
+                  )}
+                  <Typography
+                    className="tw:text-primary-900"
+                    size="text-xs"
+                    weight="semibold">
+                    {item.value}
+                  </Typography>
+                  <Typography
+                    className="tw:text-utility-gray-700"
+                    size="text-xs">
+                    {item.label}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </>
+      )}
     </Box>
-
-    <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
-
-    {loading ? (
-      <Skeleton height={14} width="70%" />
-    ) : (
-      <>
-        {subtitle && (
-          <Typography
-            className="tw:block tw:max-w-full tw:truncate tw:text-utility-gray-700"
-            size="text-xs">
-            {subtitle}
-          </Typography>
-        )}
-
-        {breakdown && breakdown.length > 0 && (
-          <Box align="center" className="tw:flex-wrap" gap={1}>
-            {breakdown.map((item, idx) => (
-              <Box align="center" gap={1} key={item.label}>
-                {idx > 0 && (
-                  <span className="tw:inline-block tw:h-1 tw:w-1 tw:rounded-full tw:bg-fg-quaternary tw:mx-1" />
-                )}
-                <Typography
-                  className="tw:text-primary-900"
-                  size="text-xs"
-                  weight="semibold">
-                  {item.value}
-                </Typography>
-                <Typography className="tw:text-utility-gray-700" size="text-xs">
-                  {item.label}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
-      </>
-    )}
-  </Box>
-);
+  );
+};
 
 export default StatCard;

@@ -24,6 +24,9 @@ from openmetadata_managed_apis.api.config import (
     DAG_GENERATED_CONFIGS,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import operations_logger
+
+logger = operations_logger()
 
 
 def delete_dag_id(dag_id: str) -> Response:
@@ -58,8 +61,11 @@ def delete_dag_id(dag_id: str) -> Response:
     if deleted_dags > 0 and deleted_file and deleted_config:
         return ApiResponse.success({"message": f"DAG [{dag_id}] has been deleted"})
 
-    return ApiResponse.error(
-        status=ApiResponse.STATUS_SERVER_ERROR,
-        error=f"Could not find and delete {dag_id}. Deleted dags: {deleted_dags}; "
-        + f"deleted {dag_py_file}: {deleted_file}",
+    logger.error(
+        "Could not fully delete DAG %s. Deleted database records: %s; DAG file: %s; config file: %s",
+        dag_id,
+        deleted_dags,
+        deleted_file,
+        deleted_config,
     )
+    return ApiResponse.server_error()

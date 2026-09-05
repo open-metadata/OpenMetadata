@@ -209,6 +209,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     paging,
   ]);
 
+  const hasNoConversations =
+    conversations.length === 0 && !isConversationLoading;
+
   return (
     <Fragment>
       <div id="thread-panel-body">
@@ -277,8 +280,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         ) : (
           <Fragment>
-            {(showNewConversation ||
-              (conversations.length === 0 && !isConversationLoading)) &&
+            {(showNewConversation || hasNoConversations) &&
               isConversationType && (
                 <Space className="w-full" direction="vertical">
                   <Typography.Paragraph>

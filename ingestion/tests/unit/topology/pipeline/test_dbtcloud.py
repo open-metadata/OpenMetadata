@@ -55,7 +55,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dbtcloud.client import build_created_at_range
 from metadata.ingestion.source.pipeline.dbtcloud.metadata import (
     DEFAULT_TASK_NAME,
-    OBSERVABILITY_CACHE_SIZE,
     DbtcloudSource,
 )
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
@@ -65,7 +64,10 @@ from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTRun,
     DBTSchedule,
 )
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
+from metadata.ingestion.source.pipeline.pipeline_service import (
+    TABLE_ENTITY_CACHE_SIZE,
+    PipelineUsage,
+)
 
 MOCK_JOB_RESULT = json.loads(
     """
@@ -1438,25 +1440,16 @@ class DBTCloudUnitTest(TestCase):
             status = status.value
         self.assertEqual(status, "Successful")
 
-    def test_get_table_pipeline_observability_with_cache(self):
+    def test_observability_emits_only_the_current_job(self):
         """
-        Test pipeline observability extraction using cached data (historical jobs)
+        The server keys observability on the pipeline FQN, so a record written while
+        processing job A stays valid. Replaying earlier jobs on every later job is what
+        made this stage O(jobs x cumulative tables), so only the current job's tables
+        may be emitted.
         """
-        # Clear current context to test cache fallback
-        self.dbtcloud.context.get().__dict__["current_job_id"] = 99999
-        self.dbtcloud.context.get().current_table_fqns = None
-        self.dbtcloud.context.get().__dict__.pop("latest_run", None)
-        self.dbtcloud.context.get().__dict__.pop("current_pipeline_entity", None)
+        ctx = self.dbtcloud.context.get()
 
-        # Populate observability cache with historical data
-        mock_pipeline_2 = Pipeline(
-            id=uuid.uuid4(),
-            name="Cached Job",
-            fullyQualifiedName="dbtcloud_pipeline_test.Cached Job",
-            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
-        )
-
-        mock_run_1 = DBTRun(
+        previous_run = DBTRun(
             id=12345,
             status=1,
             state="Success",
@@ -1464,82 +1457,50 @@ class DBTCloudUnitTest(TestCase):
             started_at="2024-05-20 10:00:00.000000+00:00",
             finished_at="2024-05-20 11:00:00.000000+00:00",
         )
-
-        mock_run_2 = DBTRun(
-            id=12346,
-            status=2,
-            state="Error",
-            href="https://test.dbt.com/runs/12346/",
-            started_at="2024-05-21 10:00:00.000000+00:00",
-            finished_at="2024-05-21 11:00:00.000000+00:00",
+        previous_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="Previous Job",
+            fullyQualifiedName="dbtcloud_pipeline_test.Previous Job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
         )
 
-        cache_key = (88888, "12345")
-        self.dbtcloud.observability_cache[cache_key] = {
-            "pipeline_entity": mock_pipeline_2,
-            "job_details": DBTJob(
-                id=88888,
-                name="Cached Job",
-                description="Cached job description",
-                created_at="2024-05-20T10:00:00.000000+00:00",
-                updated_at="2024-05-20T10:00:00.000000+00:00",
-                state=1,
-                job_type="other",
-                schedule=DBTSchedule(cron="0 */6 * * *"),
-                project_id=70403103926818,
-            ),
-            "table_fqns": {
-                "local_redshift.dev.dbt_test_new.cached_model_1",
-                "local_redshift.dev.dbt_test_new.cached_model_2",
-            },
-            "runs": [mock_run_1, mock_run_2],
-        }
+        ctx.current_pipeline_entity = previous_pipeline
+        ctx.latest_run = previous_run
+        ctx.current_table_fqns = {"local_redshift.dev.dbt_test_new.previous_model"}
 
-        # Get observability data
+        previous = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
+        self.assertEqual(set(previous[0]), {"local_redshift.dev.dbt_test_new.previous_model"})
+
+        # The next job overwrites the context, exactly as yield_pipeline_lineage_details does.
+        current_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="Current Job",
+            fullyQualifiedName="dbtcloud_pipeline_test.Current Job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+        ctx.current_pipeline_entity = current_pipeline
+        ctx.latest_run = previous_run
+        ctx.current_table_fqns = {"local_redshift.dev.dbt_test_new.current_model"}
+
         result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
-        # Verify we got results from cache
         self.assertEqual(len(result), 1)
-        table_pipeline_map = result[0]
-
-        # Verify cached tables are present
-        self.assertIn("local_redshift.dev.dbt_test_new.cached_model_1", table_pipeline_map)
-        self.assertIn("local_redshift.dev.dbt_test_new.cached_model_2", table_pipeline_map)
-
-        # Verify observability data
-        observability_list = table_pipeline_map["local_redshift.dev.dbt_test_new.cached_model_1"]
-        self.assertEqual(len(observability_list), 1)
-
-        observability = observability_list[0]
-        # Compare FQN - handle both string and wrapped types
-        pipeline_fqn = observability.pipeline.fullyQualifiedName
-        if hasattr(pipeline_fqn, "root"):
-            pipeline_fqn = pipeline_fqn.root
-        self.assertEqual(pipeline_fqn, "dbtcloud_pipeline_test.Cached Job")
-        self.assertEqual(observability.scheduleInterval, "0 */6 * * *")
-        # Compare status value
-        status = observability.lastRunStatus
-        if hasattr(status, "value"):
-            status = status.value
-        self.assertEqual(status, "Successful")
+        self.assertEqual(set(result[0]), {"local_redshift.dev.dbt_test_new.current_model"})
+        self.assertNotIn("local_redshift.dev.dbt_test_new.previous_model", result[0])
 
     def test_get_table_pipeline_observability_no_data(self):
         """
-        Test pipeline observability when no context or cache data is available
+        With no lineage context there is nothing to attach observability to, so the
+        stage yields nothing rather than an empty map.
         """
-        # Clear all context and cache
-        self.dbtcloud.context.get().current_table_fqns = None
-        self.dbtcloud.context.get().__dict__.pop("latest_run", None)
-        self.dbtcloud.context.get().__dict__.pop("current_pipeline_entity", None)
-        self.dbtcloud.observability_cache.clear()
+        ctx = self.dbtcloud.context.get()
+        ctx.current_table_fqns = None
+        ctx.latest_run = None
+        ctx.current_pipeline_entity = None
 
-        # Get observability data
         result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
-        # Should get an empty map
-        self.assertEqual(len(result), 1)
-        table_pipeline_map = result[0]
-        self.assertEqual(len(table_pipeline_map), 0)
+        self.assertEqual(result, [])
 
     def test_parse_timestamp_primary_format(self):
         """
@@ -1635,26 +1596,25 @@ class DBTCloudUnitTest(TestCase):
         self.assertIsNotNone(observability.endTime)
         self.assertIsNotNone(observability.lastRunTime)
 
-    def test_observability_cache_population_during_lineage(self):
+    def test_lineage_caches_resolved_table_entities(self):
         """
-        Test that observability cache is populated during lineage processing
+        The observability stage runs right after lineage and needs the same Table
+        entities. Lineage must hand them over, otherwise every table is fetched a
+        second time, once per job.
         """
-        # Mock the context
-        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
-        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx = self.dbtcloud.context.get()
+        ctx.latest_run_id = 70403110257794
+        ctx.pipeline = "New job"
+        ctx.pipeline_service = "dbtcloud_pipeline_test"
 
-        # Mock the source config
         self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
-        # Create mock entities
         mock_pipeline = Pipeline(
             id=uuid.uuid4(),
             name="New job",
             fullyQualifiedName="dbtcloud_pipeline_test.New job",
             service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
         )
-
         mock_table = Table(
             id=uuid.uuid4(),
             name="model_32",
@@ -1663,7 +1623,6 @@ class DBTCloudUnitTest(TestCase):
             columns=[],
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
         )
-
         mock_run = DBTRun(
             id=70403110257794,
             status=1,
@@ -1673,146 +1632,80 @@ class DBTCloudUnitTest(TestCase):
             finished_at="2024-05-28 10:42:52.622408+00:00",
         )
 
-        # Clear cache before test
-        self.dbtcloud.observability_cache.clear()
+        self.dbtcloud._table_entity_cache.clear()
 
-        # Patch metadata get_by_name
-        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([mock_table]),
+            ),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_32",
+                        name="model_32",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=[],
+                    )
+                ],
+                [],
+                [],
+            )
 
-            def get_by_name_side_effect(entity, fqn):
-                if entity == Pipeline:
-                    return mock_pipeline
-                elif entity == Table:  # noqa: RET505
-                    return mock_table
-                return None
+            ctx.latest_run = mock_run
+            ctx.current_job_id = 70403103936332
 
-            mock_get_by_name.side_effect = get_by_name_side_effect
+            list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-            # Mock client method - now using combined get_models_with_lineage
-            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models_with_lineage:
-                # Return (models, seeds, sources) tuple
-                mock_get_models_with_lineage.return_value = (
-                    [
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.model_32",
-                            name="model_32",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
-                            dependsOn=[],
-                        )
-                    ],
-                    [],  # seeds
-                    [],  # sources
-                )
+        self.assertIn("local_redshift.dev.dbt_test_new.model_32", ctx.current_table_fqns)
+        self.assertIs(
+            self.dbtcloud._table_entity_cache["local_redshift.dev.dbt_test_new.model_32"],
+            mock_table,
+        )
 
-                # Set up context with run data
-                self.dbtcloud.context.get().__dict__["latest_run"] = mock_run
-                self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
-                self.dbtcloud.context.get().__dict__["current_job_id"] = 70403103936332
-
-                # Process lineage (this should populate cache)
-                list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
-
-                # Verify cache was populated
-                cache_key = (70403103936332, "70403110257794")
-                self.assertIn(cache_key, self.dbtcloud.observability_cache)
-
-                cached_data = self.dbtcloud.observability_cache[cache_key]
-                self.assertIsNotNone(cached_data.get("pipeline_entity"))
-                # table_fqns should be a set (may be empty for models without lineage)
-                self.assertIsInstance(cached_data.get("table_fqns"), set)
-                self.assertIsNotNone(cached_data.get("runs"))
-
-    def test_observability_multiple_runs_for_same_table(self):
+    def test_observability_emits_one_record_per_table(self):
         """
-        Test observability with multiple runs affecting the same table
+        The server stores a single row per (table, pipeline) keyed on the pipeline
+        FQN, so emitting one record per run just rewrites the same row. Exactly one
+        record per table, built from the latest run.
         """
-        # Set up multiple runs in cache
+        ctx = self.dbtcloud.context.get()
+
         mock_pipeline = Pipeline(
             id=uuid.uuid4(),
             name="Multi Run Job",
             fullyQualifiedName="dbtcloud_pipeline_test.Multi Run Job",
             service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
         )
-
-        mock_run_1 = DBTRun(
-            id=1001,
-            status=1,
-            state="Success",
-            started_at="2024-05-20 10:00:00.000000+00:00",
-            finished_at="2024-05-20 11:00:00.000000+00:00",
-        )
-
-        mock_run_2 = DBTRun(
-            id=1002,
-            status=2,
-            state="Cancelled",
-            started_at="2024-05-21 10:00:00.000000+00:00",
-            finished_at="2024-05-21 11:00:00.000000+00:00",
-        )
-
-        mock_run_3 = DBTRun(
+        latest_run = DBTRun(
             id=1003,
             status=1,
             state="Success",
             started_at="2024-05-22 10:00:00.000000+00:00",
             finished_at="2024-05-22 11:00:00.000000+00:00",
         )
-
         table_fqn = "local_redshift.dev.dbt_test_new.shared_model"
 
-        # Populate cache with multiple runs
-        self.dbtcloud.observability_cache.clear()
-        for run_id, run in [
-            ("1001", mock_run_1),
-            ("1002", mock_run_2),
-            ("1003", mock_run_3),
-        ]:
-            cache_key = (77777, run_id)
-            self.dbtcloud.observability_cache[cache_key] = {
-                "pipeline_entity": mock_pipeline,
-                "job_details": DBTJob(
-                    id=77777,
-                    name="Multi Run Job",
-                    description="Job with multiple runs",
-                    created_at="2024-05-20T10:00:00.000000+00:00",
-                    updated_at="2024-05-22T10:00:00.000000+00:00",
-                    state=1,
-                    job_type="other",
-                    schedule=DBTSchedule(cron="0 */12 * * *"),
-                    project_id=70403103926818,
-                ),
-                "table_fqns": {table_fqn},
-                "runs": [run],
-            }
+        ctx.current_pipeline_entity = mock_pipeline
+        ctx.latest_run = latest_run
+        ctx.current_table_fqns = {table_fqn}
 
-        # Clear current context to force cache usage
-        self.dbtcloud.context.get().__dict__["current_job_id"] = 99999
-        self.dbtcloud.context.get().current_table_fqns = None
-        self.dbtcloud.context.get().__dict__.pop("latest_run", None)
-
-        # Get observability data
         result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
 
-        # Verify we got results
         self.assertEqual(len(result), 1)
-        table_pipeline_map = result[0]
+        observability_list = result[0][table_fqn]
+        self.assertEqual(len(observability_list), 1)
 
-        # The same table should have observability from all 3 runs
-        self.assertIn(table_fqn, table_pipeline_map)
-        observability_list = table_pipeline_map[table_fqn]
-        self.assertEqual(len(observability_list), 3)
-
-        # Verify different statuses - extract values from enums
-        statuses = []
-        for obs in observability_list:
-            status = obs.lastRunStatus
-            if hasattr(status, "value"):
-                status = status.value
-            statuses.append(status)
-        self.assertIn("Successful", statuses)
-        self.assertIn("Skipped", statuses)  # humanized "Cancelled" maps to Skipped
+        status = observability_list[0].lastRunStatus
+        if hasattr(status, "value"):
+            status = status.value
+        self.assertEqual(status, "Successful")
 
     def test_get_models_with_lineage(self):
         """
@@ -2211,7 +2104,6 @@ class DBTCloudUnitTest(TestCase):
         lineage - resolution falls back to a cross-service search instead of an
         exact lookup on a wildcard FQN, which never matched.
         """
-        self.dbtcloud.observability_cache.clear()
         ctx = self.dbtcloud.context.get()
         ctx.__dict__["latest_run_id"] = 70403110257794
         ctx.__dict__["pipeline"] = "New job"
@@ -2298,7 +2190,6 @@ class DBTCloudUnitTest(TestCase):
         them - missing from the others is normal and must not be reported as
         lineage that could not be created.
         """
-        self.dbtcloud.observability_cache.clear()
         ctx = self.dbtcloud.context.get()
         ctx.__dict__["latest_run_id"] = 70403110257794
         ctx.__dict__["pipeline"] = "New job"
@@ -2356,7 +2247,6 @@ class DBTCloudUnitTest(TestCase):
         A dbt node whose table is in no configured service produces no lineage -
         that has to surface as a warning instead of an empty, successful run.
         """
-        self.dbtcloud.observability_cache.clear()
         ctx = self.dbtcloud.context.get()
         ctx.__dict__["latest_run_id"] = 70403110257794
         ctx.__dict__["pipeline"] = "New job"
@@ -2401,21 +2291,21 @@ class DBTCloudUnitTest(TestCase):
         self.assertTrue(any("could not be matched" in warning for warning in warnings))
         self.assertTrue(any("model.dbt_test_new.model_32" in warning for warning in warnings))
 
-    def test_observability_cache_is_bounded(self):
+    def test_table_entity_cache_is_bounded(self):
         """
-        Every cache entry retains a full Pipeline entity plus its run history, so
-        the cache must evict instead of growing with the number of dbt Cloud jobs.
+        Table entities handed over by the lineage stage are held in a cache that must
+        evict rather than grow with the number of tables in the catalog.
         """
-        self.dbtcloud.observability_cache.clear()
+        self.dbtcloud._table_entity_cache.clear()
 
-        for job_id in range(OBSERVABILITY_CACHE_SIZE + 25):
-            self.dbtcloud.observability_cache[(job_id, str(job_id))] = {"table_fqns": set()}
+        for index in range(TABLE_ENTITY_CACHE_SIZE + 25):
+            self.dbtcloud._table_entity_cache[f"service.db.schema.table_{index}"] = index
 
-        self.assertEqual(len(self.dbtcloud.observability_cache), OBSERVABILITY_CACHE_SIZE)
-        self.assertNotIn((0, "0"), self.dbtcloud.observability_cache)
+        self.assertEqual(len(self.dbtcloud._table_entity_cache), TABLE_ENTITY_CACHE_SIZE)
+        self.assertNotIn("service.db.schema.table_0", self.dbtcloud._table_entity_cache)
         self.assertIn(
-            (OBSERVABILITY_CACHE_SIZE + 24, str(OBSERVABILITY_CACHE_SIZE + 24)),
-            self.dbtcloud.observability_cache,
+            f"service.db.schema.table_{TABLE_ENTITY_CACHE_SIZE + 24}",
+            self.dbtcloud._table_entity_cache,
         )
 
     def test_context_table_fqns_deduplicates_shared_parents(self):
@@ -2424,7 +2314,6 @@ class DBTCloudUnitTest(TestCase):
         The tracked FQNs are a set, so the observability stage emits one entry
         per table instead of one per dependency edge.
         """
-        self.dbtcloud.observability_cache.clear()
         ctx = self.dbtcloud.context.get()
         ctx.__dict__["latest_run_id"] = 70403110257794
         ctx.__dict__["pipeline"] = "New job"
@@ -2505,14 +2394,15 @@ class DBTCloudUnitTest(TestCase):
             },
         )
 
-    def test_observability_cache_uses_set_for_table_fqns(self):
+    def test_context_table_fqns_is_a_set(self):
         """
-        Test that observability cache uses set for table_fqns to prevent duplicates
+        A dbt job resolves the same table once per model that depends on it, so the
+        tracked FQNs must be a set or the observability stage emits duplicates.
         """
-        # Set up context
-        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
-        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
-        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx = self.dbtcloud.context.get()
+        ctx.latest_run_id = 70403110257794
+        ctx.pipeline = "New job"
+        ctx.pipeline_service = "dbtcloud_pipeline_test"
 
         mock_run = DBTRun(
             id=70403110257794,
@@ -2521,9 +2411,8 @@ class DBTCloudUnitTest(TestCase):
             started_at="2024-05-27 10:42:20.621788+00:00",
             finished_at="2024-05-28 10:42:52.622408+00:00",
         )
-        self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
+        ctx.latest_run = mock_run
 
-        # Mock source config
         self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
 
         mock_pipeline = Pipeline(
@@ -2532,7 +2421,6 @@ class DBTCloudUnitTest(TestCase):
             fullyQualifiedName="dbtcloud_pipeline_test.New job",
             service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
         )
-
         mock_table = Table(
             id=uuid.uuid4(),
             name="model_32",
@@ -2541,9 +2429,6 @@ class DBTCloudUnitTest(TestCase):
             columns=[],
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
         )
-
-        # Clear cache
-        self.dbtcloud.observability_cache.clear()
 
         with (
             patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
@@ -2554,7 +2439,6 @@ class DBTCloudUnitTest(TestCase):
             ),
             patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
         ):
-            # Return same model multiple times to test deduplication
             mock_get_models.return_value = (
                 [
                     DBTModel(
@@ -2570,14 +2454,9 @@ class DBTCloudUnitTest(TestCase):
                 [],
             )
 
-            # Process lineage
             list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-            # Verify cache was populated with set
-            cache_key = (70403103936332, "70403110257794")
-            if cache_key in self.dbtcloud.observability_cache:
-                table_fqns = self.dbtcloud.observability_cache[cache_key]["table_fqns"]
-                self.assertIsInstance(table_fqns, set)
+        self.assertIsInstance(ctx.current_table_fqns, set)
 
     def test_get_jobs_url_construction_with_project_id(self):
         """
@@ -2785,7 +2664,6 @@ class DBTCloudUnitTest(TestCase):
         Test that models without runGeneratedAt are skipped during lineage processing
         """
         # Clear caches
-        self.dbtcloud.observability_cache.clear()
 
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
@@ -2874,7 +2752,6 @@ class DBTCloudUnitTest(TestCase):
         but parent sources are NOT skipped (sources don't need runGeneratedAt)
         """
         # Clear caches
-        self.dbtcloud.observability_cache.clear()
 
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
@@ -3017,7 +2894,6 @@ class DBTCloudUnitTest(TestCase):
         because sources are auto-generated and don't require it
         """
         # Clear caches
-        self.dbtcloud.observability_cache.clear()
 
         # Mock the context
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794

@@ -85,6 +85,8 @@ import TestCaseSchedulerSection from './TestCaseSchedulerSection';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
+const ROOT_TABLE_PATH = 'root/table';
+const ROOT_TEST_TYPE_PATH = 'root/testType';
 
 const fqnFromSelectItem = (
   value?: FormSelectItem | string | null
@@ -708,13 +710,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   ]);
 
   useEffect(() => {
-    if (
+    const hasRequiredTestSelection =
       !isEditMode &&
       selectedTableFqn &&
       selectedTestDefinition &&
-      selectedTestLevel &&
-      !isTestNameManuallyEdited
-    ) {
+      selectedTestLevel;
+    if (hasRequiredTestSelection && !isTestNameManuallyEdited) {
       const dynamicName = generateDynamicTestName();
       if (dynamicName) {
         form.setValue('testName', dynamicName);
@@ -768,7 +769,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         return checkTablePermissions(fqn);
       },
     },
-    id: 'root/table',
+    id: ROOT_TABLE_PATH,
     doc: fieldDocs.table ?? t('message.doc-field-selected-table'),
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
@@ -781,9 +782,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         if (tableOptions.length === 0) {
           fetchTables();
         }
-        handleActiveField('root/table');
+        handleActiveField(ROOT_TABLE_PATH);
         ensureComboboxMenuOpen(
-          () => document.getElementById('root/table') as HTMLInputElement
+          () => document.getElementById(ROOT_TABLE_PATH) as HTMLInputElement
         );
       },
       // Legacy antd validated on change: surface the table permission error
@@ -798,7 +799,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // and switch the doc panel back to the generic table section.
       onItemCleared: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/table');
+        handleActiveField(ROOT_TABLE_PATH);
       },
     },
   } as FieldProp;
@@ -809,7 +810,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.SELECT,
     required: true,
     rules: {
-      required: t('label.please-select-entity', { entity: t('label.column') }),
+      required: t('label.please-select-entity', {
+        entity: t('label.column'),
+      }),
     },
     id: 'root/column',
     doc: fieldDocs.column ?? t('message.doc-field-selected-column'),
@@ -864,7 +867,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     rules: {
       required: t('label.select-test-type'),
     },
-    id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
+    id: selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH,
     doc:
       selectedTestDefinition?.description ??
       fieldDocs.testType ??
@@ -875,7 +878,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       isDisabled: isEditMode,
       options: testTypeOptions,
       onItemInserted: (key?: string | number | null) =>
-        handleActiveField(key ? `root/${key}` : 'root/testType'),
+        handleActiveField(key ? `root/${key}` : ROOT_TEST_TYPE_PATH),
     },
   };
 
@@ -1004,6 +1007,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  const canShowSchedulerSection =
+    !showOnlyParameter && !isEditMode && selectedTableFqn;
+
   return (
     <div
       className="test-case-form-v1 drawer-mode test-case-form-body"
@@ -1097,7 +1103,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
             className="parameter-fields-wrapper"
             onFocusCapture={() =>
               handleActiveField(
-                selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+                selectedTestType
+                  ? `root/${selectedTestType}`
+                  : ROOT_TEST_TYPE_PATH
               )
             }>
             <ParameterFields
@@ -1176,23 +1184,20 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         </div>
       )}
 
-      {!showOnlyParameter &&
-        !isEditMode &&
-        selectedTableFqn &&
-        canCreatePipeline && (
-          <div {...pipelineDoc}>
-            <TestCaseSchedulerSection
-              canCreatePipeline={canCreatePipeline}
-              form={form}
-              hasTestSuite={hasTestSuite}
-              schedulerOptions={schedulerOptions}
-              selectedTableData={selectedTableData}
-              table={table}
-              testSuite={testSuite}
-              onActiveFieldChange={onActiveFieldChange}
-            />
-          </div>
-        )}
+      {canShowSchedulerSection && canCreatePipeline && (
+        <div {...pipelineDoc}>
+          <TestCaseSchedulerSection
+            canCreatePipeline={canCreatePipeline}
+            form={form}
+            hasTestSuite={hasTestSuite}
+            schedulerOptions={schedulerOptions}
+            selectedTableData={selectedTableData}
+            table={table}
+            testSuite={testSuite}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </div>
+      )}
     </div>
   );
 };
