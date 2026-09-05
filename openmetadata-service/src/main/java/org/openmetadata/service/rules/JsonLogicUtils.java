@@ -3,6 +3,8 @@ package org.openmetadata.service.rules;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
@@ -110,5 +112,79 @@ public class JsonLogicUtils {
 
     long timestamp = ((Number) timestampObj).longValue();
     return updatedAt > timestamp;
+  }
+
+  /**
+   * Resolves a dot-separated path against {@code data} and returns every value found at that path.
+   *
+   * <p>The one argument must resolve to a String path such as {@code extension.dpTest.rows.name}.
+   * At each segment: a map key is dereferenced normally, a list segment with a numeric next key is
+   * indexed, and a list segment followed by a non-numeric key plucks that key from every element
+   * and continues (with nested lists flattened one level per traversal step). The return type is
+   * always a list, which pairs cleanly with the built-in {@code contains} operator:
+   *
+   * <pre>{"contains": ["john", {"tableColumnValues": "extension.dpTest.rows.name"}]}</pre>
+   *
+   * <p>Registered as a private op so the query-builder UI cannot expose it as a generic operator;
+   * it is only emitted by the hardcoded {@code table_field_*} operators for table-type custom
+   * property columns.
+   */
+  public static @NotNull Object evaluateTableColumnValues(
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+      throws JsonLogicEvaluationException {
+    if (arguments.size() != 1) return Collections.emptyList();
+
+    Object rawPath = evaluator.evaluate(arguments.getFirst(), data);
+    if (!(rawPath instanceof String path) || path.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<Object> cursor = new ArrayList<>();
+    cursor.add(data);
+    for (String segment : path.split("\\.")) {
+      cursor = plucksAcrossLists(cursor, segment);
+      if (cursor.isEmpty()) {
+        return Collections.emptyList();
+      }
+    }
+    return cursor;
+  }
+
+  private static List<Object> plucksAcrossLists(List<Object> cursors, String segment) {
+    boolean numeric = isNumeric(segment);
+    int index = numeric ? Integer.parseInt(segment) : -1;
+    List<Object> next = new ArrayList<>();
+    for (Object cursor : cursors) {
+      if (cursor instanceof Map<?, ?> map) {
+        Object value = map.get(segment);
+        if (value != null) {
+          next.add(value);
+        }
+      } else if (cursor instanceof List<?> list) {
+        if (numeric) {
+          if (index >= 0 && index < list.size()) {
+            next.add(list.get(index));
+          }
+        } else {
+          for (Object element : list) {
+            if (element instanceof Map<?, ?> elementMap) {
+              Object value = elementMap.get(segment);
+              if (value != null) {
+                next.add(value);
+              }
+            }
+          }
+        }
+      }
+    }
+    return next;
+  }
+
+  private static boolean isNumeric(String s) {
+    if (s == null || s.isEmpty()) return false;
+    for (int i = 0; i < s.length(); i++) {
+      if (!Character.isDigit(s.charAt(i))) return false;
+    }
+    return true;
   }
 }

@@ -27,6 +27,81 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 
 class RuleEngineTest {
 
+  private static Map<String, Object> tableCpContext() {
+    return Map.of(
+        "name",
+        "table1",
+        "extension",
+        Map.of(
+            "dpTest",
+            Map.of(
+                "columns",
+                List.of("name", "age"),
+                "rows",
+                List.of(
+                    Map.of("name", "john", "age", "30"), Map.of("name", "jane", "age", "25")))));
+  }
+
+  @Test
+  void tableColumnValuesReturnsAllValuesAtArrayField() {
+    String rule = "{\"tableColumnValues\":\"extension.dpTest.rows.name\"}";
+    assertEquals(List.of("john", "jane"), RuleEngine.getInstance().apply(rule, tableCpContext()));
+  }
+
+  @Test
+  void tableColumnValuesWithMissingKeyReturnsEmptyList() {
+    String rule = "{\"tableColumnValues\":\"extension.dpTest.rows.nope\"}";
+    assertEquals(List.of(), RuleEngine.getInstance().apply(rule, tableCpContext()));
+  }
+
+  @Test
+  void tableColumnValuesAgainstScalarKeyWorksSameAsVar() {
+    String rule = "{\"tableColumnValues\":\"name\"}";
+    assertEquals(List.of("table1"), RuleEngine.getInstance().apply(rule, tableCpContext()));
+  }
+
+  @Test
+  void containsOfTableColumnValuesMatchesRow() {
+    String rule =
+        "{\"contains\":[\"john\",{\"tableColumnValues\":\"extension.dpTest.rows.name\"}]}";
+    assertEquals(true, RuleEngine.getInstance().apply(rule, tableCpContext()));
+  }
+
+  @Test
+  void containsOfTableColumnValuesIsFalseWhenAbsent() {
+    String rule =
+        "{\"contains\":[\"nobody\",{\"tableColumnValues\":\"extension.dpTest.rows.name\"}]}";
+    assertEquals(false, RuleEngine.getInstance().apply(rule, tableCpContext()));
+  }
+
+  @Test
+  void notContainsOfTableColumnValuesNegatesCorrectly() {
+    String hasJohn =
+        "{\"!\":{\"contains\":[\"john\",{\"tableColumnValues\":\"extension.dpTest.rows.name\"}]}}";
+    String hasBob =
+        "{\"!\":{\"contains\":[\"bob\",{\"tableColumnValues\":\"extension.dpTest.rows.name\"}]}}";
+    assertEquals(false, RuleEngine.getInstance().apply(hasJohn, tableCpContext()));
+    assertEquals(true, RuleEngine.getInstance().apply(hasBob, tableCpContext()));
+  }
+
+  @Test
+  void someContainsSubstringOverTableColumnValues() {
+    // {"some":[{"tableColumnValues":"..."},{"contains":["oh",{"var":""}]}]} — substring on
+    // tableColumnValuesed values.
+    String rule =
+        "{\"some\":[{\"tableColumnValues\":\"extension.dpTest.rows.name\"},"
+            + "{\"contains\":[\"oh\",{\"var\":\"\"}]}]}";
+    assertEquals(true, RuleEngine.getInstance().apply(rule, tableCpContext()));
+  }
+
+  @Test
+  void nonArrayPathsUnaffectedByAdditionOfTableColumnValues() {
+    // Regression: nothing about `tableColumnValues` changes existing var-based rules.
+    Map<String, Object> ctx = Map.of("name", "table1", "owner", Map.of("type", "user"));
+    String rule = "{\"==\":[{\"var\":\"owner.type\"},\"user\"]}";
+    assertEquals(true, RuleEngine.getInstance().apply(rule, ctx));
+  }
+
   @Test
   void applyRegistersIsReviewerForWorkflowJsonLogicRules() {
     String rule = "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}";

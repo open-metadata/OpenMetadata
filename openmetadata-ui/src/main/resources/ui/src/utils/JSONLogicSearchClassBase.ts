@@ -48,6 +48,26 @@ import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
+// RAQB hands each operator's jsonLogic emitter the field as a jsonLogic tree — typically
+// {"var":"path"} for a simple field. Extract the dot-separated path so the pluck operator can
+// receive it as a plain string.
+const extractVarPath = (field: unknown): string => {
+  if (typeof field === 'string') {
+    return field;
+  }
+  if (field && typeof field === 'object' && 'var' in field) {
+    const raw = (field as { var: unknown }).var;
+    if (typeof raw === 'string') {
+      return raw;
+    }
+    if (Array.isArray(raw) && typeof raw[0] === 'string') {
+      return raw[0];
+    }
+  }
+
+  return '';
+};
+
 class JSONLogicSearchClassBase {
   baseConfig = OMConfig as Config;
   configTypes: Config['types'] = {
@@ -201,6 +221,65 @@ class JSONLogicSearchClassBase {
       valueTypes: ['multiselect', 'select'],
       valueSources: ['value'],
       reversedOp: 'array_contains',
+    },
+    // Operators for flat paths into an array-of-objects custom property such as
+    // `extension.dpTest.rows.<column>`. Instead of relying on jsonLogic's `var` to walk the path
+    // (which throws when it hits the array), each operator emits a rule that resolves the array
+    // via the `pluck` custom op and then compares against the plucked list.
+    table_field_equal: {
+      label: t('label.is'),
+      labelForFormat: t('label.is'),
+      cardinality: 1,
+      valueSources: ['value'],
+      jsonLogic: (field, _op, val) => ({
+        contains: [
+          Array.isArray(val) ? val[0] : val,
+          { tableColumnValues: extractVarPath(field) },
+        ],
+      }),
+    },
+    table_field_not_equal: {
+      label: t('label.is-not'),
+      labelForFormat: t('label.is-not'),
+      cardinality: 1,
+      valueSources: ['value'],
+      jsonLogic: (field, _op, val) => ({
+        '!': {
+          contains: [
+            Array.isArray(val) ? val[0] : val,
+            { tableColumnValues: extractVarPath(field) },
+          ],
+        },
+      }),
+    },
+    table_field_like: {
+      label: t('label.contains'),
+      labelForFormat: t('label.contains'),
+      cardinality: 1,
+      valueSources: ['value'],
+      // {"some":[{"pluck":path},{"contains":[<val>,{"var":""}]}]} — pluck yields the list of
+      // scalars, `some` iterates it, and `contains` on scalar container falls through to
+      // String#contains against the per-element value ({"var":""} = current item).
+      jsonLogic: (field, _op, val) => ({
+        some: [
+          { tableColumnValues: extractVarPath(field) },
+          { contains: [Array.isArray(val) ? val[0] : val, { var: '' }] },
+        ],
+      }),
+    },
+    table_field_not_like: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      cardinality: 1,
+      valueSources: ['value'],
+      jsonLogic: (field, _op, val) => ({
+        '!': {
+          some: [
+            { tableColumnValues: extractVarPath(field) },
+            { contains: [Array.isArray(val) ? val[0] : val, { var: '' }] },
+          ],
+        },
+      }),
     },
   };
 
