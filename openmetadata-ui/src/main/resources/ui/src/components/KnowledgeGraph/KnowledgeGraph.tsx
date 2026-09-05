@@ -35,6 +35,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toPng } from 'html-to-image';
 import { isArray } from 'lodash';
@@ -213,6 +214,12 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         relationshipTypes: selectedRelationshipTypes,
       });
       setGraphData(data);
+    } catch (error) {
+      // Without this the rejection is unhandled and `graphData` stays null, so
+      // the empty state claims the RDF indexing app is misconfigured — pointing
+      // the user at the wrong cause for what is really a failed request. Any
+      // previously loaded graph is left on screen rather than blanked.
+      showErrorToast(error as AxiosError, t('server.unexpected-error'));
     } finally {
       setLoading(false);
     }

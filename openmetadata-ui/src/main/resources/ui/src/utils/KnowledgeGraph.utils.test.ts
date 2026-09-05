@@ -396,6 +396,20 @@ describe('KnowledgeGraph.utils', () => {
     it('returns an empty list for an empty graph', () => {
       expect(computeLabelPlacements([])).toEqual([]);
     });
+
+    it('groups on the busier endpoint when the two sides differ', () => {
+      // `hub` is the target of three edges; `a` is the source of two. Grouping
+      // must follow the hub, so all three edges share one spread.
+      const placements = computeLabelPlacements([
+        { from: 'a', to: 'hub' },
+        { from: 'a', to: 'hub2' },
+        { from: 'b', to: 'hub' },
+        { from: 'c', to: 'hub' },
+      ]);
+      const hubPlacements = [placements[0], placements[2], placements[3]];
+
+      expect(new Set(hubPlacements).size).toBe(3);
+    });
   });
 
   describe('transformToG6Format', () => {

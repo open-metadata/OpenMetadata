@@ -27,6 +27,7 @@ import {
   setupGraphEventHandlers,
   transformToG6Format,
 } from '../../utils/KnowledgeGraph.utils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import KnowledgeGraph from './KnowledgeGraph';
 import {
   GraphData,
@@ -54,6 +55,10 @@ jest.mock('@antv/g6-extension-react', () => ({ ReactNode: jest.fn() }));
 jest.mock('../../rest/rdfAPI', () => ({
   getEntityGraphData: jest.fn(),
   downloadEntityGraph: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../utils/KnowledgeGraph.utils', () => ({
@@ -1434,6 +1439,58 @@ describe('KnowledgeGraph', () => {
       expect(setupGraphEventHandlers).toHaveBeenCalledWith(
         expect.objectContaining({ showEdgeLabels: true })
       );
+    });
+  });
+
+  describe('Fetch failures', () => {
+    it('surfaces a toast instead of silently rendering the empty state', async () => {
+      const error = new Error('boom');
+      (getEntityGraphData as jest.Mock).mockRejectedValueOnce(error);
+
+      renderKG();
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+      // The generic message is the *fallback*; the server's own message wins
+      // when the rejection is an AxiosError.
+      expect(showErrorToast).toHaveBeenCalledWith(
+        error,
+        'server.unexpected-error'
+      );
+    });
+
+    it('stops the loader when the request fails', async () => {
+      (getEntityGraphData as jest.Mock).mockRejectedValueOnce(
+        new Error('boom')
+      );
+
+      renderKG();
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
+      );
+    });
+
+    it('keeps the previously loaded graph when a refresh fails', async () => {
+      renderKG();
+      await waitForGraphInit();
+
+      expect(screen.getByTestId('knowledge-graph-canvas')).toBeInTheDocument();
+
+      (getEntityGraphData as jest.Mock).mockRejectedValueOnce(
+        new Error('boom')
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('refresh'));
+      });
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+      // Blanking the graph on a failed refresh would lose the user's context
+      // for no reason — the toast already tells them the refresh failed.
+      expect(screen.getByTestId('knowledge-graph-canvas')).toBeInTheDocument();
     });
   });
 });

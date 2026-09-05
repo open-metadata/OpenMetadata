@@ -727,14 +727,22 @@ export const computeLabelPlacements = (
   const seenPerEndpoint = new Map<string, number>();
   const sizePerEndpoint = new Map<string, number>();
 
-  // The shared endpoint is whichever one repeats; count both and prefer the
-  // busier side so a hub's spokes are the ones that get spread.
-  const endpointOf = (edge: { from: string; to: string }): string => {
-    const fromCount = edges.filter((e) => e.from === edge.from).length;
-    const toCount = edges.filter((e) => e.to === edge.to).length;
+  // Degree per endpoint, tallied in one pass. Scanning `edges` inside the
+  // per-edge callback below would make this O(E²), which the depth slider can
+  // reach: depth 5 returns hundreds of edges.
+  const fromDegree = new Map<string, number>();
+  const toDegree = new Map<string, number>();
+  edges.forEach((edge) => {
+    fromDegree.set(edge.from, (fromDegree.get(edge.from) ?? 0) + 1);
+    toDegree.set(edge.to, (toDegree.get(edge.to) ?? 0) + 1);
+  });
 
-    return toCount >= fromCount ? `to:${edge.to}` : `from:${edge.from}`;
-  };
+  // The shared endpoint is whichever one repeats; prefer the busier side so a
+  // hub's spokes are the ones that get spread.
+  const endpointOf = (edge: { from: string; to: string }): string =>
+    (toDegree.get(edge.to) ?? 0) >= (fromDegree.get(edge.from) ?? 0)
+      ? `to:${edge.to}`
+      : `from:${edge.from}`;
 
   const endpoints = edges.map(endpointOf);
   endpoints.forEach((key) =>
