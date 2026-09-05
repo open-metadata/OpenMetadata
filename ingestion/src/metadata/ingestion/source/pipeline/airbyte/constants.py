@@ -27,6 +27,7 @@ class AirbyteDestination(Enum):
     MYSQL = "MySQL"
     POSTGRES = "Postgres"
     MSSQL = "MS SQL Server"
+    SNOWFLAKE = "Snowflake"
 
 
 # The internal API reports connector types as display names (e.g. "Postgres"),
@@ -51,4 +52,8 @@ DESTINATION_TYPE_LOOKUP = {
     "postgres": AirbyteDestination.POSTGRES,
     AirbyteDestination.MSSQL.value: AirbyteDestination.MSSQL,
     "mssql": AirbyteDestination.MSSQL,
+    # Snowflake destination config exposes top-level `database` + `schema`
+    # (public API), which map straight to the OM Snowflake table FQN. Issue #26993.
+    AirbyteDestination.SNOWFLAKE.value: AirbyteDestination.SNOWFLAKE,
+    "snowflake": AirbyteDestination.SNOWFLAKE,
 }
