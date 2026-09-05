@@ -60,25 +60,6 @@ export const getDescriptionBox = (scope: Page | Locator): Locator =>
   scope.locator(descriptionBox);
 
 /**
- * Fill the description editor inside `scope`, asserting it is the only one
- * there.
- *
- * The count assertion is deliberate: `.first()` would also silence the strict
- * mode violation, but by typing into an arbitrary editor, so the test goes on
- * to fail somewhere unrelated to the real ambiguity. Failing here names the
- * scope that needs narrowing.
- */
-export const fillDescriptionBox = async (
-  scope: Page | Locator,
-  value: string
-) => {
-  const editor = getDescriptionBox(scope);
-
-  await expect(editor).toHaveCount(1);
-  await editor.fill(value);
-};
-
-/**
  * Resolve the description editor that an `edit-description` click just opened.
  *
  * Editing a description can mount the editor inline on the page or inside a
@@ -88,9 +69,7 @@ export const fillDescriptionBox = async (
  * "ant-modal-wrap ... intercepts pointer events" and retries until the test
  * times out; the trace shows a 45s click on an editor nothing could reach.
  *
- * Prefers the editor inside the dialog whenever the edit opened one, and asserts
- * a single match either way, so a genuinely ambiguous page fails here — naming
- * the scope that needs narrowing — instead of somewhere downstream. Retrying
+ * Prefers the editor inside the dialog whenever the edit opened one. Retrying
  * covers the modal's enter animation, during which the dialog is not yet
  * attached.
  */
@@ -111,6 +90,37 @@ export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
   }).toPass({ timeout: 15_000 });
 
   return editor;
+};
+
+/**
+ * Fill the description editor for `scope`.
+ *
+ * A `Page` scope means the caller has not narrowed anything, so resolve the way
+ * a person would — the editor in the dialog the edit just opened, falling back
+ * to the page's own. Asserting a single match against the whole page instead
+ * would turn the very case this helper exists for (an entity page with its
+ * description modal open, so two editors mounted) into a hard failure: a test
+ * that was green because `.first()` happened to pick correctly would go red,
+ * ejecting PRs exactly like the flakes this is meant to remove.
+ *
+ * An explicit `Locator` scope is a container the author chose deliberately, so
+ * two editors inside it is a real authoring bug and still fails here, naming
+ * the scope that needs narrowing rather than typing into an arbitrary editor.
+ */
+export const fillDescriptionBox = async (
+  scope: Page | Locator,
+  value: string
+) => {
+  if ('goto' in scope) {
+    await (await resolveDescriptionBox(scope)).fill(value);
+
+    return;
+  }
+
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
 };
 
 export const INVALID_NAMES = {
