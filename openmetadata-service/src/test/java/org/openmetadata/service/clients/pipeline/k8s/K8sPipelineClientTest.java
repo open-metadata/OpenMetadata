@@ -955,9 +955,8 @@ class K8sPipelineClientTest {
   }
 
   @Test
-  void testParsePodSummariesHandlesMalformedJson() throws Exception {
-    var summaries = client.parsePodSummaries("{ invalid json");
-    assertTrue(summaries.isEmpty(), "Should return empty list on JSON parse error");
+  void testParsePodSummariesThrowsOnMalformedJson() {
+      assertThrows(IOException.class, () -> client.parsePodSummaries("{ invalid json"));
   }
 
   @Test

@@ -177,7 +177,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String KUBERNETES_CLUSTER = "Kubernetes cluster";
   private static final String NO_LOGS_MESSAGE = "No logs available for pod: ";
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
-  private static final String FAILED_METADATA_MESSAGE = "Failed to parse pod metadata JSON: ";
   private static final String FAILED_LOGS_MESSAGE = "Failed to retrieve logs: ";
   private static final String K8S_NAMESPACE_DESERIALIZATION_MESSAGE =
       "Kubernetes namespace {} is reachable but pod status could not be deserialized "
@@ -1069,37 +1068,32 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   @VisibleForTesting
   List<PodSummary> parsePodSummaries(String rawJson) throws IOException {
-    try {
-      JsonNode items = POD_SUMMARY_MAPPER.readTree(rawJson).path("items");
-      List<PodSummary> summaries = new ArrayList<>();
-      for (JsonNode item : items) {
-        JsonNode metadata = item.path("metadata");
-        String name = metadata.path("name").asText(null);
-        if (name == null) {
-          LOG.warn("Skipping pod without metadata.name");
-          continue;
-        }
-        Map<String, String> labels = new HashMap<>();
-        metadata
-            .path("labels")
-            .fields()
-            .forEachRemaining(e -> labels.put(e.getKey(), e.getValue().asText()));
-        String createdStr = metadata.path("creationTimestamp").asText(null);
-        OffsetDateTime created = null;
-        if (createdStr != null) {
-          try {
-            created = OffsetDateTime.parse(createdStr);
-          } catch (DateTimeParseException e) {
-            LOG.warn("Unable to parse pod creation timestamp: {}", createdStr, e);
-          }
-        }
-        summaries.add(new PodSummary(name, labels, created));
+    JsonNode items = POD_SUMMARY_MAPPER.readTree(rawJson).path("items");
+    List<PodSummary> summaries = new ArrayList<>();
+    for (JsonNode item : items) {
+      JsonNode metadata = item.path("metadata");
+      String name = metadata.path("name").asText(null);
+      if (name == null) {
+        LOG.warn("Skipping pod without metadata.name");
+        continue;
       }
-      return summaries;
-    } catch (IOException e) {
-        LOG.warn(FAILED_METADATA_MESSAGE, e);
-        return Collections.emptyList();
+      Map<String, String> labels = new HashMap<>();
+      metadata
+          .path("labels")
+          .fields()
+          .forEachRemaining(e -> labels.put(e.getKey(), e.getValue().asText()));
+      String createdStr = metadata.path("creationTimestamp").asText(null);
+      OffsetDateTime created = null;
+      if (createdStr != null) {
+        try {
+          created = OffsetDateTime.parse(createdStr);
+        } catch (DateTimeParseException e) {
+          LOG.warn("Unable to parse pod creation timestamp: {}", createdStr, e);
+        }
+      }
+      summaries.add(new PodSummary(name, labels, created));
     }
+    return summaries;
   }
 
   @VisibleForTesting
