@@ -101,18 +101,25 @@ const nodeOpacityFor = (
   return opacity;
 };
 
-const baseLinkColor = (link: GraphLink3D): string =>
-  link.kind === 'ontology' ? LINK_ONTOLOGY_COLOR : LINK_TECHNICAL_COLOR;
+interface ResolvedLinkColors {
+  dimmed: string;
+  ontology: string;
+  technical: string;
+}
+
+const baseLinkColor = (link: GraphLink3D, colors: ResolvedLinkColors): string =>
+  link.kind === 'ontology' ? colors.ontology : colors.technical;
 
 const linkColorFor = (
   link: GraphLink3D,
-  highlight: HighlightSet | null
+  highlight: HighlightSet | null,
+  colors: ResolvedLinkColors
 ): string => {
-  let color = hexRgba(baseLinkColor(link), 0.5);
+  let color = hexRgba(baseLinkColor(link, colors), 0.5);
   if (highlight) {
     color = highlight.links.has(link)
-      ? hexRgba(baseLinkColor(link), 0.95)
-      : hexRgba(DIM_LINK_COLOR, 0.07);
+      ? hexRgba(baseLinkColor(link, colors), 0.95)
+      : hexRgba(colors.dimmed, 0.07);
   }
 
   return color;
@@ -302,11 +309,13 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     [level, gaps, renderLabels, theme]
   );
 
-  const ontologyParticleColor = useCallback(() => {
-    void theme;
-
-    return resolveGraphColor(ONTOLOGY_PARTICLE_COLOR);
-  }, [theme]);
+  const resolvedOntologyParticleColor = resolveGraphColor(
+    ONTOLOGY_PARTICLE_COLOR
+  );
+  const ontologyParticleColor = useCallback(
+    () => resolvedOntologyParticleColor,
+    [resolvedOntologyParticleColor]
+  );
 
   const handleNodeHover = useCallback(
     (node: SceneNode | null) => {
@@ -506,13 +515,19 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     );
   }, [selectedNodeId, data.nodes]);
 
+  // Capture concrete colors so ForceGraph receives a new accessor exactly when
+  // the active cascade changes, without coupling callback identity to a label.
+  const dimmedLinkColor = resolveGraphColor(DIM_LINK_COLOR);
+  const ontologyLinkColor = resolveGraphColor(LINK_ONTOLOGY_COLOR);
+  const technicalLinkColor = resolveGraphColor(LINK_TECHNICAL_COLOR);
   const linkColor = useCallback(
-    (link: SceneLink) => {
-      void theme;
-
-      return linkColorFor(link as GraphLink3D, highlight);
-    },
-    [highlight, theme]
+    (link: SceneLink) =>
+      linkColorFor(link as GraphLink3D, highlight, {
+        dimmed: dimmedLinkColor,
+        ontology: ontologyLinkColor,
+        technical: technicalLinkColor,
+      }),
+    [dimmedLinkColor, highlight, ontologyLinkColor, technicalLinkColor]
   );
   const linkWidth = useCallback(
     (link: SceneLink) => linkWidthFor(link as GraphLink3D, highlight),

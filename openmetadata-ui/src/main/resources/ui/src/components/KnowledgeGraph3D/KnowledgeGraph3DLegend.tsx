@@ -89,11 +89,10 @@ const KnowledgeGraph3DLegend: FC = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  // Legend icons are rasterized, so regenerate them after token values flip.
   const items = useMemo(() => {
-    // Legend icons are rasterized, so regenerate them after token values flip.
-    void theme;
-
     return LEGEND_TYPES.map((type) => ({
+      key: `${theme}-${type}`,
       type,
       label: t(TYPE_LABEL_KEY[type]),
       ...legendIconFor(type),
@@ -140,7 +139,7 @@ const KnowledgeGraph3DLegend: FC = () => {
             {items.map((item) => (
               <span
                 className="tw:flex tw:items-center tw:gap-1.5"
-                key={item.type}>
+                key={item.key}>
                 <img
                   alt=""
                   src={item.url}

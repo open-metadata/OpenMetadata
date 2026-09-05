@@ -50,24 +50,22 @@ export const sizeFor = (type: string): number =>
   ENTITY_SIZES[type] ?? DEFAULT_NODE_SIZE;
 
 const parseColorChannels = (color: string): [number, number, number] | null => {
-  const rgb = color.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+  const rgb = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(color);
   if (rgb) {
     return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
   }
 
   const hex = color.replace('#', '');
   if (/^[\da-f]{3}$/i.test(hex)) {
-    return [...hex].map((channel) => parseInt(channel.repeat(2), 16)) as [
-      number,
-      number,
-      number
-    ];
+    return [...hex].map((channel) =>
+      Number.parseInt(channel.repeat(2), 16)
+    ) as [number, number, number];
   }
   if (/^[\da-f]{6}$/i.test(hex)) {
     return [
-      parseInt(hex.slice(0, 2), 16),
-      parseInt(hex.slice(2, 4), 16),
-      parseInt(hex.slice(4, 6), 16),
+      Number.parseInt(hex.slice(0, 2), 16),
+      Number.parseInt(hex.slice(2, 4), 16),
+      Number.parseInt(hex.slice(4, 6), 16),
     ];
   }
 

@@ -119,9 +119,9 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   onSelectNode,
 }) => {
   const { t } = useTranslation();
-  const { theme } = useTheme();
-  // Inline and canvas-backed colors need a consumer render after tokens flip.
-  void theme;
+  // Subscribe because the translucent RGB values are resolved from the active
+  // CSS token cascade during each render.
+  useTheme();
   const isOntology = link.kind === 'ontology';
   const isDerived = Boolean(link.derived && link.path?.length && link.relation);
   const accent = isOntology ? LINK_ONTOLOGY_COLOR : LINK_TECHNICAL_COLOR;

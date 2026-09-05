@@ -297,14 +297,13 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   onSelectNode,
 }) => {
   const { t } = useTranslation();
-  const { theme } = useTheme();
+  // Subscribe because colorFor resolves the active CSS token cascade during
+  // render rather than returning a browser-managed CSS variable.
+  useTheme();
   const relations = useMemo(
     () => relationsOf(graph, node.id),
     [graph, node.id]
   );
-  // The panel stores concrete node colors in inline styles, so it must resolve
-  // them again when the active token set changes.
-  void theme;
   const dotColor = colorFor(node.type);
 
   return (
