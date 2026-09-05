@@ -117,6 +117,7 @@ import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAsset
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
@@ -125,6 +126,89 @@ import {
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+
+type EntityFetchResolution =
+  | { immediate: true }
+  | { immediate: false; promise: Promise<object> | null };
+
+// Picks how to populate the panel for `entityType`: a dedicated fetch-by-fqn
+// call when one is registered, the search-hit data as-is for tableColumn
+// (it has no standalone API), a fields-scoped fetch for knowledge pages, or
+// the generic `owners,domains,tags,extension` fetch otherwise.
+const resolveEntityFetch = (
+  entityType: EntityType,
+  fqn: string,
+  entityFetchMap: Record<string, (fqn: string) => Promise<object>>
+): EntityFetchResolution => {
+  const fetchFn = entityFetchMap[entityType];
+  if (fetchFn) {
+    return { immediate: false, promise: fetchFn(fqn) };
+  }
+  if (entityType === EntityType.TABLE_COLUMN) {
+    return { immediate: true };
+  }
+  if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return {
+      immediate: false,
+      promise: entityUtilClassBase.getEntityByFqn(
+        entityType,
+        fqn,
+        'owners,domains,tags'
+      ),
+    };
+  }
+
+  return {
+    immediate: false,
+    promise: entityUtilClassBase.getEntityByFqn(
+      entityType,
+      fqn,
+      'owners,domains,tags,extension'
+    ),
+  };
+};
+
+interface FetchedEntityData {
+  description?: string;
+  displayName?: string;
+  service?: EntityReference;
+  owners?: EntityReference[];
+  domains?: EntityReference[];
+  tags?: TagLabel[];
+  dataProducts?: EntityReference[];
+}
+
+// Merges the dedicated-endpoint response with the essential fields already
+// present on the search hit (`entityDetails.details`) — the API response is
+// canonical where it overlaps, the search hit fills in what the API omits.
+const mergeEntityData = (
+  data: FetchedEntityData,
+  details: EntityDetailsObjectInterface['details']
+): EntityData => {
+  const searchDetails: SearchSourceDetails = details;
+
+  return {
+    ...data,
+    entityType: details.entityType,
+    fullyQualifiedName: details.fullyQualifiedName,
+    id: details.id ?? '',
+    description: data.description ?? details.description,
+    displayName: data.displayName,
+    name: details.name,
+    deleted: details.deleted,
+    serviceType: searchDetails.serviceType,
+    service: data.service ?? details.service,
+    owners: data.owners ?? [],
+    domains: data.domains ?? [],
+    tags: data.tags ?? [],
+    dataProducts: data.dataProducts ?? searchDetails.dataProducts,
+    tier: searchDetails.tier,
+    columnNames: searchDetails.columnNames,
+    database: searchDetails.database,
+    databaseSchema: searchDetails.databaseSchema,
+    tableType: searchDetails.tableType,
+  } as EntityData;
+};
 
 const ONTOLOGY_EXPLORER = 'ontology-explorer';
 const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
@@ -355,66 +439,20 @@ export default function EntitySummaryPanel({
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
-      let entityPromise: Promise<object> | null = null;
+      const resolution = resolveEntityFetch(entityType, fqn, entityFetchMap);
 
-      const fetchFn = entityFetchMap[entityType];
-      if (fetchFn) {
-        entityPromise = fetchFn(fqn);
-      } else if (entityType === EntityType.TABLE_COLUMN) {
+      if (resolution.immediate) {
         setEntityData(entityDetails.details as EntityData);
         setIsEntityDataLoading(false);
 
         return;
-      } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
-        entityPromise = entityUtilClassBase.getEntityByFqn(
-          entityType,
-          fqn,
-          'owners,domains,tags'
-        );
-      } else {
-        entityPromise = entityUtilClassBase.getEntityByFqn(
-          entityType,
-          fqn,
-          'owners,domains,tags,extension'
-        );
       }
 
+      const entityPromise = resolution.promise;
+
       if (entityPromise) {
-        const data = (await entityPromise) as {
-          description?: string;
-          displayName?: string;
-          service?: EntityReference;
-          owners?: EntityReference[];
-          domains?: EntityReference[];
-          tags?: TagLabel[];
-          dataProducts?: EntityReference[];
-        };
-        const searchDetails: SearchSourceDetails = entityDetails.details;
-        // Merge API data with essential fields from entityDetails.details
-        const mergedData = {
-          ...data,
-          // Essential fields that are used in DataAssetSummaryPanelV1
-          entityType: entityDetails.details.entityType,
-          fullyQualifiedName: entityDetails.details.fullyQualifiedName,
-          id: entityDetails.details.id ?? '',
-          description: data.description ?? entityDetails.details.description,
-          displayName: data.displayName,
-          name: entityDetails.details.name,
-          deleted: entityDetails.details.deleted,
-          serviceType: searchDetails.serviceType,
-          service: data.service ?? entityDetails.details.service,
-          // Prefer canonical data; fallback to search result if missing
-          owners: data.owners ?? [],
-          domains: data.domains ?? [],
-          tags: data.tags ?? [],
-          dataProducts: data.dataProducts ?? searchDetails.dataProducts,
-          tier: searchDetails.tier,
-          columnNames: searchDetails.columnNames,
-          database: searchDetails.database,
-          databaseSchema: searchDetails.databaseSchema,
-          tableType: searchDetails.tableType,
-        };
-        setEntityData(mergedData as EntityData);
+        const data = (await entityPromise) as FetchedEntityData;
+        setEntityData(mergeEntityData(data, entityDetails.details));
       } else {
         // For entity types without a dedicated API (like tableColumn),
         // use the search index data directly. The search index already
@@ -925,6 +963,128 @@ export default function EntitySummaryPanel({
     );
   };
 
+  const renderOverviewTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityDisplayName={entityData?.displayName}
+          entityLink={entityLink}
+          entityType={entityType}
+          hasEditPermission={getPrioritizedEditPermission(
+            entityPermissions,
+            Operation.EditDisplayName
+          )}
+          onDisplayNameUpdate={handleDisplayNameUpdate}
+        />
+      )}
+
+      <div className="overview-tab-content">{summaryComponentV1}</div>
+    </>
+  );
+
+  const renderSchemaTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+        />
+      )}
+      <div className="entity-summary-panel-tab-content">
+        {entityType && (
+          <EntityDetailsSection
+            dataAsset={entityDetails.details}
+            entityType={entityType}
+            highlights={highlights}
+            isLoading={isPermissionLoading}
+          />
+        )}
+      </div>
+    </>
+  );
+
+  const renderLineageTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+          entityType={entityType}
+          hasEditPermission={getPrioritizedEditPermission(
+            entityPermissions,
+            Operation.EditDisplayName
+          )}
+          onDisplayNameUpdate={handleDisplayNameUpdate}
+        />
+      )}
+      <div className="entity-summary-panel-tab-content">
+        <div className="p-x-md">{renderLineageContent()}</div>
+      </div>
+    </>
+  );
+
+  const renderDataQualityTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+        />
+      )}
+      <DataQualityTab
+        entityFQN={entityDetails.details.fullyQualifiedName || ''}
+        hasViewTests={entityPermissions.ViewTests || entityPermissions.ViewAll}
+      />
+    </>
+  );
+
+  const renderCustomPropertiesTab = () => (
+    <>
+      {!isSideDrawer && (
+        <EntityTitleSection
+          className="title-section"
+          entityDetails={entityDetails.details}
+          entityLink={entityLink}
+        />
+      )}
+      {entityType && (
+        <CustomPropertiesSection
+          emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
+            entityType
+          )}
+          entityData={entityData ?? undefined}
+          entityDetails={entityDetails}
+          entityType={entityType}
+          entityTypeDetail={entityTypeDetail}
+          hasEditPermissions={getPrioritizedEditPermission(
+            entityPermissions,
+            Operation.EditCustomFields
+          )}
+          isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
+          viewCustomPropertiesPermission={getPrioritizedViewPermission(
+            entityPermissions,
+            Operation.ViewCustomFields
+          )}
+          onExtensionUpdate={handleExtensionUpdate}
+        />
+      )}
+    </>
+  );
+
+  const tabRenderers: Partial<Record<EntityRightPanelTab, () => JSX.Element>> =
+    {
+      [EntityRightPanelTab.OVERVIEW]: renderOverviewTab,
+      [EntityRightPanelTab.SCHEMA]: renderSchemaTab,
+      [EntityRightPanelTab.LINEAGE]: renderLineageTab,
+      [EntityRightPanelTab.DATA_QUALITY]: renderDataQualityTab,
+      [EntityRightPanelTab.CUSTOM_PROPERTIES]: renderCustomPropertiesTab,
+    };
+
   const renderTabContent = () => {
     if (
       activeTab === EntityRightPanelTab.RELATIONS &&
@@ -969,128 +1129,8 @@ export default function EntitySummaryPanel({
         </>
       );
     }
-    switch (activeTab) {
-      case EntityRightPanelTab.OVERVIEW:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityDisplayName={entityData?.displayName}
-                entityLink={entityLink}
-                entityType={entityType}
-                hasEditPermission={getPrioritizedEditPermission(
-                  entityPermissions,
-                  Operation.EditDisplayName
-                )}
-                onDisplayNameUpdate={handleDisplayNameUpdate}
-              />
-            )}
 
-            <div className="overview-tab-content">{summaryComponentV1}</div>
-          </>
-        );
-      case EntityRightPanelTab.SCHEMA:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-              />
-            )}
-            <div className="entity-summary-panel-tab-content">
-              {entityType && (
-                <EntityDetailsSection
-                  dataAsset={entityDetails.details}
-                  entityType={entityType}
-                  highlights={highlights}
-                  isLoading={isPermissionLoading}
-                />
-              )}
-            </div>
-          </>
-        );
-      case EntityRightPanelTab.LINEAGE:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-                entityType={entityType}
-                hasEditPermission={getPrioritizedEditPermission(
-                  entityPermissions,
-                  Operation.EditDisplayName
-                )}
-                onDisplayNameUpdate={handleDisplayNameUpdate}
-              />
-            )}
-            <div className="entity-summary-panel-tab-content">
-              <div className="p-x-md">{renderLineageContent()}</div>
-            </div>
-          </>
-        );
-      case EntityRightPanelTab.DATA_QUALITY:
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-              />
-            )}
-            <DataQualityTab
-              entityFQN={entityDetails.details.fullyQualifiedName || ''}
-              hasViewTests={
-                entityPermissions.ViewTests || entityPermissions.ViewAll
-              }
-            />
-          </>
-        );
-      case EntityRightPanelTab.CUSTOM_PROPERTIES: {
-        return (
-          <>
-            {!isSideDrawer && (
-              <EntityTitleSection
-                className="title-section"
-                entityDetails={entityDetails.details}
-                entityLink={entityLink}
-              />
-            )}
-            {entityType && (
-              <CustomPropertiesSection
-                emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
-                  entityType
-                )}
-                entityData={entityData ?? undefined}
-                entityDetails={entityDetails}
-                entityType={entityType}
-                entityTypeDetail={entityTypeDetail}
-                hasEditPermissions={getPrioritizedEditPermission(
-                  entityPermissions,
-                  Operation.EditCustomFields
-                )}
-                isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
-                viewCustomPropertiesPermission={getPrioritizedViewPermission(
-                  entityPermissions,
-                  Operation.ViewCustomFields
-                )}
-                onExtensionUpdate={handleExtensionUpdate}
-              />
-            )}
-          </>
-        );
-      }
-      case EntityRightPanelTab.RELATIONS:
-        return null;
-      default:
-        return null;
-    }
+    return tabRenderers[activeTab]?.() ?? null;
   };
 
   return (

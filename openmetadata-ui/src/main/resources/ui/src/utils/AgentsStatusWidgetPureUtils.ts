@@ -156,31 +156,27 @@ export const automationRunToAppRunRecord = (
   properties: run.runId ? { pipelineRunId: run.runId } : undefined,
 });
 
+const STATUS_TO_AGENT_STATUS: Record<string, AgentStatus> = Object.fromEntries([
+  [PipelineState.Success, AgentStatus.Successful],
+  [PipelineState.PartialSuccess, AgentStatus.Successful],
+  [Status.Active, AgentStatus.Successful],
+  [Status.ActiveError, AgentStatus.Successful],
+  [Status.Completed, AgentStatus.Successful],
+  [PipelineState.Failed, AgentStatus.Failed],
+  [Status.Failed, AgentStatus.Failed],
+  [PipelineState.Running, AgentStatus.Running],
+  [Status.Running, AgentStatus.Running],
+  [Status.Started, AgentStatus.Running],
+  [Status.StopInProgress, AgentStatus.Running],
+  [PipelineState.Queued, AgentStatus.Pending],
+  [Status.Pending, AgentStatus.Pending],
+  [NO_RUNS_STATUS, AgentStatus.Pending],
+] as [string, AgentStatus][]);
+
 export const getAgentStatusLabelFromStatus = (
   status?: PipelineState | Status | typeof NO_RUNS_STATUS
-) => {
-  switch (status) {
-    case PipelineState.Success:
-    case PipelineState.PartialSuccess:
-    case Status.Active:
-    case Status.ActiveError:
-    case Status.Completed:
-      return AgentStatus.Successful;
-    case PipelineState.Failed:
-    case Status.Failed:
-      return AgentStatus.Failed;
-    case PipelineState.Running:
-    case Status.Running:
-    case Status.Started:
-    case Status.StopInProgress:
-      return AgentStatus.Running;
-    case PipelineState.Queued:
-    case Status.Pending:
-    case NO_RUNS_STATUS:
-    default:
-      return AgentStatus.Pending;
-  }
-};
+) =>
+  (status ? STATUS_TO_AGENT_STATUS[status] : undefined) ?? AgentStatus.Pending;
 
 export const getAgentStatusSummary = (agentsList: AgentsInfo[]) => {
   const newList = groupBy(agentsList, 'status');

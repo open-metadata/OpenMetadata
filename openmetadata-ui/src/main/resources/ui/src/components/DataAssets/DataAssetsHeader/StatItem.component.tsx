@@ -15,6 +15,33 @@ import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
 
+type StatItemLabelProps = Pick<
+  StatItemProps,
+  'icon' | 'iconNode' | 'iconClassName' | 'count' | 'countTestId' | 'srLabel'
+>;
+
+const StatItemLabel = ({
+  icon: Icon,
+  iconNode,
+  iconClassName,
+  count,
+  countTestId,
+  srLabel,
+}: StatItemLabelProps) => (
+  <>
+    {iconNode ??
+      (Icon && (
+        <Icon className={classNames(iconClassName, 'tw:text-current')} />
+      ))}
+    {count !== undefined && (
+      <span className="tw:text-quaternary tw:text-sm" data-testid={countTestId}>
+        {count}
+      </span>
+    )}
+    {srLabel && <span className="tw:sr-only">{srLabel}</span>}
+  </>
+);
+
 export const StatItem = ({
   icon: Icon,
   iconNode,
@@ -39,20 +66,14 @@ export const StatItem = ({
   );
 
   const label = (
-    <>
-      {iconNode ??
-        (Icon && (
-          <Icon className={classNames(iconClassName, 'tw:text-current')} />
-        ))}
-      {count !== undefined && (
-        <span
-          className="tw:text-quaternary tw:text-sm"
-          data-testid={countTestId}>
-          {count}
-        </span>
-      )}
-      {srLabel && <span className="tw:sr-only">{srLabel}</span>}
-    </>
+    <StatItemLabel
+      count={count}
+      countTestId={countTestId}
+      icon={Icon}
+      iconClassName={iconClassName}
+      iconNode={iconNode}
+      srLabel={srLabel}
+    />
   );
 
   const interactive = onClick ? (

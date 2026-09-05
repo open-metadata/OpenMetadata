@@ -109,6 +109,19 @@ const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
   <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
 );
 
+const resolveFullyRendered = (
+  rule: ContextRule | undefined,
+  knowledgeType: boolean
+): boolean => (knowledgeType ? true : rule?.fullyRendered ?? false);
+
+const resolveSections = (
+  rule: ContextRule | undefined,
+  entityType: string
+): ContextSection[] =>
+  rule?.sections?.length
+    ? rule.sections
+    : getDefaultPersonaContextSections(entityType);
+
 const getDefaultRule = (rule?: ContextRule): ContextRule => {
   const entityType = rule?.entityType ?? PERSONA_CONTEXT_ASSET_TYPES[0];
   const knowledgeType = PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
@@ -121,16 +134,31 @@ const getDefaultRule = (rule?: ContextRule): ContextRule => {
     enabled: rule?.enabled ?? true,
     entityType,
     filterJsonTree: rule?.filterJsonTree,
-    fullyRendered: knowledgeType ? true : rule?.fullyRendered ?? false,
+    fullyRendered: resolveFullyRendered(rule, knowledgeType),
     id: rule?.id,
     maxAssets: rule?.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
     name: rule?.name ?? '',
     queryFilter: rule?.queryFilter ?? '',
-    sections: rule?.sections?.length
-      ? rule.sections
-      : getDefaultPersonaContextSections(entityType),
+    sections: resolveSections(rule, entityType),
   };
 };
+
+const getFilterFieldKey = (
+  open: boolean,
+  ruleId: string | undefined,
+  entityType: string
+): string => (open ? `${ruleId ?? 'new'}-${entityType}` : 'closed');
+
+const shouldShowFilterError = (
+  filterErrorShown: boolean,
+  filterIncomplete: boolean
+): boolean => filterErrorShown && filterIncomplete;
+
+const getPreviewAlertIcon = (previewError: boolean) =>
+  previewError ? AlertCircle : InfoCircle;
+
+const getPreviewAlertVariant = (previewError: boolean): 'error' | 'brand' =>
+  previewError ? 'error' : 'brand';
 
 export const ContextRuleEditor = ({
   existingRuleNames,
@@ -424,7 +452,7 @@ export const ContextRuleEditor = ({
         <RuleQueryBuilderField
           entityType={entityType}
           filterJsonTree={filterJsonTree}
-          key={open ? `${rule?.id ?? 'new'}-${entityType}` : 'closed'}
+          key={getFilterFieldKey(open, rule?.id, entityType)}
           queryFilter={queryFilter}
           onChange={(updatedQuery, updatedTree) => {
             form.setValue('queryFilter', updatedQuery, { shouldDirty: true });
@@ -439,7 +467,7 @@ export const ContextRuleEditor = ({
             }
           }}
         />
-        {filterErrorShown && filterIncomplete && (
+        {shouldShowFilterError(filterErrorShown, filterIncomplete) && (
           <Typography
             className="tw:mt-1.5 tw:text-error-primary"
             data-testid="context-rule-filter-error"
@@ -450,7 +478,7 @@ export const ContextRuleEditor = ({
         <Alert
           className="tw:mt-3 tw:items-center! tw:gap-2.5 tw:px-3.5 tw:py-2.75 tw:**:data-[testid=alert-icon]:self-center"
           data-testid="context-rule-match-preview"
-          icon={previewError ? AlertCircle : InfoCircle}
+          icon={getPreviewAlertIcon(previewError)}
           iconSize="sm"
           rightContent={
             <Button
@@ -464,7 +492,7 @@ export const ContextRuleEditor = ({
             </Button>
           }
           title=""
-          variant={previewError ? 'error' : 'brand'}>
+          variant={getPreviewAlertVariant(previewError)}>
           {renderPreviewContent()}
         </Alert>
       </Field>

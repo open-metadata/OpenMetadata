@@ -251,6 +251,178 @@ export const getOperator = (
   }
 };
 
+type QueryFilterRecurse = (
+  parentPath: Array<string>,
+  queryFilter: QueryFieldInterface[],
+  fields?: Fields
+) => Record<string, unknown>;
+
+type QueryFilterBranchHandler = (
+  curr: QueryFieldInterface,
+  parentPath: Array<string>,
+  fields: Fields | undefined,
+  recurse: QueryFilterRecurse
+) => Record<string, unknown> | undefined;
+
+const matchDeletedTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined(curr.term?.deleted)) {
+    return undefined;
+  }
+
+  return getEqualFieldProperties(parentPath, curr.term?.deleted as boolean);
+};
+
+const matchTerm: QueryFilterBranchHandler = (curr, parentPath, fields) => {
+  if (isUndefined(curr.term)) {
+    return undefined;
+  }
+  const [field, value] = Object.entries(curr.term)[0];
+  const fieldType = resolveFieldType(fields, field);
+  const op = getOperator(fieldType, false);
+
+  return getSelectEqualsNotEqualsProperties(
+    parentPath,
+    field,
+    value as string,
+    op
+  );
+};
+
+const matchMustNotTerm: QueryFilterBranchHandler = (
+  curr,
+  parentPath,
+  fields
+) => {
+  if (isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)) {
+    return undefined;
+  }
+  const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
+  const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
+  const fieldType = resolveFieldType(fields, key);
+  const op = getOperator(fieldType, true);
+
+  return getSelectEqualsNotEqualsProperties(
+    parentPath,
+    key,
+    value as string,
+    Array.isArray(value) ? 'select_not_any_in' : op
+  );
+};
+
+const matchShouldTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (
+    isUndefined(
+      ((curr.bool?.should as QueryFieldInterface[])?.[0] as EsTerm)?.term
+    )
+  ) {
+    return undefined;
+  }
+
+  return getSelectAnyInProperties(parentPath, curr?.bool?.should as EsTerm[]);
+};
+
+const matchShouldMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (
+    isUndefined(
+      (
+        (curr.bool?.should as QueryFieldInterface[])?.[0]?.bool
+          ?.must_not as EsTerm
+      )?.term
+    )
+  ) {
+    return undefined;
+  }
+
+  return getSelectNotAnyInProperties(
+    parentPath,
+    curr?.bool?.should as QueryFieldInterface[]
+  );
+};
+
+const matchMustNotExists: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (
+    isUndefined((curr.bool?.must_not as QueryFieldInterface)?.exists?.field)
+  ) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    (curr.bool?.must_not as QueryFieldInterface)?.exists?.field as string,
+    'is_null'
+  );
+};
+
+const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined(curr.exists?.field)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    (curr.exists as EsExistsQuery).field,
+    'is_not_null'
+  );
+};
+
+const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined((curr as EsWildCard).wildcard)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    Object.keys((curr as EsWildCard).wildcard)[0],
+    'like',
+    Object.values((curr as EsWildCard).wildcard)[0]?.value
+  );
+};
+
+const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined((curr.bool?.must_not as EsWildCard)?.wildcard)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
+    'not_like',
+    Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]?.value
+  );
+};
+
+const matchBoolMust: QueryFilterBranchHandler = (
+  curr,
+  parentPath,
+  fields,
+  recurse
+) => {
+  if (isUndefined((curr.bool as EsBoolQuery)?.must)) {
+    return undefined;
+  }
+
+  return recurse(
+    parentPath,
+    (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
+    fields
+  );
+};
+
+// Order matters: mirrors the original if/else-if cascade — first matching
+// handler wins, exactly like the original exclusive branches.
+const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
+  matchDeletedTerm,
+  matchTerm,
+  matchMustNotTerm,
+  matchShouldTerm,
+  matchShouldMustNotTerm,
+  matchMustNotExists,
+  matchExists,
+  matchWildcard,
+  matchMustNotWildcard,
+  matchBoolMust,
+];
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
   queryFilter: QueryFieldInterface[],
@@ -258,122 +430,16 @@ export const getJsonTreePropertyFromQueryFilter = (
 ) => {
   const convertedObj = queryFilter.reduce(
     (acc, curr: QueryFieldInterface): Record<string, unknown> => {
-      if (!isUndefined(curr.term?.deleted)) {
-        return {
-          ...acc,
-          ...getEqualFieldProperties(parentPath, curr.term?.deleted as boolean),
-        };
-      } else if (!isUndefined(curr.term)) {
-        const [field, value] = Object.entries(curr.term)[0];
-        const fieldType = resolveFieldType(fields, field);
-        const op = getOperator(fieldType, false);
-
-        return {
-          ...acc,
-          ...getSelectEqualsNotEqualsProperties(
-            parentPath,
-            field,
-            value as string,
-            op
-          ),
-        };
-      } else if (
-        !isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)
-      ) {
-        const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
-        const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
-        const fieldType = resolveFieldType(fields, key);
-        const op = getOperator(fieldType, true);
-
-        return {
-          ...acc,
-          ...getSelectEqualsNotEqualsProperties(
-            parentPath,
-            key,
-            value as string,
-            Array.isArray(value) ? 'select_not_any_in' : op
-          ),
-        };
-      } else if (
-        !isUndefined(
-          ((curr.bool?.should as QueryFieldInterface[])?.[0] as EsTerm)?.term
-        )
-      ) {
-        return {
-          ...acc,
-          ...getSelectAnyInProperties(
-            parentPath,
-            curr?.bool?.should as EsTerm[]
-          ),
-        };
-      } else if (
-        !isUndefined(
-          (
-            (curr.bool?.should as QueryFieldInterface[])?.[0]?.bool
-              ?.must_not as EsTerm
-          )?.term
-        )
-      ) {
-        return {
-          ...acc,
-          ...getSelectNotAnyInProperties(
-            parentPath,
-            curr?.bool?.should as QueryFieldInterface[]
-          ),
-        };
-      } else if (
-        !isUndefined(
-          (curr.bool?.must_not as QueryFieldInterface)?.exists?.field
-        )
-      ) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            (curr.bool?.must_not as QueryFieldInterface)?.exists
-              ?.field as string,
-            'is_null'
-          ),
-        };
-      } else if (!isUndefined(curr.exists?.field)) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            (curr.exists as EsExistsQuery).field,
-            'is_not_null'
-          ),
-        };
-      } else if (!isUndefined((curr as EsWildCard).wildcard)) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            Object.keys((curr as EsWildCard).wildcard)[0],
-            'like',
-            Object.values((curr as EsWildCard).wildcard)[0]?.value
-          ),
-        };
-      } else if (!isUndefined((curr.bool?.must_not as EsWildCard)?.wildcard)) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
-            'not_like',
-            Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]
-              ?.value
-          ),
-        };
-      } else if (!isUndefined((curr.bool as EsBoolQuery)?.must)) {
-        return {
-          ...acc,
-          ...getJsonTreePropertyFromQueryFilter(
-            parentPath,
-            (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
-            fields
-          ),
-        };
+      for (const matchBranch of QUERY_FILTER_BRANCH_HANDLERS) {
+        const branchResult = matchBranch(
+          curr,
+          parentPath,
+          fields,
+          getJsonTreePropertyFromQueryFilter
+        );
+        if (branchResult) {
+          return { ...acc, ...branchResult };
+        }
       }
 
       return acc;
@@ -464,128 +530,145 @@ const flattenAndClauses = (clauses: JsonLogic[]): JsonLogic[] => {
   }, []);
 };
 
-export const elasticsearchToJsonLogic = (
-  query: ElasticsearchQuery
+const buildBoolJsonLogic = (
+  boolQuery: NonNullable<ElasticsearchQuery['bool']>,
+  toJsonLogic: (query: ElasticsearchQuery) => JsonLogic
 ): JsonLogic => {
-  if (query.bool) {
-    const boolQuery = query.bool;
-    const jsonLogic: JsonLogic = {};
+  const jsonLogic: JsonLogic = {};
 
-    if (boolQuery.must) {
-      const mustClauses = boolQuery.must.map(elasticsearchToJsonLogic);
-      jsonLogic.and = flattenAndClauses(mustClauses);
-    }
-
-    if (boolQuery.should) {
-      jsonLogic.or = boolQuery.should.map(elasticsearchToJsonLogic);
-    }
-
-    if (boolQuery.filter) {
-      const filterClauses = boolQuery.filter.map(elasticsearchToJsonLogic);
-      jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
-        flattenAndClauses(filterClauses)
-      );
-    }
-
-    if (boolQuery.must_not) {
-      const mustNotArray = Array.isArray(boolQuery.must_not)
-        ? boolQuery.must_not
-        : [boolQuery.must_not];
-
-      const mustNotClauses = mustNotArray.map((q) => ({
-        '!': elasticsearchToJsonLogic(q),
-      }));
-
-      jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
-        flattenAndClauses(mustNotClauses)
-      );
-    }
-
-    return jsonLogic;
+  if (boolQuery.must) {
+    const mustClauses = boolQuery.must.map(toJsonLogic);
+    jsonLogic.and = flattenAndClauses(mustClauses);
   }
 
-  if (query.term) {
-    const termQuery = query.term;
-    const [field, value] = Object.entries(termQuery)[0];
-    const op = Array.isArray(value) ? 'in' : '==';
-
-    if (field.includes('.')) {
-      const [parentField, childField] = field.split('.');
-
-      const shouldIgnoreSplit =
-        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-          parentField as EntityReferenceFields
-        ) ||
-        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-          field as EntityReferenceFields
-        );
-
-      return shouldIgnoreSplit
-        ? { '==': [{ var: field }, value] }
-        : {
-            some: [
-              { var: parentField },
-              { [op]: [{ var: childField }, value] },
-            ],
-          };
-    }
-
-    return { '==': [{ var: field }, value] };
+  if (boolQuery.should) {
+    jsonLogic.or = boolQuery.should.map(toJsonLogic);
   }
 
-  if (query.exists) {
-    const { field } = query.exists;
+  if (boolQuery.filter) {
+    const filterClauses = boolQuery.filter.map(toJsonLogic);
+    jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
+      flattenAndClauses(filterClauses)
+    );
+  }
 
-    if (field.includes('.')) {
-      const [parentField] = field.split('.');
+  if (boolQuery.must_not) {
+    const mustNotArray = Array.isArray(boolQuery.must_not)
+      ? boolQuery.must_not
+      : [boolQuery.must_not];
 
-      return {
-        '!!': {
-          var: JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-            parentField as EntityReferenceFields
-          )
-            ? field
-            : parentField,
-        },
-      };
-    }
+    const mustNotClauses = mustNotArray.map((q) => ({
+      '!': toJsonLogic(q),
+    }));
+
+    jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
+      flattenAndClauses(mustNotClauses)
+    );
+  }
+
+  return jsonLogic;
+};
+
+const buildTermJsonLogic = (
+  termQuery: NonNullable<ElasticsearchQuery['term']>
+): JsonLogic => {
+  const [field, value] = Object.entries(termQuery)[0];
+  const op = Array.isArray(value) ? 'in' : '==';
+
+  if (field.includes('.')) {
+    const [parentField, childField] = field.split('.');
+
+    const shouldIgnoreSplit =
+      JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentField as EntityReferenceFields
+      ) ||
+      JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(field as EntityReferenceFields);
+
+    return shouldIgnoreSplit
+      ? { '==': [{ var: field }, value] }
+      : {
+          some: [{ var: parentField }, { [op]: [{ var: childField }, value] }],
+        };
+  }
+
+  return { '==': [{ var: field }, value] };
+};
+
+const buildExistsJsonLogic = (
+  existsQuery: NonNullable<ElasticsearchQuery['exists']>
+): JsonLogic => {
+  const { field } = existsQuery;
+
+  if (field.includes('.')) {
+    const [parentField] = field.split('.');
 
     return {
-      '!!': { var: field },
+      '!!': {
+        var: JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        )
+          ? field
+          : parentField,
+      },
     };
   }
 
-  if (query.wildcard) {
-    const wildcardQuery = query.wildcard;
-    const field = Object.keys(wildcardQuery)[0];
-    const value = (wildcardQuery[field] as Record<string, string>).value;
+  return {
+    '!!': { var: field },
+  };
+};
 
-    if (field.includes('.')) {
-      const [parentField, childField] = field.split('.');
+const buildWildcardJsonLogic = (
+  wildcardQuery: NonNullable<ElasticsearchQuery['wildcard']>
+): JsonLogic => {
+  const field = Object.keys(wildcardQuery)[0];
+  const value = (wildcardQuery[field] as Record<string, string>).value;
 
-      if (
-        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-          parentField as EntityReferenceFields
-        )
-      ) {
-        return {
-          in: [{ var: field }, value],
-        };
-      }
+  if (field.includes('.')) {
+    const [parentField, childField] = field.split('.');
 
-      return {
-        some: [
-          { var: parentField },
-          {
-            in: [{ var: childField }, value],
-          },
-        ],
-      };
-    } else {
+    if (
+      JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentField as EntityReferenceFields
+      )
+    ) {
       return {
         in: [{ var: field }, value],
       };
     }
+
+    return {
+      some: [
+        { var: parentField },
+        {
+          in: [{ var: childField }, value],
+        },
+      ],
+    };
+  } else {
+    return {
+      in: [{ var: field }, value],
+    };
+  }
+};
+
+export const elasticsearchToJsonLogic = (
+  query: ElasticsearchQuery
+): JsonLogic => {
+  if (query.bool) {
+    return buildBoolJsonLogic(query.bool, elasticsearchToJsonLogic);
+  }
+
+  if (query.term) {
+    return buildTermJsonLogic(query.term);
+  }
+
+  if (query.exists) {
+    return buildExistsJsonLogic(query.exists);
+  }
+
+  if (query.wildcard) {
+    return buildWildcardJsonLogic(query.wildcard);
   }
 
   throw new Error('Unsupported query format');
@@ -602,102 +685,85 @@ const getNestedFieldKey = (configFields: Fields, searchKey: string) => {
   return null;
 };
 
-export const jsonLogicToElasticsearch = (
+type ElasticsearchConverter = (
   logic: JsonLogic,
   configFields: Fields,
   parentField?: string,
   parentOp?: JSONLOGIC_OPERATORS
+) => ElasticsearchQuery;
+
+const buildAndElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery => ({
+  bool: {
+    must: [
+      {
+        bool: {
+          must: (logic.and as JsonLogic[]).map((item: JsonLogic) =>
+            toElasticsearch(item, configFields)
+          ),
+        },
+      },
+    ],
+  },
+});
+
+const buildOrElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery => ({
+  bool: {
+    should: (logic.or as JsonLogic[]).map((item: JsonLogic) =>
+      toElasticsearch(item, configFields, undefined, JSONLOGIC_OPERATORS.OR)
+    ),
+  },
+});
+
+const buildNotElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery => ({
+  bool: {
+    must_not: toElasticsearch(
+      logic['!'] as JsonLogic,
+      configFields,
+      undefined,
+      JSONLOGIC_OPERATORS.NOT
+    ),
+  },
+});
+
+const buildEqualsElasticsearch = (
+  logic: JsonLogic,
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
 ): ElasticsearchQuery => {
-  if (logic.and) {
+  const [field, value] = logic['=='] as [{ var: string }, unknown];
+  const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+  const isOrNotOperator = [
+    JSONLOGIC_OPERATORS.OR,
+    JSONLOGIC_OPERATORS.NOT,
+  ].includes(parentOp as JSONLOGIC_OPERATORS);
+
+  const [parentKey] = field.var.split('.');
+  const isSplittableVar =
+    typeof field === 'object' && field.var && field.var.includes('.');
+
+  if (
+    isSplittableVar &&
+    !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+      parentKey as EntityReferenceFields
+    ) &&
+    !isOrNotOperator
+  ) {
     return {
       bool: {
         must: [
-          {
-            bool: {
-              must: (logic.and as JsonLogic[]).map((item: JsonLogic) =>
-                jsonLogicToElasticsearch(item, configFields)
-              ),
-            },
-          },
-        ],
-      },
-    };
-  }
-
-  if (logic.or) {
-    return {
-      bool: {
-        should: (logic.or as JsonLogic[]).map((item: JsonLogic) =>
-          jsonLogicToElasticsearch(
-            item,
-            configFields,
-            undefined,
-            JSONLOGIC_OPERATORS.OR
-          )
-        ),
-      },
-    };
-  }
-
-  if (logic['!']) {
-    return {
-      bool: {
-        must_not: jsonLogicToElasticsearch(
-          logic['!'] as JsonLogic,
-          configFields,
-          undefined,
-          JSONLOGIC_OPERATORS.NOT
-        ),
-      },
-    };
-  }
-
-  if (logic['==']) {
-    const [field, value] = logic['=='] as [{ var: string }, unknown];
-    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-
-    const isOrNotOperator = [
-      JSONLOGIC_OPERATORS.OR,
-      JSONLOGIC_OPERATORS.NOT,
-    ].includes(parentOp as JSONLOGIC_OPERATORS);
-
-    const [parentKey] = field.var.split('.');
-    const isSplittableVar =
-      typeof field === 'object' && field.var && field.var.includes('.');
-    if (
-      isSplittableVar &&
-      !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-        parentKey as EntityReferenceFields
-      ) &&
-      !isOrNotOperator
-    ) {
-      return {
-        bool: {
-          must: [
-            {
-              term: {
-                [fieldVar]: value as string | number | boolean,
-              },
-            },
-          ],
-        },
-      };
-    }
-
-    return {
-      term: {
-        [fieldVar]: value as string | number | boolean,
-      },
-    };
-  }
-
-  if (logic['!=']) {
-    const [field, value] = logic['!='] as [{ var: string }, unknown];
-    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-
-    return {
-      bool: {
-        must_not: [
           {
             term: {
               [fieldVar]: value as string | number | boolean,
@@ -708,41 +774,151 @@ export const jsonLogicToElasticsearch = (
     };
   }
 
-  if (logic['!!']) {
-    const field = Array.isArray(logic['!!'])
-      ? (logic['!!'][0] as { var: string }).var
-      : (logic['!!'] as { var: string }).var;
-    const fieldVal = getNestedFieldKey(configFields, field);
+  return {
+    term: {
+      [fieldVar]: value as string | number | boolean,
+    },
+  };
+};
 
-    return {
-      exists: {
-        field: fieldVal || field,
-      },
-    };
+const buildNotEqualsElasticsearch = (
+  logic: JsonLogic,
+  parentField?: string
+): ElasticsearchQuery => {
+  const [field, value] = logic['!='] as [{ var: string }, unknown];
+  const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+  return {
+    bool: {
+      must_not: [
+        {
+          term: {
+            [fieldVar]: value as string | number | boolean,
+          },
+        },
+      ],
+    },
+  };
+};
+
+const buildExistsElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields
+): ElasticsearchQuery => {
+  const field = Array.isArray(logic['!!'])
+    ? (logic['!!'][0] as { var: string }).var
+    : (logic['!!'] as { var: string }).var;
+  const fieldVal = getNestedFieldKey(configFields, field);
+
+  return {
+    exists: {
+      field: fieldVal || field,
+    },
+  };
+};
+
+const buildSomeElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery | undefined => {
+  const [arrayField, condition] = logic.some as [{ var: string }, JsonLogic];
+  if (typeof arrayField === 'object' && arrayField.var) {
+    return toElasticsearch(condition, configFields, arrayField.var);
   }
 
-  if (logic.some) {
-    const [arrayField, condition] = logic.some as [{ var: string }, JsonLogic];
-    if (typeof arrayField === 'object' && arrayField.var) {
-      const conditionQuery = jsonLogicToElasticsearch(
-        condition,
+  return undefined;
+};
+
+const buildInElasticsearch = (
+  logic: JsonLogic,
+  parentField?: string
+): ElasticsearchQuery => {
+  const [field, value] = logic.in as [{ var: string }, unknown];
+  const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+  return {
+    term: {
+      [fieldVar]: value as string | number | boolean,
+    },
+  };
+};
+
+type JsonLogicHandler = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter,
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
+) => ElasticsearchQuery | undefined;
+
+// Order matters: mirrors the original if-cascade — first matching key wins.
+// A handler returning `undefined` (only possible for `some`) falls through to
+// the next entry, exactly like the original code continuing past a failed
+// inner check without a `return`.
+const JSON_LOGIC_HANDLERS: Array<
+  [(logic: JsonLogic) => boolean, JsonLogicHandler]
+> = [
+  [
+    (logic) => Boolean(logic.and),
+    (logic, configFields, toElasticsearch) =>
+      buildAndElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic.or),
+    (logic, configFields, toElasticsearch) =>
+      buildOrElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic['!']),
+    (logic, configFields, toElasticsearch) =>
+      buildNotElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic['==']),
+    (logic, _configFields, _toElasticsearch, parentField, parentOp) =>
+      buildEqualsElasticsearch(logic, parentField, parentOp),
+  ],
+  [
+    (logic) => Boolean(logic['!=']),
+    (logic, _configFields, _toElasticsearch, parentField) =>
+      buildNotEqualsElasticsearch(logic, parentField),
+  ],
+  [
+    (logic) => Boolean(logic['!!']),
+    (logic, configFields) => buildExistsElasticsearch(logic, configFields),
+  ],
+  [
+    (logic) => Boolean(logic.some),
+    (logic, configFields, toElasticsearch) =>
+      buildSomeElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic.in),
+    (logic, _configFields, _toElasticsearch, parentField) =>
+      buildInElasticsearch(logic, parentField),
+  ],
+];
+
+export const jsonLogicToElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
+): ElasticsearchQuery => {
+  for (const [matches, handle] of JSON_LOGIC_HANDLERS) {
+    if (matches(logic)) {
+      const result = handle(
+        logic,
         configFields,
-        arrayField.var
+        jsonLogicToElasticsearch,
+        parentField,
+        parentOp
       );
-
-      return conditionQuery;
+      if (result) {
+        return result;
+      }
     }
-  }
-
-  if (logic.in) {
-    const [field, value] = logic.in as [{ var: string }, unknown];
-    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-
-    return {
-      term: {
-        [fieldVar]: value as string | number | boolean,
-      },
-    };
   }
 
   throw new Error('Unsupported JSON Logic format');

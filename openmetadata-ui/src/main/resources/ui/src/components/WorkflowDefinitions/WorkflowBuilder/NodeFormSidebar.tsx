@@ -51,6 +51,74 @@ const isStartNode = (node: Node | null): boolean => {
   );
 };
 
+const getDataAssetEntityTypes = (
+  currentWorkflowConfig?: NodeFormSidebarProps['currentWorkflowConfig']
+): EntityType[] | null => {
+  if (
+    currentWorkflowConfig?.dataAssets &&
+    currentWorkflowConfig.dataAssets.length > 0
+  ) {
+    return currentWorkflowConfig.dataAssets as EntityType[];
+  }
+
+  return null;
+};
+
+const getTriggerConfig = (workflowDefinition?: WorkflowDefinition | null) => {
+  const trigger = workflowDefinition?.trigger;
+
+  if (!trigger) {
+    return null;
+  }
+
+  const isTriggerObject =
+    typeof trigger === 'object' && trigger !== null && !Array.isArray(trigger);
+
+  return isTriggerObject ? trigger.config : null;
+};
+
+const getEntityTypesFromTriggerConfig = (
+  triggerConfig: ReturnType<typeof getTriggerConfig>
+): EntityType[] | null => {
+  if (!triggerConfig) {
+    return null;
+  }
+
+  const singleEntityType = triggerConfig.entityType;
+  const multipleEntityTypes = triggerConfig.entityTypes;
+
+  if (multipleEntityTypes && Array.isArray(multipleEntityTypes)) {
+    return multipleEntityTypes as EntityType[];
+  }
+
+  if (singleEntityType) {
+    return [singleEntityType as EntityType];
+  }
+
+  return null;
+};
+
+const resolveEntityTypes = (
+  workflowDefinition?: WorkflowDefinition | null,
+  currentWorkflowConfig?: NodeFormSidebarProps['currentWorkflowConfig']
+): EntityType[] => {
+  const dataAssetEntityTypes = getDataAssetEntityTypes(currentWorkflowConfig);
+
+  if (dataAssetEntityTypes) {
+    return dataAssetEntityTypes;
+  }
+
+  const triggerEntityTypes = getEntityTypesFromTriggerConfig(
+    getTriggerConfig(workflowDefinition)
+  );
+
+  if (triggerEntityTypes) {
+    return triggerEntityTypes;
+  }
+
+  return [EntityType.ALL];
+};
+
 export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   node,
   isOpen,
@@ -66,36 +134,10 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const entityTypes = useMemo(() => {
-    if (
-      currentWorkflowConfig?.dataAssets &&
-      currentWorkflowConfig.dataAssets.length > 0
-    ) {
-      return currentWorkflowConfig.dataAssets as EntityType[];
-    }
-
-    if (workflowDefinition?.trigger) {
-      const triggerConfig =
-        typeof workflowDefinition.trigger === 'object' &&
-        workflowDefinition.trigger !== null &&
-        !Array.isArray(workflowDefinition.trigger)
-          ? workflowDefinition.trigger.config
-          : null;
-
-      if (triggerConfig) {
-        const singleEntityType = triggerConfig.entityType;
-        const multipleEntityTypes = triggerConfig.entityTypes;
-
-        if (multipleEntityTypes && Array.isArray(multipleEntityTypes)) {
-          return multipleEntityTypes as EntityType[];
-        } else if (singleEntityType) {
-          return [singleEntityType as EntityType];
-        }
-      }
-    }
-
-    return [EntityType.ALL];
-  }, [workflowDefinition, currentWorkflowConfig]);
+  const entityTypes = useMemo(
+    () => resolveEntityTypes(workflowDefinition, currentWorkflowConfig),
+    [workflowDefinition, currentWorkflowConfig]
+  );
 
   if (!node) {
     return null;

@@ -85,6 +85,57 @@ const getCleanStraightPath = (
 const formatEdgeLabel = (label: string): string =>
   startCase(label).split(' ').map(capitalize).join(' ');
 
+const computeLabelOffsetY = (
+  parallelCount: number,
+  parallelIndex: number,
+  labelY: number
+): number => {
+  const offset =
+    parallelCount > 1
+      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_LABEL_GAP
+      : 0;
+
+  return labelY + offset;
+};
+
+const resolveDisplayLabel = (label: EdgeProps['label']): EdgeProps['label'] =>
+  typeof label === 'string' && label.length > 0
+    ? formatEdgeLabel(label)
+    : label;
+
+const computeLabelStyleOverrides = (
+  labelBgStyle?: React.CSSProperties,
+  labelStyle?: React.CSSProperties
+) => {
+  const hasStyleOverrides = !!(labelBgStyle?.fill || labelStyle?.color);
+
+  if (!hasStyleOverrides) {
+    return { hasStyleOverrides, labelStyleOverrides: undefined };
+  }
+
+  return {
+    hasStyleOverrides,
+    labelStyleOverrides: {
+      backgroundColor: labelBgStyle?.fill,
+      borderColor: labelBgStyle?.stroke,
+      color: labelStyle?.color,
+      ...labelStyle,
+    },
+  };
+};
+
+const computeDeleteButtonTransform = (
+  label: EdgeProps['label'],
+  isHorizontalEdge: boolean,
+  labelX: number,
+  stackedLabelY: number
+): string => {
+  const x = label && isHorizontalEdge ? labelX + 48 : labelX;
+  const y = label && !isHorizontalEdge ? stackedLabelY - 36 : stackedLabelY;
+
+  return `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+};
+
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,
@@ -134,29 +185,21 @@ export const StraightEdge = (props: EdgeProps) => {
     targetPosition
   );
 
-  const labelOffsetY =
-    parallelCount > 1
-      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_LABEL_GAP
-      : 0;
-  const stackedLabelY = labelY + labelOffsetY;
+  const stackedLabelY = computeLabelOffsetY(
+    parallelCount,
+    parallelIndex,
+    labelY
+  );
 
-  const displayLabel =
-    typeof label === 'string' && label.length > 0
-      ? formatEdgeLabel(label)
-      : label;
-  const hasStyleOverrides = !!(labelBgStyle?.fill || labelStyle?.color);
+  const displayLabel = resolveDisplayLabel(label);
+  const { hasStyleOverrides, labelStyleOverrides } = computeLabelStyleOverrides(
+    labelBgStyle,
+    labelStyle
+  );
   const labelClassName = classNames(
     'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
     { 'tw:cursor-pointer': hasStyleOverrides }
   );
-  const labelStyleOverrides = hasStyleOverrides
-    ? {
-        backgroundColor: labelBgStyle?.fill,
-        borderColor: labelBgStyle?.stroke,
-        color: labelStyle?.color,
-        ...labelStyle,
-      }
-    : undefined;
 
   return (
     <>
@@ -192,11 +235,12 @@ export const StraightEdge = (props: EdgeProps) => {
           <div
             className="tw:absolute tw:pointer-events-auto"
             style={{
-              transform: `translate(-50%, -50%) translate(${
-                label && isHorizontalEdge ? labelX + 48 : labelX
-              }px, ${
-                label && !isHorizontalEdge ? stackedLabelY - 36 : stackedLabelY
-              }px)`,
+              transform: computeDeleteButtonTransform(
+                label,
+                isHorizontalEdge,
+                labelX,
+                stackedLabelY
+              ),
             }}>
             <Button
               className="tw:rounded-full tw:bg-primary tw:shadow-sm"

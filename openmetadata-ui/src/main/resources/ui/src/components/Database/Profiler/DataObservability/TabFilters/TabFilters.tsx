@@ -96,11 +96,17 @@ const TabFilters = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: datasetFQN } = useFqn();
-  const editDataProfile =
-    permissions &&
-    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
-  const createTestCasePermission =
-    permissions?.CreateTests || globalPermissions?.testCase?.Create || false;
+  const editDataProfile = useMemo(
+    () =>
+      permissions &&
+      getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
+    [permissions]
+  );
+  const createTestCasePermission = useMemo(
+    () =>
+      permissions?.CreateTests || globalPermissions?.testCase?.Create || false,
+    [permissions, globalPermissions]
+  );
 
   const handleTestCaseClick = () => {
     onTestCaseDrawerOpen(formType as TestLevel);
@@ -114,26 +120,35 @@ const TabFilters = () => {
     setIsMenuOpen(false);
   };
 
-  const addMenuItems = [
-    ...(createTestCasePermission
-      ? [
-          {
-            id: 'test-case',
-            label: t('label.test-case'),
-            onAction: handleTestCaseClick,
-          },
-        ]
-      : []),
-    ...(editDataProfile
-      ? [
-          {
-            id: 'custom-metric',
-            label: t('label.custom-metric'),
-            onAction: handleCustomMetricClick,
-          },
-        ]
-      : []),
-  ];
+  const addMenuItems = useMemo(
+    () => [
+      ...(createTestCasePermission
+        ? [
+            {
+              id: 'test-case',
+              label: t('label.test-case'),
+              onAction: handleTestCaseClick,
+            },
+          ]
+        : []),
+      ...(editDataProfile
+        ? [
+            {
+              id: 'custom-metric',
+              label: t('label.custom-metric'),
+              onAction: handleCustomMetricClick,
+            },
+          ]
+        : []),
+    ],
+    [
+      createTestCasePermission,
+      editDataProfile,
+      t,
+      handleTestCaseClick,
+      handleCustomMetricClick,
+    ]
+  );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     const updatedFilter = pick(value, ['startTs', 'endTs', 'key', 'title']);
@@ -185,7 +200,92 @@ const TabFilters = () => {
     });
   };
 
-  const canAddTableTest = editDataProfile || createTestCasePermission;
+  const canAddTableTest = useMemo(
+    () => editDataProfile || createTestCasePermission,
+    [editDataProfile, createTestCasePermission]
+  );
+
+  // Each render* helper below is its own function scope, so its internal
+  // branches don't add to TabFilters' own cyclomatic complexity. Pure
+  // extraction of the JSX that used to live inline — same conditions, same
+  // order, same output.
+  const renderDateFilter = () => {
+    const hideDateFilter =
+      [
+        ProfilerTabPath.COLUMN_PROFILE,
+        ProfilerTabPath.DATA_QUALITY,
+        ProfilerTabPath.OVERVIEW,
+        ProfilerTabPath.INCIDENTS,
+      ].includes(activeTab) && isEmpty(activeColumnFqn);
+
+    if (hideDateFilter) {
+      return null;
+    }
+
+    return (
+      <div className="tw:flex tw:items-center tw:gap-2">
+        <span className="tw:text-sm tw:font-medium tw:text-primary">
+          {`${t('label.date')}:`}
+        </span>
+        <DatePickerMenu
+          showSelectedCustomRange
+          defaultDateRange={dateRangeObject}
+          handleDateRangeChange={handleDateRangeChange}
+          size="small"
+        />
+      </div>
+    );
+  };
+
+  const renderTableTestActions = () => {
+    if (isTableDeleted) {
+      return null;
+    }
+
+    return (
+      <>
+        {canAddTableTest && (
+          <LimitWrapper resource="dataQuality">
+            <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <Button
+                color="primary"
+                data-testid="profiler-add-table-test-btn"
+                iconTrailing={<ChevronDown className="tw:size-4" />}
+                size="sm">
+                {t('label.add')}
+              </Button>
+              <Dropdown.Popover className="tw:w-max">
+                <Dropdown.Menu items={addMenuItems}>
+                  {(item: {
+                    id: string;
+                    label: string;
+                    onAction: () => void;
+                  }) => (
+                    <Dropdown.Item
+                      id={item.id}
+                      label={item.label}
+                      onAction={item.onAction}
+                    />
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          </LimitWrapper>
+        )}
+        {editDataProfile && (
+          <Tooltip placement="top" title={t('label.setting-plural')}>
+            <Button
+              color="secondary"
+              data-testid="profiler-setting-btn"
+              iconLeading={<SettingIcon />}
+              size="lg"
+              onClick={onSettingButtonClick}
+            />
+          </Tooltip>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
@@ -202,68 +302,9 @@ const TabFilters = () => {
         </div>
       )}
 
-      {[
-        ProfilerTabPath.COLUMN_PROFILE,
-        ProfilerTabPath.DATA_QUALITY,
-        ProfilerTabPath.OVERVIEW,
-        ProfilerTabPath.INCIDENTS,
-      ].includes(activeTab) && isEmpty(activeColumnFqn) ? null : (
-        <div className="tw:flex tw:items-center tw:gap-2">
-          <span className="tw:text-sm tw:font-medium tw:text-primary">
-            {`${t('label.date')}:`}
-          </span>
-          <DatePickerMenu
-            showSelectedCustomRange
-            defaultDateRange={dateRangeObject}
-            handleDateRangeChange={handleDateRangeChange}
-            size="small"
-          />
-        </div>
-      )}
+      {renderDateFilter()}
 
-      {!isTableDeleted && (
-        <>
-          {canAddTableTest && (
-            <LimitWrapper resource="dataQuality">
-              <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <Button
-                  color="primary"
-                  data-testid="profiler-add-table-test-btn"
-                  iconTrailing={<ChevronDown className="tw:size-4" />}
-                  size="sm">
-                  {t('label.add')}
-                </Button>
-                <Dropdown.Popover className="tw:w-max">
-                  <Dropdown.Menu items={addMenuItems}>
-                    {(item: {
-                      id: string;
-                      label: string;
-                      onAction: () => void;
-                    }) => (
-                      <Dropdown.Item
-                        id={item.id}
-                        label={item.label}
-                        onAction={item.onAction}
-                      />
-                    )}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </LimitWrapper>
-          )}
-          {editDataProfile && (
-            <Tooltip placement="top" title={t('label.setting-plural')}>
-              <Button
-                color="secondary"
-                data-testid="profiler-setting-btn"
-                iconLeading={<SettingIcon />}
-                size="lg"
-                onClick={onSettingButtonClick}
-              />
-            </Tooltip>
-          )}
-        </>
-      )}
+      {renderTableTestActions()}
     </div>
   );
 };

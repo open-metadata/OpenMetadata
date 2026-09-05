@@ -16,9 +16,12 @@ import classNames from 'classnames';
 import React, { useCallback } from 'react';
 import ReactFlow, {
   Background,
+  Connection,
   ConnectionLineType,
+  Edge,
   EdgeChange,
   MarkerType,
+  Node,
   NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -37,6 +40,157 @@ import './WorkflowCanvas.less';
 const edgeTypes = {
   straight: StraightEdge,
   default: StraightEdge,
+};
+
+const withEnabledHandler = <T,>(enabled: boolean, handler: T): T | undefined =>
+  enabled ? handler : undefined;
+
+const getShouldDimEdge = (
+  edge: Edge,
+  focusedConnection: WorkflowCanvasProps['focusedConnection'],
+  isConnectionModalOpen: boolean | undefined,
+  pendingConnection: Connection | null | undefined
+): boolean => {
+  if (focusedConnection) {
+    return true;
+  }
+  if (isConnectionModalOpen && pendingConnection) {
+    return !(
+      edge.source === pendingConnection.source &&
+      edge.target === pendingConnection.target
+    );
+  }
+
+  return false;
+};
+
+const mapEdgeForRender = (
+  edge: Edge,
+  {
+    focusedConnection,
+    isConnectionModalOpen,
+    pendingConnection,
+    isViewMode,
+    onEdgeDelete,
+  }: {
+    focusedConnection: WorkflowCanvasProps['focusedConnection'];
+    isConnectionModalOpen: boolean | undefined;
+    pendingConnection: Connection | null | undefined;
+    isViewMode: boolean;
+    onEdgeDelete: WorkflowCanvasProps['onEdgeDelete'];
+  }
+): Edge => {
+  const shouldDimEdge = getShouldDimEdge(
+    edge,
+    focusedConnection,
+    isConnectionModalOpen,
+    pendingConnection
+  );
+
+  return {
+    ...edge,
+    type: edge.type || 'straight',
+    markerEnd: edge.markerEnd || {
+      type: MarkerType.ArrowClosed,
+      width: 16,
+      height: 16,
+    },
+    style: {
+      strokeWidth: edge.style?.strokeWidth || 2,
+      ...edge.style,
+      opacity: shouldDimEdge ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
+      transition: 'opacity 0.3s ease',
+    },
+    labelStyle: {
+      ...edge.labelStyle,
+      cursor: edge.data?.conditions && !isViewMode ? 'pointer' : 'default',
+    },
+    data: {
+      ...edge.data,
+      onEdgeDelete,
+    },
+  };
+};
+
+const getShouldDimNode = (
+  node: Node,
+  focusedConnection: WorkflowCanvasProps['focusedConnection'],
+  isConnectionModalOpen: boolean | undefined,
+  pendingConnection: Connection | null | undefined
+): boolean => {
+  if (focusedConnection) {
+    return (
+      node.id !== focusedConnection.sourceId &&
+      node.id !== focusedConnection.targetId
+    );
+  }
+  if (isConnectionModalOpen && pendingConnection) {
+    return (
+      node.id !== pendingConnection.source &&
+      node.id !== pendingConnection.target
+    );
+  }
+
+  return false;
+};
+
+const getNodeCursor = (
+  canDragNodesInViewMode: boolean,
+  isViewMode: boolean
+): string => {
+  if (canDragNodesInViewMode) {
+    return 'grab';
+  }
+  if (isViewMode) {
+    return 'default';
+  }
+
+  return 'pointer';
+};
+
+const mapNodeForRender = (
+  node: Node,
+  {
+    isNodeDragEnabled,
+    focusedConnection,
+    isConnectionModalOpen,
+    pendingConnection,
+    canDragNodesInViewMode,
+    isViewMode,
+  }: {
+    isNodeDragEnabled: WorkflowCanvasProps['isNodeDragEnabled'];
+    focusedConnection: WorkflowCanvasProps['focusedConnection'];
+    isConnectionModalOpen: boolean | undefined;
+    pendingConnection: Connection | null | undefined;
+    canDragNodesInViewMode: boolean;
+    isViewMode: boolean;
+  }
+): Node => {
+  const nodeType = node.type || '';
+  const isNodeDisabled = isNodeDragEnabled && !isNodeDragEnabled(nodeType);
+
+  const shouldDimNode = getShouldDimNode(
+    node,
+    focusedConnection,
+    isConnectionModalOpen,
+    pendingConnection
+  );
+
+  const nodeCursor = getNodeCursor(canDragNodesInViewMode, isViewMode);
+
+  return {
+    ...node,
+    style: {
+      ...node.style,
+      opacity: shouldDimNode ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
+      transition: 'opacity 0.3s ease',
+      cursor: nodeCursor,
+    },
+    data: {
+      ...node.data,
+      disabled: isNodeDisabled,
+    },
+  };
 };
 
 const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
@@ -133,94 +287,36 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
         }}
         defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
         edgeTypes={edgeTypes}
-        edges={edges.map((edge) => {
-          let shouldDimEdge = false;
-
-          if (focusedConnection) {
-            shouldDimEdge = true;
-          } else if (isConnectionModalOpen && pendingConnection) {
-            shouldDimEdge = !(
-              edge.source === pendingConnection.source &&
-              edge.target === pendingConnection.target
-            );
-          }
-
-          return {
-            ...edge,
-            type: edge.type || 'straight',
-            markerEnd: edge.markerEnd || {
-              type: MarkerType.ArrowClosed,
-              width: 16,
-              height: 16,
-            },
-            style: {
-              strokeWidth: edge.style?.strokeWidth || 2,
-              ...edge.style,
-              opacity: shouldDimEdge ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
-              transition: 'opacity 0.3s ease',
-            },
-            labelStyle: {
-              ...edge.labelStyle,
-              cursor:
-                edge.data?.conditions && !isViewMode ? 'pointer' : 'default',
-            },
-            data: {
-              ...edge.data,
-              onEdgeDelete,
-            },
-          };
-        })}
+        edges={edges.map((edge) =>
+          mapEdgeForRender(edge, {
+            focusedConnection,
+            isConnectionModalOpen,
+            pendingConnection,
+            isViewMode,
+            onEdgeDelete,
+          })
+        )}
         edgesUpdatable={structuralEditMode}
         maxZoom={MAX_ZOOM_VALUE}
         minZoom={MIN_ZOOM_VALUE}
         nodeTypes={nodeTypes}
-        nodes={nodes.map((node) => {
-          const nodeType = node.type || '';
-          const isNodeDisabled =
-            isNodeDragEnabled && !isNodeDragEnabled(nodeType);
-
-          let shouldDimNode = false;
-
-          if (focusedConnection) {
-            shouldDimNode =
-              node.id !== focusedConnection.sourceId &&
-              node.id !== focusedConnection.targetId;
-          } else if (isConnectionModalOpen && pendingConnection) {
-            shouldDimNode =
-              node.id !== pendingConnection.source &&
-              node.id !== pendingConnection.target;
-          }
-
-          let nodeCursor: string;
-          if (canDragNodesInViewMode) {
-            nodeCursor = 'grab';
-          } else if (isViewMode) {
-            nodeCursor = 'default';
-          } else {
-            nodeCursor = 'pointer';
-          }
-
-          return {
-            ...node,
-            style: {
-              ...node.style,
-              opacity: shouldDimNode ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
-              transition: 'opacity 0.3s ease',
-              cursor: nodeCursor,
-            },
-            data: {
-              ...node.data,
-              disabled: isNodeDisabled,
-            },
-          };
-        })}
+        nodes={nodes.map((node) =>
+          mapNodeForRender(node, {
+            isNodeDragEnabled,
+            focusedConnection,
+            isConnectionModalOpen,
+            pendingConnection,
+            canDragNodesInViewMode,
+            isViewMode,
+          })
+        )}
         nodesConnectable={structuralEditMode}
         nodesDraggable={structuralEditMode || canDragNodesInViewMode}
-        onConnect={structuralEditMode ? onConnect : undefined}
-        onDragEnter={enablePaletteDrop ? onDragEnter : undefined}
-        onDragLeave={enablePaletteDrop ? onDragLeave : undefined}
-        onDragOver={enablePaletteDrop ? onDragOver : undefined}
-        onDrop={enablePaletteDrop ? onDrop : undefined}
+        onConnect={withEnabledHandler(structuralEditMode, onConnect)}
+        onDragEnter={withEnabledHandler(enablePaletteDrop, onDragEnter)}
+        onDragLeave={withEnabledHandler(enablePaletteDrop, onDragLeave)}
+        onDragOver={withEnabledHandler(enablePaletteDrop, onDragOver)}
+        onDrop={withEnabledHandler(enablePaletteDrop, onDrop)}
         onEdgeClick={onEdgeClick}
         onEdgesChange={guardedOnEdgesChange}
         onNodeClick={onNodeClick}

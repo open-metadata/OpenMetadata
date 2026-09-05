@@ -552,127 +552,73 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
     );
   }, [serverStatsData, serverStatsColumns, successContext?.serverCount]);
 
+  const renderOverallStats = (jobStats?: StepStats) =>
+    jobStats
+      ? statsRender(jobStats, t('label.overall-stat-plural'), {
+          effectiveTimeMs: wallClockMs,
+          latencyLabelKey: 'label.wall-clock',
+        })
+      : null;
+
+  const renderStatCol = (stats: StepStats | undefined, labelKey: string) =>
+    stats ? (
+      <Col span={6}>
+        {statsRender(stats, t(labelKey), {
+          showStatus: false,
+        })}
+      </Col>
+    ) : null;
+
+  const renderEntityStats = (entityStats?: { [key: string]: StepStats }) =>
+    entityStats ? entityStatsRenderer(entityStats) : null;
+
   return (
     <>
-      {successContext?.stats?.jobStats &&
-        statsRender(
-          successContext?.stats.jobStats,
-          t('label.overall-stat-plural'),
-          {
-            effectiveTimeMs: wallClockMs,
-            latencyLabelKey: 'label.wall-clock',
-          }
-        )}
-      {failureContext?.stats?.jobStats &&
-        statsRender(
-          failureContext?.stats.jobStats,
-          t('label.overall-stat-plural'),
-          {
-            effectiveTimeMs: wallClockMs,
-            latencyLabelKey: 'label.wall-clock',
-          }
-        )}
+      {renderOverallStats(successContext?.stats?.jobStats)}
+      {renderOverallStats(failureContext?.stats?.jobStats)}
 
       <Row className="m-t-md" gutter={[16, 16]}>
-        {successContext?.stats?.readerStats && (
-          <Col span={6}>
-            {statsRender(
-              successContext.stats.readerStats,
-              t('label.reader-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          successContext?.stats?.readerStats,
+          'label.reader-stat-plural'
         )}
-        {failureContext?.stats?.readerStats && (
-          <Col span={6}>
-            {statsRender(
-              failureContext.stats.readerStats,
-              t('label.reader-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          failureContext?.stats?.readerStats,
+          'label.reader-stat-plural'
         )}
 
-        {successContext?.stats?.processStats && (
-          <Col span={6}>
-            {statsRender(
-              successContext.stats.processStats,
-              t('label.process-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          successContext?.stats?.processStats,
+          'label.process-stat-plural'
         )}
-        {failureContext?.stats?.processStats && (
-          <Col span={6}>
-            {statsRender(
-              failureContext.stats.processStats,
-              t('label.process-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          failureContext?.stats?.processStats,
+          'label.process-stat-plural'
         )}
 
-        {successContext?.stats?.sinkStats && (
-          <Col span={6}>
-            {statsRender(
-              successContext.stats.sinkStats,
-              t('label.sink-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          successContext?.stats?.sinkStats,
+          'label.sink-stat-plural'
         )}
-        {failureContext?.stats?.sinkStats && (
-          <Col span={6}>
-            {statsRender(
-              failureContext.stats.sinkStats,
-              t('label.sink-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          failureContext?.stats?.sinkStats,
+          'label.sink-stat-plural'
         )}
 
-        {successContext?.stats?.vectorStats && (
-          <Col span={6}>
-            {statsRender(
-              successContext.stats.vectorStats,
-              t('label.vector-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          successContext?.stats?.vectorStats,
+          'label.vector-stat-plural'
         )}
-        {failureContext?.stats?.vectorStats && (
-          <Col span={6}>
-            {statsRender(
-              failureContext.stats.vectorStats,
-              t('label.vector-stat-plural'),
-              {
-                showStatus: false,
-              }
-            )}
-          </Col>
+        {renderStatCol(
+          failureContext?.stats?.vectorStats,
+          'label.vector-stat-plural'
         )}
       </Row>
 
       {serverStatsRenderer()}
 
-      {successContext?.stats?.entityStats &&
-        entityStatsRenderer(successContext.stats.entityStats)}
-      {failureContext?.stats?.entityStats &&
-        entityStatsRenderer(failureContext.stats.entityStats)}
+      {renderEntityStats(successContext?.stats?.entityStats)}
+      {renderEntityStats(failureContext?.stats?.entityStats)}
 
       {failureLogs && (
         <div className="m-t-md">

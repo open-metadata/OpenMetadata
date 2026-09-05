@@ -82,6 +82,58 @@ export {
 } from './EntityIconUtils';
 export { getServiceIcon } from './EntityServiceIconUtils';
 
+interface ConstraintIconConfig {
+  getTitle: () => string;
+  icon: SvgComponent;
+  deletedIcon: SvgComponent;
+  dataTestId: string;
+}
+
+const CONSTRAINT_ICON_CONFIG: Record<string, ConstraintIconConfig> = {
+  [ConstraintTypes.PRIMARY_KEY]: {
+    getTitle: () => t('label.primary-key'),
+    icon: IconKey,
+    deletedIcon: IconKeyLineThrough,
+    dataTestId: 'primary-key',
+  },
+  [ConstraintTypes.UNIQUE]: {
+    getTitle: () => t('label.unique'),
+    icon: IconUnique,
+    deletedIcon: IconUniqueLineThrough,
+    dataTestId: 'unique',
+  },
+  [ConstraintTypes.NOT_NULL]: {
+    getTitle: () => t('label.not-null'),
+    icon: IconNotNull,
+    deletedIcon: IconNotNullLineThrough,
+    dataTestId: 'not-null',
+  },
+  [ConstraintTypes.FOREIGN_KEY]: {
+    getTitle: () => t('label.foreign-key'),
+    icon: IconForeignKey,
+    deletedIcon: IconForeignKeyLineThrough,
+    dataTestId: 'foreign-key',
+  },
+  [ConstraintType.DistKey]: {
+    getTitle: () => t('label.entity-key', { entity: t('label.dist') }),
+    icon: IconDistKey,
+    deletedIcon: IconDistLineThrough,
+    dataTestId: 'dist-key',
+  },
+  [ConstraintType.SortKey]: {
+    getTitle: () => t('label.entity-key', { entity: t('label.sort') }),
+    icon: IconSortKey,
+    deletedIcon: IconSortLineThrough,
+    dataTestId: 'sort-key',
+  },
+  [ConstraintType.ClusterKey]: {
+    getTitle: () => t('label.entity-key', { entity: t('label.cluster') }),
+    icon: IconDistKey,
+    deletedIcon: IconDistLineThrough,
+    dataTestId: 'cluster-key',
+  },
+};
+
 export const getConstraintIcon = ({
   constraint = '',
   className = '',
@@ -95,66 +147,14 @@ export const getConstraintIcon = ({
   isConstraintAdded?: boolean;
   isConstraintDeleted?: boolean;
 }) => {
-  let title: string, icon: SvgComponent, dataTestId: string;
-  switch (constraint) {
-    case ConstraintTypes.PRIMARY_KEY: {
-      title = t('label.primary-key');
-      icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
-      dataTestId = 'primary-key';
-
-      break;
-    }
-    case ConstraintTypes.UNIQUE: {
-      title = t('label.unique');
-      icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
-      dataTestId = 'unique';
-
-      break;
-    }
-    case ConstraintTypes.NOT_NULL: {
-      title = t('label.not-null');
-      icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
-      dataTestId = 'not-null';
-
-      break;
-    }
-    case ConstraintTypes.FOREIGN_KEY: {
-      title = t('label.foreign-key');
-      icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
-      dataTestId = 'foreign-key';
-
-      break;
-    }
-    case ConstraintType.DistKey: {
-      title = t('label.entity-key', {
-        entity: t('label.dist'),
-      });
-      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
-      dataTestId = 'dist-key';
-
-      break;
-    }
-    case ConstraintType.SortKey: {
-      title = t('label.entity-key', {
-        entity: t('label.sort'),
-      });
-      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
-      dataTestId = 'sort-key';
-
-      break;
-    }
-    case ConstraintType.ClusterKey: {
-      title = t('label.entity-key', {
-        entity: t('label.cluster'),
-      });
-      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
-      dataTestId = 'cluster-key';
-
-      break;
-    }
-    default:
-      return null;
+  const config = CONSTRAINT_ICON_CONFIG[constraint];
+  if (!config) {
+    return null;
   }
+
+  const title = config.getTitle();
+  const icon = isConstraintDeleted ? config.deletedIcon : config.icon;
+  const dataTestId = config.dataTestId;
 
   return (
     <Tooltip

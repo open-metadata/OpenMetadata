@@ -198,37 +198,39 @@ export const getDefaultScheduleValue = ({
   return getDefaultScheduleFromPeriod(includePeriodOptions);
 };
 
+type CronPeriodFields = Pick<StateValue, 'min' | 'hour' | 'dow' | 'dom'>;
+
+const PERIOD_CRON_RESOLVERS: Record<
+  string,
+  (fields: CronPeriodFields, cronValue?: string[]) => Partial<CronPeriodFields>
+> = {
+  week: ({ dow }) => ({ dow: isNaN(toNumber(dow)) ? '1' : dow, dom: '*' }),
+  month: ({ dom }) => ({ dom: isNaN(toNumber(dom)) ? '1' : dom, dow: '*' }),
+  custom: (_fields, cronValue) => ({
+    min: cronValue?.[0] ?? '0',
+    hour: cronValue?.[1] ?? '0',
+    dom: cronValue?.[2] ?? '*',
+    dow: cronValue?.[4] ?? '*',
+  }),
+};
+
 export const getUpdatedStateFromFormState = <T>(
   currentState: StateValue,
   formValues: StateValue & WorkflowExtraConfig & T
 ) => {
   try {
     const newState = { ...currentState, ...formValues };
-    let { min, hour, dow, dom } = newState;
+    let { min, hour } = newState;
+    const { dow, dom } = newState;
 
     min = isNaN(toNumber(min)) ? '0' : min;
     hour = isNaN(toNumber(hour)) ? '0' : hour;
     const cronValue = newState.cron?.split(' ');
 
-    switch (newState.selectedPeriod) {
-      case 'week':
-        dow = isNaN(toNumber(dow)) ? '1' : dow;
-        dom = '*';
-
-        break;
-      case 'month':
-        dom = isNaN(toNumber(dom)) ? '1' : dom;
-        dow = '*';
-
-        break;
-      case 'custom':
-        min = cronValue?.[0] ?? '0';
-        hour = cronValue?.[1] ?? '0';
-        dom = cronValue?.[2] ?? '*';
-        dow = cronValue?.[4] ?? '*';
-
-        break;
-    }
+    const resolvePeriodFields = PERIOD_CRON_RESOLVERS[newState.selectedPeriod];
+    const periodFields = resolvePeriodFields
+      ? resolvePeriodFields({ min, hour, dow, dom }, cronValue)
+      : {};
 
     return {
       ...newState,
@@ -236,6 +238,7 @@ export const getUpdatedStateFromFormState = <T>(
       hour,
       dow,
       dom,
+      ...periodFields,
     };
   } catch {
     return { ...currentState, ...formValues };

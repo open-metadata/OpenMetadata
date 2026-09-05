@@ -90,6 +90,235 @@ const ServiceDocPanel = lazy(
   () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
 );
 
+type FieldFocusHandlers = ReturnType<typeof useFieldFocusManagement>;
+type ServiceNameValidation = ReturnType<typeof useServiceNameValidation>;
+
+interface AddServiceFooterProps {
+  activeServiceStep: number;
+  isSavingService: boolean;
+  isStep2NextDisabled: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  t: ReturnType<typeof useTranslation>['t'];
+}
+
+// Extracted so the step-2/step-3 next label + disabled logic no longer adds
+// to AddServicePage's own cyclomatic complexity.
+const AddServiceFooter = ({
+  activeServiceStep,
+  isSavingService,
+  isStep2NextDisabled,
+  onBack,
+  onNext,
+  t,
+}: AddServiceFooterProps) => {
+  const footerNextText =
+    activeServiceStep === 3
+      ? t('label.create-and-deploy')
+      : t('label.next-what-to-ingest');
+  const footerNextDisabled =
+    activeServiceStep === 2 ? isStep2NextDisabled : isSavingService;
+
+  return (
+    <>
+      <Button
+        color="secondary"
+        data-testid="previous-button"
+        isDisabled={isSavingService}
+        size="sm"
+        type="button"
+        onPress={onBack}>
+        {t('label.back')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="next-button"
+        isDisabled={footerNextDisabled || isSavingService}
+        size="sm"
+        type="button"
+        onPress={onNext}>
+        {footerNextText}
+      </Button>
+    </>
+  );
+};
+
+interface AddServiceStepContentProps {
+  activeServiceStep: number;
+  connectionFormRef: React.RefObject<ConnectionConfigFormHandle>;
+  filtersFormRef: React.RefObject<FiltersConfigFormHandle>;
+  handleConfigUpdate: (data: ConfigData) => Promise<void>;
+  handleFieldBlur: FieldFocusHandlers['handleFieldBlur'];
+  handleFieldFocus: FieldFocusHandlers['handleFieldFocus'];
+  handleFiltersInputNextClick: (data: ConfigData) => Promise<void>;
+  handleServiceCategoryChange: (category: ServiceCategoryParam) => void;
+  handleServiceTypeClick: (type: string, category: ServiceCategory) => void;
+  isConnectionVerified: boolean;
+  isServiceNameChecking: boolean;
+  isStep2NextDisabled: boolean;
+  nameError: string;
+  resetNameValidation: ServiceNameValidation['resetNameValidation'];
+  saveServiceState: LoadingState;
+  serviceCategory: ServiceCategory;
+  serviceCategoryParam: ServiceCategoryParam;
+  serviceConfig: ServiceConfig;
+  setIsConnectionVerified: (value: boolean) => void;
+  setNameError: ServiceNameValidation['setNameError'];
+  setServiceConfig: React.Dispatch<React.SetStateAction<ServiceConfig>>;
+  showErrorServiceType: boolean;
+  t: ReturnType<typeof useTranslation>['t'];
+  translatedSteps: { name: string; step: number }[];
+}
+
+// Extracted so the step 1/2/3 conditional rendering (service type grid,
+// connection form, filters form) no longer adds to AddServicePage's own
+// cyclomatic complexity.
+const AddServiceStepContent = ({
+  activeServiceStep,
+  connectionFormRef,
+  filtersFormRef,
+  handleConfigUpdate,
+  handleFieldBlur,
+  handleFieldFocus,
+  handleFiltersInputNextClick,
+  handleServiceCategoryChange,
+  handleServiceTypeClick,
+  isConnectionVerified,
+  isServiceNameChecking,
+  isStep2NextDisabled,
+  nameError,
+  resetNameValidation,
+  saveServiceState,
+  serviceCategory,
+  serviceCategoryParam,
+  serviceConfig,
+  setIsConnectionVerified,
+  setNameError,
+  setServiceConfig,
+  showErrorServiceType,
+  t,
+  translatedSteps,
+}: AddServiceStepContentProps) => (
+  <div className="tw:mt-4">
+    <div data-testid="add-new-service-container">
+      {serviceConfig.serviceType ? (
+        <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
+          {getServiceLogo(
+            serviceConfig.serviceType || '',
+            'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
+          )}
+          <Typography
+            className="tw:m-0"
+            data-testid="header"
+            size="text-xl"
+            weight="semibold">
+            {`${serviceConfig.serviceType} ${t('label.service')}`}
+          </Typography>
+        </div>
+      ) : (
+        <Typography
+          className="tw:m-0"
+          data-testid="header"
+          size="text-xl"
+          weight="semibold">
+          {t('label.add-new-entity', { entity: t('label.service') })}
+        </Typography>
+      )}
+
+      <ServiceFlowStepper
+        activeStep={activeServiceStep}
+        className="tw:mt-6"
+        steps={translatedSteps}
+      />
+      <div className="tw:mt-7">
+        {activeServiceStep === 1 && (
+          <SelectServiceType
+            handleServiceTypeClick={handleServiceTypeClick}
+            serviceCategory={serviceCategoryParam}
+            serviceCategoryHandler={handleServiceCategoryChange}
+            showError={showErrorServiceType}
+          />
+        )}
+
+        <Suspense fallback={<Loader />}>
+          {activeServiceStep === 2 && (
+            <div className="tw:flex tw:flex-col tw:gap-4">
+              <ServiceNameCard
+                description={serviceConfig.description}
+                name={serviceConfig.name}
+                nameError={nameError}
+                serviceType={serviceConfig.serviceType}
+                onBlur={handleFieldBlur}
+                onDescriptionChange={(description) =>
+                  setServiceConfig((prev) => ({ ...prev, description }))
+                }
+                onFocus={handleFieldFocus}
+                onNameChange={(name) => {
+                  resetNameValidation();
+                  setServiceConfig((prev) => ({ ...prev, name }));
+                }}
+              />
+              <ConnectionConfigForm
+                hideFooter
+                additionalMissingFieldsCount={isStep2NextDisabled ? 1 : 0}
+                data={serviceConfig as ServicesType}
+                isAdditionalValidationPending={isServiceNameChecking}
+                isSubmitDisabled={isStep2NextDisabled}
+                ref={connectionFormRef}
+                serviceCategory={serviceCategory}
+                serviceType={serviceConfig.serviceType}
+                status={saveServiceState}
+                onBlur={handleFieldBlur}
+                onFocus={handleFieldFocus}
+                onSave={async (e) => {
+                  e.formData && (await handleConfigUpdate(e.formData));
+                }}
+                onTestConnectionStatusChange={setIsConnectionVerified}
+                onValidateAdditionalRequiredFields={() => {
+                  if (!serviceConfig.name.trim()) {
+                    setNameError(
+                      t('message.field-text-is-required', {
+                        fieldText: t('label.service-name'),
+                      })
+                    );
+                    document.getElementById(SERVICE_NAME_ID)?.focus();
+
+                    return false;
+                  }
+
+                  if (nameError || isServiceNameChecking) {
+                    document.getElementById(SERVICE_NAME_ID)?.focus();
+
+                    return false;
+                  }
+
+                  return true;
+                }}
+              />
+            </div>
+          )}
+
+          {activeServiceStep === 3 && (
+            <FiltersConfigForm
+              hideFooter
+              data={serviceConfig as ServicesType}
+              ref={filtersFormRef}
+              serviceCategory={serviceCategory}
+              serviceType={serviceConfig.serviceType}
+              showConnectedMessage={isConnectionVerified}
+              status={saveServiceState}
+              onFocus={handleFieldFocus}
+              onSave={async (e) => {
+                e.formData && handleFiltersInputNextClick(e.formData);
+              }}
+            />
+          )}
+        </Suspense>
+      </div>
+    </div>
+  </div>
+);
+
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -423,38 +652,18 @@ const AddServicePage = () => {
     }
   };
 
-  const footerNextText =
-    activeServiceStep === 3
-      ? t('label.create-and-deploy')
-      : t('label.next-what-to-ingest');
-
-  const footerNextDisabled =
-    activeServiceStep === 2 ? isStep2NextDisabled : isSavingService;
-
   const firstPanelChildren = (
     <FormPanelBody
       footer={
         showFooter ? (
-          <>
-            <Button
-              color="secondary"
-              data-testid="previous-button"
-              isDisabled={isSavingService}
-              size="sm"
-              type="button"
-              onPress={handleFooterBack}>
-              {t('label.back')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="next-button"
-              isDisabled={footerNextDisabled || isSavingService}
-              size="sm"
-              type="button"
-              onPress={handleFooterNext}>
-              {footerNextText}
-            </Button>
-          </>
+          <AddServiceFooter
+            activeServiceStep={activeServiceStep}
+            isSavingService={isSavingService}
+            isStep2NextDisabled={isStep2NextDisabled}
+            t={t}
+            onBack={handleFooterBack}
+            onNext={handleFooterNext}
+          />
         ) : undefined
       }>
       <>
@@ -462,130 +671,32 @@ const AddServicePage = () => {
           items={serviceBreadcrumb}
           onAction={handleBreadcrumbAction}
         />
-        <div className="tw:mt-4">
-          <div data-testid="add-new-service-container">
-            {serviceConfig.serviceType ? (
-              <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
-                {getServiceLogo(
-                  serviceConfig.serviceType || '',
-                  'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
-                )}
-                <Typography
-                  className="tw:m-0"
-                  data-testid="header"
-                  size="text-xl"
-                  weight="semibold">
-                  {`${serviceConfig.serviceType} ${t('label.service')}`}
-                </Typography>
-              </div>
-            ) : (
-              <Typography
-                className="tw:m-0"
-                data-testid="header"
-                size="text-xl"
-                weight="semibold">
-                {t('label.add-new-entity', { entity: t('label.service') })}
-              </Typography>
-            )}
-
-            <ServiceFlowStepper
-              activeStep={activeServiceStep}
-              className="tw:mt-6"
-              steps={translatedSteps}
-            />
-            <div className="tw:mt-7">
-              {activeServiceStep === 1 && (
-                <SelectServiceType
-                  handleServiceTypeClick={handleServiceTypeClick}
-                  serviceCategory={serviceCategoryParam}
-                  serviceCategoryHandler={handleServiceCategoryChange}
-                  showError={showErrorMessage.serviceType}
-                />
-              )}
-
-              <Suspense fallback={<Loader />}>
-                {activeServiceStep === 2 && (
-                  <div className="tw:flex tw:flex-col tw:gap-4">
-                    <ServiceNameCard
-                      description={serviceConfig.description}
-                      name={serviceConfig.name}
-                      nameError={nameError}
-                      serviceType={serviceConfig.serviceType}
-                      onBlur={handleFieldBlur}
-                      onDescriptionChange={(description) =>
-                        setServiceConfig((prev) => ({ ...prev, description }))
-                      }
-                      onFocus={handleFieldFocus}
-                      onNameChange={(name) => {
-                        resetNameValidation();
-                        setServiceConfig((prev) => ({ ...prev, name }));
-                      }}
-                    />
-                    <ConnectionConfigForm
-                      hideFooter
-                      additionalMissingFieldsCount={
-                        !serviceConfig.name.trim() ||
-                        Boolean(nameError) ||
-                        isServiceNameChecking
-                          ? 1
-                          : 0
-                      }
-                      data={serviceConfig as ServicesType}
-                      isAdditionalValidationPending={isServiceNameChecking}
-                      isSubmitDisabled={isStep2NextDisabled}
-                      ref={connectionFormRef}
-                      serviceCategory={serviceCategory}
-                      serviceType={serviceConfig.serviceType}
-                      status={saveServiceState}
-                      onBlur={handleFieldBlur}
-                      onFocus={handleFieldFocus}
-                      onSave={async (e) => {
-                        e.formData && (await handleConfigUpdate(e.formData));
-                      }}
-                      onTestConnectionStatusChange={setIsConnectionVerified}
-                      onValidateAdditionalRequiredFields={() => {
-                        if (!serviceConfig.name.trim()) {
-                          setNameError(
-                            t('message.field-text-is-required', {
-                              fieldText: t('label.service-name'),
-                            })
-                          );
-                          document.getElementById(SERVICE_NAME_ID)?.focus();
-
-                          return false;
-                        }
-
-                        if (nameError || isServiceNameChecking) {
-                          document.getElementById(SERVICE_NAME_ID)?.focus();
-
-                          return false;
-                        }
-
-                        return true;
-                      }}
-                    />
-                  </div>
-                )}
-
-                {activeServiceStep === 3 && (
-                  <FiltersConfigForm
-                    hideFooter
-                    data={serviceConfig as ServicesType}
-                    ref={filtersFormRef}
-                    serviceCategory={serviceCategory}
-                    serviceType={serviceConfig.serviceType}
-                    showConnectedMessage={isConnectionVerified}
-                    status={saveServiceState}
-                    onFocus={handleFieldFocus}
-                    onSave={async (e) => {
-                      e.formData && handleFiltersInputNextClick(e.formData);
-                    }}
-                  />
-                )}
-              </Suspense>
-            </div>
-          </div>
-        </div>
+        <AddServiceStepContent
+          activeServiceStep={activeServiceStep}
+          connectionFormRef={connectionFormRef}
+          filtersFormRef={filtersFormRef}
+          handleConfigUpdate={handleConfigUpdate}
+          handleFieldBlur={handleFieldBlur}
+          handleFieldFocus={handleFieldFocus}
+          handleFiltersInputNextClick={handleFiltersInputNextClick}
+          handleServiceCategoryChange={handleServiceCategoryChange}
+          handleServiceTypeClick={handleServiceTypeClick}
+          isConnectionVerified={isConnectionVerified}
+          isServiceNameChecking={isServiceNameChecking}
+          isStep2NextDisabled={isStep2NextDisabled}
+          nameError={nameError}
+          resetNameValidation={resetNameValidation}
+          saveServiceState={saveServiceState}
+          serviceCategory={serviceCategory}
+          serviceCategoryParam={serviceCategoryParam}
+          serviceConfig={serviceConfig}
+          setIsConnectionVerified={setIsConnectionVerified}
+          setNameError={setNameError}
+          setServiceConfig={setServiceConfig}
+          showErrorServiceType={showErrorMessage.serviceType}
+          t={t}
+          translatedSteps={translatedSteps}
+        />
       </>
     </FormPanelBody>
   );

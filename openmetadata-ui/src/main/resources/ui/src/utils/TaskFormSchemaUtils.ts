@@ -138,10 +138,11 @@ const ensureTransitionCommentFields = (
   }
 
   const nextFormSchema = cloneDeep(
-    formSchema ?? {
-      type: 'object',
-      properties: {},
-    }
+    formSchema ??
+      ({
+        type: 'object',
+        properties: {},
+      } as JsonSchemaObject)
   );
   const nextUiSchema = cloneDeep(uiSchema ?? {});
   const properties =
@@ -242,6 +243,54 @@ const DEFAULT_APPROVAL_VALUES = {
   rejectedValue: 'rejected',
 };
 
+const APPROVAL_HANDLER: TaskFormHandlerConfig = {
+  type: 'approval',
+  permission: 'EDIT_ALL',
+  ...DEFAULT_APPROVAL_VALUES,
+};
+
+const INCIDENT_HANDLER: TaskFormHandlerConfig = {
+  type: 'incident',
+};
+
+const DEFAULT_TASK_FORM_HANDLERS: Partial<
+  Record<TaskEntityType, TaskFormHandlerConfig>
+> = {
+  [TaskEntityType.DescriptionUpdate]: {
+    type: 'descriptionUpdate',
+    permission: 'EDIT_DESCRIPTION',
+    fieldPathField: 'fieldPath',
+    valueField: 'newDescription',
+  },
+  [TaskEntityType.TagUpdate]: {
+    type: 'tagUpdate',
+    permission: 'EDIT_TAGS',
+    fieldPathField: 'fieldPath',
+    currentTagsField: 'currentTags',
+    addTagsField: 'tagsToAdd',
+    removeTagsField: 'tagsToRemove',
+  },
+  [TaskEntityType.GlossaryApproval]: APPROVAL_HANDLER,
+  [TaskEntityType.RequestApproval]: APPROVAL_HANDLER,
+  [TaskEntityType.TestCaseResolution]: INCIDENT_HANDLER,
+  [TaskEntityType.IncidentResolution]: INCIDENT_HANDLER,
+  [TaskEntityType.OwnershipUpdate]: {
+    type: 'ownershipUpdate',
+    permission: 'EDIT_OWNERS',
+  },
+  [TaskEntityType.TierUpdate]: {
+    type: 'tierUpdate',
+    permission: 'EDIT_TIER',
+  },
+  [TaskEntityType.DomainUpdate]: {
+    type: 'domainUpdate',
+    permission: 'EDIT_ALL',
+  },
+  [TaskEntityType.Suggestion]: {
+    type: 'suggestion',
+  },
+};
+
 const getDefaultTaskFormHandler = (task: Task): TaskFormHandlerConfig => {
   if (isRecognizerFeedbackTask(task)) {
     return {
@@ -251,59 +300,7 @@ const getDefaultTaskFormHandler = (task: Task): TaskFormHandlerConfig => {
     };
   }
 
-  switch (task.type) {
-    case TaskEntityType.DescriptionUpdate:
-      return {
-        type: 'descriptionUpdate',
-        permission: 'EDIT_DESCRIPTION',
-        fieldPathField: 'fieldPath',
-        valueField: 'newDescription',
-      };
-    case TaskEntityType.TagUpdate:
-      return {
-        type: 'tagUpdate',
-        permission: 'EDIT_TAGS',
-        fieldPathField: 'fieldPath',
-        currentTagsField: 'currentTags',
-        addTagsField: 'tagsToAdd',
-        removeTagsField: 'tagsToRemove',
-      };
-    case TaskEntityType.GlossaryApproval:
-    case TaskEntityType.RequestApproval:
-      return {
-        type: 'approval',
-        permission: 'EDIT_ALL',
-        ...DEFAULT_APPROVAL_VALUES,
-      };
-    case TaskEntityType.TestCaseResolution:
-    case TaskEntityType.IncidentResolution:
-      return {
-        type: 'incident',
-      };
-    case TaskEntityType.OwnershipUpdate:
-      return {
-        type: 'ownershipUpdate',
-        permission: 'EDIT_OWNERS',
-      };
-    case TaskEntityType.TierUpdate:
-      return {
-        type: 'tierUpdate',
-        permission: 'EDIT_TIER',
-      };
-    case TaskEntityType.DomainUpdate:
-      return {
-        type: 'domainUpdate',
-        permission: 'EDIT_ALL',
-      };
-    case TaskEntityType.Suggestion:
-      return {
-        type: 'suggestion',
-      };
-    default:
-      return {
-        type: 'custom',
-      };
-  }
+  return DEFAULT_TASK_FORM_HANDLERS[task.type] ?? { type: 'custom' };
 };
 
 export const getTaskFormHandlerConfig = (
@@ -373,6 +370,101 @@ export const applyTaskFormSchemaDefaults = (
   ...payload,
 });
 
+type NormalizedTaskPayload = ReturnType<typeof getNormalizedTaskPayload>;
+
+type EditablePayloadFieldNames = {
+  fieldPathField: string;
+  currentValueField: string;
+  editedValueField: string;
+  currentTagsField: string;
+  addTagsField: string;
+  removeTagsField: string;
+};
+
+const resolveFieldPath = (
+  payload: TaskPayload,
+  fieldPathField: string,
+  normalizedPayload: NormalizedTaskPayload
+) =>
+  payload[fieldPathField] ??
+  payload.fieldPath ??
+  payload.field ??
+  normalizedPayload.fieldPath;
+
+const buildEditableFieldPayload = (
+  payload: TaskPayload,
+  normalizedPayload: NormalizedTaskPayload,
+  fields: EditablePayloadFieldNames,
+  fallbacks: { currentValue?: unknown; editedValue?: unknown }
+): TaskPayload => ({
+  ...payload,
+  [fields.fieldPathField]: resolveFieldPath(
+    payload,
+    fields.fieldPathField,
+    normalizedPayload
+  ),
+  [fields.currentValueField]:
+    payload[fields.currentValueField] ??
+    payload.currentDescription ??
+    payload.currentValue ??
+    fallbacks.currentValue,
+  [fields.editedValueField]:
+    payload[fields.editedValueField] ??
+    payload.newDescription ??
+    payload.suggestedValue ??
+    fallbacks.editedValue,
+});
+
+const buildEditableTagPayload = (
+  payload: TaskPayload,
+  normalizedPayload: NormalizedTaskPayload,
+  fields: EditablePayloadFieldNames
+): TaskPayload => {
+  const currentTags =
+    (payload[fields.currentTagsField] as TagLabel[] | undefined) ??
+    (payload.currentTags as TagLabel[] | undefined) ??
+    normalizedPayload.currentTags;
+  const tagsToAdd =
+    (payload[fields.addTagsField] as TagLabel[] | undefined) ??
+    (payload.tagsToAdd as TagLabel[] | undefined) ??
+    normalizedPayload.suggestedTags.filter(
+      (tag) =>
+        !currentTags.some((currentTag) => currentTag.tagFQN === tag.tagFQN)
+    );
+  const tagsToRemove =
+    (payload[fields.removeTagsField] as TagLabel[] | undefined) ??
+    (payload.tagsToRemove as TagLabel[] | undefined) ??
+    currentTags.filter(
+      (tag) =>
+        !normalizedPayload.suggestedTags.some(
+          (suggestedTag) => suggestedTag.tagFQN === tag.tagFQN
+        )
+    );
+
+  return {
+    ...payload,
+    [fields.fieldPathField]: resolveFieldPath(
+      payload,
+      fields.fieldPathField,
+      normalizedPayload
+    ),
+    [fields.currentTagsField]: currentTags,
+    [fields.addTagsField]: tagsToAdd,
+    [fields.removeTagsField]: tagsToRemove,
+  };
+};
+
+const resolveEditablePayloadFields = (
+  editableConfig: EditablePayloadConfig
+): EditablePayloadFieldNames => ({
+  fieldPathField: editableConfig.fieldPathField ?? 'fieldPath',
+  currentValueField: editableConfig.currentValueField ?? 'currentDescription',
+  editedValueField: editableConfig.editedValueField ?? 'newDescription',
+  currentTagsField: editableConfig.currentTagsField ?? 'currentTags',
+  addTagsField: editableConfig.addTagsField ?? 'tagsToAdd',
+  removeTagsField: editableConfig.removeTagsField ?? 'tagsToRemove',
+});
+
 export const getEditableTaskPayload = (
   task: Task,
   uiSchema?: JsonSchemaObject
@@ -380,31 +472,10 @@ export const getEditableTaskPayload = (
   const normalizedPayload = getNormalizedTaskPayload(task);
   const payload = cloneDeep(task.payload ?? {});
   const editableConfig = getEditablePayloadConfig(uiSchema);
-  const fieldPathField = editableConfig.fieldPathField ?? 'fieldPath';
-  const currentValueField =
-    editableConfig.currentValueField ?? 'currentDescription';
-  const editedValueField = editableConfig.editedValueField ?? 'newDescription';
-  const currentTagsField = editableConfig.currentTagsField ?? 'currentTags';
-  const addTagsField = editableConfig.addTagsField ?? 'tagsToAdd';
-  const removeTagsField = editableConfig.removeTagsField ?? 'tagsToRemove';
+  const fields = resolveEditablePayloadFields(editableConfig);
 
   if (editableConfig.currentValueField || editableConfig.editedValueField) {
-    return {
-      ...payload,
-      [fieldPathField]:
-        payload[fieldPathField] ??
-        payload.fieldPath ??
-        payload.field ??
-        normalizedPayload.fieldPath,
-      [currentValueField]:
-        payload[currentValueField] ??
-        payload.currentDescription ??
-        payload.currentValue,
-      [editedValueField]:
-        payload[editedValueField] ??
-        payload.newDescription ??
-        payload.suggestedValue,
-    };
+    return buildEditableFieldPayload(payload, normalizedPayload, fields, {});
   }
 
   if (
@@ -412,97 +483,47 @@ export const getEditableTaskPayload = (
     editableConfig.addTagsField ||
     editableConfig.removeTagsField
   ) {
-    const currentTags =
-      (payload[currentTagsField] as TagLabel[] | undefined) ??
-      (payload.currentTags as TagLabel[] | undefined) ??
-      normalizedPayload.currentTags;
-    const tagsToAdd =
-      (payload[addTagsField] as TagLabel[] | undefined) ??
-      (payload.tagsToAdd as TagLabel[] | undefined) ??
-      normalizedPayload.suggestedTags.filter(
-        (tag) =>
-          !currentTags.some((currentTag) => currentTag.tagFQN === tag.tagFQN)
-      );
-    const tagsToRemove =
-      (payload[removeTagsField] as TagLabel[] | undefined) ??
-      (payload.tagsToRemove as TagLabel[] | undefined) ??
-      currentTags.filter(
-        (tag) =>
-          !normalizedPayload.suggestedTags.some(
-            (suggestedTag) => suggestedTag.tagFQN === tag.tagFQN
-          )
-      );
-
-    return {
-      ...payload,
-      [fieldPathField]:
-        payload[fieldPathField] ??
-        payload.fieldPath ??
-        payload.field ??
-        normalizedPayload.fieldPath,
-      [currentTagsField]: currentTags,
-      [addTagsField]: tagsToAdd,
-      [removeTagsField]: tagsToRemove,
-    };
+    return buildEditableTagPayload(payload, normalizedPayload, fields);
   }
 
   if (task.type === TaskEntityType.DescriptionUpdate) {
-    return {
-      ...payload,
-      [fieldPathField]:
-        payload[fieldPathField] ??
-        payload.fieldPath ??
-        payload.field ??
-        normalizedPayload.fieldPath,
-      [currentValueField]:
-        payload[currentValueField] ??
-        payload.currentDescription ??
-        payload.currentValue ??
-        normalizedPayload.currentDescription,
-      [editedValueField]:
-        payload[editedValueField] ??
-        payload.newDescription ??
-        payload.suggestedValue ??
-        normalizedPayload.newDescription,
-    };
+    return buildEditableFieldPayload(payload, normalizedPayload, fields, {
+      currentValue: normalizedPayload.currentDescription,
+      editedValue: normalizedPayload.newDescription,
+    });
   }
 
   if (task.type === TaskEntityType.TagUpdate) {
-    const currentTags =
-      (payload[currentTagsField] as TagLabel[] | undefined) ??
-      (payload.currentTags as TagLabel[] | undefined) ??
-      normalizedPayload.currentTags;
-    const tagsToAdd =
-      (payload[addTagsField] as TagLabel[] | undefined) ??
-      (payload.tagsToAdd as TagLabel[] | undefined) ??
-      normalizedPayload.suggestedTags.filter(
-        (tag) =>
-          !currentTags.some((currentTag) => currentTag.tagFQN === tag.tagFQN)
-      );
-    const tagsToRemove =
-      (payload[removeTagsField] as TagLabel[] | undefined) ??
-      (payload.tagsToRemove as TagLabel[] | undefined) ??
-      currentTags.filter(
-        (tag) =>
-          !normalizedPayload.suggestedTags.some(
-            (suggestedTag) => suggestedTag.tagFQN === tag.tagFQN
-          )
-      );
-
-    return {
-      ...payload,
-      [fieldPathField]:
-        payload[fieldPathField] ??
-        payload.fieldPath ??
-        payload.field ??
-        normalizedPayload.fieldPath,
-      [currentTagsField]: currentTags,
-      [addTagsField]: tagsToAdd,
-      [removeTagsField]: tagsToRemove,
-    };
+    return buildEditableTagPayload(payload, normalizedPayload, fields);
   }
 
   return payload;
+};
+
+const getFieldResolutionValue = (payload: TaskPayload, valueField?: string) =>
+  String(
+    payload[valueField ?? 'newDescription'] ?? payload.suggestedValue ?? ''
+  );
+
+const mergeResolutionTags = (
+  payload: TaskPayload,
+  currentField = 'currentTags',
+  addField = 'tagsToAdd',
+  removeField = 'tagsToRemove'
+) => {
+  const currentTags = (payload[currentField] as TagLabel[] | undefined) ?? [];
+  const tagsToAdd = (payload[addField] as TagLabel[] | undefined) ?? [];
+  const tagsToRemove = (payload[removeField] as TagLabel[] | undefined) ?? [];
+  const removedTagFqns = new Set(tagsToRemove.map((tag) => tag.tagFQN));
+  const updatedTags = uniqBy(
+    [
+      ...currentTags.filter((tag) => !removedTagFqns.has(tag.tagFQN)),
+      ...tagsToAdd,
+    ],
+    'tagFQN'
+  );
+
+  return JSON.stringify(updatedTags);
 };
 
 export const getTaskResolutionNewValue = (
@@ -517,56 +538,24 @@ export const getTaskResolutionNewValue = (
   }
 
   if (resolutionConfig.mode === 'field') {
-    return String(
-      payload[resolutionConfig.valueField ?? 'newDescription'] ??
-        payload.suggestedValue ??
-        ''
-    );
+    return getFieldResolutionValue(payload, resolutionConfig.valueField);
   }
 
   if (resolutionConfig.mode === 'tagMerge') {
-    const currentTags =
-      (payload[resolutionConfig.currentField ?? 'currentTags'] as
-        | TagLabel[]
-        | undefined) ?? [];
-    const tagsToAdd =
-      (payload[resolutionConfig.addField ?? 'tagsToAdd'] as
-        | TagLabel[]
-        | undefined) ?? [];
-    const tagsToRemove =
-      (payload[resolutionConfig.removeField ?? 'tagsToRemove'] as
-        | TagLabel[]
-        | undefined) ?? [];
-    const removedTagFqns = new Set(tagsToRemove.map((tag) => tag.tagFQN));
-    const updatedTags = uniqBy(
-      [
-        ...currentTags.filter((tag) => !removedTagFqns.has(tag.tagFQN)),
-        ...tagsToAdd,
-      ],
-      'tagFQN'
+    return mergeResolutionTags(
+      payload,
+      resolutionConfig.currentField,
+      resolutionConfig.addField,
+      resolutionConfig.removeField
     );
-
-    return JSON.stringify(updatedTags);
   }
 
   if (task.type === TaskEntityType.DescriptionUpdate) {
-    return String(payload.newDescription ?? payload.suggestedValue ?? '');
+    return getFieldResolutionValue(payload);
   }
 
   if (task.type === TaskEntityType.TagUpdate) {
-    const currentTags = (payload.currentTags as TagLabel[] | undefined) ?? [];
-    const tagsToAdd = (payload.tagsToAdd as TagLabel[] | undefined) ?? [];
-    const tagsToRemove = (payload.tagsToRemove as TagLabel[] | undefined) ?? [];
-    const removedTagFqns = new Set(tagsToRemove.map((tag) => tag.tagFQN));
-    const updatedTags = uniqBy(
-      [
-        ...currentTags.filter((tag) => !removedTagFqns.has(tag.tagFQN)),
-        ...tagsToAdd,
-      ],
-      'tagFQN'
-    );
-
-    return JSON.stringify(updatedTags);
+    return mergeResolutionTags(payload);
   }
 
   if (typeof payload.suggestedValue === 'string') {

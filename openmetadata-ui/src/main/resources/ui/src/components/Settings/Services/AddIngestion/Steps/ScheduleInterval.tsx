@@ -70,6 +70,71 @@ import {
   WorkflowExtraConfig,
 } from './ScheduleInterval.interface';
 
+interface ScheduleColumnLayout {
+  showMinuteSelect: boolean;
+  showHourSelect: boolean;
+  showWeekSelect: boolean;
+  showMonthSelect: boolean;
+  minuteCol: number;
+  hourCol: number;
+  weekCol: number;
+  monthCol: number;
+}
+
+const DEFAULT_SCHEDULE_LAYOUT: ScheduleColumnLayout = {
+  showMinuteSelect: false,
+  showHourSelect: false,
+  showWeekSelect: false,
+  showMonthSelect: false,
+  minuteCol: 0,
+  hourCol: 0,
+  weekCol: 0,
+  monthCol: 0,
+};
+
+const SCHEDULE_LAYOUT_BY_PERIOD: Record<string, ScheduleColumnLayout> = {
+  hour: {
+    showMinuteSelect: true,
+    showHourSelect: false,
+    showWeekSelect: false,
+    showMonthSelect: false,
+    minuteCol: 12,
+    hourCol: 0,
+    weekCol: 0,
+    monthCol: 0,
+  },
+  day: {
+    showMinuteSelect: true,
+    showHourSelect: true,
+    showWeekSelect: false,
+    showMonthSelect: false,
+    minuteCol: 6,
+    hourCol: 6,
+    weekCol: 0,
+    monthCol: 0,
+  },
+  week: {
+    showMinuteSelect: true,
+    showHourSelect: true,
+    showWeekSelect: true,
+    showMonthSelect: false,
+    minuteCol: 6,
+    hourCol: 6,
+    weekCol: 24,
+    monthCol: 0,
+  },
+  month: {
+    showMinuteSelect: true,
+    showHourSelect: true,
+    showWeekSelect: false,
+    showMonthSelect: true,
+    minuteCol: 6,
+    hourCol: 6,
+    weekCol: 0,
+    monthCol: 24,
+  },
+};
+
 function ScheduleIntervalInner<T>(
   {
     disabled,
@@ -153,29 +218,12 @@ function ScheduleIntervalInner<T>(
     hourCol,
     weekCol,
     monthCol,
-  } = useMemo(() => {
-    const isHourSelected = selectedPeriod === 'hour';
-    const isDaySelected = selectedPeriod === 'day';
-    const isWeekSelected = selectedPeriod === 'week';
-    const isMonthSelected = selectedPeriod === 'month';
-    const showMinuteSelect =
-      isHourSelected || isDaySelected || isWeekSelected || isMonthSelected;
-    const showHourSelect = isDaySelected || isWeekSelected || isMonthSelected;
-    const showWeekSelect = isWeekSelected;
-    const showMonthSelect = isMonthSelected;
-    const minuteCol = isHourSelected ? 12 : 6;
-
-    return {
-      showMinuteSelect,
-      showHourSelect,
-      showWeekSelect,
-      showMonthSelect,
-      minuteCol: showMinuteSelect ? minuteCol : 0,
-      hourCol: showHourSelect ? 6 : 0,
-      weekCol: showWeekSelect ? 24 : 0,
-      monthCol: showMonthSelect ? 24 : 0,
-    };
-  }, [selectedPeriod]);
+  } = useMemo(
+    () =>
+      SCHEDULE_LAYOUT_BY_PERIOD[selectedPeriod ?? ''] ??
+      DEFAULT_SCHEDULE_LAYOUT,
+    [selectedPeriod]
+  );
 
   const handleSelectedSchedular = useCallback(
     (value: SchedularOptions) => {
@@ -249,6 +297,167 @@ function ScheduleIntervalInner<T>(
     }));
   }, [includePeriodOptions, t]);
 
+  const renderScheduleSection = () => (
+    <Col span={24}>
+      <Row data-testid="cron-container" gutter={[16, 16]}>
+        <Col data-testid="time-dropdown-container" span={12}>
+          <Form.Item
+            label={`${t('label.every')}:`}
+            labelCol={{ span: 24 }}
+            name="selectedPeriod">
+            <Select
+              className="w-full"
+              data-testid="cron-type"
+              disabled={disabled}
+              id="cronType"
+              options={filteredPeriodOptions.map(({ label, value }) => ({
+                label,
+                value,
+              }))}
+            />
+          </Form.Item>
+        </Col>
+
+        <Col span={hourCol}>
+          <Form.Item
+            data-testid="hour-option"
+            hidden={!showHourSelect}
+            label={`${t('label.hour')}:`}
+            labelCol={{ span: 24 }}
+            name="hour">
+            {getHourMinuteSelect({
+              cronType: CronTypes.HOUR,
+              disabled,
+            })}
+          </Form.Item>
+        </Col>
+        <Col span={minuteCol}>
+          <Form.Item
+            data-testid="minute-option"
+            hidden={!showMinuteSelect}
+            label={`${t('label.minute')}:`}
+            labelCol={{ span: 24 }}
+            name="min">
+            {getHourMinuteSelect({
+              cronType: CronTypes.MINUTE,
+              disabled,
+            })}
+          </Form.Item>
+        </Col>
+        <Col span={weekCol}>
+          <Form.Item
+            data-testid="week-segment-day-option-container"
+            hidden={!showWeekSelect}
+            label={`${t('label.day')}:`}
+            labelCol={{ span: 24 }}
+            name="dow">
+            <Radio.Group
+              buttonStyle="solid"
+              className="d-flex gap-2"
+              value={dow}>
+              {DAY_OPTIONS.map(({ label, value: optionValue }) => (
+                <Radio.Button
+                  className="week-selector-buttons"
+                  data-value={optionValue}
+                  disabled={disabled}
+                  key={`${label}-${optionValue}`}
+                  value={optionValue}>
+                  {label[0]}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+          </Form.Item>
+        </Col>
+
+        <Col span={monthCol}>
+          <Form.Item
+            data-testid="month-segment-day-option-container"
+            hidden={!showMonthSelect}
+            label={`${t('label.date')}:`}
+            labelCol={{ span: 24 }}
+            name="dom">
+            <Radio.Group
+              buttonStyle="solid"
+              className="d-flex flex-wrap gap-2"
+              value={dom}>
+              {DAY_IN_MONTH_OPTIONS.map(({ label, value: optionValue }) => (
+                <Radio.Button
+                  className="week-selector-buttons"
+                  data-value={optionValue}
+                  disabled={disabled}
+                  key={`day-${label}-${optionValue}`}
+                  value={optionValue}>
+                  {label}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+          </Form.Item>
+        </Col>
+
+        <Col span={selectedPeriod === 'custom' ? 12 : 0}>
+          <Form.Item
+            hidden={selectedPeriod !== 'custom'}
+            label={`${t('label.cron')}:`}
+            labelCol={{ span: 24 }}
+            name="cron"
+            rules={[
+              {
+                required: true,
+                message: t('label.field-required', {
+                  field: t('label.cron'),
+                }),
+              },
+              {
+                validator: cronValidator,
+              },
+            ]}>
+            <Input />
+          </Form.Item>
+        </Col>
+
+        {cronString && <Col span={24}>{cronHumanText}</Col>}
+
+        {isEmpty(cronString) && (
+          <Col span={24}>
+            <p data-testid="manual-segment-container">
+              {t('message.pipeline-will-trigger-manually')}
+            </p>
+          </Col>
+        )}
+      </Row>
+    </Col>
+  );
+
+  const renderActionButtons = () => (
+    <Col className="d-flex justify-end" span={24}>
+      <Button
+        className="m-r-xs"
+        data-testid="back-button"
+        type="link"
+        onClick={onBack}>
+        <span>{buttonProps?.cancelText ?? t('label.back')}</span>
+      </Button>
+
+      {status === 'success' ? (
+        <Button
+          disabled
+          className="w-16 opacity-100 p-x-md p-y-xxs"
+          type="primary">
+          <CheckOutlined />
+        </Button>
+      ) : (
+        <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+          data-testid="deploy-button"
+          htmlType="submit"
+          loading={status === LOADING_STATE.WAITING}
+          type="primary">
+          {buttonProps?.okText ?? t('label.create')}
+        </Button>
+      )}
+    </Col>
+  );
+
   return (
     <Form
       className="schedule-interval"
@@ -288,138 +497,8 @@ function ScheduleIntervalInner<T>(
           </Radio.Group>
         </Col>
 
-        {selectedSchedular === SchedularOptions.SCHEDULE && (
-          <Col span={24}>
-            <Row data-testid="cron-container" gutter={[16, 16]}>
-              <Col data-testid="time-dropdown-container" span={12}>
-                <Form.Item
-                  label={`${t('label.every')}:`}
-                  labelCol={{ span: 24 }}
-                  name="selectedPeriod">
-                  <Select
-                    className="w-full"
-                    data-testid="cron-type"
-                    disabled={disabled}
-                    id="cronType"
-                    options={filteredPeriodOptions.map(({ label, value }) => ({
-                      label,
-                      value,
-                    }))}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col span={hourCol}>
-                <Form.Item
-                  data-testid="hour-option"
-                  hidden={!showHourSelect}
-                  label={`${t('label.hour')}:`}
-                  labelCol={{ span: 24 }}
-                  name="hour">
-                  {getHourMinuteSelect({
-                    cronType: CronTypes.HOUR,
-                    disabled,
-                  })}
-                </Form.Item>
-              </Col>
-              <Col span={minuteCol}>
-                <Form.Item
-                  data-testid="minute-option"
-                  hidden={!showMinuteSelect}
-                  label={`${t('label.minute')}:`}
-                  labelCol={{ span: 24 }}
-                  name="min">
-                  {getHourMinuteSelect({
-                    cronType: CronTypes.MINUTE,
-                    disabled,
-                  })}
-                </Form.Item>
-              </Col>
-              <Col span={weekCol}>
-                <Form.Item
-                  data-testid="week-segment-day-option-container"
-                  hidden={!showWeekSelect}
-                  label={`${t('label.day')}:`}
-                  labelCol={{ span: 24 }}
-                  name="dow">
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="d-flex gap-2"
-                    value={dow}>
-                    {DAY_OPTIONS.map(({ label, value: optionValue }) => (
-                      <Radio.Button
-                        className="week-selector-buttons"
-                        data-value={optionValue}
-                        disabled={disabled}
-                        key={`${label}-${optionValue}`}
-                        value={optionValue}>
-                        {label[0]}
-                      </Radio.Button>
-                    ))}
-                  </Radio.Group>
-                </Form.Item>
-              </Col>
-
-              <Col span={monthCol}>
-                <Form.Item
-                  data-testid="month-segment-day-option-container"
-                  hidden={!showMonthSelect}
-                  label={`${t('label.date')}:`}
-                  labelCol={{ span: 24 }}
-                  name="dom">
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="d-flex flex-wrap gap-2"
-                    value={dom}>
-                    {DAY_IN_MONTH_OPTIONS.map(
-                      ({ label, value: optionValue }) => (
-                        <Radio.Button
-                          className="week-selector-buttons"
-                          data-value={optionValue}
-                          disabled={disabled}
-                          key={`day-${label}-${optionValue}`}
-                          value={optionValue}>
-                          {label}
-                        </Radio.Button>
-                      )
-                    )}
-                  </Radio.Group>
-                </Form.Item>
-              </Col>
-
-              <Col span={selectedPeriod === 'custom' ? 12 : 0}>
-                <Form.Item
-                  hidden={selectedPeriod !== 'custom'}
-                  label={`${t('label.cron')}:`}
-                  labelCol={{ span: 24 }}
-                  name="cron"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('label.field-required', {
-                        field: t('label.cron'),
-                      }),
-                    },
-                    {
-                      validator: cronValidator,
-                    },
-                  ]}>
-                  <Input />
-                </Form.Item>
-              </Col>
-
-              {cronString && <Col span={24}>{cronHumanText}</Col>}
-
-              {isEmpty(cronString) && (
-                <Col span={24}>
-                  <p data-testid="manual-segment-container">
-                    {t('message.pipeline-will-trigger-manually')}
-                  </p>
-                </Col>
-              )}
-            </Row>
-          </Col>
-        )}
+        {selectedSchedular === SchedularOptions.SCHEDULE &&
+          renderScheduleSection()}
 
         {debugLog.allow && (
           <Col span={24}>{generateFormFields(formFields)}</Col>
@@ -427,35 +506,7 @@ function ScheduleIntervalInner<T>(
 
         {children}
 
-        {showActionButtons && (
-          <Col className="d-flex justify-end" span={24}>
-            <Button
-              className="m-r-xs"
-              data-testid="back-button"
-              type="link"
-              onClick={onBack}>
-              <span>{buttonProps?.cancelText ?? t('label.back')}</span>
-            </Button>
-
-            {status === 'success' ? (
-              <Button
-                disabled
-                className="w-16 opacity-100 p-x-md p-y-xxs"
-                type="primary">
-                <CheckOutlined />
-              </Button>
-            ) : (
-              <Button
-                className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-                data-testid="deploy-button"
-                htmlType="submit"
-                loading={status === LOADING_STATE.WAITING}
-                type="primary">
-                {buttonProps?.okText ?? t('label.create')}
-              </Button>
-            )}
-          </Col>
-        )}
+        {showActionButtons && renderActionButtons()}
       </Row>
     </Form>
   );

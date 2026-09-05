@@ -294,22 +294,81 @@ const KnowledgePagesHierarchy = forwardRef<
       limit = KNOWLEDGE_CENTER_PAGINATION_LIMIT,
       forceRefresh = false
     ) => {
-      const isCreateHash =
+      // Nested closures so their own branching (&&/||/if chains) counts
+      // against their own (small) complexity, not this function's.
+      const computeIsCreateHash = () =>
         hash?.slice(1) === CREATE_PAGE_HASH &&
         !isPaginationLoading &&
         consumedCreateHashFqnRef.current !== fqn;
 
-      const hasCachedHierarchyForFqn =
+      const computeHasCachedHierarchyForFqn = () =>
         isHierarchyInitialized &&
         knowledgePageHierarchy.length > 0 &&
         lastFetchedFqnRef.current === fqn;
 
-      if (
+      const isCreateHash = computeIsCreateHash();
+      const hasCachedHierarchyForFqn = computeHasCachedHierarchyForFqn();
+
+      const shouldSkipFetch = () =>
         !forceRefresh &&
         !isPaginationLoading &&
         hasCachedHierarchyForFqn &&
-        !isCreateHash
-      ) {
+        !isCreateHash;
+
+      const applyReplaceHierarchy = (data: PageHierarchy[]) => {
+        setKnowledgePageHierarchy(data);
+        if (forceRefresh) {
+          setExpandedKeys([]);
+          setIsUserExpandedAll(false);
+          nodesWithNoMoreChildrenRef.current.clear();
+          nodesLoadingChildrenRef.current.clear();
+          nodeChildrenOffsetRef.current.clear();
+        }
+        if (isCreateHash) {
+          consumedCreateHashFqnRef.current = fqn;
+        }
+      };
+
+      const applyIncrementalHierarchy = (data: PageHierarchy[]) => {
+        const fqnParts = fqn ? Fqn.split(fqn) : [];
+        const isNestedNode = fqnParts.length > 1;
+
+        if (isNestedNode && data.length > 0) {
+          const parentFQN = extractKnowledgePageParentFQN(fqn);
+          setKnowledgePageHierarchy((prev) =>
+            integrateNodesIntoHierarchy(prev, data)
+          );
+          setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
+        } else {
+          setKnowledgePageHierarchy((prev) => {
+            const merged = prev.concat(data);
+
+            return Array.from(
+              new Map(merged.map((item) => [item.id, item])).values()
+            );
+          });
+        }
+      };
+
+      const applyFetchedResult = (
+        data: PageHierarchy[],
+        paging: { total: number }
+      ) => {
+        if (
+          data.length === 0 ||
+          knowledgePageHierarchy.length === paging.total
+        ) {
+          setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
+        }
+
+        if (isCreateHash || forceRefresh) {
+          applyReplaceHierarchy(data);
+        } else {
+          applyIncrementalHierarchy(data);
+        }
+      };
+
+      if (shouldSkipFetch()) {
         return;
       }
 
@@ -332,46 +391,7 @@ const KnowledgePagesHierarchy = forwardRef<
         lastFetchedFqnRef.current = fqn;
 
         setPaginationState({ type: 'SET_PAGING_VALUE', value: paging });
-
-        if (
-          data.length === 0 ||
-          knowledgePageHierarchy.length === paging.total
-        ) {
-          setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
-        }
-
-        if (isCreateHash || forceRefresh) {
-          setKnowledgePageHierarchy(data);
-          if (forceRefresh) {
-            setExpandedKeys([]);
-            setIsUserExpandedAll(false);
-            nodesWithNoMoreChildrenRef.current.clear();
-            nodesLoadingChildrenRef.current.clear();
-            nodeChildrenOffsetRef.current.clear();
-          }
-          if (isCreateHash) {
-            consumedCreateHashFqnRef.current = fqn;
-          }
-        } else {
-          const fqnParts = fqn ? Fqn.split(fqn) : [];
-          const isNestedNode = fqnParts.length > 1;
-
-          if (isNestedNode && data.length > 0) {
-            const parentFQN = extractKnowledgePageParentFQN(fqn);
-            setKnowledgePageHierarchy((prev) =>
-              integrateNodesIntoHierarchy(prev, data)
-            );
-            setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
-          } else {
-            setKnowledgePageHierarchy((prev) => {
-              const merged = prev.concat(data);
-
-              return Array.from(
-                new Map(merged.map((item) => [item.id, item])).values()
-              );
-            });
-          }
-        }
+        applyFetchedResult(data, paging);
         setIsHierarchyInitialized(true);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -830,6 +850,118 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const isHierarchyEmpty = !isLoading && knowledgePageHierarchy.length === 0;
 
+    // Extracted so their own conditionals don't add to this component
+    // function's cyclomatic complexity.
+    const renderExpandCollapseButton = () =>
+      isUserExpandedAll ? (
+        <ButtonUtility
+          color="tertiary"
+          icon={<CollapseAllIcon className="tw:size-6" />}
+          size="sm"
+          tooltip={t('label.collapse-all')}
+          onClick={() => {
+            setExpandedKeys([]);
+            setIsUserExpandedAll(false);
+          }}
+        />
+      ) : (
+        <ButtonUtility
+          color="tertiary"
+          icon={<ExpandAllIcon className="tw:size-6" />}
+          isDisabled={isExpandingAll}
+          size="sm"
+          tooltip={t('label.expand-all')}
+          onClick={handleExpandAll}
+        />
+      );
+
+    const renderArticleListBody = () => (
+      <>
+        {isLoading && (
+          <div className="tw:px-1.5">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
+                key={`skeleton-${i}`}
+                style={{ width: `${60 + (i % 3) * 15}%` }}
+              />
+            ))}
+          </div>
+        )}
+
+        {isHierarchyEmpty && (
+          <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
+            <EmptyPlaceholder
+              description={t('message.no-articles-listed')}
+              icon={<Articles className="tw:text-secondary" />}
+              title={t('label.no-entity', {
+                entity: t('label.article-plural'),
+              })}
+              width={200}
+            />
+          </div>
+        )}
+
+        {!isLoading && !isHierarchyEmpty && (
+          <Tree
+            aria-label={t('label.article-plural')}
+            className="knowledge-pages-tree"
+            data-testid="knowledge-pages-hierarchy"
+            expandedKeys={new Set(expandedKeys)}
+            selectedKeys={activeKey ? new Set([activeKey]) : new Set<string>()}
+            selectionMode="single"
+            onExpandedChange={(keys: Selection) => {
+              if (keys !== 'all') {
+                setExpandedKeys(Array.from(keys).map(String));
+              }
+            }}
+            onItemMove={handleItemMove}
+            onItemRootDrop={(sourceKey) => {
+              if (!permissions.EditAll) {
+                return;
+              }
+              const { page: sourceNode, parent: sourceNodeParent } =
+                findPageAndParentInTreeData(
+                  knowledgePageHierarchy,
+                  sourceKey as string
+                );
+              if (sourceNode && sourceNodeParent) {
+                setMovedPage({
+                  sourceNode,
+                  sourceNodeParent,
+                  targetNode: undefined,
+                });
+              }
+            }}>
+            {knowledgePageHierarchy.map(renderNode)}
+          </Tree>
+        )}
+
+        {paginationState.paginationLoading && <Loader size="x-small" />}
+      </>
+    );
+
+    const renderMoveModalContent = () =>
+      movedPage?.targetNode ? (
+        <Transi18next
+          i18nKey="message.entity-transfer-message"
+          renderElement={<strong />}
+          values={{
+            from: getEntityName(movedPage?.sourceNode),
+            to: getEntityName(movedPage.targetNode),
+            entity: t('label.page-lowercase'),
+          }}
+        />
+      ) : (
+        <Transi18next
+          i18nKey="message.move-page-to-top-level-message"
+          renderElement={<strong />}
+          values={{
+            entity: getEntityName(movedPage?.sourceNode),
+          }}
+        />
+      );
+
     return (
       <Card
         aria-label={t('label.article-plural')}
@@ -879,96 +1011,14 @@ const KnowledgePagesHierarchy = forwardRef<
                 </Typography>
               </div>
             </Box>
-            {isUserExpandedAll ? (
-              <ButtonUtility
-                color="tertiary"
-                icon={<CollapseAllIcon className="tw:size-6" />}
-                size="sm"
-                tooltip={t('label.collapse-all')}
-                onClick={() => {
-                  setExpandedKeys([]);
-                  setIsUserExpandedAll(false);
-                }}
-              />
-            ) : (
-              <ButtonUtility
-                color="tertiary"
-                icon={<ExpandAllIcon className="tw:size-6" />}
-                isDisabled={isExpandingAll}
-                size="sm"
-                tooltip={t('label.expand-all')}
-                onClick={handleExpandAll}
-              />
-            )}
+            {renderExpandCollapseButton()}
           </Box>
 
           <div
             className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
             data-testid="article-list-container"
             onScroll={handleScroll}>
-            {isLoading && (
-              <div className="tw:px-1.5">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div
-                    className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
-                    key={`skeleton-${i}`}
-                    style={{ width: `${60 + (i % 3) * 15}%` }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {isHierarchyEmpty && (
-              <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
-                <EmptyPlaceholder
-                  description={t('message.no-articles-listed')}
-                  icon={<Articles className="tw:text-secondary" />}
-                  title={t('label.no-entity', {
-                    entity: t('label.article-plural'),
-                  })}
-                  width={200}
-                />
-              </div>
-            )}
-
-            {!isLoading && !isHierarchyEmpty && (
-              <Tree
-                aria-label={t('label.article-plural')}
-                className="knowledge-pages-tree"
-                data-testid="knowledge-pages-hierarchy"
-                expandedKeys={new Set(expandedKeys)}
-                selectedKeys={
-                  activeKey ? new Set([activeKey]) : new Set<string>()
-                }
-                selectionMode="single"
-                onExpandedChange={(keys: Selection) => {
-                  if (keys !== 'all') {
-                    setExpandedKeys(Array.from(keys).map(String));
-                  }
-                }}
-                onItemMove={handleItemMove}
-                onItemRootDrop={(sourceKey) => {
-                  if (!permissions.EditAll) {
-                    return;
-                  }
-                  const { page: sourceNode, parent: sourceNodeParent } =
-                    findPageAndParentInTreeData(
-                      knowledgePageHierarchy,
-                      sourceKey as string
-                    );
-                  if (sourceNode && sourceNodeParent) {
-                    setMovedPage({
-                      sourceNode,
-                      sourceNodeParent,
-                      targetNode: undefined,
-                    });
-                  }
-                }}>
-                {knowledgePageHierarchy.map(renderNode)}
-              </Tree>
-            )}
-
-            {paginationState.paginationLoading && <Loader size="x-small" />}
+            {renderArticleListBody()}
           </div>
 
           <DeleteModal
@@ -1026,25 +1076,7 @@ const KnowledgePagesHierarchy = forwardRef<
                   })}
                 />
                 <Dialog.Content className="tw:block">
-                  {movedPage?.targetNode ? (
-                    <Transi18next
-                      i18nKey="message.entity-transfer-message"
-                      renderElement={<strong />}
-                      values={{
-                        from: getEntityName(movedPage?.sourceNode),
-                        to: getEntityName(movedPage.targetNode),
-                        entity: t('label.page-lowercase'),
-                      }}
-                    />
-                  ) : (
-                    <Transi18next
-                      i18nKey="message.move-page-to-top-level-message"
-                      renderElement={<strong />}
-                      values={{
-                        entity: getEntityName(movedPage?.sourceNode),
-                      }}
-                    />
-                  )}
+                  {renderMoveModalContent()}
                 </Dialog.Content>
                 <Dialog.Footer className="quick-link-modal-footer">
                   <Button

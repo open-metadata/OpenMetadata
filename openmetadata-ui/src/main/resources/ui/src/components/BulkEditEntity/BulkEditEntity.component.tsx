@@ -85,6 +85,10 @@ const SELECT_ONLY_ON_CLICK_COLUMNS = new Set([
   'description',
 ]);
 
+const BulkEditSearchIcon = ({ className }: { className?: string }) => (
+  <SearchLg aria-hidden="true" className={className} />
+);
+
 const getBulkEditRowName = (row?: Record<string, string>) =>
   String(row?.name ?? row?.['name*'] ?? '');
 
@@ -546,223 +550,257 @@ const BulkEditEntity = ({
     (isExportHydrationRequired && isEmpty(csvExportData)) ||
     isLoadingSourceData;
 
-  return (
-    <>
-      <CsvWorkflowHeader
-        activeStep={activeStep}
-        breadcrumbList={breadcrumbList}
-        currentLabel={
-          workflowHeaderConfig?.currentLabel ?? t('label.bulk-edit')
-        }
-        description={
-          workflowHeaderConfig?.description ??
-          t('message.bulk-edit-inline-help')
-        }
-        steps={workflowHeaderConfig?.steps ?? translatedSteps}
-        title={
-          workflowHeaderConfig?.title ??
-          `${t('label.edit')} ${
-            dataSource.length
-          } ${entityPluralDisplayName.toLowerCase()}`
-        }
-      />
+  const renderHeader = () => (
+    <CsvWorkflowHeader
+      activeStep={activeStep}
+      breadcrumbList={breadcrumbList}
+      currentLabel={workflowHeaderConfig?.currentLabel ?? t('label.bulk-edit')}
+      description={
+        workflowHeaderConfig?.description ?? t('message.bulk-edit-inline-help')
+      }
+      steps={workflowHeaderConfig?.steps ?? translatedSteps}
+      title={
+        workflowHeaderConfig?.title ??
+        `${t('label.edit')} ${
+          dataSource.length
+        } ${entityPluralDisplayName.toLowerCase()}`
+      }
+    />
+  );
 
-      <div>
-        {activeAsyncImportJob?.jobId && (
-          <Banner
-            className="border-radius"
-            isLoading={!activeAsyncImportJob.error}
-            message={
-              activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
-            }
-            type={activeAsyncImportJob.error ? 'error' : 'success'}
-          />
+  const renderImportJobBanner = () => (
+    <div>
+      {activeAsyncImportJob?.jobId && (
+        <Banner
+          className="border-radius"
+          isLoading={!activeAsyncImportJob.error}
+          message={
+            activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
+          }
+          type={activeAsyncImportJob.error ? 'error' : 'success'}
+        />
+      )}
+    </div>
+  );
+
+  const renderExportErrorCard = () => {
+    if (!csvExportError) {
+      return null;
+    }
+
+    return (
+      <div className="csv-import-card bulk-edit-card">
+        <Banner
+          className="border-radius"
+          isLoading={false}
+          message={csvExportError}
+          type="error"
+        />
+        <div className="bulk-edit-retry">
+          <Button color="primary" onPress={handleRetryExport}>
+            {t('label.try-again')}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderInvalidRowBadge = () => (
+    <BadgeWithIcon
+      className="bulk-edit-error-pill"
+      color="error"
+      iconLeading={XCircle}
+      size="sm"
+      type="pill-color">
+      {`${invalidNewMetricRowCount} ${t(
+        invalidNewMetricRowCount === 1 ? 'label.error' : 'label.error-plural'
+      ).toLowerCase()}`}
+    </BadgeWithIcon>
+  );
+
+  const renderEditedBadge = () => (
+    <BadgeWithIcon
+      className="bulk-edit-edited-pill"
+      color="blue"
+      iconLeading={Edit03}
+      size="sm"
+      type="pill-color">
+      {`${changedCellCount} ${t('label.edited').toLowerCase()}`}
+    </BadgeWithIcon>
+  );
+
+  const renderToolbar = () => (
+    <div className="bulk-edit-toolbar">
+      {isImportWorkflow && validationData ? (
+        <ImportStatus csvImportResult={validationData} />
+      ) : (
+        <OperationSummary summary={operationSummary} />
+      )}
+      {invalidNewMetricRowCount > 0 && renderInvalidRowBadge()}
+      {changedCellCount > 0 && renderEditedBadge()}
+      <div className="bulk-edit-toolbar-actions">
+        <Input
+          className="bulk-edit-search"
+          data-testid="bulk-edit-search"
+          icon={BulkEditSearchIcon}
+          placeholder={t('label.search-entity', {
+            entity: `${
+              dataSource.length
+            } ${entityPluralDisplayName.toLowerCase()}`,
+          })}
+          // role searchbox (not textbox) so it does not collide
+          // with the grid cell text editors when tests/automation
+          // resolve the active editor via getByRole('textbox').
+          type="search"
+          value={searchText}
+          wrapperClassName="bulk-edit-search-wrapper"
+          onChange={setSearchText}
+        />
+        <Button
+          color="secondary"
+          iconLeading={RefreshCcw01}
+          onPress={handleRevertChanges}>
+          {t('label.revert-changes')}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderAddRowBar = () => (
+    <div className="bulk-edit-add-row-bar">
+      <div className="bulk-edit-add-row-content">
+        <Button
+          className="bulk-edit-add-row-btn"
+          color="secondary"
+          data-testid="bulk-edit-add-metric"
+          iconLeading={Plus}
+          onPress={handleAddRow}>
+          {isImportWorkflow
+            ? t('label.add-row')
+            : t('label.add-entity', {
+                entity: t(newRowConfig?.entityLabelKey ?? ''),
+              })}
+        </Button>
+        {!isImportWorkflow && (
+          <span className="bulk-edit-add-row-hint">
+            {t(newRowConfig?.hintMessageKey ?? '')}
+          </span>
         )}
       </div>
+      <div className="bulk-edit-add-row-actions">
+        <Button
+          color="secondary"
+          isDisabled={isValidating}
+          onPress={handleCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          isDisabled={shouldDisableNext}
+          onPress={handleValidate}>
+          {isImportWorkflow
+            ? `${t('label.start')} ${t('label.import')}`
+            : t('label.next')}
+        </Button>
+      </div>
+    </div>
+  );
 
-      {isExportHydrationRequired && csvExportError ? (
-        <div className="csv-import-card bulk-edit-card">
-          <Banner
-            className="border-radius"
-            isLoading={false}
-            message={csvExportError}
-            type="error"
-          />
-          <div className="bulk-edit-retry">
-            <Button color="primary" onPress={handleRetryExport}>
-              {t('label.try-again')}
-            </Button>
+  const renderStepOneCard = () => (
+    <div className="csv-import-card bulk-edit-card">
+      <div className="csv-import-stack bulk-edit-stack">
+        {renderToolbar()}
+        <div className="bulk-edit-grid-shell">{editDataGrid}</div>
+        {newRowConfig && renderAddRowBar()}
+      </div>
+    </div>
+  );
+
+  const renderStepTwoCard = () => {
+    if (!validationData) {
+      return null;
+    }
+
+    return (
+      <div className="csv-import-card">
+        <div className="csv-import-stack">
+          <div>
+            <ImportStatus csvImportResult={validationData} />
+          </div>
+
+          <div>
+            {validateCSVData && (
+              <div className="om-rdg">
+                <LazyDataGrid
+                  className="rdg-light"
+                  columns={validateCSVData.columns}
+                  headerRowHeight={38}
+                  rowHeight={44}
+                  rows={validateCSVData.dataSource}
+                />
+              </div>
+            )}
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderFooterActions = () => (
+    <div>
+      <div className="float-right import-footer">
+        {activeStep === 1 && (
+          <Button
+            color="secondary"
+            isDisabled={isValidating}
+            onPress={handleCancel}>
+            {t('label.cancel')}
+          </Button>
+        )}
+
+        {activeStep > 1 && (
+          <Button
+            color="secondary"
+            isDisabled={isValidating}
+            onPress={handleBack}>
+            {t('label.previous')}
+          </Button>
+        )}
+        {activeStep < 3 && (
+          <Button
+            className="m-l-sm"
+            color="primary"
+            isDisabled={isValidating || (activeStep === 1 && shouldDisableNext)}
+            onPress={handleValidate}>
+            {activeStep === 2 ? t('label.update') : t('label.next')}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderWorkflowBody = () => (
+    <Fragment>
+      <div>
+        {activeStep === 1 && renderStepOneCard()}
+        {activeStep === 2 && validationData && renderStepTwoCard()}
+      </div>
+      {activeStep > 0 &&
+        !(activeStep === 1 && isRichGridEntity) &&
+        renderFooterActions()}
+    </Fragment>
+  );
+
+  return (
+    <>
+      {renderHeader()}
+      {renderImportJobBanner()}
+      {isExportHydrationRequired && csvExportError ? (
+        renderExportErrorCard()
       ) : shouldShowLoader ? (
         <Loader />
       ) : (
-        <Fragment>
-          <div>
-            {activeStep === 1 && (
-              <div className="csv-import-card bulk-edit-card">
-                <div className="csv-import-stack bulk-edit-stack">
-                  <div className="bulk-edit-toolbar">
-                    {isImportWorkflow && validationData ? (
-                      <ImportStatus csvImportResult={validationData} />
-                    ) : (
-                      <OperationSummary summary={operationSummary} />
-                    )}
-                    {invalidNewMetricRowCount > 0 && (
-                      <BadgeWithIcon
-                        className="bulk-edit-error-pill"
-                        color="error"
-                        iconLeading={XCircle}
-                        size="sm"
-                        type="pill-color">
-                        {`${invalidNewMetricRowCount} ${t(
-                          invalidNewMetricRowCount === 1
-                            ? 'label.error'
-                            : 'label.error-plural'
-                        ).toLowerCase()}`}
-                      </BadgeWithIcon>
-                    )}
-                    {changedCellCount > 0 && (
-                      <BadgeWithIcon
-                        className="bulk-edit-edited-pill"
-                        color="blue"
-                        iconLeading={Edit03}
-                        size="sm"
-                        type="pill-color">
-                        {`${changedCellCount} ${t(
-                          'label.edited'
-                        ).toLowerCase()}`}
-                      </BadgeWithIcon>
-                    )}
-                    <div className="bulk-edit-toolbar-actions">
-                      <Input
-                        className="bulk-edit-search"
-                        data-testid="bulk-edit-search"
-                        icon={SearchLg}
-                        placeholder={t('label.search-entity', {
-                          entity: `${
-                            dataSource.length
-                          } ${entityPluralDisplayName.toLowerCase()}`,
-                        })}
-                        // role searchbox (not textbox) so it does not collide
-                        // with the grid cell text editors when tests/automation
-                        // resolve the active editor via getByRole('textbox').
-                        type="search"
-                        value={searchText}
-                        wrapperClassName="bulk-edit-search-wrapper"
-                        onChange={setSearchText}
-                      />
-                      <Button
-                        color="secondary"
-                        iconLeading={RefreshCcw01}
-                        onPress={handleRevertChanges}>
-                        {t('label.revert-changes')}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="bulk-edit-grid-shell">{editDataGrid}</div>
-                  {newRowConfig && (
-                    <div className="bulk-edit-add-row-bar">
-                      <div className="bulk-edit-add-row-content">
-                        <Button
-                          className="bulk-edit-add-row-btn"
-                          color="secondary"
-                          data-testid="bulk-edit-add-metric"
-                          iconLeading={Plus}
-                          onPress={handleAddRow}>
-                          {isImportWorkflow
-                            ? t('label.add-row')
-                            : t('label.add-entity', {
-                                entity: t(newRowConfig.entityLabelKey),
-                              })}
-                        </Button>
-                        {!isImportWorkflow && (
-                          <span className="bulk-edit-add-row-hint">
-                            {t(newRowConfig.hintMessageKey)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="bulk-edit-add-row-actions">
-                        <Button
-                          color="secondary"
-                          isDisabled={isValidating}
-                          onPress={handleCancel}>
-                          {t('label.cancel')}
-                        </Button>
-                        <Button
-                          color="primary"
-                          isDisabled={shouldDisableNext}
-                          onPress={handleValidate}>
-                          {isImportWorkflow
-                            ? `${t('label.start')} ${t('label.import')}`
-                            : t('label.next')}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeStep === 2 && validationData && (
-              <div className="csv-import-card">
-                <div className="csv-import-stack">
-                  <div>
-                    <ImportStatus csvImportResult={validationData} />
-                  </div>
-
-                  <div>
-                    {validateCSVData && (
-                      <div className="om-rdg">
-                        <LazyDataGrid
-                          className="rdg-light"
-                          columns={validateCSVData.columns}
-                          headerRowHeight={38}
-                          rowHeight={44}
-                          rows={validateCSVData.dataSource}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          {activeStep > 0 && !(activeStep === 1 && isRichGridEntity) && (
-            <div>
-              <div className="float-right import-footer">
-                {activeStep === 1 && (
-                  <Button
-                    color="secondary"
-                    isDisabled={isValidating}
-                    onPress={handleCancel}>
-                    {t('label.cancel')}
-                  </Button>
-                )}
-
-                {activeStep > 1 && (
-                  <Button
-                    color="secondary"
-                    isDisabled={isValidating}
-                    onPress={handleBack}>
-                    {t('label.previous')}
-                  </Button>
-                )}
-                {activeStep < 3 && (
-                  <Button
-                    className="m-l-sm"
-                    color="primary"
-                    isDisabled={
-                      isValidating || (activeStep === 1 && shouldDisableNext)
-                    }
-                    onPress={handleValidate}>
-                    {activeStep === 2 ? t('label.update') : t('label.next')}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </Fragment>
+        renderWorkflowBody()
       )}
     </>
   );

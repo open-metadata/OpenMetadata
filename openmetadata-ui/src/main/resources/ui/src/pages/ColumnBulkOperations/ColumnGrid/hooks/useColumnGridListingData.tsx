@@ -184,6 +184,28 @@ export const useColumnGridListingData = (
     ) => {
       const requestId = ++latestRequestIdRef.current;
       setLoading(true);
+
+      const handleLoadError = (error: unknown) => {
+        if (requestId !== latestRequestIdRef.current) {
+          return;
+        }
+        if (!options?.rethrowOnError) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.column-lowercase-plural'),
+            })
+          );
+        }
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.error('Error loading column grid:', error);
+        }
+        if (options?.rethrowOnError) {
+          throw error;
+        }
+      };
+
       try {
         // For page 1, start fresh (no cursor). For other pages, use stored cursor from previous page
         const pageCursor =
@@ -235,24 +257,7 @@ export const useColumnGridListingData = (
           setTotalOccurrences(totalOccurrencesRef.current);
         }
       } catch (error) {
-        if (requestId !== latestRequestIdRef.current) {
-          return;
-        }
-        if (!options?.rethrowOnError) {
-          showErrorToast(
-            error as AxiosError,
-            t('server.entity-fetch-error', {
-              entity: t('label.column-lowercase-plural'),
-            })
-          );
-        }
-        if (process.env.NODE_ENV === 'development') {
-          // eslint-disable-next-line no-console
-          console.error('Error loading column grid:', error);
-        }
-        if (options?.rethrowOnError) {
-          throw error;
-        }
+        handleLoadError(error);
       } finally {
         if (requestId === latestRequestIdRef.current) {
           setLoading(false);
@@ -466,6 +471,49 @@ export const useColumnGridListingData = (
       );
     };
 
+    const chainToPage = async (
+      effectivePage: number,
+      savedCursors: Map<number, string>,
+      skipGrid: { skipGridItemsUpdate: boolean }
+    ) => {
+      const cachedCursor = savedCursors.get(effectivePage - 1);
+      let usedCachedCursor = false;
+
+      if (cachedCursor) {
+        try {
+          cursorsByPageRef.current.set(effectivePage - 1, cachedCursor);
+          await loadData(
+            effectivePage,
+            urlState.searchQuery,
+            columnGridFilters,
+            urlState.pageSize,
+            { rethrowOnError: true }
+          );
+          usedCachedCursor = true;
+        } catch {
+          cursorsByPageRef.current.delete(effectivePage - 1);
+        }
+      }
+
+      if (!usedCachedCursor) {
+        for (let page = 2; page < effectivePage; page++) {
+          await loadData(
+            page,
+            urlState.searchQuery,
+            columnGridFilters,
+            urlState.pageSize,
+            { ...skipGrid, rethrowOnError: true }
+          );
+        }
+        await loadData(
+          effectivePage,
+          urlState.searchQuery,
+          columnGridFilters,
+          urlState.pageSize
+        );
+      }
+    };
+
     try {
       const pageToRestore = urlState.currentPage;
       const savedCursors = new Map(cursorsByPageRef.current);
@@ -492,42 +540,7 @@ export const useColumnGridListingData = (
           }
           showErrorToast(t('message.please-refresh-the-page'));
         } else if (effectivePage > 1) {
-          const cachedCursor = savedCursors.get(effectivePage - 1);
-          let usedCachedCursor = false;
-
-          if (cachedCursor) {
-            try {
-              cursorsByPageRef.current.set(effectivePage - 1, cachedCursor);
-              await loadData(
-                effectivePage,
-                urlState.searchQuery,
-                columnGridFilters,
-                urlState.pageSize,
-                { rethrowOnError: true }
-              );
-              usedCachedCursor = true;
-            } catch {
-              cursorsByPageRef.current.delete(effectivePage - 1);
-            }
-          }
-
-          if (!usedCachedCursor) {
-            for (let page = 2; page < effectivePage; page++) {
-              await loadData(
-                page,
-                urlState.searchQuery,
-                columnGridFilters,
-                urlState.pageSize,
-                { ...skipGrid, rethrowOnError: true }
-              );
-            }
-            await loadData(
-              effectivePage,
-              urlState.searchQuery,
-              columnGridFilters,
-              urlState.pageSize
-            );
-          }
+          await chainToPage(effectivePage, savedCursors, skipGrid);
         } else if (pageToRestore > 1) {
           const page1Items = itemsByPageRef.current.get(1);
           if (page1Items) {

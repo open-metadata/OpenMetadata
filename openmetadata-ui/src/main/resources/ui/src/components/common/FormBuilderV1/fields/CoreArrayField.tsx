@@ -22,6 +22,96 @@ import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
+
+const getArrayFieldBoxClassName = (isInvalid: boolean, isDisabled: boolean) =>
+  [
+    // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+    // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
+    // only box-shadow, so it must name the outline properties now.
+    'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
+    'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+    isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
+    isDisabled
+      ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+interface ArrayFieldInputProps {
+  isDisabled: boolean;
+  id: string;
+  inputValue: string;
+  placeholder: string;
+  value: string[];
+  onInputChange: (value: string) => void;
+  onCommit: () => void;
+  onBlur: (id: string, value: string[]) => void;
+  onFocus: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+}
+
+const ArrayFieldInput = ({
+  isDisabled,
+  id,
+  inputValue,
+  placeholder,
+  value,
+  onInputChange,
+  onCommit,
+  onBlur,
+  onFocus,
+  onKeyDown,
+}: ArrayFieldInputProps) => {
+  if (isDisabled) {
+    return null;
+  }
+
+  return (
+    <AriaInput
+      className="tw:min-w-[80px] tw:flex-1 tw:bg-transparent tw:text-sm tw:text-primary tw:outline-hidden tw:placeholder:text-placeholder"
+      id={id}
+      placeholder={value.length ? '' : placeholder}
+      value={inputValue}
+      onBlur={() => {
+        onCommit();
+        onBlur(id, value);
+      }}
+      onChange={(e) => onInputChange(e.target.value)}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
+    />
+  );
+};
+
+interface ArrayFieldCopyButtonProps {
+  hasCopied: boolean;
+  onCopy: () => Promise<void>;
+}
+
+const ArrayFieldCopyButton = ({
+  hasCopied,
+  onCopy,
+}: ArrayFieldCopyButtonProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip
+      title={hasCopied ? t('message.copied-to-clipboard') : t('label.copy')}>
+      <button
+        className="tw:ml-auto tw:flex tw:cursor-pointer tw:items-center tw:p-1 tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover"
+        tabIndex={-1}
+        type="button"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await onCopy();
+        }}>
+        <Copy01 size={14} />
+      </button>
+    </Tooltip>
+  );
+};
+
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,
@@ -48,7 +138,7 @@ const CoreArrayField = (props: FieldProps) => {
     JSON.stringify(value)
   );
 
-  const isDisabled = disabled || readonly;
+  const isDisabled = Boolean(disabled || readonly);
   const isInvalid = !!rawErrors?.length;
 
   const handleFocus = useCallback(() => {
@@ -115,20 +205,7 @@ const CoreArrayField = (props: FieldProps) => {
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
-      <div
-        className={[
-          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
-          // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
-          // only box-shadow, so it must name the outline properties now.
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
-          'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
-          isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
-          isDisabled
-            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
-            : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}>
+      <div className={getArrayFieldBoxClassName(isInvalid, isDisabled)}>
         {value.map((v) => (
           <span
             className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
@@ -146,38 +223,24 @@ const CoreArrayField = (props: FieldProps) => {
             )}
           </span>
         ))}
-        {!isDisabled && (
-          <AriaInput
-            className="tw:min-w-[80px] tw:flex-1 tw:bg-transparent tw:text-sm tw:text-primary tw:outline-hidden tw:placeholder:text-placeholder"
-            id={id}
-            placeholder={value.length ? '' : placeholder}
-            value={inputValue}
-            onBlur={() => {
-              commitInput();
-              onBlur(id, value);
-            }}
-            onChange={(e) => setInputValue(e.target.value)}
-            onFocus={handleFocus}
-            onKeyDown={handleKeyDown}
-          />
-        )}
-        <Tooltip
-          title={
-            hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
-          }>
-          <button
-            className="tw:ml-auto tw:flex tw:cursor-pointer tw:items-center tw:p-1 tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover"
-            tabIndex={-1}
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onCopyToClipBoard();
-            }}>
-            <Copy01 size={14} />
-          </button>
-        </Tooltip>
+        <ArrayFieldInput
+          id={id}
+          inputValue={inputValue}
+          isDisabled={isDisabled}
+          placeholder={placeholder}
+          value={value}
+          onBlur={onBlur}
+          onCommit={commitInput}
+          onFocus={handleFocus}
+          onInputChange={setInputValue}
+          onKeyDown={handleKeyDown}
+        />
+        <ArrayFieldCopyButton
+          hasCopied={hasCopied}
+          onCopy={onCopyToClipBoard}
+        />
       </div>
-      {isInvalid && rawErrors && <HintText isInvalid>{rawErrors[0]}</HintText>}
+      {isInvalid && <HintText isInvalid>{rawErrors?.[0]}</HintText>}
     </div>
   );
 };

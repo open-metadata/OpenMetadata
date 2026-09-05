@@ -172,11 +172,9 @@ jest.mock('./TestCaseFormBody', () =>
           props: { 'data-testid': 'test-type' },
         };
 
-        const testNameValue = form?.watch ? form.watch('testName') : undefined;
-        const displayNameValue = form?.watch
-          ? form.watch('displayName')
-          : undefined;
-        const paramsValue = form?.watch ? form.watch('params') : undefined;
+        const testNameValue = form?.watch?.('testName');
+        const displayNameValue = form?.watch?.('displayName');
+        const paramsValue = form?.watch?.('params');
 
         return (
           <div data-testid="test-case-form-body">

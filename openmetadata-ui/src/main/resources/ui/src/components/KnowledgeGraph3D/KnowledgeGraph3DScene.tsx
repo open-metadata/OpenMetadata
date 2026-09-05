@@ -452,11 +452,14 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     if (!node || node.x === undefined) {
       return;
     }
-    const distance = Math.hypot(node.x, node.y ?? 0, node.z ?? 0) || 1;
+    const { x } = node;
+    const y = node.y ?? 0;
+    const z = node.z ?? 0;
+    const distance = Math.hypot(x, y, z) || 1;
     const ratio = 1 + CAMERA_FOCUS_DISTANCE / distance;
     fgRef.current?.cameraPosition(
-      { x: node.x * ratio, y: (node.y ?? 0) * ratio, z: (node.z ?? 0) * ratio },
-      { x: node.x, y: node.y ?? 0, z: node.z ?? 0 },
+      { x: x * ratio, y: y * ratio, z: z * ratio },
+      { x, y, z },
       CAMERA_FOCUS_DURATION_MS
     );
   }, [selectedNodeId, data.nodes]);

@@ -517,6 +517,18 @@ export const AuthProvider = ({
   // immediately and refresh only when the token is actually stale; otherwise
   // just reschedule the timer with the correct remaining time.
   useEffect(() => {
+    const refreshTokenAndReauth = async () => {
+      const newToken = await tokenService.current?.refreshToken();
+      // Post-refresh reauth: if the user was bounced to signin by an
+      // earlier failed call, a successful refresh must re-run the
+      // loggedInUser flow to flip isAuthenticated back to true.
+      // Reading via getState() avoids the stale closure of the
+      // mount-only useEffect.
+      if (newToken && !useApplicationStore.getState().isAuthenticated) {
+        await getLoggedInUserDetails();
+      }
+    };
+
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') {
         return;
@@ -544,15 +556,7 @@ export const AuthProvider = ({
           return;
         }
         if (isExpired) {
-          const newToken = await tokenService.current?.refreshToken();
-          // Post-refresh reauth: if the user was bounced to signin by an
-          // earlier failed call, a successful refresh must re-run the
-          // loggedInUser flow to flip isAuthenticated back to true.
-          // Reading via getState() avoids the stale closure of the
-          // mount-only useEffect.
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
+          await refreshTokenAndReauth();
 
           return;
         }
@@ -560,10 +564,7 @@ export const AuthProvider = ({
         // refresh here. `timeoutExpiry === 0` exactly captures that case
         // once we've ruled out invalid exp above.
         if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
-          const newToken = await tokenService.current?.refreshToken();
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
+          await refreshTokenAndReauth();
 
           return;
         }
@@ -857,26 +858,13 @@ export const AuthProvider = ({
     }
   };
 
-  const getProtectedApp = () => {
-    // Show loader if application is loading or authenticating
-    const childElement =
-      isApplicationLoading || isAuthenticating ? (
-        <Loader fullScreen />
-      ) : (
-        children
-      );
+  const getAuth0ProviderConfig = () => ({
+    clientId: authConfig?.clientId?.toString() ?? '',
+    domain: authConfig?.authority?.toString() ?? '',
+    redirectUri: authConfig?.callbackUrl?.toString() ?? '',
+  });
 
-    // Handling for SAML moved to GenericAuthenticator
-    if (
-      clientType === ClientType.Confidential ||
-      authConfig?.provider === AuthProviderEnum.Saml
-    ) {
-      return (
-        <LazyGenericAuthenticator ref={authenticatorRef}>
-          {childElement}
-        </LazyGenericAuthenticator>
-      );
-    }
+  const renderAuthenticatorForProvider = (childElement: ReactNode) => {
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
@@ -889,13 +877,15 @@ export const AuthProvider = ({
         );
       }
       case AuthProviderEnum.Auth0: {
+        const { clientId, domain, redirectUri } = getAuth0ProviderConfig();
+
         return (
           <LazyAuth0ProviderWrapper
             useRefreshTokens
             cacheLocation="memory"
-            clientId={authConfig.clientId?.toString() ?? ''}
-            domain={authConfig.authority?.toString() ?? ''}
-            redirectUri={authConfig.callbackUrl?.toString() ?? ''}>
+            clientId={clientId}
+            domain={domain}
+            redirectUri={redirectUri}>
             <LazyAuth0Authenticator ref={authenticatorRef}>
               {childElement}
             </LazyAuth0Authenticator>
@@ -938,6 +928,30 @@ export const AuthProvider = ({
         return null;
       }
     }
+  };
+
+  const getProtectedApp = () => {
+    // Show loader if application is loading or authenticating
+    const childElement =
+      isApplicationLoading || isAuthenticating ? (
+        <Loader fullScreen />
+      ) : (
+        children
+      );
+
+    // Handling for SAML moved to GenericAuthenticator
+    if (
+      clientType === ClientType.Confidential ||
+      authConfig?.provider === AuthProviderEnum.Saml
+    ) {
+      return (
+        <LazyGenericAuthenticator ref={authenticatorRef}>
+          {childElement}
+        </LazyGenericAuthenticator>
+      );
+    }
+
+    return renderAuthenticatorForProvider(childElement);
   };
 
   useEffect(() => {

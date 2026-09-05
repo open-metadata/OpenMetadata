@@ -30,30 +30,50 @@ import {
   EntityNameValidationRule,
 } from './EntityNameModal.interface';
 
+const ruleMessage = (rule: EntityNameValidationRule): string =>
+  rule.message ?? '';
+
+// Enforce presence for required rules; skip length/pattern otherwise
+// (mirrors antd async-validator behavior for non-required fields).
+const requiredError = (rule: EntityNameValidationRule): string | null => {
+  if (!rule.required) {
+    return null;
+  }
+
+  return typeof rule.required === 'string' ? rule.required : ruleMessage(rule);
+};
+
+// Returns an error message when the rule is violated, or null when it passes.
+// null (rather than a value) is the "no error" sentinel so an empty-string
+// message is still treated as a failure, matching antd async-validator behavior.
+const validateRule = (
+  rule: EntityNameValidationRule,
+  v: string
+): string | null => {
+  if (v.length === 0) {
+    return requiredError(rule);
+  }
+  if (rule.min !== undefined && v.length < rule.min) {
+    return ruleMessage(rule);
+  }
+  if (rule.max !== undefined && v.length > rule.max) {
+    return ruleMessage(rule);
+  }
+  if (rule.pattern && !rule.pattern.test(v)) {
+    return ruleMessage(rule);
+  }
+
+  return null;
+};
+
 const buildValidate =
   (rules: EntityNameValidationRule[] = []) =>
   (value: string | undefined): string | true => {
     const v = value ?? '';
     for (const rule of rules) {
-      if (v.length === 0) {
-        // Enforce presence for required rules; skip length/pattern otherwise
-        // (mirrors antd async-validator behavior for non-required fields).
-        if (rule.required) {
-          return typeof rule.required === 'string'
-            ? rule.required
-            : rule.message ?? '';
-        }
-
-        continue;
-      }
-      if (rule.min !== undefined && v.length < rule.min) {
-        return rule.message ?? '';
-      }
-      if (rule.max !== undefined && v.length > rule.max) {
-        return rule.message ?? '';
-      }
-      if (rule.pattern && !rule.pattern.test(v)) {
-        return rule.message ?? '';
+      const error = validateRule(rule, v);
+      if (error !== null) {
+        return error;
       }
     }
 

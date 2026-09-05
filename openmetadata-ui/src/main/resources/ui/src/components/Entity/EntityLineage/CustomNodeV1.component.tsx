@@ -95,52 +95,58 @@ const NodeHandles = memo(
   }
 );
 
-const ExpandCollapseHandles = memo(
-  ({
-    isEditMode,
-    hasOutgoers,
-    hasIncomers,
-    isDownstreamNode,
-    isUpstreamNode,
-    isRootNode,
-    upstreamExpandPerformed,
-    downstreamExpandPerformed,
-    upstreamLineageLength,
-    onCollapse,
-    onExpand,
-  }: ExpandCollapseHandlesProps) => {
-    if (isEditMode) {
-      return null;
-    }
+const getHandleVisibility = ({
+  hasOutgoers,
+  hasIncomers,
+  isDownstreamNode,
+  isUpstreamNode,
+  isRootNode,
+  upstreamExpandPerformed,
+  downstreamExpandPerformed,
+  upstreamLineageLength,
+}: ExpandCollapseHandlesProps) => ({
+  showDownstreamCollapse: hasOutgoers && (isDownstreamNode || isRootNode),
+  showDownstreamExpand: !hasOutgoers && !downstreamExpandPerformed,
+  showUpstreamCollapse: hasIncomers && (isUpstreamNode || isRootNode),
+  showUpstreamExpand:
+    !hasIncomers && !upstreamExpandPerformed && upstreamLineageLength > 0,
+});
 
-    return (
-      <>
-        {hasOutgoers &&
-          (isDownstreamNode || isRootNode) &&
-          getCollapseHandle(LineageDirection.Downstream, onCollapse)}
-
-        {!hasOutgoers &&
-          !downstreamExpandPerformed &&
-          getExpandHandle(LineageDirection.Downstream, (depth = 1) =>
-            onExpand(LineageDirection.Downstream, depth)
-          )}
-
-        {hasIncomers &&
-          (isUpstreamNode || isRootNode) &&
-          getCollapseHandle(LineageDirection.Upstream, () =>
-            onCollapse(LineageDirection.Upstream)
-          )}
-
-        {!hasIncomers &&
-          !upstreamExpandPerformed &&
-          upstreamLineageLength > 0 &&
-          getExpandHandle(LineageDirection.Upstream, (depth = 1) =>
-            onExpand(LineageDirection.Upstream, depth)
-          )}
-      </>
-    );
+const ExpandCollapseHandles = memo((props: ExpandCollapseHandlesProps) => {
+  const { isEditMode, onCollapse, onExpand } = props;
+  if (isEditMode) {
+    return null;
   }
-);
+
+  const {
+    showDownstreamCollapse,
+    showDownstreamExpand,
+    showUpstreamCollapse,
+    showUpstreamExpand,
+  } = getHandleVisibility(props);
+
+  return (
+    <>
+      {showDownstreamCollapse &&
+        getCollapseHandle(LineageDirection.Downstream, onCollapse)}
+
+      {showDownstreamExpand &&
+        getExpandHandle(LineageDirection.Downstream, (depth = 1) =>
+          onExpand(LineageDirection.Downstream, depth)
+        )}
+
+      {showUpstreamCollapse &&
+        getCollapseHandle(LineageDirection.Upstream, () =>
+          onCollapse(LineageDirection.Upstream)
+        )}
+
+      {showUpstreamExpand &&
+        getExpandHandle(LineageDirection.Upstream, (depth = 1) =>
+          onExpand(LineageDirection.Upstream, depth)
+        )}
+    </>
+  );
+});
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;

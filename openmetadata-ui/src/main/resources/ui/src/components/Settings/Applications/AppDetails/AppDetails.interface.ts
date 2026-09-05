@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
+import { IChangeEvent } from '@rjsf/core';
+import { RJSFSchema } from '@rjsf/utils';
+import { useTranslation } from 'react-i18next';
+import { App } from '../../../../generated/entity/applications/app';
 import { PipelineStatus } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../../../../generated/entity/type';
+import applicationsClassBase from './ApplicationsClassBase';
 
 export interface DataInsightLatestRun {
   data_insight_task: string;
@@ -24,4 +30,55 @@ export enum AppAction {
   ENABLE = 'enable',
   DISABLE = 'disable',
   UNINSTALL = 'uninstall',
+}
+
+export type TFunc = ReturnType<typeof useTranslation>['t'];
+
+export interface ManageButtonHandlers {
+  setShowActions: (value: boolean) => void;
+  setAction: (value: AppAction) => void;
+  setShowDeleteModel: (value: boolean) => void;
+}
+
+export interface ConfigurationTabParams {
+  showMcpConfigTab: boolean;
+  showAppConfigTab: boolean;
+  appData: App | undefined;
+  jsonSchema: RJSFSchema | undefined;
+  isSaveLoading: boolean;
+  onConfigSave: (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => Promise<void>;
+  ApplicationConfigurationComponent: ReturnType<
+    typeof applicationsClassBase.getApplicationConfigurationComponent
+  >;
+  t: TFunc;
+}
+
+export interface ScheduleTabParams {
+  showScheduleTab: boolean;
+  appData: App | undefined;
+  isRuntimeDisabled: boolean;
+  runtimeDisabledReason: string | undefined;
+  jsonSchema: RJSFSchema | undefined;
+  isRunLoading: boolean;
+  isDeployLoading: boolean;
+  onDemandTrigger: () => Promise<void>;
+  onDeployTrigger: () => Promise<void>;
+  onAppScheduleSave: (cron: string) => Promise<void>;
+  t: TFunc;
+}
+
+export interface RecentRunsTabParams {
+  isAppUnavailable: boolean;
+  showScheduleTab: boolean;
+  appData: App | undefined;
+  jsonSchema: RJSFSchema | undefined;
+  t: TFunc;
+}
+
+export interface LiveIndexingTabParams {
+  isAppUnavailable: boolean;
+  appData: App | undefined;
+  t: TFunc;
 }

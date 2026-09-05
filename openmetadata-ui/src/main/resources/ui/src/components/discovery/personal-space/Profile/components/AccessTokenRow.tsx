@@ -30,7 +30,14 @@ import {
   Trash02,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
@@ -48,6 +55,216 @@ import {
 } from '../../../../../utils/ToastUtils';
 
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
+
+const AccessTokenLoadingSkeleton = () => (
+  <Box
+    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:py-4"
+    data-testid="access-token-row"
+    direction="col"
+    gap={3}>
+    <Skeleton height={16} variant="text" width="60%" />
+    <Skeleton height={44} variant="rounded" width="100%" />
+    <Box justify="end">
+      <Skeleton height={36} variant="rounded" width={120} />
+    </Box>
+  </Box>
+);
+
+const AccessTokenEmptyState = ({
+  t,
+  expiryOptions,
+  expiry,
+  setExpiry,
+  isLoading,
+  handleGenerate,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+  expiryOptions: { id: JWTTokenExpiry; label: string }[];
+  expiry: JWTTokenExpiry;
+  setExpiry: Dispatch<SetStateAction<JWTTokenExpiry>>;
+  isLoading: boolean;
+  handleGenerate: () => void;
+}) => (
+  <Box
+    align="center"
+    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-6 tw:py-10 tw:text-center"
+    data-testid="access-token-row"
+    direction="col"
+    gap={3}
+    justify="center">
+    <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
+    <Typography className="tw:text-primary-900" weight="semibold">
+      {t('message.no-access-token-title')}
+    </Typography>
+    <Typography
+      className="tw:max-w-md tw:text-tertiary"
+      size="text-sm"
+      weight="regular">
+      {t('message.no-access-token-subtitle')}
+    </Typography>
+    <Box align="center" className="tw:mt-3" direction="row" gap={3}>
+      <Box align="center" direction="row" gap={2}>
+        <Typography
+          className="tw:whitespace-nowrap tw:text-tertiary"
+          size="text-sm"
+          weight="regular">
+          {`${t('label.expires-in')}:`}
+        </Typography>
+        <Select
+          aria-label={t('label.token-expiration')}
+          className="tw:min-w-28"
+          data-testid="token-expiry-select"
+          items={expiryOptions}
+          selectedKey={expiry}
+          size="sm"
+          onSelectionChange={(key: Key | null) =>
+            key && setExpiry(key as JWTTokenExpiry)
+          }>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      </Box>
+      <Button
+        color="primary"
+        data-testid="generate-token"
+        icon={Plus}
+        isLoading={isLoading}
+        size="sm"
+        onClick={handleGenerate}>
+        {t('label.generate-token')}
+      </Button>
+    </Box>
+  </Box>
+);
+
+const AccessTokenDetails = ({
+  t,
+  token,
+  isTokenExpired,
+  statusLabel,
+  expiryDate,
+  reveal,
+  setReveal,
+  canReveal,
+  handleCopy,
+  isLoading,
+  handleRegenerate,
+  handleRevoke,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+  token: PersonalAccessToken;
+  isTokenExpired: boolean;
+  statusLabel: string;
+  expiryDate: string | number | undefined;
+  reveal: boolean;
+  setReveal: Dispatch<SetStateAction<boolean>>;
+  canReveal: boolean;
+  handleCopy: () => void;
+  isLoading: boolean;
+  handleRegenerate: () => void;
+  handleRevoke: () => void;
+}) => (
+  <Box
+    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+    data-testid="access-token-row"
+    direction="col">
+    <Box
+      align="center"
+      className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"
+      gap={3}>
+      <Box align="center" gap={2}>
+        <FeaturedIcon color="brand" icon={Key01} size="md" theme="light" />
+        <Box direction="col">
+          <Typography className="tw:text-primary-900" weight="semibold">
+            {t('label.collate-api-token')}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {statusLabel}
+          </Typography>
+        </Box>
+      </Box>
+      <BadgeWithDot
+        color={isTokenExpired ? 'error' : 'success'}
+        data-testid="token-status"
+        size="sm"
+        type="pill-color">
+        {statusLabel}
+      </BadgeWithDot>
+    </Box>
+    <Box className="tw:px-4 tw:py-4" direction="col" gap={3}>
+      <Box direction="col" gap={1}>
+        <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+          {t('label.token')}
+        </Typography>
+        <Box align="center" gap={2}>
+          <Box
+            align="center"
+            className="tw:h-9 tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-utility-gray-50 tw:px-3.5">
+            <span
+              className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-text-secondary tw:bg-utility-gray-50"
+              data-testid="token-value">
+              {reveal && token.jwtToken
+                ? token.jwtToken
+                : '************************************************************'}
+            </span>
+          </Box>
+          <Button
+            noTextPadding
+            aria-label={t('label.show')}
+            color="secondary"
+            data-testid="reveal-token"
+            iconLeading={reveal ? Eye : EyeOff}
+            isDisabled={!canReveal}
+            size="sm"
+            onClick={() => setReveal(!reveal)}
+          />
+          <Button
+            color="secondary"
+            data-testid="copy-token"
+            iconLeading={Copy01}
+            isDisabled={!canReveal}
+            size="sm"
+            onClick={handleCopy}>
+            {t('label.copy')}
+          </Button>
+        </Box>
+      </Box>
+
+      {expiryDate && (
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="token-expiry"
+          size="text-sm">
+          {isTokenExpired
+            ? t('message.token-expired-on', { date: expiryDate })
+            : t('message.token-expires-on', { date: expiryDate })}
+        </Typography>
+      )}
+    </Box>
+    <Box
+      align="center"
+      className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
+      gap={2}>
+      <Button
+        color="secondary"
+        data-testid="regenerate-token"
+        iconLeading={<RefreshCcw02 height={12} width={12} />}
+        isLoading={isLoading}
+        size="sm"
+        onClick={handleRegenerate}>
+        {t('label.regenerate')}
+      </Button>
+      <Button
+        color="secondary-destructive"
+        data-testid="revoke-token"
+        iconLeading={<Trash02 height={12} width={12} />}
+        isLoading={isLoading}
+        size="sm"
+        onClick={handleRevoke}>
+        {t('label.revoke')}
+      </Button>
+    </Box>
+  </Box>
+);
 
 const AccessTokenRow: React.FC = () => {
   const { t } = useTranslation();
@@ -167,72 +384,19 @@ const AccessTokenRow: React.FC = () => {
   };
 
   if (isFetching) {
-    return (
-      <Box
-        className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:py-4"
-        data-testid="access-token-row"
-        direction="col"
-        gap={3}>
-        <Skeleton height={16} variant="text" width="60%" />
-        <Skeleton height={44} variant="rounded" width="100%" />
-        <Box justify="end">
-          <Skeleton height={36} variant="rounded" width={120} />
-        </Box>
-      </Box>
-    );
+    return <AccessTokenLoadingSkeleton />;
   }
 
   if (!token) {
     return (
-      <Box
-        align="center"
-        className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-6 tw:py-10 tw:text-center"
-        data-testid="access-token-row"
-        direction="col"
-        gap={3}
-        justify="center">
-        <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
-        <Typography className="tw:text-primary-900" weight="semibold">
-          {t('message.no-access-token-title')}
-        </Typography>
-        <Typography
-          className="tw:max-w-md tw:text-tertiary"
-          size="text-sm"
-          weight="regular">
-          {t('message.no-access-token-subtitle')}
-        </Typography>
-        <Box align="center" className="tw:mt-3" direction="row" gap={3}>
-          <Box align="center" direction="row" gap={2}>
-            <Typography
-              className="tw:whitespace-nowrap tw:text-tertiary"
-              size="text-sm"
-              weight="regular">
-              {`${t('label.expires-in')}:`}
-            </Typography>
-            <Select
-              aria-label={t('label.token-expiration')}
-              className="tw:min-w-28"
-              data-testid="token-expiry-select"
-              items={expiryOptions}
-              selectedKey={expiry}
-              size="sm"
-              onSelectionChange={(key: Key | null) =>
-                key && setExpiry(key as JWTTokenExpiry)
-              }>
-              {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-            </Select>
-          </Box>
-          <Button
-            color="primary"
-            data-testid="generate-token"
-            icon={Plus}
-            isLoading={isLoading}
-            size="sm"
-            onClick={handleGenerate}>
-            {t('label.generate-token')}
-          </Button>
-        </Box>
-      </Box>
+      <AccessTokenEmptyState
+        expiry={expiry}
+        expiryOptions={expiryOptions}
+        handleGenerate={handleGenerate}
+        isLoading={isLoading}
+        setExpiry={setExpiry}
+        t={t}
+      />
     );
   }
 
@@ -247,110 +411,20 @@ const AccessTokenRow: React.FC = () => {
     formatDateTimeLong(token.expiryDate, 'MMM dd, yyyy, hh:mm a');
 
   return (
-    <Box
-      className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
-      data-testid="access-token-row"
-      direction="col">
-      <Box
-        align="center"
-        className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"
-        gap={3}>
-        <Box align="center" gap={2}>
-          <FeaturedIcon color="brand" icon={Key01} size="md" theme="light" />
-          <Box direction="col">
-            <Typography className="tw:text-primary-900" weight="semibold">
-              {t('label.collate-api-token')}
-            </Typography>
-            <Typography className="tw:text-tertiary" size="text-xs">
-              {statusLabel}
-            </Typography>
-          </Box>
-        </Box>
-        <BadgeWithDot
-          color={isTokenExpired ? 'error' : 'success'}
-          data-testid="token-status"
-          size="sm"
-          type="pill-color">
-          {statusLabel}
-        </BadgeWithDot>
-      </Box>
-      <Box className="tw:px-4 tw:py-4" direction="col" gap={3}>
-        <Box direction="col" gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.token')}
-          </Typography>
-          <Box align="center" gap={2}>
-            <Box
-              align="center"
-              className="tw:h-9 tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-utility-gray-50 tw:px-3.5">
-              <span
-                className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-text-secondary tw:bg-utility-gray-50"
-                data-testid="token-value">
-                {reveal && token.jwtToken
-                  ? token.jwtToken
-                  : '************************************************************'}
-              </span>
-            </Box>
-            <Button
-              noTextPadding
-              aria-label={t('label.show')}
-              color="secondary"
-              data-testid="reveal-token"
-              iconLeading={reveal ? Eye : EyeOff}
-              isDisabled={!canReveal}
-              size="sm"
-              onClick={() => setReveal(!reveal)}
-            />
-            <Button
-              color="secondary"
-              data-testid="copy-token"
-              iconLeading={Copy01}
-              isDisabled={!canReveal}
-              size="sm"
-              onClick={handleCopy}>
-              {t('label.copy')}
-            </Button>
-          </Box>
-        </Box>
-
-        {expiryDate && (
-          <Typography
-            className="tw:text-tertiary"
-            data-testid="token-expiry"
-            size="text-sm">
-            {isTokenExpired
-              ? t('message.token-expired-on', { date: expiryDate })
-              : t('message.token-expires-on', { date: expiryDate })}
-          </Typography>
-        )}
-      </Box>
-      <Box
-        align="center"
-        className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
-        gap={2}>
-        <Button
-          color="secondary"
-          data-testid="regenerate-token"
-          iconLeading={<RefreshCcw02 height={12} width={12} />}
-          isLoading={isLoading}
-          size="sm"
-          onClick={handleRegenerate}>
-          {t('label.regenerate')}
-        </Button>
-        <Button
-          color="secondary-destructive"
-          data-testid="revoke-token"
-          iconLeading={<Trash02 height={12} width={12} />}
-          isLoading={isLoading}
-          size="sm"
-          onClick={handleRevoke}>
-          {t('label.revoke')}
-        </Button>
-      </Box>
-    </Box>
+    <AccessTokenDetails
+      canReveal={canReveal}
+      expiryDate={expiryDate}
+      handleCopy={handleCopy}
+      handleRegenerate={handleRegenerate}
+      handleRevoke={handleRevoke}
+      isLoading={isLoading}
+      isTokenExpired={isTokenExpired}
+      reveal={reveal}
+      setReveal={setReveal}
+      statusLabel={statusLabel}
+      t={t}
+      token={token}
+    />
   );
 };
 

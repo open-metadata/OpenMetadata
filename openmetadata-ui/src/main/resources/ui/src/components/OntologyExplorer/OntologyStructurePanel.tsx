@@ -260,6 +260,82 @@ const DiffSelection = ({
   );
 };
 
+const computeCanDiff = (values: StructureFormState): boolean =>
+  Boolean(
+    values.sourceGlossaryId &&
+      values.targetGlossaryId &&
+      values.sourceGlossaryId !== values.targetGlossaryId &&
+      values.subsetTermIds.length
+  );
+
+const computeHasSelectedFields = (
+  canDiff: boolean,
+  diff: OntologyStructuralDiff | undefined,
+  selections: FieldSelection[]
+): boolean =>
+  Boolean(
+    canDiff && diff && selections.some((selection) => selection.fields.length)
+  );
+
+const computeCanMerge = (
+  hasSelectedFields: boolean,
+  values: StructureFormState
+): boolean =>
+  Boolean(
+    hasSelectedFields &&
+      values.changeSetName.trim() &&
+      values.changeSetDescription.trim()
+  );
+
+interface OntologyDiffSectionProps {
+  diff?: OntologyStructuralDiff;
+  selections: FieldSelection[];
+  onToggle: (subsetTermId: string, field: DiffField, selected: boolean) => void;
+}
+
+const OntologyDiffSection = ({
+  diff,
+  selections,
+  onToggle,
+}: OntologyDiffSectionProps) =>
+  diff ? (
+    <div className="tw:flex tw:flex-col tw:gap-3">
+      {diff.data.map((termDiff) => (
+        <DiffSelection
+          key={termDiff.subsetTerm.id}
+          selection={selections.find(
+            (selection) => selection.subsetTermId === termDiff.subsetTerm.id
+          )}
+          termDiff={termDiff}
+          onToggle={onToggle}
+        />
+      ))}
+    </div>
+  ) : null;
+
+interface OntologyMergeResultAlertProps {
+  mergeResult?: OntologyStructuralMergeResult;
+  t: ReturnType<typeof useTranslation>['t'];
+}
+
+const OntologyMergeResultAlert = ({
+  mergeResult,
+  t,
+}: OntologyMergeResultAlertProps) =>
+  mergeResult ? (
+    <Alert
+      title={
+        mergeResult.changeSet.displayName ??
+        mergeResult.changeSet.name ??
+        t('label.draft')
+      }
+      variant="success">
+      {`${mergeResult.terms.length} ${t('label.term-plural')} · ${
+        mergeResult.relationshipOperations.length
+      } ${t('label.relationship-plural')}`}
+    </Alert>
+  ) : null;
+
 const OntologyStructurePanel = ({
   glossaries,
   graphData,
@@ -379,19 +455,9 @@ const OntologyStructurePanel = ({
       FieldTypes.TEXTAREA
     ),
   ];
-  const canDiff = Boolean(
-    values.sourceGlossaryId &&
-      values.targetGlossaryId &&
-      values.sourceGlossaryId !== values.targetGlossaryId &&
-      values.subsetTermIds.length
-  );
-  const hasSelectedFields =
-    canDiff && diff && selections.some((selection) => selection.fields.length);
-  const canMerge = Boolean(
-    hasSelectedFields &&
-      values.changeSetName.trim() &&
-      values.changeSetDescription.trim()
-  );
+  const canDiff = computeCanDiff(values);
+  const hasSelectedFields = computeHasSelectedFields(canDiff, diff, selections);
+  const canMerge = computeCanMerge(hasSelectedFields, values);
 
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(handleMerge)}>
@@ -443,21 +509,11 @@ const OntologyStructurePanel = ({
           {t('label.preview')} {t('label.change-plural')}
         </Button>
 
-        {diff ? (
-          <div className="tw:flex tw:flex-col tw:gap-3">
-            {diff.data.map((termDiff) => (
-              <DiffSelection
-                key={termDiff.subsetTerm.id}
-                selection={selections.find(
-                  (selection) =>
-                    selection.subsetTermId === termDiff.subsetTerm.id
-                )}
-                termDiff={termDiff}
-                onToggle={toggleField}
-              />
-            ))}
-          </div>
-        ) : null}
+        <OntologyDiffSection
+          diff={diff}
+          selections={selections}
+          onToggle={toggleField}
+        />
 
         <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
           {metadataFields.slice(0, 2).map((field) => (
@@ -473,19 +529,7 @@ const OntologyStructurePanel = ({
           type="submit">
           {t('label.create-draft')}
         </Button>
-        {mergeResult ? (
-          <Alert
-            title={
-              mergeResult.changeSet.displayName ??
-              mergeResult.changeSet.name ??
-              t('label.draft')
-            }
-            variant="success">
-            {`${mergeResult.terms.length} ${t('label.term-plural')} · ${
-              mergeResult.relationshipOperations.length
-            } ${t('label.relationship-plural')}`}
-          </Alert>
-        ) : null}
+        <OntologyMergeResultAlert mergeResult={mergeResult} t={t} />
       </Card>
     </HookForm>
   );

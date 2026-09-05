@@ -38,43 +38,44 @@ import type {
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
+import { getOwnHandler } from './RecordUtils';
+
+type EntityColumns = Column[] | PipelineTask[] | MlFeature[] | Field[];
+
+const ENTITY_COLUMNS_DETAILS_GETTERS: Partial<
+  Record<EntityType, (entityData: EntityData) => EntityColumns>
+> = {
+  [EntityType.TOPIC]: (entityData) =>
+    (entityData as Topic).messageSchema?.schemaFields ?? [],
+  [EntityType.DASHBOARD]: (entityData) =>
+    (entityData as Dashboard).charts ?? [],
+  [EntityType.PIPELINE]: (entityData) => (entityData as Pipeline).tasks ?? [],
+  [EntityType.MLMODEL]: (entityData) =>
+    (entityData as Mlmodel).mlFeatures ?? [],
+  [EntityType.CONTAINER]: (entityData) =>
+    (entityData as Container).dataModel?.columns ?? [],
+  [EntityType.API_ENDPOINT]: (entityData) => {
+    const entityDetails = entityData as APIEndpoint;
+    const requestSchemaFields = entityDetails.requestSchema?.schemaFields ?? [];
+    const responseSchemaFields =
+      entityDetails.responseSchema?.schemaFields ?? [];
+
+    return [...requestSchemaFields, ...responseSchemaFields];
+  },
+};
 
 export const getEntityColumnsDetails = (
   entityType: string,
   entityData: EntityData
 ) => {
-  switch (entityType) {
-    case EntityType.TOPIC:
-      return (entityData as Topic).messageSchema?.schemaFields ?? [];
+  const getColumns = getOwnHandler(ENTITY_COLUMNS_DETAILS_GETTERS, entityType);
 
-    case EntityType.DASHBOARD:
-      return (entityData as Dashboard).charts ?? [];
-
-    case EntityType.PIPELINE:
-      return (entityData as Pipeline).tasks ?? [];
-
-    case EntityType.MLMODEL:
-      return (entityData as Mlmodel).mlFeatures ?? [];
-
-    case EntityType.CONTAINER:
-      return (entityData as Container).dataModel?.columns ?? [];
-
-    case EntityType.API_ENDPOINT: {
-      const entityDetails = entityData as APIEndpoint;
-      const requestSchemaFields =
-        entityDetails.requestSchema?.schemaFields ?? [];
-      const responseSchemaFields =
-        entityDetails.responseSchema?.schemaFields ?? [];
-
-      return [...requestSchemaFields, ...responseSchemaFields];
-    }
-
-    default:
-      return (entityData as Table).columns ?? [];
-  }
+  return (
+    (getColumns ? getColumns(entityData) : undefined) ??
+    (entityData as Table).columns ??
+    []
+  );
 };
-
-type EntityColumns = Column[] | PipelineTask[] | MlFeature[] | Field[];
 
 interface EntityColumnProps {
   description: string;
@@ -292,6 +293,38 @@ export const getEntityTaskDetails = (
   return { fqnPart: [fqnPartTypes], entityField };
 };
 
+type NamedEntityRef = { name?: string; displayName?: string };
+
+const ENTITY_TABLE_NAME_FINDERS: Partial<
+  Record<
+    EntityType,
+    (entityData: EntityData, name: string) => NamedEntityRef | undefined
+  >
+> = {
+  [EntityType.TABLE]: (entityData, name) =>
+    (entityData as Table).columns?.find((item) => item.name === name),
+  [EntityType.TOPIC]: (entityData, name) =>
+    (entityData as Topic).messageSchema?.schemaFields?.find(
+      (item) => item.name === name
+    ),
+  [EntityType.DASHBOARD]: (entityData, name) =>
+    (entityData as Dashboard).charts?.find((item) => item.name === name),
+  [EntityType.PIPELINE]: (entityData, name) =>
+    (entityData as Pipeline).tasks?.find((item) => item.name === name),
+  [EntityType.MLMODEL]: (entityData, name) =>
+    (entityData as Mlmodel).mlFeatures?.find((item) => item.name === name),
+  [EntityType.CONTAINER]: (entityData, name) =>
+    (entityData as Container).dataModel?.columns?.find(
+      (item) => item.name === name
+    ),
+  [EntityType.SEARCH_INDEX]: (entityData, name) =>
+    (entityData as SearchIndex).fields?.find((item) => item.name === name),
+  [EntityType.DASHBOARD_DATA_MODEL]: (entityData, name) =>
+    (entityData as DashboardDataModel).columns?.find(
+      (item) => item.name === name
+    ),
+};
+
 export const getEntityTableName = (
   entityType: EntityType,
   name: string,
@@ -300,68 +333,13 @@ export const getEntityTableName = (
   if (name.includes('.')) {
     return name;
   }
-  let entityReference;
 
-  switch (entityType) {
-    case EntityType.TABLE:
-      entityReference = (entityData as Table).columns?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.TOPIC:
-      entityReference = (entityData as Topic).messageSchema?.schemaFields?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.DASHBOARD:
-      entityReference = (entityData as Dashboard).charts?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.PIPELINE:
-      entityReference = (entityData as Pipeline).tasks?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.MLMODEL:
-      entityReference = (entityData as Mlmodel).mlFeatures?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.CONTAINER:
-      entityReference = (entityData as Container).dataModel?.columns?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.SEARCH_INDEX:
-      entityReference = (entityData as SearchIndex).fields?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      entityReference = (entityData as DashboardDataModel).columns?.find(
-        (item) => item.name === name
-      );
-
-      break;
-
-    default:
-      return name;
+  const finder = getOwnHandler(ENTITY_TABLE_NAME_FINDERS, entityType);
+  if (!finder) {
+    return name;
   }
+
+  const entityReference = finder(entityData, name);
 
   if (isUndefined(entityReference)) {
     return name;

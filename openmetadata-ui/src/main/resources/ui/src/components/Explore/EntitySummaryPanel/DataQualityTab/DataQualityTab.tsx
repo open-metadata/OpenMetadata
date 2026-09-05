@@ -255,6 +255,16 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   );
 };
 
+const INCIDENT_FILTER_STATUS_MAP: Record<
+  IncidentFilterStatus,
+  TestCaseResolutionStatusTypes
+> = {
+  new: TestCaseResolutionStatusTypes.New,
+  ack: TestCaseResolutionStatusTypes.ACK,
+  assigned: TestCaseResolutionStatusTypes.Assigned,
+  resolved: TestCaseResolutionStatusTypes.Resolved,
+};
+
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   entityFQN,
   isColumnDetailPanel = false,
@@ -516,27 +526,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         return false;
       }
 
-      let matchesStatus = false;
-      switch (activeIncidentFilter) {
-        case 'new':
-          matchesStatus = status === TestCaseResolutionStatusTypes.New;
-
-          break;
-        case 'ack':
-          matchesStatus = status === TestCaseResolutionStatusTypes.ACK;
-
-          break;
-        case 'assigned':
-          matchesStatus = status === TestCaseResolutionStatusTypes.Assigned;
-
-          break;
-        case 'resolved':
-          matchesStatus = status === TestCaseResolutionStatusTypes.Resolved;
-
-          break;
-        default:
-          return false;
-      }
+      const matchesStatus =
+        status === INCIDENT_FILTER_STATUS_MAP[activeIncidentFilter];
 
       if (!searchText) {
         return matchesStatus;

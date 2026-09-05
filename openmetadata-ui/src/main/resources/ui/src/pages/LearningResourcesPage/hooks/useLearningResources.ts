@@ -37,6 +37,18 @@ const isAbortError = (error: unknown): boolean =>
   error instanceof Error &&
   (error.name === 'CanceledError' || error.name === 'AbortError');
 
+function computeCursor(
+  page: number,
+  before?: string,
+  after?: string
+): { before?: string; after?: string } | undefined {
+  if (page === 1) {
+    return before ? { before } : undefined;
+  }
+
+  return after ? { after } : undefined;
+}
+
 function applyResponseToRefs(
   page: number,
   list: LearningResource[],
@@ -119,12 +131,7 @@ export const useLearningResources = ({
     ): Promise<void> => {
       const before = beforeCursorsByPageRef.current.get(2);
       const after = cursorsByPageRef.current.get(page - 1);
-      let cursor: { before?: string; after?: string } | undefined;
-      if (page === 1) {
-        cursor = before ? { before } : undefined;
-      } else {
-        cursor = after ? { after } : undefined;
-      }
+      const cursor = computeCursor(page, before, after);
 
       const signal = options?.signal;
 

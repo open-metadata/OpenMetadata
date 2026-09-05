@@ -90,6 +90,12 @@ const MODEL_TERM_FIELDS = [
 
 const DATA_MODE_TERM_FIELDS = [TabSpecificField.PARENT];
 
+const toPartialGlossaryState = (
+  glossary: Glossary,
+  nextCursor?: string
+): { glossary: Glossary; afterCursor: string } | null =>
+  nextCursor ? { glossary, afterCursor: nextCursor } : null;
+
 export const DEFAULT_SETTINGS: GraphSettings = {
   layout: LayoutType.Hierarchical,
   showEdgeLabels: true,
@@ -112,6 +118,21 @@ export interface UseOntologyExplorerOptions {
   onStatsChange?: (items: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
 }
+
+const resolveScopedGlossaryId = (
+  scope: OntologyExplorerProps['scope'],
+  glossaryId: string | undefined,
+  termGlossaryId: string | undefined
+): string | undefined => {
+  if (scope === 'glossary') {
+    return glossaryId;
+  }
+  if (scope === 'term') {
+    return termGlossaryId;
+  }
+
+  return undefined;
+};
 
 interface OntologyModelLoadResult {
   graphData: OntologyGraphData | null;
@@ -416,12 +437,11 @@ export function useOntologyExplorer({
       }
 
       try {
-        let scopedGlossaryId: string | undefined;
-        if (scope === 'glossary') {
-          scopedGlossaryId = glossaryId;
-        } else if (scope === 'term') {
-          scopedGlossaryId = termGlossaryId;
-        }
+        const scopedGlossaryId = resolveScopedGlossaryId(
+          scope,
+          glossaryId,
+          termGlossaryId
+        );
         const termGlossaryIds = new Set(
           termNodes
             .map((termNode) => termNode.glossaryId)
@@ -622,9 +642,10 @@ export function useOntologyExplorer({
           fieldsToFetch
         );
         accumulated.push(...terms);
-        partialGlossaryRef.current = nextCursor
-          ? { glossary, afterCursor: nextCursor }
-          : null;
+        partialGlossaryRef.current = toPartialGlossaryState(
+          glossary,
+          nextCursor
+        );
       }
 
       while (

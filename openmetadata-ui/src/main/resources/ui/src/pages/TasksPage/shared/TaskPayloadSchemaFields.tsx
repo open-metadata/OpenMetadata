@@ -139,6 +139,49 @@ const ClampedText = ({ text }: { text: string }) => {
   );
 };
 
+type FieldWidgetKind =
+  | 'descriptionTabs'
+  | 'tagsTabs'
+  | 'tagSelector'
+  | 'enum'
+  | 'number'
+  | 'boolean'
+  | 'textarea'
+  | 'objectOrArray'
+  | 'default';
+
+function selectFieldWidgetKind(
+  widget: unknown,
+  fieldSchema?: JsonSchemaProperty
+): FieldWidgetKind {
+  if (widget === 'descriptionTabs') {
+    return 'descriptionTabs';
+  }
+  if (widget === 'tagsTabs') {
+    return 'tagsTabs';
+  }
+  if (widget === 'tagSelector') {
+    return 'tagSelector';
+  }
+  if (fieldSchema?.enum?.length) {
+    return 'enum';
+  }
+  if (fieldSchema?.type === 'number') {
+    return 'number';
+  }
+  if (fieldSchema?.type === 'boolean') {
+    return 'boolean';
+  }
+  if (widget === 'textarea') {
+    return 'textarea';
+  }
+  if (fieldSchema?.type === 'object' || fieldSchema?.type === 'array') {
+    return 'objectOrArray';
+  }
+
+  return 'default';
+}
+
 const StringArrayDisplay = ({ items }: { items: string[] }) => {
   if (items.length === 0) {
     return (
@@ -367,6 +410,353 @@ const TaskPayloadSchemaFields = ({
       iconSrc
     );
 
+  type FieldRenderer = (
+    fieldName: string,
+    fieldSchema: JsonSchemaProperty | undefined,
+    label: string,
+    description: string | undefined
+  ) => ReactNode;
+
+  const renderDescriptionTabsField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return (
+        <Box direction="col" gap={4} key={fieldName}>
+          {renderReadOnlyText(
+            `${label} (${'Current'})`,
+            payload.currentDescription,
+            description
+          )}
+          {renderReadOnlyText(
+            `${label} (${'Suggested'})`,
+            payload.newDescription ?? payload.suggestedValue
+          )}
+        </Box>
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`}>
+        <DescriptionTabs
+          suggestion={String(payload.newDescription ?? '')}
+          value={String(payload.currentDescription ?? '')}
+          onChange={(value) => updateField(fieldName, value)}
+        />
+        {description ? (
+          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+            {description}
+          </AntTypography.Paragraph>
+        ) : null}
+      </Form.Item>
+    );
+  };
+
+  const renderTagsTabsField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    const currentTags = (payload.currentTags as TagLabel[] | undefined) ?? [];
+    const suggestedTags = getSuggestedTags();
+
+    if (mode === 'read') {
+      return (
+        <Box direction="col" gap={4} key={fieldName}>
+          {renderReadOnlyTags(
+            `${label} (${'Current'})`,
+            currentTags,
+            description
+          )}
+          {renderReadOnlyTags(`${label} (${'Suggested'})`, suggestedTags)}
+        </Box>
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`}>
+        <TagsTabs
+          tags={currentTags}
+          value={suggestedTags}
+          onChange={(newTags) => {
+            const currentTagFqns = new Set(
+              currentTags.map((tag) => tag.tagFQN)
+            );
+            const newTagFqns = new Set(newTags.map((tag) => tag.tagFQN));
+
+            onChange({
+              ...payload,
+              tagsToAdd: newTags.filter(
+                (tag) => !currentTagFqns.has(tag.tagFQN)
+              ),
+              tagsToRemove: currentTags.filter(
+                (tag) => !newTagFqns.has(tag.tagFQN)
+              ),
+            });
+          }}
+        />
+        {description ? (
+          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+            {description}
+          </AntTypography.Paragraph>
+        ) : null}
+      </Form.Item>
+    );
+  };
+
+  const renderTagSelectorField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyTags(
+        label,
+        ((payload[fieldName] as TagLabel[] | undefined) ?? []).filter(Boolean),
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`}>
+        <TagSuggestion
+          value={(payload[fieldName] as TagLabel[] | undefined) ?? []}
+          onChange={(newTags) => updateField(fieldName, newTags)}
+        />
+        {description ? (
+          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+            {description}
+          </AntTypography.Paragraph>
+        ) : null}
+      </Form.Item>
+    );
+  };
+
+  const renderEnumField: FieldRenderer = (
+    fieldName,
+    fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyText(
+        label,
+        getFormattedFieldValue(fieldName),
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item
+        key={fieldName}
+        label={`${label}:`}
+        required={requiredFields.has(fieldName)}
+        rules={
+          requiredFields.has(fieldName)
+            ? [{ required: true, message: `${label} is required` }]
+            : undefined
+        }>
+        <Select
+          options={(fieldSchema?.enum ?? []).map((value) => ({
+            label: value,
+            value,
+          }))}
+          value={getFieldValue(fieldName) as string | undefined}
+          onChange={(value) => updateField(fieldName, value)}
+        />
+      </Form.Item>
+    );
+  };
+
+  const renderNumberField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyText(
+        label,
+        getFormattedFieldValue(fieldName),
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`}>
+        <InputNumber
+          className="w-full"
+          value={getFieldValue(fieldName) as number | undefined}
+          onChange={(value) => updateField(fieldName, value)}
+        />
+      </Form.Item>
+    );
+  };
+
+  const renderBooleanField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyText(
+        label,
+        Boolean(getFieldValue(fieldName, false)),
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`} valuePropName="checked">
+        <Checkbox
+          checked={Boolean(getFieldValue(fieldName, false))}
+          onChange={(event) => updateField(fieldName, event.target.checked)}>
+          {description}
+        </Checkbox>
+      </Form.Item>
+    );
+  };
+
+  const renderTextareaField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyText(
+        label,
+        getFormattedFieldValue(fieldName, ''),
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item
+        key={fieldName}
+        label={`${label}:`}
+        required={requiredFields.has(fieldName)}
+        rules={
+          requiredFields.has(fieldName)
+            ? [{ required: true, message: `${label} is required` }]
+            : undefined
+        }>
+        <Input.TextArea
+          autoSize={{ minRows: 4, maxRows: 10 }}
+          value={String(getFieldValue(fieldName, '') ?? '')}
+          onChange={(event) => updateField(fieldName, event.target.value)}
+        />
+      </Form.Item>
+    );
+  };
+
+  const renderObjectOrArrayField: FieldRenderer = (
+    fieldName,
+    fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      const rawValue = getFieldValue(fieldName);
+      const isStringArray =
+        fieldSchema?.type === 'array' &&
+        Array.isArray(rawValue) &&
+        rawValue.every((item) => typeof item === 'string');
+
+      if (isStringArray) {
+        return renderReadOnlyRow(
+          fieldName,
+          label,
+          <StringArrayDisplay items={rawValue as string[]} />,
+          icons?.[fieldName]
+        );
+      }
+
+      return renderReadOnlyText(
+        label,
+        rawValue,
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`}>
+        <Input.TextArea
+          autoSize={{ minRows: 4, maxRows: 12 }}
+          value={stringifyValue(
+            getFieldValue(fieldName, fieldSchema?.type === 'array' ? [] : {})
+          )}
+          onChange={(event) => {
+            try {
+              updateField(fieldName, JSON.parse(event.target.value));
+            } catch {
+              updateField(fieldName, event.target.value);
+            }
+          }}
+        />
+        {description ? (
+          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+            {description}
+          </AntTypography.Paragraph>
+        ) : null}
+      </Form.Item>
+    );
+  };
+
+  const renderDefaultField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyText(
+        label,
+        getFormattedFieldValue(fieldName, ''),
+        description,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Form.Item key={fieldName} label={`${label}:`}>
+        <Input
+          value={String(getFieldValue(fieldName, '') ?? '')}
+          onChange={(event) => updateField(fieldName, event.target.value)}
+        />
+        {description ? (
+          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+            {description}
+          </AntTypography.Paragraph>
+        ) : null}
+      </Form.Item>
+    );
+  };
+
+  const fieldRenderers: Record<FieldWidgetKind, FieldRenderer> = {
+    descriptionTabs: renderDescriptionTabsField,
+    tagsTabs: renderTagsTabsField,
+    tagSelector: renderTagSelectorField,
+    enum: renderEnumField,
+    number: renderNumberField,
+    boolean: renderBooleanField,
+    textarea: renderTextareaField,
+    objectOrArray: renderObjectOrArrayField,
+    default: renderDefaultField,
+  };
+
   return (
     <Box direction="col" gap={4}>
       {mode === 'read' &&
@@ -383,296 +773,9 @@ const TaskPayloadSchemaFields = ({
           return null;
         }
 
-        if (widget === 'descriptionTabs') {
-          if (mode === 'read') {
-            return (
-              <Box direction="col" gap={4} key={fieldName}>
-                {renderReadOnlyText(
-                  `${label} (${'Current'})`,
-                  payload.currentDescription,
-                  description
-                )}
-                {renderReadOnlyText(
-                  `${label} (${'Suggested'})`,
-                  payload.newDescription ?? payload.suggestedValue
-                )}
-              </Box>
-            );
-          }
+        const kind = selectFieldWidgetKind(widget, fieldSchema);
 
-          return (
-            <Form.Item key={fieldName} label={`${label}:`}>
-              <DescriptionTabs
-                suggestion={String(payload.newDescription ?? '')}
-                value={String(payload.currentDescription ?? '')}
-                onChange={(value) => updateField(fieldName, value)}
-              />
-              {description ? (
-                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-                  {description}
-                </AntTypography.Paragraph>
-              ) : null}
-            </Form.Item>
-          );
-        }
-
-        if (widget === 'tagsTabs') {
-          const currentTags =
-            (payload.currentTags as TagLabel[] | undefined) ?? [];
-          const suggestedTags = getSuggestedTags();
-
-          if (mode === 'read') {
-            return (
-              <Box direction="col" gap={4} key={fieldName}>
-                {renderReadOnlyTags(
-                  `${label} (${'Current'})`,
-                  currentTags,
-                  description
-                )}
-                {renderReadOnlyTags(`${label} (${'Suggested'})`, suggestedTags)}
-              </Box>
-            );
-          }
-
-          return (
-            <Form.Item key={fieldName} label={`${label}:`}>
-              <TagsTabs
-                tags={currentTags}
-                value={suggestedTags}
-                onChange={(newTags) => {
-                  const currentTagFqns = new Set(
-                    currentTags.map((tag) => tag.tagFQN)
-                  );
-                  const newTagFqns = new Set(newTags.map((tag) => tag.tagFQN));
-
-                  onChange({
-                    ...payload,
-                    tagsToAdd: newTags.filter(
-                      (tag) => !currentTagFqns.has(tag.tagFQN)
-                    ),
-                    tagsToRemove: currentTags.filter(
-                      (tag) => !newTagFqns.has(tag.tagFQN)
-                    ),
-                  });
-                }}
-              />
-              {description ? (
-                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-                  {description}
-                </AntTypography.Paragraph>
-              ) : null}
-            </Form.Item>
-          );
-        }
-
-        if (widget === 'tagSelector') {
-          if (mode === 'read') {
-            return renderReadOnlyTags(
-              label,
-              ((payload[fieldName] as TagLabel[] | undefined) ?? []).filter(
-                Boolean
-              ),
-              description,
-              icons?.[fieldName]
-            );
-          }
-
-          return (
-            <Form.Item key={fieldName} label={`${label}:`}>
-              <TagSuggestion
-                value={(payload[fieldName] as TagLabel[] | undefined) ?? []}
-                onChange={(newTags) => updateField(fieldName, newTags)}
-              />
-              {description ? (
-                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-                  {description}
-                </AntTypography.Paragraph>
-              ) : null}
-            </Form.Item>
-          );
-        }
-
-        if (fieldSchema?.enum?.length) {
-          if (mode === 'read') {
-            return renderReadOnlyText(
-              label,
-              getFormattedFieldValue(fieldName),
-              description,
-              icons?.[fieldName]
-            );
-          }
-
-          return (
-            <Form.Item
-              key={fieldName}
-              label={`${label}:`}
-              required={requiredFields.has(fieldName)}
-              rules={
-                requiredFields.has(fieldName)
-                  ? [{ required: true, message: `${label} is required` }]
-                  : undefined
-              }>
-              <Select
-                options={fieldSchema.enum.map((value) => ({
-                  label: value,
-                  value,
-                }))}
-                value={getFieldValue(fieldName) as string | undefined}
-                onChange={(value) => updateField(fieldName, value)}
-              />
-            </Form.Item>
-          );
-        }
-
-        if (fieldSchema?.type === 'number') {
-          if (mode === 'read') {
-            return renderReadOnlyText(
-              label,
-              getFormattedFieldValue(fieldName),
-              description,
-              icons?.[fieldName]
-            );
-          }
-
-          return (
-            <Form.Item key={fieldName} label={`${label}:`}>
-              <InputNumber
-                className="w-full"
-                value={getFieldValue(fieldName) as number | undefined}
-                onChange={(value) => updateField(fieldName, value)}
-              />
-            </Form.Item>
-          );
-        }
-
-        if (fieldSchema?.type === 'boolean') {
-          if (mode === 'read') {
-            return renderReadOnlyText(
-              label,
-              Boolean(getFieldValue(fieldName, false)),
-              description,
-              icons?.[fieldName]
-            );
-          }
-
-          return (
-            <Form.Item
-              key={fieldName}
-              label={`${label}:`}
-              valuePropName="checked">
-              <Checkbox
-                checked={Boolean(getFieldValue(fieldName, false))}
-                onChange={(event) =>
-                  updateField(fieldName, event.target.checked)
-                }>
-                {description}
-              </Checkbox>
-            </Form.Item>
-          );
-        }
-
-        if (widget === 'textarea') {
-          if (mode === 'read') {
-            return renderReadOnlyText(
-              label,
-              getFormattedFieldValue(fieldName, ''),
-              description,
-              icons?.[fieldName]
-            );
-          }
-
-          return (
-            <Form.Item
-              key={fieldName}
-              label={`${label}:`}
-              required={requiredFields.has(fieldName)}
-              rules={
-                requiredFields.has(fieldName)
-                  ? [{ required: true, message: `${label} is required` }]
-                  : undefined
-              }>
-              <Input.TextArea
-                autoSize={{ minRows: 4, maxRows: 10 }}
-                value={String(getFieldValue(fieldName, '') ?? '')}
-                onChange={(event) => updateField(fieldName, event.target.value)}
-              />
-            </Form.Item>
-          );
-        }
-
-        if (fieldSchema?.type === 'object' || fieldSchema?.type === 'array') {
-          if (mode === 'read') {
-            const rawValue = getFieldValue(fieldName);
-            if (
-              fieldSchema.type === 'array' &&
-              Array.isArray(rawValue) &&
-              rawValue.every((item) => typeof item === 'string')
-            ) {
-              return renderReadOnlyRow(
-                fieldName,
-                label,
-                <StringArrayDisplay items={rawValue as string[]} />,
-                icons?.[fieldName]
-              );
-            }
-
-            return renderReadOnlyText(
-              label,
-              rawValue,
-              description,
-              icons?.[fieldName]
-            );
-          }
-
-          return (
-            <Form.Item key={fieldName} label={`${label}:`}>
-              <Input.TextArea
-                autoSize={{ minRows: 4, maxRows: 12 }}
-                value={stringifyValue(
-                  getFieldValue(
-                    fieldName,
-                    fieldSchema?.type === 'array' ? [] : {}
-                  )
-                )}
-                onChange={(event) => {
-                  try {
-                    updateField(fieldName, JSON.parse(event.target.value));
-                  } catch {
-                    updateField(fieldName, event.target.value);
-                  }
-                }}
-              />
-              {description ? (
-                <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-                  {description}
-                </AntTypography.Paragraph>
-              ) : null}
-            </Form.Item>
-          );
-        }
-
-        if (mode === 'read') {
-          return renderReadOnlyText(
-            label,
-            getFormattedFieldValue(fieldName, ''),
-            description,
-            icons?.[fieldName]
-          );
-        }
-
-        return (
-          <Form.Item key={fieldName} label={`${label}:`}>
-            <Input
-              value={String(getFieldValue(fieldName, '') ?? '')}
-              onChange={(event) => updateField(fieldName, event.target.value)}
-            />
-            {description ? (
-              <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
-                {description}
-              </AntTypography.Paragraph>
-            ) : null}
-          </Form.Item>
-        );
+        return fieldRenderers[kind](fieldName, fieldSchema, label, description);
       })}
     </Box>
   );

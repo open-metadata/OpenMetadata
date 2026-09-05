@@ -18,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import { TFunction } from 'i18next';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -73,6 +74,40 @@ import {
   normalizeFormValuesForPayload,
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
+
+const getResolvedDrawerWidth = (
+  width: number | string | undefined,
+  showDocPanel: boolean
+): number | string => width ?? (showDocPanel ? '80vw' : '52vw');
+
+const getDrawerContentWrapperClassName = (showDocPanel: boolean): string =>
+  `drawer-content-wrapper${showDocPanel ? '' : ' no-doc-panel'}`;
+
+const getDefaultDrawerTitle = (
+  isEditMode: boolean,
+  testCase: TestCase | undefined,
+  t: TFunction
+): string =>
+  isEditMode
+    ? t('label.edit-entity', { entity: getEntityName(testCase) })
+    : t('label.add-entity', { entity: t('label.test-case') });
+
+const getIsEditPrefilling = (
+  isEditMode: boolean,
+  open: boolean,
+  editPrefilledId: string | undefined,
+  testCaseId: string | undefined
+): boolean => isEditMode && open && editPrefilledId !== testCaseId;
+
+const getSelectedTableSearchSource = (
+  selectedTableData: TestCaseFormContext['selectedTableData']
+): TableSearchSource | undefined =>
+  isUndefined(selectedTableData)
+    ? undefined
+    : ({
+        ...selectedTableData,
+        entityType: EntityTypeEnum.TABLE,
+      } as TableSearchSource);
 
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   open,
@@ -306,14 +341,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const serviceDocPanel = (
     <ServiceDocPanel
       activeField={activeField}
-      selectedEntity={
-        isUndefined(formContext?.selectedTableData)
-          ? undefined
-          : ({
-              ...formContext?.selectedTableData,
-              entityType: EntityTypeEnum.TABLE,
-            } as TableSearchSource)
-      }
+      selectedEntity={getSelectedTableSearchSource(
+        formContext?.selectedTableData
+      )}
       serviceName={TEST_CASE_FORM}
       serviceType={OPEN_METADATA as ServiceCategory}
     />
@@ -345,7 +375,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   // Without the doc panel the form spans the full drawer, so drop the drawer
   // width to roughly the form's original 65% column and let it fill (see the
   // .no-doc-panel grid override in TestCaseFormV1.less).
-  const resolvedWidth = width ?? (showDocPanel ? '80vw' : '52vw');
+  const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel);
 
   const scrollToError = useMemo(
     () =>
@@ -358,8 +388,12 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   // In edit mode hold the form behind a loader until the prefill (definition
   // fetch + form.reset) is done for the open test case, so it renders fully
   // populated in one paint rather than flickering values in as calls resolve.
-  const isEditPrefilling =
-    isEditMode && open && editPrefilledId !== testCase?.id;
+  const isEditPrefilling = getIsEditPrefilling(
+    isEditMode,
+    open,
+    editPrefilledId,
+    testCase?.id
+  );
 
   const gatedFormBody = isEditPrefilling ? (
     <div className="tw:flex tw:items-center tw:justify-center tw:py-16">
@@ -379,10 +413,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
         () => scrollToError()
       )}>
-      <div
-        className={`drawer-content-wrapper${
-          showDocPanel ? '' : ' no-doc-panel'
-        }`}>
+      <div className={getDrawerContentWrapperClassName(showDocPanel)}>
         <div className="drawer-form-content">{gatedFormBody}</div>
         {docPanel}
       </div>
@@ -401,14 +432,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     onClose();
   }, [form, onClose]);
 
-  const defaultTitle = isEditMode
-    ? t('label.edit-entity', { entity: getEntityName(testCase) })
-    : t('label.add-entity', { entity: t('label.test-case') });
+  const defaultTitle = getDefaultDrawerTitle(isEditMode, testCase, t);
+  const resolvedTitle = title ?? defaultTitle;
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<FormValues>({
       className: 'test-case-form-drawer',
-      title: title ?? defaultTitle,
+      title: resolvedTitle,
       hookForm: form,
       form: formBody,
       headerActions,
@@ -443,7 +473,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         open={open}
         submitLabel={isEditMode ? t('label.update') : undefined}
         subtitle={t('message.page-sub-header-for-data-quality')}
-        title={title ?? defaultTitle}
+        title={resolvedTitle}
         onClose={handleDrawerDismiss}
         onHintToggle={setShowHint}
         onSubmit={form.handleSubmit(

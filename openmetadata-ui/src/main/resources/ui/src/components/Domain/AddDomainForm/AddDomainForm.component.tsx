@@ -1037,6 +1037,38 @@ const AddDomainForm = ({
     [onSubmit]
   );
 
+  const renderConditionalSections = () => (
+    <>
+      {isDomain && (
+        <div data-testid="domainType">{getField(domainTypeField)}</div>
+      )}
+
+      {isDataProduct && !parentDomain && (
+        <div data-testid="domain-select">{getField(domainField)}</div>
+      )}
+
+      {isDataProduct && (
+        <>
+          <div>{getField(dataProductTypeField)}</div>
+          <div>{getField(visibilityField)}</div>
+          <div>{getField(portfolioPriorityField)}</div>
+        </>
+      )}
+
+      <div>{getField(ownersField)}</div>
+      <div>{getField(expertsField)}</div>
+      {isDataProduct && <div>{getField(reviewersField)}</div>}
+
+      {customPropertiesLoaded && (
+        <AddDomainFormExtensionFields
+          control={form.control}
+          customProperties={customProperties}
+          formFields={extensionFormFields}
+        />
+      )}
+    </>
+  );
+
   return (
     <HookForm
       className="tw:flex tw:flex-col tw:gap-6 tw:**:data-[testid=form-item-label]:font-medium"
@@ -1103,33 +1135,7 @@ const AddDomainForm = ({
         )}
       </FormField>
 
-      {isDomain && (
-        <div data-testid="domainType">{getField(domainTypeField)}</div>
-      )}
-
-      {isDataProduct && !parentDomain && (
-        <div data-testid="domain-select">{getField(domainField)}</div>
-      )}
-
-      {isDataProduct && (
-        <>
-          <div>{getField(dataProductTypeField)}</div>
-          <div>{getField(visibilityField)}</div>
-          <div>{getField(portfolioPriorityField)}</div>
-        </>
-      )}
-
-      <div>{getField(ownersField)}</div>
-      <div>{getField(expertsField)}</div>
-      {isDataProduct && <div>{getField(reviewersField)}</div>}
-
-      {customPropertiesLoaded && (
-        <AddDomainFormExtensionFields
-          control={form.control}
-          customProperties={customProperties}
-          formFields={extensionFormFields}
-        />
-      )}
+      {renderConditionalSections()}
 
       {!isFormInDialog && (
         <Box data-testid="cta-buttons" gap={4} justify="end">

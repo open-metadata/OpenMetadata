@@ -303,7 +303,12 @@ const AddNotificationPage = () => {
     [loadingState]
   );
 
-  if (isLoading || (isEditMode && isEmpty(alert))) {
+  const shouldShowLoader = useMemo(
+    () => isLoading || (isEditMode && isEmpty(alert)),
+    [isLoading, isEditMode, alert]
+  );
+
+  if (shouldShowLoader) {
     return <Loader />;
   }
 

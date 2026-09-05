@@ -58,7 +58,10 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import {
+  ArticleDraft,
+  useArticleDraftStore,
+} from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -96,6 +99,39 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
+
+// Pure helper (module scope): decides whether a locally-stashed draft should be
+// merged into the freshly fetched page, and produces the merged shape. Kept out of
+// fetchKnowledgePage to keep that function's branching low.
+function getDraftMergeCandidate(
+  draft: ArticleDraft | undefined,
+  response: KnowledgePage
+): KnowledgePage | undefined {
+  if (!draft) {
+    return undefined;
+  }
+
+  const descriptionChanged =
+    draft.description !== undefined &&
+    draft.description !== response.description;
+  const displayNameChanged =
+    draft.displayName !== undefined &&
+    draft.displayName !== response.displayName;
+  const hasChanges = descriptionChanged || displayNameChanged;
+  const serverChangedSinceDraft =
+    draft.version !== undefined && draft.version !== response.version;
+
+  if (!hasChanges || serverChangedSinceDraft) {
+    return undefined;
+  }
+
+  return {
+    ...response,
+    description: draft.description ?? response.description,
+    displayName: draft.displayName ?? response.displayName,
+  };
+}
+
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
   isRightPanelOpen?: boolean;
@@ -163,6 +199,39 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  // Persists a locally-stashed draft (created while offline/unsaved) back to the
+  // server once the canonical page has been fetched.
+  const syncDraftedKnowledgePage = async (
+    response: KnowledgePage,
+    pageWithDraft: KnowledgePage
+  ) => {
+    try {
+      const patch = compare(response, pageWithDraft);
+      const saved = await patchKnowledgePage(response.id, patch);
+      setKnowledgePage((prev) => {
+        if (prev?.id !== response.id) {
+          return prev;
+        }
+
+        return {
+          ...(prev ?? response),
+          description: saved.description,
+          displayName: saved.displayName,
+          version: saved.version,
+        };
+      });
+      removeDraft(response.id);
+      if (response.id === knowledgePageIdRef.current) {
+        setContentChangeState(ContentChangeState.SAVED);
+      }
+    } catch (syncError) {
+      showErrorToast(syncError as AxiosError);
+      if (response.id === knowledgePageIdRef.current) {
+        setContentChangeState(ContentChangeState.UN_SAVED);
+      }
+    }
+  };
+
   const fetchKnowledgePage = async (fqn: string) => {
     setIsLoading(true);
     try {
@@ -175,52 +244,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       });
 
       const draft = getDraft(response.id);
-      const descriptionChanged =
-        draft &&
-        draft.description !== undefined &&
-        draft.description !== response.description;
-      const displayNameChanged =
-        draft &&
-        draft.displayName !== undefined &&
-        draft.displayName !== response.displayName;
-      const hasChanges = descriptionChanged || displayNameChanged;
+      const pageWithDraft = getDraftMergeCandidate(draft, response);
 
-      const serverChangedSinceDraft =
-        draft?.version !== undefined && draft.version !== response.version;
-
-      if (hasChanges && !serverChangedSinceDraft) {
-        const pageWithDraft: KnowledgePage = {
-          ...response,
-          description: draft.description ?? response.description,
-          displayName: draft.displayName ?? response.displayName,
-        };
+      if (pageWithDraft) {
         setKnowledgePage(pageWithDraft);
-
-        try {
-          const patch = compare(response, pageWithDraft);
-          const saved = await patchKnowledgePage(response.id, patch);
-          setKnowledgePage((prev) => {
-            if (prev?.id !== response.id) {
-              return prev;
-            }
-
-            return {
-              ...(prev ?? response),
-              description: saved.description,
-              displayName: saved.displayName,
-              version: saved.version,
-            };
-          });
-          removeDraft(response.id);
-          if (response.id === knowledgePageIdRef.current) {
-            setContentChangeState(ContentChangeState.SAVED);
-          }
-        } catch (syncError) {
-          showErrorToast(syncError as AxiosError);
-          if (response.id === knowledgePageIdRef.current) {
-            setContentChangeState(ContentChangeState.UN_SAVED);
-          }
-        }
+        await syncDraftedKnowledgePage(response, pageWithDraft);
       } else {
         setKnowledgePage(response);
         removeDraft(response.id);

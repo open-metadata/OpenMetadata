@@ -95,6 +95,76 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
   );
 };
 
+interface DerivedRelation {
+  relation: NonNullable<KnowledgeGraph3DEdgePanelProps['link']['relation']>;
+  path: string[];
+}
+
+const getDerivedRelation = (
+  link: KnowledgeGraph3DEdgePanelProps['link']
+): DerivedRelation | null => {
+  if (link.derived && link.path?.length && link.relation) {
+    return { relation: link.relation, path: link.path };
+  }
+
+  return null;
+};
+
+const getPillLabelKey = (isDerived: boolean, isOntology: boolean): string => {
+  if (isDerived) {
+    return 'label.ontology-inferred';
+  }
+
+  return isOntology ? 'label.ontology' : 'label.knowledge-graph';
+};
+
+const DerivedRelationBody: FC<
+  DerivedRelation & {
+    t: (key: string) => string;
+  }
+> = ({ relation, path, t }) => (
+  <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-4 tw:pb-4">
+    <p className="kg3d-panel-text-subtle tw:mb-3 tw:text-xs tw:leading-relaxed">
+      <span className="tw:font-semibold" style={{ color: LINK_ONTOLOGY_COLOR }}>
+        {formatDerivedRelation(t, relation)}.
+      </span>{' '}
+      {t('message.knowledge-graph-ontology-inferred')}
+    </p>
+    <DerivationChain path={path} />
+  </div>
+);
+
+const EndpointsBody: FC<{
+  accent: string;
+  relationLabel: string;
+  source: GraphNode3D;
+  target: GraphNode3D;
+  onSelectNode: (node: GraphNode3D) => void;
+  t: (key: string) => string;
+}> = ({ accent, relationLabel, source, target, onSelectNode, t }) => (
+  <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-1 tw:pb-4">
+    <div className="tw:mt-4 tw:mb-1 tw:flex tw:items-center tw:gap-2">
+      <span
+        className="tw:size-2 tw:rounded-sm"
+        style={{ background: accent }}
+      />
+      <span className="kg3d-panel-text-muted tw:text-xs tw:font-semibold tw:tracking-wide tw:uppercase">
+        {relationLabel}
+      </span>
+    </div>
+    <EndpointRow
+      node={source}
+      sublabel={t(TYPE_LABEL_KEY[source.type])}
+      onSelect={onSelectNode}
+    />
+    <EndpointRow
+      node={target}
+      sublabel={t(TYPE_LABEL_KEY[target.type])}
+      onSelect={onSelectNode}
+    />
+  </div>
+);
+
 const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   link,
   source,
@@ -104,7 +174,8 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const isOntology = link.kind === 'ontology';
-  const isDerived = Boolean(link.derived && link.path?.length && link.relation);
+  const derivedRelation = getDerivedRelation(link);
+  const isDerived = Boolean(derivedRelation);
   const accent = isOntology ? LINK_ONTOLOGY_COLOR : LINK_TECHNICAL_COLOR;
   const relationLabel = RELATION_LABEL_KEYS[link.label]
     ? t(RELATION_LABEL_KEYS[link.label])
@@ -129,11 +200,7 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
                 background: hexRgba(accent, 0.14),
                 borderColor: hexRgba(accent, 0.35),
               }}>
-              {isDerived
-                ? t('label.ontology-inferred')
-                : isOntology
-                ? t('label.ontology')
-                : t('label.knowledge-graph')}
+              {t(getPillLabelKey(isDerived, isOntology))}
             </span>
           </div>
         </div>
@@ -146,40 +213,21 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
         />
       </div>
 
-      {isDerived && link.relation && link.path ? (
-        <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-4 tw:pb-4">
-          <p className="kg3d-panel-text-subtle tw:mb-3 tw:text-xs tw:leading-relaxed">
-            <span
-              className="tw:font-semibold"
-              style={{ color: LINK_ONTOLOGY_COLOR }}>
-              {formatDerivedRelation(t, link.relation)}.
-            </span>{' '}
-            {t('message.knowledge-graph-ontology-inferred')}
-          </p>
-          <DerivationChain path={link.path} />
-        </div>
+      {derivedRelation ? (
+        <DerivedRelationBody
+          path={derivedRelation.path}
+          relation={derivedRelation.relation}
+          t={t}
+        />
       ) : (
-        <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-1 tw:pb-4">
-          <div className="tw:mt-4 tw:mb-1 tw:flex tw:items-center tw:gap-2">
-            <span
-              className="tw:size-2 tw:rounded-sm"
-              style={{ background: accent }}
-            />
-            <span className="kg3d-panel-text-muted tw:text-xs tw:font-semibold tw:tracking-wide tw:uppercase">
-              {relationLabel}
-            </span>
-          </div>
-          <EndpointRow
-            node={source}
-            sublabel={t(TYPE_LABEL_KEY[source.type])}
-            onSelect={onSelectNode}
-          />
-          <EndpointRow
-            node={target}
-            sublabel={t(TYPE_LABEL_KEY[target.type])}
-            onSelect={onSelectNode}
-          />
-        </div>
+        <EndpointsBody
+          accent={accent}
+          relationLabel={relationLabel}
+          source={source}
+          t={t}
+          target={target}
+          onSelectNode={onSelectNode}
+        />
       )}
     </div>
   );

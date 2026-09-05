@@ -22,7 +22,13 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
-import React, { ReactNode, useCallback, useEffect, useState } from 'react';
+import React, {
+  ReactNode,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
 import {
@@ -53,6 +59,15 @@ const TASK_COUNTS_STALE_TIME = 30_000;
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
+// Pulls the three per-status totals out of the useQueries results array.
+const getStatusCounts = (
+  countQueries: { data?: number }[]
+): Record<TaskStatusFilter, number> => ({
+  all: countQueries[0].data ?? 0,
+  open: countQueries[1].data ?? 0,
+  closed: countQueries[2].data ?? 0,
+});
+
 // "all" loads every status (no statusGroup param); Open/Closed map to the API.
 const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
   all: undefined,
@@ -72,6 +87,90 @@ export interface TasksTabProps {
   className?: string;
   onCountChange?: (count: number) => void;
 }
+
+interface TasksTabBodyProps {
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  tasks: Task[];
+  selectedTaskId?: string;
+  scrollRef: RefObject<HTMLDivElement>;
+  sentinelRef: RefObject<HTMLDivElement>;
+  setSelectedTaskId: (id: string) => void;
+  handleCommentsChanged: (updated: Task) => void;
+  handleResolved: (resolved: Task) => void;
+  handleTaskUpdated: () => void;
+}
+
+// The two-pane task list + detail panel, rendered once tasks have loaded (or
+// while the initial/subsequent pages are loading).
+const TasksTabBody: React.FC<TasksTabBodyProps> = ({
+  isLoading,
+  isLoadingMore,
+  tasks,
+  selectedTaskId,
+  scrollRef,
+  sentinelRef,
+  setSelectedTaskId,
+  handleCommentsChanged,
+  handleResolved,
+  handleTaskUpdated,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
+      <div
+        className="tw:h-full tw:overflow-y-auto tw:border-r tw:border-utility-gray-blue-100"
+        data-testid="inbox-tasks-scroll"
+        ref={scrollRef}>
+        {isLoading ? (
+          <InboxTaskListSkeleton />
+        ) : (
+          <div className="tw:flex tw:flex-col tw:gap-3 tw:p-3">
+            {tasks.map((task) => (
+              <InboxTaskListItem
+                isActive={selectedTaskId === task.id}
+                key={task.id}
+                task={task}
+                onClick={(selected) => setSelectedTaskId(selected.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <div ref={sentinelRef} />
+        {isLoadingMore && (
+          <div className="tw:flex tw:justify-center tw:py-4">
+            <Loader />
+          </div>
+        )}
+      </div>
+
+      <Box
+        className="tw:h-full tw:w-full tw:overflow-y-auto tw:p-5"
+        direction="col">
+        {isLoading ? (
+          <TaskDetailSkeleton />
+        ) : selectedTaskId ? (
+          <TaskDetailPanel
+            fallbackTask={tasks.find((task) => task.id === selectedTaskId)}
+            key={selectedTaskId}
+            taskId={selectedTaskId}
+            onCommentsChanged={handleCommentsChanged}
+            onResolved={handleResolved}
+            onTaskUpdated={handleTaskUpdated}
+          />
+        ) : (
+          <Box align="center" className="tw:w-full tw:justify-center tw:py-16">
+            <Typography className="tw:text-secondary">
+              {t('label.no-tasks-right-now')}
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+};
 
 const TasksTab: React.FC<TasksTabProps> = ({
   dateRange,
@@ -115,11 +214,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       })
     ),
   });
-  const statusCounts: Record<TaskStatusFilter, number> = {
-    all: countQueries[0].data ?? 0,
-    open: countQueries[1].data ?? 0,
-    closed: countQueries[2].data ?? 0,
-  };
+  const statusCounts = getStatusCounts(countQueries);
 
   const fetchPage = useCallback(
     (after?: string) => {
@@ -324,59 +419,18 @@ const TasksTab: React.FC<TasksTabProps> = ({
       {!isLoading && tasks.length === 0 ? (
         <Box className="tw:relative tw:min-h-0 tw:flex-1">{emptyState}</Box>
       ) : (
-        <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
-          <div
-            className="tw:h-full tw:overflow-y-auto tw:border-r tw:border-utility-gray-blue-100"
-            data-testid="inbox-tasks-scroll"
-            ref={scrollRef}>
-            {isLoading ? (
-              <InboxTaskListSkeleton />
-            ) : (
-              <div className="tw:flex tw:flex-col tw:gap-3 tw:p-3">
-                {tasks.map((task) => (
-                  <InboxTaskListItem
-                    isActive={selectedTaskId === task.id}
-                    key={task.id}
-                    task={task}
-                    onClick={(selected) => setSelectedTaskId(selected.id)}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div ref={sentinelRef} />
-            {isLoadingMore && (
-              <div className="tw:flex tw:justify-center tw:py-4">
-                <Loader />
-              </div>
-            )}
-          </div>
-
-          <Box
-            className="tw:h-full tw:w-full tw:overflow-y-auto tw:p-5"
-            direction="col">
-            {isLoading ? (
-              <TaskDetailSkeleton />
-            ) : selectedTaskId ? (
-              <TaskDetailPanel
-                fallbackTask={tasks.find((task) => task.id === selectedTaskId)}
-                key={selectedTaskId}
-                taskId={selectedTaskId}
-                onCommentsChanged={handleCommentsChanged}
-                onResolved={handleResolved}
-                onTaskUpdated={handleTaskUpdated}
-              />
-            ) : (
-              <Box
-                align="center"
-                className="tw:w-full tw:justify-center tw:py-16">
-                <Typography className="tw:text-secondary">
-                  {t('label.no-tasks-right-now')}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Box>
+        <TasksTabBody
+          handleCommentsChanged={handleCommentsChanged}
+          handleResolved={handleResolved}
+          handleTaskUpdated={handleTaskUpdated}
+          isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          scrollRef={scrollRef}
+          selectedTaskId={selectedTaskId}
+          sentinelRef={sentinelRef}
+          setSelectedTaskId={setSelectedTaskId}
+          tasks={tasks}
+        />
       )}
     </Box>
   );

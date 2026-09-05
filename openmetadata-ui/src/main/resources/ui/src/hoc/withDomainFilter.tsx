@@ -20,6 +20,39 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
+const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
+  if (!queryFilter) {
+    return { query: { bool: {} } };
+  }
+
+  try {
+    const parsed = JSON.parse(queryFilter);
+
+    return parsed?.query ? parsed : { query: { bool: {} } };
+  } catch {
+    return { query: { bool: {} } };
+  }
+};
+
+const collectMustClauses = (
+  filter: QueryFilterInterface
+): QueryFieldInterface[] => {
+  let mustArray: QueryFieldInterface[] = [];
+  const existingMust = filter.query?.bool?.must;
+  if (Array.isArray(existingMust)) {
+    mustArray = [...existingMust];
+  } else if (existingMust) {
+    mustArray = [existingMust];
+  }
+
+  const { bool: _existingBool, ...nonBoolClauses } = filter.query ?? {};
+  for (const [key, value] of Object.entries(nonBoolClauses)) {
+    mustArray.push({ [key]: value } as QueryFieldInterface);
+  }
+
+  return mustArray;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -50,28 +83,12 @@ export const withDomainFilter = (
         config.params?.index === SearchIndex.DOMAIN
           ? 'fullyQualifiedName'
           : 'domains.fullyQualifiedName';
-      let filter: QueryFilterInterface = { query: { bool: {} } };
-      if (config.params?.query_filter) {
-        try {
-          const parsed = JSON.parse(config.params.query_filter as string);
-          filter = parsed?.query ? parsed : { query: { bool: {} } };
-        } catch {
-          filter = { query: { bool: {} } };
-        }
-      }
+      const filter = parseExistingFilter(
+        config.params?.query_filter as string | undefined
+      );
 
-      let mustArray: QueryFieldInterface[] = [];
-      const existingMust = filter.query?.bool?.must;
-      if (Array.isArray(existingMust)) {
-        mustArray = [...existingMust];
-      } else if (existingMust) {
-        mustArray = [existingMust];
-      }
-
-      const { bool: existingBool, ...nonBoolClauses } = filter.query ?? {};
-      for (const [key, value] of Object.entries(nonBoolClauses)) {
-        mustArray.push({ [key]: value } as QueryFieldInterface);
-      }
+      const mustArray = collectMustClauses(filter);
+      const existingBool = filter.query?.bool;
 
       filter.query = {
         bool: {

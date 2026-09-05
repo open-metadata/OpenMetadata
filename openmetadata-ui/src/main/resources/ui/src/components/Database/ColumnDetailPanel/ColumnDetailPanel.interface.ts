@@ -54,3 +54,14 @@ export interface TestCaseStatusCounts {
   aborted: number;
   total: number;
 }
+
+export interface ColumnDetailPanelTitleProps {
+  activeColumn: Column;
+  breadcrumbPath: Column[];
+  entityType: EntityType;
+  hasEditPermission: { displayName: boolean };
+  isPrimaryKey: boolean;
+  onBreadcrumbClick: (column: Column) => void;
+  onClose: () => void;
+  onEditDisplayName: () => void;
+}

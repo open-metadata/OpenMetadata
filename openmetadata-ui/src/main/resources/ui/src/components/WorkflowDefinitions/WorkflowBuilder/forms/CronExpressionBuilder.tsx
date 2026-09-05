@@ -40,21 +40,36 @@ const DAY_MAP: Record<string, string> = {
   '6': 'Saturday',
 };
 
+const isHourlySchedule = (
+  hour: string,
+  dayOfMonth: string,
+  dayOfWeek: string
+): boolean => hour === '*' && dayOfMonth === '*' && dayOfWeek === '*';
+
+const isWeeklyByWeekday = (dayOfMonth: string, dayOfWeek: string): boolean =>
+  dayOfWeek !== '*' && dayOfMonth === '*';
+
+const isMonthlySchedule = (dayOfMonth: string, dayOfWeek: string): boolean =>
+  dayOfMonth === '1' && dayOfWeek === '*';
+
+const isWeeklySchedule = (dayOfMonth: string, dayOfWeek: string): boolean =>
+  dayOfMonth === '*' && dayOfWeek === '0';
+
 const resolveEvery = (
   hour: string,
   dayOfMonth: string,
   dayOfWeek: string
 ): string => {
-  if (hour === '*' && dayOfMonth === '*' && dayOfWeek === '*') {
+  if (isHourlySchedule(hour, dayOfMonth, dayOfWeek)) {
     return 'Hour';
   }
-  if (dayOfWeek !== '*' && dayOfMonth === '*') {
+  if (isWeeklyByWeekday(dayOfMonth, dayOfWeek)) {
     return DAY_MAP[dayOfWeek] || 'Day';
   }
-  if (dayOfMonth === '1' && dayOfWeek === '*') {
+  if (isMonthlySchedule(dayOfMonth, dayOfWeek)) {
     return 'Month';
   }
-  if (dayOfMonth === '*' && dayOfWeek === '0') {
+  if (isWeeklySchedule(dayOfMonth, dayOfWeek)) {
     return 'Week';
   }
 

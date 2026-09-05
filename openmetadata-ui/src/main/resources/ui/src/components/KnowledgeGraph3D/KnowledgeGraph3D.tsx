@@ -83,6 +83,183 @@ const renderWebglFallback = (t: ReturnType<typeof useTranslation>['t']) => (
   </ErrorPlaceHolder>
 );
 
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
+interface FullscreenToggleButtonProps {
+  isFullscreen: boolean;
+  onClick: () => void;
+  t: TFunc;
+}
+
+const FullscreenToggleButton: FC<FullscreenToggleButtonProps> = ({
+  isFullscreen,
+  onClick,
+  t,
+}) => (
+  <button
+    aria-label={t(
+      isFullscreen ? 'label.exit-full-screen' : 'label.full-screen'
+    )}
+    className="kg3d-fullscreen-btn"
+    data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
+    type="button"
+    onClick={onClick}>
+    {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+  </button>
+);
+
+interface KnowledgeGraph3DCaptionProps {
+  caption: {
+    scope: string;
+    summary: string;
+    description: string;
+    truncated: boolean;
+  };
+  t: TFunc;
+}
+
+const KnowledgeGraph3DCaption: FC<KnowledgeGraph3DCaptionProps> = ({
+  caption,
+  t,
+}) => (
+  <div
+    className="knowledge-graph-3d-caption"
+    data-testid="knowledge-graph-3d-caption">
+    <span className="knowledge-graph-3d-scope">{caption.scope}</span>
+    <span className="knowledge-graph-3d-caption-sep">·</span>
+    <span
+      className="knowledge-graph-3d-caption-count"
+      data-testid="knowledge-graph-3d-node-count">
+      {caption.summary}
+    </span>
+    <span className="knowledge-graph-3d-caption-sep">·</span>
+    <span
+      className="knowledge-graph-3d-caption-desc"
+      data-testid="knowledge-graph-3d-caption-desc">
+      {caption.description}
+    </span>
+    {caption.truncated && (
+      <>
+        <span className="knowledge-graph-3d-caption-sep">·</span>
+        <span
+          className="knowledge-graph-3d-caption-truncated"
+          data-testid="knowledge-graph-3d-truncated">
+          {t('message.knowledge-graph-truncated')}
+        </span>
+      </>
+    )}
+  </div>
+);
+
+interface KnowledgeGraph3DStageProps {
+  isEmpty: boolean;
+  t: TFunc;
+  view: KnowledgeGraph3DSceneProps['data'];
+  focusNodeId?: string;
+  gaps: boolean;
+  getLinkTooltip: KnowledgeGraph3DSceneProps['getLinkTooltip'];
+  getNodeTooltip: KnowledgeGraph3DSceneProps['getNodeTooltip'];
+  isFullscreen: boolean;
+  level: Level;
+  registerExportImage: KnowledgeGraph3DSceneProps['registerExportImage'];
+  registerResetView: KnowledgeGraph3DSceneProps['registerResetView'];
+  selectedLinkKey: string | null;
+  selectedNodeId: string | null;
+  handleSelectLink: (link: GraphLink3D | null) => void;
+  handleSelectNode: (node: GraphNode3D | null) => void;
+  handleFullscreen: () => void;
+  selectedEdge: {
+    link: GraphLink3D;
+    source: GraphNode3D;
+    target: GraphNode3D;
+  } | null;
+  selectedNode: GraphNode3D | null;
+  adapted: KnowledgeGraph3DSceneProps['data'];
+  clearSelection: () => void;
+}
+
+const KnowledgeGraph3DStage: FC<KnowledgeGraph3DStageProps> = ({
+  isEmpty,
+  t,
+  view,
+  focusNodeId,
+  gaps,
+  getLinkTooltip,
+  getNodeTooltip,
+  isFullscreen,
+  level,
+  registerExportImage,
+  registerResetView,
+  selectedLinkKey,
+  selectedNodeId,
+  handleSelectLink,
+  handleSelectNode,
+  handleFullscreen,
+  selectedEdge,
+  selectedNode,
+  adapted,
+  clearSelection,
+}) =>
+  isEmpty ? (
+    <ErrorPlaceHolder
+      className="knowledge-graph-3d-empty"
+      icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
+      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      {t('message.no-knowledge-graph-data')}
+    </ErrorPlaceHolder>
+  ) : (
+    <ErrorBoundary fallbackRender={() => renderWebglFallback(t)}>
+      <Suspense fallback={<Loader />}>
+        <KnowledgeGraph3DScene
+          data={view}
+          focusNodeId={focusNodeId}
+          gaps={gaps}
+          getLinkTooltip={getLinkTooltip}
+          getNodeTooltip={getNodeTooltip}
+          isFullscreen={isFullscreen}
+          level={level}
+          registerExportImage={registerExportImage}
+          registerResetView={registerResetView}
+          selectedLinkKey={selectedLinkKey}
+          selectedNodeId={selectedNodeId}
+          onSelectLink={handleSelectLink}
+          onSelectNode={handleSelectNode}
+        />
+      </Suspense>
+
+      <KnowledgeGraph3DLegend />
+
+      <div className="kg3d-hint tw:pointer-events-none tw:absolute tw:top-4 tw:right-4 tw:rounded-lg tw:border tw:border-white/10 tw:px-3 tw:py-2 tw:text-xs">
+        {t('message.knowledge-graph-3d-hint')}
+      </div>
+
+      <FullscreenToggleButton
+        isFullscreen={isFullscreen}
+        t={t}
+        onClick={handleFullscreen}
+      />
+
+      {selectedEdge ? (
+        <KnowledgeGraph3DEdgePanel
+          link={selectedEdge.link}
+          source={selectedEdge.source}
+          target={selectedEdge.target}
+          onClose={clearSelection}
+          onSelectNode={handleSelectNode}
+        />
+      ) : (
+        selectedNode && (
+          <KnowledgeGraph3DPanel
+            graph={adapted}
+            node={selectedNode}
+            onClose={clearSelection}
+            onSelectNode={handleSelectNode}
+          />
+        )
+      )}
+    </ErrorBoundary>
+  );
+
 const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   entity,
   entityType,
@@ -367,101 +544,33 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         onShowColumnsChange={setShowColumns}
       />
 
-      <div
-        className="knowledge-graph-3d-caption"
-        data-testid="knowledge-graph-3d-caption">
-        <span className="knowledge-graph-3d-scope">{caption.scope}</span>
-        <span className="knowledge-graph-3d-caption-sep">·</span>
-        <span
-          className="knowledge-graph-3d-caption-count"
-          data-testid="knowledge-graph-3d-node-count">
-          {caption.summary}
-        </span>
-        <span className="knowledge-graph-3d-caption-sep">·</span>
-        <span
-          className="knowledge-graph-3d-caption-desc"
-          data-testid="knowledge-graph-3d-caption-desc">
-          {caption.description}
-        </span>
-        {caption.truncated && (
-          <>
-            <span className="knowledge-graph-3d-caption-sep">·</span>
-            <span
-              className="knowledge-graph-3d-caption-truncated"
-              data-testid="knowledge-graph-3d-truncated">
-              {t('message.knowledge-graph-truncated')}
-            </span>
-          </>
-        )}
-      </div>
+      <KnowledgeGraph3DCaption caption={caption} t={t} />
 
       <div
         className="knowledge-graph-3d-stage"
         style={{ background: STAGE_BACKDROP }}>
-        {isEmpty ? (
-          <ErrorPlaceHolder
-            className="knowledge-graph-3d-empty"
-            icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            {t('message.no-knowledge-graph-data')}
-          </ErrorPlaceHolder>
-        ) : (
-          <ErrorBoundary fallbackRender={() => renderWebglFallback(t)}>
-            <Suspense fallback={<Loader />}>
-              <KnowledgeGraph3DScene
-                data={view}
-                focusNodeId={focusNodeId}
-                gaps={gaps}
-                getLinkTooltip={getLinkTooltip}
-                getNodeTooltip={getNodeTooltip}
-                isFullscreen={isFullscreen}
-                level={level}
-                registerExportImage={registerExportImage}
-                registerResetView={registerResetView}
-                selectedLinkKey={selectedLinkKey}
-                selectedNodeId={selectedNodeId}
-                onSelectLink={handleSelectLink}
-                onSelectNode={handleSelectNode}
-              />
-            </Suspense>
-
-            <KnowledgeGraph3DLegend />
-
-            <div className="kg3d-hint tw:pointer-events-none tw:absolute tw:top-4 tw:right-4 tw:rounded-lg tw:border tw:border-white/10 tw:px-3 tw:py-2 tw:text-xs">
-              {t('message.knowledge-graph-3d-hint')}
-            </div>
-
-            <button
-              aria-label={t(
-                isFullscreen ? 'label.exit-full-screen' : 'label.full-screen'
-              )}
-              className="kg3d-fullscreen-btn"
-              data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-              type="button"
-              onClick={handleFullscreen}>
-              {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
-            </button>
-
-            {selectedEdge ? (
-              <KnowledgeGraph3DEdgePanel
-                link={selectedEdge.link}
-                source={selectedEdge.source}
-                target={selectedEdge.target}
-                onClose={clearSelection}
-                onSelectNode={handleSelectNode}
-              />
-            ) : (
-              selectedNode && (
-                <KnowledgeGraph3DPanel
-                  graph={adapted}
-                  node={selectedNode}
-                  onClose={clearSelection}
-                  onSelectNode={handleSelectNode}
-                />
-              )
-            )}
-          </ErrorBoundary>
-        )}
+        <KnowledgeGraph3DStage
+          adapted={adapted}
+          clearSelection={clearSelection}
+          focusNodeId={focusNodeId}
+          gaps={gaps}
+          getLinkTooltip={getLinkTooltip}
+          getNodeTooltip={getNodeTooltip}
+          handleFullscreen={handleFullscreen}
+          handleSelectLink={handleSelectLink}
+          handleSelectNode={handleSelectNode}
+          isEmpty={isEmpty}
+          isFullscreen={isFullscreen}
+          level={level}
+          registerExportImage={registerExportImage}
+          registerResetView={registerResetView}
+          selectedEdge={selectedEdge}
+          selectedLinkKey={selectedLinkKey}
+          selectedNode={selectedNode}
+          selectedNodeId={selectedNodeId}
+          t={t}
+          view={view}
+        />
 
         {loading && (
           <div className="knowledge-graph-3d-loading">

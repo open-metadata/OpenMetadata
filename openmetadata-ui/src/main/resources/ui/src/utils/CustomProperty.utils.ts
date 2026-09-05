@@ -160,6 +160,40 @@ export const getCustomPropertyTypeDisplayName = (propertyTypeName?: string) => {
   return baseName.toUpperCase();
 };
 
+const serializeEnumValue = (raw: unknown): unknown => {
+  const values = Array.isArray(raw) ? raw : [raw];
+
+  return values
+    .map(unwrapPickerValue)
+    .filter((value) => !isEmptyExtensionValue(value));
+};
+
+const serializeEntityReferenceList = (
+  raw: unknown
+): SerializedEntityReference[] =>
+  (Array.isArray(raw) ? raw : [raw])
+    .map(unwrapEntityReference)
+    .filter(
+      (reference): reference is SerializedEntityReference =>
+        reference !== undefined
+    );
+
+// Dispatch table replacing a per-type switch: each entry is a pure
+// `raw -> serialized` transform, keyed by `CustomProperty.propertyType.name`.
+// Unknown/unmapped types fall through to the raw value, matching the
+// previous switch's `default` branch.
+const EXTENSION_VALUE_SERIALIZERS: Record<string, (raw: unknown) => unknown> = {
+  integer: toFiniteNumber,
+  number: toFiniteNumber,
+  timestamp: toFiniteNumber,
+  timeInterval: serializeTimeInterval,
+  [TABLE_TYPE_CUSTOM_PROPERTY]: serializeTableValue,
+  enum: serializeEnumValue,
+  entityReference: unwrapEntityReference,
+  entityReferenceList: serializeEntityReferenceList,
+  [HYPERLINK_TYPE_CUSTOM_PROPERTY]: serializeHyperlink,
+};
+
 export const serializeExtensionValue = (
   definition: CustomProperty,
   raw: unknown
@@ -169,53 +203,10 @@ export const serializeExtensionValue = (
   }
 
   const propertyType = definition.propertyType.name;
-  let serializedValue: unknown;
-
-  switch (propertyType) {
-    case 'integer':
-    case 'number':
-    case 'timestamp':
-      serializedValue = toFiniteNumber(raw);
-
-      break;
-    case 'timeInterval':
-      serializedValue = serializeTimeInterval(raw);
-
-      break;
-    case TABLE_TYPE_CUSTOM_PROPERTY:
-      serializedValue = serializeTableValue(raw);
-
-      break;
-    case 'enum': {
-      const values = Array.isArray(raw) ? raw : [raw];
-      serializedValue = values
-        .map(unwrapPickerValue)
-        .filter((value) => !isEmptyExtensionValue(value));
-
-      break;
-    }
-    case 'entityReference':
-      serializedValue = unwrapEntityReference(raw);
-
-      break;
-    case 'entityReferenceList': {
-      const references = (Array.isArray(raw) ? raw : [raw])
-        .map(unwrapEntityReference)
-        .filter(
-          (reference): reference is SerializedEntityReference =>
-            reference !== undefined
-        );
-      serializedValue = references;
-
-      break;
-    }
-    case HYPERLINK_TYPE_CUSTOM_PROPERTY:
-      serializedValue = serializeHyperlink(raw);
-
-      break;
-    default:
-      serializedValue = raw;
-  }
+  const serializer = propertyType
+    ? EXTENSION_VALUE_SERIALIZERS[propertyType]
+    : undefined;
+  const serializedValue = serializer ? serializer(raw) : raw;
 
   return isEmptyExtensionValue(serializedValue) ? undefined : serializedValue;
 };
@@ -307,83 +298,58 @@ interface PageHeader {
   subHeaderParams?: Record<string, string>;
 }
 
+// Lookup table replacing a per-entity-type switch; unmapped entity types fall
+// through to the tables header, matching the previous switch's `default`. Built
+// lazily on first use because ENTITY_PATH is populated through a circular import
+// and is not yet defined when this module is first evaluated.
+let customPropertyPageHeaderByEntityPath:
+  | Record<string, PageHeader>
+  | undefined;
+
+const getCustomPropertyPageHeaderByEntityPath = (): Record<
+  string,
+  PageHeader
+> => {
+  if (!customPropertyPageHeaderByEntityPath) {
+    customPropertyPageHeaderByEntityPath = {
+      [ENTITY_PATH.tables]: PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.topics]: PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.dashboards]: PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.dashboardDataModels]:
+        PAGE_HEADERS.DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.dataProducts]: PAGE_HEADERS.DATA_PRODUCT_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.metrics]: PAGE_HEADERS.METRIC_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.pipelines]: PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.mlmodels]: PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.containers]: PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.searchIndexes]: PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.storedProcedures]:
+        PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.domains]: PAGE_HEADERS.DOMAIN_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.glossaryTerm]: PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.databases]: PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.databaseSchemas]:
+        PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.apiEndpoints]: PAGE_HEADERS.API_ENDPOINT_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.apiCollections]:
+        PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.charts]: PAGE_HEADERS.CHARTS_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.directories]: PAGE_HEADERS.DIRECTORY_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.files]: PAGE_HEADERS.FILE_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.spreadsheets]: PAGE_HEADERS.SPREADSHEET_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.worksheets]: PAGE_HEADERS.WORKSHEET_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.column]: PAGE_HEADERS.COLUMN_CUSTOM_ATTRIBUTES,
+    };
+  }
+
+  return customPropertyPageHeaderByEntityPath;
+};
+
 export const getCustomPropertyPageHeaderFromEntity = (
   entityType: string
-): PageHeader => {
-  switch (entityType) {
-    case ENTITY_PATH.tables:
-      return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.topics:
-      return PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.dashboards:
-      return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.dashboardDataModels:
-      return PAGE_HEADERS.DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.dataProducts:
-      return PAGE_HEADERS.DATA_PRODUCT_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.metrics:
-      return PAGE_HEADERS.METRIC_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.pipelines:
-      return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.mlmodels:
-      return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.containers:
-      return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.searchIndexes:
-      return PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.storedProcedures:
-      return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.domains:
-      return PAGE_HEADERS.DOMAIN_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.glossaryTerm:
-      return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.databases:
-      return PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.databaseSchemas:
-      return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.apiEndpoints:
-      return PAGE_HEADERS.API_ENDPOINT_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.apiCollections:
-      return PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.charts:
-      return PAGE_HEADERS.CHARTS_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.directories:
-      return PAGE_HEADERS.DIRECTORY_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.files:
-      return PAGE_HEADERS.FILE_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.spreadsheets:
-      return PAGE_HEADERS.SPREADSHEET_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.worksheets:
-      return PAGE_HEADERS.WORKSHEET_CUSTOM_ATTRIBUTES;
-
-    case ENTITY_PATH.column:
-      return PAGE_HEADERS.COLUMN_CUSTOM_ATTRIBUTES;
-
-    default:
-      return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
-  }
-};
+): PageHeader =>
+  getCustomPropertyPageHeaderByEntityPath()[entityType] ??
+  PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
 
 export const formatTableCellValue = (value: unknown): string => {
   if (value === null || value === undefined) {

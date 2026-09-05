@@ -71,6 +71,74 @@ import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
+const renderDataProductNameCell = (
+  entity: DataProduct,
+  onEntityClick?: (entity: DataProduct) => void
+): ReactNode => {
+  const entityName = getEntityName(entity);
+  const showName =
+    entity.displayName && entity.name && entity.displayName !== entity.name;
+
+  const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    onEntityClick?.(entity);
+  };
+
+  return (
+    <Box
+      align="center"
+      className={NAME_CELL_CLIP_CLASS}
+      direction="row"
+      gap={3}
+      onClick={handleNameClick}>
+      <Avatar size="md" {...getEntityAvatarProps(entity)} />
+      <Box className="tw:min-w-0" direction="col">
+        <Typography
+          className={CLIPPED_NAME_CLASS}
+          ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+          size="text-sm"
+          weight="medium">
+          {entityName}
+        </Typography>
+        {showName && (
+          <Typography
+            className={CLIPPED_NAME_CLASS}
+            ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+            size="text-xs">
+            {entity.name}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
+  const domains = entity.domains;
+  if (!domains?.length) {
+    return <Typography size="text-sm">{NO_DATA}</Typography>;
+  }
+  const domain = domains[0];
+
+  return (
+    <Box
+      align="center"
+      className={COMPACT_CELL_CLIP_CLASS}
+      direction="row"
+      gap={1}>
+      <Globe01 size={16} style={{ flexShrink: 0 }} />
+      <Typography
+        className={CLIPPED_NAME_CLASS}
+        ellipsis={{
+          tooltip: renderBreakableTooltip(domain.displayName || domain.name),
+        }}
+        size="text-sm">
+        {domain.displayName || domain.name}
+      </Typography>
+    </Box>
+  );
+};
+
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
@@ -168,46 +236,11 @@ const DataProductListPage = ({
   const renderDataProductCell = useCallback(
     (entity: DataProduct, columnId: string): ReactNode => {
       switch (columnId) {
-        case 'name': {
-          const entityName = getEntityName(entity);
-          const showName =
-            entity.displayName &&
-            entity.name &&
-            entity.displayName !== entity.name;
-
-          const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
-            event.stopPropagation();
-            dataProductListing.actionHandlers.onEntityClick?.(entity);
-          };
-
-          return (
-            <Box
-              align="center"
-              className={NAME_CELL_CLIP_CLASS}
-              direction="row"
-              gap={3}
-              onClick={handleNameClick}>
-              <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box className="tw:min-w-0" direction="col">
-                <Typography
-                  className={CLIPPED_NAME_CLASS}
-                  ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
-                  size="text-sm"
-                  weight="medium">
-                  {entityName}
-                </Typography>
-                {showName && (
-                  <Typography
-                    className={CLIPPED_NAME_CLASS}
-                    ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
-                    size="text-xs">
-                    {entity.name}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
+        case 'name':
+          return renderDataProductNameCell(
+            entity,
+            dataProductListing.actionHandlers.onEntityClick
           );
-        }
         case 'owners':
           return (
             <OwnerLabel
@@ -219,33 +252,8 @@ const DataProductListPage = ({
           );
         case 'glossaryTerms':
           return <TagBadgeList size="lg" tags={getGlossaryTags(entity.tags)} />;
-        case 'domains': {
-          const domains = entity.domains;
-          if (!domains?.length) {
-            return <Typography size="text-sm">{NO_DATA}</Typography>;
-          }
-          const domain = domains[0];
-
-          return (
-            <Box
-              align="center"
-              className={COMPACT_CELL_CLIP_CLASS}
-              direction="row"
-              gap={1}>
-              <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography
-                className={CLIPPED_NAME_CLASS}
-                ellipsis={{
-                  tooltip: renderBreakableTooltip(
-                    domain.displayName || domain.name
-                  ),
-                }}
-                size="text-sm">
-                {domain.displayName || domain.name}
-              </Typography>
-            </Box>
-          );
-        }
+        case 'domains':
+          return renderDataProductDomainCell(entity);
         case 'tags':
           return (
             <TagBadgeList size="sm" tags={getClassificationTags(entity.tags)} />
@@ -398,7 +406,7 @@ const DataProductListPage = ({
     permissions.dataProduct?.Create,
   ]);
 
-  return (
+  const renderHeader = () => (
     <>
       {!renderPageHeader && !isAiMode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
@@ -412,6 +420,12 @@ const DataProductListPage = ({
             search: headerSearch,
           })
         : pageHeader}
+    </>
+  );
+
+  return (
+    <>
+      {renderHeader()}
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
