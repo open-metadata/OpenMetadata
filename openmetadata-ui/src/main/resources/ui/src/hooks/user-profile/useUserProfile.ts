@@ -91,13 +91,16 @@ export const useUserProfile = ({
     } catch (error) {
       // Profile images are best-effort. Cache a placeholder on any read failure so avatar loaders
       // can settle and we do not keep retrying a denied/missing profile forever.
+      const errorStatus = (error as AxiosError)?.response?.status;
+      const isCacheableErrorStatus =
+        errorStatus === ClientErrors.NOT_FOUND ||
+        errorStatus === ClientErrors.FORBIDDEN ||
+        errorStatus === ClientErrors.UNAUTHORIZED ||
+        errorStatus === ClientErrors.BAD_REQUEST;
       if (
-        (error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND ||
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN ||
-        (error as AxiosError)?.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error as AxiosError)?.response?.status === ClientErrors.BAD_REQUEST ||
-        (error as AxiosError)?.response?.status === ClientErrors.SERVER_ERROR ||
-        (error as AxiosError)?.response?.status === undefined
+        isCacheableErrorStatus ||
+        errorStatus === ClientErrors.SERVER_ERROR ||
+        errorStatus === undefined
       ) {
         updateUserProfilePics({
           id: cacheKey,

@@ -766,13 +766,9 @@ const DomainTreeView = ({
 
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      if (
-        !hasMore ||
-        isLoadingMore ||
-        isHierarchyLoading ||
-        searchQuery ||
-        hasActiveFilters
-      ) {
+      const isScrollLoadBlocked =
+        !hasMore || isLoadingMore || isHierarchyLoading;
+      if (isScrollLoadBlocked || searchQuery || hasActiveFilters) {
         return;
       }
 

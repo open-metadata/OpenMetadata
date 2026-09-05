@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { test } from '@playwright/test';
 import { MetricClass } from '../../../support/entity/MetricClass';
+import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

@@ -354,13 +354,8 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      if (
-        isInView &&
-        hasMore &&
-        !isLoadingMore &&
-        !searchQuery &&
-        hasViewPermission
-      ) {
+      const canLoadMore = isInView && hasMore && !isLoadingMore;
+      if (canLoadMore && !searchQuery && hasViewPermission) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);

@@ -1308,6 +1308,18 @@ const TableV2 = <T extends object>(
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const showCustomPagination =
+    customPaginationProps && customPaginationProps.showPagination;
+  const showClientPagination =
+    clientPagination &&
+    !(
+      clientPagination.hideOnSinglePage &&
+      // Server-paged: the rows in hand are one page by definition, so only
+      // the reported total says whether there is anything to page to.
+      (clientPagination.serverTotal ?? filteredDataSource.length) <=
+        clientPagination.pageSize
+    );
+
   return (
     <div
       className={classNames(
@@ -1710,18 +1722,11 @@ const TableV2 = <T extends object>(
         </div>
       )}
 
-      {customPaginationProps && customPaginationProps.showPagination ? (
+      {showCustomPagination ? (
         <div>
           <NextPrevious {...customPaginationProps} />
         </div>
-      ) : clientPagination &&
-        !(
-          clientPagination.hideOnSinglePage &&
-          // Server-paged: the rows in hand are one page by definition, so only
-          // the reported total says whether there is anything to page to.
-          (clientPagination.serverTotal ?? filteredDataSource.length) <=
-            clientPagination.pageSize
-        ) ? (
+      ) : showClientPagination ? (
         <div>
           {/*
             The core pager rather than NextPrevious: it navigates by page
