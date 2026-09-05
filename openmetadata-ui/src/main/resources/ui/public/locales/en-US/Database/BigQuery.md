@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the BigQuery connector.
 
 ## Requirements
 
-We need to enable the Data Catalog API and use an account with a specific set of minnimum permissions:
+We need to enable the Data Catalog API and use an account with a specific set of minimum permissions:
 
 ### Data Catalog API Permissions
 
