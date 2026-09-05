@@ -18,6 +18,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import EntityMarkdownLink from './EntityMarkdownLink/EntityMarkdownLink';
 import EntityPill from './EntityPill/EntityPill';
+import MarkdownCaveat from './MarkdownCaveat/MarkdownCaveat';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
@@ -88,6 +89,14 @@ export const preprocessMarkdownText = (text: string): string => {
     (_, content) => `\`\`\`card\n${content.trim()}\n\`\`\``
   );
 
+  // Convert :::caveat[type] ... ::: directive blocks into fenced code blocks, carrying the
+  // caveat kind in the fence info string so the custom `pre` renderer can style by it.
+  processedText = processedText.replace(
+    /:::caveat\[(\w+)\]([\s\S]*?):::/g,
+    (_, caveatType, content) =>
+      `\`\`\`caveat-${caveatType}\n${content.trim()}\n\`\`\``
+  );
+
   // Convert :::pills ... ::: directive blocks into fenced code blocks
   // so the custom `pre` renderer can detect and render them as entity pill rows.
   // Handles both multi-line (:::pills\n...\n:::) and inline (:::pills ... :::) forms.
@@ -123,6 +132,36 @@ export const getCustomMarkdownComponents = (
         const className = codeElement.props?.className || '';
         const match = /language-(\w+)/.exec(className);
         const language = match ? match[1] : '';
+
+        if (language === 'caveat') {
+          const codeChildren = codeElement.props?.children;
+          const codeString = Array.isArray(codeChildren)
+            ? codeChildren.join('')
+            : String(codeChildren || '');
+          // `language-(\w+)` stops at the hyphen, so the kind is read off the full class.
+          const caveatType =
+            /language-caveat-(\w+)/.exec(className)?.[1] ?? 'assumption';
+
+          if (!codeString.trim()) {
+            return null;
+          }
+
+          return (
+            <MarkdownCaveat caveatType={caveatType}>
+              {depth >= 3 ? (
+                codeString.trim()
+              ) : (
+                <ReactMarkdown
+                  components={getCustomMarkdownComponents(
+                    undefined,
+                    depth + 1
+                  )}>
+                  {codeString.trim()}
+                </ReactMarkdown>
+              )}
+            </MarkdownCaveat>
+          );
+        }
 
         if (language === 'pills') {
           const codeChildren = codeElement.props?.children;
