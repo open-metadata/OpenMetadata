@@ -38,7 +38,14 @@ import {
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
+
+// Toggle owns its label markup, so scope the typography override here to keep
+// the shared AI menu styling unchanged while matching the Classic mode row.
+const CLASSIC_THEME_SWITCHER_CLASS =
+  'tw:w-full tw:pl-6 tw:[&>div>p]:text-xs tw:[&>div>p]:font-semibold';
+
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -363,6 +370,17 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
       ...navbarUtilClassBase.getUserProfileExtraItems(),
+      {
+        type: 'divider',
+      },
+      // A group label keeps the embedded switch non-selectable so Ant Design
+      // does not close the dropdown while the user previews the new theme.
+      {
+        key: 'theme-mode',
+        icon: '',
+        label: <ThemeModeSwitcher className={CLASSIC_THEME_SWITCHER_CLASS} />,
+        type: 'group',
+      },
       {
         type: 'divider',
       },

@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -31,7 +32,7 @@ jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
   default: {
     getUserProfileExtraItems: jest
       .fn()
-      .mockReturnValue([{ key: 'app-mode', label: 'app-mode-extra-item' }]),
+      .mockReturnValue([{ key: 'extra-item', label: 'app-mode-extra-item' }]),
   },
 }));
 const translationState = {
@@ -129,7 +130,9 @@ const createMockStoreData = (overrides = {}) => ({
 });
 
 const MockWrapper = ({ children }: { children: React.ReactNode }) => (
-  <BrowserRouter>{children}</BrowserRouter>
+  <BrowserRouter>
+    <ThemeProvider>{children}</ThemeProvider>
+  </BrowserRouter>
 );
 
 describe('UserProfileIcon', () => {
@@ -139,6 +142,12 @@ describe('UserProfileIcon', () => {
     jest.clearAllMocks();
     mockUseApplicationStore.mockReturnValue(createMockStoreData());
     translationState.language = 'en';
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    document.documentElement.classList.remove('dark-mode');
+    document.documentElement.style.removeProperty('color-scheme');
   });
 
   const openDropdown = () => {
@@ -278,5 +287,42 @@ describe('UserProfileIcon', () => {
     expect(screen.getByText('Rollen')).toBeInTheDocument();
     expect(screen.getByText('Teams')).toBeInTheDocument();
     expect(screen.getByText('Abmelden')).toBeInTheDocument();
+  });
+
+  it('updates the theme from the profile dropdown', async () => {
+    localStorage.setItem('ui-theme', 'light');
+
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    const dropdownTrigger = openDropdown();
+
+    const switcher = await screen.findByRole('switch', {
+      name: 'label.dark-mode',
+    });
+    const profileDropdown = screen
+      .getByText('label.logout')
+      .closest('.profile-dropdown');
+    const switcherRow = switcher.closest('label');
+    const themeMenuGroup = switcher.closest('.ant-dropdown-menu-item-group');
+
+    expect(profileDropdown).toContainElement(switcher);
+    expect(switcherRow).toHaveClass(
+      'tw:pl-6',
+      'tw:[&>div>p]:text-xs',
+      'tw:[&>div>p]:font-semibold'
+    );
+    expect(themeMenuGroup?.previousElementSibling).toHaveClass(
+      'ant-dropdown-menu-item-divider'
+    );
+
+    fireEvent.click(switcher);
+
+    expect(switcher).toBeChecked();
+    expect(dropdownTrigger).toHaveClass('ant-dropdown-open');
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 });
