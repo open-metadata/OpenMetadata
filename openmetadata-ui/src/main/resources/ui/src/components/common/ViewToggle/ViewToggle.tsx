@@ -28,7 +28,7 @@ interface ViewToggleProps {
   views?: ViewMode[];
 }
 
-const DEFAULT_VIEWS: ViewMode[] = [ViewMode.Table, ViewMode.Card];
+export const DEFAULT_VIEWS: ViewMode[] = [ViewMode.Table, ViewMode.Card];
 
 const getIconElement = (mode: ViewMode, isActive: boolean) => {
   const iconClass = `tw:size-4 ${

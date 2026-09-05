@@ -41,12 +41,19 @@ import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveS
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { usePersistedViewMode } from '../common/ViewToggle/usePersistedViewMode';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
+
+// Fixes #31776 -- remembers the user's last-chosen view (table, grid, or
+// tree) as their default for next time, via the shared usePersistedViewMode
+// hook (see its JSDoc for the general contract).
+const DOMAIN_VIEW_STORAGE_KEY = 'domainList.viewMode.v1';
+const DOMAIN_VIEWS = [ViewMode.Table, ViewMode.Card, ViewMode.Tree];
 
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
@@ -127,7 +134,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const [view, handleViewChange] = usePersistedViewMode(
+    DOMAIN_VIEW_STORAGE_KEY,
+    DOMAIN_VIEWS
+  );
   const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
@@ -322,8 +332,8 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
-              views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
-              onChange={setView}
+              views={DOMAIN_VIEWS}
+              onChange={handleViewChange}
             />
             {deleteIconButton}
           </Box>

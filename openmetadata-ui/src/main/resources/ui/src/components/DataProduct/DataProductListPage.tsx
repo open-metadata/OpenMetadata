@@ -24,14 +24,7 @@ import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import {
-  FC,
-  MouseEvent,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, MouseEvent, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -65,11 +58,18 @@ import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.inter
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
+import { usePersistedViewMode } from '../common/ViewToggle/usePersistedViewMode';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
+
+// Fixes #31776 -- remembers the user's last-chosen view (table or grid) as
+// their default for next time, via the shared usePersistedViewMode hook
+// (see its JSDoc for the general contract).
+const DATA_PRODUCT_VIEW_STORAGE_KEY = 'dataProductList.viewMode.v1';
+const DATA_PRODUCT_VIEWS = [ViewMode.Table, ViewMode.Card];
 
 const DataProductListPage = ({
   renderPageHeader,
@@ -150,7 +150,10 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const [view, handleViewChange] = usePersistedViewMode(
+    DATA_PRODUCT_VIEW_STORAGE_KEY,
+    DATA_PRODUCT_VIEWS
+  );
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -429,7 +432,7 @@ const DataProductListPage = ({
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}
