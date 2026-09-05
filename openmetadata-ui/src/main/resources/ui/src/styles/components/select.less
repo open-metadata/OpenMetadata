@@ -33,8 +33,15 @@
 .ant-suggestion-dropdown {
   min-width: 200px !important;
 }
+.ant-select-item {
+  color: var(--om-color-text-primary);
+}
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: var(--om-color-interactive-hover);
+}
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: var(--ant-primary-1);
+  color: var(--om-color-text-primary);
+  background-color: var(--om-color-interactive-selected);
 }
 .ant-select-tree-title {
   white-space: nowrap;
@@ -60,5 +67,12 @@
 
 // need to add border for dropdown globally as per new design system
 .ant-select-dropdown {
-  border: 1px solid @grey-300;
+  color: var(--om-color-text-primary);
+  background-color: var(--om-color-bg-primary);
+  border: 1px solid var(--om-color-border-primary);
+}
+
+.ant-select-arrow,
+.ant-select-clear {
+  color: var(--om-color-text-secondary);
 }

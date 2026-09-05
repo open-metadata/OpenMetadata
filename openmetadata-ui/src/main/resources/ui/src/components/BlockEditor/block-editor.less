@@ -13,14 +13,14 @@
 @import (reference) '../../styles/variables.less';
 
 @border-radius: var(--om-radius-md);
-@border-color: var(--om-legacy-color-e8e8ed);
-@markdown-bg-color: var(--om-legacy-color-f8f8fa);
-@hover-bg: var(--om-legacy-color-0-0-0-0-02);
-@callout-bg: var(--om-legacy-color-f8f8fa);
-@callout-warning-bg: var(--om-legacy-color-fff3dc);
-@callout-info-bg: @primary-1;
-@callout-danger-bg: var(--om-legacy-color-255-76-59-0-2);
-@callout-border: var(--om-legacy-color-afafc1);
+@border-color: var(--om-color-border-primary);
+@markdown-bg-color: var(--om-color-bg-secondary);
+@hover-bg: var(--om-color-interactive-hover);
+@callout-bg: var(--om-color-bg-secondary);
+@callout-warning-bg: var(--om-color-bg-warning);
+@callout-info-bg: var(--om-color-bg-brand);
+@callout-danger-bg: var(--om-color-bg-error);
+@callout-border: var(--om-color-border-primary);
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -243,7 +243,7 @@
   }
 
   &.block-editor-wrapper--bar-menu {
-    border: 1px solid var(--om-legacy-color-dadde6);
+    border: 1px solid var(--om-color-border-primary);
     border-radius: var(--om-radius-sm);
 
     // do not show drag handle and block handle in bar menu mode

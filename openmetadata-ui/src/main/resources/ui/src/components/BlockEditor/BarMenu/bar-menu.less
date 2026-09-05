@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-@button-bg-color-hover: var(--om-legacy-color-ecedee);
-@button-bg-color: var(--om-legacy-color-e8e8e9);
-@format-group-separator-color: var(--om-color-gray-neutral-200);
-@menu-bg-color: var(--om-legacy-color-f7f9fc);
+@button-bg-color-hover: var(--om-color-interactive-hover);
+@button-bg-color: var(--om-color-interactive-selected);
+@format-group-separator-color: var(--om-color-border-secondary);
+@menu-bg-color: var(--om-color-bg-secondary);
 
 .bar-menu-wrapper {
   border-top-left-radius: var(--om-radius-sm);
@@ -36,6 +36,7 @@
       background-color: transparent;
       border: none;
       border-radius: var(--om-radius-md);
+      color: var(--om-color-text-secondary);
       cursor: pointer;
 
       &:hover {
@@ -54,5 +55,11 @@
 
   .bar-menu-wrapper--format-group--separator {
     border-left: 1px solid @format-group-separator-color;
+  }
+}
+
+.dark-mode {
+  .bar-menu-wrapper--format--button--icon {
+    filter: invert(1);
   }
 }
