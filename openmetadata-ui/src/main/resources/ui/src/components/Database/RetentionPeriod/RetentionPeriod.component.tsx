@@ -35,6 +35,17 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
+// Format a single duration unit with correct pluralization, e.g. (2, 'year') -> '2 years'
+const formatDurationUnit = (value: number | undefined, unit: string) => {
+  if (!value) {
+    return '';
+  }
+
+  const suffix = value > 1 ? 's' : '';
+
+  return `${value} ${unit}${suffix}`;
+};
+
 // Helper function to detect and format ISO 8601 duration
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {
@@ -47,27 +58,13 @@ const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (isoDurationRegex.test(retentionPeriod)) {
     const duration = Duration.fromISO(retentionPeriod);
 
-    const years = duration.years
-      ? `${duration.years} year${duration.years > 1 ? 's' : ''}`
-      : '';
-    const months = duration.months
-      ? `${duration.months} month${duration.months > 1 ? 's' : ''}`
-      : '';
-    const weeks = duration.weeks
-      ? `${duration.weeks} week${duration.weeks > 1 ? 's' : ''}`
-      : '';
-    const days = duration.days
-      ? `${duration.days} day${duration.days > 1 ? 's' : ''}`
-      : '';
-    const hours = duration.hours
-      ? `${duration.hours} hour${duration.hours > 1 ? 's' : ''}`
-      : '';
-    const minutes = duration.minutes
-      ? `${duration.minutes} minute${duration.minutes > 1 ? 's' : ''}`
-      : '';
-    const seconds = duration.seconds
-      ? `${duration.seconds} second${duration.seconds > 1 ? 's' : ''}`
-      : '';
+    const years = formatDurationUnit(duration.years, 'year');
+    const months = formatDurationUnit(duration.months, 'month');
+    const weeks = formatDurationUnit(duration.weeks, 'week');
+    const days = formatDurationUnit(duration.days, 'day');
+    const hours = formatDurationUnit(duration.hours, 'hour');
+    const minutes = formatDurationUnit(duration.minutes, 'minute');
+    const seconds = formatDurationUnit(duration.seconds, 'second');
 
     const formattedDuration = [
       years,

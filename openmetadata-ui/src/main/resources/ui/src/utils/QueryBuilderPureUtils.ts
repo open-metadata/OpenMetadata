@@ -88,13 +88,14 @@ export const getSelectEqualsNotEqualsProperties = (
 ) => {
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
-  const valueType = isEqualNotEqualOp
-    ? isBoolean(value)
-      ? ['boolean']
-      : ['text']
-    : Array.isArray(value)
+  const equalityValueType = isBoolean(value) ? ['boolean'] : ['text'];
+  const membershipValueType = Array.isArray(value)
     ? ['multiselect']
     : ['select'];
+  const valueType = isEqualNotEqualOp ? equalityValueType : membershipValueType;
+  const listValues = Array.isArray(value)
+    ? value.map((item) => ({ key: item, value: item, children: item }))
+    : [{ key: value, value, children: value }];
 
   return {
     [id]: {
@@ -106,11 +107,7 @@ export const getSelectEqualsNotEqualsProperties = (
         valueSrc: ['value'],
         operatorOptions: null,
         valueType: valueType,
-        asyncListValues: isEqualNotEqualOp
-          ? undefined
-          : Array.isArray(value)
-          ? value.map((item) => ({ key: item, value: item, children: item }))
-          : [{ key: value, value, children: value }],
+        asyncListValues: isEqualNotEqualOp ? undefined : listValues,
       },
       id,
       path: [...parentPath, id],

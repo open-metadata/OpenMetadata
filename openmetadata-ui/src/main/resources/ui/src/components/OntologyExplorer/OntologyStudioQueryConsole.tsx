@@ -163,11 +163,15 @@ const OntologyStudioQueryConsole = ({
           : await runSparqlQuery(queryParams);
         setResult(nextResult);
       } catch (error) {
-        const message = isAxiosError(error)
-          ? typeof error.response?.data === 'string'
-            ? error.response.data
-            : error.message
-          : (error as Error).message;
+        let message: string;
+        if (isAxiosError(error)) {
+          message =
+            typeof error.response?.data === 'string'
+              ? error.response.data
+              : error.message;
+        } else {
+          message = (error as Error).message;
+        }
         setErrorMessage(message);
         showErrorToast(message);
       } finally {
@@ -303,6 +307,10 @@ const OntologyStudioQueryConsole = ({
     [deleteQueryTemplate]
   );
 
+  const templateSaveTitle = activeQueryId?.startsWith('template-')
+    ? t('label.update-sample-query')
+    : t('label.save-as-sample-query');
+
   return (
     <>
       <div
@@ -371,15 +379,17 @@ const OntologyStudioQueryConsole = ({
           <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
             {t('label.installation-queries')}
           </h3>
-          {isLoading ? (
+          {isLoading && (
             <p className="tw:m-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
               {t('label.loading')}
             </p>
-          ) : queryTemplates.length === 0 ? (
+          )}
+          {!isLoading && queryTemplates.length === 0 && (
             <p className="tw:m-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
               {t('message.no-query-available')}
             </p>
-          ) : (
+          )}
+          {!isLoading && queryTemplates.length > 0 && (
             <div
               className="tw:flex tw:flex-col tw:gap-1"
               data-testid="ontology-query-template-list">
@@ -609,9 +619,7 @@ const OntologyStudioQueryConsole = ({
             data-testid="ontology-query-save-modal"
             title={
               saveTarget === 'template'
-                ? activeQueryId?.startsWith('template-')
-                  ? t('label.update-sample-query')
-                  : t('label.save-as-sample-query')
+                ? templateSaveTitle
                 : t('label.save-query')
             }
             width={480}

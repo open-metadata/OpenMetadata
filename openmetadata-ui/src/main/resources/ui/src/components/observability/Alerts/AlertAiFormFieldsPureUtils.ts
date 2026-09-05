@@ -57,8 +57,13 @@ export const isWebhookDestination = (
   destinationType === SubscriptionType.Webhook;
 
 /** Normalizes API string/string-array values into arrays for multi-value inputs. */
-export const getStringArrayValue = (value?: string | string[]) =>
-  Array.isArray(value) ? value : value ? [value] : [];
+export const getStringArrayValue = (value?: string | string[]) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
+};
 
 /** Splits comma-separated text input into the string-array payload expected by alert rules. */
 export const getCommaSeparatedStringArray = (value: string) =>
@@ -85,7 +90,7 @@ export const getCommaSeparatedValues = (value?: string | string[]) =>
 
 /** Normalizes scalar or array values for Core UI multi-select selected item state. */
 export const getListValue = (value?: string | string[]) =>
-  Array.isArray(value) ? value : value ? [value] : [];
+  getStringArrayValue(value);
 
 /** Reads the selected alert source from create/edit form values or existing alert details. */
 export const getAlertAiResources = (

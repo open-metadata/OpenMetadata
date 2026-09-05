@@ -145,6 +145,8 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
             );
           }
 
+          const dimmedEdgeOpacity = isConnectionModalOpen ? 0.15 : 0.3;
+
           return {
             ...edge,
             type: edge.type || 'straight',
@@ -156,7 +158,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
             style: {
               strokeWidth: edge.style?.strokeWidth || 2,
               ...edge.style,
-              opacity: shouldDimEdge ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
+              opacity: shouldDimEdge ? dimmedEdgeOpacity : 1,
               transition: 'opacity 0.3s ease',
             },
             labelStyle: {
@@ -200,11 +202,13 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
             nodeCursor = 'pointer';
           }
 
+          const dimmedNodeOpacity = isConnectionModalOpen ? 0.15 : 0.3;
+
           return {
             ...node,
             style: {
               ...node.style,
-              opacity: shouldDimNode ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
+              opacity: shouldDimNode ? dimmedNodeOpacity : 1,
               transition: 'opacity 0.3s ease',
               cursor: nodeCursor,
             },

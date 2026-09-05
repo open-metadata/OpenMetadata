@@ -122,11 +122,14 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           return;
         }
 
-        const domainsToSave = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : isEmpty(selectedDomain)
-          ? []
-          : [selectedDomain];
+        let domainsToSave: EntityReference[];
+        if (Array.isArray(selectedDomain)) {
+          domainsToSave = selectedDomain;
+        } else if (isEmpty(selectedDomain)) {
+          domainsToSave = [];
+        } else {
+          domainsToSave = [selectedDomain];
+        }
 
         // Create JSON patch
         const jsonPatch = compare(entityDetailsResponse, {

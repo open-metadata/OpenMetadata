@@ -617,11 +617,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
   // tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
   // Incidents fall back to the derived test case's Issues tab.
-  const aboutPath = aboutRef?.fullyQualifiedName
-    ? getTaskDetailPathFromTask(task)
-    : incidentTestCaseFqn.includes('.')
+  const incidentPath = incidentTestCaseFqn.includes('.')
     ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
     : '';
+  const aboutPath = aboutRef?.fullyQualifiedName
+    ? getTaskDetailPathFromTask(task)
+    : incidentPath;
   // Highlight the title token (display name, raw name, or last FQN segment)
   // that carries the asset, so both "…dim_address_clean" and
   // "…dim_address_clean_changed" colour the whole trailing identifier.
@@ -641,6 +642,18 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     : null;
   const assetIndex = assetMatch?.index ?? -1;
   const assetEnd = assetMatch ? assetMatch.index + assetMatch.length : -1;
+  // No asset token in the title — keep the whole title in normal colour
+  // (still clickable), so the header never turns fully blue.
+  const plainTitleNode = aboutPath ? (
+    <Link
+      className="tw:text-inherit tw:no-underline! tw:hover:underline!"
+      data-testid="task-about-link"
+      to={aboutPath}>
+      {titleText}
+    </Link>
+  ) : (
+    titleText
+  );
   const titleNode =
     assetIndex >= 0 ? (
       <>
@@ -653,17 +666,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         </Link>
         {titleText.slice(assetEnd)}
       </>
-    ) : aboutPath ? (
-      // No asset token in the title — keep the whole title in normal colour
-      // (still clickable), so the header never turns fully blue.
-      <Link
-        className="tw:text-inherit tw:no-underline! tw:hover:underline!"
-        data-testid="task-about-link"
-        to={aboutPath}>
-        {titleText}
-      </Link>
     ) : (
-      titleText
+      plainTitleNode
     );
   // Not using Typography's `ellipsis` here: it wraps content in a pressable and
   // stringifies children, which would drop the asset Link. A plain line-clamp
@@ -737,29 +741,29 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               );
             }
 
+            const nonRejectColor =
+              approve || action.id === 'resolve' ? 'primary' : 'secondary';
+            const buttonColor = reject
+              ? 'secondary-destructive'
+              : nonRejectColor;
+            const nonApproveTestId = reject
+              ? 'task-reject'
+              : `task-transition-${action.id}`;
+            const buttonTestId = approve ? 'task-approve' : nonApproveTestId;
+            const nonApproveIcon = reject ? (
+              <XCircle height={16} width={16} />
+            ) : undefined;
+            const buttonIcon = approve ? (
+              <CheckCircle height={16} width={16} />
+            ) : (
+              nonApproveIcon
+            );
+
             return (
               <Button
-                color={
-                  reject
-                    ? 'secondary-destructive'
-                    : approve || action.id === 'resolve'
-                    ? 'primary'
-                    : 'secondary'
-                }
-                data-testid={
-                  approve
-                    ? 'task-approve'
-                    : reject
-                    ? 'task-reject'
-                    : `task-transition-${action.id}`
-                }
-                iconLeading={
-                  approve ? (
-                    <CheckCircle height={16} width={16} />
-                  ) : reject ? (
-                    <XCircle height={16} width={16} />
-                  ) : undefined
-                }
+                color={buttonColor}
+                data-testid={buttonTestId}
+                iconLeading={buttonIcon}
                 isDisabled={isDisabled}
                 isLoading={isBusy}
                 key={action.id}

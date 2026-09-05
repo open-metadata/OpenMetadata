@@ -471,12 +471,12 @@ const BulkEditEntity = ({
               row[BULK_EDIT_OPERATION_KEY] ?? 'NO_CHANGE'
             ).toLowerCase()}`;
 
+            const highlightSuffix = isNewMetricRowMissingName(row)
+              ? ''
+              : ' bulk-edit-row-highlight';
+
             return row.id === highlightedRowId
-              ? `${operationClass}${
-                  isNewMetricRowMissingName(row)
-                    ? ''
-                    : ' bulk-edit-row-highlight'
-                }`
+              ? `${operationClass}${highlightSuffix}`
               : operationClass;
           }}
           rowHeight={52}
@@ -542,9 +542,14 @@ const BulkEditEntity = ({
     [dataSource]
   );
 
-  const shouldShowLoader =
-    (isExportHydrationRequired && isEmpty(csvExportData)) ||
-    isLoadingSourceData;
+  const showExportErrorState = Boolean(
+    isExportHydrationRequired && csvExportError
+  );
+  const showLoaderState =
+    !showExportErrorState &&
+    ((isExportHydrationRequired && isEmpty(csvExportData)) ||
+      isLoadingSourceData);
+  const showWorkflowContent = !showExportErrorState && !showLoaderState;
 
   return (
     <>
@@ -580,12 +585,12 @@ const BulkEditEntity = ({
         )}
       </div>
 
-      {isExportHydrationRequired && csvExportError ? (
+      {showExportErrorState && (
         <div className="csv-import-card bulk-edit-card">
           <Banner
             className="border-radius"
             isLoading={false}
-            message={csvExportError}
+            message={csvExportError ?? ''}
             type="error"
           />
           <div className="bulk-edit-retry">
@@ -594,9 +599,9 @@ const BulkEditEntity = ({
             </Button>
           </div>
         </div>
-      ) : shouldShowLoader ? (
-        <Loader />
-      ) : (
+      )}
+      {showLoaderState && <Loader />}
+      {showWorkflowContent && (
         <Fragment>
           <div>
             {activeStep === 1 && (

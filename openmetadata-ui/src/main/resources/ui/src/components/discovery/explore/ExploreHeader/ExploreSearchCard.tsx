@@ -141,11 +141,10 @@ export const ExploreSearchCard = () => {
   const handleQuickFilterClick = useCallback(
     (filter: QuickFilter) => {
       const ownerName = currentUser?.displayName || currentUser?.name;
-      const quickFilter = filter.quickFilterFn
-        ? ownerName
-          ? filter.quickFilterFn(ownerName)
-          : undefined
-        : filter.quickFilter;
+      let quickFilter: string | undefined = filter.quickFilter;
+      if (filter.quickFilterFn) {
+        quickFilter = ownerName ? filter.quickFilterFn(ownerName) : undefined;
+      }
 
       if (filter.quickFilterFn && !quickFilter) {
         return;

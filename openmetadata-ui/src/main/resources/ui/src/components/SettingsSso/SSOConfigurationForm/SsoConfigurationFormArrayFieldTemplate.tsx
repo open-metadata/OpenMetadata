@@ -174,11 +174,12 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const handleChange = useCallback(
     (newValue: string[]) => {
       // Handle scope field conversion from array (UI) to string (backend)
-      const convertedValue = isScopeField
-        ? Array.isArray(newValue)
+      let convertedValue: string | string[] = newValue;
+      if (isScopeField) {
+        convertedValue = Array.isArray(newValue)
           ? newValue.join(' ')
-          : newValue
-        : newValue;
+          : newValue;
+      }
 
       props.onChange(convertedValue);
       // Clear field-specific error when value changes

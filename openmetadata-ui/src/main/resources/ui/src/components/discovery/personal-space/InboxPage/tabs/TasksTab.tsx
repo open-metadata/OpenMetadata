@@ -190,12 +190,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
       // filter. A Data Access Request that was just Approved stays Open (it is
       // awaiting grant), so removing it optimistically would make it vanish and
       // then reappear on refresh — update it in place instead.
-      const stillVisible =
-        status === 'all'
-          ? true
-          : status === 'open'
-          ? isTaskOpen(resolved)
-          : !isTaskOpen(resolved);
+      let stillVisible: boolean;
+      if (status === 'all') {
+        stillVisible = true;
+      } else if (status === 'open') {
+        stillVisible = isTaskOpen(resolved);
+      } else {
+        stillVisible = !isTaskOpen(resolved);
+      }
 
       if (stillVisible) {
         setItems((prev) =>
@@ -305,6 +307,30 @@ const TasksTab: React.FC<TasksTabProps> = ({
   };
   const emptyState = emptyStateByStatus[status];
 
+  let taskDetailContent: ReactNode;
+  if (isLoading) {
+    taskDetailContent = <TaskDetailSkeleton />;
+  } else if (selectedTaskId) {
+    taskDetailContent = (
+      <TaskDetailPanel
+        fallbackTask={tasks.find((task) => task.id === selectedTaskId)}
+        key={selectedTaskId}
+        taskId={selectedTaskId}
+        onCommentsChanged={handleCommentsChanged}
+        onResolved={handleResolved}
+        onTaskUpdated={handleTaskUpdated}
+      />
+    );
+  } else {
+    taskDetailContent = (
+      <Box align="center" className="tw:w-full tw:justify-center tw:py-16">
+        <Typography className="tw:text-secondary">
+          {t('label.no-tasks-right-now')}
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box
       className={classNames(
@@ -355,26 +381,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
           <Box
             className="tw:h-full tw:w-full tw:overflow-y-auto tw:p-5"
             direction="col">
-            {isLoading ? (
-              <TaskDetailSkeleton />
-            ) : selectedTaskId ? (
-              <TaskDetailPanel
-                fallbackTask={tasks.find((task) => task.id === selectedTaskId)}
-                key={selectedTaskId}
-                taskId={selectedTaskId}
-                onCommentsChanged={handleCommentsChanged}
-                onResolved={handleResolved}
-                onTaskUpdated={handleTaskUpdated}
-              />
-            ) : (
-              <Box
-                align="center"
-                className="tw:w-full tw:justify-center tw:py-16">
-                <Typography className="tw:text-secondary">
-                  {t('label.no-tasks-right-now')}
-                </Typography>
-              </Box>
-            )}
+            {taskDetailContent}
           </Box>
         </Box>
       )}

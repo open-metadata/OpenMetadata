@@ -41,12 +41,16 @@ const coreAdapter: ParityAdapter = {
   clickNextPage: () => {
     fireEvent.click(screen.getByTestId('next'));
   },
-  getTextAlign: (el) =>
-    el.className.includes('tw:text-right')
-      ? 'right'
-      : el.className.includes('tw:text-center')
-      ? 'center'
-      : '',
+  getTextAlign: (el) => {
+    if (el.className.includes('tw:text-right')) {
+      return 'right';
+    }
+    if (el.className.includes('tw:text-center')) {
+      return 'center';
+    }
+
+    return '';
+  },
   isBordered: () =>
     (document.querySelector('table') as HTMLElement).className.includes(
       'border-secondary'

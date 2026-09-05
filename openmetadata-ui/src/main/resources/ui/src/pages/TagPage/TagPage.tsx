@@ -296,12 +296,12 @@ const TagPage = () => {
   // embeds the DQ dashboard, route the tag's FQN through the dashboard's
   // matching filter key — otherwise the dashboard queries `tags.tagFQN`,
   // which never matches assets carrying these system tags.
-  const dqFilterKey: 'tier' | 'certification' | 'tags' =
-    classificationName === 'Tier'
-      ? 'tier'
-      : classificationName === 'Certification'
-      ? 'certification'
-      : 'tags';
+  let dqFilterKey: 'tier' | 'certification' | 'tags' = 'tags';
+  if (classificationName === 'Tier') {
+    dqFilterKey = 'tier';
+  } else if (classificationName === 'Certification') {
+    dqFilterKey = 'certification';
+  }
 
   const showDisableOption = useMemo(
     () => tagPermissions.EditAll && !tagItem?.deleted,

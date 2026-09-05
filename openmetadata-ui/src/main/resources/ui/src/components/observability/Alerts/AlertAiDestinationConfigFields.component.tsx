@@ -248,6 +248,36 @@ const TeamUserSelectInput = ({
     return () => document.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  const optionsContent = isEmpty(options) ? (
+    <Typography
+      as="p"
+      className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectEmptyText}
+      size="text-sm">
+      {t('label.no-teams-or-users')}
+    </Typography>
+  ) : (
+    options.map(({ label, value }) => (
+      <Button
+        noTextPadding
+        className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionButton}
+        color="tertiary"
+        data-testid={`team-user-option-${value}`}
+        key={value}
+        onPress={() => handleOptionClick(value)}>
+        <Checkbox
+          data-testid={`${label}-option-checkbox`}
+          isSelected={selectedOptions.includes(value)}
+        />
+        <Typography
+          as="span"
+          className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel}
+          data-testid={`${label}-option-label`}>
+          {label}
+        </Typography>
+      </Button>
+    ))
+  );
+
   return (
     <div className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectRoot}>
       <div
@@ -316,38 +346,8 @@ const TeamUserSelectInput = ({
                 <Skeleton height={24} variant="rounded" />
                 <Skeleton height={24} variant="rounded" />
               </div>
-            ) : isEmpty(options) ? (
-              <Typography
-                as="p"
-                className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectEmptyText}
-                size="text-sm">
-                {t('label.no-teams-or-users')}
-              </Typography>
             ) : (
-              options.map(({ label, value }) => (
-                <Button
-                  noTextPadding
-                  className={
-                    ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionButton
-                  }
-                  color="tertiary"
-                  data-testid={`team-user-option-${value}`}
-                  key={value}
-                  onPress={() => handleOptionClick(value)}>
-                  <Checkbox
-                    data-testid={`${label}-option-checkbox`}
-                    isSelected={selectedOptions.includes(value)}
-                  />
-                  <Typography
-                    as="span"
-                    className={
-                      ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel
-                    }
-                    data-testid={`${label}-option-label`}>
-                    {label}
-                  </Typography>
-                </Button>
-              ))
+              optionsContent
             )}
           </div>
         </div>

@@ -506,11 +506,12 @@ const collectSharedAssets = (
     // this correct for reverse-direction (concept->table) mappings.
     const source = idOf(link.source);
     const target = idOf(link.target);
-    const conceptId = expanded.has(source)
-      ? source
-      : expanded.has(target)
-      ? target
-      : undefined;
+    let conceptId: string | undefined;
+    if (expanded.has(source)) {
+      conceptId = source;
+    } else if (expanded.has(target)) {
+      conceptId = target;
+    }
     const assetId = conceptId === source ? target : source;
     const asset = conceptId ? byId.get(assetId) : undefined;
     if (asset?.type === 'table' && assetId !== selfId && !seen.has(assetId)) {

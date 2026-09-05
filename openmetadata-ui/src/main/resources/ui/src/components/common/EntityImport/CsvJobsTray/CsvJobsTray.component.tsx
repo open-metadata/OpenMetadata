@@ -513,6 +513,11 @@ export const CsvJobsTray = () => {
               const percent = getJobPercent(job);
               const variant = getStatusVariant(job.status);
               const KindIcon = getKindIcon(job.operation);
+              const nonRunningIcon = downloadedJobIds.has(job.jobId) ? (
+                <Check size={16} />
+              ) : (
+                <KindIcon size={16} />
+              );
 
               return (
                 <div
@@ -521,13 +526,9 @@ export const CsvJobsTray = () => {
                   key={job.jobId}>
                   <div className="csv-jobs-tray-item-row">
                     <span className="csv-jobs-tray-kind-icon">
-                      {variant === 'running' ? (
-                        renderStatusIcon(job)
-                      ) : downloadedJobIds.has(job.jobId) ? (
-                        <Check size={16} />
-                      ) : (
-                        <KindIcon size={16} />
-                      )}
+                      {variant === 'running'
+                        ? renderStatusIcon(job)
+                        : nonRunningIcon}
                     </span>
                     <div className="csv-jobs-tray-body">
                       <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">

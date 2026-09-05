@@ -68,6 +68,27 @@ const OntologyLibraryDetail = ({
     selectedModuleIds.length > 0 &&
     targetGlossaryName.trim().length > 0;
 
+  const nonInstallPanel = pack.bundled ? (
+    <Alert title={t('message.no-permission-for-action')} variant="warning" />
+  ) : (
+    <Alert
+      rightContent={
+        <Button
+          color="secondary"
+          href={pack.sourceUrl}
+          iconTrailing={ArrowUpRight}
+          rel="noreferrer"
+          size="sm"
+          target="_blank">
+          {t('label.source')}
+        </Button>
+      }
+      title={t('message.ontology-pack-external-title')}
+      variant="warning">
+      {t('message.ontology-pack-external-description')}
+    </Alert>
+  );
+
   return (
     <div
       className="tw:flex tw:flex-col tw:gap-6"
@@ -304,28 +325,8 @@ const OntologyLibraryDetail = ({
                 </div>
               </Card.Content>
             </Card>
-          ) : pack.bundled ? (
-            <Alert
-              title={t('message.no-permission-for-action')}
-              variant="warning"
-            />
           ) : (
-            <Alert
-              rightContent={
-                <Button
-                  color="secondary"
-                  href={pack.sourceUrl}
-                  iconTrailing={ArrowUpRight}
-                  rel="noreferrer"
-                  size="sm"
-                  target="_blank">
-                  {t('label.source')}
-                </Button>
-              }
-              title={t('message.ontology-pack-external-title')}
-              variant="warning">
-              {t('message.ontology-pack-external-description')}
-            </Alert>
+            nonInstallPanel
           )}
         </div>
       </div>
