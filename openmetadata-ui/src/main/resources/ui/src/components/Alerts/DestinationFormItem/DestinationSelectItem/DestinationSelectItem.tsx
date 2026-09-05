@@ -11,443 +11,409 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
-  Col,
-  Form,
+  Grid,
   Input,
-  Row,
   Select,
-  Skeleton,
-  Switch,
-  Tabs,
-  Typography,
-} from 'antd';
-import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
-import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
+  Toggle,
+} from '@openmetadata/ui-core-components';
+import { X } from '@untitledui/icons';
+import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+
 import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-} from '../../../../constants/Alerts.constants';
-import { WHITE_COLOR } from '../../../../constants/constants';
-import { CreateEventSubscription } from '../../../../generated/events/api/createEventSubscription';
-import {
-  Destination,
+  Status,
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../../generated/events/eventSubscription';
-import { useFqn } from '../../../../hooks/useFqn';
-import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getDestinationStatusAlertData } from '../../../../utils/Alerts/AlertsUtil';
 import {
-  getDestinationConfigField,
-  getDestinationStatusAlertData,
-} from '../../../../utils/Alerts/AlertsUtil';
-import {
-  getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtilPure';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
+import {
+  checkIfDestinationIsInternal,
+  getConfigFieldFromDestinationType,
+} from '../../../../utils/ObservabilityUtils';
+import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
+import { buildGroupedOptions } from './DestinationSelectItem.utils';
 
 function DestinationSelectItem({
   selectorKey,
   id,
   remove,
   destinationsWithStatus,
+  isConfigExpanded,
   isDestinationStatusLoading,
   isViewMode = false,
+  onConfigExpandedChange,
 }: Readonly<DestinationSelectItemProps>) {
   const { t } = useTranslation();
-  const form = Form.useFormInstance();
-  const { fqn } = useFqn();
-  const [activeTab, setActiveTab] = useState(
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-  const [destinationOptions, setDestinationOptions] = useState(
-    DESTINATION_SOURCE_ITEMS.internal
-  );
-  const destinationItem =
-    Form.useWatch<Destination>(['destinations', id], form) ?? [];
+  const { control, setValue, unregister } = useFormContext();
 
-  const notifyDownstream = destinationItem.notifyDownstream ?? false;
+  const destinationItem =
+    useWatch({ name: `destinations.${id}`, control }) ?? {};
+  const [selectedSource = ''] = useWatch({ name: 'resources', control }) ?? [];
+  const [isSelectionWarningDismissed, setIsSelectionWarningDismissed] =
+    useState(false);
+
+  const destinationType: string | undefined = destinationItem.destinationType;
+  const subscriptionType: string | undefined = destinationItem.type;
+  const notifyDownstream: boolean = destinationItem.notifyDownstream ?? false;
+
+  const isInternalDestinationSelected = useMemo(
+    () => checkIfDestinationIsInternal(destinationType ?? ''),
+    [destinationType]
+  );
+
+  const groupedOptions = useMemo(
+    () =>
+      buildGroupedOptions(
+        t('label.internal'),
+        t('label.external'),
+        selectedSource
+      ),
+    [selectedSource, t]
+  );
 
   const destinationStatusDetails = useMemo(() => {
     const { type, category, config } = destinationItem;
-
-    const currentDestination = destinationsWithStatus?.find((destination) =>
+    const current = destinationsWithStatus?.find((d) =>
       isEqual(
-        { type, category, config: omitBy(config, isUndefined) },
+        { type, category, config: normalizeDestinationConfig(config) },
         {
-          type: destination.type,
-          category: destination.category,
-          config: normalizeDestinationConfig(destination.config),
+          type: d.type,
+          category: d.category,
+          config: normalizeDestinationConfig(d.config),
         }
       )
     );
 
-    return currentDestination?.statusDetails;
+    return current?.statusDetails;
   }, [destinationItem, destinationsWithStatus]);
 
-  const { alertClassName, alertType, statusLabel, alertIcon } = useMemo(
+  const { statusLabel } = useMemo(
     () => getDestinationStatusAlertData(destinationStatusDetails?.status),
     [destinationStatusDetails]
   );
 
-  // Selected destinations list
-  const selectedDestinations = Form.useWatch<ModifiedDestination[]>(
-    'destinations',
-    form
-  );
+  const statusAlertVariant =
+    destinationStatusDetails?.status === Status.Success ? 'success' : 'error';
 
-  // Selected source for the alert
-  const [selectedSource] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+  const handleDestinationTypeSelect = useCallback(
+    (value: string | null) => {
+      if (!value || value.startsWith('header-')) {
+        return;
+      }
+      setIsSelectionWarningDismissed(false);
+      const isInternal = checkIfDestinationIsInternal(value);
+      const configField = getConfigFieldFromDestinationType(value);
 
-  const handleTabChange = useCallback(
-    (key: string) => {
-      setActiveTab(key);
-      setDestinationOptions(getFilteredDestinationOptions(key, selectedSource));
-    },
-    [selectedSource]
-  );
-
-  const destinationType = form.getFieldValue([
-    'destinations',
-    id,
-    'destinationType',
-  ]);
-  const subscriptionType = form.getFieldValue(['destinations', id, 'type']);
-
-  // Check if selected destination type is internal destination
-  const isInternalDestinationSelected = useMemo(
-    () => checkIfDestinationIsInternal(destinationType),
-    [destinationType]
-  );
-
-  const getTabItems = useCallback(
-    (children: ReactElement) =>
-      map(DESTINATION_DROPDOWN_TABS, (tabName) => ({
-        key: tabName,
-        label: (
-          <span data-testid={`tab-label-${tabName}`}>
-            {t(`label.${tabName}`)}
-          </span>
-        ),
-        children,
-      })),
-    []
-  );
-
-  const customDestinationDropdown = useCallback(
-    (menu: ReactElement, name: number) => {
-      return (
-        <Tabs
-          centered
-          activeKey={activeTab}
-          className="destination-select-dropdown"
-          data-testid={`destination-category-dropdown-${name}`}
-          defaultActiveKey={DESTINATION_DROPDOWN_TABS.internal}
-          items={getTabItems(menu)}
-          key={`destination-tabs-${name}`}
-          tabBarStyle={{
-            background: WHITE_COLOR,
-          }}
-          onTabClick={handleTabChange}
-        />
+      // Replacing a parent object does not remove values owned by mounted RHF
+      // descendants. Unregister destination-specific fields first so changing
+      // type cannot carry endpoint, receiver, or downstream values forward.
+      unregister([
+        `destinations.${id}.config`,
+        `destinations.${id}.downstreamDepth`,
+        `destinations.${id}.notifyDownstream`,
+        `destinations.${id}.type`,
+      ]);
+      setValue(
+        `destinations.${id}`,
+        {
+          destinationType: value,
+          category: isInternal ? value : SubscriptionCategory.External,
+          type: isInternal ? undefined : value,
+          config: configField ? { [configField]: true } : undefined,
+          downstreamDepth: undefined,
+          notifyDownstream: undefined,
+        },
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        }
       );
     },
-    [handleTabChange, getTabItems, activeTab]
+    [id, setValue, unregister]
   );
 
-  const getHiddenDestinationFields = (
-    isInternalDestination: boolean,
-    item: number,
-    destinationType: string
-  ) => (
-    <>
-      <Form.Item
-        hidden
-        initialValue={
-          isInternalDestination
-            ? destinationType
-            : SubscriptionCategory.External
-        }
-        key={`${destinationType}-category`}
-        name={[item, 'category']}
-      />
-      {!isInternalDestination && (
-        <Form.Item
-          hidden
-          initialValue={destinationType}
-          key={`${destinationType}-type`}
-          name={[item, 'type']}
-        />
-      )}
-    </>
-  );
-
-  const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
   const handleNotifyDownstreamChange = useCallback(
     (checked: boolean) => {
       if (!checked) {
-        form.setFieldValue(['destinations', id, 'downstreamDepth'], undefined);
+        setValue(`destinations.${id}.downstreamDepth`, undefined);
       }
     },
-    [form, id]
+    [id, setValue]
   );
 
-  useEffect(() => {
-    // Get the current destinations list
-    const [selectedSource] = form.getFieldValue('resources');
-    const destinationsValue = form.getFieldValue('destinations');
-
-    // Logic to set the initial values for the active tab and the destination options
-    // after the component is mounted, based on the set destination values
-    if (!isEmpty(destinationsValue)) {
-      // Set the active tab and selection options as external when in edit mode
-      // and the destination category is 'External'
-      if (
-        destinationsValue[id].category === SubscriptionCategory.External &&
-        isEditMode &&
-        // Since the default value of category for new added destination form item is 'External'
-        // Adding the below condition to exclude the case and set default tab as 'Internal'
-        !isUndefined(destinationsValue[id].destinationType)
-      ) {
-        setActiveTab(DESTINATION_DROPDOWN_TABS.external);
-        setDestinationOptions(
-          getFilteredDestinationOptions(
-            DESTINATION_DROPDOWN_TABS.external,
-            selectedSource
-          )
-        );
-      } else {
-        setActiveTab(DESTINATION_DROPDOWN_TABS.internal);
-        setDestinationOptions(
-          getFilteredDestinationOptions(
-            DESTINATION_DROPDOWN_TABS.internal,
-            selectedSource
-          )
-        );
-      }
-    }
-  }, []);
+  const hasDestinationType = destinationType !== undefined;
+  const showExternalDestinationConfig =
+    hasDestinationType && !isInternalDestinationSelected;
+  const showInternalDestinationSection =
+    hasDestinationType && isInternalDestinationSelected;
+  const showTeamOrUserConfig =
+    destinationType === SubscriptionCategory.Teams ||
+    destinationType === SubscriptionCategory.Users;
+  const showSelectionWarning = Boolean(
+    destinationType && subscriptionType && !isSelectionWarningDismissed
+  );
+  const isOwnerNonEmailSelection =
+    destinationType === SubscriptionCategory.Owners &&
+    subscriptionType !== SubscriptionType.Email;
+  const selectionWarningTitle = isOwnerNonEmailSelection
+    ? t('message.destination-owner-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType,
+      })
+    : t('message.destination-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType,
+      });
 
   return (
-    <Col data-testid={`destination-${id}`} key={selectorKey} span={24}>
-      <div className="flex gap-4">
-        <div className="flex-1 w-min-0">
-          <Row gutter={[8, 8]}>
-            <Col span={12}>
-              <Form.Item
-                required
-                name={[id, 'destinationType']}
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.destination'),
-                    }),
-                  },
-                ]}>
-                <Select
-                  className="w-full"
-                  data-testid={`destination-category-select-${id}`}
-                  dropdownRender={(menu) =>
-                    customDestinationDropdown(menu, selectorKey)
-                  }
-                  options={destinationOptions}
-                  placeholder={t('label.select-field', {
-                    field: t('label.destination'),
-                  })}
-                  onSelect={(value) => {
-                    form.setFieldValue(['destinations', id], {
-                      destinationType: value,
-                    });
-                  }}
-                />
-              </Form.Item>
-            </Col>
-            {getHiddenDestinationFields(
-              isInternalDestinationSelected,
-              id,
-              destinationType
-            )}
-            {selectedDestinations &&
-              !isEmpty(selectedDestinations[id]) &&
-              getDestinationConfigField(
-                selectedDestinations[id]?.destinationType,
-                id
-              )}
-            {destinationType &&
-              checkIfDestinationIsInternal(destinationType) && (
-                <>
-                  <Col span={24}>
-                    <Form.Item
-                      required
-                      name={[id, 'type']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('message.field-text-is-required', {
-                            fieldText: t('label.field'),
-                          }),
-                        },
-                      ]}>
-                      <Select
-                        className="w-full"
-                        data-testid={`destination-type-select-${id}`}
-                        options={getSubscriptionTypeOptions(destinationType)}
-                        placeholder={t('label.select-field', {
-                          field: t('label.destination'),
-                        })}
-                        popupClassName="select-options-container"
-                      />
-                    </Form.Item>
-                  </Col>
-                  {destinationType && subscriptionType && (
-                    <Col span={24}>
-                      <Alert
-                        closable
-                        showIcon
-                        className="destination-warning-status"
-                        icon={<InfoCircleOutlined height={14} />}
-                        message={
-                          <Typography.Text className="text-sm">
-                            <Transi18next
-                              i18nKey={
-                                destinationType ===
-                                  SubscriptionCategory.Owners &&
-                                subscriptionType !== SubscriptionType.Email
-                                  ? 'message.destination-owner-selection-warning'
-                                  : 'message.destination-selection-warning'
-                              }
-                              renderElement={<b />}
-                              values={{
-                                subscriptionCategory: destinationType,
-                                subscriptionType,
-                              }}
-                            />
-                          </Typography.Text>
-                        }
-                        type="warning"
-                      />
-                    </Col>
-                  )}
-                </>
-              )}
-            {selectedDestinations && !isEmpty(selectedDestinations[id]) && (
-              <Col span={24}>
-                <Form.Item
-                  label={
-                    <Typography.Text>
-                      {t('label.notify-downstream')}
-                    </Typography.Text>
-                  }
-                  labelAlign="left"
-                  labelCol={{ span: 6 }}
-                  name={[id, 'notifyDownstream']}
-                  valuePropName="checked">
-                  <Switch onChange={handleNotifyDownstreamChange} />
-                </Form.Item>
-              </Col>
-            )}
-            {notifyDownstream && (
-              <Col span={24}>
-                <Form.Item
-                  label={t('label.downstream-depth')}
-                  labelCol={{ span: 24 }}
-                  name={[id, 'downstreamDepth']}
-                  requiredMark={false}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.field'),
-                      }),
-                    },
-                    {
-                      validator: (_, value) => {
-                        if (!isEmpty(value) && value <= 0) {
-                          return Promise.reject(
-                            new Error(
-                              t('message.value-must-be-greater-than', {
-                                field: t('label.downstream-depth'),
-                                minimum: 0,
-                              })
-                            )
-                          );
-                        }
-
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}>
-                  <Input
-                    className="w-full"
-                    data-testid={`destination-downstream-depth-${id}`}
-                    defaultValue={1}
+    <div
+      className="tw:flex tw:gap-4"
+      data-testid={`destination-${id}`}
+      key={selectorKey}>
+      <div className="tw:min-w-0 tw:flex-1">
+        <Grid colGap="2" rowGap="4">
+          <Grid.Item span={24}>
+            <Controller
+              control={control}
+              name={`destinations.${id}.destinationType`}
+              render={({ fieldState }) => (
+                <div>
+                  <Select.ComboBox
+                    isRequired
+                    data-testid={`destination-category-select-${id}`}
+                    fontSize="sm"
+                    isDisabled={isViewMode}
+                    items={groupedOptions}
                     placeholder={t('label.select-field', {
                       field: t('label.destination'),
                     })}
-                    type="number"
-                  />
-                </Form.Item>
-              </Col>
-            )}
-            {isDestinationStatusLoading &&
-              destinationItem.category === SubscriptionCategory.External && (
-                <Col span={24}>
-                  <Skeleton
-                    active
-                    className="destination-status-skeleton"
-                    paragraph={false}
-                  />
-                </Col>
+                    selectedKey={destinationType ?? null}
+                    shortcut={false}
+                    showSearchIcon={false}
+                    size="sm"
+                    onSelectionChange={(key) =>
+                      handleDestinationTypeSelect(key as string)
+                    }>
+                    {(item) => (
+                      <Select.Item
+                        className={
+                          item.isDisabled
+                            ? 'tw:cursor-default tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-secondary tw:opacity-50 '
+                            : 'tw:pl-3.5'
+                        }
+                        icon={item.icon}
+                        id={item.id}
+                        textValue={item.label ?? ''}>
+                        {item.label}
+                      </Select.Item>
+                    )}
+                  </Select.ComboBox>
+                  {fieldState.error?.message && (
+                    <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </div>
               )}
-            {!isDestinationStatusLoading &&
-              !isUndefined(destinationStatusDetails) && (
-                <Col span={24}>
+              rules={{
+                required: t('message.field-text-is-required', {
+                  fieldText: t('label.destination'),
+                }),
+              }}
+            />
+          </Grid.Item>
+
+          {showExternalDestinationConfig && (
+            <DestinationConfigField
+              fieldName={id}
+              isConfigExpanded={isConfigExpanded}
+              isViewMode={isViewMode}
+              key={destinationType}
+              type={destinationType as SubscriptionType}
+              onConfigExpandedChange={onConfigExpandedChange}
+            />
+          )}
+
+          {showInternalDestinationSection && (
+            <>
+              {showTeamOrUserConfig && (
+                <DestinationConfigField
+                  fieldName={id}
+                  isConfigExpanded={isConfigExpanded}
+                  isViewMode={isViewMode}
+                  key={destinationType}
+                  type={destinationType as SubscriptionCategory}
+                  onConfigExpandedChange={onConfigExpandedChange}
+                />
+              )}
+
+              <Grid.Item span={24}>
+                <Controller
+                  control={control}
+                  name={`destinations.${id}.type`}
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <Select
+                        isRequired
+                        data-testid={`destination-type-select-${id}`}
+                        isDisabled={isViewMode}
+                        placeholder={t('label.select-field', {
+                          field: t('label.destination'),
+                        })}
+                        selectedKey={field.value ?? null}
+                        onSelectionChange={(key) => {
+                          setIsSelectionWarningDismissed(false);
+                          field.onChange(key);
+                        }}>
+                        {getSubscriptionTypeOptions(destinationType).map(
+                          (option) => (
+                            <Select.Item
+                              id={option.value}
+                              isDisabled={option.disabled}
+                              key={option.value}
+                              textValue={startCase(option.value)}>
+                              {startCase(option.value)}
+                            </Select.Item>
+                          )
+                        )}
+                      </Select>
+                      {fieldState.error?.message && (
+                        <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  rules={{
+                    required: t('message.field-text-is-required', {
+                      fieldText: t('label.field'),
+                    }),
+                  }}
+                />
+              </Grid.Item>
+
+              {showSelectionWarning && (
+                <Grid.Item span={24}>
                   <Alert
                     closable
-                    showIcon
-                    className={alertClassName}
-                    icon={alertIcon}
-                    message={
-                      <>
-                        <Typography.Text className="text-sm">
-                          {`${t('label.status')}:`}
-                        </Typography.Text>
-                        <Typography.Text className="font-medium text-sm m-l-xss">
-                          {`${
-                            destinationStatusDetails?.statusCode
-                          } ${statusLabel} ${
-                            destinationStatusDetails?.reason ?? ''
-                          }`}
-                        </Typography.Text>
-                      </>
-                    }
-                    type={alertType}
+                    title={selectionWarningTitle}
+                    variant="warning"
+                    onClose={() => setIsSelectionWarningDismissed(true)}
                   />
-                </Col>
+                </Grid.Item>
               )}
-          </Row>
-        </div>
+            </>
+          )}
 
-        {!isViewMode && (
-          <Button
-            data-testid={`remove-destination-${id}`}
-            icon={<CloseOutlined />}
-            onClick={() => remove(id)}
-          />
-        )}
+          {!isEmpty(destinationItem) && (
+            <Grid.Item span={24}>
+              <Controller
+                control={control}
+                name={`destinations.${id}.notifyDownstream`}
+                render={({ field }) => (
+                  <Toggle
+                    isDisabled={isViewMode}
+                    isSelected={field.value ?? false}
+                    label={t('label.notify-downstream')}
+                    onChange={(checked) => {
+                      field.onChange(checked);
+                      handleNotifyDownstreamChange(checked);
+                    }}
+                  />
+                )}
+              />
+            </Grid.Item>
+          )}
+
+          {notifyDownstream && (
+            <Grid.Item span={24}>
+              <Controller
+                control={control}
+                defaultValue={1}
+                name={`destinations.${id}.downstreamDepth`}
+                render={({ field, fieldState }) => (
+                  <div>
+                    <Input
+                      data-testid={`destination-downstream-depth-${id}`}
+                      inputDataTestId={`destination-downstream-depth-input-${id}`}
+                      isDisabled={isViewMode}
+                      label={t('label.downstream-depth')}
+                      ref={field.ref}
+                      type="number"
+                      value={
+                        field.value !== undefined ? String(field.value) : ''
+                      }
+                      onBlur={() => field.onBlur()}
+                      onChange={(val) => field.onChange(val)}
+                    />
+                    {fieldState.error?.message && (
+                      <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
+                        {fieldState.error.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+                rules={{
+                  required: t('message.field-text-is-required', {
+                    fieldText: t('label.downstream-depth'),
+                  }),
+                  validate: (value) => {
+                    const numVal = Number(value);
+
+                    return !Number.isFinite(numVal) || numVal <= 0
+                      ? t('message.value-must-be-greater-than', {
+                          field: t('label.downstream-depth'),
+                          minimum: 0,
+                        })
+                      : true;
+                  },
+                }}
+              />
+            </Grid.Item>
+          )}
+
+          {isDestinationStatusLoading &&
+            destinationItem.category === SubscriptionCategory.External && (
+              <Grid.Item span={24}>
+                <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
+              </Grid.Item>
+            )}
+
+          {!isDestinationStatusLoading &&
+            !isUndefined(destinationStatusDetails) && (
+              <Grid.Item span={24}>
+                <Alert
+                  closable
+                  title={`${t('label.status')}: ${
+                    destinationStatusDetails?.statusCode
+                  } ${statusLabel} ${destinationStatusDetails?.reason ?? ''}`}
+                  variant={statusAlertVariant}
+                />
+              </Grid.Item>
+            )}
+        </Grid>
       </div>
-    </Col>
+
+      {!isViewMode && (
+        <Button
+          data-icon
+          color="tertiary"
+          data-testid={`remove-destination-${id}`}
+          onPress={() => remove(id)}>
+          <X />
+        </Button>
+      )}
+    </div>
   );
 }
 

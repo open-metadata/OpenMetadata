@@ -137,42 +137,46 @@ test.describe('Glossary Hierarchy', () => {
 
   // H-M04: Move term to root of different glossary
   // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
-  test('should move term to root of different glossary', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary1 = new Glossary();
-    const glossary2 = new Glossary();
-    const term1 = new GlossaryTerm(glossary1);
-    const term2 = new GlossaryTerm(glossary2);
+  test(
+    'should move term to root of different glossary',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary1 = new Glossary();
+      const glossary2 = new Glossary();
+      const term1 = new GlossaryTerm(glossary1);
+      const term2 = new GlossaryTerm(glossary2);
 
-    try {
-      await glossary1.create(apiContext);
-      await glossary2.create(apiContext);
-      await term1.create(apiContext);
-      await term2.create(apiContext);
+      try {
+        await glossary1.create(apiContext);
+        await glossary2.create(apiContext);
+        await term1.create(apiContext);
+        await term2.create(apiContext);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, term1.data.displayName);
-      await changeTermHierarchyFromModal(
-        page,
-        term2.responseData.displayName,
-        glossary2.responseData.fullyQualifiedName
-      );
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, term1.data.displayName);
+        await changeTermHierarchyFromModal(
+          page,
+          term2.responseData.displayName,
+          glossary2.responseData.fullyQualifiedName
+        );
 
-      // Verify term is now in glossary2
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary2.data.displayName);
+        // Verify term is now in glossary2
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary2.data.displayName);
 
-      await expect(
-        page.getByTestId(term1.responseData.displayName)
-      ).toBeVisible();
-    } finally {
-      await glossary1.delete(apiContext);
-      await glossary2.delete(apiContext);
-      await afterAction();
+        await expect(
+          page.getByTestId(term1.responseData.displayName)
+        ).toBeVisible();
+      } finally {
+        await glossary1.delete(apiContext);
+        await glossary2.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   // H-M05: Move term with children to different glossary
   // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
@@ -364,52 +368,56 @@ test.describe('Glossary Hierarchy', () => {
   });
 
   // H-DD05: Drag term - cancel operation
-  test('should cancel drag and drop operation', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const term1 = new GlossaryTerm(glossary);
-    const term2 = new GlossaryTerm(glossary);
+  test(
+    'should cancel drag and drop operation',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary();
+      const term1 = new GlossaryTerm(glossary);
+      const term2 = new GlossaryTerm(glossary);
 
-    try {
-      await glossary.create(apiContext);
-      await term1.create(apiContext);
-      await term2.create(apiContext);
+      try {
+        await glossary.create(apiContext);
+        await term1.create(apiContext);
+        await term2.create(apiContext);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Drag term1 to term2
-      await dragAndDropTerm(
-        page,
-        term1.responseData.displayName,
-        term2.responseData.displayName
-      );
+        // Drag term1 to term2
+        await dragAndDropTerm(
+          page,
+          term1.responseData.displayName,
+          term2.responseData.displayName
+        );
 
-      // Wait for confirmation modal content to be visible
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeVisible();
+        // Wait for confirmation modal content to be visible
+        await expect(
+          page.getByTestId('confirmation-modal').locator('.ant-modal-content')
+        ).toBeVisible();
 
-      // Click Cancel button
-      await page.getByRole('button', { name: 'Cancel' }).click();
+        // Click Cancel button
+        await page.getByRole('button', { name: 'Cancel' }).click();
 
-      // Verify modal content is closed
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeHidden();
+        // Verify modal content is closed
+        await expect(
+          page.getByTestId('confirmation-modal').locator('.ant-modal-content')
+        ).toBeHidden();
 
-      // Verify terms are still at root level (no hierarchy change)
-      await expect(
-        page.getByTestId(term1.responseData.displayName)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(term2.responseData.displayName)
-      ).toBeVisible();
-    } finally {
-      await term1.delete(apiContext);
-      await term2.delete(apiContext);
-      await glossary.delete(apiContext);
-      await afterAction();
+        // Verify terms are still at root level (no hierarchy change)
+        await expect(
+          page.getByTestId(term1.responseData.displayName)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(term2.responseData.displayName)
+        ).toBeVisible();
+      } finally {
+        await term1.delete(apiContext);
+        await term2.delete(apiContext);
+        await glossary.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 });

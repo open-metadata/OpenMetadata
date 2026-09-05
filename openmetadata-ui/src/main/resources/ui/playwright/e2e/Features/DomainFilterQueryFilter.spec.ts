@@ -104,8 +104,6 @@ const expectQueryVisibleForDomain = async (
 };
 
 test.describe('Domain Filter - User Behavior Tests', () => {
-  test.slow(true);
-
   test('Assets from selected domain should be visible in explore page', async ({
     page,
   }) => {
@@ -572,6 +570,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Quick filters should persist when domain filter is applied and cleared', async ({
     page,
   }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainTable1 = new TableClass();
@@ -812,6 +811,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Multi-nested domain hierarchy: filters should scope correctly at every level', async ({
     page,
   }) => {
+    test.slow();
     /**
      * Domain Hierarchy:
      * RootDomain

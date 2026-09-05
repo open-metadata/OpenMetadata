@@ -135,10 +135,10 @@ const TestConnectionModal = ({
 
   // Gate failed either because the gate step itself failed, or because the API
   // errored before the workflow ran (no step results at all but test is done).
+  const gateStepFailed = gateResult !== undefined && !gateResult.passed;
+  const failedWithoutGate = isFailed && gateResult === undefined;
   const connectionFailed =
-    !isTestingConnection &&
-    ((gateResult !== undefined && !gateResult.passed) ||
-      (isFailed && gateResult === undefined));
+    !isTestingConnection && (gateStepFailed || failedWithoutGate);
 
   const rawLog = useMemo(
     () =>

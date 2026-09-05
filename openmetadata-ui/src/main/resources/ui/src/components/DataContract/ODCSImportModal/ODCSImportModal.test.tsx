@@ -121,15 +121,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onDropFiles?: (f: FileList) => void;
       orDragAndDropLabel?: string;
     }) => {
+      const isAccepted = (fileName: string) =>
+        !accept ||
+        accept.split(',').some((ext) => fileName.endsWith(ext.trim()));
       const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         const raw = e.dataTransfer?.files;
         const files: File[] = raw ? Array.from(raw as unknown as File[]) : [];
-        const accepted = accept
-          ? files.filter((f) =>
-              accept.split(',').some((ext) => f.name.endsWith(ext.trim()))
-            )
-          : files;
+        const accepted = files.filter((f) => isAccepted(f.name));
         if (accepted.length > 0) {
           onDropFiles?.(accepted as unknown as FileList);
         }
@@ -222,31 +221,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange?: (value: string) => void;
       value?: string;
     }) => {
+      const handleRadioChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+        onChange?.(e.target.value);
+      const cloneChildren = (node: React.ReactNode): React.ReactNode =>
+        React.Children.map(node, (c) => {
+          if (!React.isValidElement(c)) {
+            return c;
+          }
+          const cProps = c.props as Record<string, unknown>;
+          const newProps: Record<string, unknown> = {};
+          if (cProps.value !== undefined) {
+            newProps.checked = cProps.value === value;
+            newProps.onChange = handleRadioChange;
+          }
+          if (cProps.children) {
+            newProps.children = cloneChildren(
+              cProps.children as React.ReactNode
+            );
+          }
+
+          return React.cloneElement(c, newProps);
+        });
       const childrenWithChecked = React.Children.map(children, (child) => {
         if (!React.isValidElement(child)) {
           return child;
         }
-
-        const cloneChildren = (node: React.ReactNode): React.ReactNode =>
-          React.Children.map(node, (c) => {
-            if (!React.isValidElement(c)) {
-              return c;
-            }
-            const cProps = c.props as Record<string, unknown>;
-            const newProps: Record<string, unknown> = {};
-            if (cProps.value !== undefined) {
-              newProps.checked = cProps.value === value;
-              newProps.onChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-                onChange?.(e.target.value);
-            }
-            if (cProps.children) {
-              newProps.children = cloneChildren(
-                cProps.children as React.ReactNode
-              );
-            }
-
-            return React.cloneElement(c, newProps);
-          });
 
         return cloneChildren(child);
       });

@@ -426,3 +426,234 @@ class TestColumnFunctionUsage:
 
         assert hasattr(AirflowSource, "get_pipeline_status")
         assert hasattr(AirflowSource, "execution_date_column")
+
+
+class TestPipelineObservabilityScope:
+    """
+    Observability is stored server-side under table.pipelineObservability.<pipelineFqn>,
+    one row per (table, pipeline). These tests pin the emission down to that shape:
+    replaying earlier DAGs or older runs only rewrites rows that are already correct,
+    and at 500+ DAGs that replay is what turns a run into a multi-day job.
+    """
+
+    @staticmethod
+    def _source_with_context(pipeline_entity, table_fqns, latest_dag_run):
+        from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
+
+        source = AirflowSource.__new__(AirflowSource)
+
+        ctx = SimpleNamespace(
+            current_pipeline_entity=pipeline_entity,
+            current_table_fqns=table_fqns,
+            latest_dag_run=latest_dag_run,
+        )
+        source.context = MagicMock()
+        source.context.get.return_value = ctx
+        return source
+
+    @staticmethod
+    def _dag_run(run_id, logical_date, state="success"):
+        dag_run = MagicMock()
+        dag_run.run_id = run_id
+        dag_run.logical_date = logical_date
+        dag_run.start_date = logical_date
+        dag_run.state = state
+        return dag_run
+
+    @staticmethod
+    def _pipeline_entity(fqn="service.dag_a"):
+        entity = MagicMock()
+        entity.id.root = uuid4()
+        entity.fullyQualifiedName.root = fqn
+        return entity
+
+    @staticmethod
+    def _dag_details(dag_id, schedule_interval="@daily"):
+        return SimpleNamespace(dag_id=dag_id, schedule_interval=schedule_interval)
+
+    def test_emits_only_the_current_dag_tables(self):
+        """
+        A record written while processing DAG A stays valid, so DAG B must not
+        re-emit A's tables. Re-emitting them is what made this stage
+        O(dags x cumulative tables).
+        """
+        run = self._dag_run("run_a", datetime(2024, 1, 15, tzinfo=timezone.utc))
+        source = self._source_with_context(self._pipeline_entity("service.dag_a"), ["svc.db.sch.table_a"], run)
+
+        first = list(source.get_table_pipeline_observability(self._dag_details("dag_a")))
+        assert set(first[0]) == {"svc.db.sch.table_a"}
+
+        # The next DAG overwrites the context, as yield_pipeline_lineage_details does.
+        ctx = source.context.get.return_value
+        ctx.current_pipeline_entity = self._pipeline_entity("service.dag_b")
+        ctx.current_table_fqns = ["svc.db.sch.table_b"]
+
+        second = list(source.get_table_pipeline_observability(self._dag_details("dag_b")))
+
+        assert set(second[0]) == {"svc.db.sch.table_b"}
+        assert "svc.db.sch.table_a" not in second[0]
+
+    def test_emits_single_record_built_from_the_newest_run(self):
+        """
+        get_pipeline_status returns runs newest-first and the server keys the row on
+        the pipeline FQN, so every run of a DAG upserts the same row and the last one
+        written wins. Emitting all N runs therefore persisted the *oldest* of them.
+        """
+        newest = self._dag_run("run_new", datetime(2024, 3, 1, tzinfo=timezone.utc), state="success")
+        source = self._source_with_context(self._pipeline_entity(), ["svc.db.sch.table_a"], newest)
+
+        result = list(source.get_table_pipeline_observability(self._dag_details("dag_a")))
+
+        observability_list = result[0]["svc.db.sch.table_a"]
+        assert len(observability_list) == 1
+        assert observability_list[0].lastRunStatus.value == "Successful"
+        assert observability_list[0].lastRunTime.root == int(newest.logical_date.timestamp() * 1000)
+
+    @pytest.mark.parametrize(
+        "pipeline_entity,table_fqns,latest_dag_run",
+        [
+            (None, ["svc.db.sch.table_a"], "run"),
+            ("entity", [], "run"),
+            ("entity", ["svc.db.sch.table_a"], None),
+        ],
+    )
+    def test_emits_nothing_when_lineage_context_is_incomplete(self, pipeline_entity, table_fqns, latest_dag_run):
+        """
+        yield_pipeline_lineage_details resets this context before its early return, so
+        a DAG whose pipeline entity is missing must emit nothing rather than inherit
+        the previous sibling DAG's tables.
+        """
+        run = self._dag_run("run_a", datetime(2024, 1, 15, tzinfo=timezone.utc)) if latest_dag_run else None
+        entity = self._pipeline_entity() if pipeline_entity else None
+        source = self._source_with_context(entity, table_fqns, run)
+
+        result = list(source.get_table_pipeline_observability(self._dag_details("dag_a")))
+
+        assert result == []
+
+
+class TestLineageObservabilityContext:
+    """
+    yield_pipeline_lineage_details is what populates the context the observability
+    stage reads. These tests pin down the two properties that stage depends on.
+    """
+
+    @staticmethod
+    def _source(dag_runs, pipeline_entity, table_entity):
+        from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
+
+        source = AirflowSource.__new__(AirflowSource)
+        source.metadata = MagicMock()
+        source._table_entity_cache = {}
+        source.cache_table_entity = MagicMock()
+
+        def get_by_name(entity, fqn, **_):
+            from metadata.generated.schema.entity.data.pipeline import Pipeline
+
+            return pipeline_entity if entity is Pipeline else table_entity
+
+        source.metadata.get_by_name.side_effect = get_by_name
+        source.get_pipeline_status = MagicMock(return_value=dag_runs)
+
+        ctx = SimpleNamespace(pipeline_service="service", pipeline="dag_a")
+        source.context = MagicMock()
+        source.context.get.return_value = ctx
+        return source, ctx
+
+    @staticmethod
+    def _dag_run(run_id, logical_date):
+        dag_run = MagicMock()
+        dag_run.run_id = run_id
+        dag_run.logical_date = logical_date
+        dag_run.start_date = logical_date
+        dag_run.state = "success"
+        return dag_run
+
+    def test_stores_the_newest_run_for_observability(self):
+        """
+        get_pipeline_status orders runs newest-first. The server upserts observability
+        on the pipeline FQN, so whichever run is emitted last is the one persisted --
+        it has to be dag_runs[0], not the tail of the numberOfStatus window.
+        """
+        newest = self._dag_run("newest", datetime(2024, 3, 3, tzinfo=timezone.utc))
+        middle = self._dag_run("middle", datetime(2024, 2, 2, tzinfo=timezone.utc))
+        oldest = self._dag_run("oldest", datetime(2024, 1, 1, tzinfo=timezone.utc))
+
+        pipeline_entity = MagicMock()
+        pipeline_entity.id.root = uuid4()
+        pipeline_entity.fullyQualifiedName.root = "service.dag_a"
+
+        source, ctx = self._source([newest, middle, oldest], pipeline_entity, None)
+
+        with (
+            patch("metadata.ingestion.source.pipeline.airflow.metadata.fqn.build", return_value="service.dag_a"),
+            patch("metadata.ingestion.source.pipeline.airflow.metadata.get_xlets_from_dag", return_value=[]),
+        ):
+            list(source.yield_pipeline_lineage_details(SimpleNamespace(dag_id="dag_a", schedule_interval="@daily")))
+
+        assert ctx.latest_dag_run is newest
+        assert ctx.latest_dag_run is not oldest
+
+    def test_resets_observability_context_when_the_pipeline_is_missing(self):
+        """
+        The topology context is shared across sibling DAGs. A DAG whose pipeline entity
+        cannot be resolved returns early, so it must clear the previous DAG's entity and
+        tables first or its observability is written under the wrong pipeline.
+        """
+        source, ctx = self._source([], None, None)
+        ctx.current_pipeline_entity = "stale entity from the previous dag"
+        ctx.current_table_fqns = ["svc.db.sch.previous_table"]
+        ctx.latest_dag_run = "stale run"
+
+        with patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+            return_value="service.dag_a",
+        ):
+            list(source.yield_pipeline_lineage_details(SimpleNamespace(dag_id="dag_a", schedule_interval="@daily")))
+
+        assert ctx.current_pipeline_entity is None
+        assert ctx.current_table_fqns == []
+        assert ctx.latest_dag_run is None
+
+    def test_hands_resolved_table_entities_to_the_observability_stage(self):
+        """
+        Lineage already fetched every table entity. Passing them on is what keeps the
+        observability stage from issuing a second get_by_name per table, per DAG.
+        """
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
+            OMEntity,
+            XLets,
+        )
+
+        pipeline_entity = MagicMock()
+        pipeline_entity.id.root = uuid4()
+        pipeline_entity.fullyQualifiedName.root = "service.dag_a"
+
+        table_entity = MagicMock()
+        table_entity.id = uuid4()
+
+        source, ctx = self._source(
+            [self._dag_run("newest", datetime(2024, 3, 3, tzinfo=timezone.utc))],
+            pipeline_entity,
+            table_entity,
+        )
+
+        xlets = [
+            XLets(
+                inlets=[OMEntity(entity=Table, fqn="svc.db.sch.in_table")],
+                outlets=[OMEntity(entity=Table, fqn="svc.db.sch.out_table")],
+            )
+        ]
+
+        with (
+            patch("metadata.ingestion.source.pipeline.airflow.metadata.fqn.build", return_value="service.dag_a"),
+            patch(
+                "metadata.ingestion.source.pipeline.airflow.metadata.get_xlets_from_dag",
+                return_value=xlets,
+            ),
+        ):
+            list(source.yield_pipeline_lineage_details(SimpleNamespace(dag_id="dag_a", schedule_interval="@daily")))
+
+        assert set(ctx.current_table_fqns) == {"svc.db.sch.in_table", "svc.db.sch.out_table"}
+        assert source.cache_table_entity.call_count == 2

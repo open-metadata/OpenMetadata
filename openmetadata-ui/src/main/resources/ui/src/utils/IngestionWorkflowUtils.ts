@@ -208,11 +208,13 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
    */
   keys.forEach((key) => {
     const value = cleanedWorkFlowData[key as keyof Pipeline];
-    if (
+    const hasIncludesAndExcludes =
       value &&
       typeof value === 'object' &&
       'excludes' in value &&
-      'includes' in value &&
+      'includes' in value;
+    if (
+      hasIncludesAndExcludes &&
       isEmpty(value.excludes) &&
       isEmpty(value.includes)
     ) {

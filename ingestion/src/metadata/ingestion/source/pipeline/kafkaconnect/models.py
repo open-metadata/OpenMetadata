@@ -59,6 +59,25 @@ class TopicResolutionResult(BaseModel):
     )
 
 
+class ConfluentTelemetryRow(BaseModel):
+    """
+    One topic/client pair from Confluent's telemetry Data Flow dataset.
+
+    The API returns its group_by fields under dotted names, which are not valid Python
+    identifiers, so both are read through aliases. The metric value is deliberately absent:
+    only the pairing carries meaning here, since the question is which client wrote to
+    which topic and not how much it wrote.
+
+    Both halves are required and non-empty, because a row missing either one attributes a
+    topic to no connector or a connector to no topic, and neither can become lineage.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    client_id: str = Field(..., min_length=1, alias="metric.client_id", description="Producer or consumer client id")
+    topic: str = Field(..., min_length=1, alias="metric.topic", description="Topic the client wrote to")
+
+
 class KafkaConnectColumnMapping(BaseModel):
     """Model for column-level mapping between source and target"""
 

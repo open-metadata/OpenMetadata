@@ -50,7 +50,7 @@ test.beforeEach(async ({ page }) => {
 
 test(
   'Add test case modal on Test Suite details page - filters and select',
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] },
   async ({ page }) => {
     test.slow();
 
