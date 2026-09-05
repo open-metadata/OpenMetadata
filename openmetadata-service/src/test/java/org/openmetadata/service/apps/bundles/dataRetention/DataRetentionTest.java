@@ -13,10 +13,14 @@
 
 package org.openmetadata.service.apps.bundles.dataRetention;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class DataRetentionTest {
   @Test
@@ -24,5 +28,46 @@ class DataRetentionTest {
     assertFalse(DataRetention.isRetentionEnabled(null));
     assertFalse(DataRetention.isRetentionEnabled(0));
     assertTrue(DataRetention.isRetentionEnabled(1));
+  }
+
+  /**
+   * workflowRetentionPeriod is deliberately not `required`, so an app configuration saved before it
+   * existed must fall back to the schema default instead of deserializing to null - the app reads
+   * it as an int.
+   */
+  @Test
+  void workflowRetentionFallsBackToDefaultForConfigsSavedWithoutIt() {
+    DataRetentionConfiguration config =
+        JsonUtils.readValue(
+            "{\"changeEventRetentionPeriod\": 7}", DataRetentionConfiguration.class);
+
+    assertEquals(30, config.getWorkflowRetentionPeriod());
+  }
+
+  /**
+   * The automation-workflow cleanup deletes per entity and reports only the rows it actually
+   * removed, so a batch in which every delete fails reports 0. That has to end the drain: the batch
+   * query is ordered oldest first, so a retry would hand back the same rows forever.
+   */
+  @Test
+  void aBatchThatDeletesNothingEndsTheDrain() {
+    AtomicInteger batches = new AtomicInteger();
+
+    BatchDrain.drain(batches::incrementAndGet, deleted -> deleted < 10, 10);
+    assertEquals(1, batches.get(), "a first batch reporting fewer rows than asked is drained");
+
+    batches.set(0);
+    BatchDrain.Result result =
+        BatchDrain.drain(
+            () -> {
+              batches.incrementAndGet();
+              return 0;
+            },
+            deleted -> deleted < 10,
+            10);
+
+    assertEquals(1, batches.get(), "a batch that removed nothing must not be retried");
+    assertEquals(0, result.deleted());
+    assertFalse(result.hitIterationCap(), "the drain must finish, not exhaust its iteration cap");
   }
 }
