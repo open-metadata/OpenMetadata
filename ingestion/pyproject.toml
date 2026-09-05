@@ -20,6 +20,54 @@ Homepage = "https://open-metadata.org/"
 Documentation = "https://docs.open-metadata.org/"
 Source = "https://github.com/open-metadata/OpenMetadata"
 
+[dependency-groups]
+style = [
+    "ruff~=0.15.12",
+]
+
+dev = [
+    { include-group = "style" },
+    "uvloop==0.21.0",
+    "datamodel-code-generator==0.64.0",
+    "boto3-stubs",
+    "mypy-boto3-glue",
+    "google-api-python-client-stubs",
+    "google-auth-stubs",
+    "types-requests",
+    "pandas-stubs~=2.1.4",
+    "scipy-stubs",
+    "nox",
+    "pre-commit",
+    "basedpyright==1.39.3",
+    "import-linter~=2.13",
+    "twine",
+    "build",
+]
+
+test = [
+    { include-group = "dev" },
+    { include-group = "exasol-test" },
+    "coverage",
+    "pytest==7.0.1",
+    "pytest-cov",
+    "pytest-xdist~=3.5",
+    "pytest-order",
+    "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
+    "dirty-equals",
+    "freezegun",
+    "faker==37.1.0",
+    "factory-boy~=3.3.3",
+    "testcontainers~=4.8.0",
+    "minio==7.2.5",
+    "locust~=2.32.0",
+]
+
+exasol-test = [
+    "exasol-integration-test-docker-environment>=6.0.0,<7",
+    "luigi>=2.8.4,<=3.6.0",
+]
+
 [tool.setuptools.dynamic]
 readme = { file = ["README.md"] }
 

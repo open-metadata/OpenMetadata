@@ -467,23 +467,6 @@ dev = {
     # For publishing
     "twine",
     "build",
-    *plugins["sample-data"],
-}
-
-# Dependencies for unit testing in addition to dev dependencies and plugins
-test_unit = {
-    "pytest==7.0.1",
-    "pytest-cov",
-    "pytest-order",
-    "pytest-rerunfailures",
-    "pytest-timeout~=2.4",
-    "dirty-equals",
-    "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
-    # TODO: Remove once no unit test requires testcontainers
-    "testcontainers",
-    VERSIONS["factory-boy"],
-    *plugins["exasol"],
-    *plugins["teradata"],
 }
 
 exasol_test = {
@@ -610,16 +593,10 @@ setup(
     extras_require={
         "dev": list(dev),
         "test": list(test),
-        "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
         "exasol-test": list(exasol_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        # FIXME: all-dev-env is a temporary solution to install all dependencies except
-        #   those that might conflict with each other or cause issues in the dev environment
-        #   This covers all development cases where none of the plugins are used
-        "all-dev-env": filter_requirements({"airflow", "db2", "great-expectations", "pymssql"}),
-        # enf-of-fixme
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
         "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
