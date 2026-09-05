@@ -13,7 +13,7 @@
 from abc import ABC
 from collections.abc import Mapping
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (
     ClickzettaConnection,
@@ -159,14 +159,14 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
     @classmethod
     def create(
         cls,
-        config_dict,
+        config_dict: dict[str, Any],
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("ClickZetta service connection is required")
-        connection: ClickzettaConnection = config.serviceConnection.root.config
+        connection = config.serviceConnection.root.config
         if not isinstance(connection, ClickzettaConnection):
             raise InvalidSourceException(f"Expected ClickzettaConnection, but got {connection}")
         return cls(config, metadata)
@@ -175,7 +175,7 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
         super().__init__(config, metadata, get_engine=get_engine)
         # ClickZetta is not yet part of the global mapper. ANSI is the safe
         # parser choice until a vendor-specific sqlglot dialect is contributed.
-        self.dialect = Dialect.ANSI
+        self.dialect = Dialect.ANSI.value
 
     @property
     def query_history_table(self) -> str:
@@ -203,16 +203,16 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
             result_limit=getattr(self.source_config, "resultLimit", None),
         )
 
-    def get_database_name(self, data: dict) -> Optional[str]:  # noqa: UP045
+    def get_database_name(self, data: dict) -> Optional[str]:  # noqa: UP045  # pyright: ignore[reportIncompatibleMethodOverride]
         return data.get("database_name") or getattr(self.service_connection, "databaseName", None)
 
-    def get_schema_name(self, data: dict) -> Optional[str]:  # noqa: UP045
+    def get_schema_name(self, data: dict) -> Optional[str]:  # noqa: UP045  # pyright: ignore[reportIncompatibleMethodOverride]
         return data.get("schema_name") or getattr(self.service_connection, "databaseSchema", None)
 
     def normalize_query_row(self, row: Any, *, include_usage: bool) -> Optional[TableQuery]:  # noqa: UP045
         return normalize_clickzetta_query_row(
             row,
-            service_name=self.config.serviceName,
+            service_name=cast("str", self.config.serviceName),
             database_name=getattr(self.service_connection, "databaseName", None),
             database_schema=getattr(self.service_connection, "databaseSchema", None),
             include_usage=include_usage,

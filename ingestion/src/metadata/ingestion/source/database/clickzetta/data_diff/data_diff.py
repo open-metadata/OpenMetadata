@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from functools import partial
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import attrs
 from data_diff.abcs.database_types import (
@@ -28,7 +28,9 @@ from data_diff.abcs.database_types import (
     Date,
     Decimal,
     Float,
+    FractionalType,
     Integer,
+    TemporalType,
     Text,
     Timestamp,
     TimestampTZ,
@@ -84,7 +86,7 @@ class ClickzettaDialect(PrestoDialect):
     def to_string(self, s: str):
         return f"CAST({s} AS STRING)"
 
-    def parse_type(self, table_path, info: RawColumnInfo):
+    def parse_type(self, table_path: Any, info: RawColumnInfo):
         """Parse ClickZetta's case-insensitive DESCRIBE type names."""
 
         data_type = info.data_type.strip().lower()
@@ -112,10 +114,10 @@ class ClickzettaDialect(PrestoDialect):
             f"16, 10) AS DECIMAL(38, 0)) - {CHECKSUM_OFFSET}"
         )
 
-    def normalize_timestamp(self, value: str, coltype: Timestamp) -> str:
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         return self.to_string(value)
 
-    def normalize_number(self, value: str, coltype: Float | Decimal) -> str:
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(value)
 
     def normalize_boolean(self, value: str, coltype: Boolean) -> str:
@@ -127,8 +129,10 @@ class ClickzettaDatabase(Database):
     """DB-API data-diff connection using the pinned ClickZetta connector."""
 
     DIALECT_CLASS: ClassVar[type[BaseDialect]] = ClickzettaDialect
-    CONNECT_URI_HELP = "clickzetta://<user>:<password>@<instance>.<service>/<workspace>?virtualcluster=<name>"
-    CONNECT_URI_PARAMS: ClassVar[list[str]] = ["workspace"]
+    # data-diff's URI dispatcher reads these from the class, although its
+    # Database base class incorrectly annotates them as instance properties.
+    CONNECT_URI_HELP: ClassVar[str] = "clickzetta://<user>:<password>@<instance>.<service>/<workspace>?virtualcluster=<name>"  # fmt: skip  # pyright: ignore[reportIncompatibleMethodOverride, reportAssignmentType]
+    CONNECT_URI_PARAMS: ClassVar[list[str]] = ["workspace"]  # pyright: ignore[reportIncompatibleMethodOverride]
     CONNECT_URI_KWPARAMS: ClassVar[list[str]] = ["virtualcluster"]
 
     _conn: Any
@@ -144,7 +148,7 @@ class ClickzettaDatabase(Database):
         port: int | None = None,
         schema: str | None = None,
         protocol: str = "https",
-        **extra,
+        **extra: Any,
     ) -> None:
         super().__init__()
         self.default_schema = schema or "public"
@@ -197,7 +201,7 @@ class ClickzettaDatabase(Database):
         super().close()
         self._conn.close()
 
-    def select_table_schema(self, path):
+    def select_table_schema(self, path: Any):
         schema, table = self._normalize_table_path(path)
         return f"DESCRIBE {self._quote_identifier(schema)}.{self._quote_identifier(table)}"
 
@@ -232,7 +236,7 @@ class ClickzettaDatabase(Database):
             base_type = "DECIMAL"
         return base_type, datetime_precision, numeric_precision, numeric_scale
 
-    def query_table_schema(self, path):
+    def query_table_schema(self, path: Any):
         """Read ClickZetta's accessible DESCRIBE result instead of information_schema."""
 
         rows = self._query(self.select_table_schema(path))
@@ -266,5 +270,7 @@ def register_clickzetta_data_diff() -> None:
 
     from data_diff.databases import _connect
 
-    _connect.DATABASE_BY_SCHEME["clickzetta"] = ClickzettaDatabase
-    _connect.connect.database_by_scheme["clickzetta"] = ClickzettaDatabase
+    # data-diff's registry annotations describe instances, while its URI
+    # dispatcher stores database classes and instantiates them on demand.
+    cast("dict[str, type[Database]]", _connect.DATABASE_BY_SCHEME)["clickzetta"] = ClickzettaDatabase
+    cast("dict[str, type[Database]]", _connect.connect.database_by_scheme)["clickzetta"] = ClickzettaDatabase

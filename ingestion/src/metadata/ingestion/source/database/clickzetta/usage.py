@@ -12,6 +12,7 @@
 
 from collections.abc import Iterable
 from datetime import timedelta
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import text
 
@@ -25,15 +26,18 @@ from metadata.ingestion.source.database.clickzetta.query_parser import (
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
+
 logger = ingestion_logger()
 
 
-class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):
+class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):  # pyright: ignore[reportIncompatibleMethodOverride]
     """Extract bounded query usage from a configured ClickZetta history view."""
 
     query_history_mode = ClickzettaQueryHistoryMode.USAGE
 
-    def yield_table_queries(self) -> Iterable[TableQueries]:
+    def yield_table_queries(self) -> Iterable[TableQueries]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Read query-history rows in at-most-one-day windows."""
         window_start = self.start
         while window_start < self.end:
@@ -41,6 +45,7 @@ class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):
             logger.info(f"Scanning ClickZetta query history for {window_start} - {window_end}")
             try:
                 for engine in self.get_engine():
+                    engine = cast("Engine", engine)
                     sql_statement = self.get_sql_statement(window_start, window_end)
                     with engine.connect() as connection:
                         rows = connection.execute(text(sql_statement))

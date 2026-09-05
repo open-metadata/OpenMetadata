@@ -22,8 +22,8 @@ import {
   BETA_SERVICES,
   excludedService,
 } from '../../../../../constants/Services.constant';
-import { DatabaseServiceType } from '../../../../../generated/entity/services/databaseService';
 import { ServiceCategory } from '../../../../../enums/service.enum';
+import { DatabaseServiceType } from '../../../../../generated/entity/services/databaseService';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import SelectServiceType from './SelectServiceType';
 import { SelectServiceTypeProps } from './Steps.interface';
@@ -190,8 +190,8 @@ describe('Test SelectServiceType component', () => {
     );
 
     expect(BETA_SERVICES).toContain(DatabaseServiceType.Clickzetta);
-    expect(screen.getByTestId(DatabaseServiceType.Clickzetta)).toHaveTextContent(
-      'label.beta'
-    );
+    expect(
+      screen.getByTestId(DatabaseServiceType.Clickzetta)
+    ).toHaveTextContent('label.beta');
   });
 });

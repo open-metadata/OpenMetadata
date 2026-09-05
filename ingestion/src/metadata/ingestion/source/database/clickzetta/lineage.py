@@ -11,6 +11,7 @@
 """ClickZetta query-lineage source."""
 
 from collections.abc import Iterator
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import text
 
@@ -24,10 +25,13 @@ from metadata.ingestion.source.database.clickzetta.query_parser import (
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
+
 logger = ingestion_logger()
 
 
-class ClickzettaLineageSource(ClickzettaQueryParserSource, LineageSource):
+class ClickzettaLineageSource(ClickzettaQueryParserSource, LineageSource):  # pyright: ignore[reportIncompatibleMethodOverride]
     """Extract lineage-bearing DML/CTAS statements from query history."""
 
     query_history_mode = ClickzettaQueryHistoryMode.LINEAGE
@@ -35,6 +39,7 @@ class ClickzettaLineageSource(ClickzettaQueryParserSource, LineageSource):
     def yield_table_query(self) -> Iterator[TableQuery]:
         """Read one bounded query-history window for SQL lineage parsing."""
         for engine in self.get_engine():
+            engine = cast("Engine", engine)
             sql_statement = self.get_sql_statement(self.start, self.end)
             try:
                 with engine.connect() as connection:

@@ -25,5 +25,5 @@ ServiceSpec = DefaultDatabaseSpec(
     usage_source_class=get_class_path(ClickzettaUsageSource),
     connection_class=get_class_path(ClickzettaConnection),
     sampler_class=get_class_path(ClickzettaSampler),
-    data_diff=ClickzettaTableParameter,
+    data_diff=get_class_path(ClickzettaTableParameter),
 )

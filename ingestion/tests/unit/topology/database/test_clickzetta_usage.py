@@ -39,8 +39,14 @@ except ModuleNotFoundError:
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (  # noqa: E402
     SQATestSuiteInterface,
 )
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (  # noqa: E402
+    ServiceSpecPatch,
+)
 from metadata.generated.schema.type.basic import DateTime  # noqa: E402
 from metadata.ingestion.api.steps import InvalidSourceException  # noqa: E402
+from metadata.ingestion.source.database.clickzetta.data_diff.table_parameter import (  # noqa: E402
+    ClickzettaTableParameter,
+)
 from metadata.ingestion.source.database.clickzetta.lineage import (  # noqa: E402
     ClickzettaLineageSource,
 )
@@ -423,6 +429,10 @@ def test_service_spec_registers_usage_and_lineage_sources():
     assert ServiceSpec.profiler_class == get_class_path(SQAProfilerInterface)
     assert ServiceSpec.sampler_class == get_class_path(ClickzettaSampler)
     assert ServiceSpec.test_suite_class == get_class_path(SQATestSuiteInterface)
+    assert ServiceSpec.data_diff == get_class_path(ClickzettaTableParameter)
+    service_spec_patch = object.__new__(ServiceSpecPatch)
+    service_spec_patch._service_spec = ServiceSpec
+    assert service_spec_patch.get_data_diff_class() is ClickzettaTableParameter
 
 
 def test_lineage_source_is_distinct_from_usage_source():
