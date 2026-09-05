@@ -1180,7 +1180,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${teamID}`,
       description: 'playwright data consumer team description',
       teamType: 'BusinessUnit',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
@@ -1189,7 +1188,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${team2ID}`,
       description: 'playwright data consumer team description',
       teamType: 'Department',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
@@ -1198,7 +1196,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${team3ID}`,
       description: 'playwright data consumer team description',
       teamType: 'Division',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });

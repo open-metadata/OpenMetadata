@@ -2905,7 +2905,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     request.setTestDefinition("tableRowCountToEqual");
     request.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("100")));
-    // TEAM11 is a Group team (TEAM1 is Department which can't own entities)
+    // TEAM11 aliases the shared Group team used for direct ownership.
     request.setOwners(List.of(shared.TEAM11.getEntityReference()));
 
     TestCase testCase = client.testCases().create(request);
