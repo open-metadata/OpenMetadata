@@ -32,6 +32,9 @@ from metadata.generated.schema.type.tableUsageCount import QueryCostWrapper
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.lru_cache import SkipNoneLRUCache
+
+QUERY_CACHE_SIZE = 1000
 
 
 class OMetaQueryMixin:
@@ -43,6 +46,18 @@ class OMetaQueryMixin:
 
     client: REST
 
+    def _get_query_cache(self) -> SkipNoneLRUCache:
+        """
+        Lazily create a Query cache scoped to this specific OpenMetadata
+        client instance, so caches from different clients or catalogs
+        never mix.
+        """
+        cache = getattr(self, "_query_cache_instance", None)
+        if cache is None:
+            cache = SkipNoneLRUCache(QUERY_CACHE_SIZE)
+            self._query_cache_instance = cache
+        return cache
+
     def _get_query_hash(self, query: str) -> str:
         result = hashlib.md5(query.encode())
         return str(result.hexdigest())
@@ -51,11 +66,16 @@ class OMetaQueryMixin:
         if query.query.root is None:
             return None
         query_hash = self._get_query_hash(query=query.query.root)
+        cache = self._get_query_cache()
+        if query_hash in cache:
+            return cache.get(query_hash)
         query_entity = self.get_by_name(entity=Query, fqn=query_hash)
         if query_entity is None:
             resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
             if resp and resp.get("id"):
                 query_entity = Query(**resp)
+        if query_entity is not None:
+            cache.put(query_hash, query_entity)
         return query_entity
 
     def ingest_entity_queries_data(self, entity: Table | Dashboard, queries: list[CreateQueryRequest]) -> None:
