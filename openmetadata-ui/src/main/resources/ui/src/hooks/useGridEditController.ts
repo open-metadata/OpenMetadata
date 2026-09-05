@@ -315,12 +315,13 @@ function deleteRow(
   }
 
   const newRows = [...dataSource];
-  const row = newRows[rowIndex];
+  const row = { ...newRows[rowIndex] };
   columns.forEach((column) => {
     if (column.editable) {
       row[column.key] = '';
     }
   });
+  newRows[rowIndex] = row;
 
   setDataSource(newRows);
   pushToUndoStack(dataSource);
