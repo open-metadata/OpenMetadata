@@ -396,6 +396,20 @@ public class TagLabelUtil {
     return uniqueTags.stream().toList();
   }
 
+  /**
+   * A label the system computes or projects, as opposed to one a user applied. These are never
+   * written to {@code tag_usage}: DERIVED is recomputed on read from the glossary term's own
+   * classification tags, and PROPAGATED is projected from a parent onto its fields by {@code
+   * Entity.populateEntityFieldTags}. Persisting either would turn a projection into a stored row that
+   * outlives whatever it was projected from — a client that reads an entity and writes it back
+   * unchanged would silently pin the label in place.
+   */
+  public static boolean isSystemGenerated(TagLabel tagLabel) {
+    return tagLabel != null
+        && (TagLabel.LabelType.DERIVED.equals(tagLabel.getLabelType())
+            || TagLabel.LabelType.PROPAGATED.equals(tagLabel.getLabelType()));
+  }
+
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {
     Map<String, TagLabel> map = new HashMap<>();
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {

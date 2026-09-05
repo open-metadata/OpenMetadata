@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
+import static org.openmetadata.service.util.EntityUtil.mergeTags;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.ws.rs.BadRequestException;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.DomainSyncHandler;
@@ -992,21 +994,52 @@ public final class Entity {
     // Get Flattened Fields
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
-    // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
+    // Fetch All tags belonging to Prefix. "%" rather than ".%" so the parent's own row arrives in
+    // the same query — its glossary terms are projected onto every field below. The DAO returns
+    // null
+    // for an entity type that does not support tags.
+    Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(fqnPrefix, "%");
+    Map<String, List<TagLabel>> allTags = prefixTags == null ? Map.of() : prefixTags;
+    List<TagLabel> propagatedTags =
+        propagatedParentTags(allTags.get(FullyQualifiedName.buildHash(fqnPrefix)));
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
-        List<TagLabel> columnTag =
-            allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
-        if (columnTag == null) {
-          c.setTags(new ArrayList<>());
-        } else {
-          c.setTags(addDerivedTagsGracefully(columnTag));
-        }
+        setFieldTags(c, allTags, propagatedTags);
       } else {
         c.setTags(c.getTags());
       }
     }
+  }
+
+  /**
+   * A glossary term applied to a parent (table, dashboard data model, API endpoint, topic) also
+   * applies to every field beneath it. The labels are projected on read instead of being stored per
+   * field in {@code tag_usage}, so fields ingested after the parent was tagged inherit them with no
+   * backfill and no per-field write amplification.
+   *
+   * <p>{@link TagLabel.LabelType#DERIVED} cannot be used as the marker: it means "recomputed on read
+   * from the glossary term's own classification tags" and every write path strips it (see {@code
+   * EntityRepository.applyTags}). {@code PROPAGATED} is the schema's marker for a propagated label
+   * and survives both read and write.
+   */
+  static List<TagLabel> propagatedParentTags(List<TagLabel> parentTags) {
+    return listOrEmpty(parentTags).stream()
+        .filter(tag -> TagLabel.TagSource.GLOSSARY.equals(tag.getSource()))
+        .filter(tag -> !TagLabel.LabelType.DERIVED.equals(tag.getLabelType()))
+        .map(tag -> JsonUtils.deepCopy(tag, TagLabel.class))
+        .map(tag -> tag.withLabelType(TagLabel.LabelType.PROPAGATED))
+        .toList();
+  }
+
+  private static <T extends FieldInterface> void setFieldTags(
+      T field, Map<String, List<TagLabel>> allTags, List<TagLabel> propagatedTags) {
+    List<TagLabel> fieldTags =
+        allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName()));
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(fieldTags));
+    // A label the field carries itself wins over the projected one (tagLabelMatch ignores
+    // labelType), so an explicitly applied term stays MANUAL rather than turning into PROPAGATED.
+    mergeTags(merged, propagatedTags);
+    field.setTags(merged.isEmpty() ? new ArrayList<>() : addDerivedTagsGracefully(merged));
   }
 
   public static SearchIndex buildSearchIndex(String entityType, Object entity) {

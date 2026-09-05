@@ -1611,7 +1611,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void inheritedFieldChangesAddTagsMarksThemAsDerived() throws Exception {
+  void inheritedFieldChangesAddTagsMarksThemAsPropagated() throws Exception {
     EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag1 =
@@ -1643,14 +1643,17 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(data.get("tagAdded"));
     List<TagLabel> addedTags = (List<TagLabel>) data.get("tagAdded");
     assertEquals(2, addedTags.size());
-    assertTrue(addedTags.stream().allMatch(t -> t.getLabelType() == TagLabel.LabelType.DERIVED));
+    // PROPAGATED, not DERIVED: DERIVED means "recomputed on read from the glossary term's own
+    // classification tags" and is stripped by every write path, so it cannot survive a round
+    // trip. See TagLabelUtil.isSystemGenerated and Entity.propagatedParentTags.
+    assertTrue(addedTags.stream().allMatch(t -> t.getLabelType() == TagLabel.LabelType.PROPAGATED));
     assertEquals("PII.Sensitive", addedTags.get(0).getTagFQN());
     assertEquals("Tier.Tier1", addedTags.get(1).getTagFQN());
   }
 
   @Test
   @SuppressWarnings("unchecked")
-  void inheritedFieldChangesDeleteTagsMarksThemAsDerived() throws Exception {
+  void inheritedFieldChangesDeleteTagsMarksThemAsPropagated() throws Exception {
     EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
@@ -1677,7 +1680,7 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(data.get("tagDeleted"));
     List<TagLabel> deletedTags = (List<TagLabel>) data.get("tagDeleted");
     assertEquals(1, deletedTags.size());
-    assertEquals(TagLabel.LabelType.DERIVED, deletedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.PROPAGATED, deletedTags.get(0).getLabelType());
     assertEquals("PII.Sensitive", deletedTags.get(0).getTagFQN());
   }
 
@@ -1719,11 +1722,11 @@ class SearchRepositoryBehaviorTest {
 
     assertEquals(1, addedTags.size());
     assertEquals("PII.NonSensitive", addedTags.get(0).getTagFQN());
-    assertEquals(TagLabel.LabelType.DERIVED, addedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.PROPAGATED, addedTags.get(0).getLabelType());
 
     assertEquals(1, deletedTags.size());
     assertEquals("PII.Sensitive", deletedTags.get(0).getTagFQN());
-    assertEquals(TagLabel.LabelType.DERIVED, deletedTags.get(0).getLabelType());
+    assertEquals(TagLabel.LabelType.PROPAGATED, deletedTags.get(0).getLabelType());
   }
 
   @Test

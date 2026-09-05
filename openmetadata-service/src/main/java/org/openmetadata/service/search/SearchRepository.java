@@ -1484,17 +1484,34 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * A change to the table's own tags forces a full column reindex rather than the inherited-field
+   * script update. The table's glossary terms are projected onto its columns on read (see {@code
+   * Entity.populateEntityFieldTags}), so rebuilding the column docs from the entity picks the change
+   * up in both directions, and a column's own labels survive because the projection merges behind
+   * them. The script path only writes the inherited-field map and never touches {@code tags}, which
+   * is why a term removed from a table used to linger on its column docs — and keep the columns
+   * showing up under the glossary term's assets.
+   */
   private boolean hasColumnsChanged(ChangeDescription changeDescription) {
     if (changeDescription == null) {
       return true; // Default to full reindex if no change description
     }
 
-    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
-            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
+    return changedFieldNames(changeDescription)
+        .anyMatch(
+            fieldName ->
+                fieldName.startsWith(Entity.FIELD_COLUMNS)
+                    || fieldName.startsWith(Entity.FIELD_TAGS));
+  }
+
+  private Stream<String> changedFieldNames(ChangeDescription changeDescription) {
+    return Stream.of(
+            listOrEmpty(changeDescription.getFieldsAdded()),
+            listOrEmpty(changeDescription.getFieldsUpdated()),
+            listOrEmpty(changeDescription.getFieldsDeleted()))
+        .flatMap(List::stream)
+        .map(FieldChange::getName);
   }
 
   private void updateTableColumnsInheritedFields(Table table) {
@@ -3179,7 +3196,7 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
             JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
-        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         data.put("tagAdded", tagLabels);
         script.append(generateAddTagLabelListScript());
       }
@@ -3240,7 +3257,7 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
             JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
-        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         data.put("tagDeleted", tagLabels);
         script.append(generateDeleteTagLabelListScript());
       }
@@ -3295,10 +3312,10 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> addedTags =
             JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
-        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         List<TagLabel> deletedTags =
             JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
-        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         data.put("tagAdded", addedTags);
         data.put("tagDeleted", deletedTags);
         script.append(generateUpdateTagLabelListScript());
@@ -3414,34 +3431,48 @@ public class SearchRepository {
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
-  private String generateDeleteTagLabelListScript() {
-    return """
+  /**
+   * Removes a parent's tags from a child doc, but only the labels the system itself propagated. A
+   * child that carries the same term MANUAL (a column explicitly tagged with the term the table also
+   * carries) keeps it — matching on tagFQN alone used to strip it. DERIVED is accepted alongside
+   * PROPAGATED so labels written by earlier releases, which stamped DERIVED, are still cleaned up
+   * without requiring a reindex first.
+   *
+   * <p>An absent {@code labelType} is treated as user-applied, not system-applied: {@code
+   * tagLabel.json} defaults the field to {@code Manual}, so a doc missing it most likely carries a
+   * manual label. Getting this backwards trades a visible, reindex-clearable orphan for silent
+   * removal of a label a user set — the very stripping this block exists to stop.
+   */
+  private String deleteTagLabelListBlock() {
+    return String.format(
+        """
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
+            def existingTag = ctx._source.tags[i];
+            boolean systemApplied = existingTag.labelType != null
+                && (existingTag.labelType.equalsIgnoreCase('%s')
+                    || existingTag.labelType.equalsIgnoreCase('%s'));
+            if (systemApplied) {
+              for (int j = 0; j < params.tagDeleted.size(); j++) {
+                if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                  ctx._source.tags.remove(i);
+                  break;
+                }
               }
             }
           }
         }
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """,
+        TagLabel.LabelType.PROPAGATED.value(), TagLabel.LabelType.DERIVED.value());
+  }
+
+  private String generateDeleteTagLabelListScript() {
+    return deleteTagLabelListBlock() + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
-    return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
-              }
-            }
-          }
-        }
+    return deleteTagLabelListBlock()
+        + """
         if (ctx._source.tags == null) {
           ctx._source.tags = [];
         }
