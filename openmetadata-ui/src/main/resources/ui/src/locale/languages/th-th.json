@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "ดูมากที่สุด: <0>{{entity}}</0>",
     "move": "ย้าย",
     "move-anyway": "ย้ายต่อไป",
+    "move-entity-to-root": "ย้าย {{entity}} ไปที่รูท",
     "move-the-entity": "ย้าย {{entity}}",
     "move-to-folder": "ย้ายไปยังโฟลเดอร์",
     "ms": "มิลลิวินาที",

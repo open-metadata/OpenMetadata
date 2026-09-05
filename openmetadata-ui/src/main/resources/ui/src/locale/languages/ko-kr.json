@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "Most viewed: <0>{{entity}}</0>",
     "move": "이동",
     "move-anyway": "그래도 이동",
+    "move-entity-to-root": "{{entity}}을(를) 루트로 이동",
     "move-the-entity": "{{entity}} 이동",
     "move-to-folder": "폴더로 이동",
     "ms": "밀리초",

@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "Le plus consulté : <0>{{entity}}</0>",
     "move": "Déplacer",
     "move-anyway": "Déplacer quand même",
+    "move-entity-to-root": "Déplacer {{entity}} vers la racine",
     "move-the-entity": "Déplacer {{entity}}",
     "move-to-folder": "Déplacer vers le dossier",
     "ms": "Millisecondes",

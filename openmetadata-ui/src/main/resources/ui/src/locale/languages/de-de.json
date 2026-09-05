@@ -1744,6 +1744,7 @@
     "most-viewed-entity-link": "Am häufigsten angesehen: <0>{{entity}}</0>",
     "move": "Bewegen",
     "move-anyway": "Trotzdem verschieben",
+    "move-entity-to-root": "{{entity}} in Stamm verschieben",
     "move-the-entity": "{{entity}} verschieben",
     "move-to-folder": "In Ordner verschieben",
     "ms": "Millisekunden",
