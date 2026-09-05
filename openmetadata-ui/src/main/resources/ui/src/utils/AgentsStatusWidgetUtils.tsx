@@ -160,13 +160,13 @@ export const getFormattedAgentsList = (
   return orderedAgentsList;
 };
 
+// Every list this is handed is authoritative: an empty one means the service has no such agent
+// left, so a deleted or disabled one drops off the widget. Frames that report nothing at all —
+// the payload-less ones that close the stream — are dropped by the caller instead, since there is
+// no way to tell them apart from here.
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
-  collateAIagentsLiveInfo: CollateAgentLiveInfo[],
-  // Terminal frames (stream completed, or an error fetching chart data) carry no
-  // payload, so keep the agents already on screen instead of blanking them as the
-  // run finishes.
-  preservedCollateAgents: AgentsInfo[] = []
+  collateAIagentsLiveInfo: CollateAgentLiveInfo[]
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -193,13 +193,9 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     };
   });
 
-  const collateAIagents = isEmpty(liveCollateAgents)
-    ? preservedCollateAgents
-    : liveCollateAgents;
-
   const allAgentsList: AgentsInfo[] = [
     ...formattedAgentsList,
-    ...collateAIagents,
+    ...liveCollateAgents,
   ];
 
   const orderedAgentsList = reduce(

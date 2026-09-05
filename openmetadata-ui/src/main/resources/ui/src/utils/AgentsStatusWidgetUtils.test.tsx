@@ -16,7 +16,11 @@ import {
   AppRunRecord,
   Status,
 } from '../generated/entity/applications/appRunRecord';
-import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  PipelineState,
+  PipelineType,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   WorkflowInstance,
   WorkflowStatus,
@@ -218,32 +222,49 @@ describe('getFormattedAgentsList', () => {
 });
 
 describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
-  it('keeps the Collate agents when a frame carries no app status', () => {
-    const preserved = getFormattedAgentsList(
-      {},
-      [],
-      [{ id: 'a1', name: 'svc_TierAutomation' }]
+  it('lists both halves of a frame in the AutoPilot order', () => {
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [
+        {
+          pipelineType: PipelineType.Metadata,
+          provider: ProviderType.Automation,
+        },
+      ] as never,
+      [{ appName: 'svc_TierAutomation' } as never]
     );
 
-    // Terminal frames carry no payload, so the agents already on screen stay.
-    const result = getFormattedAgentsListFromAgentsLiveInfo([], [], preserved);
+    expect(result.map((a) => a.agentType)).toEqual([
+      PipelineType.Metadata,
+      'TierAutomation',
+    ]);
+  });
+
+  // Each list is the service's current set, so an agent that was deleted or disabled has to leave
+  // the widget rather than linger on the last frame that still carried it.
+  it('drops the Collate agents when a frame reports none', () => {
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [
+        {
+          pipelineType: PipelineType.Metadata,
+          provider: ProviderType.Automation,
+        },
+      ] as never,
+      []
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual([PipelineType.Metadata]);
+  });
+
+  it('drops the metadata agents when a frame reports none', () => {
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [],
+      [{ appName: 'svc_TierAutomation' } as never]
+    );
 
     expect(result.map((a) => a.agentType)).toEqual(['TierAutomation']);
   });
 
-  it('prefers live Collate app status over the preserved fallback', () => {
-    const preserved = getFormattedAgentsList(
-      {},
-      [],
-      [{ id: 'a1', name: 'svc_TierAutomation' }]
-    );
-
-    const result = getFormattedAgentsListFromAgentsLiveInfo(
-      [],
-      [{ appName: 'svc_DescriptionAutomation' } as never],
-      preserved
-    );
-
-    expect(result.map((a) => a.agentType)).toEqual(['DescriptionAutomation']);
+  it('reports an empty list when a frame reports no agents at all', () => {
+    expect(getFormattedAgentsListFromAgentsLiveInfo([], [])).toEqual([]);
   });
 });

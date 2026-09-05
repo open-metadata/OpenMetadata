@@ -14,12 +14,19 @@
 import { act, render } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
+import {
+  IngestionPipeline,
+  PipelineType,
+  ProviderType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { ServicesType } from '../../interface/service.interface';
 import {
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
+import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
 import ServiceInsightsTab from './ServiceInsightsTab';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 
@@ -47,20 +54,25 @@ jest.mock('../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn().mockReturnValue({ socket: undefined }),
 }));
 
+const mockAgentsStatusWidget = jest.fn().mockReturnValue(null);
+const mockPlaceholderWidget = jest.fn().mockReturnValue(null);
+
 jest.mock('../../utils/useRequiredParams', () => ({
   useRequiredParams: jest
     .fn()
     .mockReturnValue({ serviceCategory: 'databaseServices' }),
 }));
 
+// Resolved per call rather than up front: the factory is hoisted above the widget mocks, so
+// reading them any earlier than the first render is a temporal dead zone.
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
   __esModule: true,
   default: {
-    getInsightsTabWidgets: jest.fn().mockReturnValue({
-      PlatformInsightsWidget: jest.fn().mockReturnValue(null),
-      TotalDataAssetsWidget: jest.fn().mockReturnValue(null),
-      AgentsStatusWidget: jest.fn().mockReturnValue(null),
-    }),
+    getInsightsTabWidgets: jest.fn(() => ({
+      PlatformInsightsWidget: mockPlaceholderWidget,
+      TotalDataAssetsWidget: mockPlaceholderWidget,
+      AgentsStatusWidget: mockAgentsStatusWidget,
+    })),
   },
 }));
 
@@ -197,5 +209,73 @@ describe('ServiceInsightsTab', () => {
 
     expect(mockSetChartDataStreamConnection).not.toHaveBeenCalled();
     expect(mockStopChartDataStreamConnection).not.toHaveBeenCalled();
+  });
+
+  describe('agents reported over the chart data stream', () => {
+    const metadataPipeline = {
+      pipelineType: PipelineType.Metadata,
+      provider: ProviderType.Automation,
+    } as IngestionPipeline;
+
+    const frame = (status: string) =>
+      JSON.stringify({
+        status,
+        serviceName: mockProps.serviceDetails.name,
+        ingestionPipelineStatus: [],
+        appStatus: [],
+        workflowInstances: [],
+      });
+
+    const mockSocketOn = jest.fn();
+
+    beforeEach(() => {
+      mockSocketOn.mockClear();
+      mockAgentsStatusWidget.mockClear();
+      (useWebSocketConnector as jest.Mock).mockReturnValue({
+        socket: { on: mockSocketOn, off: jest.fn() },
+      });
+    });
+
+    afterEach(() => {
+      (useWebSocketConnector as jest.Mock).mockReturnValue({
+        socket: undefined,
+      });
+    });
+
+    const renderTabAndSendFrame = async (status: string) => {
+      await renderTab({ ingestionPipelines: [metadataPipeline] });
+
+      const [, onChartDataStream] = mockSocketOn.mock.calls[0];
+
+      await act(async () => {
+        onChartDataStream(frame(status));
+      });
+
+      const { calls } = mockAgentsStatusWidget.mock;
+
+      return (calls[calls.length - 1][0].agentsInfo as AgentsInfo[]).map(
+        (agent) => agent.agentType
+      );
+    };
+
+    // Killing a run ends the stream, and the frame that closes it carries empty lists for every
+    // field — it reports nothing rather than reporting that there is nothing.
+    it('should keep the agents listed when a frame closes the stream', async () => {
+      expect(await renderTabAndSendFrame('COMPLETED')).toEqual([
+        PipelineType.Metadata,
+      ]);
+    });
+
+    it('should keep the agents listed when the stream fails', async () => {
+      expect(await renderTabAndSendFrame('FAILED')).toEqual([
+        PipelineType.Metadata,
+      ]);
+    });
+
+    // The opposite case: a live frame's empty list is the service's real state, so an agent that
+    // was deleted or disabled has to leave the widget without waiting for a reload.
+    it('should drop the agents a live frame no longer reports', async () => {
+      expect(await renderTabAndSendFrame('DATA')).toEqual([]);
+    });
   });
 });
