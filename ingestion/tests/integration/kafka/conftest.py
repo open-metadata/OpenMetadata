@@ -4,6 +4,8 @@ from textwrap import dedent
 
 import pytest
 import testcontainers.core.network
+from confluent_kafka.admin import AdminClient, NewTopic
+from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
 from docker.types import EndpointConfig
 from testcontainers.core.container import DockerContainer
 from testcontainers.kafka import KafkaContainer
@@ -25,6 +27,20 @@ from metadata.generated.schema.entity.services.messagingService import (
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingMetadataConfigType,
 )
+
+LOANS_TOPIC = "loans"
+LOANS_PROTOBUF_SCHEMA = dedent(
+    """
+    syntax = "proto3";
+    package org.example.loans;
+
+    message MyLoanRecord {
+      int32 my_field1 = 1;
+      double my_field2 = 2;
+      string my_field3 = 3;
+    }
+    """
+).strip()
 
 
 def _connect_to_network(ctr: DockerContainer, network: testcontainers.core.network, alias: str):
@@ -99,6 +115,21 @@ def kafka_container(docker_network):
     _connect_to_network(container, docker_network, "kafka")
     with container:
         yield container
+
+
+@pytest.fixture(scope="module")
+def protobuf_topic(kafka_container, schema_registry_container):
+    admin_client = AdminClient({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    admin_client.create_topics([NewTopic(LOANS_TOPIC, num_partitions=1, replication_factor=1)])[LOANS_TOPIC].result(
+        timeout=10
+    )
+
+    schema_registry_client = SchemaRegistryClient({"url": schema_registry_container.get_connection_url()})
+    schema_registry_client.register_schema(
+        f"{LOANS_TOPIC}-value",
+        Schema(LOANS_PROTOBUF_SCHEMA, "PROTOBUF"),
+    )
+    return LOANS_TOPIC
 
 
 @pytest.fixture(scope="module")

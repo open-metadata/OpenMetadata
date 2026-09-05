@@ -25,6 +25,7 @@ import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
@@ -141,6 +142,10 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  // Every spec funnels through here, including the ones that build their own
+  // page with browser.newPage() and so never touch the `context` fixture. This
+  // is the only hook that reaches all of them; the call is idempotent.
+  await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
@@ -238,6 +243,7 @@ export async function createNewPage(
         ? adminStorageStateFile
         : undefined,
     });
+    await installServerLoadReducers(page.context());
     await redirectToHomePage(page);
   }
 
@@ -1774,4 +1780,17 @@ export const testTableSearch = async (
       timeout: 5_000,
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+};
+
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 };

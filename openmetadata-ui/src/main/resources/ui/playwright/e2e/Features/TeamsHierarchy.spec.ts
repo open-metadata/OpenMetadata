@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import {
@@ -42,8 +42,6 @@ test.describe(
   'Add Nested Teams and Test TeamsSelectable',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
       await visitTeamsPage(page);

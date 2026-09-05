@@ -193,6 +193,8 @@ export const GlobalSearchBar = () => {
     }
   }, [currentUser]);
 
+  const shouldShowSearchContent = !isTourOpen && (searchValue || isNLPActive);
+
   return (
     <div
       className="flex-center search-container relative"
@@ -228,8 +230,7 @@ export const GlobalSearchBar = () => {
       <Popover
         align={{ offset: [0, 12] }}
         content={
-          !isTourOpen &&
-          (searchValue || isNLPActive) &&
+          shouldShowSearchContent &&
           (isInPageSearchAllowed(pathname) ? (
             <SearchOptions
               isOpen={isSearchBoxOpen}

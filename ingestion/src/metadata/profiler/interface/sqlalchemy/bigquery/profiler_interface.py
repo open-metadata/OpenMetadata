@@ -14,10 +14,12 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import Column, inspect
+from sqlalchemy.sql.type_api import TypeEngine
 
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
@@ -63,7 +65,11 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         )
         return instance.get_system_metrics()
 
-    def _get_struct_columns(self, columns: dict, parent: str):
+    def _get_struct_columns(
+        self,
+        columns: Iterable[tuple[str, TypeEngine[Any]]],
+        parent: str,
+    ):
         """"""
         # pylint: disable=import-outside-toplevel
         from sqlalchemy_bigquery import STRUCT
@@ -73,7 +79,11 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
                 # pylint: disable=protected-access
-                col._set_parent(self.table.__table__)
+                col._set_parent(
+                    self.table.__table__,
+                    all_names={c.name: c for c in self.table.__table__.columns},
+                    allow_replacements=True,
+                )
                 # pylint: enable=protected-access
                 columns_list.append(col)
             else:

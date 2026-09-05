@@ -15,11 +15,21 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { ContractSecurity } from '../../../generated/entity/data/dataContract';
+import {
+  ContractSecurity,
+  RowFilter,
+} from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-security.less';
+
+const renderRowFilterValues = (filter: RowFilter) =>
+  filter.values?.map((item, index) => (
+    <span className="row-filter-value">{`${item}${
+      filter.values?.length === index + 1 ? '' : ','
+    }`}</span>
+  ));
 
 const ContractSecurityCard: React.FC<{
   security?: ContractSecurity;
@@ -98,11 +108,7 @@ const ContractSecurityCard: React.FC<{
                       filter.columnName ??
                       NO_DATA_PLACEHOLDER
                     } = `}
-                    {filter.values?.map((item, index) => (
-                      <span className="row-filter-value">{`${item}${
-                        filter.values?.length === index + 1 ? '' : ','
-                      }`}</span>
-                    ))}
+                    {renderRowFilterValues(filter)}
                   </Tag>
                 );
               })}

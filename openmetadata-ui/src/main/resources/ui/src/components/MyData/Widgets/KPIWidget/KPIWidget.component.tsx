@@ -62,6 +62,23 @@ import './kpi-widget.less';
 import KPILegend from './KPILegend/KPILegend';
 import { KPIWidgetProps } from './KPIWidget.interface';
 
+const buildKpiDataPoint = (
+  day: number,
+  kpiNames: string[],
+  kpiResults: Record<string, DataInsightCustomChartResult['results']>
+) => {
+  const dataPoint: Record<string, number> = { day };
+
+  kpiNames.forEach((kpiName) => {
+    const kpiData = kpiResults[kpiName];
+    const dayData = kpiData?.find((d) => d.day === day);
+
+    dataPoint[kpiName] = dayData?.count || 0;
+  });
+
+  return dataPoint;
+};
+
 const KPIWidget = ({
   isEditView = false,
   selectedDays = CHART_WIDGET_DAYS_DURATION,
@@ -267,18 +284,7 @@ const KPIWidget = ({
 
     return Array.from(allDays)
       .sort()
-      .map((day) => {
-        const dataPoint: Record<string, number> = { day };
-
-        kpiNames.forEach((kpiName) => {
-          const kpiData = kpiResults[kpiName];
-          const dayData = kpiData?.find((d) => d.day === day);
-
-          dataPoint[kpiName] = dayData?.count || 0;
-        });
-
-        return dataPoint;
-      });
+      .map((day) => buildKpiDataPoint(day, kpiNames, kpiResults));
   }, [kpiResults, kpiNames]);
 
   const kpiChartData = useMemo(() => {

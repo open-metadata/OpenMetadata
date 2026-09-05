@@ -16,7 +16,7 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edge, Node } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
@@ -97,6 +97,32 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
     return [EntityType.ALL];
   }, [workflowDefinition, currentWorkflowConfig]);
 
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      if (setNodes) {
+        setNodes((nodes) => nodes.filter((n) => n.id !== nodeId));
+      }
+      if (setEdges) {
+        setEdges((edges) =>
+          edges.filter((e) => e.source !== nodeId && e.target !== nodeId)
+        );
+      }
+      if (workflowDefinition && onWorkflowUpdate) {
+        const updatedDefinition = {
+          ...workflowDefinition,
+          nodes:
+            workflowDefinition.nodes?.filter((n) => n.name !== nodeId) || [],
+          edges:
+            workflowDefinition.edges?.filter(
+              (e) => e.from !== nodeId && e.to !== nodeId
+            ) || [],
+        };
+        onWorkflowUpdate(updatedDefinition);
+      }
+    },
+    [setNodes, setEdges, workflowDefinition, onWorkflowUpdate]
+  );
+
   if (!node) {
     return null;
   }
@@ -155,38 +181,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
               entityTypes={entityTypes}
               node={node}
               onClose={close}
-              onDelete={
-                setNodes && setEdges
-                  ? (nodeId: string) => {
-                      if (setNodes) {
-                        setNodes((nodes) =>
-                          nodes.filter((n) => n.id !== nodeId)
-                        );
-                      }
-                      if (setEdges) {
-                        setEdges((edges) =>
-                          edges.filter(
-                            (e) => e.source !== nodeId && e.target !== nodeId
-                          )
-                        );
-                      }
-                      if (workflowDefinition && onWorkflowUpdate) {
-                        const updatedDefinition = {
-                          ...workflowDefinition,
-                          nodes:
-                            workflowDefinition.nodes?.filter(
-                              (n) => n.name !== nodeId
-                            ) || [],
-                          edges:
-                            workflowDefinition.edges?.filter(
-                              (e) => e.from !== nodeId && e.to !== nodeId
-                            ) || [],
-                        };
-                        onWorkflowUpdate(updatedDefinition);
-                      }
-                    }
-                  : undefined
-              }
+              onDelete={setNodes && setEdges ? handleDeleteNode : undefined}
               onSave={onSave}
             />
           </SlideoutMenu.Content>

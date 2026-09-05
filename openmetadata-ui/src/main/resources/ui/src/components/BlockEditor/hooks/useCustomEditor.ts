@@ -20,6 +20,12 @@ function useForceUpdate() {
   return () => setValue((value) => value + 1);
 }
 
+const runAfterDoubleFrame = (callback: () => void) => {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(callback);
+  });
+};
+
 export const useCustomEditor = (
   options: Partial<EditorOptions> = {},
   deps: DependencyList = []
@@ -123,15 +129,15 @@ export const useCustomEditor = (
 
     setEditor(instance);
 
-    instance.on('transaction', () => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (isMounted) {
-            forceUpdate();
-          }
-        });
+    const scheduleForceUpdate = () => {
+      runAfterDoubleFrame(() => {
+        if (isMounted) {
+          forceUpdate();
+        }
       });
-    });
+    };
+
+    instance.on('transaction', scheduleForceUpdate);
 
     return () => {
       isMounted = false;
