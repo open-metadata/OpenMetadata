@@ -29,6 +29,11 @@ import {
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 import { useDomainStore } from './useDomainStore';
+import {
+  clearUserProfileCache,
+  getPersistedUserProfiles,
+  persistUserProfile,
+} from './user-profile/userProfileCache.utils';
 
 const resolvePersonaFromSession = (user: User): EntityReference | undefined => {
   const storedId = readPersonaSession();
@@ -95,7 +100,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   isSigningUp: false,
   jwtPrincipalClaims: [],
   jwtPrincipalClaimsMapping: [],
-  userProfilePics: {},
+  userProfilePics: getPersistedUserProfiles(),
   cachedEntityData: {},
   selectedPersona: undefined,
   searchCriteria: '',
@@ -226,9 +231,14 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     syncDomainStoreForUser(user);
   },
   updateUserProfilePics: ({ id, user }: { id: string; user: User }) => {
+    persistUserProfile(id, user);
     set({
       userProfilePics: { ...get()?.userProfilePics, [id]: user },
     });
+  },
+  resetUserProfilePics: () => {
+    clearUserProfileCache();
+    set({ userProfilePics: {} });
   },
   updateCachedEntityData: ({
     id,

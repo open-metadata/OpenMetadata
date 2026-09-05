@@ -137,6 +137,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
     setJwtPrincipalClaimsMapping: jest.fn(),
     isApplicationLoading: false,
     setApplicationLoading: jest.fn(),
+    resetUserProfilePics: jest.fn(),
     initializeAuthState: jest.fn(),
     isAuthenticating: false,
     authConfig: {
