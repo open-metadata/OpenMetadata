@@ -267,3 +267,60 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt bigint unsigned NOT NULL,
   PRIMARY KEY (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Restore the audit log full-text index where it is missing.
+-- 1.12.1 created it, but the ALTER TABLE that precedes it in that script has no IF NOT EXISTS, so
+-- on any deployment where search_text already existed the script aborted before reaching the index
+-- and every `q=` audit search has been a full table scan since.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND index_name = 'idx_audit_log_search_text'
+    ),
+    'SELECT 1',
+    'CREATE FULLTEXT INDEX idx_audit_log_search_text ON audit_log_event (search_text)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- event_type and entity_type are filterable on their own and pair with the event_ts ordering every
+-- list query uses; without them a filtered page scans every row in the time window.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND index_name = 'idx_audit_log_event_type_ts'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_audit_log_event_type_ts ON audit_log_event (event_type, event_ts DESC)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND index_name = 'idx_audit_log_entity_type_ts'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_audit_log_entity_type_ts ON audit_log_event (entity_type, event_ts DESC)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

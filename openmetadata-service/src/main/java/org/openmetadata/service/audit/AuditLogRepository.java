@@ -3,6 +3,8 @@ package org.openmetadata.service.audit;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldValue;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -13,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -36,6 +39,13 @@ import org.openmetadata.service.util.RestUtil;
 public class AuditLogRepository {
   private static final int MAX_PAGE_SIZE = 200;
 
+  /**
+   * Ceiling on the reported {@code total}. Paging here is keyset-based, so the exact total is
+   * only used to render a page count; counting past this would mean scanning the whole matching
+   * set on every request. Raise it if a UI ever needs to page beyond this many audit rows.
+   */
+  private static final int MAX_COUNTED_TOTAL = 10_000;
+
   private static final Set<EventType> SUPPORTED_EVENT_TYPES =
       Set.of(
           EventType.ENTITY_CREATED,
@@ -52,6 +62,14 @@ public class AuditLogRepository {
 
   private static final Set<String> AGENT_INDICATORS =
       Set.of("agent", "documentation", "classification", "automator");
+
+  /**
+   * Bounded cache of {@code userName -> isBot}. Without it the audit write path issues one user
+   * lookup per change event, and a single ingestion run replays the same handful of actors
+   * thousands of times.
+   */
+  private static final Cache<String, Boolean> IS_BOT_CACHE =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(10, TimeUnit.MINUTES).build();
 
   private static final AuditLogger AUDIT_LOGGER = AuditLogger.getLogger(AuditLogRepository.class);
 
@@ -161,6 +179,7 @@ public class AuditLogRepository {
                       .withEventType(eventType)
                       .withEntityType(Entity.USER)
                       .withEntityId(userId)
+                      .withEntityFullyQualifiedName(userName)
                       .withUserName(userName)
                       .withTimestamp(System.currentTimeMillis());
               write(changeEvent);
@@ -173,8 +192,9 @@ public class AuditLogRepository {
       return AuditLogRecord.ActorType.USER;
     }
     String lowerName = userName.toLowerCase();
-    for (String indicator : AGENT_INDICATORS) {
-      if (lowerName.contains(indicator)) {
+    // Match whole name parts, not substrings: "management" contains "agent".
+    for (String part : lowerName.split("[^a-z0-9]+")) {
+      if (AGENT_INDICATORS.contains(part)) {
         return AuditLogRecord.ActorType.AGENT;
       }
     }
@@ -182,15 +202,28 @@ public class AuditLogRepository {
       return AuditLogRecord.ActorType.BOT;
     }
     try {
-      org.openmetadata.schema.entity.teams.User user =
-          Entity.getEntityByName(Entity.USER, userName, "isBot", Include.ALL);
-      if (Boolean.TRUE.equals(user.getIsBot())) {
+      if (Boolean.TRUE.equals(IS_BOT_CACHE.get(userName, () -> lookupIsBot(userName)))) {
         return AuditLogRecord.ActorType.BOT;
       }
     } catch (Exception e) {
       LOG.debug("Could not resolve user entity for actor type detection: {}", userName);
     }
     return AuditLogRecord.ActorType.USER;
+  }
+
+  /**
+   * Swallows the lookup failure rather than propagating it so that an unresolvable actor — a deleted
+   * user, a name that never was one — caches as "not a bot" instead of re-querying on every event.
+   */
+  private static boolean lookupIsBot(String userName) {
+    try {
+      org.openmetadata.schema.entity.teams.User user =
+          Entity.getEntityByName(Entity.USER, userName, "isBot", Include.ALL);
+      return Boolean.TRUE.equals(user.getIsBot());
+    } catch (Exception e) {
+      LOG.debug("Could not resolve user entity for actor type detection: {}", userName);
+      return false;
+    }
   }
 
   private String extractServiceName(String entityFqn) {
@@ -301,23 +334,31 @@ public class AuditLogRepository {
     String afterCursor = null;
     int remaining = totalLimit;
 
-    // Get total count for progress reporting
-    String baseCondition = buildBaseCondition(searchTerm);
-    String entityFqnHash = null;
-    int estimatedTotal =
+    // Count for progress reporting, bounded by the export limit — the caller caps the export at
+    // totalLimit anyway, so counting past it is work whose result is thrown away.
+    int actualTotal =
         auditLogDAO.count(
-            baseCondition,
+            buildBaseCondition(
+                userName,
+                actorType,
+                serviceName,
+                entityType,
+                null,
+                eventType,
+                startTs,
+                endTs,
+                searchTerm),
+            totalLimit,
             userName,
             actorType,
             serviceName,
             entityType,
             null,
-            entityFqnHash,
+            null,
             eventType,
             startTs,
             endTs,
             searchTerm);
-    int actualTotal = Math.min(estimatedTotal, totalLimit);
 
     // Send initial progress
     if (progressCallback != null) {
@@ -350,7 +391,8 @@ public class AuditLogRepository {
               searchTerm,
               batchSize,
               null, // before
-              afterCursor);
+              afterCursor,
+              false); // skip the count — it would re-run once per batch
 
       if (batch.getData().isEmpty()) {
         break;
@@ -399,23 +441,62 @@ public class AuditLogRepository {
       int limitParam,
       String before,
       String after) {
+    return list(
+        userName,
+        actorType,
+        serviceName,
+        entityType,
+        entityFqn,
+        eventType,
+        startTs,
+        endTs,
+        searchTerm,
+        sanitizeLimit(limitParam),
+        before,
+        after,
+        true);
+  }
+
+  private ResultList<AuditLogEntry> list(
+      String userName,
+      String actorType,
+      String serviceName,
+      String entityType,
+      String entityFqn,
+      String eventType,
+      Long startTs,
+      Long endTs,
+      String searchTerm,
+      int limitParam,
+      String before,
+      String after,
+      boolean countTotal) {
     RestUtil.validateCursors(before, after);
 
-    int limit = sanitizeLimit(limitParam);
+    int limit = Math.max(1, limitParam);
 
     AuditLogCursor beforeCursor = AuditLogCursor.fromEncoded(before);
     AuditLogCursor afterCursor = AuditLogCursor.fromEncoded(after);
 
-    String baseCondition = buildBaseCondition(searchTerm);
     String entityFqnHash = nullOrEmpty(entityFqn) ? null : FullyQualifiedName.buildHash(entityFqn);
+    String baseCondition =
+        buildBaseCondition(
+            userName,
+            actorType,
+            serviceName,
+            entityType,
+            entityFqnHash,
+            eventType,
+            startTs,
+            endTs,
+            searchTerm);
 
     List<AuditLogRecord> records;
     boolean isBackward = beforeCursor != null;
 
     if (isBackward) {
       // Backward pagination: get records before the cursor (newer records)
-      String cursorCondition = buildBeforeCondition();
-      String condition = baseCondition + cursorCondition;
+      String condition = baseCondition + buildBeforeCondition();
 
       records =
           auditLogDAO.list(
@@ -441,8 +522,7 @@ public class AuditLogRepository {
       java.util.Collections.reverse(records);
     } else {
       // Forward pagination: get records after the cursor (older records)
-      String cursorCondition = buildAfterCondition();
-      String condition = baseCondition + cursorCondition;
+      String condition = baseCondition + (afterCursor != null ? buildAfterCondition() : "");
 
       records =
           auditLogDAO.list(
@@ -476,18 +556,21 @@ public class AuditLogRepository {
     }
 
     int total =
-        auditLogDAO.count(
-            baseCondition,
-            userName,
-            actorType,
-            serviceName,
-            entityType,
-            entityFqn,
-            entityFqnHash,
-            eventType,
-            startTs,
-            endTs,
-            searchTerm);
+        countTotal
+            ? auditLogDAO.count(
+                baseCondition,
+                MAX_COUNTED_TOTAL,
+                userName,
+                actorType,
+                serviceName,
+                entityType,
+                entityFqn,
+                entityFqnHash,
+                eventType,
+                startTs,
+                endTs,
+                searchTerm)
+            : records.size();
 
     List<AuditLogEntry> resultEntries = records.stream().map(this::toAuditLogEntry).toList();
 
@@ -516,12 +599,8 @@ public class AuditLogRepository {
   private AuditLogEntry toAuditLogEntry(AuditLogRecord record) {
     ChangeEvent changeEvent = deserializeChangeEvent(record);
 
-    // Only resolve entity reference when entityFQN is missing.
-    // Most records already have entityFQN populated from the write path,
-    // so this avoids an extra DB query per result row.
     if (record.getEntityFQN() == null) {
-      EntityReference resolvedRef = resolveEntityReference(record);
-      enrichWithResolvedReference(record, changeEvent, resolvedRef);
+      resolveMissingFqn(record, changeEvent);
     }
 
     return AuditLogEntry.builder()
@@ -541,6 +620,32 @@ public class AuditLogRepository {
         .summary(computeSummary(changeEvent, record))
         .rawEventJson(record.getEventJson())
         .build();
+  }
+
+  /**
+   * Fill a missing entity FQN without a per-row database round trip wherever possible. The stored
+   * change event normally carries it, and auth events are recorded against the acting user, whose
+   * name is the FQN. Only rows written before either held true fall back to a lookup — without this
+   * a page of login events cost one query per row on top of the list and count queries.
+   */
+  private void resolveMissingFqn(AuditLogRecord record, ChangeEvent changeEvent) {
+    if (changeEvent != null && !nullOrEmpty(changeEvent.getEntityFullyQualifiedName())) {
+      record.setEntityFQN(changeEvent.getEntityFullyQualifiedName());
+      return;
+    }
+    if (isAuthEvent(record.getEventType()) && !nullOrEmpty(record.getUserName())) {
+      record.setEntityFQN(record.getUserName());
+      if (changeEvent != null) {
+        changeEvent.setEntityFullyQualifiedName(record.getUserName());
+      }
+      return;
+    }
+    enrichWithResolvedReference(record, changeEvent, resolveEntityReference(record));
+  }
+
+  private boolean isAuthEvent(String eventType) {
+    return AUTH_EVENT_LOGIN.value().equals(eventType)
+        || AUTH_EVENT_LOGOUT.value().equals(eventType);
   }
 
   /** Compute a human-readable summary of the change event. */
@@ -714,18 +819,35 @@ public class AuditLogRepository {
     }
   }
 
-  private String buildBaseCondition(String searchTerm) {
-    StringBuilder condition =
-        new StringBuilder(
-            "WHERE (:userName IS NULL OR user_name = :userName) "
-                + "AND (:actorType IS NULL OR actor_type = :actorType) "
-                + "AND (:serviceName IS NULL OR service_name = :serviceName) "
-                + "AND (:entityType IS NULL OR entity_type = :entityType) "
-                + "AND (:entityFQN IS NULL OR entity_fqn = :entityFQN) "
-                + "AND (:entityFQNHASH IS NULL OR entity_fqn_hash = :entityFQNHASH) "
-                + "AND (:eventType IS NULL OR event_type = :eventType) "
-                + "AND (:startTs IS NULL OR event_ts >= :startTs) "
-                + "AND (:endTs IS NULL OR event_ts <= :endTs)");
+  /**
+   * Emit a predicate only for filters that are actually set. The previous
+   * {@code (:param IS NULL OR col = :param)} form kept every filter in the plan, so neither MySQL
+   * nor PostgreSQL could pick the composite {@code (col, event_ts DESC)} indexes this table has.
+   */
+  private String buildBaseCondition(
+      String userName,
+      String actorType,
+      String serviceName,
+      String entityType,
+      String entityFqnHash,
+      String eventType,
+      Long startTs,
+      Long endTs,
+      String searchTerm) {
+    StringBuilder condition = new StringBuilder("WHERE 1 = 1");
+    appendEq(condition, userName, "user_name", "userName");
+    appendEq(condition, actorType, "actor_type", "actorType");
+    appendEq(condition, serviceName, "service_name", "serviceName");
+    appendEq(condition, entityType, "entity_type", "entityType");
+    // entity_fqn has no index; its hash does, and the write path always populates both together.
+    appendEq(condition, entityFqnHash, "entity_fqn_hash", "entityFQNHASH");
+    appendEq(condition, eventType, "event_type", "eventType");
+    if (startTs != null) {
+      condition.append(" AND event_ts >= :startTs");
+    }
+    if (endTs != null) {
+      condition.append(" AND event_ts <= :endTs");
+    }
 
     if (!nullOrEmpty(searchTerm)) {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
@@ -738,9 +860,14 @@ public class AuditLogRepository {
     return condition.toString();
   }
 
+  private void appendEq(StringBuilder condition, String value, String column, String param) {
+    if (!nullOrEmpty(value)) {
+      condition.append(" AND ").append(column).append(" = :").append(param);
+    }
+  }
+
   private String buildAfterCondition() {
-    return " AND (:afterEventTs IS NULL OR event_ts < :afterEventTs "
-        + "OR (event_ts = :afterEventTs AND id < :afterId))";
+    return " AND (event_ts < :afterEventTs OR (event_ts = :afterEventTs AND id < :afterId))";
   }
 
   private String buildBeforeCondition() {
