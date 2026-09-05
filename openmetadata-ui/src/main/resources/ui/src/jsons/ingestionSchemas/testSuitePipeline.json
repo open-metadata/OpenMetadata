@@ -1487,7 +1487,8 @@
                         "accessToken": {
                           "title": "Access Token",
                           "description": "Access token to connect to DOMO",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "apiHost": {
                           "expose": true,
@@ -7282,7 +7283,8 @@
                         "accessToken": {
                           "title": "Access Token",
                           "description": "Access token to connect to DOMO",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "apiHost": {
                           "expose": true,
@@ -7706,7 +7708,8 @@
                                     "token": {
                                       "title": "Token",
                                       "description": "The Astra DB application token used for authentication.",
-                                      "type": "string"
+                                      "type": "string",
+                                      "format": "password"
                                     },
                                     "secureConnectBundle": {
                                       "title": "Secure Connect Bundle",
@@ -12806,7 +12809,8 @@
                         "accessToken": {
                           "title": "Access Token",
                           "description": "Access token to connect to DOMO",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "apiHost": {
                           "expose": true,
