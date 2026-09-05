@@ -20,6 +20,7 @@ import { UserClass } from '../support/user/UserClass';
 import {
   assignDomain,
   descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from './common';
@@ -231,9 +232,11 @@ export const createTeam = async (
     ...overrides,
   };
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  const teamModal = page.locator('[role="dialog"].ant-modal');
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await teamModal.waitFor();
+
+  await expect(teamModal).toBeVisible();
 
   await page.fill('[data-testid="name"]', teamData.name);
   await page.fill('[data-testid="display-name"]', teamData.displayName);
@@ -243,8 +246,7 @@ export const createTeam = async (
     await page.getByTestId('isJoinable-switch-button').click();
   }
 
-  await page.locator(descriptionBox).isVisible();
-  await page.locator(descriptionBox).fill(teamData.description);
+  await fillDescriptionBox(teamModal, teamData.description);
 
   const createTeamResponse = page.waitForResponse(
     (response) =>

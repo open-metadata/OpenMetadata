@@ -36,7 +36,7 @@ import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -582,13 +582,25 @@ export const verifyAssetsInDomain = async (
   }
 };
 
+/**
+ * Fill the fields AddDomainForm shares between domains, subdomains and data
+ * products.
+ *
+ * Everything is resolved through the `add-domain-form` container rather than
+ * off `page`: DomainDetails mounts the data product drawer and the subdomain
+ * drawer as siblings, so a page-global `#root/name` or `descriptionBox` can see
+ * a second copy of this very form and strict mode violate (merge queue run
+ * 33847455975 ejected #32465 that way).
+ */
 export const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
-  await page.locator('#root\\/name').fill(entity.name);
-  await page.locator('#root\\/displayName').fill(entity.displayName);
-  await page.locator(descriptionBox).fill(entity.description);
+  const form = page.getByTestId('add-domain-form');
+
+  await form.locator('#root\\/name').fill(entity.name);
+  await form.locator('#root\\/displayName').fill(entity.displayName);
+  await fillDescriptionBox(form, entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,
