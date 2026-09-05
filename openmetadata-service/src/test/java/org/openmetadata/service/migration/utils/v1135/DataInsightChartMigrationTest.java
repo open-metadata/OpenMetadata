@@ -14,14 +14,19 @@ package org.openmetadata.service.migration.utils.v1135;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 
 /**
@@ -109,6 +114,42 @@ class DataInsightChartMigrationTest {
         filter.contains("{\"exists\":{\"field\":\"entityType\"}}"),
         "A must_not list alone cannot drop the data-quality documents: they have no entityType, "
             + "so they satisfy every must_not clause");
+  }
+
+  @Test
+  void freshInstallSeedsCarryTheCurrentDataAssetScope() throws IOException {
+    for (String chartName : DataInsightChartMigration.DATA_ASSET_CHARTS) {
+      JsonNode chartDetails = seedDetails(chartName);
+      assertFalse(chartDetails.path("metrics").isEmpty(), chartName + " has no metrics");
+      for (JsonNode metric : chartDetails.path("metrics")) {
+        assertEquals(
+            DataInsightSystemChartRepository.DATA_ASSET_FILTER,
+            metric.path("filter").asText(),
+            chartName + " has a stale data-asset filter");
+      }
+      if ("entityType.keyword".equals(chartDetails.path("groupBy").asText())) {
+        List<String> excludedGroups = new ArrayList<>();
+        chartDetails.path("excludeGroups").forEach(group -> excludedGroups.add(group.asText()));
+        assertEquals(
+            DataInsightSystemChartRepository.NON_DATA_ASSET_ENTITY_TYPES,
+            excludedGroups,
+            chartName + " has stale entity-type exclusions");
+      }
+    }
+  }
+
+  @Test
+  void liveDataAssetSeedGroupsOnTheKeywordField() throws IOException {
+    assertEquals(
+        "entityType.keyword", seedDetails("total_data_assets_live").path("groupBy").asText());
+  }
+
+  private static JsonNode seedDetails(String chartName) throws IOException {
+    String resource = "/json/data/dataInsight/custom/" + chartName + ".json";
+    try (InputStream input = DataInsightChartMigrationTest.class.getResourceAsStream(resource)) {
+      assertNotNull(input, "Missing Data Insight seed " + resource);
+      return JsonUtils.getObjectMapper().readTree(input).path("chartDetails");
+    }
   }
 
   @SuppressWarnings("unchecked")

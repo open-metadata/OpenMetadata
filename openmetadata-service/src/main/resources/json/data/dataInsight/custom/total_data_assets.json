@@ -1,0 +1,17 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ "tag", "glossaryTerm", "dataProduct" ],
+    "groupBy" : "entityType.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "filter" : "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[{\"term\":{\"entityType.keyword\":\"tag\"}},{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}},{\"term\":{\"entityType.keyword\":\"dataProduct\"}}]}}}",
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "total_data_assets",
+  "isSystemChart" : true,
+  "name" : "total_data_assets"
+}

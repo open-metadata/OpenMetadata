@@ -36,7 +36,6 @@ database:
   validationQuery: "SELECT 1"
   maxWaitForConnection: 30 seconds
 migrationConfiguration:
-  flywayPath: "../bootstrap/sql/migrations/flyway"
   nativePath: "../bootstrap/sql/migrations/native"
   extensionPath: ""
 secretsManagerConfiguration:

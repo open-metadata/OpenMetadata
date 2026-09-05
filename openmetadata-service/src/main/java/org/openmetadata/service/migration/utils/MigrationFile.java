@@ -1,18 +1,11 @@
 package org.openmetadata.service.migration.utils;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import org.flywaydb.core.api.configuration.ClassicConfiguration;
-import org.flywaydb.core.api.configuration.Configuration;
-import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
-import org.flywaydb.core.internal.parser.Parser;
-import org.flywaydb.core.internal.parser.ParsingContext;
-import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
-import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
-import org.flywaydb.database.mysql.MySQLParser;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -67,53 +60,27 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public void parseSQLFiles() {
     schemaChanges.clear();
     postDDLScripts.clear();
+    collectStatementsNotYetRun(getSchemaChangesFile(), schemaChanges);
+    collectStatementsNotYetRun(getPostDDLScriptFile(), postDDLScripts);
+  }
 
-    if (new File(getSchemaChangesFile()).isFile()) {
-      try {
-        for (String sqlStatement : parseSQLFile(new File(getSchemaChangesFile()), connectionType)) {
-          if (!checkIfQueryPreviouslyRan(sqlStatement)) {
-            schemaChanges.add(sqlStatement);
-          }
+  /**
+   * Statements already recorded in SERVER_MIGRATION_SQL_LOGS are dropped here rather than at
+   * execution time, so a version whose file gained nothing new is skipped entirely.
+   */
+  private void collectStatementsNotYetRun(String filePath, List<String> target) {
+    Path file = Paths.get(filePath);
+    if (Files.isRegularFile(file)) {
+      for (String statement : SqlStatementSplitter.splitFile(file, connectionType)) {
+        if (!checkIfQueryPreviouslyRan(statement)) {
+          target.add(statement);
         }
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Failed to parse schema changes file: " + getSchemaChangesFile(), e);
-      }
-    }
-    if (new File(getPostDDLScriptFile()).isFile()) {
-      try {
-        for (String sqlStatement : parseSQLFile(new File(getPostDDLScriptFile()), connectionType)) {
-          if (!checkIfQueryPreviouslyRan(sqlStatement)) {
-            postDDLScripts.add(sqlStatement);
-          }
-        }
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Failed to parse post DDL script file: " + getPostDDLScriptFile(), e);
       }
     }
   }
 
   public static List<String> parseSQLFile(File sqlFile, ConnectionType connectionType) {
-    List<String> statements = new ArrayList<>();
-    ParsingContext parsingContext = new ParsingContext();
-    Configuration configuration = new ClassicConfiguration();
-    Parser parser = new PostgreSQLParser(configuration, parsingContext);
-    if (connectionType == ConnectionType.MYSQL) {
-      parser = new MySQLParser(configuration, parsingContext);
-    }
-
-    try (SqlStatementIterator iterator =
-        parser.parse(
-            new FileSystemResource(
-                null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
-      while (iterator.hasNext()) {
-        statements.add(iterator.next().getSql());
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to parse SQL file: " + sqlFile.getPath(), e);
-    }
-    return statements;
+    return SqlStatementSplitter.splitFile(sqlFile.toPath(), connectionType);
   }
 
   public String getMigrationProcessClassName() {

@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "filter" : "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[{\"term\":{\"entityType.keyword\":\"tag\"}},{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}},{\"term\":{\"entityType.keyword\":\"dataProduct\"}}]}}}",
+      "formula" : "count(k='id.keyword',q='ownerName: *')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "number_of_data_asset_with_owner_kpi",
+  "isSystemChart" : true,
+  "name" : "number_of_data_asset_with_owner_kpi"
+}

@@ -1,0 +1,20 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "sum(k='tierSources.Ingested')+sum(k='tierSources.Manual')+sum(k='tierSources.Propagated')",
+      "name" : "manual"
+    }, {
+      "formula" : "sum(k='tierSources.Generated')",
+      "name" : "ai"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "tier_source_breakdown",
+  "isSystemChart" : true,
+  "name" : "tier_source_breakdown"
+}

@@ -1430,7 +1430,9 @@ public class SystemRepository {
 
   private StepValidation getMigrationValidation(
       MigrationValidationClient migrationValidationClient) {
-    List<String> currentVersions = migrationValidationClient.getCurrentVersions();
+    // Scoped to the versions this release still ships, so the pre-2.0 history an upgraded cluster
+    // legitimately carries — represented on disk by the single baseline — is not read as drift.
+    List<String> currentVersions = migrationValidationClient.getCurrentVersionsForValidation();
     // Compare regardless of ordering
     if (new HashSet<>(currentVersions)
         .equals(new HashSet<>(migrationValidationClient.getExpectedMigrationList()))) {

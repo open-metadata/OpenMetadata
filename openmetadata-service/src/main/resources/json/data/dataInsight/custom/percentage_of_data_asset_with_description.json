@@ -1,0 +1,17 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ "tag", "glossaryTerm", "dataProduct" ],
+    "groupBy" : "entityType.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "filter" : "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],\"must_not\":[{\"term\":{\"entityType.keyword\":\"tag\"}},{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}},{\"term\":{\"entityType.keyword\":\"dataProduct\"}}]}}}",
+      "formula" : "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "percentage_of_data_asset_with_description",
+  "isSystemChart" : true,
+  "name" : "percentage_of_data_asset_with_description"
+}

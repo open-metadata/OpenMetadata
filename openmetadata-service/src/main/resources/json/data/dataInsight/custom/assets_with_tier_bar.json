@@ -1,0 +1,18 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "groupBy" : "tags.name.keyword",
+    "includeGroups" : [ ],
+    "includeXAxisFiled" : "tier.*",
+    "metrics" : [ {
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "tags.tagFQN"
+  },
+  "chartType" : "BarChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "assets_with_tier_bar",
+  "isSystemChart" : true,
+  "name" : "assets_with_tier_bar"
+}

@@ -1,3 +1,0 @@
--- Placeholder for 1.12.10 MySQL schema changes
--- No DDL changes required; this version only carries a data migration
--- (scrub of stale flattened-children references and file extension aggregation from SearchSettings).

@@ -120,6 +120,10 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.migration.utils.MigrationHistoryTable;
+import org.openmetadata.service.migration.utils.MigrationHistoryTable.MigrationStatus;
+import org.openmetadata.service.migration.utils.MigrationHistoryTableUpgrader;
+import org.openmetadata.service.migration.utils.MigrationVersionUtil;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
@@ -404,7 +408,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               config.getMigrationConfiguration().getNativePath(),
               connType,
               config.getMigrationConfiguration().getExtensionPath(),
-              config.getMigrationConfiguration().getFlywayPath(),
               config,
               false);
       workflow.loadMigrations();
@@ -431,36 +434,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Handle repair of SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables
       try {
-        List<String> failedVersions =
-            jdbi.withHandle(
-                handle ->
-                    handle
-                        .createQuery(
-                            "SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
-                        .mapTo(String.class)
-                        .list());
-
-        if (!failedVersions.isEmpty()) {
-          LOG.info("Found {} failed migrations in SERVER_CHANGE_LOG", failedVersions.size());
-
-          // Remove failed migrations from SERVER_CHANGE_LOG
-          jdbi.useHandle(
-              handle ->
-                  handle
-                      .createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
-                      .execute());
-
-          // Clean up related entries in SERVER_MIGRATION_SQL_LOGS
-          for (String version : failedVersions) {
-            jdbi.useHandle(
-                handle ->
-                    handle
-                        .createUpdate(
-                            "DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
-                        .bind("version", version)
-                        .execute());
-          }
-        }
+        repairUnfinishedMigrations(jdbi);
       } catch (Exception e) {
         LOG.error("Error repairing SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS tables", e);
         throw e;
@@ -470,6 +444,52 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.error("Repair of migration tables failed due to ", e);
       return 1;
     }
+  }
+
+  static List<String> repairUnfinishedMigrations(Jdbi jdbi) {
+    return jdbi.inTransaction(
+        handle -> {
+          List<String> versions = findRepairableMigrationVersions(handle);
+          if (!versions.isEmpty()) {
+            LOG.info("Clearing {} unfinished migration(s): {}", versions.size(), versions);
+            deleteRepairableMigrations(handle, versions);
+          }
+          return List.copyOf(versions);
+        });
+  }
+
+  private static List<String> findRepairableMigrationVersions(Handle handle) {
+    return handle
+        .createQuery(
+            "SELECT version FROM "
+                + MigrationHistoryTable.SERVER_CHANGE_LOG
+                + " WHERE status IN (:failedStatus, :startedStatus)"
+                + " AND version <> :baselineVersion ORDER BY version")
+        .bind("failedStatus", MigrationStatus.FAILED.name())
+        .bind("startedStatus", MigrationStatus.STARTED.name())
+        .bind("baselineVersion", MigrationVersionUtil.BASELINE_VERSION)
+        .mapTo(String.class)
+        .list();
+  }
+
+  private static void deleteRepairableMigrations(Handle handle, List<String> versions) {
+    handle
+        .createUpdate(
+            "DELETE FROM "
+                + MigrationHistoryTable.SERVER_CHANGE_LOG
+                + " WHERE status IN (:failedStatus, :startedStatus)"
+                + " AND version <> :baselineVersion")
+        .bind("failedStatus", MigrationStatus.FAILED.name())
+        .bind("startedStatus", MigrationStatus.STARTED.name())
+        .bind("baselineVersion", MigrationVersionUtil.BASELINE_VERSION)
+        .execute();
+    handle
+        .createUpdate(
+            "DELETE FROM "
+                + MigrationHistoryTable.SERVER_MIGRATION_SQL_LOGS
+                + " WHERE version IN (<versions>)")
+        .bindList("versions", versions)
+        .execute();
   }
 
   @Command(
@@ -1209,44 +1229,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
-    }
-  }
-
-  @Command(
-      name = "recover",
-      description =
-          "Recover data lost due to Flyway migration issue (roles, policies, bot relationships). "
-              + "Use this if you ran migrations with --force after upgrading from pre-1.11.0 and lost data.")
-  public Integer recover() {
-    try {
-      LOG.info("Running data recovery for Flyway migration issue...");
-      parseConfig();
-      runDataRecovery();
-      return 0;
-    } catch (Exception e) {
-      LOG.error("Failed to recover data due to ", e);
-      return 1;
-    }
-  }
-
-  private void runDataRecovery() {
-    try (Handle handle = jdbi.open()) {
-      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-
-      org.openmetadata.service.migration.utils.v1114.MigrationUtil.checkAndLogDataLossSymptoms(
-          handle);
-      org.openmetadata.service.migration.utils.v1114.MigrationUtil.reseedRolesAndPoliciesIfMissing(
-          handle, connType);
-      org.openmetadata.service.migration.utils.v1114.MigrationUtil
-          .restoreRolePolicyRelationshipsIfMissing(handle, connType);
-      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotRelationshipsIfMissing(
-          handle, connType);
-      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotUserRolesIfMissing(
-          handle, connType);
-
-      LOG.info("Data recovery completed.");
-    } catch (Exception e) {
-      LOG.error("Error during data recovery: {}", e.getMessage(), e);
     }
   }
 
@@ -3396,13 +3378,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi,
-            nativeSQLScriptRootPath,
-            connType,
-            extensionSQLScriptRootPath,
-            config.getMigrationConfiguration().getFlywayPath(),
-            config,
-            force);
+            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows(true);
@@ -3456,7 +3432,39 @@ public class OpenMetadataOperations implements Callable<Integer> {
     hierarchyCleanup.printCleanupResults(result);
   }
 
+  /**
+   * Print the history as a sequence of steps — which version, what kind of step, and how it ended.
+   * Skipped on databases that predate those columns (they have not run a migrate yet, which is what
+   * adds them), where the metrics table below is still the only view available.
+   */
+  private void printMigrationSteps() {
+    ConnectionType connectionType =
+        ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+    if (!new MigrationHistoryTableUpgrader(jdbi, connectionType).hasStepColumns()) {
+      return;
+    }
+    List<List<String>> rows =
+        jdbi.onDemand(MigrationDAO.class).listMigrationSteps().stream()
+            .map(
+                step ->
+                    List.of(
+                        step.getVersion(),
+                        nullToDash(step.getMigrationType()),
+                        nullToDash(step.getStatus()),
+                        nullToDash(step.getInstalledOn())))
+            .toList();
+    printToAsciiTable(
+        List.of("Version", "Type", "Status", "Installed On"),
+        new ArrayList<>(rows),
+        "No migration history found");
+  }
+
+  private String nullToDash(String value) {
+    return value == null ? "-" : value;
+  }
+
   private void printChangeLog() {
+    printMigrationSteps();
     MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
     List<MigrationDAO.ServerChangeLog> serverChangeLogs =
         migrationDAO.listMetricsFromDBMigrations();

@@ -44,7 +44,7 @@ public class DataInsightChartMigration {
   private static final String ENTITY_TYPE_GROUP_BY = "entityType.keyword";
 
   /** System charts that report on data assets and must therefore share one scope. */
-  private static final List<String> DATA_ASSET_CHARTS =
+  static final List<String> DATA_ASSET_CHARTS =
       List.of(
           "total_data_assets",
           "total_data_assets_by_tier",

@@ -1,0 +1,18 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "groupBy" : "columns.tags.name.keyword",
+    "includeGroups" : [ ],
+    "includeXAxisFiled" : "PII.*",
+    "metrics" : [ {
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "columns.tags.tagFQN"
+  },
+  "chartType" : "BarChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "assets_with_pii_bar",
+  "isSystemChart" : true,
+  "name" : "assets_with_pii_bar"
+}

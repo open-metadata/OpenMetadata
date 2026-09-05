@@ -158,7 +158,7 @@ UI forms:       parseSchemas.js → resolved JSON for RJSF auto-rendering
 2. Run `make generate` (Python models)
 3. Run `mvn clean install -pl openmetadata-spec` (Java POJOs)
 4. Run `yarn parse-schema` (UI connection schemas only)
-5. Add corresponding Flyway migration if the change affects the database
+5. Add a corresponding native migration under `bootstrap/sql/migrations/native/` if the change affects the database
 
 **Schema conventions:**
 - `$id` must match the file path
@@ -310,7 +310,9 @@ public class MyEntityRepository extends EntityRepository<MyEntity> {
 
 ### Database Migrations
 
-OpenMetadata uses a **hybrid migration system**: native SQL migrations tracked in `SERVER_CHANGE_LOG`, with Flyway SQL parsers for robust semicolon handling.
+OpenMetadata manages its own schema: a consolidated **baseline** (`bootstrap/sql/migrations/baseline/`)
+installed once on an empty database, then native SQL migrations from 2.0.0 onward tracked in
+`SERVER_CHANGE_LOG`. Upgrades must come through 2.0.x first — older databases are rejected.
 
 **Adding a new migration:**
 
@@ -335,8 +337,10 @@ OpenMetadata uses a **hybrid migration system**: native SQL migrations tracked i
 **Rules:**
 - Always one `schemaChanges.sql` per database per version — no numbered sub-files
 - Always provide both MySQL and PostgreSQL variants
-- Migrations are tracked in `SERVER_CHANGE_LOG` (keyed by version)
-- Never add new `v0xx` Flyway files — always use the native path
+- Migrations are tracked in `SERVER_CHANGE_LOG` (keyed by version, with `migrationType` and
+  `status` describing each step)
+- Never re-add a pre-2.0 version directory — that range is frozen into the baseline and is
+  filtered out at runtime, so it would silently never run
 - Migrations must be idempotent where possible (`IF NOT EXISTS`, etc.)
 - Extension migrations go in `bootstrap/sql/migrations/extensions/{name}/`
 

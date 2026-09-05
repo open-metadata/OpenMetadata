@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "assets_with_description",
+  "isSystemChart" : true,
+  "name" : "assets_with_description"
+}

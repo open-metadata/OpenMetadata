@@ -425,9 +425,12 @@ objectStorage:
     prefixPath: ${ASSET_UPLOADER_AZURE_PREFIX_PATH:-"assets/default"}
 
 migrationConfiguration:
-  flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
   extensionPath: ""
+  # Consolidated pre-2.0 schema, installed once on a fresh database instead of replaying the
+  # historical migration chain. Defaults to a "baseline" directory beside nativePath; set this
+  # only if the two are relocated independently.
+  # baselinePath: "./bootstrap/sql/migrations/baseline"
 
 # Authorizer Configuration
 authorizerConfiguration:

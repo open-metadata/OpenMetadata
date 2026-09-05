@@ -6,14 +6,12 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.core.statement.StatementException;
-import org.jdbi.v3.sqlobject.SingleValue;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -22,15 +20,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface MigrationDAO {
-  @ConnectionAwareSqlQuery(
-      value = "SELECT MAX(version) FROM DATABASE_CHANGE_LOG",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value = "SELECT max(version) FROM \"DATABASE_CHANGE_LOG\"",
-      connectionType = POSTGRES)
-  @SingleValue
-  Optional<String> getMaxVersion() throws StatementException;
-
   @ConnectionAwareSqlQuery(
       value = "SELECT checksum FROM SERVER_CHANGE_LOG where version = :version",
       connectionType = MYSQL)
@@ -75,6 +64,54 @@ public interface MigrationDAO {
       @Bind("migrationFileName") String migrationFileName,
       @Bind("checksum") String checksum,
       @BindJson("metrics") String metrics);
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          "INSERT INTO SERVER_CHANGE_LOG (version, migrationFileName, checksum, metrics, installed_on, migrationType, status)"
+              + "VALUES (:version, :migrationFileName, :checksum, :metrics, CURRENT_TIMESTAMP, :migrationType, :status) "
+              + "ON DUPLICATE KEY UPDATE "
+              + "migrationFileName = :migrationFileName, "
+              + "checksum = :checksum, "
+              + "metrics = :metrics,"
+              + "migrationType = :migrationType, "
+              + "status = :status, "
+              + "installed_on = CURRENT_TIMESTAMP",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "INSERT INTO SERVER_CHANGE_LOG (version, migrationFileName, checksum, metrics, installed_on, migrationType, status)"
+              + "VALUES (:version, :migrationFileName, :checksum, (:metrics :: jsonb), current_timestamp, :migrationType, :status) "
+              + "ON CONFLICT (version) DO UPDATE SET "
+              + "migrationFileName = EXCLUDED.migrationFileName, "
+              + "metrics = (:metrics :: jsonb),"
+              + "checksum = EXCLUDED.checksum, "
+              + "migrationType = EXCLUDED.migrationType, "
+              + "status = EXCLUDED.status, "
+              + "installed_on = EXCLUDED.installed_on",
+      connectionType = POSTGRES)
+  void upsertServerMigrationWithStatus(
+      @Bind("version") String version,
+      @Bind("migrationFileName") String migrationFileName,
+      @Bind("checksum") String checksum,
+      @BindJson("metrics") String metrics,
+      @Bind("migrationType") String migrationType,
+      @Bind("status") String status);
+
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE SERVER_CHANGE_LOG SET status = :status WHERE version = :version",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE SERVER_CHANGE_LOG SET status = :status WHERE version = :version",
+      connectionType = POSTGRES)
+  void updateServerMigrationStatus(@Bind("version") String version, @Bind("status") String status);
+
+  @ConnectionAwareSqlQuery(
+      value = "SELECT status FROM SERVER_CHANGE_LOG WHERE version = :version",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT status FROM SERVER_CHANGE_LOG WHERE version = :version",
+      connectionType = POSTGRES)
+  String getServerMigrationStatus(@Bind("version") String version);
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -124,14 +161,36 @@ public interface MigrationDAO {
   @SqlQuery("SELECT version FROM SERVER_CHANGE_LOG")
   List<String> getMigrationVersions();
 
-  @SqlQuery(
-      "SELECT version FROM SERVER_CHANGE_LOG WHERE migrationFileName LIKE '%/migrations/flyway/%' ORDER BY version")
-  List<String> getFlywayMigrationVersions();
+  @SqlQuery("SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'COMPLETED'")
+  List<String> getCompletedMigrationVersions();
 
   @SqlQuery(
-      "SELECT installed_rank, version, migrationFileName, checksum, installed_on, metrics FROM SERVER_CHANGE_LOG WHERE migrationFileName LIKE '%/migrations/flyway/%' ORDER BY version")
-  @RegisterRowMapper(FromServerChangeLogMapper.class)
-  List<ServerChangeLog> getFlywayMigrationRecords();
+      "SELECT version, migrationType, status, installed_on FROM SERVER_CHANGE_LOG ORDER BY installed_rank")
+  @RegisterRowMapper(FromMigrationStepMapper.class)
+  List<MigrationStep> listMigrationSteps();
+
+  /** One row of migration history as a readable step: what kind it was, and how it ended. */
+  @Getter
+  @Setter
+  @Builder
+  class MigrationStep {
+    private String version;
+    private String migrationType;
+    private String status;
+    private String installedOn;
+  }
+
+  class FromMigrationStepMapper implements RowMapper<MigrationStep> {
+    @Override
+    public MigrationStep map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return MigrationStep.builder()
+          .version(rs.getString("version"))
+          .migrationType(rs.getString("migrationType"))
+          .status(rs.getString("status"))
+          .installedOn(rs.getString("installed_on"))
+          .build();
+    }
+  }
 
   @Getter
   @Setter

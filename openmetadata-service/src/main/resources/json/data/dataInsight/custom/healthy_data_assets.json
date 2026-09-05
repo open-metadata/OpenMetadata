@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "unique(k='table.id.keyword',q='testCaseStatus.keyword: Failed OR testCaseStatus.keyword: Aborted')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "service.name.keyword"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "healthy_data_assets",
+  "isSystemChart" : true,
+  "name" : "healthy_data_assets"
+}

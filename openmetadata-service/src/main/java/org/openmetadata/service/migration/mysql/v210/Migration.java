@@ -16,16 +16,20 @@ package org.openmetadata.service.migration.mysql.v210;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.deployMissingGovernanceWorkflows;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.widenFlowableActivityId;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
@@ -33,6 +37,16 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // Flowable owns its own schema, so make sure it has been created before touching it. The
+    // handler is allowed to fail here (v200 tolerates the same call), in which case the widening
+    // below simply finds no table and skips.
+    try {
+      initializeWorkflowHandler();
+    } catch (Exception e) {
+      LOG.warn("WorkflowHandler initialization failed in v210: {}", e.getMessage());
+    }
+    widenFlowableActivityId(handle, MYSQL);
+    deployMissingGovernanceWorkflows();
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
     refreshConversationNotificationTemplates();

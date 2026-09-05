@@ -494,9 +494,20 @@ public class WorkflowHandler {
 
   public boolean isDeployed(WorkflowDefinition wf) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
-    List<ProcessDefinition> processDefinitions =
-        repositoryService.createProcessDefinitionQuery().processDefinitionKey(wf.getName()).list();
-    return !processDefinitions.isEmpty();
+    String workflowFullyQualifiedName = wf.getFullyQualifiedName();
+    boolean mainWorkflowDeployed =
+        repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKey(workflowFullyQualifiedName)
+                .count()
+            > 0;
+    boolean triggerWorkflowDeployed =
+        repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKeyLike(getTriggerWorkflowId(workflowFullyQualifiedName) + "%")
+                .count()
+            > 0;
+    return mainWorkflowDeployed && triggerWorkflowDeployed;
   }
 
   public void deleteWorkflowDefinition(WorkflowDefinition wf) {
