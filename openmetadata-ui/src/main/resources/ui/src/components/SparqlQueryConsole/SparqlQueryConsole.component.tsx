@@ -175,11 +175,13 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
       const r = await runSparqlQuery({ query, format, inference });
       setResult(r);
     } catch (e) {
-      const message = isAxiosError(e)
-        ? typeof e.response?.data === 'string'
-          ? e.response.data
-          : e.message
-        : (e as Error).message;
+      let message: string;
+      if (isAxiosError(e)) {
+        message =
+          typeof e.response?.data === 'string' ? e.response.data : e.message;
+      } else {
+        message = (e as Error).message;
+      }
       setErrorMessage(message);
       showErrorToast(message);
     } finally {
@@ -310,6 +312,12 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
       value: (row[variable] as Binding | undefined)?.value ?? '',
     }));
   }, [tabularResult]);
+
+  const templateSaveTitle = activeTemplateId
+    ? t('label.update-sample-query')
+    : t('label.save-as-sample-query');
+  const modalTitle =
+    saveTarget === 'template' ? templateSaveTitle : t('label.save-query');
 
   return (
     <>
@@ -443,7 +451,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                   {t('label.download')}
                 </Button>
               </div>
-              {conceptChips ? (
+              {conceptChips && (
                 <div
                   className="tw:flex tw:flex-wrap tw:gap-2"
                   data-testid="sparql-chips">
@@ -464,7 +472,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                     ))
                   )}
                 </div>
-              ) : tabularResult ? (
+              )}
+              {!conceptChips && tabularResult && (
                 <div
                   className="tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200"
                   data-testid="sparql-table">
@@ -504,7 +513,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                     </div>
                   ) : null}
                 </div>
-              ) : (
+              )}
+              {!conceptChips && !tabularResult && (
                 <pre
                   className={classNames(
                     'tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200 tw:bg-secondary tw:p-3 tw:text-xs'
@@ -525,15 +535,17 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
             weight="semibold">
             {t('label.installation-queries')}
           </Typography>
-          {isLoading ? (
+          {isLoading && (
             <Typography as="p" className="tw:text-tertiary" size="text-xs">
               {t('label.loading')}
             </Typography>
-          ) : queryTemplates.length === 0 ? (
+          )}
+          {!isLoading && queryTemplates.length === 0 && (
             <Typography as="p" className="tw:text-tertiary" size="text-xs">
               {t('message.no-query-available')}
             </Typography>
-          ) : (
+          )}
+          {!isLoading && queryTemplates.length !== 0 && (
             <ul className="tw:flex tw:flex-col tw:gap-1">
               {queryTemplates.map((queryTemplate) => (
                 <li
@@ -625,13 +637,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           <Dialog
             showCloseButton
             data-testid="sparql-save-modal"
-            title={
-              saveTarget === 'template'
-                ? activeTemplateId
-                  ? t('label.update-sample-query')
-                  : t('label.save-as-sample-query')
-                : t('label.save-query')
-            }
+            title={modalTitle}
             width={480}
             onClose={() => setIsSaveModalOpen(false)}>
             <Dialog.Content>

@@ -345,108 +345,118 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   );
 
   const dropdownCardComponent = useCallback(
-    (menuNode: ReactNode) => (
-      <Card
-        bodyStyle={{ padding: 0 }}
-        className={classNames('custom-dropdown-render', dropdownClassName, {
-          'immediate-apply-dropdown': immediateApply,
-        })}
-        data-testid="drop-down-menu">
-        <Space className="w-full" direction="vertical" size={0}>
-          {!hideSearchBar && (
-            <div className="p-t-sm p-x-sm">
-              <Input
-                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search box when the dropdown opens
-                autoFocus
-                data-testid="search-input"
-                placeholder={`${t('label.search-entity', {
-                  entity: label,
-                })}...`}
-                onChange={(e) => {
-                  const { value } = e.target;
-                  debouncedOnSearch(value);
-                }}
-              />
-            </div>
-          )}
-          {showClearAllBtn && (
-            <>
-              <Divider className="m-t-xs m-b-0" />
-              <Button
-                className="p-0 m-l-sm"
-                data-testid="clear-button"
-                type="link"
-                onClick={handleClear}>
-                {t('label.clear-entity', {
-                  entity: t('label.all'),
-                })}
-              </Button>
-            </>
-          )}
-          {!hideSearchBar && (
-            <Divider
-              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
-            />
-          )}
+    (menuNode: ReactNode) => {
+      const helperTextContent = helperText ? (
+        <div
+          className="p-x-sm p-y-xss search-dropdown-helper-text"
+          data-testid="search-dropdown-helper-text">
+          <Typography.Text className="text-xs" type="secondary">
+            {helperText}
+          </Typography.Text>
+        </div>
+      ) : null;
 
-          {hasNullOption && (
-            <>
-              <div className="d-flex items-center m-x-sm m-y-xs gap-2">
-                {singleSelect ? (
-                  <Radio
-                    checked={nullOptionSelected}
-                    className="d-flex flex-1"
-                    data-testid="no-option-radio"
-                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
-                    {nullLabelText}
-                  </Radio>
-                ) : (
-                  <Checkbox
-                    checked={nullOptionSelected}
-                    className="d-flex flex-1"
-                    data-testid="no-option-checkbox"
-                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
-                    {nullLabelText}
-                  </Checkbox>
+      return (
+        <Card
+          bodyStyle={{ padding: 0 }}
+          className={classNames('custom-dropdown-render', dropdownClassName, {
+            'immediate-apply-dropdown': immediateApply,
+          })}
+          data-testid="drop-down-menu">
+          <Space className="w-full" direction="vertical" size={0}>
+            {!hideSearchBar && (
+              <div className="p-t-sm p-x-sm">
+                <Input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search box when the dropdown opens
+                  autoFocus
+                  data-testid="search-input"
+                  placeholder={`${t('label.search-entity', {
+                    entity: label,
+                  })}...`}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    debouncedOnSearch(value);
+                  }}
+                />
+              </div>
+            )}
+            {showClearAllBtn && (
+              <>
+                <Divider className="m-t-xs m-b-0" />
+                <Button
+                  className="p-0 m-l-sm"
+                  data-testid="clear-button"
+                  type="link"
+                  onClick={handleClear}>
+                  {t('label.clear-entity', {
+                    entity: t('label.all'),
+                  })}
+                </Button>
+              </>
+            )}
+            {!hideSearchBar && (
+              <Divider
+                className={classNames(
+                  showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0'
                 )}
-              </div>
+              />
+            )}
 
-              <Divider className="m-y-0" />
-            </>
-          )}
+            {hasNullOption && (
+              <>
+                <div className="d-flex items-center m-x-sm m-y-xs gap-2">
+                  {singleSelect ? (
+                    <Radio
+                      checked={nullOptionSelected}
+                      className="d-flex flex-1"
+                      data-testid="no-option-radio"
+                      onChange={(e) =>
+                        handleNullOptionChange(e.target.checked)
+                      }>
+                      {nullLabelText}
+                    </Radio>
+                  ) : (
+                    <Checkbox
+                      checked={nullOptionSelected}
+                      className="d-flex flex-1"
+                      data-testid="no-option-checkbox"
+                      onChange={(e) =>
+                        handleNullOptionChange(e.target.checked)
+                      }>
+                      {nullLabelText}
+                    </Checkbox>
+                  )}
+                </div>
 
-          {getDropdownBody(menuNode)}
-          {immediateApply ? (
-            helperText ? (
-              <div
-                className="p-x-sm p-y-xss search-dropdown-helper-text"
-                data-testid="search-dropdown-helper-text">
-                <Typography.Text className="text-xs" type="secondary">
-                  {helperText}
-                </Typography.Text>
-              </div>
-            ) : null
-          ) : (
-            <Space className="p-sm p-t-xss">
-              <Button
-                className="update-btn"
-                data-testid="update-btn"
-                size="small"
-                onClick={handleUpdate}>
-                {t('label.update')}
-              </Button>
-              <Button
-                data-testid="close-btn"
-                size="small"
-                type="link"
-                onClick={handleDropdownClose}>
-                {t('label.close')}
-              </Button>
-            </Space>
-          )}
-        </Space>
-      </Card>
-    ),
+                <Divider className="m-y-0" />
+              </>
+            )}
+
+            {getDropdownBody(menuNode)}
+            {immediateApply ? (
+              helperTextContent
+            ) : (
+              <Space className="p-sm p-t-xss">
+                <Button
+                  className="update-btn"
+                  data-testid="update-btn"
+                  size="small"
+                  onClick={handleUpdate}>
+                  {t('label.update')}
+                </Button>
+                <Button
+                  data-testid="close-btn"
+                  size="small"
+                  type="link"
+                  onClick={handleDropdownClose}>
+                  {t('label.close')}
+                </Button>
+              </Space>
+            )}
+          </Space>
+        </Card>
+      );
+    },
     [
       label,
       debouncedOnSearch,

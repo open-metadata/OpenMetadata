@@ -95,6 +95,59 @@ export const ContextRuleCard = ({
     onDelete();
   };
 
+  const conditionSummary =
+    conditionCount > 0 ? (
+      <Typography
+        as="span"
+        className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
+        size="text-xs"
+        weight="medium">
+        {t('message.persona-context-condition-count', {
+          count: conditionCount,
+        })}
+      </Typography>
+    ) : (
+      <Typography
+        as="span"
+        className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-tertiary"
+        size="text-xs"
+        weight="medium">
+        <FilterLines className="tw:size-3.5 tw:text-quaternary" />
+        {t('label.all-entity', {
+          entity: entityLabelPlural,
+        })}
+      </Typography>
+    );
+  const conditionContent = conditionParts ? (
+    <>
+      <Typography
+        as="span"
+        className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
+        size="text-xs"
+        weight="medium">
+        {conditionParts.field}
+      </Typography>
+      <Typography
+        as="span"
+        className="tw:text-quaternary"
+        size="text-xs"
+        weight="semibold">
+        {conditionParts.operator}
+      </Typography>
+      {conditionParts.value && (
+        <Typography
+          as="span"
+          className="tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary tw:px-2 tw:py-0.5 tw:font-mono tw:text-brand-secondary"
+          size="text-xs"
+          weight="medium">
+          {conditionParts.value}
+        </Typography>
+      )}
+    </>
+  ) : (
+    conditionSummary
+  );
+
   return (
     <Card
       className="tw:flex tw:gap-4 tw:rounded-[10px] tw:px-4.5 tw:py-4 tw:shadow-xs"
@@ -113,54 +166,7 @@ export const ContextRuleCard = ({
         </Box>
 
         <Box align="center" gap={2} wrap="wrap">
-          {conditionParts ? (
-            <>
-              <Typography
-                as="span"
-                className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
-                size="text-xs"
-                weight="medium">
-                {conditionParts.field}
-              </Typography>
-              <Typography
-                as="span"
-                className="tw:text-quaternary"
-                size="text-xs"
-                weight="semibold">
-                {conditionParts.operator}
-              </Typography>
-              {conditionParts.value && (
-                <Typography
-                  as="span"
-                  className="tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary tw:px-2 tw:py-0.5 tw:font-mono tw:text-brand-secondary"
-                  size="text-xs"
-                  weight="medium">
-                  {conditionParts.value}
-                </Typography>
-              )}
-            </>
-          ) : conditionCount > 0 ? (
-            <Typography
-              as="span"
-              className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
-              size="text-xs"
-              weight="medium">
-              {t('message.persona-context-condition-count', {
-                count: conditionCount,
-              })}
-            </Typography>
-          ) : (
-            <Typography
-              as="span"
-              className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-tertiary"
-              size="text-xs"
-              weight="medium">
-              <FilterLines className="tw:size-3.5 tw:text-quaternary" />
-              {t('label.all-entity', {
-                entity: entityLabelPlural,
-              })}
-            </Typography>
-          )}
+          {conditionContent}
         </Box>
 
         <Box align="center" className="tw:gap-1.5" wrap="wrap">
