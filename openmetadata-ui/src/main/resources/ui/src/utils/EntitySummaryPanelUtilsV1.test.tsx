@@ -84,6 +84,22 @@ jest.mock('./ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('./ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
+jest.mock('../components/common/atoms/TagChip/TagChip', () =>
+  jest.fn().mockImplementation(({ label, tagColor, icon, ...props }) => (
+    <span
+      data-color={tagColor}
+      data-icon={icon}
+      data-testid={props['data-testid'] ?? 'tag-chip'}
+      title={label}>
+      {label}
+    </span>
+  ))
+);
+
 jest.mock('../components/common/FieldCard', () => ({
   FieldCard: jest.fn(({ fieldName, dataType, description }) => (
     <div data-testid={`field-card-${fieldName}`}>

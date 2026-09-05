@@ -60,12 +60,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <div {...props}>{children}</div>
     )),
   Dot: jest.fn().mockReturnValue(<span data-testid="dot" />),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
   Typography: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
       <span {...props}>{children}</span>
     )),
 }));
+
+jest.mock('../../../utils/ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
+jest.mock('../../../components/common/atoms/TagChip/TagChip', () =>
+  jest.fn().mockImplementation(({ label, tagColor, icon, ...props }) => (
+    <span
+      data-color={tagColor}
+      data-icon={icon}
+      data-testid={props['data-testid'] ?? 'tag-chip'}
+      title={label}>
+      {label}
+    </span>
+  ))
+);
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest
@@ -233,7 +252,7 @@ describe('Knowledge Card', () => {
     expect(screen.getByTestId('knowledge-footer')).toBeInTheDocument();
   });
 
-  it('should render at most 2 tags and an overflow badge', () => {
+  it('should render at most 2 tags as TagChip and an overflow count', () => {
     render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
     const visibleTags = KNOWLEDGE_PAGE_TAGS.slice(0, 2);
@@ -244,6 +263,17 @@ describe('Knowledge Card', () => {
     const overflowCount = KNOWLEDGE_PAGE_TAGS.length - 2;
 
     expect(screen.getByText(`+${overflowCount}`)).toBeInTheDocument();
+  });
+
+  it('should pass tag style color to TagChip', () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
+
+    const styledTag = KNOWLEDGE_PAGE_TAGS.find((t) => t.style?.color);
+    if (styledTag) {
+      const chip = screen.getByTitle(styledTag.displayName ?? styledTag.name);
+
+      expect(chip).toHaveAttribute('data-color', styledTag.style?.color);
+    }
   });
 
   it('should render the edit and delete button for quick link', async () => {

@@ -23,6 +23,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
+import TagChip from '../components/common/atoms/TagChip/TagChip';
 import { FieldCard } from '../components/common/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
@@ -1052,9 +1053,14 @@ const APIEndpointSchemaV1: React.FC<{
       render: (tags: TagLabel[]) => (
         <div className="d-flex flex-wrap gap-2">
           {tags?.map((tag) => (
-            <span className="tag-container" key={tag.tagFQN}>
-              {tag.displayName || tag.name}
-            </span>
+            <TagChip
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN}
+              label={tag.displayName || tag.name || tag.tagFQN}
+              size="small"
+              tagColor={tag.style?.color}
+              variant="blueGray"
+            />
           )) || (
             <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.tag-plural') })}
