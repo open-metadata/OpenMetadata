@@ -152,10 +152,16 @@ BUDGET_TARGET_DETAILS: dict[str, dict[str, Any]] = {
     },
     # The planner packs shards to a 19-minute predicted budget
     # (COMMON_SHARD_BUDGET_MS in build_playwright_shards.py); 1500 s is that
-    # promise plus tail headroom. The hang-protection `timeout … 30m` wrapper
-    # in playwright-e2e-reusable.yml sits well above this on purpose: a shard
-    # between 25 and 30 minutes breaches the budget (signal) but still
-    # finishes, uploads results, and keeps the run green if tests passed.
+    # promise plus tail headroom. The hang-protection `timeout … 60m` wrapper
+    # in playwright-e2e-reusable.yml sits far above this on purpose: a shard
+    # over 25 minutes breaches the budget (signal) but still finishes, uploads
+    # results, and keeps the run green if tests passed. These two targets are
+    # the "this shard is too slow" alert — they annotate the run and upsert the
+    # tracked issue "Playwright CI over time budget". The wrapper is not an
+    # alert and must never be used as one: killing a slow shard destroys its
+    # blob report, so its tests read as never-executed and the merge-queue
+    # batch is ejected with no record of what passed (2026-09-04: 584 of 4464
+    # tests lost, 0 test failures, 27 batches ejected).
     "executionAtMostTwentyFiveMinutes": {
         "label": "Maximum shard execution",
         "phase_field": "executionSeconds",

@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { SubDomain } from '../../../support/domain/SubDomain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test as base } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -92,7 +93,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
-  test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -131,6 +131,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page, false);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
@@ -160,6 +161,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are added', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);

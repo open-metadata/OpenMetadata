@@ -28,7 +28,6 @@ import {
   Cell as AriaCell,
   Collection as AriaCollection,
   Column as AriaColumn,
-  Group as AriaGroup,
   Row as AriaRow,
   Table as AriaTable,
   TableBody as AriaTableBody,
@@ -359,7 +358,10 @@ const TableHead = ({
         )
       }>
       {(state) => (
-        <AriaGroup className="tw:flex tw:items-center tw:gap-1">
+        // Layout only — a real Group (role="group") here makes Chromium
+        // compute an EMPTY accessible name for the columnheader, breaking
+        // every getByRole('columnheader', { name }) locator.
+        <div className="tw:flex tw:items-center tw:gap-1">
           <div className="tw:flex tw:items-center tw:gap-1">
             {label && (
               <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
@@ -392,7 +394,7 @@ const TableHead = ({
                 strokeWidth={3}
               />
             ))}
-        </AriaGroup>
+        </div>
       )}
     </AriaColumn>
   );

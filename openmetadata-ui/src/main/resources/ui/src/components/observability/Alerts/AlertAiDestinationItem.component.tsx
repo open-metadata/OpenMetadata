@@ -24,6 +24,7 @@ import { isEqual, isUndefined, omitBy } from 'lodash';
 import {
   ComponentProps,
   ComponentType,
+  Fragment,
   useEffect,
   useMemo,
   useState,
@@ -266,9 +267,9 @@ const AlertAiDestinationItem = ({
         </div>
       )}
       {destinationType && (
-        <>
+        <Fragment>
           {isInternal && (
-            <>
+            <Fragment>
               {!isViewOnly && (
                 <div className={ALERT_AI_FORM_CLASS_NAMES.ruleControlField}>
                   <Select
@@ -315,7 +316,7 @@ const AlertAiDestinationItem = ({
                   variant="warning"
                 />
               )}
-            </>
+            </Fragment>
           )}
           <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
             <AlertAiDestinationConfigFields
@@ -387,7 +388,7 @@ const AlertAiDestinationItem = ({
                 onClose={() => setIsStatusAlertDismissed(true)}
               />
             )}
-        </>
+        </Fragment>
       )}
     </Box>
   );

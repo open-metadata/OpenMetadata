@@ -28,8 +28,6 @@ const table1 = new TableClass();
 const table2 = new TableClass();
 
 test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
-  test.slow();
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
 
