@@ -46,11 +46,17 @@ export const useGlossaryStore = create<{
   refreshGlossaryTerms: () => void;
   loadMoreTerms: () => void;
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
+  // Status-filtered child term totals (fqn -> count), populated from the
+  // Terms tab's own listing fetch so the tab badge matches the table below it.
+  filteredChildrenCount: Record<string, number>;
+  setFilteredChildrenCount: (fqn: string, count: number) => void;
+  resetFilteredChildrenCount: () => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
   glossaryChildTerms: [],
   termsLoading: false,
+  filteredChildrenCount: {},
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -121,6 +127,13 @@ export const useGlossaryStore = create<{
   setTermsLoading: (termsLoading: boolean) => {
     set({ termsLoading });
   },
+  setFilteredChildrenCount: (fqn: string, count: number) => {
+    const { filteredChildrenCount } = get();
+    set({
+      filteredChildrenCount: { ...filteredChildrenCount, [fqn]: count },
+    });
+  },
+  resetFilteredChildrenCount: () => set({ filteredChildrenCount: {} }),
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({
       ...glossaryFunctionRef,

@@ -85,6 +85,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
+  getGlossaryTermRecursiveCount,
   getGlossaryTerms,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
@@ -225,6 +226,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     onAddGlossaryTerm,
     onEditGlossaryTerm,
     refreshGlossaryTerms,
+    setFilteredChildrenCount,
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
@@ -280,6 +282,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const selectedStatusRef = useRef(selectedStatus);
   selectedStatusRef.current = selectedStatus;
+  // Tracks whether the person has ever actually saved a status-filter change,
+  // as opposed to `isStatusFilterActive` which is also true for the untouched
+  // default filter (Approved/Draft/In Review) — see handleStatusSelectionDropdownSave.
+  const hasUserChangedStatusFilterRef = useRef(false);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
@@ -386,6 +392,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     try {
       let data;
       let pagingResponse: Paging | undefined;
+      // Whole-subtree count (any depth) for the Terms tab badge — independent
+      // of search text, since the badge reflects the subtree's total size,
+      // not how many rows the current search matched.
+      let recursiveChildrenTotal = 0;
 
       const isStatusFilterActive = !selectedStatus.includes('all');
       const entityStatusParam = isStatusFilterActive
@@ -410,16 +420,32 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         data = response.data;
         pagingResponse = response.paging;
       } else {
-        const response = await getFirstLevelGlossaryTermsPaginated(
-          activeGlossary?.fullyQualifiedName || '',
-          pageSize,
-          options?.after,
+        const recursiveCountPromise = getGlossaryTermRecursiveCount(
+          activeGlossary?.id ?? '',
           entityStatusParam,
-          options?.before
+          isGlossary
         );
+        const [response, recursiveCount] = await Promise.all([
+          getFirstLevelGlossaryTermsPaginated(
+            activeGlossary?.fullyQualifiedName || '',
+            pageSize,
+            options?.after,
+            entityStatusParam,
+            options?.before
+          ),
+          recursiveCountPromise,
+        ]);
         data = response.data;
         pagingResponse = response.paging;
+        recursiveChildrenTotal = recursiveCount;
       }
+
+      // While searching, the badge should track what's on screen (the search
+      // results), not the static whole-subtree total — otherwise it disagrees
+      // with the table exactly like the original #28707 bug did.
+      const badgeCount = searchTerm
+        ? pagingResponse?.total ?? data.length
+        : recursiveChildrenTotal;
 
       // Apply the response only when it still matches the active search context.
       // A response computed for a different (now-outdated) search term or status
@@ -436,13 +462,25 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
 
       if (data.length === 0 && isStatusFilterActive) {
+        // Keep the active status filter applied, else this falls back to the
+        // glossary's unfiltered total instead of the true (possibly zero) count.
         const countResponse = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
-          0
+          0,
+          undefined,
+          entityStatusParam
         );
         setTotalTermsCount(countResponse.paging?.total ?? 0);
+        setFilteredChildrenCount(
+          activeGlossary?.fullyQualifiedName ?? '',
+          badgeCount
+        );
       } else {
         setTotalTermsCount(pagingResponse?.total ?? data.length);
+        setFilteredChildrenCount(
+          activeGlossary?.fullyQualifiedName ?? '',
+          badgeCount
+        );
       }
 
       // Search mode has no cursor; clear before/after so the footer falls back
@@ -1127,6 +1165,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const handleStatusSelectionDropdownSave = () => {
+    hasUserChangedStatusFilterRef.current = true;
     setSelectedStatus(statusDropdownSelection);
     setIsStatusDropdownVisible(false);
   };
@@ -1726,6 +1765,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   if (
     hasNoTerms &&
     !isSearchActive &&
+    !hasUserChangedStatusFilterRef.current &&
     totalTermsCount === 0 &&
     !isTableLoading
   ) {

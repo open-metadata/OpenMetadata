@@ -15,6 +15,7 @@ import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
+import { getCountBadge } from '../EntityDisplayPureUtils';
 import glossaryTermClassBase, {
   GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
@@ -154,6 +155,21 @@ describe('getGlossaryTermDetailPageTabs', () => {
       expect(
         tabs.find((t) => t.key === EntityTabs.GLOSSARY_TERMS)
       ).toBeDefined();
+    });
+
+    it('falls back to the raw childrenCount for the GLOSSARY_TERMS badge when no filtered count is stored yet', () => {
+      getGlossaryTermDetailPageTabs(mockProps);
+
+      expect(getCountBadge).toHaveBeenCalledWith(3, '', false);
+    });
+
+    it('uses the status-filtered count from the store over the raw childrenCount for the GLOSSARY_TERMS badge', () => {
+      getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        filteredChildrenCount: { 'Finance.Revenue': 2 },
+      });
+
+      expect(getCountBadge).toHaveBeenCalledWith(2, '', false);
     });
 
     it('includes ASSETS tab', () => {

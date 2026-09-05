@@ -56,6 +56,7 @@ export type SearchGlossaryTermsParams = ListParamsWithOffset & {
 };
 
 const BASE_URL = '/glossaries';
+const GLOSSARY_TERMS_URL = '/glossaryTerms';
 
 export const getGlossariesList = async (
   params?: ListParams,
@@ -110,7 +111,7 @@ export const getGlossariesById = async (id: string, params?: ListParams) => {
 
 export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
-    '/glossaryTerms',
+    GLOSSARY_TERMS_URL,
     {
       params,
     }
@@ -197,7 +198,7 @@ export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
 export const addGlossaryTerm = async (
   data: CreateGlossaryTerm
 ): Promise<GlossaryTerm> => {
-  const url = '/glossaryTerms';
+  const url = GLOSSARY_TERMS_URL;
 
   const response = await APIClient.post(url, data);
 
@@ -473,6 +474,30 @@ export const getFirstLevelGlossaryTermsPaginated = async (
   });
 
   return data;
+};
+
+// Recursive (whole-subtree, any depth) count for the Terms tab badge. Unlike
+// `directChildrenOf` (used for the table's own row listing), the `parent`
+// query param does not stop at one level, so this returns every descendant
+// under parentId that matches entityStatus.
+export const getGlossaryTermRecursiveCount = async (
+  id: string,
+  entityStatus?: string,
+  isGlossary = false
+) => {
+  const key = isGlossary ? 'glossary' : 'parent';
+  const { data } = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
+    GLOSSARY_TERMS_URL,
+    {
+      params: {
+        [key]: id,
+        limit: 0,
+        entityStatus,
+      },
+    }
+  );
+
+  return data.paging?.total ?? 0;
 };
 
 export const getGlossaryTermChildrenLazy = async (

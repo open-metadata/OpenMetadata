@@ -95,7 +95,7 @@ const GlossaryTermsV1 = ({
   const [assetCount, setAssetCount] = useState<number>(0);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
-  const { onAddGlossaryTerm } = useGlossaryStore();
+  const { onAddGlossaryTerm, filteredChildrenCount } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
   const { t } = useTranslation();
@@ -215,6 +215,7 @@ const GlossaryTermsV1 = ({
       refreshActiveGlossaryTerm,
       setAssetModalVisible,
       setPreviewAsset,
+      filteredChildrenCount,
     });
 
     return getDetailsTabWithNewLabel(
@@ -237,6 +238,7 @@ const GlossaryTermsV1 = ({
     handleAssetSave,
     previewAsset,
     handleAssetClick,
+    filteredChildrenCount,
   ]);
 
   useEffect(() => {

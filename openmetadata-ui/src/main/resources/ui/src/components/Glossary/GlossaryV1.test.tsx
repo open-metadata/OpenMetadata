@@ -118,6 +118,7 @@ jest.mock('./useGlossary.store', () => ({
     glossaryChildTerms: [],
     setGlossaryChildTerms: jest.fn(),
     insertNewGlossaryTermToChildTerms: jest.fn(),
+    resetFilteredChildrenCount: jest.fn(),
   })),
 }));
 
