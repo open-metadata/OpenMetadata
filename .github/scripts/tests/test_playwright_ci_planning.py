@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1187,6 +1188,79 @@ def test_selector_exports_direct_changed_specs_for_workflow_routing(tmp_path):
     )
 
     assert github_output.read_text().endswith("lineage_representative_only=false\n")
+
+
+def test_pull_request_runs_the_full_suite_when_requested(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    github_output = tmp_path / "github-output.txt"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.tsx\n"
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--full-suite",
+            "true",
+            "--output",
+            str(output),
+            "--github-output",
+            str(github_output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "full"
+    # An empty selector list is how the shard planner recognises "every unit
+    # is in scope" (see build_playwright_shards.selected_projects).
+    assert selection["selectors"] == []
+    assert "mode=full\n" in github_output.read_text()
+    # Full mode never demotes the lineage matrix to its representative case.
+    assert "lineage_representative_only=false\n" in github_output.read_text()
+
+
+def test_pull_request_stays_targeted_without_the_full_suite_flag(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--full-suite",
+            "false",
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "targeted"
+    assert selection["selectors"]
 
 
 def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries(
@@ -2523,6 +2597,37 @@ def test_security_impact_mapping_includes_ingestion_permission_specs():
     assert selector.matches(
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts", mapping["specs"]
     )
+
+
+def test_pipeline_skips_entirely_when_no_playwright_relevant_path_changed():
+    # "Run full or do not run at all": the expensive jobs are gated on the same
+    # `e2e` paths filter that check-changes computes, and everything downstream
+    # skips by dependency. The three guards must stay in lockstep — gating only
+    # some of them would leave a half-run pipeline whose summary has nothing to
+    # report but whose build still burns a runner.
+    reusable = (SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml").read_text()
+    guard = (
+        "(!contains(fromJSON('[\"pull_request\",\"pull_request_target\",\"merge_group\"]'), "
+        "github.event_name) || needs.check-changes.outputs.e2e == 'true')"
+    )
+
+    assert reusable.count(guard) == 3
+    next_job = re.compile(r"\n  [a-z][a-z0-9-]*:\n")
+    for job in ("cache-keys", "build", "detect-changes"):
+        rest = reusable.split(f"\n  {job}:\n", 1)[1]
+        job_block = next_job.split(rest, 1)[0]
+        assert guard in job_block, f"{job} is not gated on the paths filter"
+        # Each guarded job must be able to see the output it reads.
+        assert "check-changes" in job_block.split("needs:", 1)[1].split("\n", 1)[0]
+
+    # schedule/dispatch never run the paths filter, so its output is empty
+    # there; those events must stay unconditionally full.
+    assert "\"merge_group\"]'), github.event_name) ||" in reusable
+
+    # The summary's green no-op reads the same signal from the other side.
+    summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
+    assert "process.env.E2E_CHANGED !== 'true'" in summary_helper
+    assert "buildResult === 'skipped'" in summary_helper
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():
