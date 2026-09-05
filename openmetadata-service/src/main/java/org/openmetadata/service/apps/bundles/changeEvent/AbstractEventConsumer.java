@@ -68,6 +68,7 @@ public abstract class AbstractEventConsumer
   // offset instead of row count, since change_event.offset is a non-contiguous AUTO_INCREMENT.
   private long lastReadOffset = -1;
   private long startingOffset = -1;
+  private Long startingTimestamp;
 
   private AlertMetrics alertMetrics;
 
@@ -113,6 +114,7 @@ public abstract class AbstractEventConsumer
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.startingTimestamp = eventSubscriptionOffset.getStartingTimestamp();
       this.alertMetrics = loadInitialMetrics();
       this.destinationMap = loadDestinationsMap(context);
 
@@ -225,7 +227,8 @@ public abstract class AbstractEventConsumer
     if (events.isEmpty()) {
       return;
     }
-    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    Map<ChangeEvent, Set<UUID>> filteredEvents =
+        getFilteredEvents(eventSubscription, events, startingTimestamp);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -326,6 +329,7 @@ public abstract class AbstractEventConsumer
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
             .withStartingOffset(startingOffset)
+            .withStartingTimestamp(startingTimestamp)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()
