@@ -26,6 +26,7 @@ const EntityCardView = <T extends { id: string }>({
   onEntityClick,
   emptyMessage,
   className,
+  cardContentClassName,
 }: EntityCardViewProps<T>) => {
   if (loading) {
     return <Loader />;
@@ -53,7 +54,9 @@ const EntityCardView = <T extends { id: string }>({
           key={entity.id}
           variant="default"
           onClick={onEntityClick ? () => onEntityClick(entity) : undefined}>
-          <Card.Content>{renderCard(entity)}</Card.Content>
+          <Card.Content className={cardContentClassName}>
+            {renderCard(entity)}
+          </Card.Content>
         </Card>
       ))}
     </div>

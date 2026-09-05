@@ -25,6 +25,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../../../RichTextEditor/RichTextEditorPreviewNew';
 import {
   CARD_NAME_CLIP_CLASS,
   CLIPPED_NAME_CLASS,
@@ -125,6 +126,18 @@ export const useDomainCardTemplates = () => {
               )}
             </Box>
           </Box>
+
+          <Grid gap="4">
+            <Grid.Item span={24}>
+              <Box direction="col" gap={1}>
+                <Typography size="text-xs">{t('label.description')}</Typography>
+                <RichTextEditorPreviewerNew
+                  disableExpand
+                  markdown={entity.description}
+                />
+              </Box>
+            </Grid.Item>
+          </Grid>
 
           <Grid gap="4">
             <Grid.Item span={12}>

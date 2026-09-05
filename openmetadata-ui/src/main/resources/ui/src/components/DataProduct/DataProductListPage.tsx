@@ -367,6 +367,7 @@ const DataProductListPage = ({
     return (
       <>
         <EntityCardView
+          cardContentClassName="tw:p-5"
           className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={dataProductListing.entities}
           loading={dataProductListing.loading}
