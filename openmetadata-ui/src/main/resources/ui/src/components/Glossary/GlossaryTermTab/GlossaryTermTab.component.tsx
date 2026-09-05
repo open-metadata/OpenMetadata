@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
@@ -25,6 +25,7 @@ import {
   Col,
   Dropdown,
   MenuProps,
+  Modal,
   Popover,
   Row,
   Space,
@@ -105,6 +106,7 @@ import {
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryPureUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
@@ -124,8 +126,8 @@ import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
-import GlossaryTermMoveConfirmationModal from './GlossaryTermMoveConfirmationModal.component';
 import {
+  GlossaryTermMoveConfirmationModalProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
@@ -146,6 +148,88 @@ const WorkflowHistory = withSuspenseFallback(
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
+
+const getTransferTargetName = (
+  movedGlossaryTerm: GlossaryTermMoveConfirmationModalProps['movedGlossaryTerm'],
+  activeGlossary: GlossaryTermMoveConfirmationModalProps['activeGlossary']
+) =>
+  movedGlossaryTerm?.to?.name ??
+  (activeGlossary && getEntityName(activeGlossary));
+
+const GlossaryTermMoveConfirmationModal = ({
+  isModalOpen,
+  isTableLoading,
+  hasReviewers,
+  confirmCheckboxChecked,
+  onConfirmCheckboxChange,
+  movedGlossaryTerm,
+  activeGlossary,
+  onDragConfirmationModalClose,
+  onChangeGlossaryTerm,
+  t,
+}: GlossaryTermMoveConfirmationModalProps) => {
+  return (
+    <Modal
+      centered
+      destroyOnClose
+      closable={false}
+      confirmLoading={isTableLoading}
+      data-testid="confirmation-modal"
+      maskClosable={false}
+      okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
+      okText={t('label.move')}
+      open={isModalOpen}
+      title={
+        <>
+          <WarningOutlined className="m-r-xs warning-icon" />
+          {t('label.move-the-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </>
+      }
+      onCancel={onDragConfirmationModalClose}
+      onOk={onChangeGlossaryTerm}>
+      <Transi18next
+        i18nKey="message.entity-transfer-message"
+        renderElement={<strong />}
+        values={{
+          from: movedGlossaryTerm?.from.name,
+          to: getTransferTargetName(movedGlossaryTerm, activeGlossary),
+          entity: isUndefined(movedGlossaryTerm?.to)
+            ? ''
+            : t('label.term-lowercase'),
+        }}
+      />
+      {hasReviewers && (
+        <div className="m-t-md">
+          <Checkbox
+            checked={confirmCheckboxChecked}
+            className="text-grey-700"
+            data-testid="confirm-status-checkbox"
+            onChange={(e) => onConfirmCheckboxChange(e.target.checked)}>
+            <span>
+              <Transi18next
+                i18nKey="message.entity-transfer-confirmation-message"
+                renderElement={<strong />}
+                values={{
+                  from: movedGlossaryTerm?.from.name,
+                }}
+              />
+              <span className="d-inline-block m-l-xss">
+                <StatusBadge
+                  className="p-x-xs p-y-xss"
+                  dataTestId=""
+                  label={EntityStatus.InReview}
+                  status={EntityStatusClass[EntityStatus.InReview]}
+                />
+              </span>
+            </span>
+          </Checkbox>
+        </div>
+      )}
+    </Modal>
+  );
+};
 
 const renderGlossaryExpandIcon = (
   {
