@@ -58,6 +58,24 @@ export const waitForAllLoadersToDisappear = async (
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
+/**
+ * Wait for the lazily-mounted entity-detail widgets to replace their Suspense
+ * fallback.
+ *
+ * The right-panel widgets — tags, glossary terms, owners, domain — are behind
+ * `React.lazy`, and while their chunk loads the boundary renders
+ * `EntityDetailWidgetSkeleton`. That skeleton is *not* `data-testid="loader"`, so
+ * `waitForAllLoadersToDisappear` returns straight past it and a test can reach
+ * for something inside those widgets before they exist. Anything the widgets own
+ * — `request-entity-tags`, for one — is simply absent until this clears, so the
+ * click waits out the whole test timeout rather than racing by a few frames.
+ */
+export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+  await expect(
+    page.locator('[data-testid="entity-detail-widget-skeleton"]')
+  ).toHaveCount(0, { timeout });
+};
+
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;
@@ -151,6 +169,7 @@ export const visitEntityPageByFqn = async (data: {
   });
   await entityDetailsResponse;
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };
 
 export const addOwner = async ({

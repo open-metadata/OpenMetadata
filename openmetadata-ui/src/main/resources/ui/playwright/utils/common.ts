@@ -1469,7 +1469,7 @@ export const waitForMetricsSearchResponse = (page: Page) =>
 export const testMetricsPaginationNavigation = async (page: Page) => {
   const page1ResponsePromise = waitForMetricsSearchResponse(page);
 
-  await page.goto('/metrics?pageSize=15');
+  await page.goto('/metrics?pageSize=15', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
