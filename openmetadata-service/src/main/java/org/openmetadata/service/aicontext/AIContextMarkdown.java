@@ -556,6 +556,11 @@ public final class AIContextMarkdown {
     if (!nullOrEmpty(promptContent)) {
       String content = promptContent.strip();
       markdown.append('\n').append(truncateContent ? truncate(content) : content).append('\n');
+      // The cue only rides alongside visible content (it is charged to the item's budget share in
+      // fitItem); a reference-only item renders the fetch hint below instead.
+      if (Boolean.TRUE.equals(item.getStale())) {
+        markdown.append(staleCue(item));
+      }
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
@@ -571,6 +576,18 @@ public final class AIContextMarkdown {
     if (!nullOrEmpty(fqn)) {
       markdown.append('`').append(fqn).append("`\n");
     }
+  }
+
+  /**
+   * The stale trust cue rendered for a knowledge item in Compact Markdown. Its exact length is
+   * charged to the item's budget share in {@code AIContextBuilder.fitItem}, so cue + excerpt can
+   * never push a bundle past the caller's knowledge budget.
+   */
+  static String staleCue(KnowledgeItem item) {
+    List<String> reasons = listOrEmpty(item.getStaleReasons());
+    return "\n_⚠ Stale"
+        + (reasons.isEmpty() ? "" : " — " + String.join(", ", reasons))
+        + ". Weigh this against the asset's current state before relying on it for decisions._\n";
   }
 
   private static String labelOf(KnowledgeItem item) {
