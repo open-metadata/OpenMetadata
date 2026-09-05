@@ -11,6 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +22,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -29,7 +33,10 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateConversation;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -37,13 +44,18 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -3631,6 +3643,165 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     Table refreshed = client.tables().get(tableId.toString(), "tags");
     return refreshed.getTags() != null
         && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+  }
+
+  // ===================================================================
+  // BULK ASSET AUTHORIZATION — broken access control fix
+  //
+  // /assets/add and /assets/remove must authorize EDIT_GLOSSARY_TERMS on
+  // each target asset. Before the fix they called the repository with no
+  // authorizer, so any authenticated caller could apply/strip a glossary
+  // term on arbitrary assets (GHSA-jmw6-578h-gw4r).
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_rm_deny");
+    Table table = createTableTaggedWithTerm(ns, term, "authz_rm_deny");
+    String token = deniedGlossaryEditToken(ns, "rm");
+
+    HttpResponse<String> response = putAssets(term.getId(), "remove", assetsBody(table), token);
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "A user denied EDIT_GLOSSARY_TERMS must not remove the glossary term: " + response.body());
+    assertTrue(
+        tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
+        "Glossary term must remain on the asset when removal is rejected");
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_add_deny");
+    Table table = createBareTable(ns, "authz_add_deny");
+    String token = deniedGlossaryEditToken(ns, "add");
+
+    HttpResponse<String> response = putAssets(term.getId(), "add", assetsBody(table), token);
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "A user denied EDIT_GLOSSARY_TERMS must not apply the glossary term: " + response.body());
+    assertFalse(
+        tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
+        "Glossary term must not be applied to the asset when the add is rejected");
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_authorizedUser_succeeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_add_ok");
+    Table table = createBareTable(ns, "authz_add_ok");
+    // A plain user inherits the DataConsumer role (EDIT_GLOSSARY_TERMS on all assets) from the
+    // Organization team, so the fix must not over-block legitimate callers on the add path.
+    String token = dataConsumerToken(ns, "add");
+
+    HttpResponse<String> response = putAssets(term.getId(), "add", assetsBody(table), token);
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "A user with EDIT_GLOSSARY_TERMS may apply the glossary term: " + response.body());
+    assertTrue(
+        tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
+        "Glossary term should be applied for an authorized caller");
+  }
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_authorizedUser_succeeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_rm_ok");
+    Table table = createTableTaggedWithTerm(ns, term, "authz_rm_ok");
+    String token = dataConsumerToken(ns, "rm");
+
+    HttpResponse<String> response = putAssets(term.getId(), "remove", assetsBody(table), token);
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "A user with EDIT_GLOSSARY_TERMS may remove the glossary term: " + response.body());
+    assertFalse(
+        tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
+        "Glossary term should be removed for an authorized caller");
+  }
+
+  private String assetsBody(Table table) {
+    return "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}],\"dryRun\":false}";
+  }
+
+  private HttpResponse<String> putAssets(UUID termId, String action, String body, String token)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/glossaryTerms/"
+                        + termId
+                        + "/assets/"
+                        + action))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * A token for a user explicitly denied EDIT_GLOSSARY_TERMS. Every user inherits the DataConsumer
+   * role (which allows glossary-term edits on all assets) from the Organization team, so a genuinely
+   * restricted caller needs an explicit DENY rule — deny wins over the inherited allow.
+   */
+  private String deniedGlossaryEditToken(TestNamespace ns, String suffix) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.shortPrefix("gtNoEdit_" + suffix);
+    Rule deny =
+        new Rule()
+            .withName("DenyGlossaryTermEdit")
+            .withResources(List.of("All"))
+            .withOperations(List.of(MetadataOperation.EDIT_GLOSSARY_TERMS))
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        admin
+            .policies()
+            .create(new CreatePolicy().withName(prefix + "_pol").withRules(List.of(deny)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    Team team =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(prefix + "_team")
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDefaultRoles(List.of(role.getId())));
+    String email = prefix + "@test.openmetadata.org";
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(prefix)
+                    .withEmail(email)
+                    .withTeams(List.of(team.getId())));
+    return JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
+  }
+
+  private String dataConsumerToken(TestNamespace ns, String suffix) {
+    String prefix = ns.shortPrefix("gtConsumer_" + suffix);
+    String email = prefix + "@test.openmetadata.org";
+    User user =
+        SdkClients.adminClient().users().create(new CreateUser().withName(prefix).withEmail(email));
+    return JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
   }
 
   // -------------------------------------------------------------------------

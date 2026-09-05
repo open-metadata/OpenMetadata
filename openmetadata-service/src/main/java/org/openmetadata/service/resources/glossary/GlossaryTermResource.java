@@ -1013,6 +1013,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
+    authorizeBulkAssetsPermission(
+        securityContext, request.getAssets(), MetadataOperation.EDIT_GLOSSARY_TERMS);
     return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
   }
 
@@ -1063,6 +1065,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
+    authorizeBulkAssetsPermission(
+        securityContext, request.getAssets(), MetadataOperation.EDIT_GLOSSARY_TERMS);
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
   }
 
