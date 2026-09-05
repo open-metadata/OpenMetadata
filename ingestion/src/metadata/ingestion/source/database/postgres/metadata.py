@@ -14,7 +14,7 @@ Postgres source module
 
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -136,14 +136,14 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
@@ -166,7 +166,7 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -204,7 +204,7 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:  # noqa: UP006
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> tuple[bool, TablePartition]:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(POSTGRES_PARTITION_DETAILS),
