@@ -1089,8 +1089,8 @@ public class SystemResource {
       preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
-      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+      // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
+      systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
 
       // Update both configurations in a transaction
       Settings authSettings =

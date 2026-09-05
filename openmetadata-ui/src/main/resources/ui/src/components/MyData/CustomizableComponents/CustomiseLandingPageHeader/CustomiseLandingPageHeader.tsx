@@ -142,6 +142,9 @@ const CustomiseLandingPageHeader = ({
     fetchAnnouncements();
   }, [announcementsFromParent, fetchAnnouncements]);
 
+  const canDisplayAnnouncements =
+    !isPreviewHeader && showAnnouncements && !isAnnouncementLoading;
+
   return (
     <div
       className="customise-landing-page-header"
@@ -190,21 +193,18 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {!isPreviewHeader &&
-          showAnnouncements &&
-          !isAnnouncementLoading &&
-          announcements.length > 0 && (
-            <div className="announcements-container">
-              <AnnouncementsWidgetV1
-                announcements={announcements}
-                currentBackgroundColor={bgColor}
-                disabled={!onHomePage}
-                onClose={() => {
-                  setShowAnnouncements(false);
-                }}
-              />
-            </div>
-          )}
+        {canDisplayAnnouncements && announcements.length > 0 && (
+          <div className="announcements-container">
+            <AnnouncementsWidgetV1
+              announcements={announcements}
+              currentBackgroundColor={bgColor}
+              disabled={!onHomePage}
+              onClose={() => {
+                setShowAnnouncements(false);
+              }}
+            />
+          </div>
+        )}
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 

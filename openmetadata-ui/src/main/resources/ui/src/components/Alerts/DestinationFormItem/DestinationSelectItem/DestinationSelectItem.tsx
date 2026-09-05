@@ -151,6 +151,30 @@ function DestinationSelectItem({
     [id, setValue]
   );
 
+  const hasDestinationType = destinationType !== undefined;
+  const showExternalDestinationConfig =
+    hasDestinationType && !isInternalDestinationSelected;
+  const showInternalDestinationSection =
+    hasDestinationType && isInternalDestinationSelected;
+  const showTeamOrUserConfig =
+    destinationType === SubscriptionCategory.Teams ||
+    destinationType === SubscriptionCategory.Users;
+  const showSelectionWarning = Boolean(
+    destinationType && subscriptionType && !isSelectionWarningDismissed
+  );
+  const isOwnerNonEmailSelection =
+    destinationType === SubscriptionCategory.Owners &&
+    subscriptionType !== SubscriptionType.Email;
+  const selectionWarningTitle = isOwnerNonEmailSelection
+    ? t('message.destination-owner-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType,
+      })
+    : t('message.destination-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType,
+      });
+
   return (
     <div
       className="tw:flex tw:gap-4"
@@ -209,7 +233,7 @@ function DestinationSelectItem({
             />
           </Grid.Item>
 
-          {destinationType && !isInternalDestinationSelected && (
+          {showExternalDestinationConfig && (
             <DestinationConfigField
               fieldName={id}
               isConfigExpanded={isConfigExpanded}
@@ -220,10 +244,9 @@ function DestinationSelectItem({
             />
           )}
 
-          {destinationType && isInternalDestinationSelected && (
+          {showInternalDestinationSection && (
             <>
-              {(destinationType === SubscriptionCategory.Teams ||
-                destinationType === SubscriptionCategory.Users) && (
+              {showTeamOrUserConfig && (
                 <DestinationConfigField
                   fieldName={id}
                   isConfigExpanded={isConfigExpanded}
@@ -279,29 +302,16 @@ function DestinationSelectItem({
                 />
               </Grid.Item>
 
-              {destinationType &&
-                subscriptionType &&
-                !isSelectionWarningDismissed && (
-                  <Grid.Item span={24}>
-                    <Alert
-                      closable
-                      title={
-                        destinationType === SubscriptionCategory.Owners &&
-                        subscriptionType !== SubscriptionType.Email
-                          ? t('message.destination-owner-selection-warning', {
-                              subscriptionCategory: destinationType,
-                              subscriptionType,
-                            })
-                          : t('message.destination-selection-warning', {
-                              subscriptionCategory: destinationType,
-                              subscriptionType,
-                            })
-                      }
-                      variant="warning"
-                      onClose={() => setIsSelectionWarningDismissed(true)}
-                    />
-                  </Grid.Item>
-                )}
+              {showSelectionWarning && (
+                <Grid.Item span={24}>
+                  <Alert
+                    closable
+                    title={selectionWarningTitle}
+                    variant="warning"
+                    onClose={() => setIsSelectionWarningDismissed(true)}
+                  />
+                </Grid.Item>
+              )}
             </>
           )}
 

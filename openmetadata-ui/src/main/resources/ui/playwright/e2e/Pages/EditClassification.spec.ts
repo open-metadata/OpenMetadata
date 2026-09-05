@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 

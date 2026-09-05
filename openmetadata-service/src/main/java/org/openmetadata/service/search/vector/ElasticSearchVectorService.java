@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.transport.ElasticsearchTransport;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -54,10 +56,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   private static Rest5Client extractRestClient(ElasticsearchClient client) {
-    if (!(client._transport() instanceof Rest5ClientTransport rest5)) {
+    ElasticsearchTransport transport = MeteredElasticsearchTransport.unwrap(client._transport());
+    if (!(transport instanceof Rest5ClientTransport rest5)) {
       throw new IllegalArgumentException(
           "ElasticSearchVectorService requires Rest5ClientTransport, got: "
-              + client._transport().getClass().getName());
+              + transport.getClass().getName());
     }
     return rest5.restClient();
   }

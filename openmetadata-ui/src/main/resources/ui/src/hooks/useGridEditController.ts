@@ -464,12 +464,13 @@ export function useGridEditController({
       }
 
       // Undo/Redo
+      const isCtrlOrMetaPressed = e.ctrlKey || e.metaKey;
       const isUndo =
-        (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
-      const isRedo =
-        (e.ctrlKey || e.metaKey) &&
-        (e.key.toLowerCase() === 'y' ||
-          (e.shiftKey && e.key.toLowerCase() === 'z'));
+        isCtrlOrMetaPressed && e.key.toLowerCase() === 'z' && !e.shiftKey;
+      const isRedoKey =
+        e.key.toLowerCase() === 'y' ||
+        (e.shiftKey && e.key.toLowerCase() === 'z');
+      const isRedo = isCtrlOrMetaPressed && isRedoKey;
 
       if (isUndo) {
         e.stopPropagation();

@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
@@ -624,5 +625,22 @@ class AIContextBuilderTest {
     assertEquals(1, context.getForeignKeys().size());
     assertEquals(1, context.getFrequentJoins().size());
     assertEquals(List.of("created_at"), context.getPartitionColumns());
+  }
+
+  @Test
+  void boundedSampleData_keepsColumnsAndOnlyFirstTenRows() {
+    List<List<Object>> rows = new ArrayList<>();
+    for (int index = 0; index < 12; index++) {
+      rows.add(new ArrayList<>(List.of(index, "value-" + index)));
+    }
+    TableData source = new TableData().withColumns(List.of("id", "value")).withRows(rows);
+
+    TableData bounded = AIContextBuilder.boundedSampleData(source);
+
+    assertEquals(List.of("id", "value"), bounded.getColumns());
+    assertEquals(10, bounded.getRows().size());
+    assertEquals(List.of(9, "value-9"), bounded.getRows().get(9));
+    rows.get(0).set(1, "mutated");
+    assertEquals("value-0", bounded.getRows().get(0).get(1));
   }
 }

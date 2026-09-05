@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
@@ -22,6 +22,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -148,8 +149,6 @@ test.describe(
   'Service Creation with isOwner() Permissions',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.slow();
-
     test.beforeAll('Setup prerequisites', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

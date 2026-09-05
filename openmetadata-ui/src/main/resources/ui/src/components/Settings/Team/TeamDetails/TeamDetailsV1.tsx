@@ -654,10 +654,11 @@ const TeamDetailsV1 = ({
       );
     }
 
+    const childrenCount = currentTeam.childrenCount ?? 0;
     const showEmptyTeamPlaceholder =
       isEmpty(searchTerm) &&
       isEmpty(childTeamList) &&
-      (currentTeam.childrenCount ?? 0) === 0 &&
+      childrenCount === 0 &&
       !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
@@ -932,11 +933,17 @@ const TeamDetailsV1 = ({
     [currentTeam, entityPermissions, addPolicy, isTeamDeleted]
   );
 
-  const teamActionButton = useMemo(
-    () =>
-      !isOrganization &&
-      !isUndefined(currentUser) &&
-      isGroupType &&
+  const teamActionButton = useMemo(() => {
+    const canManageTeamMembership =
+      !isOrganization && !isUndefined(currentUser) && isGroupType;
+    const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
+      <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+        {t('label.join-team')}
+      </Button>
+    );
+
+    return (
+      canManageTeamMembership &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -950,22 +957,17 @@ const TeamDetailsV1 = ({
           {t('label.leave-team')}
         </Button>
       ) : (
-        (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-          <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
-            {t('label.join-team')}
-          </Button>
-        )
-      )),
-
-    [
-      currentUser,
-      isAlreadyJoinedTeam,
-      isGroupType,
-      isAdminUser,
-      joinTeam,
-      deleteUserHandler,
-    ]
-  );
+        joinTeamButton
+      ))
+    );
+  }, [
+    currentUser,
+    isAlreadyJoinedTeam,
+    isGroupType,
+    isAdminUser,
+    joinTeam,
+    deleteUserHandler,
+  ]);
 
   const editDescriptionPermission = useMemo(
     () =>

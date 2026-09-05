@@ -301,23 +301,20 @@ const ClassificationDetails = forwardRef(
       ]
     );
 
-    const showManageButton = useMemo(
-      () =>
-        !isVersionView &&
-        (showEditOption ||
-          deletePermission ||
-          showDisableOption ||
-          showExportOption ||
-          showImportOption),
-      [
-        showEditOption,
-        deletePermission,
-        showDisableOption,
-        showExportOption,
-        showImportOption,
-        isVersionView,
-      ]
-    );
+    const showManageButton = useMemo(() => {
+      const hasEditOrDeleteAccess =
+        showEditOption || deletePermission || showDisableOption;
+      const hasImportExportAccess = showExportOption || showImportOption;
+
+      return !isVersionView && (hasEditOrDeleteAccess || hasImportExportAccess);
+    }, [
+      showEditOption,
+      deletePermission,
+      showDisableOption,
+      showExportOption,
+      showImportOption,
+      isVersionView,
+    ]);
 
     const handleClassificationExportClick = useCallback(() => {
       if (currentClassification?.fullyQualifiedName) {

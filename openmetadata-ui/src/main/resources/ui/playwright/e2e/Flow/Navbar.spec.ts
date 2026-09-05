@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { navbarSearchItems, selectOption } from '../../utils/navbar';
 import { sidebarClick } from '../../utils/sidebar';
