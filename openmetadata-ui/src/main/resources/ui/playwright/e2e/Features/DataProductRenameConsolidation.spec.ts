@@ -108,8 +108,6 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     description: string
   ): Promise<void> {
     await page.getByTestId('edit-description').click();
-
-    const descriptionBox = '.om-block-editor[contenteditable="true"]';
     const editor = await resolveDescriptionBox(page);
 
     await editor.click();
