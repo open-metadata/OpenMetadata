@@ -13,6 +13,7 @@
 
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
   LEGEND_TYPES,
   LINK_ONTOLOGY_COLOR,
@@ -86,19 +87,20 @@ const legendIconFor = (type: NodeType): { url: string; rounded: boolean } => {
 
 const KnowledgeGraph3DLegend: FC = () => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const items = useMemo(
-    () =>
-      LEGEND_TYPES.map((type) => ({
-        type,
-        label: t(TYPE_LABEL_KEY[type]),
-        ...legendIconFor(type),
-      })),
-    [t]
-  );
+  // Legend icons are rasterized, so regenerate them after token values flip.
+  const items = useMemo(() => {
+    return LEGEND_TYPES.map((type) => ({
+      key: `${theme}-${type}`,
+      type,
+      label: t(TYPE_LABEL_KEY[type]),
+      ...legendIconFor(type),
+    }));
+  }, [t, theme]);
 
   return (
-    <div className="kg3d-legend tw:absolute tw:bottom-4 tw:left-4 tw:overflow-hidden tw:rounded-xl tw:border tw:border-white/10 tw:text-white">
+    <div className="kg3d-legend tw:absolute tw:bottom-4 tw:left-4 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:text-primary">
       <button
         className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:px-3.5 tw:py-2.5"
         type="button"
@@ -137,7 +139,7 @@ const KnowledgeGraph3DLegend: FC = () => {
             {items.map((item) => (
               <span
                 className="tw:flex tw:items-center tw:gap-1.5"
-                key={item.type}>
+                key={item.key}>
                 <img
                   alt=""
                   src={item.url}
@@ -151,7 +153,7 @@ const KnowledgeGraph3DLegend: FC = () => {
               </span>
             ))}
           </div>
-          <div className="tw:my-2.5 tw:h-px tw:bg-white/10" />
+          <div className="tw:my-2.5 tw:h-px tw:bg-quaternary" />
           <div className="tw:mb-2 tw:text-xs tw:font-semibold tw:tracking-wide tw:uppercase tw:opacity-60">
             {t('label.relationship-plural')}
           </div>

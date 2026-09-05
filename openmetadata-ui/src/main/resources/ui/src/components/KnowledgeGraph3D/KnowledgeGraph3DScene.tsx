@@ -26,12 +26,14 @@ import ForceGraph3D, {
   NodeObject,
 } from 'react-force-graph-3d';
 import type { Object3D } from 'three';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
   CAMERA_FOCUS_DISTANCE,
   CAMERA_FOCUS_DURATION_MS,
   CHARGE_STRENGTH,
   COVERAGE_DIMMED_OPACITY,
   DIMMED_NODE_OPACITY,
+  DIM_LINK_COLOR,
   LABEL_RENDER_LIMIT,
   LINK_DISTANCE,
   LINK_ONTOLOGY_COLOR,
@@ -55,7 +57,7 @@ import {
   getVisibleLabelIds,
   HighlightSet,
 } from './KnowledgeGraph3D.utils';
-import { hexRgba, sizeFor } from './nodeCanvas';
+import { hexRgba, resolveGraphColor, sizeFor } from './nodeCanvas';
 import {
   buildNodeObject,
   disposeTextureCaches,
@@ -67,7 +69,6 @@ type SceneNode = NodeObject<GraphNode3D>;
 type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
-const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 const GRAPH_ORIGIN = { x: 0, y: 0, z: 0 };
 
 const sceneNodeId = (node: SceneNode | null): string | null =>
@@ -100,18 +101,25 @@ const nodeOpacityFor = (
   return opacity;
 };
 
-const baseLinkColor = (link: GraphLink3D): string =>
-  link.kind === 'ontology' ? LINK_ONTOLOGY_COLOR : LINK_TECHNICAL_COLOR;
+interface ResolvedLinkColors {
+  dimmed: string;
+  ontology: string;
+  technical: string;
+}
+
+const baseLinkColor = (link: GraphLink3D, colors: ResolvedLinkColors): string =>
+  link.kind === 'ontology' ? colors.ontology : colors.technical;
 
 const linkColorFor = (
   link: GraphLink3D,
-  highlight: HighlightSet | null
+  highlight: HighlightSet | null,
+  colors: ResolvedLinkColors
 ): string => {
-  let color = hexRgba(baseLinkColor(link), 0.5);
+  let color = hexRgba(baseLinkColor(link, colors), 0.5);
   if (highlight) {
     color = highlight.links.has(link)
-      ? hexRgba(baseLinkColor(link), 0.95)
-      : DIM_LINK_COLOR;
+      ? hexRgba(baseLinkColor(link, colors), 0.95)
+      : hexRgba(colors.dimmed, 0.07);
   }
 
   return color;
@@ -145,6 +153,35 @@ const linkParticlesFor = (
   return !reducedMotion && animated ? 2 : 0;
 };
 
+const getCameraFocus = (
+  nodes: GraphNode3D[],
+  selectedNodeId: string | null
+): { position: typeof GRAPH_ORIGIN; target: typeof GRAPH_ORIGIN } | null => {
+  if (!selectedNodeId) {
+    return null;
+  }
+
+  const node = nodes.find((item) => item.id === selectedNodeId) as
+    | SceneNode
+    | undefined;
+  if (!node || node.x === undefined) {
+    return null;
+  }
+
+  const target = { x: node.x, y: node.y ?? 0, z: node.z ?? 0 };
+  const distance = Math.hypot(target.x, target.y, target.z) || 1;
+  const ratio = 1 + CAMERA_FOCUS_DISTANCE / distance;
+
+  return {
+    position: {
+      x: target.x * ratio,
+      y: target.y * ratio,
+      z: target.z * ratio,
+    },
+    target,
+  };
+};
+
 const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   data,
   focusNodeId,
@@ -160,6 +197,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   registerResetView,
   registerExportImage,
 }) => {
+  const { theme } = useTheme();
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const didMountRef = useRef(false);
@@ -173,6 +211,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const hoveredNodeRef = useRef<SceneNode | null>(null);
   const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
   const hoverFrameRef = useRef(0);
+  const textureThemeRef = useRef(theme);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -251,13 +290,31 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
 
   const renderLabels = data.nodes.length <= LABEL_RENDER_LIMIT;
   const nodeThreeObject = useCallback(
-    (node: SceneNode) =>
-      buildNodeObject(node as GraphNode3D, {
+    (node: SceneNode) => {
+      // ForceGraph retains constructed objects, so the accessor identity must
+      // change even though theme is read indirectly while resolving tokens.
+      if (textureThemeRef.current !== theme) {
+        // Invalidate before the first themed object is built; doing this in an
+        // effect could dispose textures ForceGraph already recreated.
+        textureThemeRef.current = theme;
+        disposeTextureCaches();
+      }
+
+      return buildNodeObject(node as GraphNode3D, {
         level,
         gaps,
         showLabel: renderLabels,
-      }),
-    [level, gaps, renderLabels]
+      });
+    },
+    [level, gaps, renderLabels, theme]
+  );
+
+  const resolvedOntologyParticleColor = resolveGraphColor(
+    ONTOLOGY_PARTICLE_COLOR
+  );
+  const ontologyParticleColor = useCallback(
+    () => resolvedOntologyParticleColor,
+    [resolvedOntologyParticleColor]
   );
 
   const handleNodeHover = useCallback(
@@ -330,6 +387,10 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     registerResetView?.(resetView);
     registerExportImage?.(exportImage);
   }, [registerResetView, registerExportImage, resetView, exportImage]);
+
+  useEffect(() => {
+    fgRef.current?.refresh();
+  }, [theme]);
 
   useEffect(
     () => () => {
@@ -443,27 +504,30 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   }, [applyNodePresentation, level]);
 
   useEffect(() => {
-    if (!selectedNodeId) {
+    const focus = getCameraFocus(data.nodes, selectedNodeId);
+    if (!focus) {
       return;
     }
-    const node = data.nodes.find((item) => item.id === selectedNodeId) as
-      | SceneNode
-      | undefined;
-    if (!node || node.x === undefined) {
-      return;
-    }
-    const distance = Math.hypot(node.x, node.y ?? 0, node.z ?? 0) || 1;
-    const ratio = 1 + CAMERA_FOCUS_DISTANCE / distance;
     fgRef.current?.cameraPosition(
-      { x: node.x * ratio, y: (node.y ?? 0) * ratio, z: (node.z ?? 0) * ratio },
-      { x: node.x, y: node.y ?? 0, z: node.z ?? 0 },
+      focus.position,
+      focus.target,
       CAMERA_FOCUS_DURATION_MS
     );
   }, [selectedNodeId, data.nodes]);
 
+  // Capture concrete colors so ForceGraph receives a new accessor exactly when
+  // the active cascade changes, without coupling callback identity to a label.
+  const dimmedLinkColor = resolveGraphColor(DIM_LINK_COLOR);
+  const ontologyLinkColor = resolveGraphColor(LINK_ONTOLOGY_COLOR);
+  const technicalLinkColor = resolveGraphColor(LINK_TECHNICAL_COLOR);
   const linkColor = useCallback(
-    (link: SceneLink) => linkColorFor(link as GraphLink3D, highlight),
-    [highlight]
+    (link: SceneLink) =>
+      linkColorFor(link as GraphLink3D, highlight, {
+        dimmed: dimmedLinkColor,
+        ontology: ontologyLinkColor,
+        technical: technicalLinkColor,
+      }),
+    [dimmedLinkColor, highlight, ontologyLinkColor, technicalLinkColor]
   );
   const linkWidth = useCallback(
     (link: SceneLink) => linkWidthFor(link as GraphLink3D, highlight),
@@ -491,7 +555,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
           }
           linkDirectionalArrowLength={3.5}
           linkDirectionalArrowRelPos={1}
-          linkDirectionalParticleColor={() => ONTOLOGY_PARTICLE_COLOR}
+          linkDirectionalParticleColor={ontologyParticleColor}
           linkDirectionalParticleWidth={1.6}
           linkDirectionalParticles={linkParticles}
           linkLabel={(link: SceneLink) => getLinkTooltip(link as GraphLink3D)}

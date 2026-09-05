@@ -27,6 +27,7 @@ import {
   hexRgba,
   iconCanvas,
   personColor,
+  resolveGraphColor,
   sizeFor,
 } from './nodeCanvas';
 import { GraphNode3D, Level, NodeType } from './types';
@@ -172,7 +173,7 @@ const buildTermBadge = (
 ): SpriteText => {
   const text = termCount > 1 ? `${term}  +${termCount - 1}` : term;
   const badge = new SpriteText(text);
-  badge.color = TERM_BADGE_TEXT_COLOR;
+  badge.color = resolveGraphColor(TERM_BADGE_TEXT_COLOR);
   badge.backgroundColor = hexRgba(LINK_ONTOLOGY_COLOR, 0.96);
   badge.padding = 2.2;
   badge.borderRadius = 3;
@@ -191,7 +192,7 @@ const buildCoverageRings = (group: THREE.Group, size: number): void => {
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(radius, 0.55, 8, 40),
       new THREE.MeshBasicMaterial({
-        color: COVERAGE_GAP_COLOR,
+        color: resolveGraphColor(COVERAGE_GAP_COLOR),
         transparent: true,
         opacity: 0.95,
       })
@@ -244,7 +245,7 @@ export const buildNodeObject = (
   if (options.showLabel) {
     const label = new SpriteText(node.name);
     label.name = NODE_LABEL_OBJECT_NAME;
-    label.color = LABEL_COLOR;
+    label.color = resolveGraphColor(LABEL_COLOR);
     label.textHeight = Math.max(2.8, size * 0.24);
     label.fontWeight = '600';
     label.position.set(0, -(size * 0.66) - 3, 0);
