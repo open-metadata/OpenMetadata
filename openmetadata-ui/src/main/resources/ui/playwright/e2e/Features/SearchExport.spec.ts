@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {

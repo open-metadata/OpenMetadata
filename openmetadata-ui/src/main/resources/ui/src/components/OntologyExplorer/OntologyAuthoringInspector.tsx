@@ -368,6 +368,36 @@ const OntologyAuthoringInspector = ({
     );
   };
 
+  const renderRelationTypeGroup = (group: {
+    label: string;
+    types: RelationshipType[];
+  }) =>
+    group.types.length ? (
+      <div className="tw:flex tw:flex-col tw:gap-1.5" key={group.label}>
+        <span className="tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
+          {group.label}
+        </span>
+        <div className="tw:flex tw:flex-wrap tw:gap-1.5">
+          {group.types.map((type) => (
+            <Button
+              color="secondary"
+              data-testid={`authoring-relation-type-${type.name}`}
+              key={type.name}
+              size="sm"
+              onPress={() => setSelectedRelationType(type.name)}>
+              <span
+                className="tw:size-1.5 tw:rounded-full"
+                style={{
+                  backgroundColor: getEffectiveRelationColor(type.name, type),
+                }}
+              />
+              {type.displayName || type.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   const renderRelationshipDraft = () => (
     <div
       className="tw:mt-2 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-secondary tw:p-3"
@@ -425,36 +455,7 @@ const OntologyAuthoringInspector = ({
               label: t('label.custom'),
               types: relationTypes.filter((type) => !type.systemDefined),
             },
-          ].map((group) =>
-            group.types.length ? (
-              <div className="tw:flex tw:flex-col tw:gap-1.5" key={group.label}>
-                <span className="tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
-                  {group.label}
-                </span>
-                <div className="tw:flex tw:flex-wrap tw:gap-1.5">
-                  {group.types.map((type) => (
-                    <Button
-                      color="secondary"
-                      data-testid={`authoring-relation-type-${type.name}`}
-                      key={type.name}
-                      size="sm"
-                      onPress={() => setSelectedRelationType(type.name)}>
-                      <span
-                        className="tw:size-1.5 tw:rounded-full"
-                        style={{
-                          backgroundColor: getEffectiveRelationColor(
-                            type.name,
-                            type
-                          ),
-                        }}
-                      />
-                      {type.displayName || type.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null
-          )}
+          ].map(renderRelationTypeGroup)}
         </div>
       )}
       <Button

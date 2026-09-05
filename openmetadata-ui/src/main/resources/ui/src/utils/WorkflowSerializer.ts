@@ -28,6 +28,10 @@ import {
   NodeData,
   NodePosition,
 } from '../interface/WorkflowTypes.interface';
+import {
+  getWorkflowConditionTheme,
+  WORKFLOW_EDGE_THEME,
+} from './WorkflowEdgeTheme';
 
 const getUINodeType = (backendType: string, backendSubType: string): string => {
   if (
@@ -178,7 +182,6 @@ const convertBackendEdgeToReactFlow = (
   const isFalse = condition === 'false';
   const isApprove = condition === 'approve';
   const isReject = condition === 'reject';
-  const isPositive = isTrue || isApprove;
 
   let edgeStyle = {};
   let labelStyle = {};
@@ -202,30 +205,11 @@ const convertBackendEdgeToReactFlow = (
       strokeWidth: 2,
     };
 
-    let color: string;
-    if (isPositive) {
-      color = '#039855';
-    } else if (isReject) {
-      color = '#D92D20';
-    } else if (isFalse) {
-      color = '#EAB308';
-    } else {
-      color = '#2563EB';
-    }
-
-    let fill: string;
-    if (isPositive) {
-      fill = '#D1FADF';
-    } else if (isReject) {
-      fill = '#FEE4E2';
-    } else if (isFalse) {
-      fill = '#FEF0C7';
-    } else {
-      fill = '#EFF6FF';
-    }
+    const { backgroundColor, labelColor } =
+      getWorkflowConditionTheme(condition);
 
     labelStyle = {
-      color,
+      color: labelColor,
       fontSize: '14px',
       fontWeight: 600,
       letterSpacing: '1px',
@@ -233,9 +217,9 @@ const convertBackendEdgeToReactFlow = (
     };
 
     labelBgStyle = {
-      fill,
+      fill: backgroundColor,
       fillOpacity: 1,
-      stroke: '#FFF',
+      stroke: WORKFLOW_EDGE_THEME.labelBorder,
       strokeWidth: 2,
       rx: 5,
       ry: 5,
@@ -252,10 +236,10 @@ const convertBackendEdgeToReactFlow = (
       type: MarkerType.ArrowClosed,
       width: 16,
       height: 16,
-      color: '#A4A7AE',
+      color: WORKFLOW_EDGE_THEME.edge,
     },
     style: {
-      stroke: '#A4A7AE',
+      stroke: WORKFLOW_EDGE_THEME.edge,
       strokeWidth: 2,
       ...edgeStyle,
     },
@@ -332,12 +316,16 @@ const migrateWorkflowInputNamespaceMap = (
       const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
       const allPredecessors = findAllPredecessors(node.name, edges);
 
-      const shouldMigrate =
+      const isKnownGlobalUpdatedBy =
         currentUpdatedBy === 'global' ||
         currentUpdatedBy === 'ApproveGlossaryTerm' ||
-        currentUpdatedBy === 'ApprovalForUpdates' ||
-        (currentUpdatedBy && !nodes.some((n) => n.name === currentUpdatedBy)) ||
-        (currentUpdatedBy && !allPredecessors.includes(currentUpdatedBy));
+        currentUpdatedBy === 'ApprovalForUpdates';
+      const isMissingUpdatedByReference =
+        currentUpdatedBy &&
+        (!nodes.some((n) => n.name === currentUpdatedBy) ||
+          !allPredecessors.includes(currentUpdatedBy));
+      const shouldMigrate =
+        isKnownGlobalUpdatedBy || isMissingUpdatedByReference;
 
       if (shouldMigrate) {
         // Only use a user task that is actually a predecessor (comes before this node)

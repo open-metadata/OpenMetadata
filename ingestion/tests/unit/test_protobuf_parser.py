@@ -14,8 +14,10 @@ Protobuf parser tests
 """
 
 import os
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
+import grpc_tools.protoc
 import pytest
 
 from metadata.generated.schema.entity.data.table import Column
@@ -138,45 +140,249 @@ class ProtobufParserTests:
 
 
 @pytest.mark.parametrize("schema_name", ["../outside", r"..\outside", r"C:\outside"])
-def test_create_proto_files_rejects_traversal_schema_names(tmp_path, schema_name):
+def test_schema_name_does_not_control_temporary_file_paths(tmp_path, schema_name):
     parser = ProtobufParser(
         config=ProtobufParserConfig(
             schema_name=schema_name,
-            schema_text='syntax = "proto3";',
+            schema_text='syntax = "proto3"; message SafeRecord {}',
             base_file_path=str(tmp_path / "protobuf"),
         )
     )
 
-    assert parser.create_proto_files() is None
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "SafeRecord"
     assert not (tmp_path / "protobuf" / "outside.proto").exists()
     assert not (tmp_path / "outside.proto").exists()
 
 
-def test_create_proto_files_rejects_absolute_schema_name(tmp_path):
+def test_absolute_schema_name_does_not_control_temporary_file_paths(tmp_path):
     outside_path = tmp_path / "outside"
     parser = ProtobufParser(
         config=ProtobufParserConfig(
             schema_name=str(outside_path),
-            schema_text='syntax = "proto3";',
+            schema_text='syntax = "proto3"; message SafeRecord {}',
             base_file_path=str(tmp_path / "protobuf"),
         )
     )
 
-    assert parser.create_proto_files() is None
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "SafeRecord"
     assert not outside_path.with_suffix(".proto").exists()
 
 
-def test_create_proto_files_accepts_simple_schema_name(tmp_path):
+def test_parse_preserves_configured_temporary_parent(tmp_path):
+    base_file_path = tmp_path / "protobuf"
+    base_file_path.mkdir()
+    sentinel = base_file_path / "keep.txt"
+    sentinel.write_text("keep", encoding="UTF-8")
     parser = ProtobufParser(
         config=ProtobufParserConfig(
             schema_name="safe_schema",
-            schema_text='syntax = "proto3";',
+            schema_text='syntax = "proto3"; message SafeSchema {}',
+            base_file_path=str(base_file_path),
+        )
+    )
+
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "SafeSchema"
+    assert sentinel.read_text(encoding="UTF-8") == "keep"
+    assert {path.name for path in base_file_path.iterdir()} == {"keep.txt"}
+
+
+def test_parse_uses_only_top_level_message_when_topic_name_does_not_match(tmp_path):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="loans",
+            schema_text="""
+                syntax = "proto3";
+                package org.example.loans;
+
+                message MyLoanRecord {
+                    int32 my_field1 = 1;
+                    double my_field2 = 2;
+                    string my_field3 = 3;
+                }
+            """,
             base_file_path=str(tmp_path / "protobuf"),
         )
     )
 
-    proto_path, file_path = parser.create_proto_files()
+    parsed_schema = parser.parse_protobuf_schema()
 
-    assert proto_path == f"generated={tmp_path / 'protobuf' / 'interfaces'}"
-    assert Path(file_path).resolve() == (tmp_path / "protobuf" / "interfaces" / "safe_schema.proto").resolve()
-    assert Path(file_path).read_text(encoding="UTF-8") == 'syntax = "proto3";'
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "MyLoanRecord"
+    assert parsed_schema[0].dataType.name == "RECORD"
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children] == [
+        ("my_field1", "INT"),
+        ("my_field2", "DOUBLE"),
+        ("my_field3", "STRING"),
+    ]
+
+
+def test_parse_does_not_guess_when_multiple_top_level_messages_do_not_match_topic(tmp_path):
+    base_file_path = tmp_path / "protobuf"
+    base_file_path.mkdir()
+    sentinel = base_file_path / "keep.txt"
+    sentinel.write_text("keep", encoding="UTF-8")
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="loan_events",
+            schema_text="""
+                syntax = "proto3";
+
+                message LoanCreated {}
+                message LoanApproved {}
+            """,
+            base_file_path=str(base_file_path),
+        )
+    )
+
+    assert parser.parse_protobuf_schema() is None
+    assert sentinel.read_text(encoding="UTF-8") == "keep"
+    assert not (base_file_path / "generated").exists()
+    assert not (base_file_path / "interfaces").exists()
+
+
+def test_reparse_same_schema_name_uses_latest_schema(tmp_path):
+    def parse(schema_text):
+        return ProtobufParser(
+            config=ProtobufParserConfig(
+                schema_name="event",
+                schema_text=schema_text,
+                base_file_path=str(tmp_path),
+            )
+        ).parse_protobuf_schema()
+
+    first_schema = parse('syntax = "proto3"; package org.example; message Event { string first_field = 1; }')
+    second_schema = parse('syntax = "proto3"; package org.example; message Event { int32 second_field = 1; }')
+
+    assert first_schema is not None
+    assert second_schema is not None
+    assert [(field.name.root, field.dataType.name) for field in first_schema[0].children] == [("first_field", "STRING")]
+    assert [(field.name.root, field.dataType.name) for field in second_schema[0].children] == [("second_field", "INT")]
+
+
+def test_parse_accepts_topic_name_that_is_not_a_python_identifier(tmp_path):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="loan.events-v1",
+            schema_text='syntax = "proto3"; message LoanEvent { string event_id = 1; }',
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "LoanEvent"
+
+
+def test_none_temporary_parent_does_not_create_relative_none_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="event",
+            schema_text='syntax = "proto3"; message Event {}',
+            base_file_path=None,
+        )
+    )
+
+    assert parser.parse_protobuf_schema() is not None
+    assert not (tmp_path / "None").exists()
+
+
+def test_whitespace_temporary_parent_uses_system_temporary_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="event",
+            schema_text='syntax = "proto3"; message Event {}',
+            base_file_path="  \t",
+        )
+    )
+
+    assert parser.parse_protobuf_schema() is not None
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_parse_well_known_type_after_reference_preprocessing(tmp_path):
+    schema_text = merge_and_clean_protobuf_schema(
+        'syntax = "proto3";\n'
+        'import "details.proto";\n'
+        'import "google/protobuf/timestamp.proto";\n'
+        "message Details { string source = 1; }\n"
+        "message Event {\n"
+        "  Details details = 1;\n"
+        "  google.protobuf.Timestamp created_at = 2;\n"
+        "}"
+    )
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="event",
+            schema_text=schema_text,
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    parsed_schema = parser.parse_protobuf_schema()
+
+    assert parsed_schema is not None
+    assert parsed_schema[0].name.root == "Event"
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children] == [
+        ("details", "RECORD"),
+        ("created_at", "RECORD"),
+    ]
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children[0].children] == [
+        ("source", "STRING"),
+    ]
+    assert [(field.name.root, field.dataType.name) for field in parsed_schema[0].children[1].children] == [
+        ("seconds", "INT"),
+        ("nanos", "INT"),
+    ]
+
+
+def test_protoc_failure_reports_exit_code(tmp_path, caplog):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="event",
+            schema_text='syntax = "proto3"; message Event { invalid field = 1; }',
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    assert parser.parse_protobuf_schema() is None
+    assert "protoc exited with code" in caplog.text
+
+
+def test_concurrent_parses_use_isolated_temporary_directories(tmp_path, monkeypatch):
+    parser_count = 4
+    compile_barrier = Barrier(parser_count)
+    protoc_main = grpc_tools.protoc.main
+
+    def synchronized_protoc(args):
+        compile_barrier.wait(timeout=10)
+        return protoc_main(args)
+
+    monkeypatch.setattr(grpc_tools.protoc, "main", synchronized_protoc)
+
+    def parse(index):
+        parsed_schema = ProtobufParser(
+            config=ProtobufParserConfig(
+                schema_name="event",
+                schema_text=f'syntax = "proto3"; message Event {{ string field_{index} = 1; }}',
+                base_file_path=str(tmp_path),
+            )
+        ).parse_protobuf_schema()
+        return parsed_schema[0].children[0].name.root if parsed_schema else None
+
+    with ThreadPoolExecutor(max_workers=parser_count) as executor:
+        parsed_names = list(executor.map(parse, range(parser_count)))
+
+    assert parsed_names == [f"field_{index}" for index in range(parser_count)]
+    assert list(tmp_path.iterdir()) == []

@@ -289,19 +289,21 @@ const KnowledgePageListComponent = forwardRef<
         const res = await unFollowKnowledgePage(knowledgePageId, USERId);
         const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-        setKnowledgePages((prevPages) =>
-          map(prevPages, (page) => {
-            if (page.id === knowledgePageId) {
-              return {
-                ...page,
-                followers: (page?.followers ?? []).filter(
-                  (follower) => follower.id !== oldValue[0].id
-                ),
-              };
-            }
+        const removeUnfollowedFollower = (page: KnowledgePage) => {
+          if (page.id === knowledgePageId) {
+            return {
+              ...page,
+              followers: (page?.followers ?? []).filter(
+                (follower) => follower.id !== oldValue[0].id
+              ),
+            };
+          }
 
-            return page;
-          })
+          return page;
+        };
+
+        setKnowledgePages((prevPages) =>
+          map(prevPages, removeUnfollowedFollower)
         );
         setRefreshBookMarkWidget(true);
       } catch (error) {
@@ -352,13 +354,8 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      if (
-        isInView &&
-        hasMore &&
-        !isLoadingMore &&
-        !searchQuery &&
-        hasViewPermission
-      ) {
+      const canLoadMore = isInView && hasMore && !isLoadingMore;
+      if (canLoadMore && !searchQuery && hasViewPermission) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);

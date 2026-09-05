@@ -403,14 +403,16 @@ jobs:
           fail_on_test_failures: false
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
+      # Failures only: a green nightly is the expected case and notifying on it trains
+      # the channel to ignore the alert.
       - name: Slack notification
-        if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        if: ${{ failure() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
         uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            text: ":fire: Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
 
@@ -491,14 +493,16 @@ jobs:
           fail_on_test_failures: false
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
+      # Failures only: a green nightly is the expected case and notifying on it trains
+      # the channel to ignore the alert.
       - name: Slack notification
-        if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        if: ${{ failure() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
         uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Search ITs Nightly: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            text: ":fire: Java Search ITs Nightly: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
 

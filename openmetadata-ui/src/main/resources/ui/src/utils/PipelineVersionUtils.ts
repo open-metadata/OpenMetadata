@@ -86,6 +86,21 @@ const handleTaskTagChangeDiff = (
   return taskList;
 };
 
+const formatAddedTaskData = (
+  arr: Pipeline['tasks'],
+  task: NonNullable<Pipeline['tasks']>[number]
+) => {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, task.name)) {
+      i.tags = task.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', task.description ?? '');
+      i.taskType = getTextDiff('', task.taskType ?? '');
+      i.name = getTextDiff('', task.name);
+      i.displayName = getTextDiff('', task.displayName ?? '');
+    }
+  });
+};
+
 const handleTaskDiffAdded = (
   tasksDiff: EntityDiffProps,
   taskList: Pipeline['tasks'] = []
@@ -94,18 +109,7 @@ const handleTaskDiffAdded = (
     tasksDiff.added?.newValue ?? '[]'
   );
   newTask?.forEach((task) => {
-    const formatTaskData = (arr: Pipeline['tasks']) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, task.name)) {
-          i.tags = task.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', task.description ?? '');
-          i.taskType = getTextDiff('', task.taskType ?? '');
-          i.name = getTextDiff('', task.name);
-          i.displayName = getTextDiff('', task.displayName ?? '');
-        }
-      });
-    };
-    formatTaskData(taskList);
+    formatAddedTaskData(taskList, task);
   });
 
   return taskList;

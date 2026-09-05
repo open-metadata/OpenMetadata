@@ -388,12 +388,12 @@ const AppDetails = () => {
         jsonSchema &&
         !isRuntimeDisabled
     );
-    const showAppConfigTab = Boolean(
+    const hasAppConfiguration =
       !showMcpConfigTab &&
-        appData?.appConfiguration &&
-        appData.allowConfiguration &&
-        jsonSchema &&
-        !isRuntimeDisabled
+      appData?.appConfiguration &&
+      appData.allowConfiguration;
+    const showAppConfigTab = Boolean(
+      hasAppConfiguration && jsonSchema && !isRuntimeDisabled
     );
     const tabConfiguration =
       showMcpConfigTab || showAppConfigTab

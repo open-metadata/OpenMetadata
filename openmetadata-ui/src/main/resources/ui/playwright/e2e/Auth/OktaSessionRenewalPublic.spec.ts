@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, Request, test } from '@playwright/test';
+import { BrowserContext, Page, Request } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { decodeJwtExp, expireStoredToken } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
@@ -41,7 +42,6 @@ const password = process.env[SSO_ENV.PASSWORD] ?? '';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
-  test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
     !username || !password,
@@ -80,6 +80,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   });
 
   test('should silently renew the token once the stored token has expired', async () => {
+    test.slow();
     const page = userPage!;
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
@@ -137,6 +138,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   });
 
   test('should fall back to interactive login when silent renewal returns login_required', async () => {
+    test.slow();
     const page = userPage!;
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();

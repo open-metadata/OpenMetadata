@@ -120,12 +120,15 @@ public class SearchMetadataTool implements McpTool {
               McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
           .toList();
 
+  /** Lucene match-anything query, mirroring the {@code @DefaultValue("*")} on the REST search API. */
+  private static final String MATCH_ANY_QUERY = "*";
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    LOG.info("Executing searchMetadata with params: {}", params);
-    String query = stringParam(params, "query", "*");
+    LOG.debug("Executing searchMetadata with params: {}", params);
+    String query = stringParam(params, "query", MATCH_ANY_QUERY);
     String entityType = stringParam(params, "entityType", null);
     String index = resolveIndex(entityType);
 
@@ -241,47 +244,32 @@ public class SearchMetadataTool implements McpTool {
     // (OpenSearchSearchManager.applyQueryFilter), so the engine applies it and the page backfills.
     String exclusionFilter = queryFilter == null ? excludeOnlyFilter(excludedTypes) : null;
 
-    LOG.info(
+    LOG.debug(
         "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
         queryFilter,
         index,
         size,
         includeDeleted);
 
-    SearchRequest searchRequest;
-    if (!nullOrEmpty(queryFilter)) {
-      // When queryFilter is provided, use it directly as it's already a transformed OpenSearch
-      // query
-      searchRequest =
-          new SearchRequest()
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withQueryFilter(queryFilter)
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-    } else {
-      // Fallback to basic query when no queryFilter is provided
-      searchRequest =
-          new SearchRequest()
-              .withQuery(query)
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-              .withQueryFilter(exclusionFilter)
-              .withSize(size)
-              .withFrom(from)
-              .withFetchSource(true)
-              .withDeleted(includeDeleted);
-    }
+    // One request shape for both cases. A caller-supplied queryFilter used to be sent through
+    // searchWithDirectQuery, which reads neither the text query nor the deleted flag, so both were
+    // silently dropped whenever a filter was present. The standard search path ANDs the filter
+    // under
+    // the text query (OpenSearchSearchManager#applyQueryFilter) and additionally applies the
+    // deleted
+    // filter, ranked scoring, and the search preference.
+    SearchRequest searchRequest =
+        new SearchRequest()
+            .withQuery(nullOrEmpty(query) ? MATCH_ANY_QUERY : query)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withQueryFilter(nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter)
+            .withSize(size)
+            .withFrom(from)
+            .withFetchSource(true)
+            .withDeleted(includeDeleted);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    Response response;
-    if (!nullOrEmpty(queryFilter)) {
-      // Use direct query method when queryFilter is provided since it's already a transformed query
-      response = Entity.getSearchRepository().searchWithDirectQuery(searchRequest, subjectContext);
-    } else {
-      // Use regular search for basic queries
-      response = Entity.getSearchRepository().search(searchRequest, subjectContext);
-    }
+    Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
