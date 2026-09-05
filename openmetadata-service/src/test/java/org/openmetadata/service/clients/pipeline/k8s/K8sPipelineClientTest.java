@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -30,12 +31,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.BatchV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.openapi.models.V1ConfigMap;
-import io.kubernetes.client.openapi.models.V1Container;
 import io.kubernetes.client.openapi.models.V1CronJob;
 import io.kubernetes.client.openapi.models.V1CronJobSpec;
 import io.kubernetes.client.openapi.models.V1EnvVar;
@@ -44,11 +49,11 @@ import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
-import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Status;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -57,6 +62,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import okhttp3.Call;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,6 +128,8 @@ class K8sPipelineClientTest {
   @Mock private CoreV1Api.APIlistNamespacedConfigMapRequest listConfigMapRequest;
   @Mock private CoreV1Api.APIlistNamespacedSecretRequest listSecretRequest;
   @Mock private CoreV1Api.APIreadNamespacedPodLogRequest readPodLogRequest;
+  @Mock private ApiClient apiClient;
+  @Mock private OkHttpClient httpClient;
   @Mock private CustomObjectsApi.APIcreateNamespacedCustomObjectRequest createCustomObjectRequest;
   @Mock private CustomObjectsApi.APIgetNamespacedCustomObjectRequest getCustomObjectRequest;
   @Mock private CustomObjectsApi.APIreplaceNamespacedCustomObjectRequest replaceCustomObjectRequest;
@@ -125,6 +139,9 @@ class K8sPipelineClientTest {
   private K8sPipelineClient client;
   private ServiceEntityInterface testService;
   private static final String NAMESPACE = "openmetadata-pipelines";
+  private static final String K8S_BASE_PATH = "https://kubernetes.default.svc";
+  private static final String SAMPLE_INGESTION_LOG_LINE =
+      "2026-03-09 10:20:31,502 - metadata-ingestion - INFO - Workflow finished successfully";
 
   @BeforeEach
   void setUp() {
@@ -734,49 +751,54 @@ class K8sPipelineClientTest {
   void testGetLastIngestionLogsPrefersMainPodAndReturnsTaskLogs() throws Exception {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
 
-    V1Pod newerSidecarPod =
-        pod(
-            "newer-sidecar",
-            OffsetDateTime.parse("2026-03-09T10:20:30Z"),
-            Map.of(),
-            List.of("worker"));
-    V1Pod olderMainPod =
-        pod(
-            "older-main",
-            OffsetDateTime.parse("2026-03-09T10:19:30Z"),
-            Map.of("omjob.pipelines.openmetadata.org/pod-type", "main"),
-            List.of("main", "sidecar"));
+    String podListJson =
+        podListJson(
+            new PodFixture(
+                "newer-sidecar", OffsetDateTime.parse("2026-03-09T10:20:30Z"), Map.of(), null),
+            new PodFixture(
+                "older-main",
+                OffsetDateTime.parse("2026-03-09T10:19:30Z"),
+                Map.of("omjob.pipelines.openmetadata.org/pod-type", "main"),
+                null));
+    String podDetailJson =
+        podListJson(
+            new PodFixture(
+                "older-main",
+                OffsetDateTime.parse("2026-03-09T10:19:30Z"),
+                Map.of("omjob.pipelines.openmetadata.org/pod-type", "main"),
+                List.of("main", "sidecar")));
 
-    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
-    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listPodRequest);
-    when(listPodRequest.execute())
-        .thenReturn(new V1PodList().items(List.of(newerSidecarPod, olderMainPod)));
+    stubPodMetadataFetch(podListJson, podDetailJson);
+
     when(coreApi.readNamespacedPodLog(eq("older-main"), eq(NAMESPACE)))
         .thenReturn(readPodLogRequest);
     when(readPodLogRequest.container(eq("main"))).thenReturn(readPodLogRequest);
-    when(readPodLogRequest.execute()).thenReturn("hello from ingestion");
+    when(readPodLogRequest.execute()).thenReturn(SAMPLE_INGESTION_LOG_LINE);
 
     Map<String, String> logs = client.getLastIngestionLogs(pipeline, null);
 
-    assertEquals("hello from ingestion", logs.get("ingestion_task"));
+    assertEquals(SAMPLE_INGESTION_LOG_LINE, logs.get("ingestion_task"));
     assertEquals("1", logs.get("total"));
   }
 
   @Test
-  void testGetLastIngestionLogsHandlesEmptyLogsAndApiFailures() throws Exception {
+  void testGetLastIngestionLogsReturnsNoLogsMessageWhenLogsAreEmpty() throws Exception {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
-    V1Pod workerPod =
-        pod(
-            "worker-pod",
-            OffsetDateTime.parse("2026-03-09T10:20:30Z"),
-            Map.of(),
-            List.of("worker"));
 
-    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
-    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listPodRequest);
-    when(listPodRequest.execute()).thenReturn(new V1PodList().items(List.of(workerPod)));
+    String podListJson =
+        podListJson(
+            new PodFixture(
+                "worker-pod", OffsetDateTime.parse("2026-03-09T10:20:30Z"), Map.of(), null));
+    String podDetailJson =
+        podListJson(
+            new PodFixture(
+                "worker-pod",
+                OffsetDateTime.parse("2026-03-09T10:20:30Z"),
+                Map.of(),
+                List.of("worker")));
+
+    stubPodMetadataFetch(podListJson, podDetailJson);
+
     when(coreApi.readNamespacedPodLog(eq("worker-pod"), eq(NAMESPACE)))
         .thenReturn(readPodLogRequest);
     when(readPodLogRequest.container(eq("worker"))).thenReturn(readPodLogRequest);
@@ -784,14 +806,52 @@ class K8sPipelineClientTest {
 
     Map<String, String> emptyLogs = client.getLastIngestionLogs(pipeline, null);
     assertEquals("No logs available for pod: worker-pod", emptyLogs.get("logs"));
+  }
 
-    reset(listPodRequest);
-    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
-    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listPodRequest);
-    when(listPodRequest.execute()).thenThrow(new ApiException(500, "pod lookup failed"));
+  @Test
+  void testGetLastIngestionLogsSurfacesPodMetadataFetchFailure() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(coreApi.getApiClient()).thenReturn(apiClient);
+    when(apiClient.getBasePath()).thenReturn(K8S_BASE_PATH);
+    when(apiClient.getHttpClient()).thenReturn(httpClient);
+    Call failingCall = mock(Call.class);
+    when(httpClient.newCall(any(Request.class))).thenReturn(failingCall);
+    when(failingCall.execute()).thenThrow(new IOException("connection reset"));
 
     Map<String, String> failureLogs = client.getLastIngestionLogs(pipeline, null);
+
+    assertTrue(
+        failureLogs
+            .get(PipelineServiceClientInterface.LOGS_ERROR_KEY)
+            .contains("Failed to retrieve logs"));
+    verifyNoInteractions(readPodLogRequest);
+  }
+
+  @Test
+  void testGetLastIngestionLogsSurfacesLogReadFailureFromKubernetesApi() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    String podListJson =
+        podListJson(
+            new PodFixture(
+                "worker-pod", OffsetDateTime.parse("2026-03-09T10:20:30Z"), Map.of(), null));
+    String podDetailJson =
+        podListJson(
+            new PodFixture(
+                "worker-pod",
+                OffsetDateTime.parse("2026-03-09T10:20:30Z"),
+                Map.of(),
+                List.of("worker")));
+
+    stubPodMetadataFetch(podListJson, podDetailJson);
+    when(coreApi.readNamespacedPodLog(eq("worker-pod"), eq(NAMESPACE)))
+        .thenReturn(readPodLogRequest);
+    when(readPodLogRequest.container(eq("worker"))).thenReturn(readPodLogRequest);
+    when(readPodLogRequest.execute()).thenThrow(new ApiException(500, "log read failed"));
+
+    Map<String, String> failureLogs = client.getLastIngestionLogs(pipeline, null);
+
     assertTrue(
         failureLogs
             .get(PipelineServiceClientInterface.LOGS_ERROR_KEY)
@@ -799,42 +859,125 @@ class K8sPipelineClientTest {
   }
 
   @Test
-  void testGetLastIngestionLogsHandlesUnsupportedPodFields() throws Exception {
+  void testGetLastIngestionLogsReturnsNoPodsMessageWhenNoPodsMatch() throws Exception {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
 
-    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
-    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listPodRequest);
-    when(listPodRequest.execute())
-        .thenThrow(
-            new IllegalArgumentException(
-                "The field `allocatedResources` in the JSON string is not defined in the "
-                    + "`V1PodStatus` properties. JSON: {\"allocatedResources\":{}}"));
+    stubPodListFetchOnly(podListJson());
 
-    Map<String, String> failureLogs = client.getLastIngestionLogs(pipeline, null);
+    Map<String, String> logs = client.getLastIngestionLogs(pipeline, null);
 
-    assertEquals(
-        "Failed to retrieve logs: Kubernetes pod status is incompatible with the bundled client",
-        failureLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY));
-    assertFalse(failureLogs.containsKey("logs"));
-    assertFalse(
-        failureLogs
-            .get(PipelineServiceClientInterface.LOGS_ERROR_KEY)
-            .contains("allocatedResources"));
-    assertFalse(failureLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY).contains("JSON:"));
+    assertEquals("No pods found for this pipeline", logs.get("logs"));
+    verifyNoInteractions(readPodLogRequest);
   }
 
   @Test
-  void testGetLastIngestionLogsDoesNotSwallowOtherIllegalArgumentExceptions() throws Exception {
+  void testGetLastIngestionLogsToleratesUnknownKubernetesFields() throws Exception {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
 
-    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
-    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listPodRequest);
-    when(listPodRequest.execute())
-        .thenThrow(new IllegalArgumentException("Expected conditions to be an array"));
+    String podListJson =
+        "{\"items\":[{\"metadata\":{\"name\":\"worker-pod\","
+            + "\"creationTimestamp\":\"2026-03-09T10:20:30Z\",\"labels\":{}},"
+            + "\"status\":{\"allocatedResources\":{}}}]}";
+    String podDetailJson =
+        "{\"items\":[{\"metadata\":{\"name\":\"worker-pod\"},"
+            + "\"spec\":{\"containers\":[{\"name\":\"worker\"}]},"
+            + "\"status\":{\"allocatedResources\":{}}}]}";
 
-    assertThrows(IllegalArgumentException.class, () -> client.getLastIngestionLogs(pipeline, null));
+    stubPodMetadataFetch(podListJson, podDetailJson);
+    when(coreApi.readNamespacedPodLog(eq("worker-pod"), eq(NAMESPACE)))
+        .thenReturn(readPodLogRequest);
+    when(readPodLogRequest.container(eq("worker"))).thenReturn(readPodLogRequest);
+    when(readPodLogRequest.execute()).thenReturn(SAMPLE_INGESTION_LOG_LINE);
+
+    Map<String, String> logs = client.getLastIngestionLogs(pipeline, null);
+
+    assertEquals(SAMPLE_INGESTION_LOG_LINE, logs.get("ingestion_task"));
+  }
+
+  @Test
+  void testSelectContainerNamePrefersMainContainer() throws Exception {
+    JsonNode pod = new ObjectMapper().readTree(fixtureWithContainers("main", "sidecar"));
+    assertEquals("main", client.selectContainerName(pod.get("items").get(0)));
+  }
+
+  @Test
+  void testSelectContainerNameFallsBackToFirstContainerWhenNoMainContainer() throws Exception {
+    JsonNode pod = new ObjectMapper().readTree(fixtureWithContainers("worker"));
+    assertEquals("worker", client.selectContainerName(pod.get("items").get(0)));
+  }
+
+  @Test
+  void testSelectContainerNameReturnsIngestionWhenSpecMissing() throws Exception {
+    JsonNode pod = new ObjectMapper().readTree("{\"metadata\":{\"name\":\"no-spec\"}}");
+    assertEquals("main", client.selectContainerName(pod)); // CONTAINER_INGESTION == CONTAINER_MAIN
+  }
+
+  @Test
+  void testSelectContainerNameReturnsIngestionWhenContainersMissing() throws Exception {
+    JsonNode pod = new ObjectMapper().readTree("{\"spec\":{}}");
+    assertEquals("main", client.selectContainerName(pod));
+  }
+
+  private static String fixtureWithContainers(String... containerNames) {
+    return podListJson(
+        new PodFixture("pod", OffsetDateTime.now(), Map.of(), List.of(containerNames)));
+  }
+
+  @Test
+  void testParsePodSummariesParsesNameLabelsAndTimestamp() throws Exception {
+    var summaries =
+        client.parsePodSummaries(
+            podListJson(
+                new PodFixture(
+                    "pod-a",
+                    OffsetDateTime.parse("2026-03-09T10:19:30Z"),
+                    Map.of("k", "v"),
+                    null)));
+    assertEquals(1, summaries.size());
+    assertEquals("pod-a", summaries.get(0).name());
+    assertEquals("v", summaries.get(0).labels().get("k"));
+    assertEquals(
+        OffsetDateTime.parse("2026-03-09T10:19:30Z"), summaries.get(0).creationTimestamp());
+  }
+
+  @Test
+  void testParsePodSummariesSkipsPodWithoutName() throws Exception {
+    var summaries = client.parsePodSummaries("{\"items\":[{\"metadata\":{}}]}");
+    assertTrue(summaries.isEmpty());
+  }
+
+  @Test
+  void testParsePodSummariesTreatsUnparsableTimestampAsNull() throws Exception {
+    var summaries =
+        client.parsePodSummaries(
+            "{\"items\":[{\"metadata\":{\"name\":\"p\",\"creationTimestamp\":\"not-a-date\"}}]}");
+    assertNull(summaries.get(0).creationTimestamp());
+  }
+
+  @Test
+  void testParsePodSummariesHandlesMalformedJson() throws Exception {
+    var summaries = client.parsePodSummaries("{ invalid json");
+    assertTrue(summaries.isEmpty(), "Should return empty list on JSON parse error");
+  }
+
+  @Test
+  void testSelectLatestPodPrefersMainPodOverNewerNonMainPod() throws Exception {
+    var summaries =
+        client.parsePodSummaries(
+            podListJson(
+                new PodFixture(
+                    "newer-sidecar", OffsetDateTime.parse("2026-03-09T10:20:30Z"), Map.of(), null),
+                new PodFixture(
+                    "older-main",
+                    OffsetDateTime.parse("2026-03-09T10:19:30Z"),
+                    Map.of("omjob.pipelines.openmetadata.org/pod-type", "main"),
+                    null)));
+    assertEquals("older-main", client.selectLatestPod(summaries).name());
+  }
+
+  @Test
+  void testSelectLatestPodReturnsNullForEmptyList() {
+    assertNull(client.selectLatestPod(List.of()));
   }
 
   @Test
@@ -1758,18 +1901,60 @@ class K8sPipelineClientTest {
         .collect(Collectors.toMap(V1EnvVar::getName, V1EnvVar::getValue, (a, b) -> b));
   }
 
-  private static V1Pod pod(
-      String name,
-      OffsetDateTime createdAt,
-      Map<String, String> labels,
-      List<String> containerNames) {
-    List<V1Container> containers =
-        containerNames.stream()
-            .map(containerName -> new V1Container().name(containerName))
-            .toList();
-    return new V1Pod()
-        .metadata(new V1ObjectMeta().name(name).labels(labels).creationTimestamp(createdAt))
-        .spec(new V1PodSpec().containers(containers));
+  private record PodFixture(
+      String name, OffsetDateTime createdAt, Map<String, String> labels, List<String> containers) {}
+
+  private static String podListJson(PodFixture... pods) {
+    ObjectMapper mapper = new ObjectMapper();
+    ArrayNode items = mapper.createArrayNode();
+    for (PodFixture pod : pods) {
+      ObjectNode item = mapper.createObjectNode();
+      ObjectNode metadata = item.putObject("metadata");
+      metadata.put("name", pod.name());
+      if (pod.createdAt() != null) {
+        metadata.put("creationTimestamp", pod.createdAt().toString());
+      }
+      ObjectNode labels = metadata.putObject("labels");
+      pod.labels().forEach(labels::put);
+      if (pod.containers() != null) {
+        ArrayNode containers = item.putObject("spec").putArray("containers");
+        pod.containers().forEach(name -> containers.addObject().put("name", name));
+      }
+      items.add(item);
+    }
+    ObjectNode root = mapper.createObjectNode();
+    root.set("items", items);
+    return root.toString();
+  }
+
+  private static Response jsonResponse(String json) {
+    return new Response.Builder()
+        .request(new Request.Builder().url(K8S_BASE_PATH + "/api/v1/namespaces/pods").build())
+        .protocol(Protocol.HTTP_1_1)
+        .code(200)
+        .message("OK")
+        .body(ResponseBody.create(json, MediaType.get("application/json")))
+        .build();
+  }
+
+  private void stubPodMetadataFetch(String podListJson, String podDetailJson) throws IOException {
+    when(coreApi.getApiClient()).thenReturn(apiClient);
+    when(apiClient.getBasePath()).thenReturn(K8S_BASE_PATH);
+    when(apiClient.getHttpClient()).thenReturn(httpClient);
+    Call listCall = mock(Call.class);
+    Call detailCall = mock(Call.class);
+    when(listCall.execute()).thenReturn(jsonResponse(podListJson));
+    when(detailCall.execute()).thenReturn(jsonResponse(podDetailJson));
+    when(httpClient.newCall(any(Request.class))).thenReturn(listCall, detailCall);
+  }
+
+  private void stubPodListFetchOnly(String podListJson) throws IOException {
+    when(coreApi.getApiClient()).thenReturn(apiClient);
+    when(apiClient.getBasePath()).thenReturn(K8S_BASE_PATH);
+    when(apiClient.getHttpClient()).thenReturn(httpClient);
+    Call listCall = mock(Call.class);
+    when(listCall.execute()).thenReturn(jsonResponse(podListJson));
+    when(httpClient.newCall(any(Request.class))).thenReturn(listCall);
   }
 
   private static Workflow createTestWorkflow(String name) {
