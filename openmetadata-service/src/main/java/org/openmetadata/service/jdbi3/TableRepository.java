@@ -1680,7 +1680,54 @@ public class TableRepository extends EntityRepository<Table> {
               TABLE,
               Relationship.CONTAINS));
     }
+    // Re-add the FK/ER (RELATED_TO) edges that clearEntitySpecificRelationshipsForMany removed. The
+    // single-entity store path does this via storeEntity() -> addConstraintRelationship(); the bulk
+    // path (recursive CSV import, bulk create) only restored CONTAINS, so a table's foreign-key
+    // relationship disappeared even though its tableConstraints JSON was preserved.
+    relationships.addAll(buildConstraintRelationships(entities));
     bulkInsertRelationships(relationships);
+  }
+
+  /**
+   * Build the FK RELATED_TO edges for a batch of tables. Referred tables are resolved in a single
+   * findByNames() query (not one lookup per foreign key), and the edges are folded into the caller's
+   * bulk insert (not one insert per foreign key) so the bulk path stays free of the N+1 the
+   * per-table addConstraintRelationship() would introduce. A referred table that is not yet
+   * persisted -- e.g. it is created later in another bulk chunk -- is skipped rather than throwing,
+   * so a forward reference cannot fail the whole request; the edge is best-effort in the bulk path
+   * and is created whenever the target already exists (always true for a recursive re-import of
+   * existing tables, the case that regressed).
+   */
+  private List<CollectionDAO.EntityRelationshipObject> buildConstraintRelationships(
+      List<Table> entities) {
+    Set<String> referredParentFqns = new HashSet<>();
+    for (Table table : entities) {
+      for (TableConstraint constraint : listOrEmpty(table.getTableConstraints())) {
+        for (String referredColumn : listOrEmpty(constraint.getReferredColumns())) {
+          referredParentFqns.add(FullyQualifiedName.getParentFQN(referredColumn));
+        }
+      }
+    }
+    if (referredParentFqns.isEmpty()) {
+      return List.of();
+    }
+    Map<String, UUID> fqnToId = new HashMap<>();
+    for (Table referred : findByNames(new ArrayList<>(referredParentFqns), ALL)) {
+      fqnToId.put(referred.getFullyQualifiedName(), referred.getId());
+    }
+    List<CollectionDAO.EntityRelationshipObject> constraintRelationships = new ArrayList<>();
+    for (Table table : entities) {
+      for (TableConstraint constraint : listOrEmpty(table.getTableConstraints())) {
+        for (String referredColumn : listOrEmpty(constraint.getReferredColumns())) {
+          UUID toId = fqnToId.get(FullyQualifiedName.getParentFQN(referredColumn));
+          if (toId != null) {
+            constraintRelationships.add(
+                newRelationship(table.getId(), toId, TABLE, TABLE, Relationship.RELATED_TO));
+          }
+        }
+      }
+    }
+    return constraintRelationships;
   }
 
   @Override
