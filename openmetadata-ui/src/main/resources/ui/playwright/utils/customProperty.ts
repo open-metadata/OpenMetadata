@@ -1546,5 +1546,5 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
 export const createTable = async (page: Page) => {
   await page.keyboard.type('/table');
-  await page.getByRole('option', { name: /table/i }).first().click();
+  await page.locator('#editor-commands-viewport').getByText('Table').first().click();
 };
