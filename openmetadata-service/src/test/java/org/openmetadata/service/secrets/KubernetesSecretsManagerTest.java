@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -261,27 +262,18 @@ class KubernetesSecretsManagerTest {
   }
 
   @Test
-  void testEmptySecretValueShouldBeStoredAsNullString() throws ApiException {
-    ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
-    when(mockApiClient.readNamespacedSecret(anyString(), eq(NAMESPACE))).thenReturn(readRequest);
-    when(readRequest.execute()).thenThrow(new ApiException(404, "Not Found"));
+  void testEmptySecretValueShouldBeDeletedInsteadOfStored() throws ApiException {
+    when(mockApiClient.deleteNamespacedSecret(K8S_SECRET_NAME, NAMESPACE))
+        .thenReturn(deleteRequest);
+    when(deleteRequest.execute()).thenReturn(new V1Status());
 
-    when(mockApiClient.createNamespacedSecret(eq(NAMESPACE), any(V1Secret.class)))
-        .thenReturn(createRequest);
-    when(createRequest.execute()).thenReturn(new V1Secret());
+    String storedReference = secretsManager.storeValue("password", "", SECRET_ID, true);
 
-    secretsManager.storeValue("field", "", SECRET_ID, true);
-
-    verify(mockApiClient).createNamespacedSecret(eq(NAMESPACE), secretCaptor.capture());
-    verify(createRequest).execute();
-
-    V1Secret createdSecret = secretCaptor.getValue();
-    Map<String, byte[]> data = createdSecret.getData();
-    assert data != null;
-    assertEquals(
-        ExternalSecretsManager.NULL_SECRET_STRING,
-        new String(data.get("value"), StandardCharsets.UTF_8),
-        "Empty string should be stored as 'null' to prevent secrets manager rejection");
+    assertNull(storedReference, "A cleared field must not reference a secret (#21259)");
+    verify(mockApiClient).deleteNamespacedSecret(K8S_SECRET_NAME, NAMESPACE);
+    verify(mockApiClient, never()).createNamespacedSecret(eq(NAMESPACE), any(V1Secret.class));
+    verify(mockApiClient, never())
+        .replaceNamespacedSecret(anyString(), eq(NAMESPACE), any(V1Secret.class));
   }
 
   @Test
