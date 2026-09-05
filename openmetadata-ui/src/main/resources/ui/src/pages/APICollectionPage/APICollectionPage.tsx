@@ -37,20 +37,16 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -79,11 +75,6 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -93,33 +84,51 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { customizedPage, isLoading } = useCustomPages(PageType.APICollection);
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [apiEndpointCount, setApiEndpointCount] = useState<number>(0);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [apiCollectionPermission, setAPICollectionPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const { filters, setFilters } = useTableFilters({
     showDeletedEndpoints: false,
   });
 
-  const viewAPICollectionPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        apiCollectionPermission,
-        PermissionOperation.ViewBasic
-      ),
-    [apiCollectionPermission]
+  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity —
+  // see the analogous comment in TableDetailsPageV1.tsx for the general pattern. This
+  // view-tier call must run before {@code apiCollection} exists:
+  // {@code viewAPICollectionPermission} gates the entity {@code useQuery}'s `enabled` below,
+  // and {@code apiCollection} is that query's own result — a real ordering cycle, not a
+  // shortcut. The edit-tier call (the one canEdit* flag this page uses) lives further down,
+  // at the earliest point {@code apiCollection} (and therefore its `deleted` field) exists;
+  // see the comment there. Both calls share one React Query cache entry (same queryKey), so
+  // having two costs an extra derivation, not an extra fetch — never diverges into two
+  // fetches as long as both pass the identical (resource, identifier) pair.
+  const {
+    permissions: apiCollectionPermission, // children consume the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: viewAPICollectionPermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.API_COLLECTION,
+    decodedAPICollectionFQN
   );
+
+  // Permission fetching itself now lives in useEntityPermissions (called above, twice).
+  // Preserves the old fetchAPICollectionPermission catch's exact behavior: the raw error was
+  // passed straight to showErrorToast with no translated message.
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const apiCollectionCacheKey = useMemo(
     () =>
@@ -147,6 +156,21 @@ const APICollectionPage: FunctionComponent = () => {
         !isPermissionsLoading
     ),
   });
+
+  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
+  // of this component (see its comment for why this component calls the hook twice). This is
+  // the earliest point {@code apiCollection} (and therefore `deleted`) exists: the one
+  // canEdit* flag this page uses is gated on it — don't destructure canEdit* or `can` from
+  // the view-tier call above, it was captured before `deleted` existed and would silently
+  // return an ungated edit permission.
+  const { canEditCustomFields: editCustomAttributePermission } =
+    useEntityPermissions(
+      ResourceEntity.API_COLLECTION,
+      decodedAPICollectionFQN,
+      {
+        deleted: Boolean(apiCollection?.deleted),
+      }
+    );
 
   const isError = useMemo(
     () =>
@@ -223,21 +247,6 @@ const APICollectionPage: FunctionComponent = () => {
     }),
     [apiCollection]
   );
-
-  const fetchAPICollectionPermission = useCallback(async () => {
-    setIsPermissionsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.API_COLLECTION,
-        decodedAPICollectionFQN
-      );
-      setAPICollectionPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionsLoading(false);
-    }
-  }, [decodedAPICollectionFQN]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -452,10 +461,6 @@ const APICollectionPage: FunctionComponent = () => {
   );
 
   useEffect(() => {
-    fetchAPICollectionPermission();
-  }, [decodedAPICollectionFQN]);
-
-  useEffect(() => {
     if (viewAPICollectionPermission) {
       fetchTaskCounts();
       fetchActivityCount();
@@ -472,41 +477,6 @@ const APICollectionPage: FunctionComponent = () => {
     viewAPICollectionPermission,
     apiCollection,
   ]);
-
-  const {
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditTags
-        ) && !apiCollection?.deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditGlossaryTerms
-        ) && !apiCollection?.deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditDescription
-        ) && !apiCollection?.deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          apiCollectionPermission,
-          PermissionOperation.EditCustomFields
-        ) && !apiCollection?.deleted,
-      viewAllPermission: apiCollectionPermission.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        apiCollectionPermission,
-        PermissionOperation.ViewCustomFields
-      ),
-    }),
-    [apiCollectionPermission, apiCollection]
-  );
 
   const handleAPICollectionUpdate = useCallback(
     async (updatedData: APICollection) => {

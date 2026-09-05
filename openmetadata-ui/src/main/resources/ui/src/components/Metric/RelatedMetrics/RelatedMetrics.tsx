@@ -21,6 +21,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   WidgetEditButton,
@@ -41,6 +42,14 @@ const RelatedMetrics: FC = () => {
     onUpdate: onMetricUpdate,
     permissions,
   } = useGenericContext<Metric>();
+
+  // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
+  // MetricDetailsPage, Task 8 Batch 6). Deleted-gated: the old raw expression ANDed
+  // `!metricDetails.deleted` directly, matching canEditAll's own internal deleted gating.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions, metricDetails.deleted),
+    [permissions, metricDetails.deleted]
+  );
 
   const {
     defaultValue,
@@ -145,8 +154,11 @@ const RelatedMetrics: FC = () => {
     [onMetricUpdate, relatedMetrics]
   );
 
-  const canEditRelatedMetrics =
-    !isEdit && permissions.EditAll && !metricDetails.deleted;
+  // Upstream extracted this guard as `!isEdit && permissions.EditAll && !metricDetails.deleted`;
+  // `canEditAll` is derived from the same permissions with `metricDetails.deleted` already
+  // applied (see the useMemo above), so `!isEdit && canEditAll` is the identical condition
+  // without the raw EditAll read.
+  const canEditRelatedMetrics = !isEdit && canEditAll;
 
   const headerExtra =
     canEditRelatedMetrics &&

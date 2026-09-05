@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChartDetails from '../../components/Chart/ChartDetails/ChartDetails.component';
@@ -24,14 +24,13 @@ import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -43,10 +42,6 @@ import { chartQueryFn, chartQueryKey } from '../../rest/queries/chartQuery';
 import { defaultFields } from '../../utils/ChartDetailsUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -56,32 +51,36 @@ const ChartDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: chartFQN } = useFqn();
   const queryClient = useQueryClient();
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [chartPermissions, setChartPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Fetch-owner, by fqn. Deliberately kept even though ChartDetails (child) also calls
+  // useEntityPermissions itself (by id, for its own edit-tier flags) — this page's view-tier
+  // flags gate the chart entity query below (canViewUsage decides whether USAGE_SUMMARY is
+  // requested; hasViewAccess decides whether the query fires and drives the
+  // permission-denied placeholder), and the child only exists once chartId is known.
+  // NOTE: two network requests — this page fetches by fqn while ChartDetails fetches by id
+  // (different query keys, different REST calls — NOT the same shared-cache situation as
+  // TableDetailsPageV1's own two same-fqn calls). Consolidation candidate: pass one
+  // identifier form through or drop the page fetch if the child's data suffices.
+  const {
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    canViewUsage: viewUsagePermission,
+    hasViewAccess: canViewChart,
+  } = useEntityPermissions(ResourceEntity.CHART, chartFQN, {
+    enabled: Boolean(chartFQN),
+  });
 
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        chartPermissions,
-        PermissionOperation.ViewUsage
-      ),
-    [chartPermissions]
-  );
-
-  const canViewChart = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        chartPermissions,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [chartPermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: chartFQN,
+        })
+      );
+    }
+  }, [permissionsError]);
 
   const chartFields = useMemo(() => {
     let fields = defaultFields;
@@ -164,26 +163,6 @@ const ChartDetailsPage = () => {
     [chartDetails?.followers, USERId]
   );
   const entityName = useMemo(() => getEntityName(chartDetails), [chartDetails]);
-
-  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CHART,
-        entityFqn
-      );
-      setChartPermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const saveUpdatedChartData = useCallback(
     (updatedData: Chart) => {
@@ -326,10 +305,6 @@ const ChartDetailsPage = () => {
     [setChartDetails]
   );
 
-  useEffect(() => {
-    fetchResourcePermission(chartFQN);
-  }, [chartFQN]);
-
   if (permissionsLoading || chartLoading) {
     return <PageLoader />;
   }
@@ -340,7 +315,7 @@ const ChartDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!chartPermissions.ViewAll && !chartPermissions.ViewBasic) {
+  if (!canViewChart) {
     return (
       <ErrorPlaceHolder
         className="border-none"

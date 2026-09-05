@@ -12,23 +12,46 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { getRoleByName } from '../../../rest/rolesAPIV1';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
-const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
+// RolesDetailPage now fetches its own permissions via useEntityPermissions (Task 8 Batch 9)
+// rather than an imperative usePermissionProvider().getEntityPermissionByFqn call — mock the
+// hook directly, mirroring TableDetailsPageV1.test.tsx's setMockPermissions helper.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>{to}</a>),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-}));
-
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -60,9 +83,10 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div>EntityHeaderTitle</div>)
 );
 
+const mockManageButton = jest.fn().mockReturnValue(<div>ManageButton</div>);
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
-  () => jest.fn().mockReturnValue(<div>ManageButton</div>)
+  () => jest.fn().mockImplementation((props) => mockManageButton(props))
 );
 
 jest.mock('../../../constants/constants', () => ({
@@ -97,13 +121,15 @@ jest.mock('./RolesDetailPageList.component', () =>
 );
 
 describe('Test Roles Details Page', () => {
-  it('Should render the role details component', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({ ViewBasic: true, EditAll: true, Delete: true });
+    (getRoleByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve(ROLE_DATA)
+    );
+  });
 
+  it('Should render the role details component', async () => {
     await act(async () => {
       render(<RolesDetailPage />);
     });
@@ -132,8 +158,15 @@ describe('Test Roles Details Page', () => {
   });
 
   it('Should render the no-data component in there is no-data', async () => {
-    (getRoleByName as jest.Mock).mockImplementation(() => Promise.reject());
-    render(<RolesDetailPage />);
+    // No view access — matches the pre-conversion test's implicit setup (the default mock
+    // resolved a falsy/null permission, so viewBasicPermission was never granted and
+    // fetchRole() was never called): the "no entity found" placeholder comes from the
+    // isEmpty(role) branch, not from getRoleByName rejecting.
+    setMockPermissions({});
+
+    await act(async () => {
+      render(<RolesDetailPage />);
+    });
 
     const container = await screen.findByTestId('role-details-container');
 
@@ -142,5 +175,60 @@ describe('Test Roles Details Page', () => {
     expect(container).toBeInTheDocument();
 
     expect(noData).toBeInTheDocument();
+    expect(getRoleByName).not.toHaveBeenCalled();
+  });
+
+  it('should call useEntityPermissions with the ROLE resource and current fqn', async () => {
+    await act(async () => {
+      render(<RolesDetailPage />);
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.ROLE,
+      'data-consumer',
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins) — the old
+  // raw `EditAll || EditDisplayName` OR let EditAll grant unconditionally.
+  it('denies display-name edit when EditDisplayName is explicitly false, even with EditAll true', async () => {
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+      EditDisplayName: false,
+      Delete: true,
+    });
+
+    await act(async () => {
+      render(<RolesDetailPage />);
+    });
+
+    expect(mockManageButton).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editDisplayNamePermission: false,
+        canDelete: true,
+      })
+    );
+  });
+
+  it('grants display-name edit via EditAll when EditDisplayName is not present', async () => {
+    // Deliberately NOT merged with a full-fixture spread: a fixture defining every Operation
+    // key would make getPrioritizedEditPermission's "key present" check see EditDisplayName
+    // as an explicit deny rather than truly absent, masking the EditAll fallback this test
+    // exists to cover (SchemaTable.test.tsx precedent).
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+    } as OperationPermission);
+
+    await act(async () => {
+      render(<RolesDetailPage />);
+    });
+
+    expect(mockManageButton).toHaveBeenCalledWith(
+      expect.objectContaining({ editDisplayNamePermission: true })
+    );
   });
 });

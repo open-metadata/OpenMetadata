@@ -67,8 +67,14 @@ jest.mock('../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ extraDropdownContent }: { extraDropdownContent?: unknown[] }) => (
-        <div data-testid="manage-button">
+      ({
+        extraDropdownContent,
+        canDelete,
+      }: {
+        extraDropdownContent?: unknown[];
+        canDelete?: boolean;
+      }) => (
+        <div data-can-delete={String(canDelete)} data-testid="manage-button">
           {(extraDropdownContent as { key: string }[] | undefined)?.map(
             (item) => (
               <div data-testid={item.key} key={item.key} />
@@ -86,7 +92,15 @@ jest.mock('./TeamsHeaderSection/TeamsInfo.component', () =>
   jest.fn().mockImplementation(() => <div>TeamsInfo</div>)
 );
 jest.mock('../../../common/EntityDescription/Description', () =>
-  jest.fn().mockImplementation(() => <div>Description</div>)
+  jest
+    .fn()
+    .mockImplementation(({ hasEditAccess }: { hasEditAccess?: boolean }) => (
+      <div
+        data-has-edit-access={String(hasEditAccess)}
+        data-testid="description">
+        Description
+      </div>
+    ))
 );
 jest.mock('../../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>)
@@ -245,5 +259,143 @@ describe('TeamDetailsV1 default tab selection', () => {
     renderComponent({ childTeams: [ORGANIZATION_TEAM] });
 
     expect(screen.queryByText('TeamHierarchy')).not.toBeInTheDocument();
+  });
+});
+
+// Task 8 Batch 3: entityPermissions.EditAll -> canEditAll (getDerivedPermissionFlags).
+// A non-organization team is required to exercise the ManageButton branch — the
+// Organization team always uses the unconditional (EditAll-independent) branch.
+const NON_ORG_TEAM = {
+  ...ORGANIZATION_TEAM,
+  id: 'non-org-team-id',
+  name: 'engineering',
+  fullyQualifiedName: 'engineering',
+  teamType: TeamType.Department,
+} as unknown as Team;
+
+describe('TeamDetailsV1 ManageButton canEditAll wiring', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('hides the ManageButton for a non-organization team when EditAll is false', async () => {
+    renderComponent({
+      currentTeam: NON_ORG_TEAM,
+      entityPermissions: { EditAll: false } as OperationPermission,
+    });
+
+    await screen.findByText('TeamsHeadingLabel');
+
+    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+  });
+
+  it('shows the ManageButton with canDelete=true for a non-organization team when EditAll is true', async () => {
+    renderComponent({
+      currentTeam: NON_ORG_TEAM,
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('manage-button')).toHaveAttribute(
+      'data-can-delete',
+      'true'
+    );
+  });
+
+  // Task 8 Batch 3 review round, Finding 1 (Critical): the ManageButton hosts the ONLY UI
+  // path to restore a soft-deleted team (`restore-team-dropdown`). Gating its render/canDelete
+  // on the deleted-gated `canEditAll` makes it disappear entirely for a deleted team, admins
+  // included, with no way back — old code read raw, ungated `entityPermissions.EditAll` here.
+  // Fixed via a second, ungated derivation (`ungatedFlags.canEditAll`) rather than a raw read.
+  it('keeps the ManageButton (and its restore option) reachable for a deleted team when EditAll is true', async () => {
+    renderComponent({
+      currentTeam: { ...NON_ORG_TEAM, deleted: true },
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('manage-button')).toHaveAttribute(
+      'data-can-delete',
+      'true'
+    );
+    expect(screen.getByTestId('restore-team-dropdown')).toBeInTheDocument();
+  });
+});
+
+// Task 8 Batch 3: editDescriptionPermission's raw
+// `(entityPermissions.EditAll || entityPermissions.EditDescription) && !isTeamDeleted`
+// -> canEditDescription (getDerivedPermissionFlags). Documented explicit-deny-wins
+// behavior change: an explicit `EditDescription: false` now wins over `EditAll: true`,
+// where the old raw OR granted access regardless (same pattern as CommonWidgets /
+// QuickLinkFormModal in Task 8 Batch 2).
+describe('TeamDetailsV1 description hasEditAccess wiring (explicit-deny-wins)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('grants edit access via EditAll when EditDescription is not present', async () => {
+    renderComponent({
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('description')).toHaveAttribute(
+      'data-has-edit-access',
+      'true'
+    );
+  });
+
+  it('denies edit access when EditDescription is explicitly false, even with EditAll true', async () => {
+    renderComponent({
+      entityPermissions: {
+        EditAll: true,
+        EditDescription: false,
+      } as OperationPermission,
+    });
+
+    expect(await screen.findByTestId('description')).toHaveAttribute(
+      'data-has-edit-access',
+      'false'
+    );
+  });
+});
+
+// Task 8 Batch 3 review round, Finding 2 (Important): AssignErrorPlaceHolder hard-branches
+// on its `permission` prop (`if (!permission) return <PermissionErrorPlaceholder />`),
+// replacing the whole assign-roles/policies UI (including the separately-disabled Add button)
+// with a misleading "no access" message. Old code passed raw, ungated `entityPermissions.EditAll`
+// here — a deleted team's admin saw a disabled Add button with a tooltip, not "no access".
+// Fixed via `ungatedFlags.canEditAll` instead of the deleted-gated `canEditAll`.
+describe('TeamDetailsV1 rolesTabRender/policiesTabRender permission gate (ungated for deleted teams)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockLocationSearch = '?activeTab=roles';
+    mockGetTabs.mockReturnValue([
+      { name: 'label.role-plural', key: TeamsPageTab.ROLES },
+    ]);
+  });
+
+  it('shows the assign-roles UI (not the no-access placeholder) for a deleted team when EditAll is true', async () => {
+    renderComponent({
+      currentTeam: { ...NON_ORG_TEAM, deleted: true },
+      entityPermissions: { EditAll: true } as OperationPermission,
+    });
+
+    expect(
+      await screen.findByTestId('add-placeholder-button')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+    // The Add action itself stays disabled independently via its own isTeamDeleted check.
+    expect(screen.getByTestId('add-placeholder-button')).toBeDisabled();
+  });
+
+  it('shows the no-access placeholder for a non-deleted team when EditAll is false', async () => {
+    renderComponent({
+      currentTeam: NON_ORG_TEAM,
+      entityPermissions: { EditAll: false } as OperationPermission,
+    });
+
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 });

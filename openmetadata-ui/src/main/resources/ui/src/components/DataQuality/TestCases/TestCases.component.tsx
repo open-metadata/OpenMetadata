@@ -29,6 +29,8 @@ import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
@@ -77,6 +79,19 @@ export const TestCases = () => {
     handleAfterDeleteAction,
   } = useTestCaseListPage();
 
+  // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
+  // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
+  // runs through getDerivedPermissionFlags exactly like an entity-level fetch (Task 8 Batch 3
+  // DatabaseSchemaTable.tsx precedent). Falls back to DEFAULT_ENTITY_PERMISSION (all-false) to
+  // reproduce the old `?.` optional-chaining undefined-is-falsy behavior.
+  const testCaseFlags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
+    [testCasePermission]
+  );
+
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
     if (createActions?.canCreateTestCase && createActions?.onAddTestCase) {
@@ -101,7 +116,7 @@ export const TestCases = () => {
       showDeleted,
     });
 
-  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
+  if (!testCaseFlags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"

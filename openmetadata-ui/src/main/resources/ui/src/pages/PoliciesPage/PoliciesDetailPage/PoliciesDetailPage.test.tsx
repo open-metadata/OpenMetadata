@@ -12,23 +12,46 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicyByName } from '../../../rest/rolesAPIV1';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { POLICY_DATA } from '../PoliciesData.mock';
 import PoliciesDetailPage from './PoliciesDetailPage';
 
-const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
+// PoliciesDetailPage now fetches its own permissions via useEntityPermissions (Task 8 Batch 9)
+// rather than an imperative usePermissionProvider().getEntityPermissionByFqn call — mock the
+// hook directly, mirroring RolesDetailPage.test.tsx's sibling conversion.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-}));
-
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -76,9 +99,10 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div>EntityHeaderTitle</div>)
 );
 
+const mockManageButton = jest.fn().mockReturnValue(<div>ManageButton</div>);
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
-  () => jest.fn().mockReturnValue(<div>ManageButton</div>)
+  () => jest.fn().mockImplementation((props) => mockManageButton(props))
 );
 
 jest.mock('../../../constants/HelperTextUtil', () => ({
@@ -113,13 +137,15 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 describe('Test Policy details page', () => {
-  it('Should render the policy details page component', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({ ViewBasic: true, EditAll: true, Delete: true });
+    (getPolicyByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve(POLICY_DATA)
+    );
+  });
 
+  it('Should render the policy details page component', async () => {
     await act(async () => {
       render(<PoliciesDetailPage />);
     });
@@ -155,12 +181,6 @@ describe('Test Policy details page', () => {
   });
 
   it('Should render the rule card and its attributes', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
-
     await act(async () => {
       render(<PoliciesDetailPage />);
     });
@@ -186,5 +206,69 @@ describe('Test Policy details page', () => {
     expect(ruleOperations).toBeInTheDocument();
     expect(ruleEffect).toBeInTheDocument();
     expect(ruleCondition).toBeInTheDocument();
+  });
+
+  it('should call useEntityPermissions with the POLICY resource and current fqn', async () => {
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.POLICY,
+      'policy',
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  it('should not fetch the policy when there is no view access', async () => {
+    setMockPermissions({});
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
+
+    expect(getPolicyByName).not.toHaveBeenCalled();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins) — the old
+  // raw `EditAll || EditDisplayName` OR let EditAll grant unconditionally.
+  it('denies display-name edit when EditDisplayName is explicitly false, even with EditAll true', async () => {
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+      EditDisplayName: false,
+      Delete: true,
+    });
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
+
+    expect(mockManageButton).toHaveBeenCalledWith(
+      expect.objectContaining({
+        editDisplayNamePermission: false,
+        canDelete: true,
+      })
+    );
+  });
+
+  it('grants display-name edit via EditAll when EditDisplayName is not present', async () => {
+    // Deliberately NOT merged with a full-fixture spread: a fixture defining every Operation
+    // key would make getPrioritizedEditPermission's "key present" check see EditDisplayName
+    // as an explicit deny rather than truly absent, masking the EditAll fallback this test
+    // exists to cover (SchemaTable.test.tsx precedent).
+    setMockPermissions({
+      ViewBasic: true,
+      EditAll: true,
+    } as OperationPermission);
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
+
+    expect(mockManageButton).toHaveBeenCalledWith(
+      expect.objectContaining({ editDisplayNamePermission: true })
+    );
   });
 });

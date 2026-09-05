@@ -352,6 +352,36 @@ describe('ArticleDetailHeader', () => {
     expect(screen.getByTestId('manage-button')).toBeInTheDocument();
   });
 
+  it('renders the edit-domain and edit-owner buttons when EditAll is granted', () => {
+    render(<ArticleDetailHeader {...defaultProps} />);
+
+    expect(screen.getByTestId('edit-domain-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-owner-btn')).toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit EditOwners: false must win over a bare EditAll: true grant (explicit-deny-wins)
+  // — the old raw `permissions.EditAll || permissions.EditOwners` OR let EditAll grant
+  // unconditionally, hiding this regression.
+  it('hides the edit-owner button when EditOwners is explicitly false, even with EditAll true', () => {
+    render(
+      <ArticleDetailHeader
+        {...defaultProps}
+        permissions={
+          {
+            ...mockPermissions,
+            EditAll: true,
+            EditOwners: false,
+          } as OperationPermission
+        }
+      />
+    );
+
+    // EditAll alone still grants the (non-field-specific) domain edit control.
+    expect(screen.getByTestId('edit-domain-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-owner-btn')).not.toBeInTheDocument();
+  });
+
   it('shows the skeleton when knowledgePage and tabs are both undefined', () => {
     render(
       <ArticleDetailHeader

@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,17 +25,13 @@ import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsH
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
-import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   addMetricFollower,
@@ -50,10 +46,6 @@ import {
 } from '../../../rest/queries/metricQuery';
 import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -63,21 +55,34 @@ const MetricDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const queryClient = useQueryClient();
 
   const { fqn: metricFqn } = useFqn();
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
 
-  const [metricPermissions, setMetricPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // canViewMetric is the query enabler for the entity fetch below, deliberately the
+  // prioritized ViewBasic flag (not the bare hasViewAccess OR used at the render gate near
+  // the bottom of this file) — matches the old getPrioritizedViewPermission(metricPermissions,
+  // Operation.ViewBasic) call exactly (see the canViewBasic doc comment in
+  // PermissionDerivation.ts for why the two must stay distinct).
+  const {
+    permissions: metricPermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: canViewMetric,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.METRIC, metricFqn, {
+    enabled: Boolean(metricFqn),
+  });
 
-  const canViewMetric = useMemo(
-    () =>
-      getPrioritizedViewPermission(metricPermissions, Operation.ViewBasic) ===
-      true,
-    [metricPermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: metricFqn,
+        })
+      );
+    }
+  }, [permissionsError, metricFqn, t]);
 
   const metricCacheKey = useMemo(
     () => metricQueryKey(metricFqn, METRIC_DEFAULT_FIELDS),
@@ -91,7 +96,7 @@ const MetricDetailsPage = () => {
   } = useQuery({
     queryKey: metricCacheKey,
     queryFn: metricQueryFn(metricFqn, METRIC_DEFAULT_FIELDS),
-    enabled: Boolean(metricFqn && canViewMetric && !permissionsLoading),
+    enabled: Boolean(metricFqn && canViewMetric && !isPermissionsLoading),
   });
 
   const isError = useMemo(
@@ -153,26 +158,6 @@ const MetricDetailsPage = () => {
     () => getEntityName(metricDetails),
     [metricDetails]
   );
-
-  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.METRIC,
-        entityFqn
-      );
-      setMetricPermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const saveUpdatedMetricData = useCallback(
     (updatedData: Metric) => {
@@ -341,11 +326,7 @@ const MetricDetailsPage = () => {
     [setMetricDetails]
   );
 
-  useEffect(() => {
-    fetchResourcePermission(metricFqn);
-  }, [metricFqn]);
-
-  if (permissionsLoading || metricLoading) {
+  if (isPermissionsLoading || metricLoading) {
     return <PageLoader />;
   }
   if (isError) {
@@ -355,7 +336,7 @@ const MetricDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"

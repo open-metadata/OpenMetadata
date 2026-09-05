@@ -62,6 +62,7 @@ import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
@@ -321,8 +322,13 @@ const KnowledgePageListComponent = forwardRef<
       );
     };
 
-    const hasViewPermission = useMemo(
-      () => permissions.ViewAll || permissions.ViewBasic,
+    // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+    // component receives as a prop. The old raw OR of `ViewAll`/`ViewBasic` is exactly what
+    // `hasViewAccess` encodes (`Boolean(permissions[ViewBasic] || permissions[ViewAll])`) —
+    // not a prioritized read, a literal semantic match (same precedent as TopicDetailsPage,
+    // Task 7A File 3). `permissions.Create` is a single-key read → `canCreate` (identical).
+    const { hasViewAccess: hasViewPermission, canCreate } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
       [permissions]
     );
 
@@ -541,7 +547,7 @@ const KnowledgePageListComponent = forwardRef<
             }
             footer={
               <>
-                {permissions.Create && !hideAddButton && (
+                {canCreate && !hideAddButton && (
                   <LimitWrapper resource="knowledgeCenter">
                     <Dropdown menu={{ items }} trigger={['click']}>
                       <Button

@@ -572,4 +572,47 @@ describe('WorksheetColumnsTable', () => {
       screen.getByTestId('worksheet-data-model-table')
     ).toBeInTheDocument();
   });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 4):
+  // an explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins,
+  // Task 6 Finding 1) — the old raw `(EditAll || EditX) && !deleted` OR let EditAll grant
+  // unconditionally. Rather than reworking the Table mock (which renders dataSource
+  // directly, bypassing antd-style column `render` callbacks), read the `columns` prop
+  // the component actually passed to <Table> and invoke each column's `render` directly
+  // to inspect the permission prop it wires into TableDescription/TableTags.
+  const MockedTable = jest.requireMock('../../../common/Table/Table');
+  const getRenderedProps = (columnKey: string, columnData: Column) => {
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
+    const column = columns.find((c: { key: string }) => c.key === columnKey);
+
+    return column.render(columnData.tags, columnData, 0).props;
+  };
+
+  it('denies description edit when EditDescription is explicitly false, even with EditAll true', () => {
+    renderWorksheetColumnsTable({}, { EditAll: true, EditDescription: false });
+
+    expect(
+      getRenderedProps('description', mockColumns[0]).hasEditPermission
+    ).toBe(false);
+  });
+
+  it('denies tags edit when EditTags is explicitly false, even with EditAll true', () => {
+    renderWorksheetColumnsTable({}, { EditAll: true, EditTags: false });
+
+    expect(getRenderedProps('tags', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
+  });
+
+  it('denies glossary term edit when EditGlossaryTerms is explicitly false, even with EditAll true', () => {
+    renderWorksheetColumnsTable(
+      {},
+      { EditAll: true, EditGlossaryTerms: false }
+    );
+
+    expect(getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
+  });
 });

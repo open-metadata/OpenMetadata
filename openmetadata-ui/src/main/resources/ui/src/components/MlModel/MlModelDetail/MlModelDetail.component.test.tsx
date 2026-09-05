@@ -16,12 +16,48 @@ import {
   findByTestId,
   findByText,
   render,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Paging } from '../../../generated/type/paging';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import MlModelDetailComponent from './MlModelDetail.component';
+
+// The component now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for the
+// full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce, the
+// `deleted`-gating blind spot), mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockData = {
   id: '1b561c2d-f449-4640-b893-94077cf1c35b',
@@ -282,6 +318,102 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .fn()
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
+
+// --- Additional mocks for the permission-conversion tests below, on top of the shared
+// mocks above. `useFqn`, `useCustomPages`, `useApplicationStore`, `useRequiredParams`,
+// `DataAssetsHeader`, `GenericProvider`, `LimitWrapper` and `FeedUtilsPure` are already
+// mocked above and reused as-is — re-registering them here would silently win (last
+// `jest.mock` call for a given path wins) and diverge from the suite below. In particular,
+// `useRequiredParams` must stay the dynamic `mockParams`-backed mock above: the suite below
+// mutates `mockParams.tab` per test to switch tabs, and `MlModelClassBase` is deliberately
+// left unmocked so the real tab list renders for both suites — a static override here would
+// break every tab-switching assertion below.
+jest.mock('../../../rest/mlModelAPI', () => ({
+  restoreMlmodel: jest.fn().mockResolvedValue({ version: 1 }),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn().mockReturnValue('/mlmodel/path'),
+}));
+
+describe('MlModelDetail permissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
+  });
+
+  // Guardrail: this component owns the single useEntityPermissions call whose raw
+  // `mlModelPermissions` prop feeds DataAssetsHeader/GenericProvider — see
+  // PipelineDetails.test.tsx's afterEach for the general rationale on asserting the
+  // (resource, identifier) pair. Only one call per render here, so this is mostly
+  // future-proofing against a later edit accidentally adding a diverging second call.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toBe(expectedIdentifier);
+    });
+  });
+
+  it('should fetch permissions by id, not fqn', async () => {
+    render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.ML_MODEL,
+        { id: mockData.id },
+        { deleted: false }
+      );
+    });
+  });
+
+  it('requests edit permissions as deleted-gated for a soft-deleted mlmodel', async () => {
+    render(
+      <MlModelDetailComponent
+        {...mockProp}
+        mlModelDetail={{ ...mockData, deleted: true } as Mlmodel}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.ML_MODEL,
+        { id: mockData.id },
+        { deleted: true }
+      );
+    });
+  });
+
+  it('shows the permission-fetch error toast when the hook reports an error', async () => {
+    setMockPermissions(ENTITY_PERMISSIONS, {
+      error: new Error('permission fetch failed'),
+    });
+
+    render(<MlModelDetailComponent {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    // t() is globally mocked to the identity function (see src/setupTests.js), so the
+    // interpolated `entity` option collapses out and only the outer key survives.
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'server.fetch-entity-permissions-error'
+      );
+    });
+  });
+});
 
 describe('Test MlModel entity detail component', () => {
   it('Should render detail component', async () => {

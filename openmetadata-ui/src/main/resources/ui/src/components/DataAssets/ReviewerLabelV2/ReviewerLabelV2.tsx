@@ -13,9 +13,11 @@
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
   WidgetEditButton,
@@ -43,9 +45,20 @@ export const ReviewerLabelV2 = <
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
   const { t } = useTranslation();
 
-  const hasEditReviewerAccess = useMemo(() => {
-    return permissions.EditAll || permissions.EditReviewers;
-  }, [permissions]);
+  // Named-flag derivation (Task 8 sweep): no named `canEdit*` flag exists for
+  // `EditReviewers`, so `can(Operation.EditReviewers)` is the documented escape hatch —
+  // applies the same prioritization the named flags use, replacing the old raw OR
+  // (explicit-deny-wins fix, same precedent as canViewBasic, Task 6 Finding 1). No `deleted`
+  // argument: the generic `T` constraint here has no `deleted` field, and the old expression
+  // never referenced one either.
+  const { can } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+  const hasEditReviewerAccess = useMemo(
+    () => can(Operation.EditReviewers),
+    [can]
+  );
 
   const { assignedReviewers, hasReviewers } = useMemo(() => {
     const inheritedReviewers: EntityReference[] = [];

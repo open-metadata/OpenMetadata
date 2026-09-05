@@ -35,9 +35,19 @@ jest.mock(
     ),
   })
 );
+// Captures the `permission` prop directly instead of an opaque div — needed to verify the
+// explicit-deny-wins wiring (Task 8 Batch 2 review, Finding 2): the right named flag
+// (`canEditTags`) must actually reach the right prop, not just compute correctly in isolation
+// (PermissionDerivation.test.ts already covers the math).
 jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
   __esModule: true,
-  default: () => <div data-testid="tags-widget">Tags Widget</div>,
+  default: ({ permission }: { permission?: boolean }) => (
+    <div
+      data-permission={String(Boolean(permission))}
+      data-testid="tags-widget">
+      Tags Widget
+    </div>
+  ),
 }));
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: () => (
@@ -148,6 +158,71 @@ describe('CommonWidgets', () => {
     );
 
     expect(await screen.findByTestId('tags-widget')).toBeInTheDocument();
+  });
+
+  // Task 8 Batch 2 review, Finding 2: explicit-deny-wins wiring coverage — verifies
+  // `canEditTags` (not the old raw `EditTags || EditAll`) is actually the value reaching
+  // TagsContainerV2's `permission` prop.
+  it('denies the tags edit affordance when EditTags is explicitly false, even though EditAll is true (explicit-deny-wins, prioritized over the old raw OR)', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      ...mockGenericContext,
+      permissions: {
+        ...mockGenericContext.permissions,
+        EditAll: true,
+        EditTags: false,
+      },
+    });
+
+    const widgetConfig = {
+      i: DetailPageWidgetKeys.TAGS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+
+    expect(await screen.findByTestId('tags-widget')).toHaveAttribute(
+      'data-permission',
+      'false'
+    );
+  });
+
+  it('grants the tags edit affordance when EditTags is true', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      ...mockGenericContext,
+      permissions: {
+        ...mockGenericContext.permissions,
+        EditAll: false,
+        EditTags: true,
+      },
+    });
+
+    const widgetConfig = {
+      i: DetailPageWidgetKeys.TAGS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+
+    expect(await screen.findByTestId('tags-widget')).toHaveAttribute(
+      'data-permission',
+      'true'
+    );
   });
 
   it('should render glossary terms widget', async () => {

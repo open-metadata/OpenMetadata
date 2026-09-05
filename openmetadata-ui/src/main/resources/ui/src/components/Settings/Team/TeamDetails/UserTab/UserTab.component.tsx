@@ -34,6 +34,7 @@ import {
   TabSpecificField,
 } from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
@@ -46,6 +47,7 @@ import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
@@ -101,9 +103,41 @@ export const UserTab = ({
     [currentTeam.teamType]
   );
 
-  const editUserPermission = useMemo(
-    () => permission.EditAll || permission.EditUsers,
-    [permission.EditAll, permission.EditUsers]
+  const isTeamDeleted = currentTeam.deleted ?? false;
+
+  // Consumer via the `permission: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). EditUsers has no named canEdit* flag, so this uses the `can()` escape hatch.
+  // Old: `permission.EditAll || permission.EditUsers` — not deleted-gated at the source; every
+  // downstream call site either separately ANDs `!isTeamDeleted` already, or is only reachable
+  // from a branch that's already deleted-gated upstream (the "actions" column is dropped
+  // entirely for a deleted team; the ManageButton hosting IMPORT_EXPORT_MENU_ITEM only renders
+  // when `!isTeamDeleted`). Passing `isTeamDeleted` here adds deleted-gating at the source
+  // (believed a no-op given the above, consistent with the sweep's default "canEdit* is
+  // deleted-gated" policy) and fixes the same explicit-deny-wins gap as the raw OR (Task 6
+  // Finding 1): an explicit `EditUsers: false` now wins over a bare `EditAll: true` grant.
+  const { canEditAll, can } = useMemo(
+    () => getDerivedPermissionFlags(permission, isTeamDeleted),
+    [permission, isTeamDeleted]
+  );
+  const editUserPermission = useMemo(() => can(Operation.EditUsers), [can]);
+
+  // The one site that must ignore deleted-gating (Task 8 Batch 3 review round, Finding 3):
+  // the ASSIGN ErrorPlaceHolder's `permission` prop hard-branches
+  // (`if (!permission) return <PermissionErrorPlaceholder />`), replacing the whole
+  // assign-users UI (including the Add button, which is separately disabled via its own
+  // `disabled={!editUserPermission || isTeamDeleted}`) with a misleading "no access" message
+  // for a deleted team's admin. Old code read the raw, ungated `permission.EditAll ||
+  // permission.EditUsers` there. `ungatedFlags.can(Operation.EditUsers)` reproduces that —
+  // NOT byte-for-byte (it still applies the explicit-deny-wins fix: an explicit
+  // `EditUsers: false` denies even with `EditAll: true`, per Task 6 Finding 1, same as
+  // `editUserPermission` above) but WITHOUT the deleted gate. Truth table for the one case
+  // that differs from a naive `canEditAll || can(EditUsers)`: EditUsers absent, EditAll true —
+  // getPrioritizedEditPermission falls back to EditAll when the specific key is absent, so
+  // `can(Operation.EditUsers)` alone already covers the EditAll grant; no separate OR-term
+  // needed.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
   );
 
   /**
@@ -199,8 +233,6 @@ export const UserTab = ({
     }
   }, [currentTeam, pageSize, pagingCursor]);
 
-  const isTeamDeleted = currentTeam.deleted ?? false;
-
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
       // will not show teams column in the Team Page
@@ -284,7 +316,7 @@ export const UserTab = ({
         key: 'export-button',
       },
     ];
-    if (permission.EditAll) {
+    if (canEditAll) {
       option.push({
         label: (
           <ManageButtonItemLabel
@@ -302,7 +334,7 @@ export const UserTab = ({
     }
 
     return option;
-  }, [handleUserExportClick, handleImportClick, permission, t]);
+  }, [handleUserExportClick, handleImportClick, canEditAll, t]);
 
   const handleRemoveUser = () => {
     if (deletingUser?.id) {
@@ -317,10 +349,10 @@ export const UserTab = ({
       return t('message.this-action-is-not-allowed-for-deleted-entities');
     }
 
-    return permission.EditAll
+    return canEditAll
       ? t('label.add-new-entity', { entity: t('label.user') })
       : t('message.no-permission-for-action');
-  }, [permission, isTeamDeleted, t]);
+  }, [canEditAll, isTeamDeleted, t]);
 
   if (isEmpty(users) && !searchText && !isLoading) {
     return isGroupType ? (
@@ -359,7 +391,7 @@ export const UserTab = ({
         }
         className="mt-0-important border-none"
         heading={t('label.user')}
-        permission={editUserPermission}
+        permission={ungatedFlags.can(Operation.EditUsers)}
         permissionValue={t('label.edit-entity', {
           entity: t('label.user'),
         })}

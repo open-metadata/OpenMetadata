@@ -48,6 +48,7 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   EntityType,
   TestDefinition,
@@ -71,6 +72,7 @@ import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
@@ -215,8 +217,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           ResourceEntity.TABLE,
           tableFqn
         );
+        // N-term-OR-with-bare-EditAll (Task 8 Batch 2 KnowledgeCard precedent): EditTests
+        // has no named canEditX flag, and getPrioritizedEditPermission's own EditAll
+        // fallback only applies when the EditTests key is absent — keeping canEditAll as
+        // its own explicit OR-term avoids regressing the case where EditAll=true but
+        // EditTests is present and explicitly false.
+        const tableFlags = getDerivedPermissionFlags(tablePermissions);
         const canCreate =
-          tablePermissions.EditAll || tablePermissions.EditTests;
+          tableFlags.canEditAll || tableFlags.can(Operation.EditTests);
         setCanCreatePipeline(canCreate);
         if (!canCreate) {
           return t('message.no-permission-for-create-test-case-on-table');

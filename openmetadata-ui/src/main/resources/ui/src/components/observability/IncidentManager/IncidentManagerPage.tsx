@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
@@ -53,8 +55,14 @@ const IncidentManagerPage = () => {
     handleAssigneeUpdate,
   } = useIncidentManagerListPage({ isIncidentPage: true });
 
-  const hasViewPermission =
-    commonTestCasePermission?.ViewAll || commonTestCasePermission?.ViewBasic;
+  // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
+  // scope — incident permissions decouple from test-case perms in an open upstream PR
+  // #26521), mirroring the classic IncidentManager.component.tsx precedent. Pure rename:
+  // `!hasViewAccess` is De Morgan's law applied to the old `!ViewAll && !ViewBasic` — the
+  // exact same condition, just via the named flag.
+  const hasViewPermission = getDerivedPermissionFlags(
+    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
+  ).hasViewAccess;
 
   // Attached to the test case links so the detail page breadcrumb reflects
   // the incidents page as the origin.

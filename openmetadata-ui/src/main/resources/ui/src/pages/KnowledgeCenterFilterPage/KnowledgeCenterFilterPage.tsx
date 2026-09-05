@@ -37,6 +37,7 @@ import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -98,8 +99,12 @@ const KnowledgeCenterFilterPage = () => {
     }
   };
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(KNOWLEDGE_PAGE),
+  // itself OperationPermission-shaped) run through getDerivedPermissionFlags per the Batch 3
+  // DatabaseSchemaTable.tsx / Batch 8 ContextCenter-trio precedent. `hasViewAccess` is a
+  // byte-for-byte match of the old bare `ViewAll || ViewBasic` OR.
   const hasViewPermission = useMemo(
-    () => permissions.ViewAll || permissions.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 

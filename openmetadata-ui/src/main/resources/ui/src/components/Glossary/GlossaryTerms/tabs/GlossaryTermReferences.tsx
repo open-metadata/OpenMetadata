@@ -13,7 +13,7 @@
 
 import { Space, Typography } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
@@ -28,6 +28,7 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityDiffPureUtils';
 import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -46,6 +47,14 @@ const GlossaryTermReferences = () => {
     permissions,
   } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
+
+  // Consumer via useGenericContext(). No `deleted` argument: the old expressions here
+  // never gated on glossaryTerm.deleted, only on a bare EditAll read, so
+  // getDerivedPermissionFlags defaults to its `deleted = false` — nothing to gate.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const handleReferencesSave = async (
     newReferences: TermReference[],
@@ -132,7 +141,7 @@ const GlossaryTermReferences = () => {
       <Typography.Text className="text-sm font-medium">
         {t('label.reference-plural')}
       </Typography.Text>
-      {permissions.EditAll &&
+      {canEditAll &&
         (isEmpty(references) ? (
           <PlusIconButton
             data-testid="term-references-add-button"
@@ -148,7 +157,7 @@ const GlossaryTermReferences = () => {
           <EditIconButton
             newLook
             data-testid="edit-button"
-            disabled={!permissions.EditAll}
+            disabled={!canEditAll}
             size="small"
             onClick={() => setIsViewMode(false)}
           />
@@ -166,10 +175,10 @@ const GlossaryTermReferences = () => {
         isExpandDisabled={isEmpty(references)}>
         {isVersionView ? (
           getVersionReferenceElements()
-        ) : !permissions.EditAll || !isEmpty(references) ? (
+        ) : !canEditAll || !isEmpty(references) ? (
           <div className="d-flex flex-wrap">
             {references.map((ref) => renderReferenceElement(ref))}
-            {!permissions.EditAll && references.length === 0 && (
+            {!canEditAll && references.length === 0 && (
               <div>{NO_DATA_PLACEHOLDER}</div>
             )}
           </div>

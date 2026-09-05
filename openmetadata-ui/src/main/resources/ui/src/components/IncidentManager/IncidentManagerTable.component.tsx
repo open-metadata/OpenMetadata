@@ -38,7 +38,8 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedEditPermission } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
@@ -89,18 +90,28 @@ const IncidentManagerTable = ({
 }: IncidentManagerTableProps) => {
   const { t } = useTranslation();
 
-  /**
-   * Incident actions (status, severity and assignee) are gated by `EditStatus` on the test case
-   * rather than `EditAll`, so a role can manage incidents while keeping read-only access to the
-   * test cases themselves. `getPrioritizedEditPermission` falls back to `EditAll` when the
-   * permission payload does not carry `EditStatus`.
-   */
-  const hasIncidentEditPermission = (permission?: TestCasePermission) =>
-    Boolean(
-      permission &&
-        getPrioritizedEditPermission(permission, Operation.EditStatus) &&
-        !tableDetails?.deleted
+  // Per-row bulk permission lookup (DashboardChartTable.tsx precedent, Task 8 Batch 5): the
+  // bulk fetch itself (testCasePermissions, populated by the caller) is untouched — only the
+  // 3 flagged raw `.EditAll` reads convert, via one shared lookup+derivation helper. A test
+  // case with no permissions entry (fetch pending/not found) falls back to
+  // DEFAULT_ENTITY_PERMISSION, reproducing the old optional-chaining-is-falsy behavior.
+  //
+  // Incident actions (status, severity and assignee) are gated by `EditStatus` on the test
+  // case rather than `EditAll`, so a role can manage incidents while keeping read-only access
+  // to the test cases themselves. `can(EditStatus)` routes through the same
+  // getPrioritizedEditPermission path — falling back to `EditAll` when the payload carries no
+  // `EditStatus` — and applies the `deleted` gate, so it is equivalent to the
+  // hasIncidentEditPermission helper this replaces.
+  const getRowEditPermission = (fqn?: string) => {
+    const hasPermission = testCasePermissions.find(
+      (item) => item.fullyQualifiedName === fqn
     );
+
+    return getDerivedPermissionFlags(
+      hasPermission ?? DEFAULT_ENTITY_PERMISSION,
+      Boolean(tableDetails?.deleted)
+    ).can(Operation.EditStatus);
+  };
 
   const testCaseResolutionStatusDetailsRender = (
     value?: Assigned,
@@ -110,18 +121,14 @@ const IncidentManagerTable = ({
       return <Skeleton height={24} variant="rectangular" width={100} />;
     }
 
-    const hasPermission = testCasePermissions.find(
-      (item) =>
-        item.fullyQualifiedName ===
-        record?.testCaseReference?.fullyQualifiedName
-    );
-
     return (
       <div data-testid="assignee">
         <OwnerLabel
           isCompactView
           className="m-0"
-          hasPermission={hasIncidentEditPermission(hasPermission)}
+          hasPermission={getRowEditPermission(
+            record?.testCaseReference?.fullyQualifiedName
+          )}
           multiple={{
             user: false,
             team: false,
@@ -180,9 +187,7 @@ const IncidentManagerTable = ({
       [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
       '.'
     );
-    const hasPermission = testCasePermissions.find(
-      (item) => item.fullyQualifiedName === ref?.fullyQualifiedName
-    );
+    const canEditRow = getRowEditPermission(ref?.fullyQualifiedName);
 
     return (
       <Table.Row id={record.id ?? ''} key={record.id}>
@@ -232,7 +237,7 @@ const IncidentManagerTable = ({
             <TestCaseIncidentManagerStatus
               isInline
               data={record}
-              hasPermission={hasIncidentEditPermission(hasPermission)}
+              hasPermission={canEditRow}
               onSubmit={handleStatusSubmit}
             />
           )}
@@ -243,7 +248,7 @@ const IncidentManagerTable = ({
           ) : (
             <Severity
               isInline
-              hasPermission={hasIncidentEditPermission(hasPermission)}
+              hasPermission={canEditRow}
               severity={record.severity}
               onSubmit={(severity) => handleSeveritySubmit(record, severity)}
             />

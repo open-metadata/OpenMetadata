@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
@@ -24,17 +24,13 @@ import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addApiEndpointFollower,
@@ -49,10 +45,6 @@ import {
 } from '../../rest/queries/apiEndpointQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -62,25 +54,34 @@ const APIEndpointPage = () => {
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const queryClient = useQueryClient();
 
   const { entityFqn: apiEndpointFqn } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [apiEndpointPermissions, setApiEndpointPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // Fetch-owner, by fqn. Unlike Pipeline/MlModel/Dashboard/Chart's detail pages, no child
+  // component owns a second useEntityPermissions call here — APIEndpointDetails (child)
+  // consumes this page's `apiEndpointPermissions` as a raw OperationPermission prop (rule 2),
+  // so this is a single fetch, not a double-fetch.
+  const {
+    permissions: apiEndpointPermissions,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    hasViewAccess: canViewApiEndpoint,
+  } = useEntityPermissions(ResourceEntity.API_ENDPOINT, apiEndpointFqn, {
+    enabled: Boolean(apiEndpointFqn),
+  });
 
-  const canViewApiEndpoint = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        apiEndpointPermissions,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [apiEndpointPermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: apiEndpointFqn,
+        })
+      );
+    }
+  }, [permissionsError]);
 
   const apiEndpointCacheKey = useMemo(
     () => apiEndpointQueryKey(apiEndpointFqn, API_ENDPOINT_DEFAULT_FIELDS),
@@ -167,26 +168,6 @@ const APIEndpointPage = () => {
     () => getEntityName(apiEndpointDetails),
     [apiEndpointDetails]
   );
-
-  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.API_ENDPOINT,
-        entityFqn
-      );
-      setApiEndpointPermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const saveUpdatedApiEndpointData = useCallback(
     (updatedData: APIEndpoint) => {
@@ -347,10 +328,6 @@ const APIEndpointPage = () => {
     [setApiEndpointDetails]
   );
 
-  useEffect(() => {
-    fetchResourcePermission(apiEndpointFqn);
-  }, [apiEndpointFqn]);
-
   if (permissionsLoading || apiEndpointLoading) {
     return <PageLoader />;
   }
@@ -361,7 +338,7 @@ const APIEndpointPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic) {
+  if (!canViewApiEndpoint) {
     return (
       <ErrorPlaceHolder
         className="border-none"

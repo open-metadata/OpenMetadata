@@ -33,7 +33,6 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -48,7 +47,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback, {
@@ -298,42 +297,30 @@ export const CommonWidgets = ({
     }
   }, [data, entityType]);
 
-  const {
-    editDataProductPermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editDataProductPermission: permissions.EditAll && !deleted,
-      editTagsPermission:
-        (permissions.EditTags || permissions.EditAll) && !deleted,
-      editDescriptionPermission:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
-      editGlossaryTermsPermission:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
-      editCustomAttributePermission:
-        (permissions.EditAll || permissions.EditCustomFields) && !deleted,
-      editAllPermission: permissions.EditAll && !deleted,
-      editLineagePermission:
-        (permissions.EditAll || permissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        permissions.ViewAll || permissions.ViewSampleData,
-      viewQueriesPermission: permissions.ViewAll || permissions.ViewQueries,
-      viewProfilerPermission:
-        permissions.ViewAll ||
-        permissions.ViewDataProfile ||
-        permissions.ViewTests,
-      viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        permissions,
-        Operation.ViewCustomFields
-      ),
-    }),
+  // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission read
+  // off useGenericContext(). `editTagsPermission`/`editDescriptionPermission`/
+  // `editGlossaryTermsPermission`/`editCustomAttributePermission` move from a hand-rolled raw
+  // OR (`field || EditAll`) to the prioritized `canEdit*` flags — a real behavior change in
+  // one case (field key explicitly present-and-false, EditAll true): the raw OR granted
+  // access via the EditAll fallback, the prioritized flag now denies it. This mirrors the
+  // sanctioned canViewBasic precedent (Task 6 Finding 1 — "explicit deny beats the broader
+  // grant"), so applying the same fix here rather than preserving the old additive-OR bug.
+  // `editDataProductPermission` (EditAll-only) → `canEditAll` is an identical mapping.
+  // `viewCustomPropertiesPermission` already called the prioritized helper, so → `canViewCustomFields`
+  // is a pure rename. `deleted` is threaded through since every canEdit* flag needs it.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions, deleted),
     [permissions, deleted]
   );
+
+  const {
+    canEditAll: editDataProductPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = flags;
 
   const handleDataProductsSave = useCallback(
     async (dataProducts: DataProduct[]) => {

@@ -109,6 +109,7 @@ import {
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryPureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
@@ -228,6 +229,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
+
+  // Consumer via useGenericContext(). No `deleted` argument: the old expression here
+  // (bare permissions.EditAll, bulk-edit button gate) never referenced a deleted
+  // concept, so getDerivedPermissionFlags defaults to its `deleted = false` — nothing
+  // to gate. permissions.Create sites left untouched — Create isn't a flagged
+  // operation for the no-raw-permission-access lint rule.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Task[]>
   >({});
@@ -1287,7 +1298,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </Button>
           </Dropdown>
 
-          {getBulkEditButton(permissions.EditAll, handleEditGlossary)}
+          {getBulkEditButton(canEditAll, handleEditGlossary)}
 
           <Button
             className="text-primary remove-button-background-hover"
@@ -1321,6 +1332,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     statusDropdownMenu,
     searchInput,
     toggleExpandAll,
+    canEditAll,
   ]);
 
   const handleAddGlossaryTermClick = () => {

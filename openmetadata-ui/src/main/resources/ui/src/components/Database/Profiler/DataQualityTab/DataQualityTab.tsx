@@ -57,7 +57,8 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -543,16 +544,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       (permission) =>
         permission.fullyQualifiedName === record.fullyQualifiedName
     );
-    // Incident status is gated by `EditStatus` on the test case so that incidents can be managed
-    // without test case edit permissions.
+    // Per-row bulk permission, not a single entity's useEntityPermissions fetch, so derive
+    // inline rather than converting the fetch pattern (out of scope for this batch, see PR
+    // notes). Incident status is gated by `EditStatus` on the test case so that incidents can
+    // be managed without test case edit permissions; `can(EditStatus)` routes through the same
+    // getPrioritizedEditPermission path, falling back to `EditAll` when the payload carries no
+    // `EditStatus`. The `!record.deleted` gate stays outside the derivation since it also has
+    // to cover `isEditAllowed`.
     const hasEditPermission = Boolean(
       !record.deleted &&
         (isEditAllowed ||
-          (testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditStatus
-            )))
+          getDerivedPermissionFlags(
+            testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+          ).can(Operation.EditStatus))
     );
 
     return (
@@ -577,10 +581,17 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         permission.fullyQualifiedName === record.fullyQualifiedName
     );
 
-    const testCaseEditPermission = isEditAllowed || testCasePermission?.EditAll;
+    const testCaseEditPermission =
+      isEditAllowed ||
+      getDerivedPermissionFlags(testCasePermission ?? DEFAULT_ENTITY_PERMISSION)
+        .canEditAll;
     const testCaseDeletePermission =
       removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
-    const testCaseRestorePermission = Boolean(testCasePermission?.EditAll);
+    // Restore is offered on a soft-deleted row, so this must NOT be deleted-gated
+    // (mirrors DataAssetsHeader's `ungatedFlags` precedent for the same reason).
+    const testCaseRestorePermission = getDerivedPermissionFlags(
+      testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+    ).canEditAll;
     const isRestoreMode =
       deletionMode === TEST_CASE_DELETION_MODE.SOFT && record.deleted;
 

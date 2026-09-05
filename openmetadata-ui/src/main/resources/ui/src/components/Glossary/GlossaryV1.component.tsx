@@ -38,6 +38,7 @@ import {
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -364,7 +365,16 @@ const GlossaryV1 = ({
   const initializeGlossary = async () => {
     try {
       const permission = await initPermissions();
-      if (permission?.ViewAll || permission?.ViewBasic) {
+      // Derived from the just-fetched return value, not the `glossaryPermission`/
+      // `glossaryTermPermission` state: state updates are async, so reading state
+      // here would race the pending update and see the previous permission.
+      // `DEFAULT_ENTITY_PERMISSION` (all-false) fallback preserves the old
+      // `permission?.ViewAll || permission?.ViewBasic` behavior for an
+      // undefined/falsy return.
+      if (
+        getDerivedPermissionFlags(permission ?? DEFAULT_ENTITY_PERMISSION)
+          .hasViewAccess
+      ) {
         // Only load terms if we're viewing a glossary term, not a glossary
         // GlossaryTermTab handles pagination for glossaries
         if (!isGlossaryActive) {
@@ -411,8 +421,20 @@ const GlossaryV1 = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
+  // Local derivation over the fetched `glossaryPermission` state — this file fetches
+  // its own permission (owner), but does so across two conditional resource types
+  // (GLOSSARY / GLOSSARY_TERM, chosen by `isGlossaryActive`) plus a static
+  // isVersionsView bypass, none of which fits the single-resource useEntityPermissions
+  // shape cleanly. Deferred: fetch mechanism left untouched (out of scope for this
+  // batch, per the DataQualityTab/TableProfilerProvider precedent), only the raw
+  // ViewAll/ViewBasic reads convert.
+  const glossaryFlags = useMemo(
+    () => getDerivedPermissionFlags(glossaryPermission),
+    [glossaryPermission]
+  );
+
   const glossaryContent = useMemo(() => {
-    if (!(glossaryPermission.ViewAll || glossaryPermission.ViewBasic)) {
+    if (!glossaryFlags.hasViewAccess) {
       return (
         <div className="full-height">
           <ErrorPlaceHolder
@@ -439,8 +461,7 @@ const GlossaryV1 = ({
       />
     );
   }, [
-    glossaryPermission.ViewAll,
-    glossaryPermission.ViewBasic,
+    glossaryFlags.hasViewAccess,
     isTabExpanded,
     isVersionsView,
     onGlossaryDelete,

@@ -54,6 +54,7 @@ import {
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -209,6 +210,18 @@ const ClassificationDetails = forwardRef(
       }
     }, [currentVersion, tagCategoryName]);
 
+    // Prop stays raw (OperationPermission) — ClassificationUtils.tsx's getTagsTableColumn
+    // (out of this batch's scope: src/utils/**, not src/components/**) also consumes this
+    // object verbatim, and the GenericProvider context below exposes it to consumers as-is
+    // (TableProfilerProvider precedent, Task 8 Batch 3). No `deleted` argument:
+    // isClassificationDeleted is a separate, already-computed local (from
+    // getClassificationInfo) folded into `isEditable` below, never passed into the
+    // derivation itself — the old expressions never gated on it either.
+    const classificationFlags = useMemo(
+      () => getDerivedPermissionFlags(classificationPermissions),
+      [classificationPermissions]
+    );
+
     const {
       editClassificationPermission,
       editDescriptionPermission,
@@ -220,27 +233,27 @@ const ClassificationDetails = forwardRef(
       const isEditable = !isClassificationDisabled && !isClassificationDeleted;
 
       return {
-        editClassificationPermission: classificationPermissions.EditAll,
+        editClassificationPermission: classificationFlags.canEditAll,
+        // explicit-deny-wins fix (Task 6 Finding 1): old raw `EditAll || EditDescription`
+        // let a classification-level EditAll override an explicit EditDescription: false.
         editDescriptionPermission:
           !isVersionView &&
           !isClassificationDisabled &&
-          (classificationPermissions.EditAll ||
-            classificationPermissions.EditDescription),
+          classificationFlags.canEditDescription,
         createPermission:
           !isVersionView &&
           (checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
-            classificationPermissions.EditAll),
+            classificationFlags.canEditAll),
         deletePermission:
           classificationPermissions.Delete && !isSystemClassification,
-        editOwnerPermission:
-          isEditable &&
-          (classificationPermissions.EditAll ||
-            classificationPermissions.EditOwners),
-        editDomainPermission: isEditable && classificationPermissions.EditAll,
+        // explicit-deny-wins fix, same as editDescriptionPermission above.
+        editOwnerPermission: isEditable && classificationFlags.canEditOwners,
+        editDomainPermission: isEditable && classificationFlags.canEditAll,
       };
     }, [
       permissions,
       classificationPermissions,
+      classificationFlags,
       isVersionView,
       isClassificationDisabled,
       isSystemClassification,
@@ -280,8 +293,8 @@ const ClassificationDetails = forwardRef(
       () =>
         !isVersionView &&
         !isSystemClassification &&
-        classificationPermissions.ViewAll,
-      [isVersionView, isSystemClassification, classificationPermissions]
+        classificationFlags.canViewAll,
+      [isVersionView, isSystemClassification, classificationFlags]
     );
 
     // Import creates/updates tags, so it needs full EditAll access and is not
@@ -292,12 +305,12 @@ const ClassificationDetails = forwardRef(
         !isVersionView &&
         !isClassificationDisabled &&
         !isSystemClassification &&
-        classificationPermissions.EditAll,
+        classificationFlags.canEditAll,
       [
         isVersionView,
         isClassificationDisabled,
         isSystemClassification,
-        classificationPermissions,
+        classificationFlags,
       ]
     );
 

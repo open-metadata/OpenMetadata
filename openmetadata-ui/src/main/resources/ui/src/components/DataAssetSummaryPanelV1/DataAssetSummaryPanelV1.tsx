@@ -40,6 +40,7 @@ import EntityLink from '../../utils/EntityLink';
 import { hasLineageTab } from '../../utils/EntityPermissionUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -154,6 +155,22 @@ export const DataAssetSummaryPanelV1 = ({
   >({});
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
+
+  // Fetch mechanism (`init`, below) intentionally left untouched — Task 8 documented-deferral
+  // precedent (GlossaryV1.component.tsx / ServiceDetailsPage.tsx): for TABLE_COLUMN entities
+  // this fetches the PARENT TABLE's permission (columns don't have their own), for every other
+  // entity type it fetches by the entity's own dynamic id+type, and the failure path seeds a
+  // bespoke ViewBasic/ViewAll:true fallback for columns that useEntityPermissions has no
+  // equivalent for — not a mechanical hook swap. `deleted` is passed through here because every
+  // edit flag below was already ANDed with `!dataAsset.deleted` in the old code.
+  const flags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        entityPermissions ?? DEFAULT_ENTITY_PERMISSION,
+        Boolean(dataAsset.deleted)
+      ),
+    [entityPermissions, dataAsset.deleted]
+  );
   const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
@@ -212,10 +229,7 @@ export const DataAssetSummaryPanelV1 = ({
   );
 
   const fetchIncidentCount = useCallback(async () => {
-    if (
-      dataAsset?.fullyQualifiedName &&
-      (entityPermissions?.ViewAll || entityPermissions?.ViewDataProfile)
-    ) {
+    if (dataAsset?.fullyQualifiedName && flags.canViewDataProfile) {
       try {
         const { paging } = await getListTestCaseIncidentStatus({
           limit: 0,
@@ -236,7 +250,7 @@ export const DataAssetSummaryPanelV1 = ({
         });
       }
     }
-  }, [dataAsset?.fullyQualifiedName, entityPermissions]);
+  }, [dataAsset?.fullyQualifiedName, flags.canViewDataProfile]);
 
   const fetchTestCases = useCallback(async () => {
     if (!dataAsset?.fullyQualifiedName || entityType !== EntityType.TABLE) {
@@ -320,36 +334,21 @@ export const DataAssetSummaryPanelV1 = ({
       // Columns inherit domain from table - not editable
       editDomainPermission:
         canEditColumnField &&
-        entityPermissions?.EditAll &&
-        !dataAsset.deleted &&
+        flags.canEditAll &&
         panelPath !== ENTITY_PATH.dataProductsTab,
-      editDescriptionPermission:
-        canEditSummary &&
-        (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
-        !dataAsset.deleted,
-      editGlossaryTermsPermission:
-        canEditSummary &&
-        (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
-        !dataAsset.deleted,
+      editDescriptionPermission: canEditSummary && flags.canEditDescription,
+      editGlossaryTermsPermission: canEditSummary && flags.canEditGlossaryTerms,
       // Columns inherit owners from table - not editable
-      editOwnerPermission:
-        canEditColumnField &&
-        (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
-        !dataAsset.deleted,
+      editOwnerPermission: canEditColumnField && flags.canEditOwners,
       // Columns inherit tier from table - not editable
-      editTierPermission:
-        canEditColumnField &&
-        (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
-        !dataAsset.deleted,
-      editTagsPermission:
-        canEditSummary &&
-        (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
-        !dataAsset.deleted,
+      editTierPermission: canEditColumnField && flags.canEditTier,
+      editTagsPermission: canEditSummary && flags.canEditTags,
       // Columns inherit data products from table - not editable
-      editDataProductPermission:
-        canEditColumnField && entityPermissions?.EditAll && !dataAsset.deleted,
+      editDataProductPermission: canEditColumnField && flags.canEditAll,
     };
-  }, [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]);
+    // `flags` already folds in entityPermissions and dataAsset.deleted, so neither belongs
+    // in the dependency list any more.
+  }, [canEditSummary, flags, isColumnEntity, panelPath]);
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders

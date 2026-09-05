@@ -26,9 +26,11 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { getClassifications } from '../../utils/TagsUtils';
+import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagsPage from './TagsPage';
 import {
   MOCK_ALL_CLASSIFICATIONS,
@@ -58,6 +60,36 @@ jest.mock('react-router-dom', () => ({
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 );
+
+// TagsPage now fetches the classification's own permission via useEntityPermissions rather
+// than the raw PermissionProvider.getEntityPermission REST boundary — mock the hook directly
+// (TableDetailsPageV1.test.tsx pattern) since this test file never wraps a QueryClientProvider.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockClassificationPermissions = (
+  overrides: Partial<Record<string, boolean>> = {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+  }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockProps = {
   pageTitle: 'tags',
@@ -168,14 +200,6 @@ const mockCategory = [
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-    }),
     permissions: {
       classification: {
         Create: true,
@@ -197,7 +221,12 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+// jest.requireActual is load-bearing (Task 8 Batch 3 note 5): getDerivedPermissionFlags
+// (used both by the mocked useEntityPermissions helper above and internally by the real
+// PermissionDerivation module) calls getPrioritizedEditPermission/getPrioritizedViewPermission
+// from this same module — a blanket mock without it throws "... is not a function".
 jest.mock('../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
   DEFAULT_ENTITY_PERMISSION: {
     Create: true,
@@ -501,6 +530,10 @@ jest.mock('../../hooks/useEntityRules', () => ({
 }));
 
 describe('Test TagsPage page', () => {
+  beforeEach(() => {
+    setMockClassificationPermissions();
+  });
+
   it('Component should render', async () => {
     render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
 
@@ -804,6 +837,40 @@ describe('Test TagsPage page', () => {
       expect(ResizableLeftPanels).toHaveBeenCalledWith(
         expect.objectContaining({
           pageTitle: 'PersonalData',
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('applies explicit-deny-wins to classificationFormPermissions.editDescription', async () => {
+    // Regression test for the Task 6 Finding 1 fix: the old raw
+    // `classificationPermissions.EditAll || classificationPermissions.EditDescription`
+    // let a classification-level EditAll override an explicit EditDescription: false. The
+    // getDerivedPermissionFlags-based conversion prioritizes the field-specific key, so an
+    // explicit deny now wins even with EditAll: true.
+    setMockClassificationPermissions({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: false,
+      EditDisplayName: true,
+    });
+
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    fireEvent.click(await screen.findByTestId('add-classification'));
+
+    await waitFor(() => {
+      expect(ClassificationFormDrawer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          permissions: expect.objectContaining({
+            editAll: true,
+            editDescription: false,
+            editDisplayName: true,
+          }),
         }),
         expect.anything()
       );

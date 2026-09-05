@@ -14,7 +14,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Typography } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
@@ -25,6 +25,7 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityDiffPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
@@ -45,8 +46,16 @@ const GlossaryTermSynonyms = () => {
   } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
 
+  // Consumer via useGenericContext(). No `deleted` argument: the old expressions here
+  // never gated on glossaryTerm.deleted, only on a bare EditAll read, so
+  // getDerivedPermissionFlags defaults to its `deleted = false` — nothing to gate.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+
   const getSynonyms = () =>
-    !permissions.EditAll || !isEmpty(synonyms) ? (
+    !canEditAll || !isEmpty(synonyms) ? (
       <div className="d-flex flex-wrap">
         {synonyms.map((synonym) => (
           <TagButton
@@ -56,7 +65,7 @@ const GlossaryTermSynonyms = () => {
           />
         ))}
 
-        {!permissions.EditAll && synonyms.length === 0 && (
+        {!canEditAll && synonyms.length === 0 && (
           <div>{NO_DATA_PLACEHOLDER}</div>
         )}
       </div>
@@ -167,7 +176,7 @@ const GlossaryTermSynonyms = () => {
       <Typography.Text className="text-sm font-medium">
         {t('label.synonym-plural')}
       </Typography.Text>
-      {permissions.EditAll &&
+      {canEditAll &&
         isViewMode &&
         (isEmpty(synonyms) ? (
           <PlusIconButton

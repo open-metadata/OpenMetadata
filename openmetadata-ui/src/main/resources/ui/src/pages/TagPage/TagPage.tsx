@@ -95,6 +95,7 @@ import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -112,7 +113,6 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -145,7 +145,7 @@ const TagPage = () => {
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab?: string;
   }>();
-  const { permissions, getEntityPermission } = usePermissionProvider();
+  const { permissions } = usePermissionProvider();
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
     PageType.Tag
   );
@@ -156,9 +156,6 @@ const TagPage = () => {
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const [assetCount, setAssetCount] = useState<number>(0);
-  const [tagPermissions, setTagPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -192,6 +189,28 @@ const TagPage = () => {
       showErrorToast(tagError as AxiosError);
     }
   }, [tagError]);
+
+  // By-id fetch (Task 8 mixed-gating note, TagsPage.tsx sibling precedent): tagItem only
+  // resolves after the entity useQuery above, so this is the by-id identifier form.
+  // Deliberately ungated (no `deleted` option): the delete-menu-item gate below never
+  // checked `tagItem.deleted` in the old raw read, and the disabled/deleted-aware block
+  // further down applies its own `isEditable` (disabled AND deleted) multiplication —
+  // folding `deleted` in here would double-gate one site and wrongly gate the other.
+  const {
+    permissions: tagPermissions,
+    canEditAll: tagCanEditAll,
+    error: tagPermissionsError,
+  } = useEntityPermissions(
+    ResourceEntity.TAG,
+    { id: tagItem?.id ?? '' },
+    { enabled: Boolean(tagItem?.id) }
+  );
+
+  useEffect(() => {
+    if (tagPermissionsError) {
+      showErrorToast(tagPermissionsError as AxiosError);
+    }
+  }, [tagPermissionsError]);
 
   const setTagItem = useCallback(
     (
@@ -260,12 +279,12 @@ const TagPage = () => {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
-        editTagsPermission: isEditable && tagPermissions.EditAll,
+        editTagsPermission: isEditable && tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
           EditOwners:
-            isEditable && (tagPermissions.EditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagPermissions.EditAll,
+            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
+          EditAll: isEditable && tagCanEditAll,
         },
       };
     }
@@ -274,7 +293,12 @@ const TagPage = () => {
       editTagsPermission: false,
       disabledAwarePermissions: tagPermissions,
     };
-  }, [tagPermissions, tagItem?.disabled, tagItem?.deleted]);
+    // `tagItem` itself is the real dependency here — a pre-existing missing-dependency gap
+    // (the `if (tagItem)` branch never re-ran once tagItem loaded, because
+    // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
+    // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
+    // (Task 8 Batches 3–4) of fixing missing deps in passing.
+  }, [tagPermissions, tagCanEditAll, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
@@ -304,24 +328,9 @@ const TagPage = () => {
       : 'tags';
 
   const showDisableOption = useMemo(
-    () => tagPermissions.EditAll && !tagItem?.deleted,
-    [tagPermissions.EditAll, tagItem?.deleted]
+    () => tagCanEditAll && !tagItem?.deleted,
+    [tagCanEditAll, tagItem?.deleted]
   );
-
-  const fetchCurrentTagPermission = useCallback(async () => {
-    if (!tagItem?.id) {
-      return;
-    }
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.TAG,
-        tagItem?.id
-      );
-      setTagPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [tagItem?.id, getEntityPermission]);
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
@@ -562,7 +571,7 @@ const TagPage = () => {
           },
         ]
       : []),
-    ...(tagItem?.provider !== ProviderType.System && tagPermissions.EditAll
+    ...(tagItem?.provider !== ProviderType.System && tagCanEditAll
       ? [
           {
             label: (
@@ -801,11 +810,10 @@ const TagPage = () => {
 
   useEffect(() => {
     if (tagItem) {
-      fetchCurrentTagPermission();
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [tagItem, fetchCurrentTagPermission, fetchTaskCounts, fetchActivityCount]);
+  }, [tagItem, fetchTaskCounts, fetchActivityCount]);
 
   if (tagLoading || isCustomPageLoading) {
     return <Loader />;
