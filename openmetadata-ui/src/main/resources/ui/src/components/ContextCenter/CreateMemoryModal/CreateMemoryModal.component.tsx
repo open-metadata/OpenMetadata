@@ -212,6 +212,9 @@ const EmptyTags: FC = () => {
   );
 };
 
+const getLinkedAssetKey = (asset: DataAssetOption) =>
+  asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
+
 const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   assets,
 }) => {
@@ -222,10 +225,7 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   return (
     <div className="tw:flex tw:flex-col tw:gap-2">
       {assets.map((asset) => (
-        <LinkedAssetCard
-          asset={asset}
-          key={asset.reference?.fullyQualifiedName ?? String(asset.value ?? '')}
-        />
+        <LinkedAssetCard asset={asset} key={getLinkedAssetKey(asset)} />
       ))}
     </div>
   );
@@ -394,6 +394,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     },
     []
   );
+
+  const handleRemoveLinkedAsset = useCallback((fqn: string) => {
+    setLinkedAssets((prev) => prev.filter((a) => getLinkedAssetKey(a) !== fqn));
+  }, []);
 
   const handleTagSave = useCallback(
     async (tags: DefaultOptionType | DefaultOptionType[]) => {
@@ -851,27 +855,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             <EmptyLinkedAssets />
                           ) : (
                             <div className="tw:flex tw:flex-col tw:gap-2">
-                              {linkedAssets.map((asset) => {
-                                const assetKey =
-                                  asset.reference?.fullyQualifiedName ??
-                                  String(asset.value ?? '');
-
-                                return (
-                                  <LinkedAssetCard
-                                    asset={asset}
-                                    key={assetKey}
-                                    onRemove={(fqn) =>
-                                      setLinkedAssets((prev) =>
-                                        prev.filter(
-                                          (a) =>
-                                            (a.reference?.fullyQualifiedName ??
-                                              String(a.value ?? '')) !== fqn
-                                        )
-                                      )
-                                    }
-                                  />
-                                );
-                              })}
+                              {linkedAssets.map((asset) => (
+                                <LinkedAssetCard
+                                  asset={asset}
+                                  key={getLinkedAssetKey(asset)}
+                                  onRemove={handleRemoveLinkedAsset}
+                                />
+                              ))}
                             </div>
                           )}
                         </>

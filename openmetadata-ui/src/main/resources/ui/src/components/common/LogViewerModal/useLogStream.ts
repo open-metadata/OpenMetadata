@@ -144,13 +144,16 @@ export const useLogStream = ({
       }
     };
 
+    const setHealthLive = () => update(() => setHealth('live'));
+
     const handleLogs = (event: LogStreamEvent) => {
       if (event.truncated) {
         update(() => setTruncated(true));
       }
 
       if (event.logs) {
-        update(() => setLogs((prev) => prev + event.logs));
+        const appendChunk = (prev: string) => prev + event.logs;
+        update(() => setLogs(appendChunk));
       }
 
       update(() => setLoading(false));
@@ -225,9 +228,7 @@ export const useLogStream = ({
         {
           signal,
           headers: { Authorization: `Bearer ${token}` },
-          onopen: createStreamOpenHandler(retryState, () =>
-            update(() => setHealth('live'))
-          ),
+          onopen: createStreamOpenHandler(retryState, setHealthLive),
           onmessage: (message) => handleFrame(message.data),
           onerror: (streamError) => {
             // Rethrow so the loop below owns retry timing and token refresh.
