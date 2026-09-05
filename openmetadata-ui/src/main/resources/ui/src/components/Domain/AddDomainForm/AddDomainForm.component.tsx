@@ -293,6 +293,24 @@ const mapEntityReferenceToOption = (
   value: reference,
 });
 
+// Built once at module scope, never per render. DomainType is an enum, so this
+// list can never change — but rebuilding it inside the component handed `Select`
+// a new `items` array on every render, and a new collection identity makes
+// react-aria tear down and remount the open listbox. The option the user (or
+// Playwright) is mid-click on is detached underneath them: the merge-queue trace
+// for "Create domains and add assets" shows the Aggregate option going
+// "not stable" and then "detached from the DOM", retrying until the test timed
+// out. `dataProductTypeOptions` just below was already memoized; this was not.
+const DOMAIN_TYPE_OPTIONS = Object.keys(DomainType).map((key) => {
+  const domainTypeValue = DomainType[key as keyof typeof DomainType];
+
+  return {
+    label: domainTypeValue,
+    id: domainTypeValue,
+    value: domainTypeValue,
+  };
+});
+
 const AddDomainForm = ({
   form,
   isFormInDialog,
@@ -437,16 +455,6 @@ const AddDomainForm = ({
         field.fieldPath.startsWith('extension.')
     );
   }, [intakeForm]);
-
-  const domainTypeOptions = Object.keys(DomainType).map((key) => {
-    const domainTypeValue = DomainType[key as keyof typeof DomainType];
-
-    return {
-      label: domainTypeValue,
-      id: domainTypeValue,
-      value: domainTypeValue,
-    };
-  });
 
   const dataProductTypeOptions = useMemo<DomainFormSelectItem[]>(
     () =>
@@ -868,7 +876,7 @@ const AddDomainForm = ({
       entity: t('label.domain-type'),
     }),
     props: {
-      options: domainTypeOptions,
+      options: DOMAIN_TYPE_OPTIONS,
       size: 'sm',
       fontSize: 'sm',
     },
