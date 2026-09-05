@@ -21,6 +21,24 @@ jest.mock('@untitledui/icons', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn(
+    ({
+      children,
+      tooltip,
+      onPress,
+      iconLeading: Icon,
+    }: {
+      children?: React.ReactNode;
+      tooltip?: string;
+      onPress?: () => void;
+      iconLeading?: React.ElementType;
+    }) => (
+      <button aria-label={tooltip} onClick={() => onPress?.()}>
+        {Icon && <Icon />}
+        {children}
+      </button>
+    )
+  ),
   HintText: jest.fn(
     ({
       children,
