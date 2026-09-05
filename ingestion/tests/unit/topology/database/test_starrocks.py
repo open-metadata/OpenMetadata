@@ -13,14 +13,18 @@
 Test StarRocks using the topology
 """
 
+from copy import deepcopy
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy import types as sqltypes
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+)
+from metadata.ingestion.source.database.starrocks.lineage import (
+    StarRocksLineageSource,
 )
 from metadata.ingestion.source.database.starrocks.metadata import (
     StarRocksSource,
@@ -171,3 +175,83 @@ class TestStarRocksIcebergMapping(TestCase):
         from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
 
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+
+
+mock_starrocks_lineage_config = {
+    "source": {
+        "type": "starrocks-lineage",
+        "serviceName": "local_starrocks",
+        "serviceConnection": {
+            "config": {
+                "type": "StarRocks",
+                "username": "root",
+                "hostPort": "localhost:9030",
+                "password": "test",
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseLineage",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "starrocks"},
+        }
+    },
+}
+
+
+class TestStarRocksLineageDatabaseName:
+    """StarRocks has no database/schema split: the audit log `db` column is ingested
+    as the OM schema, so the OM database has to come from the service config. Emitting
+    the audit `db` as the database builds `service.db.db.table` FQNs that never resolve,
+    and every parsed lineage edge is silently dropped (issue #26600)."""
+
+    @staticmethod
+    def _build_lineage_source(database_name: str | None):
+        config = deepcopy(mock_starrocks_lineage_config)
+        if database_name:
+            config["source"]["serviceConnection"]["config"]["databaseName"] = database_name
+
+        with (
+            patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection") as mock_get_engine,
+            patch("metadata.ingestion.source.database.query_parser_source.test_connection_common"),
+        ):
+            mock_get_engine.return_value = MagicMock()
+            workflow_config = OpenMetadataWorkflowConfig.model_validate(config)
+            return StarRocksLineageSource.create(
+                config["source"],
+                workflow_config.workflowConfig.openMetadataServerConfig,
+            )
+
+    @pytest.mark.parametrize(
+        "configured_database_name, expected_database_name",
+        [(None, "default"), ("analytics", "analytics")],
+    )
+    def test_table_query_uses_service_database_name(self, configured_database_name, expected_database_name):
+        source = self._build_lineage_source(configured_database_name)
+
+        audit_row = {
+            "query_text": "INSERT INTO sales_db.target SELECT * FROM sales_db.source",
+            "database_name": "sales_db",
+            "schema_name": "sales_db",
+        }
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [audit_row]
+        source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+        source.engine.connect.return_value.__exit__ = Mock()
+
+        table_queries = list(source.yield_table_query())
+
+        assert len(table_queries) == 1
+        assert table_queries[0].databaseName == expected_database_name
+        # The audit `db` stays the schema, which is what metadata ingestion created
+        assert table_queries[0].databaseSchema == "sales_db"

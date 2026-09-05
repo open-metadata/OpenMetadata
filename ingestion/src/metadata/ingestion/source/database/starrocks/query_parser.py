@@ -23,6 +23,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_db_source import (
+    get_service_database_name,
+)
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -53,3 +56,16 @@ class StarRocksQueryParserSource(QueryParserSource, ABC):
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
+
+    def get_database_name(self, data: dict) -> str:  # pylint: disable=arguments-differ
+        """
+        StarRocks has no database/schema split: the audit log `db` column is what
+        the metadata workflow ingests as the OM *schema*, while the OM *database*
+        is the service-level name. Returning the audit `db` here would build FQNs
+        like `service.db.db.table`, which never resolve, so the parsed lineage is
+        silently dropped.
+
+        Share the resolution with `CommonDbSourceService.get_database_names` so the
+        two workflows cannot drift.
+        """
+        return get_service_database_name(self.service_connection)
