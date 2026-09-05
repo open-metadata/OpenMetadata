@@ -23,11 +23,13 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
 )
-from metadata.utils.secrets.secrets_manager import logger
+
+logger = ingestion_logger()
 
 
 class AWSSecretsManager(AWSBasedSecretsManager):

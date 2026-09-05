@@ -19,13 +19,12 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
-from metadata.ingestion.source.database.sas.settings import sas_settings
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_VERIFY_SSL = sas_settings.verify_ssl
 
 
 class SASClient:
@@ -42,7 +41,7 @@ class SASClient:
             auth_token=self.get_auth_token,
             api_version="",
             allow_redirects=True,
-            verify=_VERIFY_SSL,
+            verify=get_verify_ssl_fn(config.verifySSL)(config.sslConfig),
         )
         self.client = TrackedREST(client_config, source_name="sas")
         # custom setting
@@ -96,7 +95,12 @@ class SASClient:
             asset_filter = self.custom_filter_dataflows
 
         logger.debug(
-            f"Configuration for {assets}: enable {assets} - {enable_asset}, custom {assets} filter - {asset_filter}"
+            "Configuration for %s: enable %s - %s, custom %s filter - %s",
+            assets,
+            assets,
+            enable_asset,
+            assets,
+            asset_filter,
         )
         endpoint = f"catalog/search?indices={assets}&q={asset_filter if str(asset_filter) != 'None' else '*'}"
         headers = {"Accept-Item": "application/vnd.sas.metadata.instance.entity+json"}
@@ -170,5 +174,12 @@ class SASClient:
             "Authorization": "Basic c2FzLmNsaTo=",
         }
         url = base_url + endpoint
-        response = requests.request("POST", url, headers=headers, data=payload, verify=_VERIFY_SSL, timeout=10)
+        response = requests.request(
+            "POST",
+            url,
+            headers=headers,
+            data=payload,
+            verify=get_verify_ssl_fn(self.config.verifySSL)(self.config.sslConfig),
+            timeout=10,
+        )
         return response.json()["access_token"]
