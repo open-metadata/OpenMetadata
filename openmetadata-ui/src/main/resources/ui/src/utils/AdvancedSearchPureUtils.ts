@@ -21,6 +21,7 @@ import {
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
+  QUICK_FILTER_LABEL_TRANSFORMS,
   QUICK_FILTER_SOURCE_FIELDS,
   TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
@@ -214,6 +215,11 @@ export const getQuickFilterSourceFields = (
 ): string | undefined =>
   field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
 
+export const getQuickFilterLabelTransform = (
+  field: ExploreQuickFilterField
+): ((label: string) => string) | undefined =>
+  field.labelTransform ?? QUICK_FILTER_LABEL_TRANSFORMS[field.key as EntityFields];
+
 const findSourceLabel = (
   sources: unknown[],
   path: string,
@@ -293,17 +299,20 @@ export const hydrateQuickFilterLabels = (
 
   return applyQuickFilterLabels(fields, (field, optionKey) => {
     const sourceFields = getQuickFilterSourceFields(field);
-
-    return sourceFields
+    const transform = getQuickFilterLabelTransform(field);
+    const label = sourceFields
       ? findSourceLabel(sources, sourceFields, optionKey)
       : undefined;
+
+    return label && transform ? transform(label) : label;
   });
 };
 
 export const getOptionsFromAggregationBucket = (
   buckets: Bucket[],
   labelFormatter?: (key: string) => string,
-  sourceFields?: string
+  sourceFields?: string,
+  labelTransform?: (label: string) => string
 ) => {
   if (!buckets) {
     return [];
@@ -334,6 +343,12 @@ export const getOptionsFromAggregationBucket = (
         if (extracted) {
           label = extracted;
         }
+      }
+
+      // Apply per-field label transform (e.g., strip classification prefix
+      // so Tier options read "Tier1" instead of "Tier.Tier1").
+      if (labelTransform) {
+        label = labelTransform(label);
       }
 
       return { key: option.key, label, count: option.doc_count ?? 0 };

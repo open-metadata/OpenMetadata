@@ -82,6 +82,34 @@ export const QUICK_FILTER_SOURCE_FIELDS: Partial<Record<EntityFields, string>> =
     [EntityFields.ENTITY_STATUS]: 'entityStatus',
   };
 
+/**
+ * Strips the classification prefix from a `tagFQN`-shaped value.
+ *
+ * Tier and Certification quick-filter options aggregate on `tagFQN` (e.g.
+ * `Tier.Tier1`, `Certification.Gold`), but the classification name already
+ * appears as the dropdown label, so repeating it inside every option adds no
+ * information. This transform produces the short form (`Tier1`, `Gold`) that
+ * Family B surfaces (Data Quality dashboard, Data Insight) already show via
+ * `getEntityName(source)`.
+ */
+export const stripClassificationPrefix = (tagFQN: string): string => {
+  const dotIndex = tagFQN.indexOf('.');
+
+  return dotIndex >= 0 ? tagFQN.substring(dotIndex + 1) : tagFQN;
+};
+
+/**
+ * Per-field label transforms applied after the `_source`-based label is
+ * resolved. Only fields whose raw label shape differs from the desired display
+ * shape need an entry here.
+ */
+export const QUICK_FILTER_LABEL_TRANSFORMS: Partial<
+  Record<EntityFields, (label: string) => string>
+> = {
+  [EntityFields.TIER]: stripClassificationPrefix,
+  [EntityFields.CERTIFICATION]: stripClassificationPrefix,
+};
+
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'label.domain-plural',

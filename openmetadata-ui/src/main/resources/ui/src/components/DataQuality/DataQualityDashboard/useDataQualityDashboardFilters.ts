@@ -118,6 +118,28 @@ export interface UseDataQualityDashboardFiltersReturn {
   clearAll: () => void;
 }
 
+/**
+ * Quick-filter state for the Data Quality dashboard.
+ *
+ * **Option semantics (Gap 2):**
+ * This hook uses **catalog-lookup semantics**: filter options are fetched from
+ * the entity index (tag, glossary-term, data-product) and list every matching
+ * entity regardless of whether any asset in the current chart window carries it.
+ * This is intentional — the DQ dashboard aggregates metrics over time, and
+ * limiting options to only the currently-visible result set would hide values
+ * the user wants to pivot to (e.g. switching from Tier1 to Tier2 when Tier2
+ * assets have no test results in the current date range).
+ *
+ * The Explore page and other browse surfaces use facet-based semantics instead
+ * (see `ExploreQuickFilters`), which is correct for filtering a visible result
+ * set with counts.
+ *
+ * **Label shape (Gap 1):**
+ * Tier and Certification options use `getEntityName(source)` which resolves to
+ * `displayName || name` — the short form (e.g. `Tier1`, `Gold`). This matches
+ * the chosen label shape; no prefix-stripping transform is needed here because
+ * the entity index already provides the short name directly.
+ */
 export const useDataQualityDashboardFilters = ({
   initialFilters,
   hideFilterBar = false,
