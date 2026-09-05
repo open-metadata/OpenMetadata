@@ -42,19 +42,24 @@ export const DI_STRUCTURE = {
 
 export const GRAPH_HEIGHT = 500;
 
-export const DATA_INSIGHT_GRAPH_COLORS = [
-  '#E7B85D',
-  '#416BB3',
-  '#66B5AD',
-  '#8D6AF1',
-  '#699994',
-  '#6A86EB',
-  '#7A57A6',
-  '#7DC177',
-  '#AD4F82',
-  '#C870C5',
-  '#D87F7F',
-  '#DA996A',
+/**
+ * Recharts and Ant Progress receive concrete colors from the theme hook. Keep
+ * token references paired with fallbacks so SSR and test environments remain
+ * deterministic when computed styles are unavailable.
+ */
+export const DATA_INSIGHT_GRAPH_COLOR_TOKENS = [
+  { token: 'var(--om-color-warning-400)', fallback: '#E7B85D' },
+  { token: 'var(--om-color-blue-dark-700)', fallback: '#416BB3' },
+  { token: 'var(--om-color-teal-500)', fallback: '#66B5AD' },
+  { token: 'var(--om-color-violet-500)', fallback: '#8D6AF1' },
+  { token: 'var(--om-color-gray-blue-500)', fallback: '#699994' },
+  { token: 'var(--om-color-blue-500)', fallback: '#6A86EB' },
+  { token: 'var(--om-color-purple-500)', fallback: '#7A57A6' },
+  { token: 'var(--om-color-green-500)', fallback: '#7DC177' },
+  { token: 'var(--om-color-pink-600)', fallback: '#AD4F82' },
+  { token: 'var(--om-color-fuchsia-500)', fallback: '#C870C5' },
+  { token: 'var(--om-color-error-400)', fallback: '#D87F7F' },
+  { token: 'var(--om-color-orange-400)', fallback: '#DA996A' },
 ];
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
@@ -161,10 +166,13 @@ export const BASE_COLORS = [
   '#F48FB1',
 ];
 
-export const KPI_WIDGET_GRAPH_COLORS = [
-  '#7262F6',
-  '#6AD2FF',
-  '#2ED3B7',
-  '#E478FA',
+export const KPI_WIDGET_GRAPH_COLOR_TOKENS = [
+  { token: 'var(--om-color-violet-500)', fallback: '#7262F6' },
+  { token: 'var(--om-color-blue-light-400)', fallback: '#6AD2FF' },
+  { token: 'var(--om-color-teal-400)', fallback: '#2ED3B7' },
+  { token: 'var(--om-color-fuchsia-400)', fallback: '#E478FA' },
 ];
-export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];
+export const KPI_WIDGET_GRAPH_BG_COLOR_TOKENS = [
+  { token: 'var(--om-color-purple-50)', fallback: '#F4F2FF' },
+  { token: 'var(--om-color-blue-light-50)', fallback: '#ECFBFF' },
+];
