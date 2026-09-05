@@ -27,6 +27,11 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.models.patch_request import (
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    _sort_array_entity_fields,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.tableau.metadata import (
@@ -1113,7 +1118,8 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
 
         assert len(columns) == 1
-        assert columns[0].children is None
+        assert columns[0].children == []
+        assert "children" in columns[0].model_fields_set
         assert columns[0].displayName == "revenue"
         assert columns[0].dataTypeDisplay == "NUMERIC"
         assert columns[0].dataType == DataType.NUMERIC
@@ -1135,11 +1141,68 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
 
         assert len(columns) == 1
-        assert columns[0].children is None
+        assert columns[0].children == []
+        assert "children" in columns[0].model_fields_set
         assert columns[0].dataType == DataType.STRING
 
-    def test_renamed_column_field_keeps_child(self):
-        """A renamed field no longer mirrors the column, so the physical column stays visible."""
+    def test_tableau_titled_column_collapses(self):
+        """
+        Tableau titles database column names when it builds fields, so a Databricks column
+        `order_date` surfaces as a field named `Order Date`. Those are the same column, so the
+        mirror must still collapse -- raw comparison would leave a near-duplicate row nested.
+        """
+        data_source = DataSource(
+            id="ds-databricks-001",
+            name="lineage_destination",
+            fields=[
+                DatasourceField(
+                    id="fld-order-date",
+                    name="Order Date",
+                    upstreamColumns=[UpstreamColumn(id="col-order-date", name="order_date", remoteType="DATE")],
+                ),
+                DatasourceField(
+                    id="fld-order-amount",
+                    name="Order Amount",
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-order-amount",
+                            name="order_amount",
+                            remoteType="NUMERIC",
+                        )
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert [column.children for column in columns] == [[], []]
+        assert [column.dataTypeDisplay for column in columns] == ["DATE", "NUMERIC"]
+
+    def test_differently_named_field_keeps_child(self):
+        """Normalization must not collapse a field genuinely renamed to something else."""
+        data_source = DataSource(
+            id="ds-renamed-002",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue-usd",
+                    name="Revenue (USD)",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="R8")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns[0].children) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+
+    def test_uppercase_snake_case_column_collapses(self):
+        """
+        `SIGNUP_DATE` surfacing as a field named `Signup Date` is Tableau's own titling of the
+        physical column, not a user rename, so it collapses like any other mirror.
+        """
         data_source = DataSource(
             id="ds-renamed-001",
             name="Customer Facts",
@@ -1155,10 +1218,9 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
 
         assert len(columns) == 1
-        assert columns[0].dataTypeDisplay == "Tableau Field"
-        assert columns[0].dataType == DataType.RECORD
-        assert len(columns[0].children) == 1
-        assert columns[0].children[0].displayName == "SIGNUP_DATE"
+        assert columns[0].children == []
+        assert columns[0].dataTypeDisplay == "DATE"
+        assert columns[0].dataType == DataType.DATE
 
     def test_calculated_field_keeps_children(self):
         """A field fanning out to several columns keeps them all: they are not duplicates."""
@@ -1222,7 +1284,8 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
 
         assert len(columns) == 1
-        assert columns[0].children is None
+        assert columns[0].children == []
+        assert "children" in columns[0].model_fields_set
         assert columns[0].dataTypeDisplay == "Tableau Field"
         assert columns[0].dataType == DataType.RECORD
 
@@ -1445,6 +1508,62 @@ class TableauUnitTest(TestCase):
         assert len(column_lineage) == 1
         assert column_lineage[0].fromColumns[0].root == "db.schema.sales.revenue"
         assert column_lineage[0].toColumn.root == "svc.model.Sales.fld-revenue"
+
+    def test_collapsed_column_clears_previously_ingested_children(self):
+        """
+        Issue #30639: the patch path merges each incoming column onto the stored one via
+        `source_attr.model_copy(update=...)`, overlaying only fields present in
+        `model_fields_set`. Leaving `children` unset therefore resurrects children ingested
+        before the collapse, leaving the duplicate row visible in the UI forever.
+        """
+        data_source = DataSource(
+            id="ds-mirror-003",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="047ffe96",
+                    name="revenue_provision",
+                    upstreamColumns=[UpstreamColumn(id="610f77a9", name="revenue_provision", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+        stored_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Sales",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="047ffe96",
+                    displayName="revenue_provision",
+                    dataType=DataType.RECORD,
+                    dataTypeDisplay="Tableau Field",
+                    fullyQualifiedName="svc.model.Sales.047ffe96",
+                    children=[
+                        Column(
+                            name="610f77a9",
+                            displayName="revenue_provision",
+                            dataType=DataType.NUMERIC,
+                            dataTypeDisplay="NUMERIC",
+                            fullyQualifiedName="svc.model.Sales.047ffe96.610f77a9",
+                        )
+                    ],
+                )
+            ],
+        )
+        incoming_entity = stored_entity.model_copy(update={"columns": self.tableau.get_column_info(data_source)})
+
+        _sort_array_entity_fields(
+            source=stored_entity,
+            destination=incoming_entity,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            override_metadata=False,
+        )
+
+        merged_column = incoming_entity.columns[0]
+        assert merged_column.children == []
+        assert merged_column.dataTypeDisplay == "NUMERIC"
 
     def test_column_lineage_skips_upstream_column_without_name(self):
         """A nameless physical column cannot be resolved to a table column FQN."""
