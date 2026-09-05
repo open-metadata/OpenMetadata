@@ -30,6 +30,11 @@ interface GlossaryTermIntakeFieldsProps {
   formFields: IntakeFormField[];
 }
 
+const findCustomPropertyByName = (
+  customProperties: CustomProperty[],
+  propertyName: string
+) => customProperties.find((property) => property.name === propertyName);
+
 /**
  * Renders the intake custom properties for the Glossary Term create modal.
  *
@@ -57,8 +62,9 @@ const GlossaryTermIntakeFields = forwardRef<
           Record<string, unknown>
         >((result, [formKey, rawValue]) => {
           const propertyName = getExtensionPropertyNameFromFormKey(formKey);
-          const definition = customProperties.find(
-            (property) => property.name === propertyName
+          const definition = findCustomPropertyByName(
+            customProperties,
+            propertyName
           );
           const serializedValue = definition
             ? serializeExtensionValue(definition, rawValue)

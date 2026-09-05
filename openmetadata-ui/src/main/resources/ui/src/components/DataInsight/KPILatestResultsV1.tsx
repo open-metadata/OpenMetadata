@@ -16,11 +16,8 @@ import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  KPI_WIDGET_GRAPH_BG_COLORS,
-  KPI_WIDGET_GRAPH_COLORS,
-} from '../../constants/DataInsight.constants';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../utils/date-time/DateTimeUtils';
@@ -32,6 +29,7 @@ interface Props {
 
 const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
   const { t } = useTranslation();
+  const { kpiBackgrounds, kpiSeries } = useDataInsightChartColors();
   const { latestResultsList } = useMemo(() => {
     return { latestResultsList: Object.entries(kpiLatestResultsRecord) };
   }, [kpiLatestResultsRecord]);
@@ -67,6 +65,8 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const daysLeft = getDaysRemaining(resultData.endDate);
 
         const isTargetMet = targetResult.targetMet;
+        const seriesColor = kpiSeries[index % kpiSeries.length];
+        const backgroundColor = kpiBackgrounds[index % kpiBackgrounds.length];
 
         return (
           <Row data-testid={name} key={name}>
@@ -74,8 +74,8 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
               <div
                 className="kpi-days-section"
                 style={{
-                  color: KPI_WIDGET_GRAPH_COLORS[index],
-                  backgroundColor: KPI_WIDGET_GRAPH_BG_COLORS[index],
+                  backgroundColor,
+                  color: seriesColor,
                 }}>
                 {isTargetMet ? (
                   <>
@@ -119,7 +119,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   percent={Number(currentProgress)}
                   showInfo={false}
                   size="small"
-                  strokeColor={KPI_WIDGET_GRAPH_COLORS[index]}
+                  strokeColor={seriesColor}
                 />
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
