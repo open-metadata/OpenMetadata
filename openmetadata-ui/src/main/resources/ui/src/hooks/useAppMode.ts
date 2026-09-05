@@ -171,11 +171,13 @@ const readHint = (): AppModeHint | null => {
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (
+    const hasModeAndTsKeys =
       parsed !== null &&
       typeof parsed === 'object' &&
       'mode' in parsed &&
-      'ts' in parsed &&
+      'ts' in parsed;
+    if (
+      hasModeAndTsKeys &&
       typeof (parsed as AppModeHint).mode === 'string' &&
       typeof (parsed as AppModeHint).ts === 'number'
     ) {

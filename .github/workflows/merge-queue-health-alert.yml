@@ -1,0 +1,157 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Hourly merge-queue health check, edge-triggered on head_entry_age.
+#
+# Alerts on how long the entry at position 1 has actually waited — an observed
+# elapsed duration. GitHub's own estimatedTimeToMerge is reported for context but
+# never decides anything: measured at 3.00 merges/h projected against 0.71/h realized
+# (4.2x optimistic) while the queue was degraded, because its model assumes every
+# entry merges on its first pass.
+#
+# EDGE-TRIGGERED, NOT LEVEL-TRIGGERED. The 5h line sits on the healthy/broken
+# boundary — across a measured week, 0% of merges breached it on the three healthy
+# days and 82-88% did on the four degraded ones. Level-triggered, that is a ping every
+# hour for the length of an incident. This posts once on entry to a worse tier and
+# once on recovery. While the queue is already broken the recovery message is the
+# valuable half: it says when a CI fix actually landed.
+#
+# Scheduled runs are best-effort — GitHub drops and delays them under load. That is
+# fine here: head_entry_age is cumulative, so a missed hour does not lose the signal.
+name: Merge Queue Health Alert
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print to the job summary instead of posting to Slack.
+        type: boolean
+        default: true
+      degraded_hours:
+        description: Head-entry age that counts as degraded.
+        type: string
+        default: "5"
+      severe_hours:
+        description: Head-entry age that counts as severe.
+        type: string
+        default: "24"
+
+permissions:
+  # Naming any permission sets every other one to none. The alert reads the live queue
+  # and a 24h slice of PR timeline history for the realized-throughput figure, so PR
+  # read access has to be declared. No checks: read — this workflow never joins to
+  # check runs; that is the daily digest's job.
+  contents: read
+  pull-requests: read
+
+# State correctness depends on runs not overlapping: two concurrent runs would each
+# read the same prior state and one would clobber the other's streak.
+concurrency:
+  group: merge-queue-health-alert
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check merge queue health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # GITHUB_REPOSITORY is set for every event; github.event.repository is not
+      # populated on `schedule`, which is the only trigger that matters here.
+      BRANCH: ${{ vars.MQ_BRANCH || 'main' }}
+      STATE_FILE: .merge-queue-state/state.json
+      SLACK_FILE: slack.json
+      SLACK_CHANNEL: ${{ vars.MQ_SLACK_CHANNEL }}
+      DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_ALERT_DRY_RUN == 'true' }}
+      DEGRADED_HOURS: ${{ inputs.degraded_hours || '5' }}
+      SEVERE_HOURS: ${{ inputs.severe_hours || '24' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # State lives in the MQ_ALERT_STATE repository variable, NOT the Actions cache.
+      #
+      # The cache was tried first and cannot hold state here. This repo runs ~2 GB over
+      # the 10 GB cache budget (measured 12.01 GB across 22 entries) and writes >5 GB
+      # of yarn/maven caches in a five-minute window, so LRU eviction is continuous.
+      # Eviction is by least-recently-used rather than size, so a 331-byte flag was
+      # evicted as readily as a 1.4 GB one and never survived the hour between runs.
+      # Every run then restored nothing, read the default "ok", and re-announced the
+      # same standing breach — an edge-triggered alert degraded into hourly spam.
+      #
+      # A repo variable is what this actually is: one small mutable value. No expiry,
+      # no quota pressure, nothing to evict. It is not secret — level, timestamp and a
+      # counter — so a plainly readable variable is appropriate; keep it that way.
+      - name: Restore alert state
+        shell: bash
+        env:
+          STATE_JSON: ${{ vars.MQ_ALERT_STATE }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$STATE_FILE")"
+          if [ -z "${STATE_JSON:-}" ]; then
+            # The script reads a missing file as "ok", so a first run (or a cleared
+            # variable) re-announces a standing breach rather than going silent.
+            echo "MQ_ALERT_STATE unset — treating the queue as previously healthy."
+            exit 0
+          fi
+          printf '%s' "$STATE_JSON" > "$STATE_FILE"
+          echo "Restored state: $STATE_JSON"
+
+      - name: Evaluate queue health
+        id: check
+        run: |
+          python3 .github/scripts/merge_queue_alert.py \
+            --owner "${GITHUB_REPOSITORY%%/*}" \
+            --repo "${GITHUB_REPOSITORY#*/}" \
+            --branch "$BRANCH" \
+            --state-file "$STATE_FILE" \
+            --slack-file "$SLACK_FILE" \
+            --channel "$SLACK_CHANNEL" \
+            --degraded-hours "$DEGRADED_HOURS" \
+            --severe-hours "$SEVERE_HOURS"
+
+      # Delivery runs BEFORE persistence on purpose. A failed variable write must not
+      # swallow the alert it was about to record — the worst case then is a duplicate
+      # next hour plus a red run, not silence.
+      - name: "Post to Slack"
+        if: ${{ steps.check.outputs.post == 'true' && env.DRY_RUN != 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload-file-path: ${{ env.SLACK_FILE }}
+
+      # Gated on the state actually moving, which a variable makes safe: it never
+      # expires, so skipping a write cannot lose it. That is ~2 API writes a week
+      # instead of 24 a day.
+      #
+      # COLLATE_PAT rather than github.token: writing a repository variable needs
+      # `administration: write`, which is not one of the keys a workflow `permissions:`
+      # block can grant, so GITHUB_TOKEN cannot do it at any permission level. The PAT
+      # is scoped to this step alone and is never exposed to the Python process.
+      - name: Save alert state
+        if: ${{ steps.check.outputs.state_changed == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
+        run: |
+          set -euo pipefail
+          gh variable set MQ_ALERT_STATE \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "$(cat "$STATE_FILE")"
+          echo "Stored state: $(cat "$STATE_FILE")"

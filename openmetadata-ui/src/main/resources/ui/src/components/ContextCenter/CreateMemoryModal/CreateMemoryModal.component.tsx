@@ -312,6 +312,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     [memoryToEdit, currentUserName]
   );
 
+  const isReadOnlyForViewer = isViewOnly && !isOwner && !canDelete;
+
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
     const showEditButton = isViewOnly && canEditMemory;
@@ -703,7 +705,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Scrollable body */}
                   <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
                     {/* Read-only banner for non-owners */}
-                    {isViewOnly && !isOwner && !canDelete && memoryToEdit && (
+                    {isReadOnlyForViewer && memoryToEdit && (
                       <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
                         <Lock01
                           className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"

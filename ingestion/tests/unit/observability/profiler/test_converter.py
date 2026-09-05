@@ -87,6 +87,39 @@ def test_snowflake_case_sensitive_orm(mock_schema, mock_database, column_definit
         assert hasattr(orm_table, name)
 
 
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_columns_differing_only_in_case(mock_schema, mock_database):
+    """Snowflake allows columns that only differ in their casing. We lowercase the
+    SQA column key, so such columns used to collide and get dropped from the ORM
+    table, making the mapper fail with `column ... is not represented in the
+    mapper's table`.
+    """
+    column_definition = [
+        ("id_hotel", DataType.STRING),
+        ("Hotel_region", DataType.STRING),
+        ("HOTEL_REGION", DataType.STRING),
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="duplicate_case_table",
+        columns=columns,
+        serviceType=DatabaseServiceType.Snowflake,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    # Both case variants are mapped, and the original names are kept
+    assert [name for name, _ in column_definition] == [col.name for col in orm_table.__table__.columns]
+    # Only the non-ambiguous column can be safely keyed by its lowercase name
+    assert orm_table.__table__.columns.keys() == ["id_hotel", "Hotel_region", "HOTEL_REGION"]
+    for name, _ in column_definition:
+        assert hasattr(orm_table, name)
+
+
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="lowercase_schema")
 @patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="DATABASE")
 def test_snowflake_lowercase_schema_is_quoted(mock_schema, mock_database):

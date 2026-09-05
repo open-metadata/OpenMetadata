@@ -233,6 +233,46 @@ class TestAirflow(TestCase):
             ],
         )
 
+    def test_parsing_mapped_task_xlets(self):
+        """
+        A dynamically mapped task keeps its inlets and outlets in
+        `partial_kwargs`; they must still reach the task model
+        """
+        mapped_task = {
+            "task_id": "mapped",
+            "_is_mapped": True,
+            "_task_type": "EmptyOperator",
+            "partial_kwargs": {
+                "inlets": [
+                    {
+                        "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_location"]},
+                        "__type": "dict",
+                    }
+                ],
+                "outlets": [
+                    {
+                        "__var": {"tables": ["sample_data.ecommerce_db.shopify.dim_staff"]},
+                        "__type": "dict",
+                    }
+                ],
+            },
+        }
+
+        task = AirflowTask(**mapped_task)
+
+        assert task.inlets == mapped_task["partial_kwargs"]["inlets"]
+        assert task.outlets == mapped_task["partial_kwargs"]["outlets"]
+
+    def test_parsing_top_level_xlets_win_over_partial_kwargs(self):
+        task = AirflowTask(
+            task_id="plain",
+            _outlets=[{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}],
+            partial_kwargs={"outlets": [{"__var": {"tables": ["x.y.z.w"]}, "__type": "dict"}]},
+        )
+
+        assert task.outlets == [{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}]
+        assert task.inlets is None
+
     def test_get_dag_owners(self):
         """Test DAG owner extraction from tasks"""
         data = SERIALIZED_DAG["dag"]
