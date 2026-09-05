@@ -167,6 +167,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -183,12 +184,39 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
     result.current.redraw();
 
     expect(requestAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('schedules a redraw when the active theme changes', () => {
+    const colors = createMockColors();
+    const dqHighlightedEdges = new Set<string>();
+    const edges: Edge[] = [];
+    const initialProps: { theme: 'light' | 'dark' } = { theme: 'light' };
+    const { rerender } = renderHook(
+      ({ theme }: { theme: 'light' | 'dark' }) =>
+        useCanvasEdgeRenderer({
+          canvasRef,
+          colors,
+          containerHeight: 600,
+          containerWidth: 800,
+          dqHighlightedEdges,
+          edges,
+          theme,
+        }),
+      { initialProps }
+    );
+    const initialRedrawCount = (requestAnimationFrame as jest.Mock).mock.calls
+      .length;
+
+    rerender({ theme: 'dark' });
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(initialRedrawCount + 1);
   });
 
   it('draws visible edges', () => {
@@ -215,6 +243,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -235,6 +264,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -263,6 +293,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -305,6 +336,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -343,6 +375,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -392,6 +425,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -447,6 +481,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -465,6 +500,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -502,6 +538,7 @@ describe('useCanvasEdgeRenderer', () => {
         colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
