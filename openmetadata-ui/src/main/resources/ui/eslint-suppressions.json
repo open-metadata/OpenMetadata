@@ -1018,7 +1018,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 23
+      "count": 22
     }
   },
   "playwright/utils/entityPanel.ts": {

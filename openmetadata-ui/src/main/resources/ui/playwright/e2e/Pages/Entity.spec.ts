@@ -40,10 +40,10 @@ import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
+  getDescriptionBox,
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
@@ -1624,7 +1624,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await editDescriptionButton.click();
 
             // Wait for description box to be visible and ready
-            const descBox = page.locator(descriptionBox).first();
+            const descBox = getDescriptionBox(page).first();
             await expect(descBox).toBeVisible();
             await descBox.clear();
             await descBox.fill(newDescription);

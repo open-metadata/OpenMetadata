@@ -30,7 +30,7 @@ import {
   visitAlertDetailsPage,
   visitEditAlertPage,
 } from '../../utils/alert';
-import { descriptionBox, getApiContext } from '../../utils/common';
+import { getApiContext, getDescriptionBox } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addFilterWithUsersListInput,
@@ -265,7 +265,7 @@ test('Multiple Filters Alert', async ({ page }) => {
     await visitEditAlertPage(page, data.alertDetails);
 
     // Remove description
-    await page.locator(descriptionBox).clear();
+    await getDescriptionBox(page).clear();
 
     // Remove all filters with state verification
     for (let i = 5; i >= 0; i--) {

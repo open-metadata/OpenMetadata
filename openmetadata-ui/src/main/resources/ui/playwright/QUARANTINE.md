@@ -27,7 +27,7 @@ coverage, a retried one looks green.
 
 ## Entries
 
-13 tests. Evidence is failures observed across 11 merge_group runs sampled on
+9 tests. Evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
@@ -39,20 +39,18 @@ generated variant rather than per source line.
 | `e2e/Pages/Domains.spec.ts` | Verify domain tags and glossary terms | 6/11 | Fails both attempts more often than it flakes — likely a real defect, not timing. |
 | `e2e/Features/Table.spec.ts` | should persist page size | 6/11 | Test timeout after `waitForAllLoadersToDisappear`. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal — filters and select | 3/11 | `waitForResponse` on the test-case search never resolves. |
-| `e2e/Pages/EntityDataConsumer.spec.ts` | Update description (**Table variant only**) | 3/11 | Shared `entity.descriptionUpdate` helper. The tag is conditional on `entity.getType() === 'Table'` so the other 14 entity types keep running. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
-| `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | 2/11 | Drag-and-drop. |
-| `e2e/Features/DataQuality/TestLibrary.spec.ts` | should create, edit, and delete a test definition | 2/11 | |
-| `e2e/Features/DataQuality/TestLibrary.spec.ts` | should maintain page on edit and reset to first page on delete | 2/11 | |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 | `e2e/Features/ActivityStream.spec.ts` | activity stream API is called when visiting entity page | 2/11 | |
 
-Verified: `npx playwright test --list` reports 4543 tests by default (down from
-4555) and `PLAYWRIGHT_RUN_QUARANTINED=true` reports these 13 plus the 7
-setup/teardown fixture projects, which the soak lane deliberately leaves
-unfiltered so login and entity seeding still happen — a project-level `grep`
-*is* applied to dependency projects, so filtering them would make every
-quarantined test fail for want of `admin.json` instead of for its flake.
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 9 plus the 7 setup/teardown
+fixture projects, which the soak lane deliberately leaves unfiltered so login and
+entity seeding still happen — a project-level `grep` *is* applied to dependency
+projects, so filtering them would make every quarantined test fail for want of
+`admin.json` instead of for its flake.
+
+Re-run `npx playwright test --list` after changing this file and update the
+default-lane count here; it was 4543 of 4555 when the list held 13 entries.
 
 ## Not quarantined — fixed instead
 
@@ -64,6 +62,19 @@ they were repaired rather than parked:
 | `e2e/Pages/Glossary.spec.ts` 128 / 198 / 421 | `utils/glossary.ts` used `page.textContent()` — waits for the element, not its text — so a cold first attempt read `""`. #32333 (a revert of #30896) had reintroduced this after it was already fixed. Restored to `toContainText`. |
 | `e2e/Features/ContextCenterArticles.spec.ts:670` | #32283 removed a `waitForTimeout(500)` that was covering the zustand → localStorage flush of `recentlyViewed`. Navigating away before the flush meant the Recently Viewed panel had no entry to render, so the trailing assertion had nothing to auto-wait for. Replaced with `waitForRecentlyViewed`, which polls the persisted store. |
 | `e2e/Features/ClassificationImportExport.spec.ts:64` | `beforeAll` POSTed fixtures whose names were generated at module scope, so a second pass in the same worker 409'd on every create. Fixtures are now rebuilt inside `beforeAll`, and an `afterAll` was added — the spec previously leaked two classifications, a tag and a user into the shard on every run. |
+
+### Released from quarantine
+
+Diagnosed and fixed, so the tag came off. If any of these flakes again the fix
+was wrong — re-quarantine it with the new evidence rather than restoring the old
+entry.
+
+| Spec | Test | Root cause |
+|---|---|---|
+| `e2e/Pages/EntityDataConsumer.spec.ts` | Update description (Table) | `updateDescription` resolved the editor with a page-global `descriptionBox` and `.first()`, so with the edit modal open it targeted the inline editor *behind* the overlay — visible, so the assertion passed, then the click failed on `ant-modal-wrap ... intercepts pointer events` until the test timed out. Now scoped to the dialog, asserting a single match. |
+| `e2e/Features/DataQuality/TestLibrary.spec.ts` | should create, edit, and delete a test definition | `TestDefinitionFormBody` rebuilt `options: toOptions(Object.values(…))` on every render. Focusing a field re-renders it via `onActiveFieldChange`, and the new `items` identity made react-aria rebuild the listbox collection, detaching the option mid-click. The option lists are enum-derived and now built once at module scope. |
+| `e2e/Features/DataQuality/TestLibrary.spec.ts` | should maintain page on edit and reset to first page on delete | Same select-option path as above. |
+| `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
 
 ## Left running deliberately
 

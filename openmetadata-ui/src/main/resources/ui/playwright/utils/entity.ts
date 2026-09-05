@@ -713,9 +713,28 @@ export const updateDescription = async (
     await editButton.click();
   }
 
-  // Wait for description box to be visible and ready
-  const descBox = page.locator(descriptionBox).first();
-  await expect(descBox).toBeVisible();
+  // `descriptionBox` is page-global, and the edit action can leave two editors
+  // mounted at once: the inline one on the entity page plus the one in the modal
+  // it just opened. `.first()` took whichever came first in DOM order — the
+  // inline editor *behind* the overlay. It is visible, so `toBeVisible()` passed,
+  // and the click then failed on "ant-modal-wrap ... intercepts pointer events",
+  // retrying until the 60s test timeout. Scope to the dialog whenever the edit
+  // opened one; assert a single match either way so a genuinely ambiguous page
+  // fails here, naming the scope to narrow, instead of timing out on a click.
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: page.locator(descriptionBox) });
+
+  let descBox = page.locator(descriptionBox);
+  await expect(async () => {
+    descBox = (await descriptionDialog.count())
+      ? descriptionDialog.locator(descriptionBox)
+      : page.locator(descriptionBox);
+
+    await expect(descBox).toHaveCount(1);
+    await expect(descBox).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
   await descBox.click();
   await descBox.clear();
   await descBox.fill(description);
@@ -1589,7 +1608,16 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.locator(descriptionBox).fill(data.description);
+  // Scoped to the announcement dialog, not the page: this form opens over an
+  // entity page that has description editors of its own, and an unscoped
+  // `descriptionBox` matches those too.
+  const announcementDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: page.locator('#announcement-submit') });
+  const announcementDescription = announcementDialog.locator(descriptionBox);
+
+  await expect(announcementDescription).toHaveCount(1);
+  await announcementDescription.fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(

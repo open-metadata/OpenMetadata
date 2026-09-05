@@ -27,6 +27,7 @@ import {
   createNewPage,
   descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -1314,8 +1315,8 @@ test.describe('Context Center Articles', () => {
       await waitForRelatedArticles;
 
       await page.getByTestId('edit-description').click();
-      await page.locator(descriptionBox).first().click();
-      await page.locator(descriptionBox).first().clear();
+      await getDescriptionBox(page).first().click();
+      await getDescriptionBox(page).first().clear();
 
       const mentionResponse = page.waitForResponse('/api/v1/search/query?**');
       await page

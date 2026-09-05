@@ -18,7 +18,7 @@ import {
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
-  descriptionBox,
+  getDescriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
 import { executeSlashCommand } from '../../utils/KnowledgeCenter';
@@ -52,7 +52,7 @@ test.describe('BlockEditor embed-link form', { tag: ['@Discovery'] }, () => {
   }) => {
     await page.getByTestId('edit-description').click();
 
-    const editor = page.locator(descriptionBox).first();
+    const editor = getDescriptionBox(page).first();
     await expect(editor).toBeVisible();
     await editor.click();
     await page.keyboard.press(SHORTCUTS.enter);

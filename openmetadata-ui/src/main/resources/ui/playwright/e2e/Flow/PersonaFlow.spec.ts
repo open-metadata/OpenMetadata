@@ -21,6 +21,7 @@ import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -94,7 +95,7 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByTestId('displayName').fill(PERSONA_DETAILS.displayName);
 
-    await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
+    await fillDescriptionBox(page, PERSONA_DETAILS.description);
 
     const userListResponse = page.waitForResponse(
       '/api/v1/users?limit=*&isBot=false*'

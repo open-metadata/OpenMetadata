@@ -58,6 +58,23 @@ const CodeEditor = withSuspenseFallback(
 const toOptions = (values: string[]): FormSelectItem[] =>
   values.map((value) => ({ id: value, label: value }));
 
+// Built once at module scope, never per render. These lists are derived from
+// enums and can never change, but rebuilding them inside the component handed
+// `Select` a new `items` array on every render — and a new collection identity
+// makes react-aria tear down and remount the open listbox, detaching the
+// option the user (or Playwright) is mid-click on. Focusing any field re-renders
+// this component via `onActiveFieldChange`, so simply opening a select and
+// clicking an option raced the remount: locally the click won, under CI load it
+// lost and the popover closed with the field left empty.
+const ENTITY_TYPE_OPTIONS = toOptions(Object.values(EntityType));
+const TEST_PLATFORM_OPTIONS = toOptions(Object.values(TestPlatform));
+const DATA_QUALITY_DIMENSION_OPTIONS = toOptions(
+  Object.values(DataQualityDimensions)
+);
+const SUPPORTED_SERVICE_OPTIONS = toOptions(Object.values(DatabaseServiceType));
+const SUPPORTED_DATA_TYPE_OPTIONS = toOptions(Object.values(DataType));
+const TEST_DATA_TYPE_OPTIONS = toOptions(Object.values(TestDataType));
+
 const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   form,
   isEditMode,
@@ -226,7 +243,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       props: {
         'data-testid': 'entity-type',
         isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(EntityType)),
+        options: ENTITY_TYPE_OPTIONS,
       } as FieldProp['props'],
     },
     {
@@ -247,7 +264,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       props: {
         'data-testid': 'test-platforms',
         isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(TestPlatform)),
+        options: TEST_PLATFORM_OPTIONS,
       } as FieldProp['props'],
     },
     {
@@ -262,7 +279,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       }),
       props: {
         'data-testid': 'data-quality-dimension',
-        options: toOptions(Object.values(DataQualityDimensions)),
+        options: DATA_QUALITY_DIMENSION_OPTIONS,
       } as FieldProp['props'],
     },
     {
@@ -278,7 +295,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       props: {
         'data-testid': 'supported-services',
         isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(DatabaseServiceType)),
+        options: SUPPORTED_SERVICE_OPTIONS,
       } as FieldProp['props'],
     },
     {
@@ -313,7 +330,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       props: {
         'data-testid': 'supported-data-types',
         isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(DataType)),
+        options: SUPPORTED_DATA_TYPE_OPTIONS,
       } as FieldProp['props'],
     },
   ];
@@ -466,7 +483,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
               props: {
                 'data-testid': `parameter-data-type-${index}`,
                 isDisabled: isReadOnlyField,
-                options: toOptions(Object.values(TestDataType)),
+                options: TEST_DATA_TYPE_OPTIONS,
               },
             } as FieldProp)}
             {getField({

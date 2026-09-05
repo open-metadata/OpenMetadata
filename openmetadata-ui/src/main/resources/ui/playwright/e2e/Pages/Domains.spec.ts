@@ -41,6 +41,7 @@ import {
   clickOutside,
   descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -181,7 +182,7 @@ test.describe('Domains', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     const typed = 'hello world ';
 
     await description.click();
@@ -3700,7 +3701,7 @@ test.describe('Domain description editor popups', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     await description.click();
 
     await test.step('Slash command inserts an image block', async () => {

@@ -14,7 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -117,32 +121,38 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
-    const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
-    });
-    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
-    });
-    const entityResponse = await apiContext.post('/api/v1/storedProcedures', {
-      data: this.entity,
+    const service = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create service',
+      createPath: '/api/v1/services/databaseServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
     });
 
-    const service = await okJson(
-      serviceResponse,
-      'StoredProcedureClass.create'
-    );
-    const database = await okJson(
-      databaseResponse,
-      'StoredProcedureClass.create'
-    );
-    const schema = await okJson(schemaResponse, 'StoredProcedureClass.create');
-    const entity = await okJson(entityResponse, 'StoredProcedureClass.create');
+    const database = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create database',
+      createPath: '/api/v1/databases',
+      fqnSegments: [this.service.name, this.database.name],
+      data: this.database,
+    });
+
+    const schema = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      fqnSegments: [this.service.name, this.database.name, this.schema.name],
+      data: this.schema,
+    });
+
+    const entity = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create storedProcedure',
+      createPath: '/api/v1/storedProcedures',
+      fqnSegments: [
+        this.service.name,
+        this.database.name,
+        this.schema.name,
+        this.entity.name,
+      ],
+      data: this.entity,
+    });
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;

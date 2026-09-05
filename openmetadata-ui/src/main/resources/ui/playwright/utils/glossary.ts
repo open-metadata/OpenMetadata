@@ -566,9 +566,16 @@ export const fillGlossaryTermDetails = async (
 
   await page.locator('[data-testid="name"]').fill(term.name);
 
-  await expect(page.locator(descriptionBox)).toBeVisible();
+  // Scoped to the Add Glossary Term modal asserted above. The glossary page
+  // behind it has its own description editor, so page-global matched two.
+  const termDescription = page
+    .locator('[role="dialog"].edit-glossary-modal')
+    .locator(descriptionBox);
 
-  await page.locator(descriptionBox).fill(term.description);
+  await expect(termDescription).toHaveCount(1);
+  await expect(termDescription).toBeVisible();
+
+  await termDescription.fill(term.description);
 
   const synonyms = (term.synonyms ?? '').split(',');
 
@@ -772,14 +779,20 @@ export const updateGlossaryTermDataFromTree = async (
 
   await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
-  await expect(
-    page.locator('[role="dialog"].edit-glossary-modal')
-  ).toBeVisible();
+  const editGlossaryModal = page.locator('[role="dialog"].edit-glossary-modal');
+
+  await expect(editGlossaryModal).toBeVisible();
   await expect(page.locator('.ant-modal-title')).toContainText(
     'Edit Glossary Term'
   );
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill('Updated description');
+
+  // Scoped to the modal this just waited for. The term details page behind it
+  // carries its own description editor, so the page-global locator matched two.
+  const modalDescription = editGlossaryModal.locator(descriptionBox);
+
+  await expect(modalDescription).toHaveCount(1);
+  await modalDescription.clear();
+  await modalDescription.fill('Updated description');
 
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByTestId('save-glossary-term').click();
@@ -1123,6 +1136,31 @@ export const renameGlossaryTerm = async (
   await glossaryTerm.rename(data.name, data.fullyQualifiedName);
 };
 
+/**
+ * Resolve once the element has held the same position across two consecutive
+ * samples.
+ *
+ * Playwright's own actionability already does this, but only for callers that
+ * have not opted out with `force: true`. Anything that must force still needs
+ * the guarantee, so make it explicit.
+ */
+const waitForStableBox = async (locator: Locator) => {
+  let previous: { x: number; y: number } | undefined;
+
+  await expect(async () => {
+    const box = await locator.boundingBox();
+
+    expect(box).not.toBeNull();
+
+    const current = { x: box?.x ?? NaN, y: box?.y ?? NaN };
+    const held = previous?.x === current.x && previous?.y === current.y;
+
+    previous = current;
+
+    expect(held, 'element is still moving').toBe(true);
+  }).toPass({ timeout: 15_000, intervals: [200, 200, 400, 800] });
+};
+
 export const dragAndDropTerm = async (
   page: Page,
   dragElement: string,
@@ -1139,6 +1177,18 @@ export const dragAndDropTerm = async (
     dropTarget === 'Terms'
       ? page.locator('th:has-text("Terms")').first()
       : page.locator('tr').filter({ hasText: dropTarget }).first();
+
+  // The glossary page keeps rendering after its loaders clear: the description
+  // block above the table hydrates last and pushes every row down by about a row
+  // height. `dragTo` resolves both rows, computes their boxes, and then presses
+  // at those coordinates — so a drag that starts during that reflow presses on
+  // whatever has since moved into the old position, no dragstart fires, and the
+  // confirmation modal never opens. `force: true` is what lets it get that far:
+  // it skips the actionability stability check that would otherwise have waited.
+  // Hold both rows still before pressing rather than dropping the force option,
+  // which is still needed for the row hover overlays.
+  await waitForStableBox(dragLocator);
+  await waitForStableBox(dropLocator);
 
   await dragLocator.dragTo(dropLocator, {
     force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays

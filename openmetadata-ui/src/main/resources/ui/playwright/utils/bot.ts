@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -94,7 +94,7 @@ export const createBot = async (page: Page) => {
   await page.click('[data-testid="token-expiry"]');
   await page.locator('[title="1 hour"] div').click();
 
-  await page.locator(descriptionBox).fill(BOT_DETAILS.description);
+  await fillDescriptionBox(page, BOT_DETAILS.description);
 
   const saveResponse = page.waitForResponse(
     (response) =>
@@ -166,7 +166,7 @@ export const updateBotDetails = async (page: Page) => {
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();
-  await page.locator(descriptionBox).fill(BOT_DETAILS.updatedDescription);
+  await fillDescriptionBox(page, BOT_DETAILS.updatedDescription);
 
   const updateDescriptionResponse = page.waitForResponse(`api/v1/bots/*`);
   await page.getByTestId('save').click();

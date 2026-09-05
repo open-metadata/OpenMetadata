@@ -23,6 +23,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
@@ -114,9 +115,9 @@ async function updateDescription(
   await page.getByTestId('edit-description').click();
 
   const descriptionBox = '.om-block-editor[contenteditable="true"]';
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  await getDescriptionBox(page).first().click();
+  await getDescriptionBox(page).first().clear();
+  await getDescriptionBox(page).first().fill(description);
 
   const patchResponse = page.waitForResponse(
     (response) =>
