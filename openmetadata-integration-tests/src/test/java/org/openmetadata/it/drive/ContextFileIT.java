@@ -20,9 +20,12 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.MoveContextFileRequest;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileSourceType;
 import org.openmetadata.schema.entity.data.ContextFileType;
@@ -40,6 +43,7 @@ class ContextFileIT {
 
   private static final String FILE_PATH = "v1/contextCenter/drive/files";
   private static final String FOLDER_PATH = "v1/contextCenter/drive/folders";
+  private static final String MEMORY_PATH = "v1/contextCenter/memories";
 
   private ContextFile createFile(RestClient rest, CreateContextFile request)
       throws HttpResponseException {
@@ -53,6 +57,31 @@ class ContextFileIT {
 
   private Folder createFolder(RestClient rest, CreateFolder request) throws HttpResponseException {
     return rest.create(FOLDER_PATH, request, Folder.class);
+  }
+
+  /**
+   * Creates a knowledge pill linked to {@code file} the way extraction would, without needing a
+   * model: the MENTIONED_IN edge the delete cascade walks comes from sourceEntity + sourceType.
+   */
+  private ContextMemory createExtractedMemory(RestClient rest, String name, ContextFile file)
+      throws HttpResponseException {
+    return rest.create(
+        MEMORY_PATH,
+        new CreateContextMemory()
+            .withName(name)
+            .withTitle(name)
+            .withQuestion("What does " + name + " state?")
+            .withAnswer("It states " + name + ".")
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withSourceEntity(file.getEntityReference()),
+        ContextMemory.class);
+  }
+
+  /** HTTP status of an {@code include=all} read — 404 means the row is really gone, not tombstoned. */
+  private int memoryStatusIncludingDeleted(RestClient rest, UUID memoryId) {
+    try (Response response = rest.rawGet(MEMORY_PATH + "/" + memoryId + "?include=all")) {
+      return response.getStatus();
+    }
   }
 
   private List<String> listFileIds(RestClient rest, String path) {
@@ -300,6 +329,82 @@ class ContextFileIT {
                 assertEquals(404, deletedResponse.getStatus());
               }
             });
+  }
+
+  // --- Knowledge-pill cascade ---
+
+  @Test
+  void testSoftDeleteFileRemovesItsExtractedMemories(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("soft-delete-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory first = createExtractedMemory(rest, ns.prefix("pill-one"), file);
+    ContextMemory second = createExtractedMemory(rest, ns.prefix("pill-two"), file);
+    assertEquals(2, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
+
+    rest.delete(FILE_PATH, file.getId());
+
+    // Hard-gone, not tombstoned: a pill is regenerable from its source, so a soft-deleted source
+    // must not leave an invisible row holding its FQN and its search entry.
+    assertEquals(404, memoryStatusIncludingDeleted(rest, first.getId()));
+    assertEquals(404, memoryStatusIncludingDeleted(rest, second.getId()));
+  }
+
+  @Test
+  void testHardDeleteFileLeavesNoMemoryTombstones(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("hard-delete-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory first = createExtractedMemory(rest, ns.prefix("pill-three"), file);
+    ContextMemory second = createExtractedMemory(rest, ns.prefix("pill-four"), file);
+
+    try (Response deleteResponse =
+        rest.rawDelete(FILE_PATH + "/" + file.getId() + "?hardDelete=true")) {
+      assertEquals(202, deleteResponse.getStatus());
+    }
+
+    // A hard delete runs the soft pass first. The pills it soft-deletes there must still be
+    // reachable by the hard pass, or they survive as permanent invisible rows.
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              assertEquals(404, memoryStatusIncludingDeleted(rest, first.getId()));
+              assertEquals(404, memoryStatusIncludingDeleted(rest, second.getId()));
+            });
+  }
+
+  @Test
+  void testRestoredFileDoesNotResurrectItsMemories(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("restore-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory pill = createExtractedMemory(rest, ns.prefix("pill-five"), file);
+
+    rest.delete(FILE_PATH, file.getId());
+    ContextFile restored = rest.restore(FILE_PATH, file.getId(), ContextFile.class);
+
+    // The pill is gone for good; the source is expected to re-derive it, not to un-delete a
+    // tombstone. Pinning this so a future restore hook is a deliberate change, not a surprise.
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
+    assertEquals(404, memoryStatusIncludingDeleted(rest, pill.getId()));
+    assertEquals(0, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
   }
 
   // --- File in Folder ---
