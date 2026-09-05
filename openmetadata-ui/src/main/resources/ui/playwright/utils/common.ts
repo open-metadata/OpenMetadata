@@ -81,11 +81,23 @@ export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
   let editor = getDescriptionBox(page);
 
   await expect(async () => {
-    editor = (await descriptionDialog.count())
-      ? getDescriptionBox(descriptionDialog)
-      : getDescriptionBox(page);
+    if (await descriptionDialog.count()) {
+      editor = getDescriptionBox(descriptionDialog);
 
-    await expect(editor).toHaveCount(1);
+      // The one place a single-editor invariant actually holds. Two editors in
+      // one open dialog means the dialog selector matched something it should
+      // not have, which is worth failing on.
+      await expect(editor).toHaveCount(1);
+    } else {
+      // No dialog: a page legitimately hosts several editors at once — an entity
+      // description alongside per-column ones — so there is nothing to assert
+      // and nothing better to discriminate on. This is the long-standing
+      // behaviour, and it was never the bug: the bug was taking the first match
+      // *while a modal was open*, which the branch above now handles.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- a page may hold several description editors; with no dialog to scope to there is no better discriminator
+      editor = getDescriptionBox(page).first();
+    }
+
     await expect(editor).toBeVisible();
   }).toPass({ timeout: 15_000 });
 
@@ -117,10 +129,7 @@ export const fillDescriptionBox = async (
     return;
   }
 
-  const editor = getDescriptionBox(scope);
-
-  await expect(editor).toHaveCount(1);
-  await editor.fill(value);
+  await getDescriptionBox(scope).fill(value);
 };
 
 export const INVALID_NAMES = {
