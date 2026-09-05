@@ -281,6 +281,14 @@ const TaskFeedCardFromTask = ({
 
   const commentsCount = task.comments?.length ?? 0;
 
+  const nonPriorityRowGutter: [number, number] | undefined = isTaskDescription
+    ? undefined
+    : [0, 14];
+  const rowGutter: [number, number] | undefined =
+    isTaskTestCaseResult || isTaskApprovalRequest
+      ? [0, 6]
+      : nonPriorityRowGutter;
+
   return (
     <Button
       block
@@ -292,14 +300,7 @@ const TaskFeedCardFromTask = ({
           active: isActive,
         })}
         data-testid="task-feed-card">
-        <Row
-          gutter={
-            isTaskTestCaseResult || isTaskApprovalRequest
-              ? [0, 6]
-              : isTaskDescription
-              ? undefined
-              : [0, 14]
-          }>
+        <Row gutter={rowGutter}>
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon

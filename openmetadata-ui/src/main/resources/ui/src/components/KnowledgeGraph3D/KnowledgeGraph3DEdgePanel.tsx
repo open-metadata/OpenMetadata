@@ -110,6 +110,13 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
     ? t(RELATION_LABEL_KEYS[link.label])
     : link.label;
 
+  let relationshipTypeLabel = t('label.knowledge-graph');
+  if (isDerived) {
+    relationshipTypeLabel = t('label.ontology-inferred');
+  } else if (isOntology) {
+    relationshipTypeLabel = t('label.ontology');
+  }
+
   return (
     <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
       <div className="tw:flex tw:items-start tw:gap-3 tw:border-b tw:border-white/[0.08] tw:p-4">
@@ -129,11 +136,7 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
                 background: hexRgba(accent, 0.14),
                 borderColor: hexRgba(accent, 0.35),
               }}>
-              {isDerived
-                ? t('label.ontology-inferred')
-                : isOntology
-                ? t('label.ontology')
-                : t('label.knowledge-graph')}
+              {relationshipTypeLabel}
             </span>
           </div>
         </div>

@@ -1388,22 +1388,25 @@ const BulkEntityImportPage = () => {
     key: string;
     label: string;
     state: CsvProcessingStage;
-  }) => (
-    <div
-      className={`csv-processing-stage csv-processing-stage-${state}`}
-      key={key}>
-      <span className="csv-processing-stage-icon">
-        {state === 'done' ? (
-          <CheckCircle size={16} />
-        ) : state === 'active' ? (
-          <RefreshCw01 className="csv-import-spin" size={16} />
-        ) : (
-          <span className="csv-processing-stage-dot" />
-        )}
-      </span>
-      <span>{label}</span>
-    </div>
-  );
+  }) => {
+    const inProgressStageIcon =
+      state === 'active' ? (
+        <RefreshCw01 className="csv-import-spin" size={16} />
+      ) : (
+        <span className="csv-processing-stage-dot" />
+      );
+
+    return (
+      <div
+        className={`csv-processing-stage csv-processing-stage-${state}`}
+        key={key}>
+        <span className="csv-processing-stage-icon">
+          {state === 'done' ? <CheckCircle size={16} /> : inProgressStageIcon}
+        </span>
+        <span>{label}</span>
+      </div>
+    );
+  };
 
   const renderSelectedCsvFile = () => {
     if (!selectedCsvFile) {
@@ -1694,6 +1697,54 @@ const BulkEntityImportPage = () => {
     [entityPluralDisplayName, t, translatedSteps]
   );
 
+  const getAsyncImportBannerType = (
+    job: CSVImportJobType
+  ): 'error' | 'info' | 'success' => {
+    if (job.error) {
+      return 'error';
+    }
+
+    if (job.status === 'IN_PROGRESS') {
+      return 'info';
+    }
+
+    return 'success';
+  };
+
+  const renderUploadStepContent = () => {
+    if (isCsvPreviewProcessing) {
+      return renderProcessingCsvPreview();
+    }
+
+    if (validationData?.abortReason) {
+      return (
+        <div className="csv-import-card m-t-lg">
+          <div className="csv-import-abort-state">
+            <p className="text-center" data-testid="abort-reason">
+              <strong className="d-block">{t('label.aborted')}</strong>{' '}
+              {validationData.abortReason}
+            </p>
+            <Button
+              color="secondary"
+              data-testid="cancel-button"
+              onPress={handleRetryCsvUpload}>
+              {t('label.back')}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return renderUploadStep();
+  };
+
+  let primaryActionLabel = t('label.next');
+  if (activeStep === VALIDATION_STEP.EDIT_VALIDATE && isRichGridImport) {
+    primaryActionLabel = `${t('label.start')} ${t('label.import')}`;
+  } else if (activeStep === VALIDATION_STEP.UPDATE) {
+    primaryActionLabel = t('label.update');
+  }
+
   return (
     <PageLayoutV1
       pageTitle={t('label.import-entity', {
@@ -1770,13 +1821,7 @@ const BulkEntityImportPage = () => {
                         activeAsyncImportJob.message ??
                         ''
                       }
-                      type={
-                        activeAsyncImportJob.error
-                          ? 'error'
-                          : activeAsyncImportJob.status === 'IN_PROGRESS'
-                          ? 'info'
-                          : 'success'
-                      }
+                      type={getAsyncImportBannerType(activeAsyncImportJob)}
                     />
                     {activeAsyncImportJob.status === 'IN_PROGRESS' &&
                       activeAsyncImportJob.total !== undefined &&
@@ -1797,32 +1842,7 @@ const BulkEntityImportPage = () => {
                 )}
             </div>
             <div>
-              {activeStep === 0 && (
-                <>
-                  {isCsvPreviewProcessing ? (
-                    renderProcessingCsvPreview()
-                  ) : validationData?.abortReason ? (
-                    <div className="csv-import-card m-t-lg">
-                      <div className="csv-import-abort-state">
-                        <p className="text-center" data-testid="abort-reason">
-                          <strong className="d-block">
-                            {t('label.aborted')}
-                          </strong>{' '}
-                          {validationData.abortReason}
-                        </p>
-                        <Button
-                          color="secondary"
-                          data-testid="cancel-button"
-                          onPress={handleRetryCsvUpload}>
-                          {t('label.back')}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    renderUploadStep()
-                  )}
-                </>
-              )}
+              {activeStep === 0 && <>{renderUploadStepContent()}</>}
               {activeStep === 1 && (
                 <div className="csv-import-card">
                   <div className="csv-import-stack">
@@ -1941,12 +1961,7 @@ const BulkEntityImportPage = () => {
                       color="primary"
                       isDisabled={isValidating}
                       onPress={handleValidate}>
-                      {activeStep === VALIDATION_STEP.EDIT_VALIDATE &&
-                      isRichGridImport
-                        ? `${t('label.start')} ${t('label.import')}`
-                        : activeStep === VALIDATION_STEP.UPDATE
-                        ? t('label.update')
-                        : t('label.next')}
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 </div>

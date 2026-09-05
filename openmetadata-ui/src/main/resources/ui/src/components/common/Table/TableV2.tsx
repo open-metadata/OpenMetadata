@@ -1027,6 +1027,13 @@ const TableV2 = <T extends object>(
         return;
       }
 
+      let sortOrder: SorterResult<T>['order'] = null;
+      if (newDirection === 'ascending') {
+        sortOrder = 'ascend';
+      } else if (newDirection === 'descending') {
+        sortOrder = 'descend';
+      }
+
       rest.onChange(
         {
           current: internalCurrentPage,
@@ -1038,12 +1045,7 @@ const TableV2 = <T extends object>(
           column: clickedColumn,
           columnKey: reportedKey,
           field: reportedKey,
-          order:
-            newDirection === 'ascending'
-              ? 'ascend'
-              : newDirection === 'descending'
-              ? 'descend'
-              : null,
+          order: sortOrder,
         } as SorterResult<T>,
         {
           currentDataSource: (rest.dataSource ?? []) as T[],
@@ -1172,6 +1174,79 @@ const TableV2 = <T extends object>(
           actualIndex
         ) as React.TdHTMLAttributes<HTMLTableCellElement>) ?? {};
 
+      let expandIndicator: React.ReactNode = null;
+      if (showExpandInCell) {
+        if (hasChildren && ExpandIcon) {
+          expandIndicator = (
+            <ExpandIcon
+              expandable={hasChildren}
+              expanded={isExpanded}
+              prefixCls=""
+              record={record}
+              onExpand={(rec, e) => {
+                e.stopPropagation();
+                handleExpandToggle(rec as T, rowKey);
+              }}
+            />
+          );
+        } else if (hasChildren) {
+          expandIndicator = (
+            <button
+              aria-expanded={isExpanded}
+              className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+              data-testid="expand-icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleExpandToggle(record, rowKey);
+              }}>
+              {isExpanded ? (
+                <ChevronDown className="tw:size-4" />
+              ) : (
+                <ChevronRight className="tw:size-4" />
+              )}
+            </button>
+          );
+        } else if (ExpandIcon) {
+          expandIndicator = (
+            <ExpandIcon
+              expandable={false}
+              expanded={false}
+              prefixCls=""
+              record={record}
+              onExpand={(_rec, _e) => {}}
+            />
+          );
+        } else {
+          expandIndicator = <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+        }
+      }
+
+      let cellContent: React.ReactNode = resolveCellValue(
+        colType,
+        record,
+        actualIndex
+      );
+      if (colType.ellipsis) {
+        // `flex-1 min-w-0` only mean anything inside the flex row an expander
+        // creates; without one the wrapper is `display: contents` and this div
+        // is a block child of the cell, which already fills it. `truncate` is
+        // what does the work either way.
+        cellContent = (
+          <div
+            className={classNames('tw:truncate', {
+              'tw:flex-1 tw:min-w-0': showExpandInCell,
+            })}>
+            {cellContent}
+          </div>
+        );
+      } else if (showExpandInCell) {
+        // Same shrink permission without imposing `truncate`: a flex item's
+        // min-width is `auto`, so a nowrap value the call site ellipsizes
+        // itself (an AntD Typography link, say) could never shrink to the cell
+        // and painted across the neighbouring columns instead.
+        cellContent = <div className="tw:min-w-0 tw:flex-1">{cellContent}</div>;
+      }
+
       return (
         <UntitledTable.Cell
           {...cellHandlerProps}
@@ -1234,72 +1309,10 @@ const TableV2 = <T extends object>(
             })}>
             {showExpandInCell && (
               <div className="tw:flex tw:items-center tw:shrink-0">
-                {hasChildren ? (
-                  ExpandIcon ? (
-                    <ExpandIcon
-                      expandable={hasChildren}
-                      expanded={isExpanded}
-                      prefixCls=""
-                      record={record}
-                      onExpand={(rec, e) => {
-                        e.stopPropagation();
-                        handleExpandToggle(rec as T, rowKey);
-                      }}
-                    />
-                  ) : (
-                    <button
-                      aria-expanded={isExpanded}
-                      className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
-                      data-testid="expand-icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleExpandToggle(record, rowKey);
-                      }}>
-                      {isExpanded ? (
-                        <ChevronDown className="tw:size-4" />
-                      ) : (
-                        <ChevronRight className="tw:size-4" />
-                      )}
-                    </button>
-                  )
-                ) : ExpandIcon ? (
-                  <ExpandIcon
-                    expandable={false}
-                    expanded={false}
-                    prefixCls=""
-                    record={record}
-                    onExpand={(_rec, _e) => {}}
-                  />
-                ) : (
-                  <span className="tw:inline-block tw:w-4 tw:mr-1" />
-                )}
+                {expandIndicator}
               </div>
             )}
-            {colType.ellipsis ? (
-              // `flex-1 min-w-0` only mean anything inside the
-              // flex row an expander creates; without one the
-              // wrapper is `display: contents` and this div is
-              // a block child of the cell, which already fills
-              // it. `truncate` is what does the work either way.
-              <div
-                className={classNames('tw:truncate', {
-                  'tw:flex-1 tw:min-w-0': showExpandInCell,
-                })}>
-                {resolveCellValue(colType, record, actualIndex)}
-              </div>
-            ) : showExpandInCell ? (
-              // Same shrink permission without imposing
-              // `truncate`: a flex item's min-width is `auto`,
-              // so a nowrap value the call site ellipsizes
-              // itself (an AntD Typography link, say) could
-              // never shrink to the cell and painted across
-              // the neighbouring columns instead.
-              <div className="tw:min-w-0 tw:flex-1">
-                {resolveCellValue(colType, record, actualIndex)}
-              </div>
-            ) : (
-              resolveCellValue(colType, record, actualIndex)
-            )}
+            {cellContent}
           </div>
         </UntitledTable.Cell>
       );
@@ -1319,6 +1332,36 @@ const TableV2 = <T extends object>(
       (clientPagination.serverTotal ?? filteredDataSource.length) <=
         clientPagination.pageSize
     );
+
+  let paginationFooter: React.ReactNode = null;
+  if (showCustomPagination) {
+    paginationFooter = (
+      <div>
+        <NextPrevious {...customPaginationProps} />
+      </div>
+    );
+  } else if (showClientPagination) {
+    paginationFooter = (
+      <div>
+        {/*
+          The core pager rather than NextPrevious: it navigates by page
+          number instead of one step at a time, and it is react-aria rather
+          than AntD, which is the point of the migration. `total` here is a
+          page count, not a row count.
+        */}
+        <PaginationCardWithControls
+          page={currentPage}
+          pageSize={clientPagination.pageSize}
+          total={computeTotalPages(
+            clientPagination.pageSize,
+            clientPagination.serverTotal ?? filteredDataSource.length
+          )}
+          onPageChange={handlePageChange}
+          {...sizeChangerProps}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1722,30 +1765,7 @@ const TableV2 = <T extends object>(
         </div>
       )}
 
-      {showCustomPagination ? (
-        <div>
-          <NextPrevious {...customPaginationProps} />
-        </div>
-      ) : showClientPagination ? (
-        <div>
-          {/*
-            The core pager rather than NextPrevious: it navigates by page
-            number instead of one step at a time, and it is react-aria rather
-            than AntD, which is the point of the migration. `total` here is a
-            page count, not a row count.
-          */}
-          <PaginationCardWithControls
-            page={currentPage}
-            pageSize={clientPagination.pageSize}
-            total={computeTotalPages(
-              clientPagination.pageSize,
-              clientPagination.serverTotal ?? filteredDataSource.length
-            )}
-            onPageChange={handlePageChange}
-            {...sizeChangerProps}
-          />
-        </div>
-      ) : null}
+      {paginationFooter}
     </div>
   );
 };

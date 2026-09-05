@@ -348,7 +348,9 @@ export default [
       // extracting sub-expressions into named consts (short-circuit preserved);
       // backlog is zero and this ratchets it.
       'sonarjs/expression-complexity': 'error',
-      'sonarjs/no-nested-conditional': 'warn', // 16
+      // Promoted to error: all nested-ternary violations refactored to
+      // intermediate variables / if-else; backlog is zero and this ratchets it.
+      'sonarjs/no-nested-conditional': 'error',
       // Promoted to error: all 75 deeply-nested functions refactored by
       // hoisting the innermost callback to a shallower named scope; backlog is
       // zero and this ratchets it.
