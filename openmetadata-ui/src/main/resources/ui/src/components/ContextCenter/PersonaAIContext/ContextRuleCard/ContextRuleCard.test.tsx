@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { ContextSection } from '../../../../../generated/type/personaContextDefinition';
+import { EntityType } from '../../../../enums/entity.enum';
+import { ContextSection } from '../../../../generated/type/personaContextDefinition';
 import { ContextRuleCard } from './ContextRuleCard.component';
 
 jest.mock('react-i18next', () => ({

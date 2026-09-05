@@ -25,26 +25,28 @@ import {
   File02,
   FilterLines,
   Hexagon01,
+  SearchLg,
   Table,
   Trash01,
 } from '@untitledui/icons';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import {
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   HEAVY_PERSONA_CONTEXT_SECTIONS,
   PERSONA_CONTEXT_ENTITY_LABEL_KEYS,
   PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS,
   PERSONA_CONTEXT_SECTION_LABEL_KEYS,
-} from '../../../../../constants/PersonaAIContext.constants';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { ContextRule } from '../../../../../generated/type/personaContextDefinition';
+} from '../../../../constants/PersonaAIContext.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { ContextRule } from '../../../../generated/type/personaContextDefinition';
 import {
   getRuleConditionCount,
   getRuleConditionParts,
-} from '../../../../../utils/PersonaAIContextUtils';
-import { DeleteModal } from '../../../../common/DeleteModal/DeleteModal';
+  isSearchScopedRule,
+} from '../../../../utils/PersonaAIContextUtils';
+import { DeleteModal } from '../../../common/DeleteModal/DeleteModal';
 
 interface ContextRuleCardProps {
   canEdit: boolean;
@@ -73,6 +75,9 @@ export const ContextRuleCard = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const conditionParts = useMemo(() => getRuleConditionParts(rule), [rule]);
+  // Not rule.filteredInSearch: the server ignores that flag on knowledge rules, so trusting it here
+  // would badge a rule as scoping search while the server preloads it.
+  const isScoped = isSearchScopedRule(rule);
   const conditionCount = getRuleConditionCount(
     rule.filterJsonTree,
     rule.queryFilter
@@ -164,7 +169,11 @@ export const ContextRuleCard = ({
         </Box>
 
         <Box align="center" className="tw:gap-1.5" wrap="wrap">
-          {rule.fullyRendered ? (
+          {isScoped ? (
+            <BadgeWithIcon color="brand" iconLeading={SearchLg} size="sm">
+              {t('label.filtered-in-search')}
+            </BadgeWithIcon>
+          ) : rule.fullyRendered ? (
             <BadgeWithIcon color="brand" iconLeading={Check} size="sm">
               {t('label.fully-rendered')}
             </BadgeWithIcon>
@@ -198,7 +207,7 @@ export const ContextRuleCard = ({
               )}
             </>
           )}
-          {rule.alwaysInContext && (
+          {rule.alwaysInContext && !isScoped && (
             <Badge color="gray" size="sm">
               {t('label.always-in-context')}
             </Badge>
@@ -206,9 +215,11 @@ export const ContextRuleCard = ({
         </Box>
 
         <Typography as="p" className="tw:m-0 tw:text-quaternary" size="text-xs">
-          {t('message.persona-context-max-assets', {
-            count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
-          })}
+          {isScoped
+            ? t('message.persona-context-scoped-rule-summary')
+            : t('message.persona-context-max-assets', {
+                count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
+              })}
         </Typography>
       </Box>
 

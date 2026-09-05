@@ -26,11 +26,10 @@ import {
   getDefaultAdminAPIContext,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-} from '../../utils/persona';
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const dbService = new DatabaseServiceClass();
@@ -286,12 +285,7 @@ const mockPersonaContextApi = async (
 };
 
 const openPersonaContext = async (page: Page) => {
-  await navigateToPersonaSettings(page);
-  await navigateToPersonaWithPagination(page, persona.data.name, true);
-  await page.getByRole('tab', { name: 'AI Context' }).click();
-  await expect(page).toHaveURL(/#ai-context/);
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('persona-ai-context')).toBeVisible();
+  await openPersonaAIContext(page, persona.data.name);
 };
 
 /**
@@ -1421,6 +1415,7 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage
       .getByTestId('context-rule-name')
       .fill('sections-payload-test');
+    await enablePersonaRulePreloading(adminPage);
 
     // Scope to the drawer so we don't accidentally match checkboxes elsewhere.
     const drawer = adminPage.getByRole('dialog');
@@ -1429,6 +1424,7 @@ test.describe.serial('Persona AI Context', () => {
     });
     await descriptionCheckbox.waitFor({ state: 'visible' });
     await expect(descriptionCheckbox).toBeChecked();
+    await expect(descriptionCheckbox).toBeEnabled();
     await descriptionCheckbox.uncheck();
 
     const createRuleRequest = adminPage.waitForRequest(

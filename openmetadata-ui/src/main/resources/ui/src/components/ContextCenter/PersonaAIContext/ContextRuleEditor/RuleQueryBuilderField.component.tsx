@@ -21,17 +21,17 @@ import { Plus } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
+import { EntityType } from '../../../../enums/entity.enum';
+import { getAllCustomProperties } from '../../../../rest/metadataTypeAPI';
 import {
   getTreeConfig,
   processEntityTypeFields,
-} from '../../../../../utils/AdvancedSearchUtils';
-import { getRuleFilterTree } from '../../../../../utils/PersonaAIContextUtils';
-import searchClassBase from '../../../../../utils/SearchClassBase';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
-import QueryBuilderWidgetV1 from '../../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
-import { SearchOutputType } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+} from '../../../../utils/AdvancedSearchUtils';
+import { getRuleFilterTree } from '../../../../utils/PersonaAIContextUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
+import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+import QueryBuilderWidgetV1 from '../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
+import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 interface RuleQueryBuilderFieldProps {
   entityType: string;

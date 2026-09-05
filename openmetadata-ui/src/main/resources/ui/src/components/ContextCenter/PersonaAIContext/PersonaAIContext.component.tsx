@@ -28,13 +28,13 @@ import { useTranslation } from 'react-i18next';
 import {
   CACHE_STATE_BADGE_COLOR,
   DEFAULT_PERSONA_CONTEXT_DEFINITION,
-} from '../../../../constants/PersonaAIContext.constants';
-import { Persona } from '../../../../generated/entity/teams/persona';
+} from '../../../constants/PersonaAIContext.constants';
+import { Persona } from '../../../generated/entity/teams/persona';
 import {
   CacheState,
   ContextRule,
   PersonaContextDefinition,
-} from '../../../../generated/type/personaContextDefinition';
+} from '../../../generated/type/personaContextDefinition';
 import {
   createPersonaAIContextRule,
   deletePersonaAIContextRule,
@@ -42,14 +42,14 @@ import {
   PersonaContextDocument,
   updatePersonaAIContext,
   updatePersonaAIContextRule,
-} from '../../../../rest/PersonaAPI';
-import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
+} from '../../../rest/PersonaAPI';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import {
   formatPersonaVersion,
   normalizePersonaContextDefinition,
-} from '../../../../utils/PersonaAIContextUtils';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import Loader from '../../../common/Loader/Loader';
+} from '../../../utils/PersonaAIContextUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import { ContextPreviewModal } from './ContextPreviewModal/ContextPreviewModal.component';
 import { ContextRuleCard } from './ContextRuleCard/ContextRuleCard.component';
 import { ContextRuleEditor } from './ContextRuleEditor/ContextRuleEditor.component';
@@ -303,22 +303,26 @@ export const PersonaAIContext = ({
               })}
             </Typography>
           )}
-          <Button
-            color="secondary"
-            data-testid="preview-persona-context"
-            iconLeading={Eye}
-            isDisabled={!hasRules}
-            onClick={() => setPreviewOpen(true)}>
-            {t('label.preview-context')}
-          </Button>
+          {/* Preview renders the materialized document, which the server only serves to admins
+              because it searches without an RBAC filter — so it is gated with the edit actions. */}
           {canEdit && (
-            <Button
-              color="primary"
-              data-testid="add-context-rule"
-              iconLeading={Plus}
-              onClick={openAddRule}>
-              {t('label.add-rule')}
-            </Button>
+            <>
+              <Button
+                color="secondary"
+                data-testid="preview-persona-context"
+                iconLeading={Eye}
+                isDisabled={!hasRules}
+                onClick={() => setPreviewOpen(true)}>
+                {t('label.preview-context')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="add-context-rule"
+                iconLeading={Plus}
+                onClick={openAddRule}>
+                {t('label.add-rule')}
+              </Button>
+            </>
           )}
         </Box>
       </Box>

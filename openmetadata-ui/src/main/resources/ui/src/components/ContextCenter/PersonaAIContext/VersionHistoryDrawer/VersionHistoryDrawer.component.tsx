@@ -30,22 +30,19 @@ import {
   getPersonaVersions,
   refreshPersonaAIContextDocument,
   updatePersona,
-} from '../../../../../rest/PersonaAPI';
+} from '../../../../rest/PersonaAPI';
 import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
   getRelativeTime,
-} from '../../../../../utils/date-time/DateTimeUtils';
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   buildPersonaContextVersionHistory,
   PersonaContextVersionEntry,
   stripPersonaContextDerivedState,
-} from '../../../../../utils/PersonaAIContextUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../../../utils/ToastUtils';
-import Loader from '../../../../common/Loader/Loader';
+} from '../../../../utils/PersonaAIContextUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 
 interface VersionHistoryDrawerProps {
   canEdit: boolean;

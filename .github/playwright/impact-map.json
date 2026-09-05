@@ -598,16 +598,27 @@
       ]
     },
     {
-      "_comment": "PersonaAIContextRules.spec.ts covers the AI Context rule builder on the Persona settings page. Without this entry, changes to the PersonaAIContext component tree or PersonaAPI are not caught before merge.",
+      "_comment": "Persona AI Context moved from Persona settings to Context Center. Cover its page, route, API, and shared Playwright navigation so a relocation cannot leave its E2E suites out of targeted CI.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/**",
-        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts"
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/personaAIContext.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ContextCenterRouter/ContextCenterRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterAIContextPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Persona/PersonaDetailsPage/PersonaDetailsPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/PersonaAIContextUtils.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/aicontext/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/teams/PersonaResource.java",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContext.json",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json"
       ],
       "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts"
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts"
       ]
     }
   ]

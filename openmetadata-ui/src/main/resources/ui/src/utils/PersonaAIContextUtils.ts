@@ -54,6 +54,7 @@ export const normalizePersonaContextDefinition = (
       ...cloneDeep(rule),
       alwaysInContext: rule.alwaysInContext ?? false,
       enabled: rule.enabled ?? true,
+      filteredInSearch: rule.filteredInSearch ?? false,
       fullyRendered: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
         rule.entityType as EntityType
       )
@@ -225,6 +226,24 @@ export const getRuleConditionParts = (
 
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
+
+/**
+ * The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch. The flag alone is not
+ * enough: the backend ignores it on knowledge entity types, because a knowledge rule exists to be in
+ * context and scoping it would drop its content from the document. Reading `rule.filteredInSearch`
+ * directly anywhere in the UI will claim a rule scopes search when the server preloads it — which is
+ * reachable, since the API accepts an explicit `true` on a knowledge rule and rules created before
+ * the server-side guard were stamped regardless of type.
+ */
+export const isSearchScopedRule = (rule: ContextRule): boolean =>
+  Boolean(rule.filteredInSearch) && !isKnowledgeContextRule(rule);
+
+// Adds the enabled check on top: searchScope() skips disabled rules, so counting them would
+// overstate how much of the persona's search is actually narrowed. Deliberately not part of
+// isSearchScopedRule — a disabled rule still *is* in scoping mode, which is what the card displays.
+export const getScopedRuleCount = (rules: ContextRule[]): number =>
+  rules.filter((rule) => isSearchScopedRule(rule) && rule.enabled !== false)
+    .length;
 
 export interface PersonaContextVersionChange {
   key: string;

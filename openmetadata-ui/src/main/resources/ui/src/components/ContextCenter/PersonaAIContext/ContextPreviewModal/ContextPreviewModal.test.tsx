@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 import { render, screen, waitFor } from '@testing-library/react';
-import { CacheState } from '../../../../../generated/type/personaContextDefinition';
+import { CacheState } from '../../../../generated/type/personaContextDefinition';
 import {
   getPersonaAIContextDocument,
   PersonaContextDocument,
-} from '../../../../../rest/PersonaAPI';
+} from '../../../../rest/PersonaAPI';
 import { ContextPreviewModal } from './ContextPreviewModal.component';
 
-jest.mock('../../../../../rest/PersonaAPI', () => ({
+jest.mock('../../../../rest/PersonaAPI', () => ({
   getPersonaAIContextDocument: jest.fn(),
   refreshPersonaAIContextDocument: jest.fn(),
 }));
 
-jest.mock('../../../../../hooks/useClipBoard', () => ({
+jest.mock('../../../../hooks/useClipBoard', () => ({
   useClipboard: () => ({
     hasCopied: false,
     onCopyToClipBoard: jest.fn(),
   }),
 }));
 
-jest.mock('../../../../../utils/ToastUtils', () => ({
+jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
@@ -38,7 +38,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
   __esModule: true,
   default: ({ markdown }: { markdown: string }) => (
     <div data-testid="markdown-preview">{markdown}</div>

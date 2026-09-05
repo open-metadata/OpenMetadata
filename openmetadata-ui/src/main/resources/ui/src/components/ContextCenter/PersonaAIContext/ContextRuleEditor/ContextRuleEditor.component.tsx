@@ -44,25 +44,25 @@ import {
   PERSONA_CONTEXT_ENTITY_LABEL_KEYS,
   PERSONA_CONTEXT_KNOWLEDGE_TYPES,
   PERSONA_CONTEXT_SECTION_LABEL_KEYS,
-} from '../../../../../constants/PersonaAIContext.constants';
-import { EntityType } from '../../../../../enums/entity.enum';
+} from '../../../../constants/PersonaAIContext.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   ContextRule,
   ContextSection,
-} from '../../../../../generated/type/personaContextDefinition';
+} from '../../../../generated/type/personaContextDefinition';
 import {
   PersonaContextRulePreview,
   previewPersonaAIContextRule,
-} from '../../../../../rest/PersonaAPI';
-import { EntityIconSize } from '../../../../../utils/EntityIconUtils';
+} from '../../../../rest/PersonaAPI';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
   getRuleExplorePath,
   isKnowledgeContextRule,
-} from '../../../../../utils/PersonaAIContextUtils';
-import searchClassBase from '../../../../../utils/SearchClassBase';
-import { useFormDrawerWithHook } from '../../../../common/atoms/drawer/useFormDrawer';
+} from '../../../../utils/PersonaAIContextUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
+import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
 interface ContextRuleEditorProps {
@@ -121,6 +121,9 @@ const getDefaultRule = (rule?: ContextRule): ContextRule => {
     enabled: rule?.enabled ?? true,
     entityType,
     filterJsonTree: rule?.filterJsonTree,
+    // A new rule scopes search by default; knowledge rules stay preloaded because their whole
+    // purpose is to be in context, not to narrow asset search.
+    filteredInSearch: rule ? rule.filteredInSearch ?? false : !knowledgeType,
     fullyRendered: knowledgeType ? true : rule?.fullyRendered ?? false,
     id: rule?.id,
     maxAssets: rule?.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
@@ -153,6 +156,8 @@ export const ContextRuleEditor = ({
   });
   const fullyRendered =
     useWatch({ control: form.control, name: 'fullyRendered' }) ?? false;
+  const filteredInSearch =
+    useWatch({ control: form.control, name: 'filteredInSearch' }) ?? false;
   const maxAssets = useWatch({ control: form.control, name: 'maxAssets' });
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
@@ -196,7 +201,9 @@ export const ContextRuleEditor = ({
     [t]
   );
 
-  const sectionsDisabled = fullyRendered || isKnowledgeRule;
+  // Scoping and preloading are mutually exclusive deliveries: a scoped rule never renders, so every
+  // rendering control below is inert while it is on.
+  const sectionsDisabled = fullyRendered || isKnowledgeRule || filteredInSearch;
 
   useEffect(() => {
     if (!open) {
@@ -258,10 +265,13 @@ export const ContextRuleEditor = ({
 
         return;
       }
+      const scoped = Boolean(data.filteredInSearch);
       await onSubmit({
         ...data,
+        alwaysInContext: scoped ? false : data.alwaysInContext,
         description: data.description || undefined,
         filterJsonTree: data.filterJsonTree || undefined,
+        fullyRendered: scoped ? false : data.fullyRendered,
         matchedCount: undefined,
         maxAssets: data.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
         name: data.name.trim(),
@@ -406,6 +416,9 @@ export const ContextRuleEditor = ({
                 form.setValue('fullyRendered', nextIsKnowledge, {
                   shouldDirty: true,
                 });
+                form.setValue('filteredInSearch', !nextIsKnowledge, {
+                  shouldDirty: true,
+                });
               }}>
               {(item) => (
                 <Select.Item
@@ -492,11 +505,55 @@ export const ContextRuleEditor = ({
       <Box className="tw:mb-5.5 tw:gap-2.5" direction="col">
         <Controller
           control={form.control}
-          name="alwaysInContext"
+          name="filteredInSearch"
           render={({ field }) => (
             <Box
               align="center"
               className={BEHAVIOR_CARD_CLASS}
+              justify="between">
+              <Box className="tw:min-w-0" direction="col" gap={1}>
+                <Typography
+                  className="tw:text-[13px] tw:text-primary"
+                  weight="semibold">
+                  {t('label.filtered-in-search')}
+                </Typography>
+                <Typography className="tw:text-[12px] tw:text-quaternary">
+                  {t(
+                    isKnowledgeRule
+                      ? 'message.persona-context-knowledge-filtered-in-search'
+                      : 'message.persona-context-filtered-in-search-description'
+                  )}
+                </Typography>
+              </Box>
+              <Toggle
+                aria-label={t('label.filtered-in-search')}
+                data-testid="context-rule-filtered-in-search"
+                isDisabled={isKnowledgeRule}
+                isSelected={!isKnowledgeRule && Boolean(field.value)}
+                onChange={(selected) => {
+                  field.onChange(selected);
+                  if (selected) {
+                    form.setValue('alwaysInContext', false, {
+                      shouldDirty: true,
+                    });
+                    form.setValue('fullyRendered', false, {
+                      shouldDirty: true,
+                    });
+                  }
+                }}
+              />
+            </Box>
+          )}
+        />
+        <Controller
+          control={form.control}
+          name="alwaysInContext"
+          render={({ field }) => (
+            <Box
+              align="center"
+              className={`${BEHAVIOR_CARD_CLASS} ${
+                filteredInSearch ? 'tw:opacity-60' : ''
+              }`}
               justify="between">
               <Box className="tw:min-w-0" direction="col" gap={1}>
                 <Typography
@@ -511,7 +568,8 @@ export const ContextRuleEditor = ({
               <Toggle
                 aria-label={t('label.always-in-context')}
                 data-testid="context-rule-always-in-context"
-                isSelected={Boolean(field.value)}
+                isDisabled={filteredInSearch}
+                isSelected={!filteredInSearch && Boolean(field.value)}
                 onChange={field.onChange}
               />
             </Box>
@@ -523,7 +581,9 @@ export const ContextRuleEditor = ({
           render={({ field }) => (
             <Box
               align="center"
-              className={BEHAVIOR_CARD_CLASS}
+              className={`${BEHAVIOR_CARD_CLASS} ${
+                filteredInSearch ? 'tw:opacity-60' : ''
+              }`}
               justify="between">
               <Box className="tw:min-w-0" direction="col" gap={1}>
                 <Typography
@@ -544,8 +604,10 @@ export const ContextRuleEditor = ({
               <Toggle
                 aria-label={t('label.fully-rendered')}
                 data-testid="context-rule-fully-rendered"
-                isDisabled={isKnowledgeRule}
-                isSelected={isKnowledgeRule || Boolean(field.value)}
+                isDisabled={isKnowledgeRule || filteredInSearch}
+                isSelected={
+                  !filteredInSearch && (isKnowledgeRule || Boolean(field.value))
+                }
                 onChange={field.onChange}
               />
             </Box>
@@ -634,6 +696,7 @@ export const ContextRuleEditor = ({
               aria-label={t('label.max-assets')}
               inputDataTestId="context-rule-max-assets"
               inputMode="numeric"
+              isDisabled={filteredInSearch}
               value={
                 maxAssetsDraft ??
                 (field.value == null ? '' : String(field.value))

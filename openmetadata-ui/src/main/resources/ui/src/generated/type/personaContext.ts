@@ -22,6 +22,7 @@ export interface PersonaContext {
     manifest?:        ManifestEntry[];
     persona?:         EntityReference;
     rules?:           RuleResult[];
+    searchScope?:     SearchScope;
     sharedKnowledge?: SharedKnowledge;
     /**
      * Whether at least one selected entity was compacted or omitted, or required knowledge
@@ -590,6 +591,41 @@ export interface DataQuality {
     openIncidents?: number;
     passed?:        number;
     total?:         number;
+}
+
+/**
+ * Default search scope built from the persona's filteredInSearch rules. Consumers apply
+ * queryFilter to every AI search so the persona only sees the entities its rules select,
+ * instead of preloading them into the document.
+ */
+export interface SearchScope {
+    /**
+     * Distinct entity types named by the contributing rules. An entity type absent from this
+     * list is outside the scope entirely.
+     */
+    entityTypes?: string[];
+    /**
+     * Ready-to-use Elasticsearch query DSL string unioning every contributing rule. Empty when
+     * the persona has no filteredInSearch rules, in which case search is unscoped.
+     */
+    queryFilter?: string;
+    /**
+     * The contributing rules, kept for display and debugging.
+     */
+    rules?: SearchScopeRule[];
+}
+
+/**
+ * One filteredInSearch rule contributing to the persona search scope.
+ */
+export interface SearchScopeRule {
+    entityType: string;
+    /**
+     * Elasticsearch query DSL string configured on the rule. Empty selects every entity of the
+     * configured type.
+     */
+    queryFilter?: string;
+    ruleName:     string;
 }
 
 /**
