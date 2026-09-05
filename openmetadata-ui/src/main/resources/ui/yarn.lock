@@ -2196,8 +2196,9 @@
     compare-versions "^4.1.2"
 
 "@openmetadata/ui-core-components@link:../../../../../openmetadata-ui-core-components/src/main/resources/ui":
-  version "0.0.0"
-  uid ""
+  version "1.0.0"
+  dependencies:
+    "@untitledui/file-icons" "^0.0.9"
 
 "@ota-meshi/ast-token-store@^0.3.0":
   version "0.3.0"
@@ -3600,10 +3601,15 @@
   resolved "https://registry.yarnpkg.com/@testing-library/user-event/-/user-event-14.6.1.tgz#13e09a32d7a8b7060fe38304788ebf4197cd2149"
   integrity sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw==
 
-"@tiptap/core@^2.27.2", "@tiptap/core@^2.3.0":
+"@tiptap/core@^2.27.2":
   version "2.27.2"
   resolved "https://registry.yarnpkg.com/@tiptap/core/-/core-2.27.2.tgz#679eef9ce673d7243ce28d303852a98cbd1844be"
   integrity sha512-ABL1N6eoxzDzC1bYvkMbvyexHacszsKdVPYqhl5GwHLOvpZcv9VE9QaKwDILTyz5voCA0lGcAAXZp+qnXOk5lQ==
+
+"@tiptap/core@^3.30.4":
+  version "3.30.4"
+  resolved "https://registry.yarnpkg.com/@tiptap/core/-/core-3.30.4.tgz#9e0847c5f4dd53750ae3accc6b83223e37f693b3"
+  integrity sha512-V9yKuUfV8qC9WBrnVxkFWmYLBomc3d1CwXoFSjED5DRu5q2oyxv07F+jOJSRogJAY+feHjuxvjhixwxeHm2DXQ==
 
 "@tiptap/extension-blockquote@^2.27.2":
   version "2.27.2"
