@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
@@ -167,15 +168,19 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         onUpdate={handleTagSelection}>
         <div className="d-none tag-selector-display">
           {editingTags.length > 0 ? (
-            <div className="selected-tags-list">
+            <div className="tw:flex tw:flex-wrap tw:gap-1">
               {editingTags.map((tag) => (
-                <div
-                  className="selected-tag-chip"
+                <ClassificationTag
+                  color={tag.style?.color}
                   data-testid={`tag-${tag.tagFQN}`}
-                  key={tag.tagFQN}>
-                  <ClassificationIcon className="tag-icon" />
-                  <span className="tag-name">{getEntityName(tag)}</span>
-                </div>
+                  href={getTagRedirectLink(tag)}
+                  icon={tag.style?.iconURL}
+                  key={tag.tagFQN}
+                  label={getTagName(tag)}
+                  maxWidth={200}
+                  size="sm"
+                  tooltip={getTagName(tag)}
+                />
               ))}
             </div>
           ) : (
@@ -216,23 +221,28 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 
   const tagsDisplay = useMemo(
     () => (
-      <div className="tags-display">
-        <div className="tags-list">
+      <div className="tags-display" data-testid="tags-section-container">
+        <div className="tw:flex tw:flex-wrap tw:gap-1">
           {(showAllTags
             ? nonTierTags
             : nonTierTags.slice(0, maxVisibleTags)
           ).map((tag) => (
-            <div
-              className="tag-item"
+            <ClassificationTag
+              color={tag.style?.color}
               data-testid={`tag-${tag.tagFQN}`}
-              key={tag.tagFQN}>
-              <ClassificationIcon className="tag-icon" />
-              <span className="tag-name">{getEntityName(tag)}</span>
-            </div>
+              href={getTagRedirectLink(tag)}
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN}
+              label={getTagName(tag)}
+              maxWidth={200}
+              size="sm"
+              tooltip={getTagName(tag)}
+            />
           ))}
           {nonTierTags.length > maxVisibleTags && (
-            <button
-              className="show-more-tags-button"
+            <Button
+              color="link-color"
+              size="xs"
               type="button"
               onClick={() => setShowAllTags(!showAllTags)}>
               {showAllTags
@@ -240,7 +250,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                 : `+${nonTierTags.length - maxVisibleTags} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Button>
           )}
         </div>
       </div>

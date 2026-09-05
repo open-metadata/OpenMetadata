@@ -703,7 +703,7 @@ test.describe('Glossary tests', () => {
         // Check if the term is present
         const tagSelectorText = await page
           .locator(
-            '[data-testid="glossary-tags-0"] [data-testid="glossary-container"] [data-testid="tags"]'
+            '[data-testid="glossary-tags-0"] [data-testid="glossary-container"]'
           )
           .innerText();
 

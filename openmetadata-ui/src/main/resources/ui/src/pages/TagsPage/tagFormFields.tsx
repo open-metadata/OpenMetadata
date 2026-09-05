@@ -17,7 +17,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { ReactNode } from 'react';
-import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
 import {
   NAME_LENGTH_REGEX,
   TAG_NAME_REGEX,
@@ -39,7 +38,6 @@ export const getIconField = (
     'data-testid': 'icon-picker-btn',
     allowUrl: true,
     backgroundColor: selectedColor,
-    defaultIcon: DEFAULT_TAG_ICON,
     options: iconOptions ?? [],
     labels: {
       customIconUrl: t('label.icon-url'),

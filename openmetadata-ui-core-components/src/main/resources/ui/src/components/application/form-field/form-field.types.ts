@@ -120,6 +120,7 @@ export interface FieldPropsMap {
   previewClassName?: string;
   previewHeight?: number;
   renderItem?: (item: FormSelectItem) => ReactNode;
+  renderTag?: (item: FormSelectItem, onRemove: () => void) => ReactNode;
   renderPreview?: (ctx: CoverImageUploadRenderPreviewContext) => ReactNode;
   repositionable?: boolean;
   selectedItems?: FormSelectItem[];

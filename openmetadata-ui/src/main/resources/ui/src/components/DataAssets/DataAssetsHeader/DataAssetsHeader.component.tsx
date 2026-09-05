@@ -48,7 +48,6 @@ import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -90,10 +89,12 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtil
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -109,7 +110,6 @@ import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import IconColorModal from '../../Modals/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -989,13 +989,15 @@ export const DataAssetsHeader = ({
               </div>
               {(() => {
                 const tierValue = tier ? (
-                  <TagsV1
-                    hideIcon
-                    startWith={TAG_START_WITH.SOURCE_ICON}
-                    tag={tier}
-                    tagProps={{
-                      'data-testid': 'Tier',
-                    }}
+                  <ClassificationTag
+                    color={tier.style?.color}
+                    data-testid="Tier"
+                    href={getTagRedirectLink(tier)}
+                    icon={tier.style?.iconURL}
+                    label={getTagName(tier)}
+                    maxWidth={120}
+                    size="sm"
+                    tooltip={getTagName(tier)}
                   />
                 ) : (
                   <Typography

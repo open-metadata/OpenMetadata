@@ -85,6 +85,7 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { ClassificationTag } from '../../common/atoms/Tag';
 import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import {
   AVAILABLE_ICONS,
@@ -845,6 +846,25 @@ const AddDomainForm = ({
       onFocus: handleTagFocus,
       onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
       options: tagOptions,
+      renderTag: (item: FormSelectItem, onRemove: () => void) => {
+        const tagValue = (item as DomainFormSelectItem).value;
+        const style =
+          tagValue && typeof tagValue === 'object' && 'style' in tagValue
+            ? tagValue.style
+            : undefined;
+
+        return (
+          <ClassificationTag
+            color={style?.color}
+            icon={style?.iconURL}
+            key={item.id}
+            label={item.label || ''}
+            maxWidth={150}
+            tooltip={item.label || ''}
+            onDelete={onRemove}
+          />
+        );
+      },
       renderItem: (item: FormSelectItem) => (
         <Autocomplete.Item
           avatarUrl={item.avatarUrl}

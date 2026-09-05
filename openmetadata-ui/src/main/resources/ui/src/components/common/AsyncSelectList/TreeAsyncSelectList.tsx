@@ -10,20 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Empty,
-  Form,
-  Space,
-  TagProps,
-  TreeSelect,
-  TreeSelectProps,
-} from 'antd';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
+import { debounce, get, isEmpty, isNull, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import {
   FC,
@@ -38,11 +30,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { LabelType } from '../../../generated/entity/data/table';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import {
   getGlossariesList,
   ListGlossaryTermsParams,
@@ -60,10 +52,10 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
-import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import ClassificationTag from '../atoms/Tag/ClassificationTag';
+import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
@@ -97,7 +89,6 @@ interface ExtendedTreeNode {
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
   initialOptions,
-  tagType,
   isSubmitLoading,
   filterOptions = [],
   onCancel,
@@ -235,12 +226,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       (tag) => tag.value === data.value
     );
 
-    if (isUndefined(selectedTag?.data)) {
-      return tagRender(data);
-    }
-
     const { value, onClose } = data;
-    const tagLabel = getTagDisplay(value as string);
+    const tagDisplayName = getTagDisplay(value as string);
+
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -253,41 +241,41 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       ),
     } as TagLabel;
 
-    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
+    const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
     const isDerived =
-      (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
+      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
+    const isGlossaryTerm =
+      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
+      (selectedTag?.data as { entityType?: EntityType })?.entityType ===
+        EntityType.GLOSSARY_TERM;
+    const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
-    const tagProps = {
-      closable: !isDerived,
-      closeIcon: !isDerived && (
-        <CloseOutlined
-          className="p-r-xs"
-          data-testid="remove-tags"
-          height={8}
-          width={8}
-        />
-      ),
-      'data-testid': `selected-tag-${tagLabel}`,
-      onClose: !isDerived ? onClose : null,
-      onMouseDown: onPreventMouseDown,
-    } as TagProps;
-
-    return (
-      <TagsV1
-        isEditTags
-        newLook={newLook}
-        startWith={TAG_START_WITH.SOURCE_ICON}
-        tag={tag}
-        tagProps={tagProps}
-        tagType={tagType}
-        tooltipOverride={
-          isDerived ? t('message.derived-tag-warning') : undefined
+    const chip = (
+      <TagComponent
+        closeButtonTestId="remove-tags"
+        color={tag.style?.color}
+        data-testid={`selected-tag-${tagDisplayName}`}
+        icon={tag.style?.iconURL}
+        label={tagLabel}
+        size="sm"
+        onDelete={
+          isDerived
+            ? undefined
+            : (e) => {
+                e.stopPropagation();
+                onClose?.();
+              }
         }
       />
+    );
+
+    return isDerived ? (
+      <Tooltip title={t('message.derived-tag-warning')}>
+        <TooltipTrigger>{chip}</TooltipTrigger>
+      </Tooltip>
+    ) : (
+      chip
     );
   };
 

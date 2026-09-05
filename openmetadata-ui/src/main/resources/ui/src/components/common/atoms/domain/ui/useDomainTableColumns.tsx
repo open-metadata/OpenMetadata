@@ -62,7 +62,7 @@ export const useDomainTableColumns = ({
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity, { size: tagSize });
         case 'tags':
-          return renderDomainClassificationTagsCell(entity, { size: tagSize });
+          return renderDomainClassificationTagsCell(entity);
         default:
           return null;
       }

@@ -2238,7 +2238,6 @@ class CSVUtilsClassBase {
                 dropdownContainerRef={dropdownContainerRef}
                 dropdownMatchSelectWidth={false}
                 optionClassName="tag-select-box"
-                tagType={TagSource.Glossary}
                 onCancel={() => {
                   onClose(false);
                 }}
