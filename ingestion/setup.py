@@ -246,6 +246,10 @@ plugins: dict[str, set[str]] = {
         "clickhouse-sqlalchemy>=0.3",
         DATA_DIFF["clickhouse"],
     },
+    "clickzetta": {
+        "clickzetta-sqlalchemy==0.8.65.4",
+        "clickzetta-connector==1.0.30",
+    },
     "dagster": {
         # No croniter ceiling here: dagster 1.13 declares no croniter dependency at all,
         # nothing under ingestion/ imports it, and apache-airflow-core 3.3.1 raised its

@@ -1,0 +1,24 @@
+source:
+  type: clickzetta
+  serviceName: clickzetta_service
+  serviceConnection:
+    config:
+      type: Clickzetta
+      hostPort: <instance>.<service>:8443
+      username: <username>
+      authType:
+        password: <password>
+      databaseName: <workspace>
+      virtualCluster: <virtual_cluster>
+      databaseSchema: <schema>
+      protocol: https
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
