@@ -8,6 +8,7 @@ on:
       - 'openmetadata-spec/src/main/resources/json/schema/**'
       - 'openmetadata-ui/src/main/resources/ui/src/generated/**'
       - 'openmetadata-ui/src/main/resources/ui/src/jsons/**'
+      - 'openmetadata-ui/src/main/resources/ui/public/jsons/**'
       - 'openmetadata-ui/src/main/resources/ui/parseSchemas.js'
   workflow_dispatch:
     inputs:
@@ -167,7 +168,8 @@ jobs:
         continue-on-error: true
         run: |
           git add openmetadata-ui/src/main/resources/ui/src/generated/ \
-                  openmetadata-ui/src/main/resources/ui/src/jsons/
+                  openmetadata-ui/src/main/resources/ui/src/jsons/ \
+                  openmetadata-ui/src/main/resources/ui/public/jsons/
           git diff --cached --quiet
 
       - name: Configure Git
@@ -198,8 +200,8 @@ jobs:
             ## ✅ Generated Sources Auto-Updated
 
             The generated TypeScript types (`src/generated/`) and dereferenced JSON
-            schemas (`src/jsons/`) have been automatically updated based on JSON schema
-            changes in this PR.
+            schemas (`src/jsons/`, `public/jsons/`) have been automatically updated
+            based on JSON schema changes in this PR.
 
       - name: Create PR comment for fork repository
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
@@ -218,7 +220,7 @@ jobs:
             cd openmetadata-ui/src/main/resources/ui
             ./json2ts-generate-all.sh -l true
             yarn parse-schema
-            git add src/generated/ src/jsons/
+            git add src/generated/ src/jsons/ public/jsons/
             git commit -m "Update generated TypeScript types and dereferenced schemas"
             git push
             ```
