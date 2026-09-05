@@ -35,6 +35,7 @@ import { RelationshipType } from '../../../generated/entity/data/relationshipTyp
 import { resolveCssColor } from '../../../utils/common/cssColor.utils';
 import {
   COLOR_META_BY_HEX,
+  COMBO_COLOR_FALLBACK,
   COMBO_FILL_DEFAULT,
   COMBO_HEADER_HEIGHT,
   COMBO_INTERIOR_PADDING_SIDES,
@@ -70,6 +71,7 @@ import {
   DATA_MODE_TERM_HALO_LINE_WIDTH,
   DATA_MODE_TERM_HALO_SHADOW_BLUR,
   DATA_MODE_TERM_HALO_SHADOW_COLOR,
+  DATA_MODE_TERM_HALO_STROKE,
   DATA_MODE_TERM_HALO_STROKE_OPACITY,
   DATA_MODE_TERM_LABEL_BG_RADIUS,
   DATA_MODE_TERM_LABEL_FONT_WEIGHT,
@@ -98,6 +100,7 @@ import {
   NODE_FILL_DEFAULT,
   NODE_LABEL_FILL,
   NODE_LABEL_FILL_FALLBACK,
+  NODE_LABEL_FILL_INVERSE,
   NODE_LABEL_FONT_SIZE,
   NODE_LABEL_FONT_WEIGHT,
   NODE_LABEL_PADDING,
@@ -521,6 +524,70 @@ const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
   '#e31b54': '#FECDD6',
 };
 
+type RelationMeta = (typeof RELATION_META)[string];
+
+interface EdgeLabelPresentation {
+  labelBackgroundFill: string;
+  labelBackgroundLineWidth: number;
+  labelBackgroundRadius: number;
+  labelBackgroundStroke: string;
+  labelFill: string;
+  labelFontWeight: number;
+}
+
+function getRelationMeta(
+  relationType: string | undefined,
+  effectiveColor: string | undefined
+): RelationMeta | null {
+  const builtInMeta = relationType
+    ? RELATION_META[relationType] ?? RELATION_META.default
+    : null;
+
+  return effectiveColor
+    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
+    : builtInMeta;
+}
+
+function getEdgeLabelPresentation(
+  meta: RelationMeta | null,
+  studioMode: boolean,
+  studioBorderColor: string | undefined,
+  getColor: (cssVar: string, fallback: string) => string
+): EdgeLabelPresentation {
+  if (studioMode) {
+    return {
+      labelBackgroundFill: '#FFFFFF',
+      labelBackgroundLineWidth: 1,
+      labelBackgroundRadius: 9999,
+      labelBackgroundStroke: studioBorderColor ?? '#E9EAEB',
+      labelFill: meta
+        ? getColor(meta.color, '#717680')
+        : getColor(EDGE_LABEL_FILL, '#8C93AE'),
+      labelFontWeight: EDGE_LABEL_FONT_WEIGHT,
+    };
+  }
+
+  if (meta) {
+    return {
+      labelBackgroundFill: getColor(meta.background, '#fafafa'),
+      labelBackgroundLineWidth: 0,
+      labelBackgroundRadius: EDGE_LABEL_BADGE_RADIUS,
+      labelBackgroundStroke: 'none',
+      labelFill: getColor(meta.color, '#717680'),
+      labelFontWeight: EDGE_LABEL_BADGE_FONT_WEIGHT,
+    };
+  }
+
+  return {
+    labelBackgroundFill: getColor(EDGE_LABEL_BG_FILL, '#EFF1F8'),
+    labelBackgroundLineWidth: 1,
+    labelBackgroundRadius: EDGE_LABEL_BG_RADIUS,
+    labelBackgroundStroke: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+    labelFill: getColor(EDGE_LABEL_FILL, '#8C93AE'),
+    labelFontWeight: EDGE_LABEL_FONT_WEIGHT,
+  };
+}
+
 export function getEffectiveRelationColor(
   relationType: string,
   relationshipType: RelationshipType | undefined
@@ -539,15 +606,10 @@ export function getEdgeRelationLabelStyle(
   labelText: string,
   relationType?: string,
   effectiveColor?: string,
-  studioMode = false
+  studioMode = false,
+  getColor: (cssVar: string, fallback: string) => string = getCanvasColor
 ): Record<string, unknown> {
-  const builtInMeta =
-    relationType != null
-      ? RELATION_META[relationType] ?? RELATION_META.default
-      : null;
-  const meta = effectiveColor
-    ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
-    : builtInMeta;
+  const meta = getRelationMeta(relationType, effectiveColor);
 
   const edgeLabelPadding = studioMode
     ? STUDIO_EDGE_LABEL_PADDING
@@ -556,44 +618,27 @@ export function getEdgeRelationLabelStyle(
   const studioBorderColor = relationColor
     ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
     : undefined;
+  const presentation = getEdgeLabelPresentation(
+    meta,
+    studioMode,
+    studioBorderColor,
+    getColor
+  );
 
   return {
     labelText,
     labelPosition: 'center',
     labelBackground: true,
     labelBackgroundOpacity: 1,
-    labelBackgroundFill: studioMode
-      ? '#FFFFFF'
-      : meta
-      ? getCanvasColor(meta.background, '#fafafa')
-      : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8'),
-    labelBackgroundStroke: studioMode
-      ? studioBorderColor ?? '#E9EAEB'
-      : meta
-      ? 'none'
-      : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF'),
-    labelBackgroundLineWidth: studioMode ? 1 : meta ? 0 : 1,
-    labelBackgroundRadius: studioMode
-      ? 9999
-      : meta
-      ? EDGE_LABEL_BADGE_RADIUS
-      : EDGE_LABEL_BG_RADIUS,
+    ...presentation,
     labelPadding: edgeLabelPadding,
     labelBackgroundShadowColor: meta
       ? 'transparent'
-      : getCanvasColor(EDGE_LABEL_BG_SHADOW_COLOR, '#EBEDF5'),
+      : getColor(EDGE_LABEL_BG_SHADOW_COLOR, '#EBEDF5'),
     labelBackgroundShadowBlur: meta ? 0 : EDGE_LABEL_BG_SHADOW_BLUR,
     labelBackgroundShadowOffsetY: meta ? 0 : EDGE_LABEL_BG_SHADOW_OFFSET_Y,
     labelBackgroundShadowOffsetX: 0,
-    labelFill: meta
-      ? getCanvasColor(meta.color, '#717680')
-      : getCanvasColor(EDGE_LABEL_FILL, '#8C93AE'),
     labelFontSize: EDGE_LABEL_FONT_SIZE,
-    labelFontWeight: studioMode
-      ? EDGE_LABEL_FONT_WEIGHT
-      : meta
-      ? EDGE_LABEL_BADGE_FONT_WEIGHT
-      : EDGE_LABEL_FONT_WEIGHT,
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,
     labelLetterSpacing: EDGE_LABEL_LETTER_SPACING,
     labelAutoRotate: true,
@@ -615,8 +660,8 @@ export function buildDefaultRectNodeStyle(
 ): Record<string, unknown> {
   return {
     size,
-    fill: NODE_FILL_DEFAULT,
-    stroke: NODE_BORDER_COLOR,
+    fill: getColor(NODE_FILL_DEFAULT, '#ffffff'),
+    stroke: getColor(NODE_BORDER_COLOR, '#E9EAEB'),
     lineWidth: NODE_LINE_WIDTH,
     radius: NODE_BORDER_RADIUS,
     icon: false,
@@ -639,6 +684,14 @@ const DATA_MODE_ENTITY_BADGE_H_PAD = 8;
 const DATA_MODE_ENTITY_BADGE_V_PAD = 2;
 const DATA_MODE_ENTITY_ICON_TEXT_GAP = 2;
 const DATA_MODE_ENTITY_ICON_RIGHT_PAD = DATA_MODE_ENTITY_PILL_ICON_PAD_LEFT;
+
+function normalizeEntityTypeLabel(
+  entityTypeLabel: string | undefined
+): string | undefined {
+  const trimmedLabel = entityTypeLabel?.trim();
+
+  return trimmedLabel ? trimmedLabel : undefined;
+}
 
 function getMeasureTextContext2d(): CanvasRenderingContext2D | null {
   return getCanvasContext();
@@ -728,7 +781,7 @@ export function buildDataModeAssetNodeStyle(
 
   const keyShapeBase = {
     size: [sz, sz],
-    fill: EDGE_LABEL_BG_STROKE,
+    fill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
     stroke: resolvedStroke,
     lineWidth: DATA_MODE_ASSET_LINE_WIDTH,
     radius: sz / 2,
@@ -737,10 +790,7 @@ export function buildDataModeAssetNodeStyle(
     ...(pos && { x: pos.x, y: pos.y }),
   };
 
-  const entityTypeText =
-    entityTypeLabel != null && String(entityTypeLabel).trim().length > 0
-      ? String(entityTypeLabel).trim()
-      : undefined;
+  const entityTypeText = normalizeEntityTypeLabel(entityTypeLabel);
 
   const nameMeasureFont = `${DATA_MODE_ASSET_LABEL_FONT_WEIGHT} ${DATA_MODE_ASSET_LABEL_FONT_SIZE}px sans-serif`;
 
@@ -773,8 +823,8 @@ export function buildDataModeAssetNodeStyle(
       labelMaxLines: 1,
       labelTextOverflow: '...',
       labelBackground: true,
-      labelBackgroundFill: EDGE_LABEL_BG_STROKE,
-      labelBackgroundStroke: NODE_BORDER_COLOR,
+      labelBackgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+      labelBackgroundStroke: getColor(NODE_BORDER_COLOR, '#E9EAEB'),
       labelBackgroundLineWidth: 1,
       labelBackgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
       labelBackgroundWidth: boxW,
@@ -842,8 +892,8 @@ export function buildDataModeAssetNodeStyle(
     fontSize: DATA_MODE_ASSET_LABEL_FONT_SIZE,
     fill: 'transparent',
     background: true,
-    backgroundFill: EDGE_LABEL_BG_STROKE,
-    backgroundStroke: NODE_BORDER_COLOR,
+    backgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+    backgroundStroke: getColor(NODE_BORDER_COLOR, '#E9EAEB'),
     backgroundLineWidth: 1,
     backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
     backgroundWidth: totalW,
@@ -890,8 +940,11 @@ export function buildDataModeAssetNodeStyle(
       fontSize: DATA_MODE_ENTITY_BADGE_FONT_SIZE,
       fill: 'transparent',
       background: true,
-      backgroundFill: EDGE_LABEL_BG_STROKE,
-      backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
+      backgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+      backgroundStroke: getColor(
+        NODE_BORDER_COLOR,
+        DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK
+      ),
       backgroundLineWidth: 1,
       backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
       backgroundWidth: entityPillDrawW,
@@ -955,8 +1008,11 @@ export function buildDataModeAssetNodeStyle(
     maxLines: 1,
     textOverflow: '...',
     background: true,
-    backgroundFill: EDGE_LABEL_BG_STROKE,
-    backgroundStroke: DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK,
+    backgroundFill: getColor(EDGE_LABEL_BG_STROKE, '#FFF'),
+    backgroundStroke: getColor(
+      NODE_BORDER_COLOR,
+      DATA_MODE_ENTITY_BADGE_BORDER_FALLBACK
+    ),
     backgroundLineWidth: 1,
     backgroundRadius: DATA_MODE_ASSET_LABEL_BOX_RADIUS,
     backgroundWidth: entityBoxW,
@@ -984,7 +1040,7 @@ export function buildDataModeTermNodeStyle(
   return {
     size: [DATA_MODE_TERM_NODE_SIZE, DATA_MODE_TERM_NODE_SIZE],
     fill: resolvedColor,
-    stroke: NODE_FILL_DEFAULT,
+    stroke: getColor(NODE_FILL_DEFAULT, '#ffffff'),
     lineWidth: DATA_MODE_TERM_NODE_STROKE_WIDTH,
     strokeOpacity: 1,
     halo: true,
@@ -992,12 +1048,15 @@ export function buildDataModeTermNodeStyle(
     haloFillOpacity: 0,
     haloLineWidth: DATA_MODE_TERM_HALO_LINE_WIDTH,
     haloShadowBlur: DATA_MODE_TERM_HALO_SHADOW_BLUR,
-    haloShadowColor: DATA_MODE_TERM_HALO_SHADOW_COLOR,
-    haloStroke: NODE_FILL_DEFAULT,
+    haloShadowColor: getColor(
+      DATA_MODE_TERM_HALO_SHADOW_COLOR,
+      'rgba(203, 213, 225, 0.35)'
+    ),
+    haloStroke: getColor(DATA_MODE_TERM_HALO_STROKE, '#e8ecf0'),
     haloStrokeOpacity: DATA_MODE_TERM_HALO_STROKE_OPACITY,
     icon: false,
     labelText: label,
-    labelFill: NODE_FILL_DEFAULT,
+    labelFill: getColor(NODE_LABEL_FILL_INVERSE, '#ffffff'),
     labelFontSize: NODE_LABEL_FONT_SIZE,
     labelFontWeight: DATA_MODE_TERM_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_BOTTOM,
@@ -1005,15 +1064,21 @@ export function buildDataModeTermNodeStyle(
     labelBackground: true,
     labelBackgroundFill: resolvedColor,
     labelBackgroundOpacity: 1,
-    labelBackgroundStroke: NODE_FILL_DEFAULT,
+    labelBackgroundStroke: getColor(NODE_FILL_DEFAULT, '#ffffff'),
     labelBackgroundLineWidth: DATA_MODE_TERM_NODE_STROKE_WIDTH,
     labelBackgroundRadius: DATA_MODE_TERM_LABEL_BG_RADIUS,
     labelBackgroundShadowBlur: DATA_MODE_TERM_LABEL_SHADOW_BLUR,
-    labelBackgroundShadowColor: DATA_MODE_TERM_LABEL_SHADOW_COLOR,
+    labelBackgroundShadowColor: getColor(
+      DATA_MODE_TERM_LABEL_SHADOW_COLOR,
+      'rgba(226, 232, 240, 0.65)'
+    ),
     labelBackgroundShadowOffsetY: DATA_MODE_TERM_LABEL_SHADOW_OFFSET_Y,
     labelPadding: TERM_LABEL_BG_PADDING,
     shadowBlur: DATA_MODE_TERM_NODE_SHADOW_BLUR,
-    shadowColor: DATA_MODE_TERM_NODE_SHADOW_COLOR,
+    shadowColor: getColor(
+      DATA_MODE_TERM_NODE_SHADOW_COLOR,
+      'rgba(241, 245, 249, 0.92)'
+    ),
     shadowOffsetY: DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y,
     ...(pos && { x: pos.x, y: pos.y }),
   };
@@ -1022,7 +1087,8 @@ export function buildDataModeTermNodeStyle(
 export function buildComboStyle(
   labelText: string,
   color: string,
-  extraVerticalPadding = 0
+  extraVerticalPadding = 0,
+  getColor: (cssVar: string, fallback: string) => string = getCanvasColor
 ): Record<string, unknown> {
   const labelPx = measureTextWidth(
     labelText,
@@ -1039,8 +1105,8 @@ export function buildComboStyle(
     extraVerticalPadding * 2;
 
   return {
-    fill: COMBO_FILL_DEFAULT,
-    stroke: color,
+    fill: getColor(COMBO_FILL_DEFAULT, '#ffffff'),
+    stroke: getColor(color, COMBO_COLOR_FALLBACK),
     lineWidth: COMBO_LINE_WIDTH,
     radius: COMBO_RADIUS,
     padding: [
@@ -1052,7 +1118,7 @@ export function buildComboStyle(
     minHeight,
     label: true,
     labelText,
-    labelFill: color,
+    labelFill: getColor(color, COMBO_COLOR_FALLBACK),
     labelFontSize: COMBO_LABEL_FONT_SIZE,
     labelFontWeight: COMBO_LABEL_FONT_WEIGHT,
     labelPlacement: LABEL_PLACEMENT_TOP_LEFT,

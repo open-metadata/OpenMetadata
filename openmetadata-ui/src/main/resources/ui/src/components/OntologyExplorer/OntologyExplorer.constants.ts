@@ -342,18 +342,20 @@ export const COLOR_META_BY_HEX: Record<
   },
 };
 
-export const EDGE_STROKE_COLOR = '#9196B1';
-export const DATA_MODE_ASSET_EDGE_STROKE_COLOR = '#D9DEED';
+const BORDER_SECONDARY_TOKEN = 'var(--color-border-secondary)';
+
+export const EDGE_STROKE_COLOR = 'var(--color-border-primary)';
+export const DATA_MODE_ASSET_EDGE_STROKE_COLOR = BORDER_SECONDARY_TOKEN;
 export const DIMMED_NODE_OPACITY = 0.32;
 export const DIMMED_EDGE_OPACITY = 0.12;
 export const DIMMED_EDGE_LABEL_OPACITY = 0.16;
 
-export const NODE_FILL_DEFAULT = '#ffffff';
-export const NODE_BORDER_COLOR = '#E9EAEB';
-export const NODE_SELECTED_STROKE = '#1570ef';
+export const NODE_FILL_DEFAULT = 'var(--color-bg-primary)';
+export const NODE_BORDER_COLOR = BORDER_SECONDARY_TOKEN;
+export const NODE_SELECTED_STROKE = 'var(--color-border-brand)';
 export const NODE_SELECTED_LINE_WIDTH = 2.5;
 export const NODE_SELECTED_HALO_LINE_WIDTH = 4;
-export const NODE_SELECTED_HALO_FILL = 'rgba(21, 112, 239, 0.06)';
+export const NODE_SELECTED_HALO_FILL = 'var(--color-bg-brand-primary)';
 export const NODE_BORDER_RADIUS = 9;
 export const NODE_PADDING_V = 9;
 export const NODE_PADDING_H = 12;
@@ -367,26 +369,28 @@ export const NODE_LABEL_PADDING: [number, number, number, number] = [
 export const COMBO_FILL_DEFAULT = NODE_FILL_DEFAULT;
 export const COMBO_BODY_FILL_OPACITY = '22';
 export const COMBO_LABEL_BG_OPACITY = '40';
-export const NODE_LABEL_FILL = '#181D27';
+export const NODE_LABEL_FILL = 'var(--color-text-primary)';
+export const NODE_LABEL_FILL_INVERSE = 'var(--color-text-white)';
 export const BRAND_BLUE_FALLBACK = '#3b82f6';
 export const COMBO_COLOR_FALLBACK = '#94a3b8';
-export const DATA_MODE_LOAD_MORE_BADGE_BG = '#155EEF';
+export const DATA_MODE_ASSET_COUNT_BADGE_BG = 'var(--color-bg-primary-solid)';
+export const DATA_MODE_LOAD_MORE_BADGE_BG = 'var(--color-bg-brand-solid)';
 export const NODE_LABEL_FONT_SIZE = 11;
 export const NODE_LABEL_FONT_WEIGHT = 600;
-export const NODE_SHADOW_COLOR = 'rgba(10, 13, 18, 0.05)';
+export const NODE_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
 export const NODE_SHADOW_BLUR = 2;
 export const NODE_SHADOW_OFFSET_Y = 1;
 
-export const EDGE_LABEL_FILL = '#8C93AE';
+export const EDGE_LABEL_FILL = 'var(--color-text-tertiary)';
 export const EDGE_LABEL_FONT_SIZE = 10;
 export const EDGE_LABEL_FONT_WEIGHT = 600;
 export const EDGE_LABEL_FONT_FAMILY = 'Inter';
 export const EDGE_LABEL_LINE_HEIGHT = 16;
 export const EDGE_LABEL_LETTER_SPACING = 0;
-export const EDGE_LABEL_BG_FILL = '#EFF1F8';
+export const EDGE_LABEL_BG_FILL = 'var(--color-bg-secondary)';
 export const EDGE_LABEL_BG_STROKE = NODE_FILL_DEFAULT;
 export const EDGE_LABEL_BG_RADIUS = 3;
-export const EDGE_LABEL_BG_SHADOW_COLOR = '#EBEDF5';
+export const EDGE_LABEL_BG_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
 export const EDGE_LABEL_BG_SHADOW_BLUR = 10;
 export const EDGE_LABEL_BG_SHADOW_OFFSET_Y = 2;
 export const EDGE_LABEL_BG_PADDING: [number, number, number, number] = [
@@ -478,16 +482,16 @@ export const DATA_MODE_TERM_NODE_SIZE = 30;
 export const DATA_MODE_TERM_H_SPACING = 480;
 export const DATA_MODE_TERM_V_SPACING = 160;
 export const DATA_MODE_TERM_NODE_STROKE_WIDTH = 2;
-/** Outer soft ring behind the term circle (G6 halo), light gray like elevated selection. */
+/** Keep the term halo aligned with the active theme's elevated borders. */
 export const DATA_MODE_TERM_HALO_LINE_WIDTH = 5;
-export const DATA_MODE_TERM_HALO_STROKE = '#e8ecf0';
+export const DATA_MODE_TERM_HALO_STROKE = BORDER_SECONDARY_TOKEN;
 export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.72;
-export const DATA_MODE_TERM_HALO_SHADOW_COLOR = 'rgba(203, 213, 225, 0.35)';
+export const DATA_MODE_TERM_HALO_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
 export const DATA_MODE_TERM_HALO_SHADOW_BLUR = 5;
-export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'rgba(241, 245, 249, 0.92)';
+export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'var(--color-border-primary)';
 export const DATA_MODE_TERM_NODE_SHADOW_BLUR = 16;
 export const DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y = 5;
-export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = 'rgba(226, 232, 240, 0.65)';
+export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
 export const DATA_MODE_TERM_LABEL_SHADOW_BLUR = 14;
 export const DATA_MODE_TERM_LABEL_SHADOW_OFFSET_Y = 4;
 export const NODE_BADGE_OFFSET_X = 8;
