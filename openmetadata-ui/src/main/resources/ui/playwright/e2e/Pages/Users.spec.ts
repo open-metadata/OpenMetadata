@@ -1237,7 +1237,6 @@ test.describe('User Profile Persona Interactions', () => {
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
-    base.slow(true);
     const policy = new PolicyClass();
     const policy2 = new PolicyClass();
     const policy3 = new PolicyClass();
@@ -1320,6 +1319,7 @@ base.describe(
     base(
       'User Performance across different entities pages',
       async ({ browser }) => {
+        base.slow();
         const { page, afterAction } = await performUserLogin(browser, user);
 
         for (const entity of userPerformanceEntities) {

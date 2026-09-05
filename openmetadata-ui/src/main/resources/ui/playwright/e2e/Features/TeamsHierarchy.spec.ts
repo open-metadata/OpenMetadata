@@ -42,8 +42,6 @@ test.describe(
   'Add Nested Teams and Test TeamsSelectable',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
       await visitTeamsPage(page);

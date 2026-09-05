@@ -179,8 +179,6 @@ const openPermissionArticle = async (page: Page) => {
 };
 
 test.describe('Context Center Permissions', () => {
-  test.slow(true);
-
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       browser

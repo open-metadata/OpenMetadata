@@ -72,8 +72,6 @@ const test = base.extend<{ page: Page }>({
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
   // Create admin user and persona
@@ -85,8 +83,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
   // Delete user and persona

@@ -105,8 +105,6 @@ const exportActiveGlossaryCsv = async (
 };
 
 test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
-  test.slow(true);
-
   test.beforeAll('setup pre-test', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
 
@@ -321,6 +319,7 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   });
 
   test('Check for Circular Reference in Glossary Import', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const circularRefGlossary = new Glossary(`TestCSV-${uuid()}`);
 
@@ -715,6 +714,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
   });
 
   test('Glossary CSV import preserves typed relations', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const suffix = uuid();
     const relGlossary = new Glossary(`TypedRelations_${suffix}`);
