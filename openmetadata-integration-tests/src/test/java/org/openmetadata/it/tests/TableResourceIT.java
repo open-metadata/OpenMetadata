@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -3737,6 +3738,496 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertNotNull(lineageJson);
     assertTrue(lineageJson.contains("columnsLineage"));
+  }
+
+  // Covers fix for #26674: deleted column FQNs must be flushed exactly once to the search index
+  @Test
+  void test_deletedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(
+        List.of(
+            ColumnBuilder.of("col_to_delete", "BIGINT").build(),
+            ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the next PATCH.
+    // consolidateChanges requires original.getVersion() > 0.1, which means the entity
+    // must have been updated at least once before the column-removal PATCH we're testing.
+    sourceTable.setDescription("lineage test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_delete";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    addColumnLineage(client, sourceTable, targetTable, sourceColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+
+      // PATCH source table without col_to_delete — triggers column lineage delete.
+      // Uses update() which sends HTTP PATCH under the hood, and now that version > 0.1
+      // consolidateChanges() is eligible, exercising the deferred-flush deduplication fix.
+      sourceTable.setColumns(
+          List.of(ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      // Wait for the deletion to propagate to the search index via the deferred flush
+      Awaitility.await("Wait for deleted column lineage to be removed from search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+    }
+  }
+
+  // Covers the rename leg of #26674: renamed column FQNs must be rewritten in downstream
+  // upstreamLineage via the same deferred flush. A case-only rename is used because
+  // EntityUtil.columnMatch matches names with equalsIgnoreCase — the column is treated as the
+  // same column while its FQN changes, which is what populates the rename map.
+  @Test
+  void test_renamedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_ren_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("col_to_rename", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the rename PATCH below
+    sourceTable.setDescription("lineage rename test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_ren_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_rename";
+    String renamedColFqn = sourceTable.getFullyQualifiedName() + ".COL_TO_RENAME";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    addColumnLineage(client, sourceTable, targetTable, sourceColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+
+      // PATCH the source column to its uppercase name — same column per columnMatch, new FQN
+      sourceTable.setColumns(List.of(ColumnBuilder.of("COL_TO_RENAME", "BIGINT").build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for renamed column lineage to be rewritten in search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(renamedColFqn)
+                    && !upstreamLineage.contains(sourceColFqn);
+              });
+    }
+  }
+
+  // Regression test for the consolidation baseline: renaming a column and reverting it within
+  // the same session window must still leave the search index consistent. Consolidation replays
+  // updateInternal() against the pre-session version, so the final pass sees a net-zero column
+  // diff; only the first pass diffs against the state the index actually holds. If the flush
+  // reads anything but that first pass, the index is stranded on the intermediate FQN.
+  @Test
+  void test_revertedColumnRenameWithinSessionPropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_revert_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump past 0.1 so consolidateChanges() is eligible for both PATCHes below. It is also what
+    // makes a case-only rename reach the deferred flush at all: on a non-consolidating PATCH the
+    // rename records no field change (columnMatch is case-insensitive, so the column is neither
+    // added nor deleted, and the per-column updaters never track name), so reactUpdate() treats
+    // the request as a no-op and skips the flush.
+    sourceTable.setDescription("lineage revert test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_revert_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String originalColFqn = sourceTable.getFullyQualifiedName() + ".revert_col";
+    String intermediateColFqn = sourceTable.getFullyQualifiedName() + ".REVERT_COL";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    addColumnLineage(client, sourceTable, targetTable, originalColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(originalColFqn));
+
+      sourceTable.setColumns(List.of(ColumnBuilder.of("REVERT_COL", "BIGINT").build()));
+      sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the intermediate column FQN to reach search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(intermediateColFqn));
+
+      // Revert within the same session. The consolidated diff runs against the pre-session
+      // version, which still holds the original column name, so the final pass sees no column
+      // change at all -- only the first pass carries the REVERT_COL -> revert_col mapping the
+      // index needs.
+      sourceTable.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the reverted column FQN to be restored in search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(originalColFqn)
+                    && !upstreamLineage.contains(intermediateColFqn);
+              });
+    }
+  }
+
+  // The consolidation baseline gate exists for this case: a column added by an earlier request in
+  // the same session is in the persisted table but not in the pre-session version, so the revert
+  // pass (persisted -> previous) reports it as deleted. Acting on any pass but the baseline one
+  // drops the lineage of a column that still exists -- from the stored relationship row, which is
+  // destructive and never restored by a later pass, and from the search index.
+  @Test
+  void test_sessionAddedColumnKeepsLineageThroughConsolidation(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_session_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("keep_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+
+    // Session request 1 adds the column, so version 0.1 -- the version consolidation reverts to --
+    // does not have it.
+    sourceTable.setColumns(
+        List.of(
+            ColumnBuilder.of("keep_col", "BIGINT").build(),
+            ColumnBuilder.of("added_col", "BIGINT").build()));
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_session_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String addedColFqn = sourceTable.getFullyQualifiedName() + ".added_col";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+    addColumnLineage(client, sourceTable, targetTable, addedColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(addedColFqn));
+
+      // Session request 2, within the session window and touching columns so the column diff runs
+      // on every replay pass. consolidateChanges() applies: same user, PATCH, version > 0.1.
+      findColumn(sourceTable, "added_col").setDescription("still here");
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      // The column still exists, so its lineage must survive. Assert the FQN holds for a window
+      // rather than sampling once -- the destructive write would land after the PATCH returns.
+      Awaitility.await("Lineage of a session-added column must survive consolidation")
+          .during(Duration.ofSeconds(8))
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(addedColFqn));
+    }
+
+    // GET /v1/lineage reads the stored relationship rows, not the index, so this covers the
+    // database half of the same reconciliation.
+    String lineageJson =
+        client.lineage().getEntityLineage("table", targetTable.getId().toString(), "1", "1");
+    assertTrue(
+        lineageJson.contains(addedColFqn),
+        "stored column lineage lost the session-added column: " + lineageJson);
+  }
+
+  // Nested columns are diffed by a recursive updateColumns() whose per-level results are collected
+  // and flushed once for the whole entity. Covers both legs of that flush for a struct child.
+  @Test
+  void test_nestedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_nested_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(structColumn("struct_col", "child_col")));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump past 0.1 so the rename PATCH below is eligible for consolidation
+    sourceTable.setDescription("nested lineage source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_nested_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String childColFqn = sourceTable.getFullyQualifiedName() + ".struct_col.child_col";
+    String renamedChildColFqn = sourceTable.getFullyQualifiedName() + ".struct_col.CHILD_COL";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+    addColumnLineage(client, sourceTable, targetTable, childColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for nested column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(childColFqn));
+
+      // Rename the struct child. Paired with a description edit for the same reason as the
+      // top-level rename test: a case-only rename records no field change on its own.
+      sourceTable.setDescription("nested column renamed");
+      sourceTable.setColumns(List.of(structColumn("struct_col", "CHILD_COL")));
+      sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the renamed nested column to be rewritten in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(renamedChildColFqn)
+                    && !upstreamLineage.contains(childColFqn);
+              });
+
+      // Now drop the child entirely. STRUCT requires non-null children, so it becomes empty.
+      sourceTable.setColumns(List.of(structColumn("struct_col")));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the deleted nested column to be removed from search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(renamedChildColFqn));
+    }
+  }
+
+  // The bulk endpoint runs a single diff pass through updateWithDeferredStore() instead of
+  // update(), bypassing consolidation entirely -- the column-lineage flush must still fire.
+  @Test
+  void test_bulkColumnDeleteLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_bulk_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(
+        List.of(
+            ColumnBuilder.of("bulk_keep_col", "BIGINT").build(),
+            ColumnBuilder.of("bulk_drop_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_bulk_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String droppedColFqn = sourceTable.getFullyQualifiedName() + ".bulk_drop_col";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+    addColumnLineage(client, sourceTable, targetTable, droppedColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(droppedColFqn));
+
+      CreateTable bulkReq = new CreateTable();
+      bulkReq.setName(sourceTable.getName());
+      bulkReq.setDatabaseSchema(schema.getFullyQualifiedName());
+      bulkReq.setColumns(List.of(ColumnBuilder.of("bulk_keep_col", "BIGINT").build()));
+      client.tables().bulkCreateOrUpdate(List.of(bulkReq));
+
+      Awaitility.await("Wait for the bulk-deleted column lineage to be removed from search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(droppedColFqn));
+    }
+  }
+
+  private static void addColumnLineage(
+      OpenMetadataClient client,
+      Table sourceTable,
+      Table targetTable,
+      String fromColumnFqn,
+      String toColumnFqn)
+      throws Exception {
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference()
+                                .withId(sourceTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
+                        .withToEntity(
+                            new EntityReference()
+                                .withId(targetTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(fromColumnFqn))
+                                            .withToColumn(toColumnFqn))))));
+  }
+
+  private static Column structColumn(String name, String... childNames) {
+    List<Column> children =
+        Arrays.stream(childNames)
+            .map(child -> new Column().withName(child).withDataType(ColumnDataType.BIGINT))
+            .toList();
+    return new Column()
+        .withName(name)
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(new ArrayList<>(children));
+  }
+
+  private static Column findColumn(Table table, String name) {
+    return table.getColumns().stream()
+        .filter(column -> column.getName().equals(name))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Column not found: " + name));
+  }
+
+  /**
+   * The indexed {@code upstreamLineage} of one table, serialized for substring matching.
+   *
+   * <p>Callers assert that a column FQN is absent, and returning the raw response body would let
+   * that pass for the wrong reasons: an empty hit set, an error body, or a document reindexed
+   * without {@code upstreamLineage} all contain no FQN either, and the awaits use {@code
+   * ignoreExceptions()}. So the shape is checked here, and a document that is not in a readable
+   * state raises instead of returning something the caller would read as "the FQN is gone" — the
+   * await then keeps polling and ultimately times out rather than reporting a false pass. The
+   * delete script empties a lineage entry's {@code columns} but never removes the entry, so a table
+   * that had column lineage keeps a non-empty {@code upstreamLineage} through every case here.
+   */
+  private String getUpstreamLineageFromIndex(Rest5Client searchClient, String tableId)
+      throws Exception {
+    String query =
+        String.format(
+            "{\"size\":1,\"_source\":[\"upstreamLineage\"],\"query\":{\"term\":{\"_id\":\"%s\"}}}",
+            tableId);
+    Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String body;
+    try (InputStream content = response.getEntity().getContent()) {
+      body = new String(content.readAllBytes(), StandardCharsets.UTF_8);
+    }
+    JsonNode hits = new ObjectMapper().readTree(body).path("hits");
+    if (hits.path("total").path("value").asInt() != 1) {
+      throw new IllegalStateException(
+          "Expected exactly one search hit for table " + tableId + ", got: " + body);
+    }
+    JsonNode upstreamLineage = hits.path("hits").get(0).path("_source").path("upstreamLineage");
+    if (!upstreamLineage.isArray() || upstreamLineage.isEmpty()) {
+      throw new IllegalStateException(
+          "upstreamLineage missing or empty for table " + tableId + ": " + body);
+    }
+    return upstreamLineage.toString();
   }
 
   // ===================================================================

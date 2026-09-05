@@ -20,10 +20,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
-import static org.openmetadata.service.Entity.API_ENDPOINT;
-import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -32,12 +28,7 @@ import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_SERVICE;
-import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
-import static org.openmetadata.service.Entity.SEARCH_INDEX;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
@@ -66,7 +57,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -75,14 +65,6 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
-import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.Dashboard;
-import org.openmetadata.schema.entity.data.DashboardDataModel;
-import org.openmetadata.schema.entity.data.MlModel;
-import org.openmetadata.schema.entity.data.SearchIndex;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
@@ -93,7 +75,6 @@ import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
-import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -104,6 +85,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.lineage.ColumnLineageChildren;
 import org.openmetadata.service.lineage.LineageGraphPruner;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
@@ -684,8 +666,8 @@ public class LineageRepository {
     final List<ColumnLineage> columnsLineage = details.getColumnsLineage();
 
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
-      final Set<String> fromColumns = getChildrenNames(from);
-      final Set<String> toColumns = getChildrenNames(to);
+      final Set<String> fromColumns = ColumnLineageChildren.getChildrenNames(from);
+      final Set<String> toColumns = ColumnLineageChildren.getChildrenNames(to);
       final List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
       for (final ColumnLineage columnLineage : columnsLineage) {
         if (!toColumns.contains(
@@ -1098,111 +1080,6 @@ public class LineageRepository {
       finalRecordList.add(recordList);
     }
     csvFile.withRecords(finalRecordList);
-  }
-
-  private Set<String> getChildrenNames(EntityReference entityReference) {
-    switch (entityReference.getType()) {
-      case TABLE -> {
-        Table table =
-            Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
-        return CommonUtil.getChildrenNames(
-            table.getColumns(), "getChildren", table.getFullyQualifiedName());
-      }
-      case SEARCH_INDEX -> {
-        SearchIndex searchIndex =
-            Entity.getEntity(SEARCH_INDEX, entityReference.getId(), "fields", Include.NON_DELETED);
-        return CommonUtil.getChildrenNames(
-            searchIndex.getFields(), "getChildren", searchIndex.getFullyQualifiedName());
-      }
-      case TOPIC -> {
-        Topic topic =
-            Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
-        if (topic.getMessageSchema() == null
-            || topic.getMessageSchema().getSchemaFields() == null) {
-          return new HashSet<>();
-        }
-        return CommonUtil.getChildrenNames(
-            topic.getMessageSchema().getSchemaFields(),
-            "getChildren",
-            topic.getFullyQualifiedName());
-      }
-      case CONTAINER -> {
-        Container container =
-            Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
-        if (container.getDataModel() == null || container.getDataModel().getColumns() == null) {
-          return new HashSet<>();
-        }
-        return CommonUtil.getChildrenNames(
-            container.getDataModel().getColumns(),
-            "getChildren",
-            container.getFullyQualifiedName());
-      }
-      case DASHBOARD_DATA_MODEL -> {
-        DashboardDataModel dashboardDataModel =
-            Entity.getEntity(
-                DASHBOARD_DATA_MODEL, entityReference.getId(), "columns", Include.NON_DELETED);
-        return CommonUtil.getChildrenNames(
-            dashboardDataModel.getColumns(),
-            "getChildren",
-            dashboardDataModel.getFullyQualifiedName());
-      }
-      case DASHBOARD -> {
-        Dashboard dashboard =
-            Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
-        Set<String> result = new HashSet<>();
-        for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
-          result.add(
-              chart.getFullyQualifiedName().replace(dashboard.getFullyQualifiedName() + ".", ""));
-        }
-        return result;
-      }
-      case MLMODEL -> {
-        MlModel mlModel =
-            Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
-        Set<String> result = new HashSet<>();
-        for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
-          result.add(
-              feature.getFullyQualifiedName().replace(mlModel.getFullyQualifiedName() + ".", ""));
-        }
-        return result;
-      }
-      case API_ENDPOINT -> {
-        Set<String> result = new HashSet<>();
-        APIEndpoint apiEndpoint =
-            Entity.getEntity(
-                API_ENDPOINT,
-                entityReference.getId(),
-                "responseSchema,requestSchema",
-                Include.NON_DELETED);
-        if (apiEndpoint.getResponseSchema() != null) {
-          result.addAll(
-              CommonUtil.getChildrenNames(
-                  listOrEmpty(apiEndpoint.getResponseSchema().getSchemaFields()),
-                  "getChildren",
-                  apiEndpoint.getFullyQualifiedName()));
-        }
-        if (apiEndpoint.getRequestSchema() != null) {
-          result.addAll(
-              CommonUtil.getChildrenNames(
-                  listOrEmpty(apiEndpoint.getRequestSchema().getSchemaFields()),
-                  "getChildren",
-                  apiEndpoint.getFullyQualifiedName()));
-        }
-        return result;
-      }
-      case METRIC -> {
-        LOG.info("Metric column level lineage is not supported");
-        return new HashSet<>();
-      }
-      case PIPELINE -> {
-        LOG.info("Pipeline column level lineage is not supported");
-        return new HashSet<>();
-      }
-      default -> {
-        LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
-        return new HashSet<>();
-      }
-    }
   }
 
   @Transaction
