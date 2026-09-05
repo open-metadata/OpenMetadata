@@ -128,19 +128,10 @@ import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
-  GlossaryTermEmptyPlaceholderProps,
-  GlossaryTermMoveConfirmationModalProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
-import {
-  computeShowExpandTreeLoadMore,
-  hasActiveSearchTerm,
-  isStaleFetchResponse,
-  resolveTotalTermsCount,
-  shouldShowEmptyPlaceholder,
-} from './GlossaryTermTab.utils';
 const WorkflowHistory = withSuspenseFallback(
   lazy(
     () => import('../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component')
@@ -193,7 +184,9 @@ const renderGlossaryExpandIcon = (
     </AriaButton>
   );
 
-  return (childrenCount ?? children?.length ?? 0) > 0 ? (
+  const totalChildrenCount = childrenCount ?? children?.length ?? 0;
+
+  return totalChildrenCount > 0 ? (
     <>
       {dragHandle}
       {isLoading ? (
@@ -215,207 +208,6 @@ const renderGlossaryExpandIcon = (
       {dragHandle}
       <span className="expand-cell-empty-icon-container" />
     </>
-  );
-};
-
-const GlossaryTermMoveConfirmationModal = ({
-  isModalOpen,
-  isTableLoading,
-  hasReviewers,
-  confirmCheckboxChecked,
-  onConfirmCheckboxChange,
-  movedGlossaryTerm,
-  activeGlossary,
-  onDragConfirmationModalClose,
-  onChangeGlossaryTerm,
-  t,
-}: GlossaryTermMoveConfirmationModalProps) => (
-  <Modal
-    centered
-    destroyOnClose
-    closable={false}
-    confirmLoading={isTableLoading}
-    data-testid="confirmation-modal"
-    maskClosable={false}
-    okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
-    okText={t('label.move')}
-    open={isModalOpen}
-    title={
-      <>
-        <WarningOutlined className="m-r-xs warning-icon" />
-        {t('label.move-the-entity', {
-          entity: t('label.glossary-term'),
-        })}
-      </>
-    }
-    onCancel={onDragConfirmationModalClose}
-    onOk={onChangeGlossaryTerm}>
-    <Transi18next
-      i18nKey="message.entity-transfer-message"
-      renderElement={<strong />}
-      values={{
-        from: movedGlossaryTerm?.from.name,
-        to:
-          movedGlossaryTerm?.to?.name ??
-          (activeGlossary && getEntityName(activeGlossary)),
-        entity: isUndefined(movedGlossaryTerm?.to)
-          ? ''
-          : t('label.term-lowercase'),
-      }}
-    />
-    {hasReviewers && (
-      <div className="m-t-md">
-        <Checkbox
-          checked={confirmCheckboxChecked}
-          className="text-grey-700"
-          data-testid="confirm-status-checkbox"
-          onChange={(e) => onConfirmCheckboxChange(e.target.checked)}>
-          <span>
-            <Transi18next
-              i18nKey="message.entity-transfer-confirmation-message"
-              renderElement={<strong />}
-              values={{
-                from: movedGlossaryTerm?.from.name,
-              }}
-            />
-            <span className="d-inline-block m-l-xss">
-              <StatusBadge
-                className="p-x-xs p-y-xss"
-                dataTestId=""
-                label={EntityStatus.InReview}
-                status={EntityStatusClass[EntityStatus.InReview]}
-              />
-            </span>
-          </span>
-        </Checkbox>
-      </div>
-    )}
-  </Modal>
-);
-
-const GlossaryTermEmptyPlaceholder = ({
-  canCreate,
-  isGlossary,
-  glossaryTermStatus,
-  containerRef,
-  onAddGlossaryTermClick,
-  t,
-}: GlossaryTermEmptyPlaceholderProps) => {
-  // A top-level glossary always allows adding terms; for a glossary term,
-  // sub-terms can only be added once the parent term is approved.
-  const canCreateTerm =
-    canCreate && (isGlossary || glossaryTermStatus === EntityStatus.Approved);
-
-  return (
-    <div
-      className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
-      ref={containerRef}>
-      <EmptyPlaceholder
-        data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
-        description={t('message.glossary-term-empty-description')}
-        footer={
-          canCreateTerm ? (
-            <CoreButton
-              color="primary"
-              data-testid="add-placeholder-button"
-              iconLeading={Plus}
-              size="sm"
-              onPress={onAddGlossaryTermClick}>
-              {t('label.new-term')}
-            </CoreButton>
-          ) : undefined
-        }
-        icon={<File02 className="tw:text-fg-warning-primary" />}
-        title={t('message.add-the-first-term')}
-        variant="blank"
-      />
-    </div>
-  );
-};
-
-// The "name" column's load-more placeholder row — split out of the render
-// callback below so its branches don't add to the real name-cell's complexity.
-const renderLoadMoreRowCell = (
-  record: ModifiedGlossaryTerm,
-  loadingChildren: Record<string, boolean>,
-  onLoadMoreChildren: (parentRecord: ModifiedGlossaryTerm) => void,
-  t: ReturnType<typeof useTranslation>['t']
-) => {
-  const parentRecord = (
-    record as ModifiedGlossaryTerm & {
-      parentRecord?: ModifiedGlossaryTerm;
-    }
-  ).parentRecord;
-  const isLoading = loadingChildren[parentRecord?.fullyQualifiedName || ''];
-  const loadedCount = parentRecord?.children?.length ?? 0;
-  const totalCount = parentRecord?.childrenCount ?? 0;
-  const remainingCount = totalCount - loadedCount;
-
-  return (
-    <Button
-      className="text-primary"
-      data-testid="load-more-children-button"
-      loading={isLoading}
-      size="small"
-      type="link"
-      onClick={() => parentRecord && onLoadMoreChildren(parentRecord)}>
-      {t('label.view-more-count', {
-        countValue: remainingCount,
-      })}
-    </Button>
-  );
-};
-
-const renderGlossaryTermNameCell = (
-  record: ModifiedGlossaryTerm,
-  loadedNestedCountByFqn: Map<string, number>,
-  expandedRowKeys: string[],
-  t: ReturnType<typeof useTranslation>['t']
-) => {
-  const name = getEntityName(record);
-  const totalNested = record.childrenCount ?? 0;
-  const loadedNested =
-    loadedNestedCountByFqn.get(record.fullyQualifiedName ?? '') ?? 0;
-  // Collapsed shows the total ("N terms"); expanded shows load
-  // progress ("x of y loaded", reaching "y of y loaded" once done).
-  const isRowExpanded = expandedRowKeys.includes(
-    record.fullyQualifiedName ?? ''
-  );
-  const termCountKey =
-    totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
-
-  return (
-    <div className="tw:flex tw:min-w-0 tw:items-center">
-      {record.style?.iconURL && (
-        <img
-          alt={record.name}
-          className="m-r-xss"
-          data-testid="tag-icon"
-          height={12}
-          src={record.style.iconURL}
-        />
-      )}
-      <Link
-        className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
-        data-testid={name}
-        style={{ color: record.style?.color }}
-        title={name}
-        to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
-        {name}
-      </Link>
-      {totalNested > 0 && (
-        <span
-          className="tw:ml-2 tw:shrink-0 tw:whitespace-nowrap tw:text-xs tw:text-tertiary"
-          data-testid="nested-term-count">
-          {isRowExpanded
-            ? t('label.count-of-total-loaded', {
-                count: loadedNested,
-                total: totalNested,
-              })
-            : t(termCountKey, { count: totalNested })}
-        </span>
-      )}
-    </div>
   );
 };
 
@@ -635,25 +427,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // is discarded so it cannot repopulate or clear the table against the
       // user's current intent.
       if (
-        isStaleFetchResponse(
-          data,
-          fetchSearchTerm,
-          searchTermRef.current,
-          fetchStatusKey,
-          selectedStatusRef.current.join(',')
-        )
+        !data ||
+        !Array.isArray(data) ||
+        fetchSearchTerm !== searchTermRef.current ||
+        fetchStatusKey !== selectedStatusRef.current.join(',')
       ) {
         return;
       }
 
-      setTotalTermsCount(
-        await resolveTotalTermsCount(
-          data,
-          isStatusFilterActive,
-          pagingResponse?.total,
-          activeGlossary?.fullyQualifiedName
-        )
-      );
+      if (data.length === 0 && isStatusFilterActive) {
+        const countResponse = await getFirstLevelGlossaryTermsPaginated(
+          activeGlossary?.fullyQualifiedName || '',
+          0
+        );
+        setTotalTermsCount(countResponse.paging?.total ?? 0);
+      } else {
+        setTotalTermsCount(pagingResponse?.total ?? data.length);
+      }
 
       // Search mode has no cursor; clear before/after so the footer falls back
       // to number-based (offset) paging driven by currentPage + total.
@@ -881,66 +671,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   };
 
-  // Applies the state updates that follow a task resolution — separated from
-  // updateTaskData so the resolve-API call/error handling and the
-  // glossary-term/task-thread bookkeeping don't share one function's branches.
-  const applyTaskResolutionSideEffects = useCallback(
-    (
-      glossaryTermFqn: string,
-      taskId: string | number,
-      updatedTask: Task,
-      isPendingFurtherApproval: boolean,
-      newValue: string
-    ) => {
-      if (!glossaryChildTerms || !glossaryTermFqn) {
-        return;
-      }
-
-      const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
-      if (isPendingFurtherApproval) {
-        if (termTaskThreads[entityLink]) {
-          setTermTaskThreads(
-            updateGlossaryTermTask(termTaskThreads, entityLink, updatedTask)
-          );
-        }
-
-        return;
-      }
-
-      const newStatus =
-        newValue === 'approved' ? EntityStatus.Approved : EntityStatus.Rejected;
-
-      const updatedTerms = updateGlossaryTermStatus(
-        glossaryChildTerms,
-        glossaryTermFqn,
-        newStatus
-      );
-
-      if (
-        !selectedStatus.includes('all') &&
-        !selectedStatus.includes(newStatus)
-      ) {
-        setGlossaryChildTerms(
-          updatedTerms.filter(
-            (term) => term.fullyQualifiedName !== glossaryTermFqn
-          )
-        );
-      } else {
-        setGlossaryChildTerms(updatedTerms);
-      }
-
-      if (termTaskThreads[entityLink]) {
-        const updatedThreads = { ...termTaskThreads };
-        updatedThreads[entityLink] = updatedThreads[entityLink].filter(
-          (task) => !(task.id && task.id.toString() === taskId)
-        );
-
-        setTermTaskThreads(updatedThreads);
-      }
-    },
-    [glossaryChildTerms, selectedStatus, termTaskThreads]
-  );
-
   const updateTaskData = useCallback(
     async (
       data: ResolveTask,
@@ -973,18 +703,56 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const currentExpandedKeys = [...expandedRowKeys];
         setExpandedRowKeys(currentExpandedKeys);
 
-        applyTaskResolutionSideEffects(
-          glossaryTermFqn,
-          taskId,
-          updatedTask,
-          isPendingFurtherApproval,
-          data.newValue
-        );
+        if (glossaryChildTerms && glossaryTermFqn) {
+          const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
+          if (isPendingFurtherApproval) {
+            if (termTaskThreads[entityLink]) {
+              setTermTaskThreads(
+                updateGlossaryTermTask(termTaskThreads, entityLink, updatedTask)
+              );
+            }
+
+            return;
+          }
+
+          const newStatus =
+            data.newValue === 'approved'
+              ? EntityStatus.Approved
+              : EntityStatus.Rejected;
+
+          const updatedTerms = updateGlossaryTermStatus(
+            glossaryChildTerms,
+            glossaryTermFqn,
+            newStatus
+          );
+
+          if (
+            !selectedStatus.includes('all') &&
+            !selectedStatus.includes(newStatus)
+          ) {
+            setGlossaryChildTerms(
+              updatedTerms.filter(
+                (term) => term.fullyQualifiedName !== glossaryTermFqn
+              )
+            );
+          } else {
+            setGlossaryChildTerms(updatedTerms);
+          }
+
+          if (termTaskThreads[entityLink]) {
+            const updatedThreads = { ...termTaskThreads };
+            updatedThreads[entityLink] = updatedThreads[entityLink].filter(
+              (task) => !(task.id && task.id.toString() === taskId)
+            );
+
+            setTermTaskThreads(updatedThreads);
+          }
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [expandedRowKeys, applyTaskResolutionSideEffects]
+    [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
   );
 
   const handleApproveGlossaryTerm = useCallback(
@@ -1024,20 +792,85 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         className: 'glossary-name-column',
         ellipsis: true,
         width: tableColumnsWidth.name,
-        render: (_, record) =>
-          record.isLoadMoreButton
-            ? renderLoadMoreRowCell(
-                record,
-                loadingChildren,
-                handleLoadMoreChildren,
-                t
-              )
-            : renderGlossaryTermNameCell(
-                record,
-                loadedNestedCountByFqn,
-                expandedRowKeys,
-                t
-              ),
+        render: (_, record) => {
+          const isLoadMoreRow = record.isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            const parentRecord = (
+              record as ModifiedGlossaryTerm & {
+                parentRecord?: ModifiedGlossaryTerm;
+              }
+            ).parentRecord;
+            const isLoading =
+              loadingChildren[parentRecord?.fullyQualifiedName || ''];
+
+            const loadedCount = parentRecord?.children?.length ?? 0;
+            const totalCount = parentRecord?.childrenCount ?? 0;
+            const remainingCount = totalCount - loadedCount;
+
+            return (
+              <Button
+                className="text-primary"
+                data-testid="load-more-children-button"
+                loading={isLoading}
+                size="small"
+                type="link"
+                onClick={() =>
+                  parentRecord && handleLoadMoreChildren(parentRecord)
+                }>
+                {t('label.view-more-count', {
+                  countValue: remainingCount,
+                })}
+              </Button>
+            );
+          }
+
+          const name = getEntityName(record);
+          const totalNested = record.childrenCount ?? 0;
+          const loadedNested =
+            loadedNestedCountByFqn.get(record.fullyQualifiedName ?? '') ?? 0;
+          // Collapsed shows the total ("N terms"); expanded shows load
+          // progress ("x of y loaded", reaching "y of y loaded" once done).
+          const isRowExpanded = expandedRowKeys.includes(
+            record.fullyQualifiedName ?? ''
+          );
+          const termCountKey =
+            totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
+
+          return (
+            <div className="tw:flex tw:min-w-0 tw:items-center">
+              {record.style?.iconURL && (
+                <img
+                  alt={record.name}
+                  className="m-r-xss"
+                  data-testid="tag-icon"
+                  height={12}
+                  src={record.style.iconURL}
+                />
+              )}
+              <Link
+                className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
+                data-testid={name}
+                style={{ color: record.style?.color }}
+                title={name}
+                to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
+                {name}
+              </Link>
+              {totalNested > 0 && (
+                <span
+                  className="tw:ml-2 tw:shrink-0 tw:whitespace-nowrap tw:text-xs tw:text-tertiary"
+                  data-testid="nested-term-count">
+                  {isRowExpanded
+                    ? t('label.count-of-total-loaded', {
+                        count: loadedNested,
+                        total: totalNested,
+                      })
+                    : t(termCountKey, { count: totalNested })}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -1549,11 +1382,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       rowExpandable: (record) => {
         const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
+        const hasChildren =
+          (rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0;
 
-        return (
-          !isLoadMoreRow &&
-          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
-        );
+        return !isLoadMoreRow && hasChildren;
       },
     }),
     [
@@ -1845,17 +1677,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [searchTerm, selectedStatus]);
 
   // Check if this is due to search or filter returning no results
-  const isSearchActive = hasActiveSearchTerm(searchTerm);
+  const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
   const isStatusFilterActive = !selectedStatus.includes('all');
   const hasNoTerms = isEmpty(glossaryTerms);
 
   const showPagination = glossaryTerms.length > 0;
   // In expand-all mode, offer a "load more" affordance instead of page
   // navigation: the tree is fetched a page of nested terms at a time.
-  const showExpandTreeLoadMore = computeShowExpandTreeLoadMore(
-    toggleExpandBtn,
-    expandTree.after
-  );
+  const showExpandTreeLoadMore = toggleExpandBtn && Boolean(expandTree.after);
 
   const handleExpandTreeLoadMore = () => {
     if (expandTree.after) {
@@ -1895,22 +1724,41 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
   if (
-    shouldShowEmptyPlaceholder(
-      hasNoTerms,
-      isSearchActive,
-      totalTermsCount,
-      isTableLoading
-    )
+    hasNoTerms &&
+    !isSearchActive &&
+    totalTermsCount === 0 &&
+    !isTableLoading
   ) {
+    // A top-level glossary always allows adding terms; for a glossary term,
+    // sub-terms can only be added once the parent term is approved.
+    const canCreateTerm =
+      permissions.Create &&
+      (isGlossary || glossaryTermStatus === EntityStatus.Approved);
+
     return (
-      <GlossaryTermEmptyPlaceholder
-        canCreate={permissions.Create}
-        containerRef={tableContainerRef}
-        glossaryTermStatus={glossaryTermStatus}
-        isGlossary={isGlossary}
-        t={t}
-        onAddGlossaryTermClick={handleAddGlossaryTermClick}
-      />
+      <div
+        className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
+        ref={tableContainerRef}>
+        <EmptyPlaceholder
+          data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
+          description={t('message.glossary-term-empty-description')}
+          footer={
+            canCreateTerm ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-placeholder-button"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryTermClick}>
+                {t('label.new-term')}
+              </CoreButton>
+            ) : undefined
+          }
+          icon={<File02 className="tw:text-fg-warning-primary" />}
+          title={t('message.add-the-first-term')}
+          variant="blank"
+        />
+      </div>
     );
   }
 
@@ -2020,18 +1868,67 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </TableCard.Root>
           )}
         </div>
-        <GlossaryTermMoveConfirmationModal
-          activeGlossary={activeGlossary}
-          confirmCheckboxChecked={confirmCheckboxChecked}
-          hasReviewers={hasReviewers}
-          isModalOpen={isModalOpen}
-          isTableLoading={isTableLoading}
-          movedGlossaryTerm={movedGlossaryTerm}
-          t={t}
-          onChangeGlossaryTerm={handleChangeGlossaryTerm}
-          onConfirmCheckboxChange={setConfirmCheckboxChecked}
-          onDragConfirmationModalClose={onDragConfirmationModalClose}
-        />
+        <Modal
+          centered
+          destroyOnClose
+          closable={false}
+          confirmLoading={isTableLoading}
+          data-testid="confirmation-modal"
+          maskClosable={false}
+          okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
+          okText={t('label.move')}
+          open={isModalOpen}
+          title={
+            <>
+              <WarningOutlined className="m-r-xs warning-icon" />
+              {t('label.move-the-entity', {
+                entity: t('label.glossary-term'),
+              })}
+            </>
+          }
+          onCancel={onDragConfirmationModalClose}
+          onOk={handleChangeGlossaryTerm}>
+          <Transi18next
+            i18nKey="message.entity-transfer-message"
+            renderElement={<strong />}
+            values={{
+              from: movedGlossaryTerm?.from.name,
+              to:
+                movedGlossaryTerm?.to?.name ??
+                (activeGlossary && getEntityName(activeGlossary)),
+              entity: isUndefined(movedGlossaryTerm?.to)
+                ? ''
+                : t('label.term-lowercase'),
+            }}
+          />
+          {hasReviewers && (
+            <div className="m-t-md">
+              <Checkbox
+                checked={confirmCheckboxChecked}
+                className="text-grey-700"
+                data-testid="confirm-status-checkbox"
+                onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
+                <span>
+                  <Transi18next
+                    i18nKey="message.entity-transfer-confirmation-message"
+                    renderElement={<strong />}
+                    values={{
+                      from: movedGlossaryTerm?.from.name,
+                    }}
+                  />
+                  <span className="d-inline-block m-l-xss">
+                    <StatusBadge
+                      className="p-x-xs p-y-xss"
+                      dataTestId=""
+                      label={EntityStatus.InReview}
+                      status={EntityStatusClass[EntityStatus.InReview]}
+                    />
+                  </span>
+                </span>
+              </Checkbox>
+            </div>
+          )}
+        </Modal>
       </Col>
     </Row>
   );

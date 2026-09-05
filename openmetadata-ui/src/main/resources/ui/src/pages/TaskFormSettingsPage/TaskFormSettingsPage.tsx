@@ -118,22 +118,34 @@ const parseJsonObject = (value: string) => {
 
 const stringifyJson = stringifyDesignerJson;
 
-const DEFAULT_WORKFLOW_DEFINITION_REF_BY_TASK_TYPE: Record<string, string> = {
-  DescriptionUpdate: 'DescriptionUpdateTaskWorkflow',
-  TagUpdate: 'TagUpdateTaskWorkflow',
-  OwnershipUpdate: 'OwnershipUpdateTaskWorkflow',
-  TierUpdate: 'TierUpdateTaskWorkflow',
-  DomainUpdate: 'DomainUpdateTaskWorkflow',
-  GlossaryApproval: 'GlossaryApprovalTaskWorkflow',
-  RequestApproval: 'RequestApprovalTaskWorkflow',
-  Suggestion: 'SuggestionTaskWorkflow',
-  TestCaseResolution: 'TestCaseResolutionTaskWorkflow',
-  IncidentResolution: 'IncidentResolutionTaskWorkflow',
-  CustomTask: 'CustomTaskWorkflow',
+const getDefaultWorkflowDefinitionRef = (taskType?: string) => {
+  switch (taskType) {
+    case 'DescriptionUpdate':
+      return 'DescriptionUpdateTaskWorkflow';
+    case 'TagUpdate':
+      return 'TagUpdateTaskWorkflow';
+    case 'OwnershipUpdate':
+      return 'OwnershipUpdateTaskWorkflow';
+    case 'TierUpdate':
+      return 'TierUpdateTaskWorkflow';
+    case 'DomainUpdate':
+      return 'DomainUpdateTaskWorkflow';
+    case 'GlossaryApproval':
+      return 'GlossaryApprovalTaskWorkflow';
+    case 'RequestApproval':
+      return 'RequestApprovalTaskWorkflow';
+    case 'Suggestion':
+      return 'SuggestionTaskWorkflow';
+    case 'TestCaseResolution':
+      return 'TestCaseResolutionTaskWorkflow';
+    case 'IncidentResolution':
+      return 'IncidentResolutionTaskWorkflow';
+    case 'CustomTask':
+      return 'CustomTaskWorkflow';
+    default:
+      return undefined;
+  }
 };
-
-const getDefaultWorkflowDefinitionRef = (taskType?: string) =>
-  taskType ? DEFAULT_WORKFLOW_DEFINITION_REF_BY_TASK_TYPE[taskType] : undefined;
 
 const sanitizeWorkflowDefinitionPayload = (
   workflowDefinition: WorkflowDefinition
@@ -160,25 +172,6 @@ const sanitizeWorkflowDefinitionPayload = (
     edges,
   };
 };
-
-const getSchemaHeading = (
-  selectedSchema: TaskFormSchema,
-  watchedDisplayName?: string,
-  watchedName?: string
-) =>
-  [
-    watchedDisplayName?.trim(),
-    watchedName?.trim(),
-    selectedSchema.displayName,
-    selectedSchema.name,
-  ].find(Boolean) ?? 'New Task Form';
-
-const getPageDescription = (
-  selectedSchema: TaskFormSchema,
-  watchedDescription?: string
-) =>
-  [watchedDescription?.trim(), selectedSchema.description].find(Boolean) ??
-  'Configure task schemas, form behavior, and workflow transitions in one workspace.';
 
 const TaskFormSettingsPage = () => {
   const { t } = useTranslation();
@@ -479,15 +472,16 @@ const TaskFormSettingsPage = () => {
 
   // The heading for the schema being edited — distinct from the document
   // title, which names the settings page itself.
-  const schemaHeading = getSchemaHeading(
-    selectedSchema,
-    watchedDisplayName,
-    watchedName
-  );
-  const pageDescription = getPageDescription(
-    selectedSchema,
-    watchedDescription
-  );
+  const watchedHeading = watchedDisplayName?.trim() || watchedName?.trim();
+  const schemaHeading =
+    watchedHeading ||
+    selectedSchema.displayName ||
+    selectedSchema.name ||
+    'New Task Form';
+  const pageDescription =
+    watchedDescription?.trim() ||
+    selectedSchema.description ||
+    'Configure task schemas, form behavior, and workflow transitions in one workspace.';
   const schemaSubtitle = [watchedTaskType, watchedTaskCategory]
     .filter(Boolean)
     .join(' / ');

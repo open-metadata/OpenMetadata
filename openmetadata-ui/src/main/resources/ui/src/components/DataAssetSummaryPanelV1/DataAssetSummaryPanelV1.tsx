@@ -12,8 +12,8 @@
  */
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isEmpty, noop } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
@@ -59,139 +59,6 @@ import {
   DataAssetSummaryPanelProps,
   TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-
-type SummaryLayout = 'full' | 'knowledge' | 'dataProduct' | 'basic';
-
-const canEditEntityField = (
-  canEditBase: boolean,
-  hasEditAll: boolean | undefined,
-  hasSpecificPermission: boolean | undefined
-): boolean | undefined => canEditBase && (hasEditAll || hasSpecificPermission);
-
-const getKeyCount = (items?: { length: number } | null): number =>
-  items?.length ?? 0;
-
-const isNonGlossaryTag = (tag: TagLabel) => tag.source !== TagSource.Glossary;
-
-// Hidden marker spans keyed by entityType so tests can assert which summary
-// variant rendered without a per-entity conditional in the render body.
-const SUMMARY_TEST_ID_MAP: Partial<Record<string, string>> = {
-  [EntityType.TABLE]: 'TableSummary',
-  [EntityType.TOPIC]: 'TopicSummary',
-  [EntityType.DASHBOARD]: 'DashboardSummary',
-  [EntityType.PIPELINE]: 'PipelineSummary',
-  [EntityType.MLMODEL]: 'MlModelSummary',
-  [EntityType.CHART]: 'ChartSummary',
-  [EntityType.DATABASE]: 'DatabaseSummary',
-  [EntityType.DATABASE_SCHEMA]: 'DatabaseSchemaSummary',
-  [EntityType.CONTAINER]: 'ContainerSummary',
-  [EntityType.SEARCH_INDEX]: 'SearchIndexSummary',
-  [EntityType.API_COLLECTION]: 'APIServiceSummary',
-  [EntityType.DIRECTORY]: 'DirectorySummary',
-  [EntityType.TABLE_COLUMN]: 'ColumnSummary',
-  [EntityType.DASHBOARD_DATA_MODEL]: 'DashboardDataModelSummary',
-};
-
-const FULL_LAYOUT_ENTITY_TYPES: string[] = [
-  EntityType.API_COLLECTION,
-  EntityType.API_ENDPOINT,
-  EntityType.API_SERVICE,
-  EntityType.CHART,
-  EntityType.CONTAINER,
-  EntityType.DASHBOARD,
-  EntityType.DASHBOARD_DATA_MODEL,
-  EntityType.DASHBOARD_SERVICE,
-  EntityType.DATABASE,
-  EntityType.DATABASE_SCHEMA,
-  EntityType.DATABASE_SERVICE,
-  EntityType.MESSAGING_SERVICE,
-  EntityType.METRIC,
-  EntityType.MLMODEL,
-  EntityType.MLMODEL_SERVICE,
-  EntityType.PIPELINE,
-  EntityType.PIPELINE_SERVICE,
-  EntityType.SEARCH_INDEX,
-  EntityType.SEARCH_SERVICE,
-  EntityType.STORAGE_SERVICE,
-  EntityType.STORED_PROCEDURE,
-  EntityType.TABLE,
-  EntityType.TOPIC,
-  EntityType.DIRECTORY,
-  EntityType.FILE,
-  EntityType.SPREADSHEET,
-  EntityType.WORKSHEET,
-  EntityType.TABLE_COLUMN,
-  EntityType.GOVERN,
-  EntityType.GLOSSARY,
-  EntityType.GLOSSARY_TERM,
-  EntityType.TAG,
-  EntityType.TEST_SUITE,
-  EntityType.TEST_CASE,
-  EntityType.DOMAIN,
-  EntityType.CLASSIFICATION,
-  EntityType.METADATA_SERVICE,
-  EntityType.SECURITY_SERVICE,
-  EntityType.DRIVE_SERVICE,
-  EntityType.INGESTION_PIPELINE,
-  EntityType.WORKFLOW_DEFINITION,
-  EntityType.DATA_CONTRACT,
-  EntityType.QUERY,
-  EntityType.AI_APPLICATION,
-  EntityType.LLM_MODEL,
-  EntityType.MCP_SERVER,
-  EntityType.APPLICATION,
-  EntityType.ALERT,
-  EntityType.EVENT_SUBSCRIPTION,
-];
-
-const BASIC_LAYOUT_ENTITY_TYPES: string[] = [
-  EntityType.USER,
-  EntityType.TEAM,
-  EntityType.ROLE,
-  EntityType.POLICY,
-  EntityType.BOT,
-  EntityType.WEBHOOK,
-  EntityType.PERSONA,
-  EntityType.KPI,
-  EntityType.DATA_INSIGHT_CHART,
-  EntityType.DOC_STORE,
-  EntityType.TYPE,
-  EntityType.SAMPLE_DATA,
-  EntityType.CUSTOM_METRIC,
-  EntityType.NOTIFICATION_TEMPLATE,
-  EntityType.INGESTION_RUNNER,
-  EntityType.APP_MARKET_PLACE_DEFINITION,
-  EntityType.SERVICE,
-  EntityType.SUBSCRIPTION,
-  EntityType.LINEAGE_EDGE,
-  EntityType.ENTITY_REPORT_DATA,
-  EntityType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
-  EntityType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
-  EntityType.TEST_CASE_RESOLUTION_STATUS,
-  EntityType.TEST_CASE_RESULT,
-  EntityType.ALL,
-  EntityType.PAGE,
-  EntityType.knowledgePanels,
-];
-
-const getSummaryLayout = (
-  summaryEntityType: EntityType
-): SummaryLayout | null => {
-  if (summaryEntityType === EntityType.KNOWLEDGE_PAGE) {
-    return 'knowledge';
-  }
-  if (summaryEntityType === EntityType.DATA_PRODUCT) {
-    return 'dataProduct';
-  }
-  if (FULL_LAYOUT_ENTITY_TYPES.includes(summaryEntityType)) {
-    return 'full';
-  }
-  if (BASIC_LAYOUT_ENTITY_TYPES.includes(summaryEntityType)) {
-    return 'basic';
-  }
-
-  return null;
-};
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -445,42 +312,42 @@ export const DataAssetSummaryPanelV1 = ({
     editDescriptionPermission,
     editGlossaryTermsPermission,
   } = useMemo(() => {
-    const canEditBase = canEditSummary && !dataAsset.deleted;
-    // Columns inherit owners/domains/tier/data products from their parent table
-    const canEditNonColumn = canEditBase && !isColumnEntity;
-    const hasEditAll = entityPermissions?.EditAll;
+    // Columns inherit owners, domains, tier, and data products from their parent
+    // table, so those fields are never editable on a column summary.
+    const canEditColumnField = canEditSummary && !isColumnEntity;
 
     return {
+      // Columns inherit domain from table - not editable
       editDomainPermission:
-        canEditNonColumn &&
-        hasEditAll &&
+        canEditColumnField &&
+        entityPermissions?.EditAll &&
+        !dataAsset.deleted &&
         panelPath !== ENTITY_PATH.dataProductsTab,
-      editDescriptionPermission: canEditEntityField(
-        canEditBase,
-        hasEditAll,
-        entityPermissions?.EditDescription
-      ),
-      editGlossaryTermsPermission: canEditEntityField(
-        canEditBase,
-        hasEditAll,
-        entityPermissions?.EditGlossaryTerms
-      ),
-      editOwnerPermission: canEditEntityField(
-        canEditNonColumn,
-        hasEditAll,
-        entityPermissions?.EditOwners
-      ),
-      editTierPermission: canEditEntityField(
-        canEditNonColumn,
-        hasEditAll,
-        entityPermissions?.EditTier
-      ),
-      editTagsPermission: canEditEntityField(
-        canEditBase,
-        hasEditAll,
-        entityPermissions?.EditTags
-      ),
-      editDataProductPermission: canEditNonColumn && hasEditAll,
+      editDescriptionPermission:
+        canEditSummary &&
+        (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
+        !dataAsset.deleted,
+      editGlossaryTermsPermission:
+        canEditSummary &&
+        (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
+        !dataAsset.deleted,
+      // Columns inherit owners from table - not editable
+      editOwnerPermission:
+        canEditColumnField &&
+        (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
+        !dataAsset.deleted,
+      // Columns inherit tier from table - not editable
+      editTierPermission:
+        canEditColumnField &&
+        (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
+        !dataAsset.deleted,
+      editTagsPermission:
+        canEditSummary &&
+        (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
+        !dataAsset.deleted,
+      // Columns inherit data products from table - not editable
+      editDataProductPermission:
+        canEditColumnField && entityPermissions?.EditAll && !dataAsset.deleted,
     };
   }, [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]);
 
@@ -551,210 +418,402 @@ export const DataAssetSummaryPanelV1 = ({
       ? changeSummary?.[changeSummaryParams.fieldPrefix]
       : changeSummary?.description;
 
-    const descriptionSection = (
-      <DescriptionSection
-        changeSummaryEntry={descriptionChangeSummaryEntry}
-        description={dataAsset.description}
-        entityFqn={dataAsset.fullyQualifiedName}
-        entityType={entityType}
-        hasPermission={editDescriptionPermission}
-        onDescriptionUpdate={handleDescriptionUpdate}
-      />
-    );
-
-    const overviewSection = (
-      <OverviewSection
-        componentType={componentType}
-        entityInfoV1={entityInfo}
-        isDomainVisible={isDomainVisible}
-        onLinkClick={onLinkClick}
-      />
-    );
-
-    const ownersSection = (
-      <OwnersSection
-        entityId={dataAsset.id}
-        entityType={entityType}
-        hasPermission={editOwnerPermission}
-        key={`owners-${dataAsset.id}-${getKeyCount(
-          dataAsset.owners as EntityReference[]
-        )}`}
-        owners={dataAsset.owners as EntityReference[]}
-        onOwnerUpdate={onOwnerUpdate}
-      />
-    );
-
-    const domainsSection = (
-      <DomainsSection
-        domains={dataAsset.domains}
-        entityFqn={dataAsset.fullyQualifiedName}
-        entityId={dataAsset.id}
-        entityType={entityType}
-        hasPermission={editDomainPermission}
-        key={`domains-${dataAsset.id}-${getKeyCount(
-          dataAsset.domains as EntityReference[]
-        )}`}
-        onDomainUpdate={onDomainUpdate}
-      />
-    );
-
-    const tierSection = (
-      <TierSection
-        entityId={dataAsset.id}
-        entityType={entityType}
-        hasPermission={editTierPermission}
-        key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
-        tags={dataAsset.tags}
-        tier={tier}
-        onTierUpdate={onTierUpdate}
-      />
-    );
-
-    const glossaryTermsSection = (
-      <GlossaryTermsSection
-        entityId={dataAsset.id}
-        entityType={entityType}
-        hasPermission={editGlossaryTermsPermission}
-        key={`glossary-terms-${dataAsset.id}-${getKeyCount(dataAsset.tags)}`}
-        maxVisibleGlossaryTerms={3}
-        tags={dataAsset.tags}
-        onGlossaryTermsUpdate={onGlossaryTermsUpdate}
-      />
-    );
-
-    const renderFullLayout = () => {
-      const testId = SUMMARY_TEST_ID_MAP[entityType];
-
-      return (
-        <>
-          {testId && <span className="d-none" data-testid={testId} />}
-          {descriptionSection}
-          {overviewSection}
-          {isTestCaseLoading ? (
-            <Loader size="small" />
-          ) : (
-            entityType === EntityType.TABLE && (
-              <DataQualitySection
-                tests={[
-                  { type: 'success', count: statusCounts.success },
-                  { type: 'aborted', count: statusCounts.aborted },
-                  { type: 'failed', count: statusCounts.failed },
-                ]}
-                totalTests={statusCounts.total}
-                onEdit={noop}
+    switch (summaryEntityType) {
+      case EntityType.API_COLLECTION:
+      case EntityType.API_ENDPOINT:
+      case EntityType.API_SERVICE:
+      case EntityType.CHART:
+      case EntityType.CONTAINER:
+      case EntityType.DASHBOARD:
+      case EntityType.DASHBOARD_DATA_MODEL:
+      case EntityType.DASHBOARD_SERVICE:
+      case EntityType.DATABASE:
+      case EntityType.DATABASE_SCHEMA:
+      case EntityType.DATABASE_SERVICE:
+      case EntityType.MESSAGING_SERVICE:
+      case EntityType.METRIC:
+      case EntityType.MLMODEL:
+      case EntityType.MLMODEL_SERVICE:
+      case EntityType.PIPELINE:
+      case EntityType.PIPELINE_SERVICE:
+      case EntityType.SEARCH_INDEX:
+      case EntityType.SEARCH_SERVICE:
+      case EntityType.STORAGE_SERVICE:
+      case EntityType.STORED_PROCEDURE:
+      case EntityType.TABLE:
+      case EntityType.TOPIC:
+      case EntityType.DIRECTORY:
+      case EntityType.FILE:
+      case EntityType.SPREADSHEET:
+      case EntityType.WORKSHEET:
+      case EntityType.TABLE_COLUMN:
+      case EntityType.GOVERN:
+      case EntityType.GLOSSARY:
+      case EntityType.GLOSSARY_TERM:
+      case EntityType.TAG:
+      case EntityType.TEST_SUITE:
+      case EntityType.TEST_CASE:
+      case EntityType.DOMAIN:
+      case EntityType.CLASSIFICATION:
+      case EntityType.METADATA_SERVICE:
+      case EntityType.SECURITY_SERVICE:
+      case EntityType.DRIVE_SERVICE:
+      case EntityType.INGESTION_PIPELINE:
+      case EntityType.WORKFLOW_DEFINITION:
+      case EntityType.DATA_CONTRACT:
+      case EntityType.QUERY:
+      case EntityType.AI_APPLICATION:
+      case EntityType.LLM_MODEL:
+      case EntityType.MCP_SERVER:
+      case EntityType.APPLICATION:
+      case EntityType.ALERT:
+      case EntityType.EVENT_SUBSCRIPTION:
+        return (
+          <>
+            {entityType === EntityType.TABLE && (
+              <span className="d-none" data-testid="TableSummary" />
+            )}
+            {entityType === EntityType.TOPIC && (
+              <span className="d-none" data-testid="TopicSummary" />
+            )}
+            {entityType === EntityType.DASHBOARD && (
+              <span className="d-none" data-testid="DashboardSummary" />
+            )}
+            {entityType === EntityType.PIPELINE && (
+              <span className="d-none" data-testid="PipelineSummary" />
+            )}
+            {entityType === EntityType.MLMODEL && (
+              <span className="d-none" data-testid="MlModelSummary" />
+            )}
+            {entityType === EntityType.CHART && (
+              <span className="d-none" data-testid="ChartSummary" />
+            )}
+            {entityType === EntityType.DATABASE && (
+              <span className="d-none" data-testid="DatabaseSummary" />
+            )}
+            {entityType === EntityType.DATABASE_SCHEMA && (
+              <span className="d-none" data-testid="DatabaseSchemaSummary" />
+            )}
+            {entityType === EntityType.CONTAINER && (
+              <span className="d-none" data-testid="ContainerSummary" />
+            )}
+            {entityType === EntityType.SEARCH_INDEX && (
+              <span className="d-none" data-testid="SearchIndexSummary" />
+            )}
+            {entityType === EntityType.API_COLLECTION && (
+              <span className="d-none" data-testid="APIServiceSummary" />
+            )}
+            {entityType === EntityType.DIRECTORY && (
+              <span className="d-none" data-testid="DirectorySummary" />
+            )}
+            {entityType === EntityType.TABLE_COLUMN && (
+              <span className="d-none" data-testid="ColumnSummary" />
+            )}
+            {entityType === EntityType.DASHBOARD_DATA_MODEL && (
+              <span
+                className="d-none"
+                data-testid="DashboardDataModelSummary"
               />
-            )
-          )}
-          {shouldShowLineageSection && (
-            <LineageSection
+            )}
+            <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
+              description={dataAsset.description}
               entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
-              key={`lineage-${dataAsset.id}`}
-              onLineageClick={onLineageClick}
+              hasPermission={editDescriptionPermission}
+              onDescriptionUpdate={handleDescriptionUpdate}
             />
-          )}
-          <div>{ownersSection}</div>
-          <div>{domainsSection}</div>
-          <div>{tierSection}</div>
-          <div>{glossaryTermsSection}</div>
-          <div>
-            <TagsSection
-              entityId={dataAsset.id}
+            <OverviewSection
+              componentType={componentType}
+              entityInfoV1={entityInfo}
+              isDomainVisible={isDomainVisible}
+              onLinkClick={onLinkClick}
+            />
+            {isTestCaseLoading ? (
+              <Loader size="small" />
+            ) : (
+              entityType === EntityType.TABLE && (
+                <DataQualitySection
+                  tests={[
+                    { type: 'success', count: statusCounts.success },
+                    { type: 'aborted', count: statusCounts.aborted },
+                    { type: 'failed', count: statusCounts.failed },
+                  ]}
+                  totalTests={statusCounts.total}
+                  onEdit={() => {
+                    // Handle edit functionality
+                  }}
+                />
+              )
+            )}
+            {shouldShowLineageSection && (
+              <LineageSection
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityType={entityType}
+                key={`lineage-${dataAsset.id}`}
+                onLineageClick={onLineageClick}
+              />
+            )}
+            <div>
+              <OwnersSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editOwnerPermission}
+                key={`owners-${dataAsset.id}-${
+                  (dataAsset.owners as EntityReference[])?.length || 0
+                }`}
+                owners={dataAsset.owners as EntityReference[]}
+                onOwnerUpdate={onOwnerUpdate}
+              />
+            </div>
+            <div>
+              <DomainsSection
+                domains={dataAsset.domains}
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editDomainPermission}
+                key={`domains-${dataAsset.id}-${
+                  (dataAsset.domains as EntityReference[])?.length || 0
+                }`}
+                onDomainUpdate={onDomainUpdate}
+              />
+            </div>
+            <div>
+              <TierSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editTierPermission}
+                key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
+                tags={dataAsset.tags}
+                tier={tier}
+                onTierUpdate={onTierUpdate}
+              />
+            </div>
+            <div>
+              <GlossaryTermsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editGlossaryTermsPermission}
+                key={`glossary-terms-${dataAsset.id}-${
+                  dataAsset.tags?.length ?? 0
+                }`}
+                maxVisibleGlossaryTerms={3}
+                tags={dataAsset.tags}
+                onGlossaryTermsUpdate={onGlossaryTermsUpdate}
+              />
+            </div>
+            <div>
+              <TagsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editTagsPermission}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
+                tags={dataAsset.tags}
+                onTagsUpdate={onTagsUpdate}
+              />
+            </div>
+            <div>
+              <DataProductsSection
+                activeDomains={dataAsset.domains as EntityReference[]}
+                dataProducts={dataAsset.dataProducts as EntityReference[]}
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editDataProductPermission}
+                key={`data-products-${dataAsset.id}-${
+                  dataAsset.dataProducts?.length ?? 0
+                }`}
+                onDataProductsUpdate={onDataProductsUpdate}
+              />
+            </div>
+          </>
+        );
+      case EntityType.KNOWLEDGE_PAGE:
+        return (
+          <>
+            <span className="d-none" data-testid="KnowledgePageSummary" />
+            <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
+              description={dataAsset.description}
+              entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
-              hasPermission={editTagsPermission}
-              key={`tags-${dataAsset.id}-${getKeyCount(dataAsset.tags)}`}
-              tags={dataAsset.tags}
-              onTagsUpdate={onTagsUpdate}
+              hasPermission={editDescriptionPermission}
+              onDescriptionUpdate={handleDescriptionUpdate}
             />
-          </div>
-          <div>
-            <DataProductsSection
-              activeDomains={dataAsset.domains as EntityReference[]}
-              dataProducts={dataAsset.dataProducts as EntityReference[]}
-              entityId={dataAsset.id}
+            <div>
+              <OwnersSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editOwnerPermission}
+                key={`owners-${dataAsset.id}-${
+                  (dataAsset.owners as EntityReference[])?.length || 0
+                }`}
+                owners={dataAsset.owners as EntityReference[]}
+                onOwnerUpdate={onOwnerUpdate}
+              />
+            </div>
+            <div>
+              <TagsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editTagsPermission}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
+                tags={dataAsset.tags}
+                onTagsUpdate={onTagsUpdate}
+              />
+            </div>
+            <div>
+              <GlossaryTermsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editGlossaryTermsPermission}
+                key={`glossary-terms-${dataAsset.id}-${
+                  dataAsset.tags?.length ?? 0
+                }`}
+                maxVisibleGlossaryTerms={3}
+                tags={dataAsset.tags}
+                onGlossaryTermsUpdate={onGlossaryTermsUpdate}
+              />
+            </div>
+          </>
+        );
+      case EntityType.DATA_PRODUCT:
+        return (
+          <>
+            <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
+              description={dataAsset.description}
+              entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
-              hasPermission={editDataProductPermission}
-              key={`data-products-${dataAsset.id}-${getKeyCount(
-                dataAsset.dataProducts
-              )}`}
-              onDataProductsUpdate={onDataProductsUpdate}
+              hasPermission={editDescriptionPermission}
+              onDescriptionUpdate={handleDescriptionUpdate}
             />
-          </div>
-        </>
-      );
-    };
-
-    const renderKnowledgeLayout = () => (
-      <>
-        <span className="d-none" data-testid="KnowledgePageSummary" />
-        {descriptionSection}
-        <div>{ownersSection}</div>
-        <div>
-          <TagsSection
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editTagsPermission}
-            key={`tags-${dataAsset.id}-${getKeyCount(dataAsset.tags)}`}
-            tags={dataAsset.tags}
-            onTagsUpdate={onTagsUpdate}
-          />
-        </div>
-        <div>{glossaryTermsSection}</div>
-      </>
-    );
-
-    const renderDataProductLayout = () => (
-      <>
-        {descriptionSection}
-        <div>{ownersSection}</div>
-        <div>{domainsSection}</div>
-        <div>{tierSection}</div>
-        <div>
-          <TagsSection
-            entityId={dataAsset.id}
-            entityType={entityType}
-            hasPermission={editTagsPermission}
-            key={`tags-${dataAsset.id}-${getKeyCount(dataAsset.tags)}`}
-            tags={dataAsset.tags?.filter(isNonGlossaryTag)}
-            onTagsUpdate={onTagsUpdate}
-          />
-        </div>
-      </>
-    );
-
-    const renderBasicLayout = () => (
-      <>
-        {descriptionSection}
-        {overviewSection}
-        {dataAsset.owners && <div>{ownersSection}</div>}
-        {dataAsset.tags && (
-          <div>
-            <TagsSection
-              entityId={dataAsset.id}
+            <div>
+              <OwnersSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editOwnerPermission}
+                key={`owners-${dataAsset.id}-${
+                  (dataAsset.owners as EntityReference[])?.length || 0
+                }`}
+                owners={dataAsset.owners as EntityReference[]}
+                onOwnerUpdate={onOwnerUpdate}
+              />
+            </div>
+            <div>
+              <DomainsSection
+                domains={dataAsset.domains}
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editDomainPermission}
+                key={`domains-${dataAsset.id}-${
+                  (dataAsset.domains as EntityReference[])?.length || 0
+                }`}
+                onDomainUpdate={onDomainUpdate}
+              />
+            </div>
+            <div>
+              <TierSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editTierPermission}
+                key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
+                tags={dataAsset.tags}
+                tier={tier}
+                onTierUpdate={onTierUpdate}
+              />
+            </div>
+            <div>
+              <TagsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={editTagsPermission}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
+                tags={dataAsset.tags?.filter(
+                  (tag: TagLabel) => tag.source !== TagSource.Glossary
+                )}
+                onTagsUpdate={onTagsUpdate}
+              />
+            </div>
+          </>
+        );
+      case EntityType.USER:
+      case EntityType.TEAM:
+      case EntityType.ROLE:
+      case EntityType.POLICY:
+      case EntityType.BOT:
+      case EntityType.WEBHOOK:
+      case EntityType.PERSONA:
+      case EntityType.KPI:
+      case EntityType.DATA_INSIGHT_CHART:
+      case EntityType.DOC_STORE:
+      case EntityType.TYPE:
+      case EntityType.SAMPLE_DATA:
+      case EntityType.CUSTOM_METRIC:
+      case EntityType.NOTIFICATION_TEMPLATE:
+      case EntityType.INGESTION_RUNNER:
+      case EntityType.APP_MARKET_PLACE_DEFINITION:
+      case EntityType.SERVICE:
+      case EntityType.SUBSCRIPTION:
+      case EntityType.LINEAGE_EDGE:
+      case EntityType.ENTITY_REPORT_DATA:
+      case EntityType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA:
+      case EntityType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA:
+      case EntityType.TEST_CASE_RESOLUTION_STATUS:
+      case EntityType.TEST_CASE_RESULT:
+      case EntityType.ALL:
+      case EntityType.PAGE:
+      case EntityType.knowledgePanels:
+        return (
+          <>
+            <DescriptionSection
+              changeSummaryEntry={descriptionChangeSummaryEntry}
+              description={dataAsset.description}
+              entityFqn={dataAsset.fullyQualifiedName}
               entityType={entityType}
-              hasPermission={editTagsPermission}
-              key={`tags-${dataAsset.id}-${getKeyCount(dataAsset.tags)}`}
-              tags={dataAsset.tags?.filter(isNonGlossaryTag)}
-              onTagsUpdate={onTagsUpdate}
+              hasPermission={editDescriptionPermission}
+              onDescriptionUpdate={handleDescriptionUpdate}
             />
-          </div>
-        )}
-      </>
-    );
-
-    const layout = getSummaryLayout(summaryEntityType);
-    if (!layout) {
-      return null;
+            <OverviewSection
+              componentType={componentType}
+              entityInfoV1={entityInfo}
+              isDomainVisible={isDomainVisible}
+              onLinkClick={onLinkClick}
+            />
+            {dataAsset.owners && (
+              <div>
+                <OwnersSection
+                  entityId={dataAsset.id}
+                  entityType={entityType}
+                  hasPermission={editOwnerPermission}
+                  key={`owners-${dataAsset.id}-${
+                    (dataAsset.owners as EntityReference[])?.length || 0
+                  }`}
+                  owners={dataAsset.owners as EntityReference[]}
+                  onOwnerUpdate={onOwnerUpdate}
+                />
+              </div>
+            )}
+            {dataAsset.tags && (
+              <div>
+                <TagsSection
+                  entityId={dataAsset.id}
+                  entityType={entityType}
+                  hasPermission={editTagsPermission}
+                  key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
+                  tags={dataAsset.tags?.filter(
+                    (tag: TagLabel) => tag.source !== TagSource.Glossary
+                  )}
+                  onTagsUpdate={onTagsUpdate}
+                />
+              </div>
+            )}
+          </>
+        );
+      default:
+        return null;
     }
-
-    const layoutRenderers: Record<SummaryLayout, () => ReactNode> = {
-      full: renderFullLayout,
-      knowledge: renderKnowledgeLayout,
-      dataProduct: renderDataProductLayout,
-      basic: renderBasicLayout,
-    };
-
-    return layoutRenderers[layout]();
   }, [
     entityType,
     summaryEntityType,

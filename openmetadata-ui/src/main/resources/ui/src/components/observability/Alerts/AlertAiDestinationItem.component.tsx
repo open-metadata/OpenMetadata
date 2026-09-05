@@ -17,7 +17,6 @@ import {
   Button,
   Input,
   Select,
-  SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
@@ -25,6 +24,7 @@ import { isEqual, isUndefined, omitBy } from 'lodash';
 import {
   ComponentProps,
   ComponentType,
+  Fragment,
   useEffect,
   useMemo,
   useState,
@@ -34,7 +34,6 @@ import { useTranslation } from 'react-i18next';
 import {
   SubscriptionCategory,
   SubscriptionType,
-  TionStatus,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
@@ -61,281 +60,6 @@ type ComboBoxProps = ComponentProps<typeof Select.ComboBox> & {
 };
 
 const ComboBox = Select.ComboBox as ComponentType<ComboBoxProps>;
-
-const renderDestinationCategoryItem = (item: SelectItemType) => (
-  <Select.Item
-    className={
-      item.isDisabled
-        ? 'tw:cursor-default tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-secondary tw:opacity-50'
-        : 'tw:pl-3.5'
-    }
-    icon={item.icon}
-    id={item.id}
-    isDisabled={item.isDisabled}
-    key={item.id}
-    textValue={item.label ?? item.id}>
-    {item.label ?? item.id}
-  </Select.Item>
-);
-
-interface ViewOnlyInternalDestinationFieldsProps {
-  name: number;
-  destinationType?: string;
-  destinationTypeError?: string;
-  internalTypeError?: string;
-  destinationCategoryItems: SelectItemType[];
-  subscriptionItems: SelectItemType[];
-  destinationSubType?: string;
-}
-
-/** Read-only, two-column category/type selects for a resolved internal destination. */
-const ViewOnlyInternalDestinationFields = ({
-  name,
-  destinationType,
-  destinationTypeError,
-  internalTypeError,
-  destinationCategoryItems,
-  subscriptionItems,
-  destinationSubType,
-}: ViewOnlyInternalDestinationFieldsProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
-      <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
-        <Select
-          isDisabled
-          data-testid={`destination-category-select-${name}`}
-          fontSize="sm"
-          hint={destinationTypeError}
-          isInvalid={Boolean(destinationTypeError)}
-          items={destinationCategoryItems}
-          label={t('label.destination')}
-          placeholder={t('label.select-field', {
-            field: t('label.destination'),
-          })}
-          selectedKey={destinationType ?? null}
-          size="sm">
-          {renderDestinationCategoryItem}
-        </Select>
-      </div>
-      <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
-        <Select
-          isDisabled
-          data-testid={`destination-type-select-${name}`}
-          fontSize="sm"
-          hint={internalTypeError}
-          isInvalid={Boolean(internalTypeError)}
-          items={subscriptionItems}
-          label={t('label.type')}
-          placeholder={t('label.select-field', {
-            field: t('label.destination'),
-          })}
-          selectedKey={destinationSubType ?? null}
-          size="sm">
-          {renderSelectItem}
-        </Select>
-      </div>
-    </div>
-  );
-};
-
-interface DestinationCategorySelectorRowProps {
-  name: number;
-  isViewOnly?: boolean;
-  destinationType?: string;
-  destinationTypeError?: string;
-  destinationCategoryItems: SelectItemType[];
-  onDestinationChange: (key: Key | null) => void;
-  onRemove: () => void;
-}
-
-/** Editable/read-only destination-category picker, with a remove button in edit mode. */
-const DestinationCategorySelectorRow = ({
-  name,
-  isViewOnly,
-  destinationType,
-  destinationTypeError,
-  destinationCategoryItems,
-  onDestinationChange,
-  onRemove,
-}: DestinationCategorySelectorRowProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <div
-      className={
-        isViewOnly
-          ? ALERT_AI_FORM_CLASS_NAMES.ruleControlGroupFull
-          : ALERT_AI_FORM_CLASS_NAMES.ruleControlGroup
-      }>
-      <Box
-        className={ALERT_AI_FORM_CLASS_NAMES.ruleControlRow}
-        direction="row"
-        gap={3}>
-        <div className={ALERT_AI_FORM_CLASS_NAMES.fieldFill}>
-          {isViewOnly ? (
-            <Select
-              isDisabled
-              data-testid={`destination-category-select-${name}`}
-              fontSize="sm"
-              hint={destinationTypeError}
-              isInvalid={Boolean(destinationTypeError)}
-              items={destinationCategoryItems}
-              label={t('label.destination')}
-              placeholder={t('label.select-field', {
-                field: t('label.destination'),
-              })}
-              selectedKey={destinationType ?? null}
-              size="sm">
-              {renderDestinationCategoryItem}
-            </Select>
-          ) : (
-            <ComboBox
-              allowsEmptyCollection
-              data-testid={`destination-category-select-${name}`}
-              fontSize="sm"
-              hint={destinationTypeError}
-              isInvalid={Boolean(destinationTypeError)}
-              items={destinationCategoryItems}
-              label={t('label.destination')}
-              placeholder={t('label.select-field', {
-                field: t('label.destination'),
-              })}
-              selectedKey={destinationType ?? null}
-              shortcut={false}
-              showSearchIcon={false}
-              size="sm"
-              onSelectionChange={onDestinationChange}>
-              {renderDestinationCategoryItem}
-            </ComboBox>
-          )}
-        </div>
-        {!isViewOnly && (
-          <Button
-            className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
-            color="secondary"
-            data-testid={`remove-destination-${name}`}
-            iconLeading={Trash01}
-            size="sm"
-            onPress={onRemove}
-          />
-        )}
-      </Box>
-    </div>
-  );
-};
-
-interface InternalDestinationTypeAndWarningProps {
-  name: number;
-  isViewOnly?: boolean;
-  internalTypeError?: string;
-  subscriptionItems: SelectItemType[];
-  destinationSubType?: string;
-  destinationType?: string;
-  onTypeChange: (key: Key | null) => void;
-}
-
-/** Internal-destination subtype select plus the owner/notify-selection warning banner. */
-const InternalDestinationTypeAndWarning = ({
-  name,
-  isViewOnly,
-  internalTypeError,
-  subscriptionItems,
-  destinationSubType,
-  destinationType,
-  onTypeChange,
-}: InternalDestinationTypeAndWarningProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <>
-      {!isViewOnly && (
-        <div className={ALERT_AI_FORM_CLASS_NAMES.ruleControlField}>
-          <Select
-            data-testid={`destination-type-select-${name}`}
-            fontSize="sm"
-            hint={internalTypeError}
-            isDisabled={isViewOnly}
-            isInvalid={Boolean(internalTypeError)}
-            items={subscriptionItems}
-            label={t('label.type')}
-            placeholder={t('label.select-field', {
-              field: t('label.destination'),
-            })}
-            selectedKey={destinationSubType ?? null}
-            size="sm"
-            onSelectionChange={onTypeChange}>
-            {renderSelectItem}
-          </Select>
-        </div>
-      )}
-      {!isViewOnly && destinationType && destinationSubType && (
-        <Alert
-          closable
-          className={ALERT_AI_FORM_CLASS_NAMES.destinationAlert}
-          title={
-            destinationType === SubscriptionCategory.Owners &&
-            destinationSubType !== SubscriptionType.Email
-              ? t('message.destination-owner-selection-warning', {
-                  subscriptionCategory: destinationType,
-                  subscriptionType: destinationSubType,
-                })
-              : t('message.destination-selection-warning', {
-                  subscriptionCategory: destinationType,
-                  subscriptionType: destinationSubType,
-                })
-          }
-          variant="warning"
-        />
-      )}
-    </>
-  );
-};
-
-interface DestinationStatusSectionProps {
-  isDestinationStatusLoading?: boolean;
-  destinationCategory?: SubscriptionCategory;
-  destinationStatusDetails?: TionStatus;
-  isStatusAlertDismissed: boolean;
-  isSuccessStatus: boolean;
-  destinationStatusLabel: string;
-  onDismiss: () => void;
-}
-
-/** Shows a loading skeleton for external destinations, then a dismissible status alert. */
-const DestinationStatusSection = ({
-  isDestinationStatusLoading,
-  destinationCategory,
-  destinationStatusDetails,
-  isStatusAlertDismissed,
-  isSuccessStatus,
-  destinationStatusLabel,
-  onDismiss,
-}: DestinationStatusSectionProps) => {
-  const { t } = useTranslation();
-
-  if (isDestinationStatusLoading) {
-    return destinationCategory === SubscriptionCategory.External ? (
-      <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
-    ) : null;
-  }
-
-  if (isUndefined(destinationStatusDetails) || isStatusAlertDismissed) {
-    return null;
-  }
-
-  return (
-    <Alert
-      closable
-      title={`${t('label.status')}: ${
-        destinationStatusDetails?.statusCode
-      } ${destinationStatusLabel} ${destinationStatusDetails?.reason ?? ''}`}
-      variant={isSuccessStatus ? 'success' : 'error'}
-      onClose={onDismiss}
-    />
-  );
-};
 
 /** Renders one destination row for add/edit and the read-only configuration tab. */
 const AlertAiDestinationItem = ({
@@ -411,6 +135,24 @@ const AlertAiDestinationItem = ({
     );
   };
 
+  const renderDestinationCategoryItem = (
+    item: (typeof destinationCategoryItems)[number]
+  ) => (
+    <Select.Item
+      className={
+        item.isDisabled
+          ? 'tw:cursor-default tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-secondary tw:opacity-50'
+          : 'tw:pl-3.5'
+      }
+      icon={item.icon}
+      id={item.id}
+      isDisabled={item.isDisabled}
+      key={item.id}
+      textValue={item.label ?? item.id}>
+      {item.label ?? item.id}
+    </Select.Item>
+  );
+
   return (
     <Box
       className={ALERT_AI_FORM_CLASS_NAMES.destinationCard}
@@ -418,45 +160,163 @@ const AlertAiDestinationItem = ({
       direction="col"
       gap={4}>
       {isViewOnly && isInternal && destinationType ? (
-        <ViewOnlyInternalDestinationFields
-          destinationCategoryItems={destinationCategoryItems}
-          destinationSubType={destination?.type}
-          destinationType={destinationType}
-          destinationTypeError={destinationTypeError}
-          internalTypeError={internalTypeError}
-          name={name}
-          subscriptionItems={subscriptionItems}
-        />
-      ) : (
-        <DestinationCategorySelectorRow
-          destinationCategoryItems={destinationCategoryItems}
-          destinationType={destinationType}
-          destinationTypeError={destinationTypeError}
-          isViewOnly={isViewOnly}
-          name={name}
-          onDestinationChange={handleDestinationChange}
-          onRemove={() => remove?.(name)}
-        />
-      )}
-      {destinationType && (
-        <>
-          {isInternal && (
-            <InternalDestinationTypeAndWarning
-              destinationSubType={destination?.type}
-              destinationType={destinationType}
-              internalTypeError={internalTypeError}
-              isViewOnly={isViewOnly}
-              name={name}
-              subscriptionItems={subscriptionItems}
-              onTypeChange={(key) =>
+        <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
+          <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
+            <Select
+              isDisabled
+              data-testid={`destination-category-select-${name}`}
+              fontSize="sm"
+              hint={destinationTypeError}
+              isInvalid={Boolean(destinationTypeError)}
+              items={destinationCategoryItems}
+              label={t('label.destination')}
+              placeholder={t('label.select-field', {
+                field: t('label.destination'),
+              })}
+              selectedKey={destinationType ?? null}
+              size="sm">
+              {renderDestinationCategoryItem}
+            </Select>
+          </div>
+          <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
+            <Select
+              isDisabled
+              data-testid={`destination-type-select-${name}`}
+              fontSize="sm"
+              hint={internalTypeError}
+              isInvalid={Boolean(internalTypeError)}
+              items={subscriptionItems}
+              label={t('label.type')}
+              placeholder={t('label.select-field', {
+                field: t('label.destination'),
+              })}
+              selectedKey={destination?.type ?? null}
+              size="sm"
+              onSelectionChange={(key) =>
                 updateAlertAiValue(
                   value,
                   onChange,
                   ['destinations', name, 'type'],
                   key ? String(key) : undefined
                 )
-              }
-            />
+              }>
+              {renderSelectItem}
+            </Select>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={
+            isViewOnly
+              ? ALERT_AI_FORM_CLASS_NAMES.ruleControlGroupFull
+              : ALERT_AI_FORM_CLASS_NAMES.ruleControlGroup
+          }>
+          <Box
+            className={ALERT_AI_FORM_CLASS_NAMES.ruleControlRow}
+            direction="row"
+            gap={3}>
+            <div className={ALERT_AI_FORM_CLASS_NAMES.fieldFill}>
+              {isViewOnly ? (
+                <Select
+                  isDisabled
+                  data-testid={`destination-category-select-${name}`}
+                  fontSize="sm"
+                  hint={destinationTypeError}
+                  isInvalid={Boolean(destinationTypeError)}
+                  items={destinationCategoryItems}
+                  label={t('label.destination')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.destination'),
+                  })}
+                  selectedKey={destinationType ?? null}
+                  size="sm">
+                  {renderDestinationCategoryItem}
+                </Select>
+              ) : (
+                <ComboBox
+                  allowsEmptyCollection
+                  data-testid={`destination-category-select-${name}`}
+                  fontSize="sm"
+                  hint={destinationTypeError}
+                  isInvalid={Boolean(destinationTypeError)}
+                  items={destinationCategoryItems}
+                  label={t('label.destination')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.destination'),
+                  })}
+                  selectedKey={destinationType ?? null}
+                  shortcut={false}
+                  showSearchIcon={false}
+                  size="sm"
+                  onSelectionChange={handleDestinationChange}>
+                  {renderDestinationCategoryItem}
+                </ComboBox>
+              )}
+            </div>
+            {!isViewOnly && (
+              <Button
+                className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
+                color="secondary"
+                data-testid={`remove-destination-${name}`}
+                iconLeading={Trash01}
+                size="sm"
+                onPress={() => remove?.(name)}
+              />
+            )}
+          </Box>
+        </div>
+      )}
+      {destinationType && (
+        <Fragment>
+          {isInternal && (
+            <Fragment>
+              {!isViewOnly && (
+                <div className={ALERT_AI_FORM_CLASS_NAMES.ruleControlField}>
+                  <Select
+                    data-testid={`destination-type-select-${name}`}
+                    fontSize="sm"
+                    hint={internalTypeError}
+                    isDisabled={isViewOnly}
+                    isInvalid={Boolean(internalTypeError)}
+                    items={subscriptionItems}
+                    label={t('label.type')}
+                    placeholder={t('label.select-field', {
+                      field: t('label.destination'),
+                    })}
+                    selectedKey={destination?.type ?? null}
+                    size="sm"
+                    onSelectionChange={(key) =>
+                      updateAlertAiValue(
+                        value,
+                        onChange,
+                        ['destinations', name, 'type'],
+                        key ? String(key) : undefined
+                      )
+                    }>
+                    {renderSelectItem}
+                  </Select>
+                </div>
+              )}
+              {!isViewOnly && destinationType && destination?.type && (
+                <Alert
+                  closable
+                  className={ALERT_AI_FORM_CLASS_NAMES.destinationAlert}
+                  title={
+                    destinationType === SubscriptionCategory.Owners &&
+                    destination.type !== SubscriptionType.Email
+                      ? t('message.destination-owner-selection-warning', {
+                          subscriptionCategory: destinationType,
+                          subscriptionType: destination.type,
+                        })
+                      : t('message.destination-selection-warning', {
+                          subscriptionCategory: destinationType,
+                          subscriptionType: destination.type,
+                        })
+                  }
+                  variant="warning"
+                />
+              )}
+            </Fragment>
           )}
           <div className={ALERT_AI_FORM_CLASS_NAMES.twoColumnGrid}>
             <AlertAiDestinationConfigFields
@@ -510,16 +370,25 @@ const AlertAiDestinationItem = ({
               />
             </div>
           )}
-          <DestinationStatusSection
-            destinationCategory={destination.category}
-            destinationStatusDetails={destinationStatusDetails}
-            destinationStatusLabel={destinationStatusLabel}
-            isDestinationStatusLoading={isDestinationStatusLoading}
-            isStatusAlertDismissed={isStatusAlertDismissed}
-            isSuccessStatus={isSuccessStatus}
-            onDismiss={() => setIsStatusAlertDismissed(true)}
-          />
-        </>
+          {isDestinationStatusLoading &&
+            destination.category === SubscriptionCategory.External && (
+              <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
+            )}
+          {!isDestinationStatusLoading &&
+            !isUndefined(destinationStatusDetails) &&
+            !isStatusAlertDismissed && (
+              <Alert
+                closable
+                title={`${t('label.status')}: ${
+                  destinationStatusDetails?.statusCode
+                } ${destinationStatusLabel} ${
+                  destinationStatusDetails?.reason ?? ''
+                }`}
+                variant={isSuccessStatus ? 'success' : 'error'}
+                onClose={() => setIsStatusAlertDismissed(true)}
+              />
+            )}
+        </Fragment>
       )}
     </Box>
   );

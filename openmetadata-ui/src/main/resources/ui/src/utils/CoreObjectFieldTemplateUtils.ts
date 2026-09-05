@@ -130,10 +130,13 @@ export const shouldSpanFullWidth = ({
     return true;
   }
 
-  return (
+  const hasComplexSchemaType =
     hasSchemaType(schemaProperty, 'object') ||
     hasSchemaType(schemaProperty, 'array') ||
-    hasSchemaType(schemaProperty, 'boolean') ||
+    hasSchemaType(schemaProperty, 'boolean');
+
+  return (
+    hasComplexSchemaType ||
     Boolean(schemaProperty?.oneOf?.length) ||
     Boolean(schemaProperty?.anyOf?.length) ||
     hasLongValueSignal(name, schemaProperty)
@@ -157,47 +160,6 @@ export const orderProperties = (
     return firstIndex - secondIndex;
   });
 };
-
-const getHasIamAuthToggle = (
-  properties: ObjectFieldTemplateProps['properties']
-): boolean =>
-  properties.some(
-    (property) => !property.hidden && property.name === 'enabled'
-  ) &&
-  properties.some(
-    (property) =>
-      !property.hidden && STATIC_AWS_CREDENTIAL_PROPERTIES.has(property.name)
-  );
-
-const getIsIamAuthEnabled = (
-  hasIamAuthToggle: boolean,
-  formData: ObjectFieldTemplateProps['formData']
-): boolean =>
-  hasIamAuthToggle &&
-  typeof formData === 'object' &&
-  formData !== null &&
-  (formData as { enabled?: boolean }).enabled === true;
-
-const getIsAwsS3StorageConfig = (
-  idSchemaId: string,
-  title: ObjectFieldTemplateProps['title'],
-  hasIamAuthToggle: boolean
-): boolean =>
-  idSchemaId.endsWith(STORAGE_CONFIG_ID_SUFFIX) ||
-  (title === AWS_S3_STORAGE_CONFIG_TITLE && hasIamAuthToggle);
-
-const getIsGenericNestedConfig = (params: {
-  isRoot: boolean;
-  hasAdditionalProperties: boolean;
-  isSampleDataSection: boolean;
-  isSampleDataConfig: boolean;
-  isAwsS3StorageConfig: boolean;
-}): boolean =>
-  !params.isRoot &&
-  !params.hasAdditionalProperties &&
-  !params.isSampleDataSection &&
-  !params.isSampleDataConfig &&
-  !params.isAwsS3StorageConfig;
 
 export const getFormSeperationConfig = ({
   formContext,
@@ -227,26 +189,32 @@ export const getFormSeperationConfig = ({
   const isSampleDataConfig = idSchema.$id.endsWith(
     SAMPLE_DATA_CONFIG_ID_SUFFIX
   );
-  const hasIamAuthToggle = getHasIamAuthToggle(properties);
-  const isAwsS3StorageConfig = getIsAwsS3StorageConfig(
-    idSchema.$id,
-    title,
-    hasIamAuthToggle
-  );
+  const hasIamAuthToggle =
+    properties.some(
+      (property) => !property.hidden && property.name === 'enabled'
+    ) &&
+    properties.some(
+      (property) =>
+        !property.hidden && STATIC_AWS_CREDENTIAL_PROPERTIES.has(property.name)
+    );
+  const isAwsS3StorageConfig =
+    idSchema.$id.endsWith(STORAGE_CONFIG_ID_SUFFIX) ||
+    (title === AWS_S3_STORAGE_CONFIG_TITLE && hasIamAuthToggle);
   const isGatedCredentialConfig =
     !isRoot && !schema.additionalProperties && hasIamAuthToggle;
-  const isGenericNestedConfig = getIsGenericNestedConfig({
-    isRoot,
-    hasAdditionalProperties: Boolean(schema.additionalProperties),
-    isSampleDataSection,
-    isSampleDataConfig,
-    isAwsS3StorageConfig,
-  });
+  const isNonRootNestedSection =
+    !isRoot && !schema.additionalProperties && !isSampleDataSection;
+  const isGenericNestedConfig =
+    isNonRootNestedSection && !isSampleDataConfig && !isAwsS3StorageConfig;
   const isNestedConfigGrid =
     isSampleDataConfig || isAwsS3StorageConfig || isGenericNestedConfig;
   const isCredentialAdvancedDisclosure =
     isGatedCredentialConfig || isGenericNestedConfig;
-  const isIamAuthEnabled = getIsIamAuthEnabled(hasIamAuthToggle, formData);
+  const isIamAuthEnabled =
+    hasIamAuthToggle &&
+    typeof formData === 'object' &&
+    formData !== null &&
+    (formData as { enabled?: boolean }).enabled === true;
   const addEntityLabel = title || t('label.property');
   const shouldShowDescription = Boolean(description && description !== title);
 
@@ -325,25 +293,6 @@ export const getAdvancedHeaderLabel = (
     : t('label.advanced-config');
 };
 
-const getIsDefaultAdvanced = (
-  prop: ObjectFieldTemplateProps['properties'][number],
-  schema: ObjectFieldTemplateProps['schema'],
-  isRoot: boolean
-): boolean => {
-  const schemaProperty = getSchemaProperty(schema, prop.name);
-
-  return (
-    !isRoot &&
-    !isRequiredSchemaProperty(schema, prop.name) &&
-    (DEFAULT_ADVANCED_PROPERTY_NAMES.has(prop.name) ||
-      (prop.name.toLowerCase().includes('impersonate') &&
-        hasSchemaType(schemaProperty, 'object')) ||
-      (prop.name === 'type' &&
-        (schemaProperty?.const !== undefined ||
-          schemaProperty?.default !== undefined)))
-  );
-};
-
 export const partitionProperties = (
   properties: ObjectFieldTemplateProps['properties'],
   schema: ObjectFieldTemplateProps['schema'],
@@ -355,11 +304,26 @@ export const partitionProperties = (
       if (prop.hidden) {
         return acc;
       }
+      const schemaProperty = getSchemaProperty(schema, prop.name);
       const isGatedAdvanced =
         isGatedCredentialConfig &&
         !GATED_CREDENTIAL_VISIBLE_PROPERTIES.has(prop.name) &&
         !isRequiredSchemaProperty(schema, prop.name);
-      const isDefaultAdvanced = getIsDefaultAdvanced(prop, schema, isRoot);
+      const isImpersonateObject =
+        prop.name.toLowerCase().includes('impersonate') &&
+        hasSchemaType(schemaProperty, 'object');
+      const isTypeWithConstOrDefault =
+        prop.name === 'type' &&
+        (schemaProperty?.const !== undefined ||
+          schemaProperty?.default !== undefined);
+      const isAdvancedPropertyName =
+        DEFAULT_ADVANCED_PROPERTY_NAMES.has(prop.name) ||
+        isImpersonateObject ||
+        isTypeWithConstOrDefault;
+      const isDefaultAdvanced =
+        !isRoot &&
+        !isRequiredSchemaProperty(schema, prop.name) &&
+        isAdvancedPropertyName;
 
       if (
         ADVANCED_PROPERTIES.has(prop.name) ||

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';

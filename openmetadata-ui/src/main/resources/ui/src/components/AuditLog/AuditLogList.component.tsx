@@ -21,7 +21,6 @@ import {
   ChangeDescription,
   FieldChange,
 } from '../../generated/type/changeEvent';
-import { AuditLogEntry } from '../../types/auditLogs.interface';
 import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
@@ -70,15 +69,6 @@ const parseValue = (value: unknown): unknown => {
   return value;
 };
 
-const formatObjectValue = (parsed: object): string => {
-  const maybeEntity = parsed as { displayName?: string; name?: string };
-  if (maybeEntity.displayName || maybeEntity.name) {
-    return maybeEntity.displayName ?? maybeEntity.name ?? '';
-  }
-
-  return JSON.stringify(parsed);
-};
-
 const formatChangeValue = (value: unknown): string => {
   const parsed = parseValue(value);
   if (parsed === null || parsed === undefined) {
@@ -93,7 +83,12 @@ const formatChangeValue = (value: unknown): string => {
     return asText || parsed;
   }
   if (typeof parsed === 'object') {
-    return formatObjectValue(parsed);
+    const maybeEntity = parsed as { displayName?: string; name?: string };
+    if (maybeEntity.displayName || maybeEntity.name) {
+      return maybeEntity.displayName ?? maybeEntity.name ?? '';
+    }
+
+    return JSON.stringify(parsed);
   }
 
   return String(parsed);
@@ -147,24 +142,30 @@ const getEntityLinkForField = (
   entityInfo: EntityInfo
 ): string | null => {
   const field = fieldName.toLowerCase();
-  const fieldLinkResolvers: Array<[string, (fqn: string) => string]> = [
-    ['tags', (fqn) => getTagPath(fqn)],
-    [
-      'dataproducts',
-      (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
-    ],
-    ['teams', (fqn) => getTeamsWithFqnPath(fqn)],
-    ['domain', (fqn) => getDomainPath(fqn)],
-    ['owner', (fqn) => getUserPath(fqn)],
-    ['reviewers', (fqn) => getUserPath(fqn)],
-    ['experts', (fqn) => getUserPath(fqn)],
-  ];
 
-  const resolver = fieldLinkResolvers.find(
-    ([name]) => field === name || field.endsWith(`.${name}`)
-  );
+  if (field === 'tags' || field.endsWith('.tags')) {
+    return getTagPath(entityInfo.fqn);
+  }
+  if (field === 'dataproducts' || field.endsWith('.dataproducts')) {
+    return getEntityLinkFromType(entityInfo.fqn, EntityType.DATA_PRODUCT);
+  }
+  if (field === 'teams' || field.endsWith('.teams')) {
+    return getTeamsWithFqnPath(entityInfo.fqn);
+  }
+  if (field === 'domain' || field.endsWith('.domain')) {
+    return getDomainPath(entityInfo.fqn);
+  }
+  if (field === 'owner' || field.endsWith('.owner')) {
+    return getUserPath(entityInfo.fqn);
+  }
+  if (field === 'reviewers' || field.endsWith('.reviewers')) {
+    return getUserPath(entityInfo.fqn);
+  }
+  if (field === 'experts' || field.endsWith('.experts')) {
+    return getUserPath(entityInfo.fqn);
+  }
 
-  return resolver ? resolver[1](entityInfo.fqn) : null;
+  return null;
 };
 
 const renderEntityLinks = (
@@ -207,49 +208,25 @@ const resolveEntityType = (value?: string): EntityType | undefined => {
   );
 };
 
-const getEntityFQN = (log: AuditLogEntry): string | undefined =>
-  log.entityFQN ??
-  log.changeEvent?.entityFullyQualifiedName ??
-  log.changeEvent?.entity?.fullyQualifiedName;
-
-const getEntityLabel = (
-  log: AuditLogEntry,
-  entityFQN?: string
-): string | undefined =>
-  getEntityName(log.changeEvent?.entity) ||
-  (log.changeEvent?.entity as { name?: string })?.name ||
-  (entityFQN ? Fqn.split(entityFQN).pop() : undefined) ||
-  log.changeEvent?.entityFullyQualifiedName ||
-  log.entityId;
-
-const renderUserEntityLink = (
-  log: AuditLogEntry,
-  entityLabel?: string
-): ReactNode | null => {
-  const userNameForLink =
-    log.changeEvent?.entity?.name ??
-    log.changeEvent?.entity?.fullyQualifiedName ??
-    log.userName ??
-    entityLabel;
-  if (!userNameForLink) {
-    return null;
-  }
-
-  return (
-    <Link className="entity-link" to={getUserPath(userNameForLink)}>
-      {entityLabel ?? userNameForLink}
-    </Link>
-  );
-};
-
 const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   const { t } = useTranslation();
 
   const userName = log.userName || t('label.system');
   const eventType = log.eventType ? startCase(log.eventType) : '';
   const entityType = log.entityType ?? log.changeEvent?.entityType;
-  const entityFQN = getEntityFQN(log);
-  const entityLabel = getEntityLabel(log, entityFQN);
+  const entityFQN =
+    log.entityFQN ??
+    log.changeEvent?.entityFullyQualifiedName ??
+    log.changeEvent?.entity?.fullyQualifiedName;
+  const entityNameLabel =
+    getEntityName(log.changeEvent?.entity) ||
+    (log.changeEvent?.entity as { name?: string })?.name;
+  const splitEntityFqn = entityFQN ? Fqn.split(entityFQN).pop() : undefined;
+  const entityLabel =
+    entityNameLabel ||
+    splitEntityFqn ||
+    log.changeEvent?.entityFullyQualifiedName ||
+    log.entityId;
   const normalizedType = resolveEntityType(entityType);
   const timestamp = log.eventTs;
 
@@ -370,12 +347,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             change.newValue,
             `updated-new-${change.name}`
           );
+          const hasValueChange = oldValueNode || newValueNode;
 
           details.push(
             <span className="change-detail" key={`updated-${change.name}`}>
               <span className="change-action">{updatedLabel}</span>{' '}
               <span className="change-field">{label || fallbackField}</span>
-              {(oldValueNode || newValueNode) && (
+              {hasValueChange && (
                 <>
                   : {oldValueNode}
                   {oldValueNode && newValueNode && ' → '}
@@ -421,9 +399,17 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
   const entityLink = useMemo(() => {
     if (normalizedType === EntityType.USER) {
-      const userLinkNode = renderUserEntityLink(log, entityLabel);
-      if (userLinkNode) {
-        return userLinkNode;
+      const userNameForLink =
+        log.changeEvent?.entity?.name ??
+        log.changeEvent?.entity?.fullyQualifiedName ??
+        log.userName ??
+        entityLabel;
+      if (userNameForLink) {
+        return (
+          <Link className="entity-link" to={getUserPath(userNameForLink)}>
+            {entityLabel ?? userNameForLink}
+          </Link>
+        );
       }
     }
     if (normalizedType && entityFQN) {

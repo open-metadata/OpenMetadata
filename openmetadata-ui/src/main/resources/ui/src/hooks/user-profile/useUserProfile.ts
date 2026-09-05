@@ -27,23 +27,6 @@ import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
 
-// Profile images are best-effort. On these terminal read outcomes we cache a placeholder so avatar
-// loaders can settle instead of retrying a denied/missing/failed profile forever.
-const PLACEHOLDER_CACHE_ERROR_STATUSES: Array<number | undefined> = [
-  ClientErrors.NOT_FOUND,
-  ClientErrors.FORBIDDEN,
-  ClientErrors.UNAUTHORIZED,
-  ClientErrors.BAD_REQUEST,
-  ClientErrors.SERVER_ERROR,
-  undefined,
-];
-
-const shouldCachePlaceholderOnError = (error: unknown): boolean => {
-  const status = (error as AxiosError)?.response?.status;
-
-  return PLACEHOLDER_CACHE_ERROR_STATUSES.includes(status);
-};
-
 export const useUserProfile = ({
   permission,
   name,
@@ -106,7 +89,19 @@ export const useUserProfile = ({
         user,
       });
     } catch (error) {
-      if (shouldCachePlaceholderOnError(error)) {
+      // Profile images are best-effort. Cache a placeholder on any read failure so avatar loaders
+      // can settle and we do not keep retrying a denied/missing profile forever.
+      const errorStatus = (error as AxiosError)?.response?.status;
+      const isCacheableErrorStatus =
+        errorStatus === ClientErrors.NOT_FOUND ||
+        errorStatus === ClientErrors.FORBIDDEN ||
+        errorStatus === ClientErrors.UNAUTHORIZED ||
+        errorStatus === ClientErrors.BAD_REQUEST;
+      if (
+        isCacheableErrorStatus ||
+        errorStatus === ClientErrors.SERVER_ERROR ||
+        errorStatus === undefined
+      ) {
         updateUserProfilePics({
           id: cacheKey,
           user: {

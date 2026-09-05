@@ -26,7 +26,6 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
 import {
-  Destination,
   Status,
   SubscriptionCategory,
   SubscriptionType,
@@ -43,269 +42,6 @@ import {
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 import { buildGroupedOptions } from './DestinationSelectItem.utils';
-
-// Extracted from DestinationSelectItem's render: the type selector + warning
-// alert shown once an internal destination category (Teams/Users/Owners/...)
-// is selected, kept out of the main component to keep its complexity down.
-function InternalDestinationFields(
-  props: Readonly<{
-    control: ReturnType<typeof useFormContext>['control'];
-    id: number;
-    isViewMode: boolean;
-    isConfigExpanded?: boolean;
-    onConfigExpandedChange?: (isExpanded: boolean) => void;
-    destinationType: string;
-    subscriptionType: string | undefined;
-    isSelectionWarningDismissed: boolean;
-    setIsSelectionWarningDismissed: (value: boolean) => void;
-    t: (key: string, options?: Record<string, unknown>) => string;
-  }>
-) {
-  const {
-    control,
-    id,
-    isViewMode,
-    isConfigExpanded,
-    onConfigExpandedChange,
-    destinationType,
-    subscriptionType,
-    isSelectionWarningDismissed,
-    setIsSelectionWarningDismissed,
-    t,
-  } = props;
-
-  const showTeamsOrUsersConfig =
-    destinationType === SubscriptionCategory.Teams ||
-    destinationType === SubscriptionCategory.Users;
-  const showSelectionWarning =
-    destinationType && subscriptionType && !isSelectionWarningDismissed;
-  const isOwnerNonEmailWarning =
-    destinationType === SubscriptionCategory.Owners &&
-    subscriptionType !== SubscriptionType.Email;
-
-  return (
-    <>
-      {showTeamsOrUsersConfig && (
-        <DestinationConfigField
-          fieldName={id}
-          isConfigExpanded={isConfigExpanded}
-          isViewMode={isViewMode}
-          key={destinationType}
-          type={destinationType as SubscriptionCategory}
-          onConfigExpandedChange={onConfigExpandedChange}
-        />
-      )}
-
-      <Grid.Item span={24}>
-        <Controller
-          control={control}
-          name={`destinations.${id}.type`}
-          render={({ field, fieldState }) => (
-            <div>
-              <Select
-                isRequired
-                data-testid={`destination-type-select-${id}`}
-                isDisabled={isViewMode}
-                placeholder={t('label.select-field', {
-                  field: t('label.destination'),
-                })}
-                selectedKey={field.value ?? null}
-                onSelectionChange={(key) => {
-                  setIsSelectionWarningDismissed(false);
-                  field.onChange(key);
-                }}>
-                {getSubscriptionTypeOptions(destinationType).map((option) => (
-                  <Select.Item
-                    id={option.value}
-                    isDisabled={option.disabled}
-                    key={option.value}
-                    textValue={startCase(option.value)}>
-                    {startCase(option.value)}
-                  </Select.Item>
-                ))}
-              </Select>
-              {fieldState.error?.message && (
-                <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
-                  {fieldState.error.message}
-                </p>
-              )}
-            </div>
-          )}
-          rules={{
-            required: t('message.field-text-is-required', {
-              fieldText: t('label.field'),
-            }),
-          }}
-        />
-      </Grid.Item>
-
-      {showSelectionWarning && (
-        <Grid.Item span={24}>
-          <Alert
-            closable
-            title={
-              isOwnerNonEmailWarning
-                ? t('message.destination-owner-selection-warning', {
-                    subscriptionCategory: destinationType,
-                    subscriptionType,
-                  })
-                : t('message.destination-selection-warning', {
-                    subscriptionCategory: destinationType,
-                    subscriptionType,
-                  })
-            }
-            variant="warning"
-            onClose={() => setIsSelectionWarningDismissed(true)}
-          />
-        </Grid.Item>
-      )}
-    </>
-  );
-}
-
-// Extracted from DestinationSelectItem's render: the "notify downstream"
-// toggle and its conditional depth input.
-function NotifyDownstreamSection(
-  props: Readonly<{
-    control: ReturnType<typeof useFormContext>['control'];
-    id: number;
-    isViewMode: boolean;
-    destinationItem: Record<string, unknown>;
-    notifyDownstream: boolean;
-    handleNotifyDownstreamChange: (checked: boolean) => void;
-    t: (key: string, options?: Record<string, unknown>) => string;
-  }>
-) {
-  const {
-    control,
-    id,
-    isViewMode,
-    destinationItem,
-    notifyDownstream,
-    handleNotifyDownstreamChange,
-    t,
-  } = props;
-
-  return (
-    <>
-      {!isEmpty(destinationItem) && (
-        <Grid.Item span={24}>
-          <Controller
-            control={control}
-            name={`destinations.${id}.notifyDownstream`}
-            render={({ field }) => (
-              <Toggle
-                isDisabled={isViewMode}
-                isSelected={field.value ?? false}
-                label={t('label.notify-downstream')}
-                onChange={(checked) => {
-                  field.onChange(checked);
-                  handleNotifyDownstreamChange(checked);
-                }}
-              />
-            )}
-          />
-        </Grid.Item>
-      )}
-
-      {notifyDownstream && (
-        <Grid.Item span={24}>
-          <Controller
-            control={control}
-            defaultValue={1}
-            name={`destinations.${id}.downstreamDepth`}
-            render={({ field, fieldState }) => (
-              <div>
-                <Input
-                  data-testid={`destination-downstream-depth-${id}`}
-                  inputDataTestId={`destination-downstream-depth-input-${id}`}
-                  isDisabled={isViewMode}
-                  label={t('label.downstream-depth')}
-                  ref={field.ref}
-                  type="number"
-                  value={field.value !== undefined ? String(field.value) : ''}
-                  onBlur={() => field.onBlur()}
-                  onChange={(val) => field.onChange(val)}
-                />
-                {fieldState.error?.message && (
-                  <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
-                    {fieldState.error.message}
-                  </p>
-                )}
-              </div>
-            )}
-            rules={{
-              required: t('message.field-text-is-required', {
-                fieldText: t('label.downstream-depth'),
-              }),
-              validate: (value) => {
-                const numVal = Number(value);
-
-                return !Number.isFinite(numVal) || numVal <= 0
-                  ? t('message.value-must-be-greater-than', {
-                      field: t('label.downstream-depth'),
-                      minimum: 0,
-                    })
-                  : true;
-              },
-            }}
-          />
-        </Grid.Item>
-      )}
-    </>
-  );
-}
-
-// Extracted from DestinationSelectItem's render: the loading skeleton /
-// status alert shown once the destination's test-notification status loads.
-function DestinationStatusIndicator(
-  props: Readonly<{
-    isDestinationStatusLoading: boolean;
-    destinationCategory: string | undefined;
-    destinationStatusDetails:
-      | NonNullable<Destination['statusDetails']>
-      | undefined;
-    statusLabel: string | undefined;
-    statusAlertVariant: 'success' | 'error';
-    t: (key: string, options?: Record<string, unknown>) => string;
-  }>
-) {
-  const {
-    isDestinationStatusLoading,
-    destinationCategory,
-    destinationStatusDetails,
-    statusLabel,
-    statusAlertVariant,
-    t,
-  } = props;
-
-  if (
-    isDestinationStatusLoading &&
-    destinationCategory === SubscriptionCategory.External
-  ) {
-    return (
-      <Grid.Item span={24}>
-        <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
-      </Grid.Item>
-    );
-  }
-
-  if (!isDestinationStatusLoading && !isUndefined(destinationStatusDetails)) {
-    return (
-      <Grid.Item span={24}>
-        <Alert
-          closable
-          title={`${t('label.status')}: ${
-            destinationStatusDetails?.statusCode
-          } ${statusLabel} ${destinationStatusDetails?.reason ?? ''}`}
-          variant={statusAlertVariant}
-        />
-      </Grid.Item>
-    );
-  }
-
-  return null;
-}
 
 function DestinationSelectItem({
   selectorKey,
@@ -415,6 +151,30 @@ function DestinationSelectItem({
     [id, setValue]
   );
 
+  const hasDestinationType = destinationType !== undefined;
+  const showExternalDestinationConfig =
+    hasDestinationType && !isInternalDestinationSelected;
+  const showInternalDestinationSection =
+    hasDestinationType && isInternalDestinationSelected;
+  const showTeamOrUserConfig =
+    destinationType === SubscriptionCategory.Teams ||
+    destinationType === SubscriptionCategory.Users;
+  const showSelectionWarning = Boolean(
+    destinationType && subscriptionType && !isSelectionWarningDismissed
+  );
+  const isOwnerNonEmailSelection =
+    destinationType === SubscriptionCategory.Owners &&
+    subscriptionType !== SubscriptionType.Email;
+  const selectionWarningTitle = isOwnerNonEmailSelection
+    ? t('message.destination-owner-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType,
+      })
+    : t('message.destination-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType,
+      });
+
   return (
     <div
       className="tw:flex tw:gap-4"
@@ -473,7 +233,7 @@ function DestinationSelectItem({
             />
           </Grid.Item>
 
-          {destinationType && !isInternalDestinationSelected && (
+          {showExternalDestinationConfig && (
             <DestinationConfigField
               fieldName={id}
               isConfigExpanded={isConfigExpanded}
@@ -484,39 +244,163 @@ function DestinationSelectItem({
             />
           )}
 
-          {destinationType && isInternalDestinationSelected && (
-            <InternalDestinationFields
-              control={control}
-              destinationType={destinationType}
-              id={id}
-              isConfigExpanded={isConfigExpanded}
-              isSelectionWarningDismissed={isSelectionWarningDismissed}
-              isViewMode={isViewMode}
-              setIsSelectionWarningDismissed={setIsSelectionWarningDismissed}
-              subscriptionType={subscriptionType}
-              t={t}
-              onConfigExpandedChange={onConfigExpandedChange}
-            />
+          {showInternalDestinationSection && (
+            <>
+              {showTeamOrUserConfig && (
+                <DestinationConfigField
+                  fieldName={id}
+                  isConfigExpanded={isConfigExpanded}
+                  isViewMode={isViewMode}
+                  key={destinationType}
+                  type={destinationType as SubscriptionCategory}
+                  onConfigExpandedChange={onConfigExpandedChange}
+                />
+              )}
+
+              <Grid.Item span={24}>
+                <Controller
+                  control={control}
+                  name={`destinations.${id}.type`}
+                  render={({ field, fieldState }) => (
+                    <div>
+                      <Select
+                        isRequired
+                        data-testid={`destination-type-select-${id}`}
+                        isDisabled={isViewMode}
+                        placeholder={t('label.select-field', {
+                          field: t('label.destination'),
+                        })}
+                        selectedKey={field.value ?? null}
+                        onSelectionChange={(key) => {
+                          setIsSelectionWarningDismissed(false);
+                          field.onChange(key);
+                        }}>
+                        {getSubscriptionTypeOptions(destinationType).map(
+                          (option) => (
+                            <Select.Item
+                              id={option.value}
+                              isDisabled={option.disabled}
+                              key={option.value}
+                              textValue={startCase(option.value)}>
+                              {startCase(option.value)}
+                            </Select.Item>
+                          )
+                        )}
+                      </Select>
+                      {fieldState.error?.message && (
+                        <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  rules={{
+                    required: t('message.field-text-is-required', {
+                      fieldText: t('label.field'),
+                    }),
+                  }}
+                />
+              </Grid.Item>
+
+              {showSelectionWarning && (
+                <Grid.Item span={24}>
+                  <Alert
+                    closable
+                    title={selectionWarningTitle}
+                    variant="warning"
+                    onClose={() => setIsSelectionWarningDismissed(true)}
+                  />
+                </Grid.Item>
+              )}
+            </>
           )}
 
-          <NotifyDownstreamSection
-            control={control}
-            destinationItem={destinationItem}
-            handleNotifyDownstreamChange={handleNotifyDownstreamChange}
-            id={id}
-            isViewMode={isViewMode}
-            notifyDownstream={notifyDownstream}
-            t={t}
-          />
+          {!isEmpty(destinationItem) && (
+            <Grid.Item span={24}>
+              <Controller
+                control={control}
+                name={`destinations.${id}.notifyDownstream`}
+                render={({ field }) => (
+                  <Toggle
+                    isDisabled={isViewMode}
+                    isSelected={field.value ?? false}
+                    label={t('label.notify-downstream')}
+                    onChange={(checked) => {
+                      field.onChange(checked);
+                      handleNotifyDownstreamChange(checked);
+                    }}
+                  />
+                )}
+              />
+            </Grid.Item>
+          )}
 
-          <DestinationStatusIndicator
-            destinationCategory={destinationItem.category}
-            destinationStatusDetails={destinationStatusDetails}
-            isDestinationStatusLoading={isDestinationStatusLoading}
-            statusAlertVariant={statusAlertVariant}
-            statusLabel={statusLabel}
-            t={t}
-          />
+          {notifyDownstream && (
+            <Grid.Item span={24}>
+              <Controller
+                control={control}
+                defaultValue={1}
+                name={`destinations.${id}.downstreamDepth`}
+                render={({ field, fieldState }) => (
+                  <div>
+                    <Input
+                      data-testid={`destination-downstream-depth-${id}`}
+                      inputDataTestId={`destination-downstream-depth-input-${id}`}
+                      isDisabled={isViewMode}
+                      label={t('label.downstream-depth')}
+                      ref={field.ref}
+                      type="number"
+                      value={
+                        field.value !== undefined ? String(field.value) : ''
+                      }
+                      onBlur={() => field.onBlur()}
+                      onChange={(val) => field.onChange(val)}
+                    />
+                    {fieldState.error?.message && (
+                      <p className="tw:mt-1 tw:text-sm tw:text-fg-error-secondary">
+                        {fieldState.error.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+                rules={{
+                  required: t('message.field-text-is-required', {
+                    fieldText: t('label.downstream-depth'),
+                  }),
+                  validate: (value) => {
+                    const numVal = Number(value);
+
+                    return !Number.isFinite(numVal) || numVal <= 0
+                      ? t('message.value-must-be-greater-than', {
+                          field: t('label.downstream-depth'),
+                          minimum: 0,
+                        })
+                      : true;
+                  },
+                }}
+              />
+            </Grid.Item>
+          )}
+
+          {isDestinationStatusLoading &&
+            destinationItem.category === SubscriptionCategory.External && (
+              <Grid.Item span={24}>
+                <div className="tw:h-8 tw:animate-pulse tw:rounded-lg tw:bg-secondary" />
+              </Grid.Item>
+            )}
+
+          {!isDestinationStatusLoading &&
+            !isUndefined(destinationStatusDetails) && (
+              <Grid.Item span={24}>
+                <Alert
+                  closable
+                  title={`${t('label.status')}: ${
+                    destinationStatusDetails?.statusCode
+                  } ${statusLabel} ${destinationStatusDetails?.reason ?? ''}`}
+                  variant={statusAlertVariant}
+                />
+              </Grid.Item>
+            )}
         </Grid>
       </div>
 

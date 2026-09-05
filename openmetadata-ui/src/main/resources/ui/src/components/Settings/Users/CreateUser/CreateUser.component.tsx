@@ -69,265 +69,12 @@ import { getEntityReferenceListFromEntities } from '../../../../utils/EntityRefe
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
-import { AsyncSelectListProps } from '../../../common/AsyncSelect/AsyncSelectList.interface';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserFormData, CreateUserProps } from './CreateUser.interface';
-
-const BotFields = ({
-  forceBot,
-  isAdminUser,
-  t,
-}: {
-  forceBot?: boolean;
-  isAdminUser: boolean;
-  t: (key: string, options?: Record<string, unknown>) => string;
-}) => {
-  if (!forceBot) {
-    return null;
-  }
-
-  return (
-    <>
-      <Form.Item
-        label={t('label.token-expiration')}
-        name="tokenExpiry"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
-        <Select
-          className="w-full"
-          data-testid="token-expiry"
-          placeholder={t('message.select-token-expiration')}>
-          {getJWTTokenExpiryOptions()}
-        </Select>
-      </Form.Item>
-      {isAdminUser && (
-        <Form.Item
-          label={t('label.allow-impersonation')}
-          name="allowImpersonation"
-          tooltip={t('message.allow-impersonation-help')}
-          valuePropName="checked">
-          <Switch data-testid="allow-impersonation" />
-        </Form.Item>
-      )}
-    </>
-  );
-};
-
-const NonBotFields = ({
-  isAuthProviderBasic,
-  passwordGenerator,
-  password,
-  generatedPassword,
-  isPasswordGenerating,
-  generateRandomPassword,
-  isAdminPage,
-  roleOptions,
-  isRolesLoading,
-  debouncedFetchRoleOptions,
-  fetchPersonaOptions,
-  isAdmin,
-  onAdminToggle,
-  setSelectedTeams,
-  t,
-}: {
-  isAuthProviderBasic: boolean;
-  passwordGenerator?: string;
-  password?: string;
-  generatedPassword?: string;
-  isPasswordGenerating: boolean;
-  generateRandomPassword: () => void;
-  isAdminPage: boolean;
-  roleOptions: Array<{ label: string; value: string }>;
-  isRolesLoading: boolean;
-  debouncedFetchRoleOptions: (searchText: string) => void;
-  fetchPersonaOptions: AsyncSelectListProps['api'];
-  isAdmin: boolean;
-  onAdminToggle: () => void;
-  setSelectedTeams: (teams: Array<EntityReference | undefined>) => void;
-  t: (key: string, options?: Record<string, unknown>) => string;
-}) => {
-  return (
-    <>
-      {isAuthProviderBasic && (
-        <>
-          <Form.Item name="passwordGenerator">
-            <Radio.Group>
-              <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
-                {t('label.automatically-generate')}
-              </Radio>
-              <Radio value={CreatePasswordGenerator.CreatePassword}>
-                {t('label.password-type', {
-                  type: t('label.create'),
-                })}
-              </Radio>
-            </Radio.Group>
-          </Form.Item>
-
-          {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
-            <div className="m-t-sm">
-              <Form.Item
-                label={t('label.password')}
-                name="password"
-                rules={[
-                  {
-                    required: true,
-                  },
-                  {
-                    pattern: passwordRegex,
-                    message: t('message.password-error-message'),
-                  },
-                ]}>
-                <Input.Password
-                  autoComplete="off"
-                  name="password"
-                  placeholder={t('label.password-type', {
-                    type: t('label.enter'),
-                  })}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label={t('label.password-type', {
-                  type: t('label.confirm'),
-                })}
-                name="confirmPassword"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      if (value !== password) {
-                        return Promise.reject(t('label.password-not-match'));
-                      }
-
-                      return Promise.resolve();
-                    },
-                  },
-                ]}>
-                <Input.Password
-                  autoComplete="off"
-                  name="confirmPassword"
-                  placeholder={t('label.password-type', {
-                    type: t('label.confirm'),
-                  })}
-                />
-              </Form.Item>
-            </div>
-          ) : (
-            <div className="m-t-sm">
-              <Form.Item
-                label={t('label.password-type', {
-                  type: t('label.generate'),
-                })}
-                name="generatedPassword"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input.Password
-                  readOnly
-                  addonAfter={
-                    <div className="flex-center w-16">
-                      <div
-                        className="w-8 h-7 flex-center cursor-pointer"
-                        data-testid="password-generator"
-                        role="button"
-                        tabIndex={0}
-                        onClick={generateRandomPassword}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            generateRandomPassword();
-                          }
-                        }}>
-                        {isPasswordGenerating ? (
-                          <Loader size="small" type="default" />
-                        ) : (
-                          <Icon
-                            className="align-middle"
-                            component={IconSync}
-                            style={{ fontSize: '16px' }}
-                          />
-                        )}
-                      </div>
-
-                      <div className="w-8 h-7 flex-center">
-                        <CopyToClipboardButton
-                          copyText={generatedPassword ?? ''}
-                        />
-                      </div>
-                    </div>
-                  }
-                  autoComplete="off"
-                  name="generatedPassword"
-                  value={generatedPassword}
-                />
-              </Form.Item>
-            </div>
-          )}
-        </>
-      )}
-      {!isAdminPage && (
-        <>
-          <Form.Item label={t('label.team-plural')} name="teams">
-            <TeamsSelectable onSelectionChange={setSelectedTeams} />
-          </Form.Item>
-          <Form.Item label={t('label.role-plural')} name="roles">
-            <Select
-              showSearch
-              data-testid="roles-dropdown"
-              disabled={isRolesLoading && isEmpty(roleOptions)}
-              filterOption={false}
-              getPopupContainer={(triggerNode) => triggerNode.parentElement}
-              loading={isRolesLoading}
-              mode="multiple"
-              options={roleOptions}
-              placeholder={t('label.please-select-entity', {
-                entity: t('label.role-plural'),
-              })}
-              onSearch={debouncedFetchRoleOptions}
-            />
-          </Form.Item>
-          <Form.Item label={t('label.persona-plural')} name="personas">
-            <AsyncSelect
-              enableInfiniteScroll
-              showSearch
-              api={fetchPersonaOptions}
-              data-testid="personas-dropdown"
-              filterOption={(input, option) => {
-                const label = String(option?.label ?? option?.value ?? '');
-
-                return (
-                  !input || label.toLowerCase().includes(input.toLowerCase())
-                );
-              }}
-              mode="multiple"
-              placeholder={t('label.please-select-entity', {
-                entity: t('label.persona-plural'),
-              })}
-            />
-          </Form.Item>
-        </>
-      )}
-
-      <Form.Item>
-        <Space>
-          <span> {t('label.admin')}</span>
-          <Switch
-            checked={isAdmin}
-            data-testid="admin"
-            onChange={onAdminToggle}
-          />
-        </Space>
-      </Form.Item>
-    </>
-  );
-};
 
 const CreateUser = ({
   isLoading,
@@ -573,6 +320,122 @@ const CreateUser = ({
     };
   }, [debouncedFetchRoleOptions]);
 
+  const passwordConfigSection = isAuthProviderBasic && (
+    <>
+      <Form.Item name="passwordGenerator">
+        <Radio.Group>
+          <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
+            {t('label.automatically-generate')}
+          </Radio>
+          <Radio value={CreatePasswordGenerator.CreatePassword}>
+            {t('label.password-type', {
+              type: t('label.create'),
+            })}
+          </Radio>
+        </Radio.Group>
+      </Form.Item>
+
+      {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
+        <div className="m-t-sm">
+          <Form.Item
+            label={t('label.password')}
+            name="password"
+            rules={[
+              {
+                required: true,
+              },
+              {
+                pattern: passwordRegex,
+                message: t('message.password-error-message'),
+              },
+            ]}>
+            <Input.Password
+              autoComplete="off"
+              name="password"
+              placeholder={t('label.password-type', {
+                type: t('label.enter'),
+              })}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={t('label.password-type', {
+              type: t('label.confirm'),
+            })}
+            name="confirmPassword"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (value !== password) {
+                    return Promise.reject(t('label.password-not-match'));
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}>
+            <Input.Password
+              autoComplete="off"
+              name="confirmPassword"
+              placeholder={t('label.password-type', {
+                type: t('label.confirm'),
+              })}
+            />
+          </Form.Item>
+        </div>
+      ) : (
+        <div className="m-t-sm">
+          <Form.Item
+            label={t('label.password-type', {
+              type: t('label.generate'),
+            })}
+            name="generatedPassword"
+            rules={[
+              {
+                required: true,
+              },
+            ]}>
+            <Input.Password
+              readOnly
+              addonAfter={
+                <div className="flex-center w-16">
+                  <div
+                    className="w-8 h-7 flex-center cursor-pointer"
+                    data-testid="password-generator"
+                    role="button"
+                    tabIndex={0}
+                    onClick={generateRandomPassword}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        generateRandomPassword();
+                      }
+                    }}>
+                    {isPasswordGenerating ? (
+                      <Loader size="small" type="default" />
+                    ) : (
+                      <Icon
+                        className="align-middle"
+                        component={IconSync}
+                        style={{ fontSize: '16px' }}
+                      />
+                    )}
+                  </div>
+
+                  <div className="w-8 h-7 flex-center">
+                    <CopyToClipboardButton copyText={generatedPassword} />
+                  </div>
+                </div>
+              }
+              autoComplete="off"
+              name="generatedPassword"
+              value={generatedPassword}
+            />
+          </Form.Item>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <Form
       form={form}
@@ -609,31 +472,96 @@ const CreateUser = ({
           placeholder={t('label.display-name')}
         />
       </Form.Item>
-      <BotFields forceBot={forceBot} isAdminUser={isAdminUser} t={t} />
+      {forceBot && (
+        <Form.Item
+          label={t('label.token-expiration')}
+          name="tokenExpiry"
+          rules={[
+            {
+              required: true,
+            },
+          ]}>
+          <Select
+            className="w-full"
+            data-testid="token-expiry"
+            placeholder={t('message.select-token-expiration')}>
+            {getJWTTokenExpiryOptions()}
+          </Select>
+        </Form.Item>
+      )}
+      {forceBot && isAdminUser && (
+        <Form.Item
+          label={t('label.allow-impersonation')}
+          name="allowImpersonation"
+          tooltip={t('message.allow-impersonation-help')}
+          valuePropName="checked">
+          <Switch data-testid="allow-impersonation" />
+        </Form.Item>
+      )}
 
       {getField(descriptionField)}
 
       {!forceBot && (
-        <NonBotFields
-          debouncedFetchRoleOptions={debouncedFetchRoleOptions}
-          fetchPersonaOptions={fetchPersonaOptions}
-          generateRandomPassword={generateRandomPassword}
-          generatedPassword={generatedPassword}
-          isAdmin={isAdmin}
-          isAdminPage={isAdminPage}
-          isAuthProviderBasic={isAuthProviderBasic}
-          isPasswordGenerating={isPasswordGenerating}
-          isRolesLoading={isRolesLoading}
-          password={password}
-          passwordGenerator={passwordGenerator}
-          roleOptions={roleOptions}
-          setSelectedTeams={setSelectedTeams}
-          t={t}
-          onAdminToggle={() => {
-            setIsAdmin((prev) => !prev);
-            setIsBot(false);
-          }}
-        />
+        <>
+          {passwordConfigSection}
+          {!isAdminPage && (
+            <>
+              <Form.Item label={t('label.team-plural')} name="teams">
+                <TeamsSelectable onSelectionChange={setSelectedTeams} />
+              </Form.Item>
+              <Form.Item label={t('label.role-plural')} name="roles">
+                <Select
+                  showSearch
+                  data-testid="roles-dropdown"
+                  disabled={isRolesLoading && isEmpty(roleOptions)}
+                  filterOption={false}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
+                  loading={isRolesLoading}
+                  mode="multiple"
+                  options={roleOptions}
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.role-plural'),
+                  })}
+                  onSearch={debouncedFetchRoleOptions}
+                />
+              </Form.Item>
+              <Form.Item label={t('label.persona-plural')} name="personas">
+                <AsyncSelect
+                  enableInfiniteScroll
+                  showSearch
+                  api={fetchPersonaOptions}
+                  data-testid="personas-dropdown"
+                  filterOption={(input, option) => {
+                    const label = String(option?.label ?? option?.value ?? '');
+
+                    return (
+                      !input ||
+                      label.toLowerCase().includes(input.toLowerCase())
+                    );
+                  }}
+                  mode="multiple"
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.persona-plural'),
+                  })}
+                />
+              </Form.Item>
+            </>
+          )}
+
+          <Form.Item>
+            <Space>
+              <span> {t('label.admin')}</span>
+              <Switch
+                checked={isAdmin}
+                data-testid="admin"
+                onChange={() => {
+                  setIsAdmin((prev) => !prev);
+                  setIsBot(false);
+                }}
+              />
+            </Space>
+          </Form.Item>
+        </>
       )}
 
       {!isBot && (

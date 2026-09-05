@@ -193,29 +193,16 @@ const TestConnection: FC<TestConnectionProps> = ({
     return shouldTestConnection(connectionType);
   }, [connectionType]);
 
-  const isTestConnectionDisabled = useMemo(
-    () =>
-      isTestingConnection ||
-      isTestingDisabled ||
-      isFormValidationPending ||
-      !allowTestConn ||
-      !isAirflowAvailable,
-    [
-      isTestingConnection,
-      isTestingDisabled,
-      isFormValidationPending,
-      allowTestConn,
-      isAirflowAvailable,
-    ]
-  );
+  const isConnectionTestInProgress =
+    isTestingConnection || isTestingDisabled || isFormValidationPending;
 
-  const isReadyToTestCard = useMemo(
-    () =>
-      !isTestConnectionDisabled &&
-      !testStatus &&
-      missingRequiredFieldsCount === 0,
-    [isTestConnectionDisabled, testStatus, missingRequiredFieldsCount]
-  );
+  const isTestConnectionDisabled =
+    isConnectionTestInProgress || !allowTestConn || !isAirflowAvailable;
+
+  const isReadyToTestCard =
+    !isTestConnectionDisabled &&
+    !testStatus &&
+    missingRequiredFieldsCount === 0;
 
   const connectionDisplayName = (() => {
     const formData = getData();

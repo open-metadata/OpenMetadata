@@ -48,85 +48,6 @@ import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';
 
-type EntityChildrenInfo = {
-  data: EntityChildren;
-  label: string;
-  childrenCount: number;
-};
-
-const COLUMN_PLURAL_LABEL = () => t('label.column-plural');
-const FIELD_PLURAL_LABEL = () => t('label.field-plural');
-
-const getColumnChildrenInfo = (node: LineageNodeType): EntityChildrenInfo => ({
-  data: node.flattenChildren ?? node.columns ?? [],
-  label: COLUMN_PLURAL_LABEL(),
-  childrenCount: node.columns?.length ?? 0,
-});
-
-const getDashboardChildrenInfo = (
-  node: LineageNodeType
-): EntityChildrenInfo => ({
-  data: node.charts ?? [],
-  label: t('label.chart-plural'),
-  childrenCount: node.charts?.length ?? 0,
-});
-
-const getMlModelChildrenInfo = (node: LineageNodeType): EntityChildrenInfo => ({
-  data: node.mlFeatures ?? [],
-  label: t('label.feature-plural'),
-  childrenCount: node.mlFeatures?.length ?? 0,
-});
-
-const getContainerChildrenInfo = (
-  node: LineageNodeType
-): EntityChildrenInfo => ({
-  data: node.flattenChildren ?? node.dataModel?.columns ?? [],
-  label: COLUMN_PLURAL_LABEL(),
-  childrenCount: node.dataModel?.columns?.length ?? 0,
-});
-
-const getTopicChildrenInfo = (node: LineageNodeType): EntityChildrenInfo => ({
-  data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
-  label: FIELD_PLURAL_LABEL(),
-  childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
-});
-
-const getApiEndpointChildrenInfo = (
-  node: LineageNodeType
-): EntityChildrenInfo => ({
-  data:
-    node.flattenChildren ??
-    node?.responseSchema?.schemaFields ??
-    node?.requestSchema?.schemaFields ??
-    [],
-  label: FIELD_PLURAL_LABEL(),
-  childrenCount:
-    node?.responseSchema?.schemaFields?.length ??
-    node?.requestSchema?.schemaFields?.length ??
-    0,
-});
-
-const getSearchIndexChildrenInfo = (
-  node: LineageNodeType
-): EntityChildrenInfo => ({
-  data: node.flattenChildren ?? node.fields ?? [],
-  label: FIELD_PLURAL_LABEL(),
-  childrenCount: node.fields?.length ?? 0,
-});
-
-const ENTITY_CHILDREN_INFO_GETTERS: Partial<
-  Record<EntityType, (node: LineageNodeType) => EntityChildrenInfo>
-> = {
-  [EntityType.TABLE]: getColumnChildrenInfo,
-  [EntityType.DASHBOARD]: getDashboardChildrenInfo,
-  [EntityType.MLMODEL]: getMlModelChildrenInfo,
-  [EntityType.DASHBOARD_DATA_MODEL]: getColumnChildrenInfo,
-  [EntityType.CONTAINER]: getContainerChildrenInfo,
-  [EntityType.TOPIC]: getTopicChildrenInfo,
-  [EntityType.API_ENDPOINT]: getApiEndpointChildrenInfo,
-  [EntityType.SEARCH_INDEX]: getSearchIndexChildrenInfo,
-};
-
 export function getEntityChildrenAndLabel(node: LineageNodeType) {
   if (!node) {
     return {
@@ -135,11 +56,66 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
       childrenCount: 0,
     };
   }
+  const entityMappings: Record<
+    string,
+    { data: EntityChildren; label: string; childrenCount: number }
+  > = {
+    [EntityType.TABLE]: {
+      data: node.flattenChildren ?? node.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.columns?.length ?? 0,
+    },
+    [EntityType.DASHBOARD]: {
+      data: node.charts ?? [],
+      label: t('label.chart-plural'),
+      childrenCount: node.charts?.length ?? 0,
+    },
+    [EntityType.MLMODEL]: {
+      data: node.mlFeatures ?? [],
+      label: t('label.feature-plural'),
+      childrenCount: node.mlFeatures?.length ?? 0,
+    },
+    [EntityType.DASHBOARD_DATA_MODEL]: {
+      data: node.flattenChildren ?? node.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.columns?.length ?? 0,
+    },
+    [EntityType.CONTAINER]: {
+      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
+      label: t('label.column-plural'),
+      childrenCount: node.dataModel?.columns?.length ?? 0,
+    },
+    [EntityType.TOPIC]: {
+      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
+      label: t('label.field-plural'),
+      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
+    },
+    [EntityType.API_ENDPOINT]: {
+      data:
+        node.flattenChildren ??
+        node?.responseSchema?.schemaFields ??
+        node?.requestSchema?.schemaFields ??
+        [],
+      label: t('label.field-plural'),
+      childrenCount:
+        node?.responseSchema?.schemaFields?.length ??
+        node?.requestSchema?.schemaFields?.length ??
+        0,
+    },
+    [EntityType.SEARCH_INDEX]: {
+      data: node.flattenChildren ?? node.fields ?? [],
+      label: t('label.field-plural'),
+      childrenCount: node.fields?.length ?? 0,
+    },
+  };
 
-  const getter = ENTITY_CHILDREN_INFO_GETTERS[node.entityType as EntityType];
-  const { data, label, childrenCount } = getter
-    ? getter(node)
-    : { data: [], label: '', childrenCount: 0 };
+  const { data, label, childrenCount } = entityMappings[
+    node.entityType as EntityType
+  ] || {
+    data: [],
+    label: '',
+    childrenCount: 0,
+  };
 
   return {
     children: data,
@@ -238,23 +214,6 @@ const getTracedNode = (
   return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
-// Push every node from a BFS traversal (by id) into `prevTraced` that isn't
-// already present, mutating it in place so callers see the merged history.
-const mergeNewlyTracedNodes = (
-  prevTraced: Node[],
-  visitedNodeIds: Set<string>,
-  nodes: Node[]
-): void => {
-  for (const nodeId of visitedNodeIds) {
-    if (!prevTraced.some((n) => n.id === nodeId)) {
-      const tracedNode = nodes.find((n) => n.id === nodeId);
-      if (tracedNode) {
-        prevTraced.push(tracedNode);
-      }
-    }
-  }
-};
-
 export const getAllTracedNodes = (
   node: Node,
   nodes: Node[],
@@ -287,7 +246,14 @@ export const getAllTracedNodes = (
     }
   }
 
-  mergeNewlyTracedNodes(prevTraced, visitedNodeIds, nodes);
+  for (const nodeId of visitedNodeIds) {
+    if (!prevTraced.some((n) => n.id === nodeId)) {
+      const tracedNode = nodes.find((n) => n.id === nodeId);
+      if (tracedNode) {
+        prevTraced.push(tracedNode);
+      }
+    }
+  }
 
   return result;
 };
@@ -410,46 +376,53 @@ const flatItems = <T extends { children?: T[]; dataType: string }>(
   columns: T[]
 ) => columns.flatMap((column) => flattenColumn(column as T, 0));
 
-const getTableFlattenChildren = (entity: EntityReference): EntityChildren =>
-  flatItems((entity as unknown as Table).columns);
-
-const getContainerFlattenChildren = (entity: EntityReference): EntityChildren =>
-  flatItems((entity as unknown as Container).dataModel?.columns ?? []);
-
-const getTopicFlattenChildren = (entity: EntityReference): EntityChildren =>
-  flatItems((entity as unknown as Topic).messageSchema?.schemaFields ?? []);
-
-const getApiEndpointFlattenChildren = (
-  entity: EntityReference
-): EntityChildren =>
-  flatItems(
-    (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
-      (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
-      []
-  );
-
-const getSearchIndexFlattenChildren = (
-  entity: EntityReference
-): EntityChildren => flatItems((entity as unknown as SearchIndex).fields ?? []);
-
-const FLATTEN_CHILDREN_GETTERS: Partial<
-  Record<EntityType, (entity: EntityReference) => EntityChildren>
-> = {
-  [EntityType.TABLE]: getTableFlattenChildren,
-  [EntityType.DASHBOARD_DATA_MODEL]: getTableFlattenChildren,
-  [EntityType.CONTAINER]: getContainerFlattenChildren,
-  [EntityType.TOPIC]: getTopicFlattenChildren,
-  [EntityType.API_ENDPOINT]: getApiEndpointFlattenChildren,
-  [EntityType.SEARCH_INDEX]: getSearchIndexFlattenChildren,
-};
-
 const getFlattenChildrenFromEntity = (
   entity: EntityReference
 ): EntityChildren => {
-  const entityType = 'entityType' in entity ? entity.entityType : '';
-  const getter = FLATTEN_CHILDREN_GETTERS[entityType as EntityType];
+  const children: EntityChildren = [];
 
-  return getter ? getter(entity) : [];
+  const entityType = 'entityType' in entity ? entity.entityType : '';
+
+  switch (entityType) {
+    case EntityType.TABLE:
+    case EntityType.DASHBOARD_DATA_MODEL: {
+      const tableData = entity as unknown as Table;
+      children.push(...flatItems(tableData.columns));
+
+      break;
+    }
+    case EntityType.CONTAINER: {
+      const dataModelColumns =
+        (entity as unknown as Container).dataModel?.columns ?? [];
+      children.push(...flatItems(dataModelColumns));
+
+      break;
+    }
+    case EntityType.TOPIC: {
+      const messageSchemaFields =
+        (entity as unknown as Topic).messageSchema?.schemaFields ?? [];
+      children.push(...flatItems(messageSchemaFields));
+
+      break;
+    }
+    case EntityType.API_ENDPOINT: {
+      const apiEndpointFields =
+        (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
+        (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
+        [];
+      children.push(...flatItems(apiEndpointFields));
+
+      break;
+    }
+    case EntityType.SEARCH_INDEX: {
+      const searchIndexFields = (entity as unknown as SearchIndex).fields ?? [];
+      children.push(...flatItems(searchIndexFields));
+
+      break;
+    }
+  }
+
+  return children;
 };
 
 export const getNodeLineageData = (node: EntityReference) => {
@@ -514,12 +487,16 @@ export const createNodes = (
   return uniqueNodesData.map((node) => {
     node.deleted = isDeleted(node.deleted);
 
+    const hasIncoming = incomingMap.has(node.id);
+    const hasOutgoing = outgoingMap.has(node.id);
+    const isOutputNode = hasIncoming && !hasOutgoing;
+    const isInputNode = !hasIncoming && hasOutgoing;
     const type =
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
-        : incomingMap.has(node.id) && !outgoingMap.has(node.id)
+        : isOutputNode
         ? EntityLineageNodeType.OUTPUT
-        : !incomingMap.has(node.id) && outgoingMap.has(node.id)
+        : isInputNode
         ? EntityLineageNodeType.INPUT
         : EntityLineageNodeType.DEFAULT;
 

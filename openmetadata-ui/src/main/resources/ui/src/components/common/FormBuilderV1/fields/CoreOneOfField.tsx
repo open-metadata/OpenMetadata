@@ -55,10 +55,13 @@ const shouldRenderSegmentedOptions = (
     getOptionTitle(element, index)
   );
 
-  return (
+  const isSegmentedOptionCountWithinLimit =
     options.length > 1 &&
     options.length <= MAX_SEGMENTED_OPTION_COUNT &&
-    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
+    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID);
+
+  return (
+    isSegmentedOptionCountWithinLimit &&
     !COMPACT_SELECTOR_ID_PATTERN.test(id) &&
     optionLabels.every(
       (label) => label.length <= MAX_SEGMENTED_OPTION_LABEL_LENGTH
@@ -147,76 +150,22 @@ const CoreOneOfField = (props: FieldProps) => {
     resolvedOptions.length
   );
   const hasMultipleOptions = resolvedOptions.length > 1;
+  const selectedSchema =
+    safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
   const shouldRenderAsTabs = shouldRenderSegmentedOptions(
     idSchema.$id,
     resolvedOptions
   );
+  const selectedBranchIsObjectLike = isObjectLikeSchema(selectedSchema);
+  const shouldRenderInlineSelectedBranch =
+    hasMultipleOptions && !selectedBranchIsObjectLike && !shouldRenderAsTabs;
+  const shouldSuppressSelectedBranchLabel =
+    hasMultipleOptions && selectedBranchIsObjectLike;
   const isStorageConfigSelector = idSchema.$id.endsWith(
     STORAGE_CONFIG_ID_SUFFIX
   );
-
-  const {
-    selectedSchema,
-    shouldSuppressSelectedBranchLabel,
-    selectedSchemaForRender,
-    selectedDescription,
-  } = useMemo(() => {
-    const resolvedSelectedSchema =
-      safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
-    const suppressSelectedBranchLabel =
-      hasMultipleOptions && isObjectLikeSchema(resolvedSelectedSchema);
-    const resolvedSelectedSchemaForRender =
-      hasMultipleOptions && resolvedSelectedSchema
-        ? {
-            ...resolvedSelectedSchema,
-            description: undefined,
-            ...(suppressSelectedBranchLabel ? { title: undefined } : {}),
-          }
-        : resolvedSelectedSchema;
-    const resolvedSelectedDescription =
-      hasMultipleOptions &&
-      typeof resolvedSelectedSchema.description === 'string'
-        ? resolvedSelectedSchema.description
-        : undefined;
-
-    return {
-      selectedSchema: resolvedSelectedSchema,
-      shouldSuppressSelectedBranchLabel: suppressSelectedBranchLabel,
-      selectedSchemaForRender: resolvedSelectedSchemaForRender,
-      selectedDescription: resolvedSelectedDescription,
-    };
-  }, [safeSelectedOption, resolvedOptions, hasMultipleOptions]);
-
-  const { shouldRenderInlineSelectedBranch, wrapperClassName } = useMemo(() => {
-    const inlineSelectedBranch =
-      hasMultipleOptions &&
-      !isObjectLikeSchema(selectedSchema) &&
-      !shouldRenderAsTabs;
-
-    return {
-      shouldRenderInlineSelectedBranch: inlineSelectedBranch,
-      wrapperClassName: classNames(
-        'core-one-of-field',
-        inlineSelectedBranch
-          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
-          : 'tw:flex tw:flex-col tw:gap-4'
-      ),
-    };
-  }, [hasMultipleOptions, selectedSchema, shouldRenderAsTabs]);
-
-  const { recommendedTitle, fieldLabel, selectedKey } = useMemo(
-    () => ({
-      recommendedTitle: (uiSchema?.['ui:options']?.recommended ?? undefined) as
-        | string
-        | undefined,
-      fieldLabel: label ?? schema.title ?? getFormDisplayLabel(name),
-      selectedKey:
-        hasMultipleOptions && safeSelectedOption >= 0
-          ? String(safeSelectedOption)
-          : null,
-    }),
-    [uiSchema, label, schema, name, hasMultipleOptions, safeSelectedOption]
-  );
+  const recommendedTitle = (uiSchema?.['ui:options']?.recommended ??
+    undefined) as string | undefined;
 
   const optionItems = useMemo(
     () =>
@@ -263,126 +212,117 @@ const CoreOneOfField = (props: FieldProps) => {
       : childUiSchema;
   }, [shouldSuppressSelectedBranchLabel, uiSchema]);
 
-  const handleOptionChange = useCallback(
-    (newIndex: number) => {
-      if (newIndex === safeSelectedOption) {
-        return;
-      }
-
-      const newSchema = resolvedOptions[newIndex];
-      const currentSchema =
-        safeSelectedOption >= 0
-          ? resolvedOptions[safeSelectedOption]
-          : undefined;
-      const sanitizedFormData = schemaUtils.sanitizeDataForNewSchema(
-        newSchema,
-        currentSchema,
-        formData
-      );
-      const newFormData = newSchema
-        ? schemaUtils.getDefaultFormState(
-            newSchema,
-            sanitizedFormData,
-            'excludeObjectChildren'
-          )
-        : sanitizedFormData;
-
-      setSelectedOption(getSafeOptionIndex(newIndex, resolvedOptions.length));
-      onChange(
-        newFormData ?? undefined,
-        undefined,
-        `${idSchema.$id}${schema.oneOf ? '__oneof_select' : '__anyof_select'}`
-      );
-    },
-    [
-      safeSelectedOption,
-      resolvedOptions,
-      schemaUtils,
-      formData,
-      onChange,
-      idSchema.$id,
-      schema.oneOf,
-    ]
-  );
-
-  const renderTabsSection = useCallback(() => {
-    if (!hasMultipleOptions || !shouldRenderAsTabs) {
-      return null;
+  const handleOptionChange = (newIndex: number) => {
+    if (newIndex === safeSelectedOption) {
+      return;
     }
 
-    return (
-      <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">
-        {!hideLabel && fieldLabel && (
-          <span
-            className="core-one-of-field-tabs-label tw:text-sm tw:font-medium tw:text-secondary"
-            id={`${idSchema.$id}__title`}>
-            {fieldLabel}
-          </span>
-        )}
-        <div
-          aria-label={fieldLabel}
-          className="tw:grid tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-secondary tw:p-1"
-          role="tablist"
-          style={{
-            gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
-          }}>
-          {optionItems.map((item) => {
-            const isSelected = selectedKey === item.id;
-
-            return (
-              <button
-                aria-selected={isSelected}
-                className={classNames(
-                  'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
-                  isSelected
-                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
-                    : 'tw:border-transparent tw:font-medium tw:text-tertiary'
-                )}
-                data-selected={isSelected}
-                data-testid={`oneof-option-${item.id}`}
-                key={item.id}
-                role="tab"
-                type="button"
-                onClick={() => handleOptionChange(Number(item.id))}
-                onFocus={() =>
-                  onFocus(
-                    `${idSchema.$id}${
-                      schema.oneOf ? '__oneof_select' : '__anyof_select'
-                    }`,
-                    formData
-                  )
-                }>
-                {item.label}
-                {item.isRecommended && isSelected && (
-                  <span
-                    className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
-                    data-testid="recommended-indicator"
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    const newSchema = resolvedOptions[newIndex];
+    const currentSchema =
+      safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] : undefined;
+    const sanitizedFormData = schemaUtils.sanitizeDataForNewSchema(
+      newSchema,
+      currentSchema,
+      formData
     );
-  }, [
-    hasMultipleOptions,
-    shouldRenderAsTabs,
-    hideLabel,
-    fieldLabel,
-    idSchema.$id,
-    resolvedOptions.length,
-    optionItems,
-    selectedKey,
-    handleOptionChange,
-    schema.oneOf,
-    onFocus,
-    formData,
-  ]);
+    const newFormData = newSchema
+      ? schemaUtils.getDefaultFormState(
+          newSchema,
+          sanitizedFormData,
+          'excludeObjectChildren'
+        )
+      : sanitizedFormData;
+
+    setSelectedOption(getSafeOptionIndex(newIndex, resolvedOptions.length));
+    onChange(
+      newFormData ?? undefined,
+      undefined,
+      `${idSchema.$id}${schema.oneOf ? '__oneof_select' : '__anyof_select'}`
+    );
+  };
+
+  const fieldLabel = label ?? schema.title ?? getFormDisplayLabel(name);
+  const selectedKey =
+    hasMultipleOptions && safeSelectedOption >= 0
+      ? String(safeSelectedOption)
+      : null;
+  const selectedSchemaForRender =
+    hasMultipleOptions && selectedSchema
+      ? {
+          ...selectedSchema,
+          description: undefined,
+          ...(shouldSuppressSelectedBranchLabel ? { title: undefined } : {}),
+        }
+      : selectedSchema;
+  const selectedDescription =
+    hasMultipleOptions && typeof selectedSchema.description === 'string'
+      ? selectedSchema.description
+      : undefined;
 
   return (
-    <div className={wrapperClassName} data-field-id={idSchema.$id}>
-      {renderTabsSection()}
+    <div
+      className={classNames(
+        'core-one-of-field',
+        shouldRenderInlineSelectedBranch
+          ? 'core-one-of-field-inline-selected tw:grid tw:[grid-template-columns:repeat(2,minmax(0,1fr))] tw:[gap:16px] tw:items-start tw:w-full tw:min-w-0'
+          : 'tw:flex tw:flex-col tw:gap-4'
+      )}
+      data-field-id={idSchema.$id}>
+      {hasMultipleOptions && shouldRenderAsTabs && (
+        <div className="core-one-of-field-tabs tw:flex tw:flex-col tw:gap-1">
+          {!hideLabel && fieldLabel && (
+            <span
+              className="core-one-of-field-tabs-label tw:text-sm tw:font-medium tw:text-secondary"
+              id={`${idSchema.$id}__title`}>
+              {fieldLabel}
+            </span>
+          )}
+          <div
+            aria-label={fieldLabel}
+            className="tw:grid tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:bg-secondary tw:p-1"
+            role="tablist"
+            style={{
+              gridTemplateColumns: `repeat(${resolvedOptions.length}, minmax(0, 1fr))`,
+            }}>
+            {optionItems.map((item) => {
+              const isSelected = selectedKey === item.id;
+
+              return (
+                <button
+                  aria-selected={isSelected}
+                  className={classNames(
+                    'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
+                    isSelected
+                      ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
+                      : 'tw:border-transparent tw:font-medium tw:text-tertiary'
+                  )}
+                  data-selected={isSelected}
+                  data-testid={`oneof-option-${item.id}`}
+                  key={item.id}
+                  role="tab"
+                  type="button"
+                  onClick={() => handleOptionChange(Number(item.id))}
+                  onFocus={() =>
+                    onFocus(
+                      `${idSchema.$id}${
+                        schema.oneOf ? '__oneof_select' : '__anyof_select'
+                      }`,
+                      formData
+                    )
+                  }>
+                  {item.label}
+                  {item.isRecommended && isSelected && (
+                    <span
+                      className="tw:size-1.5 tw:rounded-full tw:bg-fg-success-primary"
+                      data-testid="recommended-indicator"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <Box direction="col" gap={1}>
         {hasMultipleOptions && !shouldRenderAsTabs && (

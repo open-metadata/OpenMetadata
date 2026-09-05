@@ -30,247 +30,6 @@ import { stringToHTML } from '../../../utils/StringUtils';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
-interface NameHeaderBlockProps {
-  badges: JSX.Element;
-  displayName?: string;
-  name: string;
-  nameClassName: string;
-  suffix?: EntityHeaderTitleProps['suffix'];
-}
-
-const NameHeaderBlock = ({
-  badges,
-  displayName,
-  name,
-  nameClassName,
-  suffix,
-}: NameHeaderBlockProps) => (
-  <div className="d-flex items-center gap-2">
-    <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
-      <Typography.Text
-        ellipsis
-        className={classNames(
-          'entity-header-name',
-          nameClassName,
-          'm-b-0 d-block display-xs font-semibold'
-        )}
-        data-testid="entity-header-display-name">
-        {stringToHTML(displayName ?? name)}
-      </Typography.Text>
-    </Tooltip>
-    {badges}
-    {suffix}
-  </div>
-);
-
-interface FollowButtonProps {
-  deleted: boolean;
-  formattedEntityType?: string;
-  handleFollowingClick?: () => void;
-  isFollowing?: boolean;
-  isFollowingLoading?: boolean;
-  t: ReturnType<typeof useTranslation>['t'];
-}
-
-const FollowButton = ({
-  deleted,
-  formattedEntityType,
-  handleFollowingClick,
-  isFollowing,
-  isFollowingLoading,
-  t,
-}: FollowButtonProps) => {
-  const followLabel = t(`label.${isFollowing ? 'un-follow' : 'follow'}`);
-
-  return (
-    <Tooltip
-      title={t('label.field-entity', {
-        field: followLabel,
-        entity: formattedEntityType,
-      })}>
-      <Button
-        className="entity-follow-button flex-center gap-1 text-sm "
-        data-testid="entity-follow-button"
-        disabled={deleted}
-        icon={<Icon component={StarFilledIcon} />}
-        loading={isFollowingLoading}
-        onClick={handleFollowingClick}>
-        <Typography.Text>{followLabel}</Typography.Text>
-      </Button>
-    </Tooltip>
-  );
-};
-
-interface HeaderContentFlags {
-  showDisplayName: boolean;
-  showSuffixInline: boolean;
-  showFollowButton: boolean;
-  hasBadgeSpace: boolean;
-}
-
-function computeHeaderContentFlags(
-  displayName: string | undefined,
-  showName: boolean,
-  deleted: boolean,
-  badge: EntityHeaderTitleProps['badge'],
-  excludeEntityService: boolean | undefined,
-  isCustomizedView: boolean,
-  handleFollowingClick: (() => void) | undefined
-): HeaderContentFlags {
-  return {
-    showDisplayName: !isEmpty(displayName) && showName,
-    showSuffixInline: isEmpty(displayName) || !showName,
-    showFollowButton: Boolean(
-      !excludeEntityService &&
-        !deleted &&
-        !isCustomizedView &&
-        handleFollowingClick
-    ),
-    hasBadgeSpace: Boolean(deleted || badge),
-  };
-}
-
-interface EntityHeaderContentProps {
-  badge?: EntityHeaderTitleProps['badge'];
-  badges: JSX.Element;
-  className?: string;
-  copyTooltip?: string;
-  deleted: boolean;
-  displayName?: string;
-  displayNameClassName: string;
-  entityName: string | JSX.Element | JSX.Element[];
-  excludeEntityService?: boolean;
-  formattedEntityType?: string;
-  handleFollowingClick?: () => void;
-  handleShareButtonClick: (e: MouseEvent<HTMLElement>) => void;
-  icon?: EntityHeaderTitleProps['icon'];
-  isCustomizedView: boolean;
-  isFollowing?: boolean;
-  isFollowingLoading?: boolean;
-  name: string;
-  nameClassName: string;
-  openEntityInNewPage?: boolean;
-  serviceName?: string;
-  showName: boolean;
-  suffix?: EntityHeaderTitleProps['suffix'];
-  t: ReturnType<typeof useTranslation>['t'];
-}
-
-const EntityHeaderContent = ({
-  badge,
-  badges,
-  className,
-  copyTooltip,
-  deleted,
-  displayName,
-  displayNameClassName,
-  entityName,
-  excludeEntityService,
-  formattedEntityType,
-  handleFollowingClick,
-  handleShareButtonClick,
-  icon,
-  isCustomizedView,
-  isFollowing,
-  isFollowingLoading,
-  name,
-  nameClassName,
-  openEntityInNewPage,
-  serviceName,
-  showName,
-  suffix,
-  t,
-}: EntityHeaderContentProps) => {
-  const { showDisplayName, showSuffixInline, showFollowButton, hasBadgeSpace } =
-    computeHeaderContentFlags(
-      displayName,
-      showName,
-      deleted,
-      badge,
-      excludeEntityService,
-      isCustomizedView,
-      handleFollowingClick
-    );
-
-  return (
-    <Row
-      align="middle"
-      className={classNames('entity-header-title', className)}
-      data-testid={`${serviceName}-${name}`}
-      gutter={12}
-      wrap={false}>
-      {icon && <Col className="flex-center">{icon}</Col>}
-      <Col
-        className={classNames(
-          'd-flex flex-col gap-1 w-min-0 entity-header-container',
-          {
-            'w-max-full-200': hasBadgeSpace,
-          }
-        )}>
-        {/* If we do not have displayName name only be shown in the bold from the below code */}
-        {showDisplayName && (
-          <NameHeaderBlock
-            badges={badges}
-            displayName={displayName}
-            name={name}
-            nameClassName={nameClassName}
-            suffix={suffix}
-          />
-        )}
-
-        <div
-          className="d-flex gap-3 items-center"
-          data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={entityName}>
-            <Typography.Text
-              ellipsis
-              className={classNames(displayNameClassName, 'm-b-0', {
-                'display-xs entity-header-name font-semibold': !displayName,
-                'text-md entity-header-display-name font-medium': displayName,
-              })}
-              data-testid="entity-header-name">
-              {entityName}
-              {openEntityInNewPage && (
-                <IconExternalLink
-                  className="anticon vertical-middle m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              )}
-            </Typography.Text>
-          </Tooltip>
-
-          <Tooltip
-            placement="topRight"
-            title={
-              copyTooltip ??
-              t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              className="remove-button-default-styling copy-button flex-center p-xss "
-              icon={<Icon component={ShareIcon} />}
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
-          {showSuffixInline && suffix}
-          {showFollowButton && (
-            <FollowButton
-              deleted={deleted}
-              formattedEntityType={formattedEntityType}
-              handleFollowingClick={handleFollowingClick}
-              isFollowing={isFollowing}
-              isFollowingLoading={isFollowingLoading}
-              t={t}
-            />
-          )}
-        </div>
-      </Col>
-
-      {isEmpty(displayName) ? badges : null}
-    </Row>
-  );
-};
-
 const EntityHeaderTitle = ({
   icon,
   name,
@@ -357,32 +116,105 @@ const EntityHeaderTitle = ({
     [isDisabled, deleted, badge]
   );
 
+  const canShowFollowButton =
+    !excludeEntityService && !deleted && !isCustomizedView;
+
   const content = (
-    <EntityHeaderContent
-      badge={badge}
-      badges={badges}
-      className={className}
-      copyTooltip={copyTooltip}
-      deleted={deleted}
-      displayName={displayName}
-      displayNameClassName={displayNameClassName}
-      entityName={entityName}
-      excludeEntityService={excludeEntityService}
-      formattedEntityType={formattedEntityType}
-      handleFollowingClick={handleFollowingClick}
-      handleShareButtonClick={handleShareButtonClick}
-      icon={icon}
-      isCustomizedView={isCustomizedView}
-      isFollowing={isFollowing}
-      isFollowingLoading={isFollowingLoading}
-      name={name}
-      nameClassName={nameClassName}
-      openEntityInNewPage={openEntityInNewPage}
-      serviceName={serviceName}
-      showName={showName}
-      suffix={suffix}
-      t={t}
-    />
+    <Row
+      align="middle"
+      className={classNames('entity-header-title', className)}
+      data-testid={`${serviceName}-${name}`}
+      gutter={12}
+      wrap={false}>
+      {icon && <Col className="flex-center">{icon}</Col>}
+      <Col
+        className={classNames(
+          'd-flex flex-col gap-1 w-min-0 entity-header-container',
+          {
+            'w-max-full-200': deleted || badge,
+          }
+        )}>
+        {/* If we do not have displayName name only be shown in the bold from the below code */}
+        {!isEmpty(displayName) && showName ? (
+          <div className="d-flex items-center gap-2">
+            <Tooltip
+              placement="bottom"
+              title={stringToHTML(displayName ?? name)}>
+              <Typography.Text
+                ellipsis
+                className={classNames(
+                  'entity-header-name',
+                  nameClassName,
+                  'm-b-0 d-block display-xs font-semibold'
+                )}
+                data-testid="entity-header-display-name">
+                {stringToHTML(displayName ?? name)}
+              </Typography.Text>
+            </Tooltip>
+            {badges}
+            {suffix}
+          </div>
+        ) : null}
+
+        <div
+          className="d-flex gap-3 items-center"
+          data-testid="entity-header-title">
+          <Tooltip placement="bottom" title={entityName}>
+            <Typography.Text
+              ellipsis
+              className={classNames(displayNameClassName, 'm-b-0', {
+                'display-xs entity-header-name font-semibold': !displayName,
+                'text-md entity-header-display-name font-medium': displayName,
+              })}
+              data-testid="entity-header-name">
+              {entityName}
+              {openEntityInNewPage && (
+                <IconExternalLink
+                  className="anticon vertical-middle m-l-xss"
+                  height={14}
+                  width={14}
+                />
+              )}
+            </Typography.Text>
+          </Tooltip>
+
+          <Tooltip
+            placement="topRight"
+            title={
+              copyTooltip ??
+              t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
+            <Button
+              className="remove-button-default-styling copy-button flex-center p-xss "
+              icon={<Icon component={ShareIcon} />}
+              onClick={handleShareButtonClick}
+            />
+          </Tooltip>
+          {(isEmpty(displayName) || !showName) && suffix}
+          {canShowFollowButton && handleFollowingClick && (
+            <Tooltip
+              title={t('label.field-entity', {
+                field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                entity: formattedEntityType,
+              })}>
+              <Button
+                className="entity-follow-button flex-center gap-1 text-sm "
+                data-testid="entity-follow-button"
+                disabled={deleted}
+                icon={<Icon component={StarFilledIcon} />}
+                loading={isFollowingLoading}
+                onClick={handleFollowingClick}>
+                <Typography.Text>
+                  {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                </Typography.Text>
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      </Col>
+
+      {isEmpty(displayName) ? badges : null}
+    </Row>
   );
 
   return link && !isTourRoute ? (

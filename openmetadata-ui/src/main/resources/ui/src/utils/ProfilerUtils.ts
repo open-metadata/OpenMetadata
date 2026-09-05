@@ -38,31 +38,33 @@ export enum ImageQuality {
  * Then it will try for `1x` or return `undefined` if not found
  *
  */
-// Ordered from lowest to highest quality; index matches the numeric `ImageQuality` enum value.
-const IMAGE_FIELDS_BY_QUALITY: (keyof ImageList)[] = [
-  'image',
-  'image24',
-  'image32',
-  'image48',
-  'image72',
-  'image192',
-  'image512',
-];
-
 export const getImageWithResolutionAndFallback = (
   quality: ImageQuality,
   imageList?: ImageList
 ): string | undefined => {
-  if (!imageList) {
-    return undefined;
-  }
+  const { image, image24, image32, image48, image72, image192, image512 } =
+    imageList || {};
 
-  for (let index = quality; index >= 0; index--) {
-    const field = IMAGE_FIELDS_BY_QUALITY[index];
-    if (imageList[field]) {
-      return imageList[field];
-    }
-  }
+  const fallbackFrom48 = image48 || image32 || image24 || image;
+  const fallbackFrom72 = image72 || fallbackFrom48;
+  const fallbackFrom192 = image192 || fallbackFrom72;
+  const fallbackFrom512 = image512 || fallbackFrom192;
 
-  return undefined;
+  switch (quality) {
+    case ImageQuality['1.5x']:
+      return image24 || image;
+    case ImageQuality['2x']:
+      return image32 || image24 || image;
+    case ImageQuality['3x']:
+      return fallbackFrom48;
+    case ImageQuality['4x']:
+      return fallbackFrom72;
+    case ImageQuality['5x']:
+      return fallbackFrom192;
+    case ImageQuality['6x']:
+      return fallbackFrom512;
+    case ImageQuality['1x']:
+    default:
+      return image;
+  }
 };

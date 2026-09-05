@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import {
   descriptionBox,
   redirectToHomePage,

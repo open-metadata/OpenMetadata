@@ -71,46 +71,6 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
   }
 };
 
-const resolveAxiosError = (
-  error: AxiosError,
-  fallbackText?: string
-): {
-  errorMessage: string;
-  isRuleViolation: boolean;
-  shouldSuppress: boolean;
-} => {
-  const method = error.config?.method?.toUpperCase();
-  const fallback =
-    fallbackText && fallbackText.length > 0
-      ? fallbackText
-      : i18n.t('server.unexpected-error');
-  const errorMessage = getErrorText(error, fallback);
-  const isRuleViolation =
-    get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
-  const shouldSuppress =
-    (error.response?.status === ClientErrors.UNAUTHORIZED ||
-      (error.response?.status === ClientErrors.FORBIDDEN &&
-        method === 'GET')) &&
-    !errorMessage.includes('principal domain');
-
-  return { errorMessage, isRuleViolation, shouldSuppress };
-};
-
-const dispatchErrorToast = (
-  errorMessage: string | JSX.Element,
-  isRuleViolation: boolean,
-  autoCloseTimer?: number
-) => {
-  if (isRuleViolation) {
-    toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
-  } else {
-    toast.error(
-      errorMessage,
-      autoCloseTimer ? { timeout: autoCloseTimer } : {}
-    );
-  }
-};
-
 /**
  * Display an error toast message.
  * @param error error text or AxiosError object
@@ -130,18 +90,37 @@ export const showErrorToast = (
   } else if (isString(error)) {
     errorMessage = error.toString();
   } else if ('config' in error && 'response' in error) {
-    const resolved = resolveAxiosError(error, fallbackText);
-    if (resolved.shouldSuppress) {
+    const method = error.config?.method?.toUpperCase();
+    const fallback =
+      fallbackText && fallbackText.length > 0
+        ? fallbackText
+        : i18n.t('server.unexpected-error');
+    errorMessage = getErrorText(error, fallback);
+    isRuleViolation =
+      get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
+    const isUnauthorizedOrForbiddenGet =
+      error.response?.status === ClientErrors.UNAUTHORIZED ||
+      (error.response?.status === ClientErrors.FORBIDDEN && method === 'GET');
+    if (
+      error &&
+      isUnauthorizedOrForbiddenGet &&
+      !errorMessage.includes('principal domain')
+    ) {
       return;
     }
-    errorMessage = resolved.errorMessage;
-    isRuleViolation = resolved.isRuleViolation;
   } else {
     errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
   }
   callback && callback(errorMessage);
 
-  dispatchErrorToast(errorMessage, isRuleViolation, autoCloseTimer);
+  if (isRuleViolation) {
+    toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
+  } else {
+    toast.error(
+      errorMessage,
+      autoCloseTimer ? { timeout: autoCloseTimer } : {}
+    );
+  }
 };
 
 /**

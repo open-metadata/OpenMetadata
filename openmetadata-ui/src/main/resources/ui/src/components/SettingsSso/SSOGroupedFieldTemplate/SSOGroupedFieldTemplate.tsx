@@ -26,158 +26,6 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
 
-const buildAuthConfigRootGroups = (
-  visibleProperties: ObjectFieldTemplatePropertyType[]
-): FieldGroup[] => {
-  const groups: FieldGroup[] = [];
-
-  // Root authentication configuration grouping
-  const basicConfigFields = visibleProperties.filter((prop) =>
-    ['provider', 'providerName'].includes(prop.name)
-  );
-  if (basicConfigFields.length > 0) {
-    groups.push({
-      title: 'Basic Configuration',
-      properties: basicConfigFields,
-      showDivider: false,
-    });
-  }
-
-  const clientFields = visibleProperties.filter((prop) =>
-    ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'].includes(
-      prop.name
-    )
-  );
-  if (clientFields.length > 0) {
-    groups.push({
-      title: 'Client Configuration',
-      properties: clientFields,
-      showDivider: false,
-    });
-  }
-
-  const authorityFields = visibleProperties.filter((prop) =>
-    ['authority', 'domain'].includes(prop.name)
-  );
-  if (authorityFields.length > 0) {
-    groups.push({
-      title: 'Authority Settings',
-      properties: authorityFields,
-      showDivider: false,
-    });
-  }
-
-  const securityFields = visibleProperties.filter((prop) =>
-    ['publicKeyUrls', 'tokenValidationAlgorithm'].includes(prop.name)
-  );
-  if (securityFields.length > 0) {
-    groups.push({
-      title: 'Security Configuration',
-      properties: securityFields,
-      showDivider: false,
-    });
-  }
-
-  const credentialsFields = visibleProperties.filter((prop) =>
-    ['secret', 'clientSecret'].includes(prop.name)
-  );
-  if (credentialsFields.length > 0) {
-    groups.push({
-      title: 'Credentials',
-      properties: credentialsFields,
-      showDivider: false,
-    });
-  }
-
-  const configObjectFields = visibleProperties.filter((prop) =>
-    ['oidcConfiguration', 'ldapConfiguration', 'samlConfiguration'].includes(
-      prop.name
-    )
-  );
-  configObjectFields.forEach((field) => {
-    groups.push({
-      properties: [field],
-      showDivider: false,
-    });
-  });
-
-  // Remaining fields
-  const groupedFieldNames = [
-    ...basicConfigFields,
-    ...clientFields,
-    ...authorityFields,
-    ...securityFields,
-    ...credentialsFields,
-    ...configObjectFields,
-  ].map((p) => p.name);
-  const remainingFields = visibleProperties.filter(
-    (prop) => !groupedFieldNames.includes(prop.name)
-  );
-  if (remainingFields.length > 0) {
-    groups.push({
-      title: 'Advanced Configuration',
-      properties: remainingFields,
-      showDivider: false,
-    });
-  }
-
-  return groups;
-};
-
-const buildAuthorizerConfigGroups = (
-  visibleProperties: ObjectFieldTemplatePropertyType[]
-): FieldGroup[] => {
-  const groups: FieldGroup[] = [];
-
-  // Authorizer configuration grouping
-  const principalFields = visibleProperties.filter((prop) =>
-    [
-      'adminPrincipals',
-      'botPrincipals',
-      'principalDomain',
-      'enforcePrincipalDomain',
-    ].includes(prop.name)
-  );
-  if (principalFields.length > 0) {
-    groups.push({
-      title: 'Principal Management',
-      properties: principalFields,
-      showDivider: false,
-    });
-  }
-
-  const connectionFields = visibleProperties.filter((prop) =>
-    [
-      'enableSecureSocketConnection',
-      'className',
-      'containerRequestFilter',
-    ].includes(prop.name)
-  );
-  if (connectionFields.length > 0) {
-    groups.push({
-      title: 'Connection Settings',
-      properties: connectionFields,
-      showDivider: false,
-    });
-  }
-
-  // Remaining authorizer fields
-  const groupedFieldNames = [...principalFields, ...connectionFields].map(
-    (p) => p.name
-  );
-  const remainingFields = visibleProperties.filter(
-    (prop) => !groupedFieldNames.includes(prop.name)
-  );
-  if (remainingFields.length > 0) {
-    groups.push({
-      properties: remainingFields,
-      showDivider: false,
-    });
-  }
-
-  return groups;
-};
-
 export const SSOGroupedFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props: ObjectFieldTemplateProps) => {
@@ -225,12 +73,9 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     idSchema.$id === 'root/authenticationConfiguration/samlConfiguration';
 
   // Only apply special grouping to these specific main configuration objects
+  const isAuthProviderConfig = isOIDCConfig || isLDAPConfig || isSAMLConfig;
   const shouldApplyGrouping =
-    isAuthConfigRoot ||
-    isAuthorizerConfig ||
-    isOIDCConfig ||
-    isLDAPConfig ||
-    isSAMLConfig;
+    isAuthConfigRoot || isAuthorizerConfig || isAuthProviderConfig;
 
   const filterVisibleProperties = (
     properties: ObjectFieldTemplatePropertyType[]
@@ -280,31 +125,160 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
       ];
     }
 
+    const groups: FieldGroup[] = [];
     const visibleProperties = filterVisibleProperties(properties);
 
-    let groups: FieldGroup[] = [];
-
     if (isAuthConfigRoot) {
-      groups = buildAuthConfigRootGroups(visibleProperties);
+      // Root authentication configuration grouping
+      const basicConfigFields = visibleProperties.filter((prop) =>
+        ['provider', 'providerName'].includes(prop.name)
+      );
+      if (basicConfigFields.length > 0) {
+        groups.push({
+          title: 'Basic Configuration',
+          properties: basicConfigFields,
+          showDivider: false,
+        });
+      }
+
+      const clientFields = visibleProperties.filter((prop) =>
+        ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'].includes(
+          prop.name
+        )
+      );
+      if (clientFields.length > 0) {
+        groups.push({
+          title: 'Client Configuration',
+          properties: clientFields,
+          showDivider: false,
+        });
+      }
+
+      const authorityFields = visibleProperties.filter((prop) =>
+        ['authority', 'domain'].includes(prop.name)
+      );
+      if (authorityFields.length > 0) {
+        groups.push({
+          title: 'Authority Settings',
+          properties: authorityFields,
+          showDivider: false,
+        });
+      }
+
+      const securityFields = visibleProperties.filter((prop) =>
+        ['publicKeyUrls', 'tokenValidationAlgorithm'].includes(prop.name)
+      );
+      if (securityFields.length > 0) {
+        groups.push({
+          title: 'Security Configuration',
+          properties: securityFields,
+          showDivider: false,
+        });
+      }
+
+      const credentialsFields = visibleProperties.filter((prop) =>
+        ['secret', 'clientSecret'].includes(prop.name)
+      );
+      if (credentialsFields.length > 0) {
+        groups.push({
+          title: 'Credentials',
+          properties: credentialsFields,
+          showDivider: false,
+        });
+      }
+
+      const configObjectFields = visibleProperties.filter((prop) =>
+        [
+          'oidcConfiguration',
+          'ldapConfiguration',
+          'samlConfiguration',
+        ].includes(prop.name)
+      );
+      configObjectFields.forEach((field) => {
+        groups.push({
+          properties: [field],
+          showDivider: false,
+        });
+      });
+
+      // Remaining fields
+      const groupedFieldNames = [
+        ...basicConfigFields,
+        ...clientFields,
+        ...authorityFields,
+        ...securityFields,
+        ...credentialsFields,
+        ...configObjectFields,
+      ].map((p) => p.name);
+      const remainingFields = visibleProperties.filter(
+        (prop) => !groupedFieldNames.includes(prop.name)
+      );
+      if (remainingFields.length > 0) {
+        groups.push({
+          title: 'Advanced Configuration',
+          properties: remainingFields,
+          showDivider: false,
+        });
+      }
     } else if (isAuthorizerConfig) {
-      groups = buildAuthorizerConfigGroups(visibleProperties);
+      // Authorizer configuration grouping
+      const principalFields = visibleProperties.filter((prop) =>
+        [
+          'adminPrincipals',
+          'botPrincipals',
+          'principalDomain',
+          'enforcePrincipalDomain',
+        ].includes(prop.name)
+      );
+      if (principalFields.length > 0) {
+        groups.push({
+          title: 'Principal Management',
+          properties: principalFields,
+          showDivider: false,
+        });
+      }
+
+      const connectionFields = visibleProperties.filter((prop) =>
+        [
+          'enableSecureSocketConnection',
+          'className',
+          'containerRequestFilter',
+        ].includes(prop.name)
+      );
+      if (connectionFields.length > 0) {
+        groups.push({
+          title: 'Connection Settings',
+          properties: connectionFields,
+          showDivider: false,
+        });
+      }
+
+      // Remaining authorizer fields
+      const groupedFieldNames = [...principalFields, ...connectionFields].map(
+        (p) => p.name
+      );
+      const remainingFields = visibleProperties.filter(
+        (prop) => !groupedFieldNames.includes(prop.name)
+      );
+      if (remainingFields.length > 0) {
+        groups.push({
+          properties: remainingFields,
+          showDivider: false,
+        });
+      }
     } else if (isOIDCConfig) {
       // OIDC configuration - all fields in a single group with title
-      groups = [
-        {
-          title: 'OIDC Configuration',
-          properties: visibleProperties,
-          showDivider: false,
-        },
-      ];
+      groups.push({
+        title: 'OIDC Configuration',
+        properties: visibleProperties,
+        showDivider: false,
+      });
     } else if (isLDAPConfig || isSAMLConfig) {
       // LDAP/SAML configuration - all fields in a single group without extra grouping
-      groups = [
-        {
-          properties: visibleProperties,
-          showDivider: false,
-        },
-      ];
+      groups.push({
+        properties: visibleProperties,
+        showDivider: false,
+      });
     }
 
     // Filter out only completely empty groups

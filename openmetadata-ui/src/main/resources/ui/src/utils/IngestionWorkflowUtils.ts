@@ -38,53 +38,43 @@ import storageMetadataPipeline from '../jsons/ingestionSchemas/storageServiceMet
 import testSuitePipeline from '../jsons/ingestionSchemas/testSuitePipeline.json';
 import ProfilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 
-const METADATA_SCHEMA_BY_SERVICE_CATEGORY: Partial<
-  Record<ServiceCategory, object>
-> = {
-  [ServiceCategory.METADATA_SERVICES]: databaseMetadataPipeline,
-  [ServiceCategory.DATABASE_SERVICES]: databaseMetadataPipeline,
-  [ServiceCategory.API_SERVICES]: apiServiceMetadataPipeline,
-  [ServiceCategory.DASHBOARD_SERVICES]: dashboardMetadataPipeline,
-  [ServiceCategory.MESSAGING_SERVICES]: messagingMetadataPipeline,
-  [ServiceCategory.ML_MODEL_SERVICES]: mlModelMetadataPipeline,
-  [ServiceCategory.PIPELINE_SERVICES]: pipelineMetadataPipeline,
-  [ServiceCategory.STORAGE_SERVICES]: storageMetadataPipeline,
-  [ServiceCategory.SEARCH_SERVICES]: searchMetadataPipeline,
-  [ServiceCategory.DRIVE_SERVICES]: driveMetadataPipeline,
-};
-
 export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
-) => METADATA_SCHEMA_BY_SERVICE_CATEGORY[serviceCategory] ?? {};
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.METADATA_SERVICES:
+    case ServiceCategory.DATABASE_SERVICES:
+      return databaseMetadataPipeline;
+    case ServiceCategory.API_SERVICES:
+      return apiServiceMetadataPipeline;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return dashboardMetadataPipeline;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return messagingMetadataPipeline;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return mlModelMetadataPipeline;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return pipelineMetadataPipeline;
+    case ServiceCategory.STORAGE_SERVICES:
+      return storageMetadataPipeline;
+    case ServiceCategory.SEARCH_SERVICES:
+      return searchMetadataPipeline;
+    case ServiceCategory.DRIVE_SERVICES:
+      return driveMetadataPipeline;
 
-const getAutoClassificationSchema = (serviceCategory: ServiceCategory) => {
-  if (serviceCategory === ServiceCategory.STORAGE_SERVICES) {
-    return storageAutoClassificationPipeline;
+    default:
+      return {};
   }
-  if (serviceCategory === ServiceCategory.MESSAGING_SERVICES) {
-    return messagingAutoClassificationPipeline;
-  }
-
-  return databaseAutoClassificationPipeline;
 };
 
-const SCHEMA_BY_WORKFLOW_TYPE: Partial<
-  Record<WorkflowType, (serviceCategory: ServiceCategory) => object>
-> = {
-  [WorkflowType.Metadata]: getMetadataSchemaByServiceCategory,
-  [WorkflowType.Profiler]: () => databaseProfilerPipeline,
-  [WorkflowType.AutoClassification]: getAutoClassificationSchema,
-  [WorkflowType.Usage]: () => databaseUsagePipeline,
-  [WorkflowType.Lineage]: () => databaseLineagePipeline,
-  [WorkflowType.Dbt]: () => dbtPipeline,
-  [WorkflowType.TestSuite]: () => testSuitePipeline,
-  [WorkflowType.ElasticSearchReindex]: () => metadataToElasticSearchPipeline,
-  [WorkflowType.DataInsight]: () => dataInsightPipeline,
-};
-
-const getCustomWorkflowProperties = (
-  workflowType: WorkflowType
-): RJSFSchema => {
+/**
+ * @param workflowType ingestion workflow type
+ * @returns schema
+ */
+export const getSchemaByWorkflowType = (
+  workflowType: WorkflowType,
+  serviceCategory: ServiceCategory
+) => {
   const customProperties: RJSFSchema = {
     displayName: {
       description: 'Display Name of the workflow',
@@ -123,21 +113,72 @@ const getCustomWorkflowProperties = (
       required: ['type', 'id'],
     };
   }
+  let schema = {};
 
-  return customProperties;
-};
+  switch (workflowType) {
+    case WorkflowType.Metadata:
+      schema = {
+        ...getMetadataSchemaByServiceCategory(serviceCategory),
+      };
 
-/**
- * @param workflowType ingestion workflow type
- * @returns schema
- */
-export const getSchemaByWorkflowType = (
-  workflowType: WorkflowType,
-  serviceCategory: ServiceCategory
-) => {
-  const customProperties = getCustomWorkflowProperties(workflowType);
-  const schemaGetter = SCHEMA_BY_WORKFLOW_TYPE[workflowType];
-  const schema = schemaGetter ? { ...schemaGetter(serviceCategory) } : {};
+      break;
+    case WorkflowType.Profiler:
+      schema = {
+        ...databaseProfilerPipeline,
+      };
+
+      break;
+    case WorkflowType.AutoClassification:
+      if (serviceCategory === ServiceCategory.STORAGE_SERVICES) {
+        schema = { ...storageAutoClassificationPipeline };
+      } else if (serviceCategory === ServiceCategory.MESSAGING_SERVICES) {
+        schema = { ...messagingAutoClassificationPipeline };
+      } else {
+        schema = { ...databaseAutoClassificationPipeline };
+      }
+
+      break;
+    case WorkflowType.Usage:
+      schema = {
+        ...databaseUsagePipeline,
+      };
+
+      break;
+    case WorkflowType.Lineage:
+      schema = {
+        ...databaseLineagePipeline,
+      };
+
+      break;
+    case WorkflowType.Dbt:
+      schema = {
+        ...dbtPipeline,
+      };
+
+      break;
+
+    case WorkflowType.TestSuite:
+      schema = {
+        ...testSuitePipeline,
+      };
+
+      break;
+
+    case WorkflowType.ElasticSearchReindex:
+      schema = {
+        ...metadataToElasticSearchPipeline,
+      };
+
+      break;
+    case WorkflowType.DataInsight:
+      schema = {
+        ...dataInsightPipeline,
+      };
+
+      break;
+
+    default:
+  }
 
   const rjsfSchema = schema as RJSFSchema;
 
@@ -167,11 +208,13 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
    */
   keys.forEach((key) => {
     const value = cleanedWorkFlowData[key as keyof Pipeline];
-    if (
+    const hasIncludesAndExcludes =
       value &&
       typeof value === 'object' &&
       'excludes' in value &&
-      'includes' in value &&
+      'includes' in value;
+    if (
+      hasIncludesAndExcludes &&
       isEmpty(value.excludes) &&
       isEmpty(value.includes)
     ) {

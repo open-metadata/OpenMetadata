@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
-import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -54,24 +53,6 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
-
-const GlossaryLoadingIndicator = ({
-  isLoading,
-  isPermissionLoading,
-}: {
-  isLoading: boolean;
-  isPermissionLoading: boolean;
-}) => (isLoading || isPermissionLoading ? <Loader /> : null);
-
-const getGlossaryEntityRenderProps = (
-  isGlossaryActive: boolean,
-  glossaryPermission: OperationPermission,
-  glossaryTermPermission: OperationPermission
-): { permissions: OperationPermission; type: CustomizeEntityType } => ({
-  permissions: isGlossaryActive ? glossaryPermission : glossaryTermPermission,
-  type: isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
-});
-
 const GlossaryV1 = ({
   isGlossaryActive,
   selectedData,
@@ -467,18 +448,12 @@ const GlossaryV1 = ({
     updateVote,
   ]);
 
-  const { permissions, type } = getGlossaryEntityRenderProps(
-    isGlossaryActive,
-    glossaryPermission,
-    glossaryTermPermission
-  );
+  const shouldRenderSelectedData =
+    !isLoading && !isPermissionLoading && !isEmpty(selectedData);
 
   return (
     <>
-      <GlossaryLoadingIndicator
-        isLoading={isLoading}
-        isPermissionLoading={isPermissionLoading}
-      />
+      {(isLoading || isPermissionLoading) && <Loader />}
 
       <GenericProvider<Glossary | GlossaryTerm>
         currentVersionData={selectedData}
@@ -486,12 +461,12 @@ const GlossaryV1 = ({
         data={selectedData}
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
-        permissions={permissions}
-        type={type}
+        permissions={
+          isGlossaryActive ? glossaryPermission : glossaryTermPermission
+        }
+        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         onUpdate={handleGlossaryUpdate}>
-        {!isLoading &&
-          !isPermissionLoading &&
-          !isEmpty(selectedData) &&
+        {shouldRenderSelectedData &&
           (isGlossaryActive ? (
             glossaryContent
           ) : (

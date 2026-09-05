@@ -28,6 +28,10 @@ import {
   NodeData,
   NodePosition,
 } from '../interface/WorkflowTypes.interface';
+import {
+  getWorkflowConditionTheme,
+  WORKFLOW_EDGE_THEME,
+} from './WorkflowEdgeTheme';
 
 const getUINodeType = (backendType: string, backendSubType: string): string => {
   if (
@@ -43,9 +47,21 @@ const getUINodeType = (backendType: string, backendSubType: string): string => {
     return NodeType.EndEvent;
   }
   if (backendType === NodeType.AutomatedTask) {
-    // Every NodeSubType under AutomatedTask maps to the same UI node type, so
-    // the subtype itself doesn't change the result.
-    return NodeType.AutomatedTask;
+    switch (backendSubType) {
+      case NodeSubType.CheckEntityAttributesTask:
+        return NodeType.AutomatedTask;
+      case NodeSubType.CheckChangeDescriptionTask:
+        return NodeType.AutomatedTask;
+      case NodeSubType.SetEntityCertificationTask:
+      case NodeSubType.SetEntityAttributeTask:
+        return NodeType.AutomatedTask;
+      case NodeSubType.RollbackEntityTask:
+        return NodeType.AutomatedTask;
+      case NodeSubType.DataCompletenessTask:
+        return NodeType.AutomatedTask;
+      default:
+        return NodeType.AutomatedTask;
+    }
   }
   if (backendType === NodeType.UserTask) {
     return NodeType.UserTask;
@@ -156,74 +172,54 @@ const convertBackendNodeToReactFlow = (
   };
 };
 
-interface ConditionStyle {
-  label: string;
-  color: string;
-  fill: string;
-}
-
-const KNOWN_CONDITION_STYLES: Record<string, ConditionStyle> = {
-  true: { label: ConditionValue.TRUE, color: '#039855', fill: '#D1FADF' },
-  approve: { label: ConditionValue.APPROVE, color: '#039855', fill: '#D1FADF' },
-  reject: { label: ConditionValue.REJECT, color: '#D92D20', fill: '#FEE4E2' },
-  false: { label: ConditionValue.FALSE, color: '#EAB308', fill: '#FEF0C7' },
-};
-
-const DEFAULT_CONDITION_STYLE: Omit<ConditionStyle, 'label'> = {
-  color: '#2563EB',
-  fill: '#EFF6FF',
-};
-
-const getConditionStyle = (condition: string): ConditionStyle =>
-  KNOWN_CONDITION_STYLES[condition] ?? {
-    label: condition,
-    ...DEFAULT_CONDITION_STYLE,
-  };
-
-const getEdgeConditionData = (
-  condition: string
-): {
-  conditions: [{ field: string; operator: string; value: string }];
-  condition: string;
-} => {
-  const value =
-    condition === 'true' || condition === 'false'
-      ? condition.toUpperCase()
-      : condition;
-
-  return {
-    conditions: [{ field: 'result', operator: 'equals', value }],
-    condition,
-  };
-};
-
 const convertBackendEdgeToReactFlow = (
   backendEdge: BackendEdge,
   index: number
 ): Edge => {
   const condition = backendEdge.condition;
-  const isConditional = Boolean(condition && condition.trim() !== '');
+  const isConditional = condition && condition.trim() !== '';
+  const isTrue = condition === 'true';
+  const isFalse = condition === 'false';
+  const isApprove = condition === 'approve';
+  const isReject = condition === 'reject';
 
   let edgeStyle = {};
   let labelStyle = {};
   let labelBgStyle = {};
   let label = '';
 
-  if (isConditional && condition) {
-    const style = getConditionStyle(condition);
-    label = style.label;
-    edgeStyle = { strokeWidth: 2 };
+  if (isConditional) {
+    if (isTrue) {
+      label = ConditionValue.TRUE;
+    } else if (isFalse) {
+      label = ConditionValue.FALSE;
+    } else if (isApprove) {
+      label = ConditionValue.APPROVE;
+    } else if (isReject) {
+      label = ConditionValue.REJECT;
+    } else {
+      label = condition;
+    }
+
+    edgeStyle = {
+      strokeWidth: 2,
+    };
+
+    const { backgroundColor, labelColor } =
+      getWorkflowConditionTheme(condition);
+
     labelStyle = {
-      color: style.color,
+      color: labelColor,
       fontSize: '14px',
       fontWeight: 600,
       letterSpacing: '1px',
       cursor: 'pointer',
     };
+
     labelBgStyle = {
-      fill: style.fill,
+      fill: backgroundColor,
       fillOpacity: 1,
-      stroke: '#FFF',
+      stroke: WORKFLOW_EDGE_THEME.labelBorder,
       strokeWidth: 2,
       rx: 5,
       ry: 5,
@@ -240,18 +236,28 @@ const convertBackendEdgeToReactFlow = (
       type: MarkerType.ArrowClosed,
       width: 16,
       height: 16,
-      color: '#A4A7AE',
+      color: WORKFLOW_EDGE_THEME.edge,
     },
     style: {
-      stroke: '#A4A7AE',
+      stroke: WORKFLOW_EDGE_THEME.edge,
       strokeWidth: 2,
       ...edgeStyle,
     },
     labelStyle,
     labelBgStyle,
     labelBgPadding: [4, 8] as [number, number],
-    data:
-      isConditional && condition ? getEdgeConditionData(condition) : undefined,
+    data: isConditional
+      ? {
+          conditions: [
+            {
+              field: 'result',
+              operator: 'equals',
+              value: isTrue || isFalse ? condition.toUpperCase() : condition,
+            },
+          ],
+          condition: condition,
+        }
+      : undefined,
   };
 };
 
@@ -293,71 +299,6 @@ const findAllPredecessors = (
   return Array.from(predecessors);
 };
 
-const MIGRATE_ALWAYS_UPDATED_BY = new Set([
-  'global',
-  'ApproveGlossaryTerm',
-  'ApprovalForUpdates',
-]);
-
-function shouldMigrateUpdatedBy(
-  currentUpdatedBy: string | undefined,
-  nodes: BackendNode[],
-  allPredecessors: string[]
-): boolean {
-  if (!currentUpdatedBy) {
-    return false;
-  }
-  if (MIGRATE_ALWAYS_UPDATED_BY.has(currentUpdatedBy)) {
-    return true;
-  }
-
-  const referencesKnownNode = nodes.some((n) => n.name === currentUpdatedBy);
-  const referencesPredecessor = allPredecessors.includes(currentUpdatedBy);
-
-  return !referencesKnownNode || !referencesPredecessor;
-}
-
-function isEligibleForUpdatedByMigration(node: BackendNode): boolean {
-  const isMigratableSubType =
-    node.subType === NodeSubType.SetEntityAttributeTask ||
-    node.subType === NodeSubType.RollbackEntityTask;
-
-  return Boolean(isMigratableSubType && node.input?.includes('updatedBy'));
-}
-
-function migrateNodeInputNamespace(
-  node: BackendNode,
-  nodes: BackendNode[],
-  edges: BackendEdge[],
-  userTasks: BackendNode[]
-): BackendNode {
-  if (!isEligibleForUpdatedByMigration(node)) {
-    return node;
-  }
-
-  const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
-  const allPredecessors = findAllPredecessors(node.name, edges);
-
-  if (!shouldMigrateUpdatedBy(currentUpdatedBy, nodes, allPredecessors)) {
-    return node;
-  }
-
-  // Only use a user task that is actually a predecessor (comes before this node)
-  const predecessorUserTask = userTasks.find((userTask) =>
-    allPredecessors.includes(userTask.name)
-  );
-
-  return {
-    ...node,
-    inputNamespaceMap: {
-      ...node.inputNamespaceMap,
-      // Use the actual node name from the workflow, or fall back to 'global'
-      // when no predecessor user task exists.
-      updatedBy: predecessorUserTask ? predecessorUserTask.name : 'global',
-    },
-  };
-}
-
 const migrateWorkflowInputNamespaceMap = (
   nodes: BackendNode[],
   edges: BackendEdge[]
@@ -366,9 +307,55 @@ const migrateWorkflowInputNamespaceMap = (
     (n) => n.subType === NodeSubType.UserApprovalTask
   );
 
-  return nodes.map((node) =>
-    migrateNodeInputNamespace(node, nodes, edges, userTasks)
-  );
+  return nodes.map((node) => {
+    if (
+      (node.subType === NodeSubType.SetEntityAttributeTask ||
+        node.subType === NodeSubType.RollbackEntityTask) &&
+      node.input?.includes('updatedBy')
+    ) {
+      const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
+      const allPredecessors = findAllPredecessors(node.name, edges);
+
+      const isKnownGlobalUpdatedBy =
+        currentUpdatedBy === 'global' ||
+        currentUpdatedBy === 'ApproveGlossaryTerm' ||
+        currentUpdatedBy === 'ApprovalForUpdates';
+      const isMissingUpdatedByReference =
+        currentUpdatedBy &&
+        (!nodes.some((n) => n.name === currentUpdatedBy) ||
+          !allPredecessors.includes(currentUpdatedBy));
+      const shouldMigrate =
+        isKnownGlobalUpdatedBy || isMissingUpdatedByReference;
+
+      if (shouldMigrate) {
+        // Only use a user task that is actually a predecessor (comes before this node)
+        const predecessorUserTask = userTasks.find((userTask) =>
+          allPredecessors.includes(userTask.name)
+        );
+
+        if (predecessorUserTask) {
+          return {
+            ...node,
+            inputNamespaceMap: {
+              ...node.inputNamespaceMap,
+              updatedBy: predecessorUserTask.name, // Use the actual node name from the workflow
+            },
+          };
+        }
+
+        // If no predecessor user task exists, set to 'global'
+        return {
+          ...node,
+          inputNamespaceMap: {
+            ...node.inputNamespaceMap,
+            updatedBy: 'global',
+          },
+        };
+      }
+    }
+
+    return node;
+  });
 };
 
 export const deserializeWorkflow = (

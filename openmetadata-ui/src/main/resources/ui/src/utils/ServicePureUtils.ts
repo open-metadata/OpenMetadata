@@ -65,16 +65,18 @@ export const getIngestionName = (
 };
 
 export const shouldTestConnection = (serviceType: string) => {
-  return (
+  const isNotCustomCoreService =
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
-    serviceType !== MlModelServiceType.CustomMlModel &&
+    serviceType !== MlModelServiceType.CustomMlModel;
+  const isNotCustomExtendedService =
     serviceType !== PipelineServiceType.CustomPipeline &&
     serviceType !== StorageServiceType.CustomStorage &&
     serviceType !== SearchServiceType.CustomSearch &&
-    serviceType !== DriveServiceType.CustomDrive
-  );
+    serviceType !== DriveServiceType.CustomDrive;
+
+  return isNotCustomCoreService && isNotCustomExtendedService;
 };
 
 export const getServiceType = (serviceCat: ServiceCategory) =>
@@ -86,21 +88,33 @@ export const getServiceTypesFromServiceCategory = (
   return SERVICE_TYPES_ENUM[serviceCat];
 };
 
-const SERVICE_ROUTE_MAP: Partial<Record<ServiceTypes, GlobalSettingOptions>> = {
-  [ServiceCategory.MESSAGING_SERVICES]: GlobalSettingOptions.MESSAGING,
-  [ServiceCategory.DASHBOARD_SERVICES]: GlobalSettingOptions.DASHBOARDS,
-  [ServiceCategory.PIPELINE_SERVICES]: GlobalSettingOptions.PIPELINES,
-  [ServiceCategory.ML_MODEL_SERVICES]: GlobalSettingOptions.MLMODELS,
-  [ServiceCategory.METADATA_SERVICES]: GlobalSettingOptions.METADATA,
-  [ServiceCategory.STORAGE_SERVICES]: GlobalSettingOptions.STORAGES,
-  [ServiceCategory.SEARCH_SERVICES]: GlobalSettingOptions.SEARCH,
-  [ServiceCategory.API_SERVICES]: GlobalSettingOptions.APIS,
-  [ServiceCategory.DRIVE_SERVICES]: GlobalSettingOptions.DRIVES,
-  [ServiceCategory.SECURITY_SERVICES]: GlobalSettingOptions.SECURITY,
+export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
+  switch (type) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return GlobalSettingOptions.MESSAGING;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return GlobalSettingOptions.DASHBOARDS;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return GlobalSettingOptions.PIPELINES;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return GlobalSettingOptions.MLMODELS;
+    case ServiceCategory.METADATA_SERVICES:
+      return GlobalSettingOptions.METADATA;
+    case ServiceCategory.STORAGE_SERVICES:
+      return GlobalSettingOptions.STORAGES;
+    case ServiceCategory.SEARCH_SERVICES:
+      return GlobalSettingOptions.SEARCH;
+    case ServiceCategory.API_SERVICES:
+      return GlobalSettingOptions.APIS;
+    case ServiceCategory.DRIVE_SERVICES:
+      return GlobalSettingOptions.DRIVES;
+    case ServiceCategory.SECURITY_SERVICES:
+      return GlobalSettingOptions.SECURITY;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return GlobalSettingOptions.DATABASES;
+  }
 };
-
-export const getServiceRouteFromServiceType = (type: ServiceTypes) =>
-  SERVICE_ROUTE_MAP[type] ?? GlobalSettingOptions.DATABASES;
 
 export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
   switch (type) {
@@ -127,38 +141,58 @@ export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
   }
 };
 
-const RESOURCE_ENTITY_BY_CATEGORY_ENTRIES: [string, ResourceEntity][] = [
-  ['dashboards', ResourceEntity.DASHBOARD_SERVICE],
-  [ServiceCategory.DASHBOARD_SERVICES, ResourceEntity.DASHBOARD_SERVICE],
-  ['databases', ResourceEntity.DATABASE_SERVICE],
-  [ServiceCategory.DATABASE_SERVICES, ResourceEntity.DATABASE_SERVICE],
-  ['mlModels', ResourceEntity.ML_MODEL_SERVICE],
-  [ServiceCategory.ML_MODEL_SERVICES, ResourceEntity.ML_MODEL_SERVICE],
-  ['messaging', ResourceEntity.MESSAGING_SERVICE],
-  [ServiceCategory.MESSAGING_SERVICES, ResourceEntity.MESSAGING_SERVICE],
-  ['pipelines', ResourceEntity.PIPELINE_SERVICE],
-  [ServiceCategory.PIPELINE_SERVICES, ResourceEntity.PIPELINE_SERVICE],
-  ['metadata', ResourceEntity.METADATA_SERVICE],
-  [ServiceCategory.METADATA_SERVICES, ResourceEntity.METADATA_SERVICE],
-  ['storageServices', ResourceEntity.STORAGE_SERVICE],
-  [ServiceCategory.STORAGE_SERVICES, ResourceEntity.STORAGE_SERVICE],
-  ['searchIndex', ResourceEntity.SEARCH_SERVICE],
-  [ServiceCategory.SEARCH_SERVICES, ResourceEntity.SEARCH_SERVICE],
-  [ServiceCategory.API_SERVICES, ResourceEntity.API_SERVICE],
-  ['directories', ResourceEntity.DRIVE_SERVICE],
-  ['files', ResourceEntity.DRIVE_SERVICE],
-  ['spreadsheets', ResourceEntity.DRIVE_SERVICE],
-  ['worksheets', ResourceEntity.DRIVE_SERVICE],
-  [ServiceCategory.DRIVE_SERVICES, ResourceEntity.DRIVE_SERVICE],
-  [ServiceCategory.SECURITY_SERVICES, ResourceEntity.SECURITY_SERVICE],
-];
-
-const RESOURCE_ENTITY_BY_CATEGORY: Record<string, ResourceEntity> =
-  Object.fromEntries(RESOURCE_ENTITY_BY_CATEGORY_ENTRIES);
-
 export const getResourceEntityFromServiceCategory = (
   category: string | ServiceCategory
-) => RESOURCE_ENTITY_BY_CATEGORY[category] ?? ResourceEntity.DATABASE_SERVICE;
+) => {
+  switch (category) {
+    case 'dashboards':
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return ResourceEntity.DASHBOARD_SERVICE;
+
+    case 'databases':
+    case ServiceCategory.DATABASE_SERVICES:
+      return ResourceEntity.DATABASE_SERVICE;
+
+    case 'mlModels':
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return ResourceEntity.ML_MODEL_SERVICE;
+
+    case 'messaging':
+    case ServiceCategory.MESSAGING_SERVICES:
+      return ResourceEntity.MESSAGING_SERVICE;
+
+    case 'pipelines':
+    case ServiceCategory.PIPELINE_SERVICES:
+      return ResourceEntity.PIPELINE_SERVICE;
+
+    case 'metadata':
+    case ServiceCategory.METADATA_SERVICES:
+      return ResourceEntity.METADATA_SERVICE;
+
+    case 'storageServices':
+    case ServiceCategory.STORAGE_SERVICES:
+      return ResourceEntity.STORAGE_SERVICE;
+
+    case 'searchIndex':
+    case ServiceCategory.SEARCH_SERVICES:
+      return ResourceEntity.SEARCH_SERVICE;
+
+    case ServiceCategory.API_SERVICES:
+      return ResourceEntity.API_SERVICE;
+
+    case 'directories':
+    case 'files':
+    case 'spreadsheets':
+    case 'worksheets':
+    case ServiceCategory.DRIVE_SERVICES:
+      return ResourceEntity.DRIVE_SERVICE;
+
+    case ServiceCategory.SECURITY_SERVICES:
+      return ResourceEntity.SECURITY_SERVICE;
+  }
+
+  return ResourceEntity.DATABASE_SERVICE;
+};
 
 // Used to decide whether a category-agnostic "Add New Service" entry point (the All Connections
 // tab, the /settings/services landing page) should be shown at all — the user may not be able to
@@ -203,60 +237,65 @@ export const getTestConnectionName = (connectionType: string) => {
   })}`;
 };
 
-const SERVICE_CATEGORY_BY_ENTITY_TYPE: Partial<
-  Record<EntityType, ServiceCategory>
-> = {
-  [EntityType.DASHBOARD_SERVICE]: ServiceCategory.DASHBOARD_SERVICES,
-  [EntityType.MESSAGING_SERVICE]: ServiceCategory.MESSAGING_SERVICES,
-  [EntityType.PIPELINE_SERVICE]: ServiceCategory.PIPELINE_SERVICES,
-  [EntityType.MLMODEL_SERVICE]: ServiceCategory.ML_MODEL_SERVICES,
-  [EntityType.STORAGE_SERVICE]: ServiceCategory.STORAGE_SERVICES,
-  [EntityType.METADATA_SERVICE]: ServiceCategory.METADATA_SERVICES,
-  [EntityType.SEARCH_SERVICE]: ServiceCategory.SEARCH_SERVICES,
-  [EntityType.API_SERVICE]: ServiceCategory.API_SERVICES,
-  [EntityType.DRIVE_SERVICE]: ServiceCategory.DRIVE_SERVICES,
-  [EntityType.SECURITY_SERVICE]: ServiceCategory.SECURITY_SERVICES,
-};
-
 export const getServiceCategoryFromEntityType = (
   entityType: EntityType
-): string =>
-  SERVICE_CATEGORY_BY_ENTITY_TYPE[entityType] ??
-  ServiceCategory.DATABASE_SERVICES;
-
-export type ServiceEntityType =
-  | EntityType.DASHBOARD_SERVICE
-  | EntityType.MESSAGING_SERVICE
-  | EntityType.PIPELINE_SERVICE
-  | EntityType.MLMODEL_SERVICE
-  | EntityType.METADATA_SERVICE
-  | EntityType.STORAGE_SERVICE
-  | EntityType.SEARCH_SERVICE
-  | EntityType.API_SERVICE
-  | EntityType.DRIVE_SERVICE
-  | EntityType.SECURITY_SERVICE
-  | EntityType.DATABASE_SERVICE;
-
-const ENTITY_TYPE_BY_SERVICE_CATEGORY: Partial<
-  Record<ServiceTypes, ServiceEntityType>
-> = {
-  [ServiceCategory.DASHBOARD_SERVICES]: EntityType.DASHBOARD_SERVICE,
-  [ServiceCategory.MESSAGING_SERVICES]: EntityType.MESSAGING_SERVICE,
-  [ServiceCategory.PIPELINE_SERVICES]: EntityType.PIPELINE_SERVICE,
-  [ServiceCategory.ML_MODEL_SERVICES]: EntityType.MLMODEL_SERVICE,
-  [ServiceCategory.METADATA_SERVICES]: EntityType.METADATA_SERVICE,
-  [ServiceCategory.STORAGE_SERVICES]: EntityType.STORAGE_SERVICE,
-  [ServiceCategory.SEARCH_SERVICES]: EntityType.SEARCH_SERVICE,
-  [ServiceCategory.API_SERVICES]: EntityType.API_SERVICE,
-  [ServiceCategory.DRIVE_SERVICES]: EntityType.DRIVE_SERVICE,
-  [ServiceCategory.SECURITY_SERVICES]: EntityType.SECURITY_SERVICE,
+): string => {
+  switch (entityType) {
+    case EntityType.DASHBOARD_SERVICE:
+      return ServiceCategory.DASHBOARD_SERVICES;
+    case EntityType.MESSAGING_SERVICE:
+      return ServiceCategory.MESSAGING_SERVICES;
+    case EntityType.PIPELINE_SERVICE:
+      return ServiceCategory.PIPELINE_SERVICES;
+    case EntityType.MLMODEL_SERVICE:
+      return ServiceCategory.ML_MODEL_SERVICES;
+    case EntityType.STORAGE_SERVICE:
+      return ServiceCategory.STORAGE_SERVICES;
+    case EntityType.METADATA_SERVICE:
+      return ServiceCategory.METADATA_SERVICES;
+    case EntityType.SEARCH_SERVICE:
+      return ServiceCategory.SEARCH_SERVICES;
+    case EntityType.API_SERVICE:
+      return ServiceCategory.API_SERVICES;
+    case EntityType.DRIVE_SERVICE:
+      return ServiceCategory.DRIVE_SERVICES;
+    case EntityType.SECURITY_SERVICE:
+      return ServiceCategory.SECURITY_SERVICES;
+    case EntityType.DATABASE_SERVICE:
+    default:
+      return ServiceCategory.DATABASE_SERVICES;
+  }
 };
 
 export const getEntityTypeFromServiceCategory = (
   serviceCategory: ServiceTypes
-): ServiceEntityType =>
-  ENTITY_TYPE_BY_SERVICE_CATEGORY[serviceCategory] ??
-  EntityType.DATABASE_SERVICE;
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return EntityType.DASHBOARD_SERVICE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return EntityType.MESSAGING_SERVICE;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return EntityType.PIPELINE_SERVICE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return EntityType.MLMODEL_SERVICE;
+    case ServiceCategory.METADATA_SERVICES:
+      return EntityType.METADATA_SERVICE;
+    case ServiceCategory.STORAGE_SERVICES:
+      return EntityType.STORAGE_SERVICE;
+    case ServiceCategory.SEARCH_SERVICES:
+      return EntityType.SEARCH_SERVICE;
+    case ServiceCategory.API_SERVICES:
+      return EntityType.API_SERVICE;
+    case ServiceCategory.DRIVE_SERVICES:
+      return EntityType.DRIVE_SERVICE;
+    case ServiceCategory.SECURITY_SERVICES:
+      return EntityType.SECURITY_SERVICE;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return EntityType.DATABASE_SERVICE;
+  }
+};
 
 export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
   query: {

@@ -160,15 +160,11 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
   const { currentUser } = useApplicationStore();
   const authorName = getEntityName(comment.author);
 
-  const { canEdit, canDelete } = useMemo(() => {
-    const isAuthor =
-      Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
-
-    return {
-      canEdit: isAuthor,
-      canDelete: isAuthor || Boolean(currentUser?.isAdmin),
-    };
-  }, [currentUser?.name, currentUser?.isAdmin, comment.author?.name]);
+  const isAuthor =
+    Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
+  const canEdit = isAuthor;
+  const canDelete = isAuthor || Boolean(currentUser?.isAdmin);
+  const canModifyComment = canEdit || canDelete;
 
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -223,7 +219,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
             {authorName}
           </Typography>
         </Box>
-        {isHovered && !isEditing && (canEdit || canDelete) && (
+        {isHovered && !isEditing && canModifyComment && (
           <Box align="center" data-testid="task-comment-actions" gap={1}>
             {canEdit && (
               <Edit01
@@ -286,99 +282,6 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
         onDelete={handleDelete}
       />
     </Box>
-  );
-};
-
-// Incident tasks carry no `about`; the failing test case FQN only appears in
-// the description ("New incident for test case: <fqn>") as the trailing token.
-const getIncidentTestCaseFqn = (task: Task): string => {
-  const isIncidentWithoutAbout =
-    !task.about?.fullyQualifiedName && task.category === TaskCategory.Incident;
-  if (!isIncidentWithoutAbout) {
-    return '';
-  }
-
-  return (task.description ?? '').trim().split(/\s+/).pop() ?? '';
-};
-
-// getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
-// tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
-// Incidents fall back to the derived test case's Issues tab.
-const getTaskAboutPath = (task: Task, incidentTestCaseFqn: string): string => {
-  if (task.about?.fullyQualifiedName) {
-    return getTaskDetailPathFromTask(task);
-  }
-
-  return incidentTestCaseFqn.includes('.')
-    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
-    : '';
-};
-
-// Highlight the title token (display name, raw name, or last FQN segment)
-// that carries the asset, so both "…dim_address_clean" and
-// "…dim_address_clean_changed" colour the whole trailing identifier.
-const getTaskAssetMatch = (
-  task: Task,
-  titleText: string,
-  aboutPath: string,
-  incidentTestCaseFqn: string
-): { index: number; length: number } | null | undefined => {
-  const aboutRef = task.about;
-  const assetCandidates = aboutRef
-    ? [
-        getEntityName(aboutRef),
-        aboutRef.name,
-        aboutRef.fullyQualifiedName?.split('.').pop(),
-      ]
-    : [incidentTestCaseFqn.split('.').pop()];
-
-  return aboutPath
-    ? assetCandidates
-        .map((candidate) =>
-          candidate ? matchAssetToken(titleText, candidate) : null
-        )
-        .find((match) => match)
-    : null;
-};
-
-const TransitionButton: React.FC<{
-  action: TaskResolveAction;
-  isBusy: boolean;
-  isDisabled: boolean;
-  onClick: () => void;
-}> = ({ action, isBusy, isDisabled, onClick }) => {
-  const approve = action.kind === 'approve';
-  const reject = action.kind === 'reject';
-
-  return (
-    <Button
-      color={
-        reject
-          ? 'secondary-destructive'
-          : approve || action.id === 'resolve'
-          ? 'primary'
-          : 'secondary'
-      }
-      data-testid={
-        approve
-          ? 'task-approve'
-          : reject
-          ? 'task-reject'
-          : `task-transition-${action.id}`
-      }
-      iconLeading={
-        approve ? (
-          <CheckCircle height={16} width={16} />
-        ) : reject ? (
-          <XCircle height={16} width={16} />
-        ) : undefined
-      }
-      isDisabled={isDisabled}
-      isLoading={isBusy}
-      size="sm"
-      onClick={onClick}>
-      {action.label}
-    </Button>
   );
 };
 
@@ -700,61 +603,79 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
   );
   const statusBadge = getTaskStatusBadge(task, t);
-
-  const renderTitle = () => {
-    // Titleless tasks (governance workflows) carry the taskId as their name, so
-    // getTaskTitle composes a title from the task type and the entity it is
-    // about instead of repeating the id.
-    const titleText = getTaskTitle(task, t);
-    const incidentTestCaseFqn = getIncidentTestCaseFqn(task);
-    const aboutPath = getTaskAboutPath(task, incidentTestCaseFqn);
-    const assetMatch = getTaskAssetMatch(
-      task,
-      titleText,
-      aboutPath,
-      incidentTestCaseFqn
-    );
-    const assetIndex = assetMatch?.index ?? -1;
-    const assetEnd = assetMatch ? assetMatch.index + assetMatch.length : -1;
-    const titleNode =
-      assetIndex >= 0 ? (
-        <>
-          {titleText.slice(0, assetIndex)}
-          <Link
-            className="tw:text-utility-blue-dark-500 tw:no-underline! tw:font-medium! tw:hover:underline!"
-            data-testid="task-about-link"
-            to={aboutPath}>
-            {titleText.slice(assetIndex, assetEnd)}
-          </Link>
-          {titleText.slice(assetEnd)}
-        </>
-      ) : aboutPath ? (
-        // No asset token in the title — keep the whole title in normal colour
-        // (still clickable), so the header never turns fully blue.
+  // Titleless tasks (governance workflows) carry the taskId as their name, so
+  // getTaskTitle composes a title from the task type and the entity it is about
+  // instead of repeating the id.
+  const titleText = getTaskTitle(task, t);
+  const aboutRef = task.about;
+  // Incident tasks carry no `about`; the failing test case FQN only appears in
+  // the description ("New incident for test case: <fqn>") as the trailing token.
+  const incidentTestCaseFqn =
+    !aboutRef?.fullyQualifiedName && task.category === TaskCategory.Incident
+      ? (task.description ?? '').trim().split(/\s+/).pop() ?? ''
+      : '';
+  // getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
+  // tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
+  // Incidents fall back to the derived test case's Issues tab.
+  const aboutPath = aboutRef?.fullyQualifiedName
+    ? getTaskDetailPathFromTask(task)
+    : incidentTestCaseFqn.includes('.')
+    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
+    : '';
+  // Highlight the title token (display name, raw name, or last FQN segment)
+  // that carries the asset, so both "…dim_address_clean" and
+  // "…dim_address_clean_changed" colour the whole trailing identifier.
+  const assetCandidates = aboutRef
+    ? [
+        getEntityName(aboutRef),
+        aboutRef.name,
+        aboutRef.fullyQualifiedName?.split('.').pop(),
+      ]
+    : [incidentTestCaseFqn.split('.').pop()];
+  const assetMatch = aboutPath
+    ? assetCandidates
+        .map((candidate) =>
+          candidate ? matchAssetToken(titleText, candidate) : null
+        )
+        .find((match) => match)
+    : null;
+  const assetIndex = assetMatch?.index ?? -1;
+  const assetEnd = assetMatch ? assetMatch.index + assetMatch.length : -1;
+  const titleNode =
+    assetIndex >= 0 ? (
+      <>
+        {titleText.slice(0, assetIndex)}
         <Link
-          className="tw:text-inherit tw:no-underline! tw:hover:underline!"
+          className="tw:text-utility-blue-dark-500 tw:no-underline! tw:font-medium! tw:hover:underline!"
           data-testid="task-about-link"
           to={aboutPath}>
-          {titleText}
+          {titleText.slice(assetIndex, assetEnd)}
         </Link>
-      ) : (
-        titleText
-      );
-
-    // Not using Typography's `ellipsis` here: it wraps content in a pressable
-    // and stringifies children, which would drop the asset Link. A plain
-    // line-clamp keeps the two-row clamp while preserving the inline link.
-    return titleText ? (
-      <Typography
-        className="tw:line-clamp-2 tw:break-words tw:text-left"
-        size="text-lg"
-        weight="semibold">
-        {titleNode}
-      </Typography>
-    ) : null;
-  };
-
-  const title = renderTitle();
+        {titleText.slice(assetEnd)}
+      </>
+    ) : aboutPath ? (
+      // No asset token in the title — keep the whole title in normal colour
+      // (still clickable), so the header never turns fully blue.
+      <Link
+        className="tw:text-inherit tw:no-underline! tw:hover:underline!"
+        data-testid="task-about-link"
+        to={aboutPath}>
+        {titleText}
+      </Link>
+    ) : (
+      titleText
+    );
+  // Not using Typography's `ellipsis` here: it wraps content in a pressable and
+  // stringifies children, which would drop the asset Link. A plain line-clamp
+  // keeps the two-row clamp while preserving the inline link.
+  const title = titleText ? (
+    <Typography
+      className="tw:line-clamp-2 tw:break-words tw:text-left"
+      size="text-lg"
+      weight="semibold">
+      {titleNode}
+    </Typography>
+  ) : null;
 
   return (
     <Box
@@ -782,6 +703,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         </Box>
         <Box align="center" className="tw:shrink-0" gap={2}>
           {actions.map((action) => {
+            const approve = action.kind === 'approve';
+            const reject = action.kind === 'reject';
             const isBusy = loadingTransitionId === action.id;
             const isDisabled =
               loadingTransitionId !== undefined &&
@@ -815,13 +738,35 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             }
 
             return (
-              <TransitionButton
-                action={action}
-                isBusy={isBusy}
+              <Button
+                color={
+                  reject
+                    ? 'secondary-destructive'
+                    : approve || action.id === 'resolve'
+                    ? 'primary'
+                    : 'secondary'
+                }
+                data-testid={
+                  approve
+                    ? 'task-approve'
+                    : reject
+                    ? 'task-reject'
+                    : `task-transition-${action.id}`
+                }
+                iconLeading={
+                  approve ? (
+                    <CheckCircle height={16} width={16} />
+                  ) : reject ? (
+                    <XCircle height={16} width={16} />
+                  ) : undefined
+                }
                 isDisabled={isDisabled}
+                isLoading={isBusy}
                 key={action.id}
-                onClick={handleTransition(action)}
-              />
+                size="sm"
+                onClick={handleTransition(action)}>
+                {action.label}
+              </Button>
             );
           })}
         </Box>

@@ -371,10 +371,10 @@ const CustomControls: FC<{
     [updateURLParams]
   );
   const lineageEditButton = useMemo(() => {
+    const isEditableLineageView =
+      hasEditAccess && !deleted && platformView === LineagePlatformView.None;
     const showEditOption =
-      hasEditAccess &&
-      !deleted &&
-      platformView === LineagePlatformView.None &&
+      isEditableLineageView &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
 
@@ -416,15 +416,6 @@ const CustomControls: FC<{
     );
   }, []);
 
-  const exportButtonLabel =
-    activeTab === 'impact_analysis'
-      ? t('label.export-as-type', { type: t('label.csv') })
-      : t('label.export');
-
-  const fullScreenButtonLabel = isFullScreen
-    ? t('label.exit-full-screen')
-    : t('label.full-screen-view');
-
   return (
     <div>
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
@@ -464,10 +455,20 @@ const CustomControls: FC<{
             onChange={setTimeFilter}
           />
           {lineageEditButton}
-          <Tooltip placement="top" title={exportButtonLabel}>
+          <Tooltip
+            placement="top"
+            title={
+              activeTab === 'impact_analysis'
+                ? t('label.export-as-type', { type: t('label.csv') })
+                : t('label.export')
+            }>
             <TooltipTrigger>
               <ButtonUtility
-                aria-label={exportButtonLabel}
+                aria-label={
+                  activeTab === 'impact_analysis'
+                    ? t('label.export-as-type', { type: t('label.csv') })
+                    : t('label.export')
+                }
                 data-testid="export-button"
                 disabled={isEditMode}
                 icon={DownloadIcon}
@@ -476,10 +477,20 @@ const CustomControls: FC<{
             </TooltipTrigger>
           </Tooltip>
           {settingsButton}
-          <Tooltip placement="top" title={fullScreenButtonLabel}>
+          <Tooltip
+            placement="top"
+            title={
+              isFullScreen
+                ? t('label.exit-full-screen')
+                : t('label.full-screen-view')
+            }>
             <TooltipTrigger>
               <ButtonUtility
-                aria-label={fullScreenButtonLabel}
+                aria-label={
+                  isFullScreen
+                    ? t('label.exit-full-screen')
+                    : t('label.full-screen-view')
+                }
                 icon={isFullScreen ? ExitFullScreenIcon : FullscreenIcon}
                 onClick={() =>
                   updateURLParams({

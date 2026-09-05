@@ -27,14 +27,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useNavigate } from 'react-router-dom';
@@ -87,112 +80,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
 const ARTICLE_PLURAL_LABEL = 'label.article-plural';
-
-interface ArticlesReflexLayoutProps {
-  leftSidebar: ReactNode;
-  centerContent: ReactNode;
-  rightSidebar: ReactNode;
-  showArticlesEmptyState: boolean;
-  isActivityFeedTab: boolean;
-  version?: string;
-  fqn: string;
-}
-
-const ArticlesReflexLayout = ({
-  leftSidebar,
-  centerContent,
-  rightSidebar,
-  showArticlesEmptyState,
-  isActivityFeedTab,
-  version,
-  fqn,
-}: ArticlesReflexLayoutProps) => {
-  const rightPanelConfig = rightSidebar
-    ? { flex: 0.2, style: {} }
-    : { flex: 0, style: { display: 'none' } };
-
-  return (
-    <ReflexContainer
-      className={classNames('knowledge-center-layout tw:h-full', {
-        'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
-      })}
-      orientation="vertical"
-      style={showArticlesEmptyState ? { display: 'none' } : undefined}>
-      {/* left */}
-      <ReflexElement
-        className={classNames('left-panel', {
-          'left-panel-collapsed': !leftSidebar,
-        })}
-        data-testid="left-panel"
-        flex={0.25}
-        minSize={280}>
-        {leftSidebar}
-      </ReflexElement>
-
-      <ReflexSplitter
-        className={classNames('splitter left-panel-splitter', {
-          hidden: !leftSidebar,
-        })}>
-        {leftSidebar && (
-          <div className="panel-grabber-vertical">
-            <div className="handle-icon handle-icon-vertical" />
-          </div>
-        )}
-      </ReflexSplitter>
-
-      {/* middle */}
-      <ReflexElement
-        propagateDimensions
-        className={classNames('center-panel', {
-          'has-sidebar': leftSidebar,
-        })}
-        data-testid="center-panel"
-        flex={rightSidebar ? 0.6 : 1}
-        minSize={700}>
-        {fqn || version ? (
-          <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
-            <Card.Content
-              className={classNames(
-                'tw:flex-1 tw:min-h-0 tw:overflow-auto',
-                isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
-              )}>
-              {centerContent}
-            </Card.Content>
-          </Card>
-        ) : (
-          <Box
-            className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
-            direction="col">
-            {centerContent}
-          </Box>
-        )}
-      </ReflexElement>
-
-      <ReflexSplitter
-        className={classNames('splitter right-panel-splitter', {
-          hidden: !rightSidebar,
-        })}>
-        {!!rightSidebar && (
-          <div className="panel-grabber-vertical">
-            <div className="handle-icon handle-icon-vertical" />
-          </div>
-        )}
-      </ReflexSplitter>
-
-      <ReflexElement
-        propagateDimensions
-        className={classNames('right-panel', {
-          'right-panel-collapsed': !rightSidebar,
-        })}
-        data-testid="right-panel"
-        flex={rightPanelConfig.flex}
-        minSize={280}
-        style={rightPanelConfig.style}>
-        {rightSidebar}
-      </ReflexElement>
-    </ReflexContainer>
-  );
-};
 
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
@@ -498,21 +385,10 @@ const ContextCenterArticlesPage = () => {
     handleToggleRightPanel,
   ]);
 
-  const showArticlesEmptyState = useMemo(
-    () =>
-      isArticlesListEmpty &&
-      !fqn &&
-      !version &&
-      !articleSearchQuery &&
-      !permissionFetchFailed,
-    [
-      isArticlesListEmpty,
-      fqn,
-      version,
-      articleSearchQuery,
-      permissionFetchFailed,
-    ]
-  );
+  const isArticleListingUnfiltered =
+    !fqn && !version && !articleSearchQuery && !permissionFetchFailed;
+  const showArticlesEmptyState =
+    isArticlesListEmpty && isArticleListingUnfiltered;
 
   return (
     <div
@@ -578,15 +454,85 @@ const ContextCenterArticlesPage = () => {
             />
           </div>
         )}
-        <ArticlesReflexLayout
-          centerContent={centerContent}
-          fqn={fqn}
-          isActivityFeedTab={isActivityFeedTab}
-          leftSidebar={leftSidebar}
-          rightSidebar={rightSidebar}
-          showArticlesEmptyState={showArticlesEmptyState}
-          version={version}
-        />
+        <ReflexContainer
+          className={classNames('knowledge-center-layout tw:h-full', {
+            'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
+          })}
+          orientation="vertical"
+          style={showArticlesEmptyState ? { display: 'none' } : undefined}>
+          {/* left */}
+          <ReflexElement
+            className={classNames('left-panel', {
+              'left-panel-collapsed': !leftSidebar,
+            })}
+            data-testid="left-panel"
+            flex={0.25}
+            minSize={280}>
+            {leftSidebar}
+          </ReflexElement>
+
+          <ReflexSplitter
+            className={classNames('splitter left-panel-splitter', {
+              hidden: !leftSidebar,
+            })}>
+            {leftSidebar && (
+              <div className="panel-grabber-vertical">
+                <div className="handle-icon handle-icon-vertical" />
+              </div>
+            )}
+          </ReflexSplitter>
+
+          {/* middle */}
+          <ReflexElement
+            propagateDimensions
+            className={classNames('center-panel', {
+              'has-sidebar': leftSidebar,
+            })}
+            data-testid="center-panel"
+            flex={rightSidebar ? 0.6 : 1}
+            minSize={700}>
+            {fqn || version ? (
+              <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
+                <Card.Content
+                  className={classNames(
+                    'tw:flex-1 tw:min-h-0 tw:overflow-auto',
+                    isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+                  )}>
+                  {centerContent}
+                </Card.Content>
+              </Card>
+            ) : (
+              <Box
+                className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
+                direction="col">
+                {centerContent}
+              </Box>
+            )}
+          </ReflexElement>
+
+          <ReflexSplitter
+            className={classNames('splitter right-panel-splitter', {
+              hidden: !rightSidebar,
+            })}>
+            {!!rightSidebar && (
+              <div className="panel-grabber-vertical">
+                <div className="handle-icon handle-icon-vertical" />
+              </div>
+            )}
+          </ReflexSplitter>
+
+          <ReflexElement
+            propagateDimensions
+            className={classNames('right-panel', {
+              'right-panel-collapsed': !rightSidebar,
+            })}
+            data-testid="right-panel"
+            flex={rightSidebar ? 0.2 : 0}
+            minSize={280}
+            style={rightSidebar ? {} : { display: 'none' }}>
+            {rightSidebar}
+          </ReflexElement>
+        </ReflexContainer>
       </Box>
 
       <QuickLinkFormModal

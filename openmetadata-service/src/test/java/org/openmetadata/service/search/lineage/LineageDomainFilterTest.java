@@ -59,7 +59,7 @@ class LineageDomainFilterTest {
   }
 
   @Test
-  @DisplayName("shouldApply: only for non-admin non-bot users holding DomainOnlyAccessRole")
+  @DisplayName("shouldApply: only for non-admin users holding DomainOnlyAccessRole")
   void testShouldApply() {
     assertFalse(LineageDomainFilter.shouldApply(null));
     assertTrue(LineageDomainFilter.shouldApply(restricted));
@@ -68,13 +68,30 @@ class LineageDomainFilterTest {
     when(admin.isAdmin()).thenReturn(true);
     assertFalse(LineageDomainFilter.shouldApply(admin));
 
-    SubjectContext bot = mock(SubjectContext.class);
-    when(bot.isBot()).thenReturn(true);
-    assertFalse(LineageDomainFilter.shouldApply(bot));
-
     SubjectContext noRole = mock(SubjectContext.class);
     when(noRole.hasDomainOnlyAccessRole()).thenReturn(false);
     assertFalse(LineageDomainFilter.shouldApply(noRole));
+  }
+
+  @Test
+  @DisplayName("shouldApply: a bot is narrowed when it holds the role, untouched when it does not")
+  void testShouldApplyToBots() {
+    SubjectContext restrictedBot = mock(SubjectContext.class);
+    when(restrictedBot.isBot()).thenReturn(true);
+    when(restrictedBot.hasDomainOnlyAccessRole()).thenReturn(true);
+    assertTrue(
+        LineageDomainFilter.shouldApply(restrictedBot),
+        "a bot assigned DomainOnlyAccessRole must be narrowed, not exempted (#30023)");
+
+    SubjectContext plainBot = mock(SubjectContext.class);
+    when(plainBot.isBot()).thenReturn(true);
+    assertFalse(
+        LineageDomainFilter.shouldApply(plainBot),
+        "a bot without the role is untouched, so stock bots keep their current view");
+
+    SubjectContext adminBot = mock(SubjectContext.class);
+    when(adminBot.isAdmin()).thenReturn(true);
+    assertFalse(LineageDomainFilter.shouldApply(adminBot));
   }
 
   @Test

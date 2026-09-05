@@ -720,23 +720,23 @@ export const useDataQualityDashboardFilters = ({
   );
 
   const showFilterBar = !hideFilterBar;
-  const hasVisibleFilters = [
-    showOwnerFilter,
-    showTierFilter,
-    showCertificationFilter,
-    showTagsFilter,
-    showGlossaryTermsFilter,
-    showDataProductsFilter,
-  ].some(Boolean);
+  const showEntityFilters =
+    showTagsFilter || showGlossaryTermsFilter || showDataProductsFilter;
+  const hasVisibleFilters =
+    showOwnerFilter ||
+    showTierFilter ||
+    showCertificationFilter ||
+    showEntityFilters;
 
-  const hasActiveFilters = [
-    selectedTierFilter,
-    selectedCertificationFilter,
-    selectedTagFilter,
-    selectedGlossaryTermFilter,
-    selectedDataProductFilter,
-    selectedOwnerFilter,
-  ].some((selection) => !isEmpty(selection));
+  const hasSelectedEntityFilters =
+    !isEmpty(selectedGlossaryTermFilter) ||
+    !isEmpty(selectedDataProductFilter) ||
+    !isEmpty(selectedOwnerFilter);
+  const hasActiveFilters =
+    !isEmpty(selectedTierFilter) ||
+    !isEmpty(selectedCertificationFilter) ||
+    !isEmpty(selectedTagFilter) ||
+    hasSelectedEntityFilters;
 
   const clearAll = () => {
     setSelectedTierFilter([]);

@@ -61,28 +61,6 @@ const DomainSelectorPlaceholder = () => (
   <div className="border-radius-sm p-x-md bg-white domain-selector" />
 );
 
-const resolveAnnouncementsState = (
-  announcementsFromParent: AnnouncementEntity[] | undefined,
-  internalAnnouncements: AnnouncementEntity[],
-  isAnnouncementLoadingFromParent: boolean | undefined,
-  internalIsAnnouncementLoading: boolean
-) => ({
-  announcements: announcementsFromParent ?? internalAnnouncements,
-  isAnnouncementLoading:
-    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading,
-});
-
-const shouldShowAnnouncementsWidget = (
-  isPreviewHeader: boolean,
-  showAnnouncements: boolean,
-  isAnnouncementLoading: boolean,
-  announcementsCount: number
-) =>
-  !isPreviewHeader &&
-  showAnnouncements &&
-  !isAnnouncementLoading &&
-  announcementsCount > 0;
-
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
   backgroundColor,
@@ -109,12 +87,9 @@ const CustomiseLandingPageHeader = ({
   >([]);
   const [internalIsAnnouncementLoading, setInternalIsAnnouncementLoading] =
     useState(true);
-  const { announcements, isAnnouncementLoading } = resolveAnnouncementsState(
-    announcementsFromParent,
-    internalAnnouncements,
-    isAnnouncementLoadingFromParent,
-    internalIsAnnouncementLoading
-  );
+  const announcements = announcementsFromParent ?? internalAnnouncements;
+  const isAnnouncementLoading =
+    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading;
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const adminPanelBackgroundColor =
     applicationConfig?.customTheme?.panelBackgroundColor;
@@ -167,6 +142,9 @@ const CustomiseLandingPageHeader = ({
     fetchAnnouncements();
   }, [announcementsFromParent, fetchAnnouncements]);
 
+  const canDisplayAnnouncements =
+    !isPreviewHeader && showAnnouncements && !isAnnouncementLoading;
+
   return (
     <div
       className="customise-landing-page-header"
@@ -215,12 +193,7 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {shouldShowAnnouncementsWidget(
-          isPreviewHeader,
-          showAnnouncements,
-          isAnnouncementLoading,
-          announcements.length
-        ) && (
+        {canDisplayAnnouncements && announcements.length > 0 && (
           <div className="announcements-container">
             <AnnouncementsWidgetV1
               announcements={announcements}

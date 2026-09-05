@@ -352,13 +352,8 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      if (
-        isInView &&
-        hasMore &&
-        !isLoadingMore &&
-        !searchQuery &&
-        hasViewPermission
-      ) {
+      const canLoadMore = isInView && hasMore && !isLoadingMore;
+      if (canLoadMore && !searchQuery && hasViewPermission) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);
@@ -440,27 +435,7 @@ const KnowledgePageListComponent = forwardRef<
         setKnowledgePages((prevPages) => [knowledgePage, ...prevPages]),
     }));
 
-    const isInitialLoadingState = useMemo(
-      () => isLoading || isCreatingNewPage || isPermissionsLoading,
-      [isLoading, isCreatingNewPage, isPermissionsLoading]
-    );
-
-    const showNoResultsForSearch = useMemo(
-      () => !isLoading && isEmpty(knowledgePages) && Boolean(searchQuery),
-      [isLoading, knowledgePages, searchQuery]
-    );
-
-    const showEmptyState = useMemo(
-      () => !isLoading && isEmpty(knowledgePages),
-      [isLoading, knowledgePages]
-    );
-
-    const showAddButtonInEmptyState = useMemo(
-      () => Boolean(permissions.Create) && !hideAddButton,
-      [permissions.Create, hideAddButton]
-    );
-
-    if (isInitialLoadingState) {
+    if (isLoading || isCreatingNewPage || isPermissionsLoading) {
       return (
         <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
           {Array.from({ length: 4 }).map(() => (
@@ -532,7 +507,7 @@ const KnowledgePageListComponent = forwardRef<
       );
     }
 
-    if (showNoResultsForSearch) {
+    if (!isLoading && isEmpty(knowledgePages) && searchQuery) {
       return (
         <div className="tw:relative tw:min-h-[320px] tw:py-12">
           <EmptyPlaceholder
@@ -545,7 +520,7 @@ const KnowledgePageListComponent = forwardRef<
       );
     }
 
-    if (showEmptyState) {
+    if (!isLoading && isEmpty(knowledgePages)) {
       return (
         <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
           <EmptyPlaceholder
@@ -566,7 +541,7 @@ const KnowledgePageListComponent = forwardRef<
             }
             footer={
               <>
-                {showAddButtonInEmptyState && (
+                {permissions.Create && !hideAddButton && (
                   <LimitWrapper resource="knowledgeCenter">
                     <Dropdown menu={{ items }} trigger={['click']}>
                       <Button

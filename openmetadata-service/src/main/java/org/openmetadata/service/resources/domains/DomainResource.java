@@ -142,8 +142,37 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Returns list of Domain after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
-    ListFilter filter = new ListFilter(null);
+          String after,
+      @Parameter(
+              description =
+                  "Filter domains owned by any of these users or teams "
+                      + "(comma-separated user/team ids, names, or FQNs)",
+              schema = @Schema(type = "string"))
+          @QueryParam("owners")
+          String owners,
+      @Parameter(
+              description =
+                  "Filter by domain type: Aggregate, Consumer-aligned, Source-aligned (comma-separated)",
+              schema = @Schema(type = "string"))
+          @QueryParam("domainType")
+          String domainType,
+      @Parameter(
+              description = "Filter by classification tag FQNs (comma-separated)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description = "Filter by glossary term FQNs (comma-separated)",
+              schema = @Schema(type = "string"))
+          @QueryParam("glossaryTerms")
+          String glossaryTerms) {
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("ownerId", EntityUtil.resolveOwnersToIds(owners))
+            .addQueryParam("ownerToEntity", Entity.DOMAIN)
+            .addQueryParam("domainType", domainType)
+            .addQueryParam("tags", tags)
+            .addQueryParam("glossaryTerms", glossaryTerms);
     EntityUtil.applyDomainSelfRestriction(securityContext, filter);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

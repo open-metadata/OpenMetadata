@@ -37,11 +37,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-  UIPermission,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -96,25 +92,6 @@ const TAG_TABLE_FILL_CLASSNAME = [
   'tw:[&_.ant-table-header]:shrink-0',
   'tw:[&_.ant-table-body]:flex-1 tw:[&_.ant-table-body]:!max-h-none',
 ].join(' ');
-
-const canEditClassificationDescription = (
-  classificationPermissions: OperationPermission,
-  isVersionView: boolean,
-  isClassificationDisabled: boolean
-): boolean =>
-  !isVersionView &&
-  !isClassificationDisabled &&
-  (classificationPermissions.EditAll ||
-    classificationPermissions.EditDescription);
-
-const canCreateClassificationTag = (
-  classificationPermissions: OperationPermission,
-  isVersionView: boolean,
-  permissions: UIPermission
-): boolean =>
-  !isVersionView &&
-  (checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
-    classificationPermissions.EditAll);
 
 const ClassificationDetails = forwardRef(
   (
@@ -244,16 +221,15 @@ const ClassificationDetails = forwardRef(
 
       return {
         editClassificationPermission: classificationPermissions.EditAll,
-        editDescriptionPermission: canEditClassificationDescription(
-          classificationPermissions,
-          isVersionView,
-          isClassificationDisabled
-        ),
-        createPermission: canCreateClassificationTag(
-          classificationPermissions,
-          isVersionView,
-          permissions
-        ),
+        editDescriptionPermission:
+          !isVersionView &&
+          !isClassificationDisabled &&
+          (classificationPermissions.EditAll ||
+            classificationPermissions.EditDescription),
+        createPermission:
+          !isVersionView &&
+          (checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
+            classificationPermissions.EditAll),
         deletePermission:
           classificationPermissions.Delete && !isSystemClassification,
         editOwnerPermission:
@@ -325,23 +301,20 @@ const ClassificationDetails = forwardRef(
       ]
     );
 
-    const showManageButton = useMemo(
-      () =>
-        !isVersionView &&
-        (showEditOption ||
-          deletePermission ||
-          showDisableOption ||
-          showExportOption ||
-          showImportOption),
-      [
-        showEditOption,
-        deletePermission,
-        showDisableOption,
-        showExportOption,
-        showImportOption,
-        isVersionView,
-      ]
-    );
+    const showManageButton = useMemo(() => {
+      const hasEditOrDeleteAccess =
+        showEditOption || deletePermission || showDisableOption;
+      const hasImportExportAccess = showExportOption || showImportOption;
+
+      return !isVersionView && (hasEditOrDeleteAccess || hasImportExportAccess);
+    }, [
+      showEditOption,
+      deletePermission,
+      showDisableOption,
+      showExportOption,
+      showImportOption,
+      isVersionView,
+    ]);
 
     const handleClassificationExportClick = useCallback(() => {
       if (currentClassification?.fullyQualifiedName) {
@@ -527,94 +500,91 @@ const ClassificationDetails = forwardRef(
       },
     }));
 
-    const renderClassificationHeader = () =>
-      currentClassification ? (
-        <Row data-testid="header" wrap={false}>
-          <Col flex="auto">
-            <EntityHeaderTitle
-              badge={
-                <div className="d-flex gap-1">
-                  {headerBadge}
-                  {currentClassification?.mutuallyExclusive && (
-                    <div data-testid="mutually-exclusive-container">
-                      <AppBadge
-                        bgColor={theme.primaryColor}
-                        className="whitespace-nowrap"
-                        label={t('label.mutually-exclusive')}
-                      />
-                    </div>
-                  )}
-                </div>
-              }
-              className="flex-wrap"
-              displayName={displayName}
-              icon={
-                <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
-              }
-              isDisabled={isClassificationDisabled}
-              name={name ?? currentClassification.name}
-              serviceName="classification"
-            />
-          </Col>
-
-          <Col className="d-flex justify-end items-start" flex="270px">
-            <Space size={12}>
-              {createPermission && (
-                <Tooltip title={addTagButtonToolTip}>
-                  <Button
-                    data-testid="add-new-tag-button"
-                    disabled={isClassificationDisabled}
-                    type="primary"
-                    onClick={handleAddNewTagClick}>
-                    {t('label.add-entity', {
-                      entity: t('label.tag'),
-                    })}
-                  </Button>
-                </Tooltip>
-              )}
-
-              <ButtonGroup className="spaced" size="small">
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className="w-16 p-0"
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={versionHandler}>
-                    <Typography.Text>{currentVersion}</Typography.Text>
-                  </Button>
-                </Tooltip>
-                {showManageButton && (
-                  <ManageButton
-                    isRecursiveDelete
-                    afterDeleteAction={handleAfterDeleteAction}
-                    allowSoftDelete={false}
-                    canDelete={deletePermission && !isClassificationDisabled}
-                    displayName={getEntityName(currentClassification)}
-                    entityFQN={currentClassification?.fullyQualifiedName}
-                    entityId={currentClassification.id}
-                    entityName={currentClassification.name}
-                    entityType={EntityType.CLASSIFICATION}
-                    extraDropdownContent={extraDropdownContent}
-                  />
-                )}
-              </ButtonGroup>
-            </Space>
-          </Col>
-        </Row>
-      ) : null;
-
     return (
       <div
         className="h-full classification-details-container"
         data-testid="tags-container">
-        {renderClassificationHeader()}
+        {currentClassification && (
+          <Row data-testid="header" wrap={false}>
+            <Col flex="auto">
+              <EntityHeaderTitle
+                badge={
+                  <div className="d-flex gap-1">
+                    {headerBadge}
+                    {currentClassification?.mutuallyExclusive && (
+                      <div data-testid="mutually-exclusive-container">
+                        <AppBadge
+                          bgColor={theme.primaryColor}
+                          className="whitespace-nowrap"
+                          label={t('label.mutually-exclusive')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                }
+                className="flex-wrap"
+                displayName={displayName}
+                icon={
+                  <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
+                }
+                isDisabled={isClassificationDisabled}
+                name={name ?? currentClassification.name}
+                serviceName="classification"
+              />
+            </Col>
+
+            <Col className="d-flex justify-end items-start" flex="270px">
+              <Space size={12}>
+                {createPermission && (
+                  <Tooltip title={addTagButtonToolTip}>
+                    <Button
+                      data-testid="add-new-tag-button"
+                      disabled={isClassificationDisabled}
+                      type="primary"
+                      onClick={handleAddNewTagClick}>
+                      {t('label.add-entity', {
+                        entity: t('label.tag'),
+                      })}
+                    </Button>
+                  </Tooltip>
+                )}
+
+                <ButtonGroup className="spaced" size="small">
+                  <Tooltip
+                    title={t(
+                      `label.${
+                        isVersionView
+                          ? 'exit-version-history'
+                          : 'version-plural-history'
+                      }`
+                    )}>
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={versionHandler}>
+                      <Typography.Text>{currentVersion}</Typography.Text>
+                    </Button>
+                  </Tooltip>
+                  {showManageButton && (
+                    <ManageButton
+                      isRecursiveDelete
+                      afterDeleteAction={handleAfterDeleteAction}
+                      allowSoftDelete={false}
+                      canDelete={deletePermission && !isClassificationDisabled}
+                      displayName={getEntityName(currentClassification)}
+                      entityFQN={currentClassification?.fullyQualifiedName}
+                      entityId={currentClassification.id}
+                      entityName={currentClassification.name}
+                      entityType={EntityType.CLASSIFICATION}
+                      extraDropdownContent={extraDropdownContent}
+                    />
+                  )}
+                </ButtonGroup>
+              </Space>
+            </Col>
+          </Row>
+        )}
 
         {!currentClassification && isClassificationLoading && <Loader />}
         {currentClassification && (

@@ -33,7 +33,6 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -63,6 +62,10 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
+import {
+  isCacheWarmupApplication,
+  isMcpApplication,
+} from '../../../../utils/ApplicationUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -81,233 +84,8 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import McpApplicationConfiguration from '../McpApplicationConfiguration/McpApplicationConfiguration';
 import './app-details.less';
-import {
-  AppAction,
-  ConfigurationTabParams,
-  LiveIndexingTabParams,
-  ManageButtonHandlers,
-  RecentRunsTabParams,
-  ScheduleTabParams,
-  TFunc,
-} from './AppDetails.interface';
-import {
-  getIsAppUnavailable,
-  getIsRuntimeDisabled,
-  getRuntimeDisabledReason,
-  getShowAppConfigTab,
-  getShowMcpConfigTab,
-} from './AppDetails.utils';
+import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
-
-const getManageButtonContent = (
-  appData: App | undefined,
-  t: TFunc,
-  { setShowActions, setAction, setShowDeleteModel }: ManageButtonHandlers
-): ItemType[] => [
-  ...(appData?.deleted
-    ? ([
-        {
-          label: (
-            <ManageButtonItemLabel
-              description={t('message.restore-action-description', {
-                entityType: getEntityName(appData),
-              })}
-              icon={IconRestore}
-              id="restore-button"
-              name={t('label.restore')}
-            />
-          ),
-          onClick: (e: MenuInfo) => {
-            e.domEvent.stopPropagation();
-            setShowActions(false);
-            setAction(AppAction.ENABLE);
-            setShowDeleteModel(true);
-          },
-          key: 'restore-button',
-        },
-      ] as ItemType[])
-    : [
-        {
-          label: (
-            <ManageButtonItemLabel
-              description={t('message.disable-app', {
-                app: getEntityName(appData),
-              })}
-              icon={StopOutlined as SvgComponent}
-              id="disable-button"
-              name={t('label.disable')}
-            />
-          ),
-          key: 'disable-button',
-          onClick: () => {
-            setShowDeleteModel(true);
-            setShowActions(false);
-            setAction(AppAction.DISABLE);
-          },
-        },
-      ]),
-  ...(appData?.system
-    ? []
-    : [
-        {
-          label: (
-            <ManageButtonItemLabel
-              description={t('message.uninstall-app', {
-                app: getEntityName(appData),
-              })}
-              icon={DeleteIcon}
-              id="uninstall-button"
-              name={t('label.uninstall')}
-            />
-          ),
-          key: 'uninstall-button',
-          onClick: () => {
-            setShowDeleteModel(true);
-            setShowActions(false);
-            setAction(AppAction.UNINSTALL);
-          },
-        },
-      ]),
-];
-
-const getConfigurationTabs = ({
-  showMcpConfigTab,
-  showAppConfigTab,
-  appData,
-  jsonSchema,
-  isSaveLoading,
-  onConfigSave,
-  ApplicationConfigurationComponent,
-  t,
-}: ConfigurationTabParams) => {
-  if (!showMcpConfigTab && !showAppConfigTab) {
-    return [];
-  }
-
-  return [
-    {
-      label: (
-        <TabsLabel
-          id={ApplicationTabs.CONFIGURATION}
-          name={t('label.configuration')}
-        />
-      ),
-      key: ApplicationTabs.CONFIGURATION,
-      children: showMcpConfigTab ? (
-        <McpApplicationConfiguration
-          appName={appData?.name ?? ''}
-          jsonSchema={jsonSchema as RJSFSchema}
-        />
-      ) : (
-        <ApplicationConfigurationComponent
-          appData={appData as App}
-          isLoading={isSaveLoading}
-          jsonSchema={jsonSchema as RJSFSchema}
-          onConfigSave={onConfigSave}
-        />
-      ),
-    },
-  ];
-};
-
-const getScheduleTabs = ({
-  showScheduleTab,
-  appData,
-  isRuntimeDisabled,
-  runtimeDisabledReason,
-  jsonSchema,
-  isRunLoading,
-  isDeployLoading,
-  onDemandTrigger,
-  onDeployTrigger,
-  onAppScheduleSave,
-  t,
-}: ScheduleTabParams) => {
-  if (!showScheduleTab) {
-    return [];
-  }
-
-  return [
-    {
-      label: (
-        <TabsLabel id={ApplicationTabs.SCHEDULE} name={t('label.schedule')} />
-      ),
-      key: ApplicationTabs.SCHEDULE,
-      children: (
-        <div className="bg-white p-lg border-default border-radius-sm">
-          {appData && (
-            <AppSchedule
-              appData={appData}
-              disabled={isRuntimeDisabled}
-              disabledReason={runtimeDisabledReason}
-              jsonSchema={jsonSchema as RJSFSchema}
-              loading={{
-                isRunLoading,
-                isDeployLoading,
-              }}
-              onDemandTrigger={onDemandTrigger}
-              onDeployTrigger={onDeployTrigger}
-              onSave={onAppScheduleSave}
-            />
-          )}
-        </div>
-      ),
-    },
-  ];
-};
-
-const getRecentRunsTabs = ({
-  isAppUnavailable,
-  showScheduleTab,
-  appData,
-  jsonSchema,
-  t,
-}: RecentRunsTabParams) => {
-  if (isAppUnavailable || !showScheduleTab) {
-    return [];
-  }
-
-  return [
-    {
-      label: (
-        <TabsLabel
-          id={ApplicationTabs.RECENT_RUNS}
-          name={t('label.recent-run-plural')}
-        />
-      ),
-      key: ApplicationTabs.RECENT_RUNS,
-      children: (
-        <AppRunsHistory
-          appData={appData}
-          jsonSchema={jsonSchema as RJSFSchema}
-        />
-      ),
-    },
-  ];
-};
-
-const getLiveIndexingTabs = ({
-  isAppUnavailable,
-  appData,
-  t,
-}: LiveIndexingTabParams) => {
-  if (isAppUnavailable || appData?.name !== 'SearchIndexingApplication') {
-    return [];
-  }
-
-  return [
-    {
-      label: (
-        <TabsLabel
-          id={ApplicationTabs.LIVE_INDEXING}
-          name={t('label.live-indexing')}
-        />
-      ),
-      key: ApplicationTabs.LIVE_INDEXING,
-      children: <AppLiveIndexing appData={appData} />,
-    },
-  ];
-};
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -327,13 +105,12 @@ const AppDetails = () => {
   const { getResourceLimit } = useLimitStore();
   const { plugins } = useApplicationsProvider();
   const { isAdminUser } = useAuth();
-  const isRuntimeDisabled = getIsRuntimeDisabled(appData);
-  const runtimeDisabledReason = getRuntimeDisabledReason(
-    appData,
-    isRuntimeDisabled,
-    t
-  );
-  const isAppUnavailable = getIsAppUnavailable(appData, isRuntimeDisabled);
+  const isRuntimeDisabled = appData?.enabled === false && !appData.deleted;
+  const runtimeDisabledReason =
+    isRuntimeDisabled && isCacheWarmupApplication(appData?.name)
+      ? t('message.cache-service-not-configured-message')
+      : undefined;
+  const isAppUnavailable = Boolean(appData?.deleted) || isRuntimeDisabled;
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -419,11 +196,72 @@ const AppDetails = () => {
     t,
   ]);
 
-  const manageButtonContent: ItemType[] = getManageButtonContent(appData, t, {
-    setShowActions,
-    setAction,
-    setShowDeleteModel,
-  });
+  const manageButtonContent: ItemType[] = [
+    ...(appData?.deleted
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.restore-action-description', {
+                  entityType: getEntityName(appData),
+                })}
+                icon={IconRestore}
+                id="restore-button"
+                name={t('label.restore')}
+              />
+            ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setShowActions(false);
+              setAction(AppAction.ENABLE);
+              setShowDeleteModel(true);
+            },
+            key: 'restore-button',
+          },
+        ] as ItemType[])
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.disable-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={StopOutlined as SvgComponent}
+                id="disable-button"
+                name={t('label.disable')}
+              />
+            ),
+            key: 'disable-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setAction(AppAction.DISABLE);
+            },
+          },
+        ]),
+    ...(appData?.system
+      ? []
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.uninstall-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={DeleteIcon}
+                id="uninstall-button"
+                name={t('label.uninstall')}
+              />
+            ),
+            key: 'uninstall-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setAction(AppAction.UNINSTALL);
+            },
+          },
+        ]),
+  ];
 
   const onConfigSave = useCallback(
     async (data: IChangeEvent & { ingestionRunner?: EntityReference }) => {
@@ -544,51 +382,114 @@ const AppDetails = () => {
     // The MCP app stores no configuration of its own. Its settings live in the `mcpConfiguration`
     // system setting, which is admin-only, so its tab uses a dedicated component and is hidden
     // from non-admins rather than letting them submit a request the server will reject.
-    const showMcpConfigTab = getShowMcpConfigTab(
-      appData,
-      isAdminUser,
-      jsonSchema,
-      isRuntimeDisabled
+    const showMcpConfigTab = Boolean(
+      isMcpApplication(appData?.name) &&
+        isAdminUser &&
+        jsonSchema &&
+        !isRuntimeDisabled
     );
-    const showAppConfigTab = getShowAppConfigTab(
-      showMcpConfigTab,
-      appData,
-      jsonSchema,
-      isRuntimeDisabled
+    const hasAppConfiguration =
+      !showMcpConfigTab &&
+      appData?.appConfiguration &&
+      appData.allowConfiguration;
+    const showAppConfigTab = Boolean(
+      hasAppConfiguration && jsonSchema && !isRuntimeDisabled
     );
+    const tabConfiguration =
+      showMcpConfigTab || showAppConfigTab
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.CONFIGURATION}
+                  name={t('label.configuration')}
+                />
+              ),
+              key: ApplicationTabs.CONFIGURATION,
+              children: showMcpConfigTab ? (
+                <McpApplicationConfiguration
+                  appName={appData?.name ?? ''}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
+              ) : (
+                <ApplicationConfigurationComponent
+                  appData={appData as App}
+                  isLoading={loadingState.isSaveLoading}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                  onConfigSave={onConfigSave}
+                />
+              ),
+            },
+          ]
+        : [];
 
     return [
-      ...getScheduleTabs({
-        showScheduleTab,
-        appData,
-        isRuntimeDisabled,
-        runtimeDisabledReason,
-        jsonSchema,
-        isRunLoading: loadingState.isRunLoading,
-        isDeployLoading: loadingState.isDeployLoading,
-        onDemandTrigger,
-        onDeployTrigger,
-        onAppScheduleSave,
-        t,
-      }),
-      ...getConfigurationTabs({
-        showMcpConfigTab,
-        showAppConfigTab,
-        appData,
-        jsonSchema,
-        isSaveLoading: loadingState.isSaveLoading,
-        onConfigSave,
-        ApplicationConfigurationComponent,
-        t,
-      }),
-      ...getRecentRunsTabs({
-        isAppUnavailable,
-        showScheduleTab,
-        appData,
-        jsonSchema,
-        t,
-      }),
-      ...getLiveIndexingTabs({ isAppUnavailable, appData, t }),
+      ...(showScheduleTab
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.SCHEDULE}
+                  name={t('label.schedule')}
+                />
+              ),
+              key: ApplicationTabs.SCHEDULE,
+              children: (
+                <div className="bg-white p-lg border-default border-radius-sm">
+                  {appData && (
+                    <AppSchedule
+                      appData={appData}
+                      disabled={isRuntimeDisabled}
+                      disabledReason={runtimeDisabledReason}
+                      jsonSchema={jsonSchema as RJSFSchema}
+                      loading={{
+                        isRunLoading: loadingState.isRunLoading,
+                        isDeployLoading: loadingState.isDeployLoading,
+                      }}
+                      onDemandTrigger={onDemandTrigger}
+                      onDeployTrigger={onDeployTrigger}
+                      onSave={onAppScheduleSave}
+                    />
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
+      ...tabConfiguration,
+      ...(!isAppUnavailable && showScheduleTab
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.RECENT_RUNS}
+                  name={t('label.recent-run-plural')}
+                />
+              ),
+              key: ApplicationTabs.RECENT_RUNS,
+              children: (
+                <AppRunsHistory
+                  appData={appData}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
+              ),
+            },
+          ]
+        : []),
+      ...(!isAppUnavailable && appData?.name === 'SearchIndexingApplication'
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.LIVE_INDEXING}
+                  name={t('label.live-indexing')}
+                />
+              ),
+              key: ApplicationTabs.LIVE_INDEXING,
+              children: <AppLiveIndexing appData={appData} />,
+            },
+          ]
+        : []),
     ];
   }, [
     appData,

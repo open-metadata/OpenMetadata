@@ -189,13 +189,10 @@ const ContextCenterDocumentsPage: FC = () => {
 
   const selectedFolderFqn = selectedFolder?.fullyQualifiedName;
 
-  const selectedFolderName = useMemo(
-    () =>
-      !documentSearchQuery && selectedFolder
-        ? getEntityName(selectedFolder)
-        : undefined,
-    [documentSearchQuery, selectedFolder]
-  );
+  const selectedFolderName =
+    !documentSearchQuery && selectedFolder
+      ? getEntityName(selectedFolder)
+      : undefined;
 
   const folderOptions = useMemo<FolderOption[]>(
     () =>
@@ -215,57 +212,6 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => clearTimeout(id);
   }, [documentSearchQuery]);
 
-  const fetchDocumentsBySearch = useCallback(
-    async (generation: number) => {
-      const results = await fetchSearchResults({
-        query: debouncedSearchQuery,
-        searchIndex: SearchIndex.DRIVE_FILE,
-        sortField: 'updatedAt',
-        sortOrder: 'desc',
-        ...(selectedFolderId && {
-          queryFilter: {
-            query: {
-              bool: {
-                filter: { term: { 'folder.id': selectedFolderId } },
-              },
-            },
-          },
-        }),
-      });
-      if (generation !== fetchGenerationRef.current) {
-        return;
-      }
-      setAllDocuments(
-        results.hits.hits.map((hit) => hit._source as unknown as ContextFile)
-      );
-    },
-    [debouncedSearchQuery, selectedFolderId]
-  );
-
-  const fetchDocumentsList = useCallback(
-    async (generation: number, after?: string) => {
-      const response = await listContextFiles({
-        after,
-        limit: pageSize,
-        folderId: selectedFolderId,
-      });
-      if (generation !== fetchGenerationRef.current) {
-        return;
-      }
-      if (after) {
-        setAllDocuments((prev) => [...prev, ...response.data]);
-      } else {
-        setAllDocuments(response.data);
-      }
-      handlePagingChange(response.paging);
-      setTotalFileCount(response.paging.total);
-      if (!after && !selectedFolderId) {
-        setGlobalFileCount(response.paging.total);
-      }
-    },
-    [pageSize, selectedFolderId, handlePagingChange]
-  );
-
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (!after) {
@@ -282,9 +228,48 @@ const ContextCenterDocumentsPage: FC = () => {
       }
       try {
         if (debouncedSearchQuery) {
-          await fetchDocumentsBySearch(generation);
+          const results = await fetchSearchResults({
+            query: debouncedSearchQuery,
+            searchIndex: SearchIndex.DRIVE_FILE,
+            sortField: 'updatedAt',
+            sortOrder: 'desc',
+            ...(selectedFolderId && {
+              queryFilter: {
+                query: {
+                  bool: {
+                    filter: { term: { 'folder.id': selectedFolderId } },
+                  },
+                },
+              },
+            }),
+          });
+          if (generation !== fetchGenerationRef.current) {
+            return;
+          }
+          setAllDocuments(
+            results.hits.hits.map(
+              (hit) => hit._source as unknown as ContextFile
+            )
+          );
         } else {
-          await fetchDocumentsList(generation, after);
+          const response = await listContextFiles({
+            after,
+            limit: pageSize,
+            folderId: selectedFolderId,
+          });
+          if (generation !== fetchGenerationRef.current) {
+            return;
+          }
+          if (after) {
+            setAllDocuments((prev) => [...prev, ...response.data]);
+          } else {
+            setAllDocuments(response.data);
+          }
+          handlePagingChange(response.paging);
+          setTotalFileCount(response.paging.total);
+          if (!after && !selectedFolderId) {
+            setGlobalFileCount(response.paging.total);
+          }
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -299,7 +284,7 @@ const ContextCenterDocumentsPage: FC = () => {
         }
       }
     },
-    [debouncedSearchQuery, fetchDocumentsBySearch, fetchDocumentsList]
+    [debouncedSearchQuery, pageSize, handlePagingChange, selectedFolderId]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -670,23 +655,15 @@ const ContextCenterDocumentsPage: FC = () => {
     [fetchFolders]
   );
 
-  const showDocumentsEmptyState = useMemo(
-    () =>
-      !isDocumentsLoading &&
-      !isFoldersLoading &&
-      !documentSearchQuery &&
-      !selectedFolderId &&
-      allDocuments.length === 0 &&
-      folders.length === 0,
-    [
-      isDocumentsLoading,
-      isFoldersLoading,
-      documentSearchQuery,
-      selectedFolderId,
-      allDocuments.length,
-      folders.length,
-    ]
-  );
+  const isDocumentsViewIdle =
+    !isDocumentsLoading &&
+    !isFoldersLoading &&
+    !documentSearchQuery &&
+    !selectedFolderId;
+  const hasNoDocumentsOrFolders =
+    allDocuments.length === 0 && folders.length === 0;
+  const showDocumentsEmptyState =
+    isDocumentsViewIdle && hasNoDocumentsOrFolders;
 
   return (
     <Box

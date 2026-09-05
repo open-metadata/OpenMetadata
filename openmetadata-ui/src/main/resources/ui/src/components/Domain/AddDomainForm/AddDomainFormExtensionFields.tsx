@@ -81,7 +81,6 @@ import {
   getExtensionFieldKind,
   getExtensionFormKey,
   getExtensionPropertyName,
-  type ExtensionFieldKind,
 } from './AddDomainFormExtensionFields.utils';
 
 interface AddDomainFormExtensionFieldsProps {
@@ -588,12 +587,18 @@ const TimeIntervalExtensionField = ({
           name={fieldName}
           rules={{
             required: isRequired ? requiredMessage : false,
-            validate: (value) =>
-              value === undefined ||
-              value === '' ||
-              (Number.isFinite(Number(value)) &&
-                Number.isInteger(Number(value))) ||
-              t('label.field-invalid', { field: inputLabel }),
+            validate: (value) => {
+              const isEmptyValue = value === undefined || value === '';
+              const isValidInteger =
+                Number.isFinite(Number(value)) &&
+                Number.isInteger(Number(value));
+
+              return (
+                isEmptyValue ||
+                isValidInteger ||
+                t('label.field-invalid', { field: inputLabel })
+              );
+            },
           }}>
           {({ field, fieldState }) => (
             <Input
@@ -689,13 +694,14 @@ const TableExtensionInput = ({
   value: unknown;
 }) => {
   const { t } = useTranslation();
-  const initialRows =
+  const isRowsObject =
     typeof value === 'object' &&
     value !== null &&
     'rows' in value &&
-    Array.isArray(value.rows)
-      ? (value.rows as Record<string, string>[])
-      : [];
+    Array.isArray(value.rows);
+  const initialRows = isRowsObject
+    ? (value as { rows: Record<string, string>[] }).rows
+    : [];
   const [dataSource, setDataSource] = useState<Record<string, string>[]>(() =>
     initialRows.map((row) => ({ ...row }))
   );
@@ -861,56 +867,6 @@ const ReferenceExtensionField = ({
   return <Box direction="col">{getField(field)}</Box>;
 };
 
-type SimpleExtensionFieldKind = 'duration' | 'email' | 'enum' | 'text';
-
-const getEnumConfig = (definition: CustomProperty) => {
-  const config = definition.customPropertyConfig?.config;
-
-  return typeof config === 'object' && !Array.isArray(config)
-    ? config
-    : undefined;
-};
-
-const getSimpleFieldRules = (
-  kind: SimpleExtensionFieldKind,
-  isRequired: boolean,
-  requiredMessage: string,
-  emailInvalidMessage: string
-): RegisterOptions => {
-  const rules: RegisterOptions = {
-    required: isRequired ? requiredMessage : false,
-  };
-  if (kind === 'email') {
-    rules.pattern = {
-      message: emailInvalidMessage,
-      value: EMAIL_REG_EX,
-    };
-  }
-
-  return rules;
-};
-
-const getEnumFieldPropsAndType = (
-  kind: SimpleExtensionFieldKind,
-  enumConfig: ReturnType<typeof getEnumConfig>
-) => {
-  if (kind !== 'enum') {
-    return { props: {}, type: FieldTypes.TEXT };
-  }
-
-  return {
-    props: {
-      multiple: enumConfig?.multiSelect,
-      options: (enumConfig?.values ?? []).map((value) => ({
-        id: value,
-        label: value,
-        value,
-      })),
-    },
-    type: enumConfig?.multiSelect ? FieldTypes.MULTI_SELECT : FieldTypes.SELECT,
-  };
-};
-
 const SimpleExtensionField = ({
   dataTestId,
   definition,
@@ -921,31 +877,50 @@ const SimpleExtensionField = ({
   name,
   requiredMessage,
 }: ExtensionFieldProps & {
-  kind: SimpleExtensionFieldKind;
+  kind: 'duration' | 'email' | 'enum' | 'text';
 }) => {
   const { t } = useTranslation();
-  const enumConfig = getEnumConfig(definition);
-  const rules = getSimpleFieldRules(
-    kind,
-    isRequired,
-    requiredMessage,
-    t('message.email-is-invalid')
-  );
+  const config = definition.customPropertyConfig?.config;
+  const enumConfig =
+    typeof config === 'object' && !Array.isArray(config) ? config : undefined;
+  const rules: RegisterOptions = {
+    required: isRequired ? requiredMessage : false,
+  };
+  if (kind === 'email') {
+    rules.pattern = {
+      message: t('message.email-is-invalid'),
+      value: EMAIL_REG_EX,
+    };
+  }
   const durationHint =
     kind === 'duration' ? t('message.duration-in-iso-format') : undefined;
-  const { props: kindProps, type } = getEnumFieldPropsAndType(kind, enumConfig);
   const field: FieldProp = {
     id: `root/${name.replace('.', '/')}`,
     label: labelNode,
     name,
-    placeholder: durationHint ?? label,
+    placeholder:
+      kind === 'duration' ? t('message.duration-in-iso-format') : label,
     props: {
       'data-testid': dataTestId,
-      ...kindProps,
+      ...(kind === 'enum'
+        ? {
+            multiple: enumConfig?.multiSelect,
+            options: (enumConfig?.values ?? []).map((value) => ({
+              id: value,
+              label: value,
+              value,
+            })),
+          }
+        : {}),
     },
     required: isRequired,
     rules,
-    type,
+    type:
+      kind === 'enum'
+        ? enumConfig?.multiSelect
+          ? FieldTypes.MULTI_SELECT
+          : FieldTypes.SELECT
+        : FieldTypes.TEXT,
   };
 
   return (
@@ -998,27 +973,6 @@ const MissingDefinitionField = ({
       )}
     </FormField>
   );
-};
-
-const EXTENSION_FIELD_RENDERERS: Record<
-  ExtensionFieldKind,
-  (props: ExtensionFieldProps) => ReactNode
-> = {
-  date: (props) => <DateTimeExtensionField {...props} type="date" />,
-  dateTime: (props) => <DateTimeExtensionField {...props} type="dateTime" />,
-  time: (props) => <DateTimeExtensionField {...props} type="time" />,
-  hyperlink: (props) => <HyperlinkExtensionField {...props} />,
-  markdown: (props) => <MarkdownExtensionField {...props} />,
-  number: (props) => <NumberExtensionField {...props} />,
-  reference: (props) => <ReferenceExtensionField {...props} />,
-  sqlQuery: (props) => <SqlQueryExtensionField {...props} />,
-  table: (props) => <TableExtensionField {...props} />,
-  timeInterval: (props) => <TimeIntervalExtensionField {...props} />,
-  timestamp: (props) => <NumberExtensionField {...props} timestamp />,
-  duration: (props) => <SimpleExtensionField {...props} kind="duration" />,
-  email: (props) => <SimpleExtensionField {...props} kind="email" />,
-  enum: (props) => <SimpleExtensionField {...props} kind="enum" />,
-  text: (props) => <SimpleExtensionField {...props} kind="text" />,
 };
 
 const ExtensionField = ({
@@ -1079,7 +1033,33 @@ const ExtensionField = ({
   };
   const kind = getExtensionFieldKind(definition?.propertyType.name);
 
-  return EXTENSION_FIELD_RENDERERS[kind](commonProps);
+  switch (kind) {
+    case 'date':
+    case 'dateTime':
+    case 'time':
+      return <DateTimeExtensionField {...commonProps} type={kind} />;
+    case 'hyperlink':
+      return <HyperlinkExtensionField {...commonProps} />;
+    case 'markdown':
+      return <MarkdownExtensionField {...commonProps} />;
+    case 'number':
+      return <NumberExtensionField {...commonProps} />;
+    case 'reference':
+      return <ReferenceExtensionField {...commonProps} />;
+    case 'sqlQuery':
+      return <SqlQueryExtensionField {...commonProps} />;
+    case 'table':
+      return <TableExtensionField {...commonProps} />;
+    case 'timeInterval':
+      return <TimeIntervalExtensionField {...commonProps} />;
+    case 'timestamp':
+      return <NumberExtensionField {...commonProps} timestamp />;
+    case 'duration':
+    case 'email':
+    case 'enum':
+    case 'text':
+      return <SimpleExtensionField {...commonProps} kind={kind} />;
+  }
 };
 
 const AddDomainFormExtensionFields = ({

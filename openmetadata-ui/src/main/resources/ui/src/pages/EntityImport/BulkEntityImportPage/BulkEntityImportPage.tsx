@@ -37,7 +37,14 @@ import type { RcFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { unparse } from 'papaparse';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   Column,
   ColumnOrColumnGroup,
@@ -58,6 +65,7 @@ import {
 } from '../../../components/common/EntityImport/OperationCell/OperationCell.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import UploadFile from '../../../components/UploadFile/UploadFile';
 import {
@@ -65,9 +73,9 @@ import {
   VALIDATION_STEP,
 } from '../../../constants/BulkImport.constant';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { SOCKET_EVENTS } from '../../../constants/constants';
+import { ROUTES, SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
@@ -110,26 +118,21 @@ import {
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import {
+  getEntityDetailsPath,
+  getTestSuitePath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
 import {
-  ActiveImportBannerProps,
   BulkEntityImportLocationState,
   CSVImportAsyncResponse,
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
-  ImportWizardFooterProps,
-  Step0UploadContentProps,
-  Step1EditGridContentProps,
-  Step2ResultsContentProps,
 } from './BulkEntityImportPage.interface';
-import {
-  getActiveImportBannerMessage,
-  getActiveImportBannerType,
-  getTestCaseBreadcrumbList,
-  getWildcardBreadcrumbList,
-} from './BulkEntityImportPage.utils';
 
 interface SelectedCsvFile {
   content: string;
@@ -160,213 +163,6 @@ const getCsvFileSizeLabel = (bytes = 0) => {
   return `${normalizedSize.toFixed(unitIndex === 0 ? 0 : 1)} ${
     CSV_FILE_SIZE_UNITS[unitIndex]
   }`;
-};
-
-/** Status banner + progress bar for the currently active async import/export job. */
-const ActiveImportBanner = ({
-  activeAsyncImportJob,
-}: ActiveImportBannerProps) => {
-  if (!activeAsyncImportJob) {
-    return null;
-  }
-
-  const isLoading =
-    isEmpty(activeAsyncImportJob.error) &&
-    activeAsyncImportJob.status !== 'IN_PROGRESS';
-  const showProgressBar =
-    activeAsyncImportJob.status === 'IN_PROGRESS' &&
-    activeAsyncImportJob.total !== undefined &&
-    activeAsyncImportJob.total > 0;
-
-  return (
-    <div className="csv-import-banner-stack">
-      <Banner
-        className="border-radius"
-        isLoading={isLoading}
-        message={getActiveImportBannerMessage(activeAsyncImportJob)}
-        type={getActiveImportBannerType(activeAsyncImportJob)}
-      />
-      {showProgressBar && (
-        <ProgressBar
-          value={Math.round(
-            ((activeAsyncImportJob.progress ?? 0) /
-              (activeAsyncImportJob.total ?? 1)) *
-              100
-          )}
-        />
-      )}
-    </div>
-  );
-};
-
-/** Previous/cancel/next-or-update footer actions for the multi-step import wizard. */
-const ImportWizardFooter = ({
-  activeStep,
-  isValidating,
-  isRichGridImport,
-  onBack,
-  onCancel,
-  onValidate,
-}: ImportWizardFooterProps) => {
-  const { t } = useTranslation();
-  const validateLabel =
-    activeStep === VALIDATION_STEP.EDIT_VALIDATE && isRichGridImport
-      ? `${t('label.start')} ${t('label.import')}`
-      : activeStep === VALIDATION_STEP.UPDATE
-      ? t('label.update')
-      : t('label.next');
-
-  return (
-    <div className="csv-import-wizard-footer import-footer">
-      {activeStep > 0 && (
-        <Button color="secondary" isDisabled={isValidating} onPress={onBack}>
-          {t('label.previous')}
-        </Button>
-      )}
-      <div className="csv-import-wizard-footer-actions">
-        <Button color="secondary" isDisabled={isValidating} onPress={onCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button color="primary" isDisabled={isValidating} onPress={onValidate}>
-          {validateLabel}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-/** Upload-step body: preview spinner, abort-state card, or the upload form. */
-const Step0UploadContent = ({
-  isCsvPreviewProcessing,
-  abortReason,
-  processingPreview,
-  uploadStep,
-  onRetryCsvUpload,
-}: Step0UploadContentProps) => {
-  const { t } = useTranslation();
-
-  if (isCsvPreviewProcessing) {
-    return <>{processingPreview}</>;
-  }
-
-  if (abortReason) {
-    return (
-      <div className="csv-import-card m-t-lg">
-        <div className="csv-import-abort-state">
-          <p className="text-center" data-testid="abort-reason">
-            <strong className="d-block">{t('label.aborted')}</strong>{' '}
-            {abortReason}
-          </p>
-          <Button
-            color="secondary"
-            data-testid="cancel-button"
-            onPress={onRetryCsvUpload}>
-            {t('label.back')}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{uploadStep}</>;
-};
-
-/** Step-3 body: either the in-progress spinner, or the operation summary + results grid. */
-const Step2ResultsContent = ({
-  isValidating,
-  hasActiveAsyncImportJob,
-  importProgress,
-  validationData,
-  importOperationSummary,
-  validateCSVData,
-  importResultColumns,
-}: Step2ResultsContentProps) => {
-  if (!validationData) {
-    return null;
-  }
-
-  if (isValidating && hasActiveAsyncImportJob) {
-    return <>{importProgress}</>;
-  }
-
-  return (
-    <div className="csv-import-card">
-      <div className="csv-import-stack">
-        <div className="csv-import-results-header">
-          {importOperationSummary && (
-            <OperationSummary
-              operations={IMPORT_OPERATIONS}
-              summary={importOperationSummary}
-            />
-          )}
-          <ImportStatus csvImportResult={validationData} />
-        </div>
-
-        <div>
-          {validateCSVData && (
-            <div className="om-rdg csv-import-results-rdg">
-              <LazyDataGrid
-                className="rdg-light"
-                columns={importResultColumns}
-                rowClass={getImportOperationRowClass}
-                rowHeight={(row: Record<string, string>) =>
-                  getCsvGridRowHeight(row, importResultColumns)
-                }
-                rows={validateCSVData.dataSource}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/** Step-2 body: grid toolbar (status, add row, filter, revert) plus the editable data grid. */
-const Step1EditGridContent = ({
-  validationData,
-  editDataGrid,
-  onAddRow,
-  onToggleRowFilter,
-  onRevertChanges,
-}: Step1EditGridContentProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="csv-import-card">
-      <div className="csv-import-stack">
-        <div className="csv-import-grid-toolbar">
-          <div>
-            {validationData && (
-              <ImportStatus csvImportResult={validationData} />
-            )}
-          </div>
-          <div className="csv-import-action-row">
-            <Button
-              color="secondary"
-              data-testid="add-row-btn"
-              iconLeading={Plus}
-              onPress={onAddRow}>
-              {t('label.add-row')}
-            </Button>
-            <Button
-              color="secondary"
-              iconLeading={FilterLines}
-              onPress={onToggleRowFilter}>
-              {t('label.filter')}
-            </Button>
-            <Button
-              color="secondary"
-              iconLeading={RefreshCcw01}
-              onPress={onRevertChanges}>
-              {t('label.revert-changes')}
-            </Button>
-          </div>
-        </div>
-        {editDataGrid}
-      </div>
-    </div>
-  );
 };
 
 const BulkEntityImportPage = () => {
@@ -480,14 +276,8 @@ const BulkEntityImportPage = () => {
     [location]
   );
   const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
-  const isRichGridImport = useMemo(
-    () => !isBulkEdit && Boolean(bulkEditConfig?.richGrid),
-    [isBulkEdit, bulkEditConfig?.richGrid]
-  );
-  const shouldUseRichEditorGrid = useMemo(
-    () => isBulkEdit || isRichGridImport,
-    [isBulkEdit, isRichGridImport]
-  );
+  const isRichGridImport = !isBulkEdit && Boolean(bulkEditConfig?.richGrid);
+  const shouldUseRichEditorGrid = isBulkEdit || isRichGridImport;
 
   // The router carries the metric-flavored scope shape; the listing pipeline
   // consumes the generic registry shape.
@@ -635,7 +425,23 @@ const BulkEntityImportPage = () => {
 
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
     if (fqn === WILD_CARD_CHAR) {
-      return getWildcardBreadcrumbList(entityType, t);
+      if (entityType === EntityType.METRIC) {
+        return [
+          {
+            name: t('label.metric-plural'),
+            url: ROUTES.METRICS,
+          },
+        ];
+      }
+
+      return [
+        {
+          name: t('label.data-quality'),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_CASES
+          ),
+        },
+      ];
     }
 
     if (!entity) {
@@ -644,16 +450,46 @@ const BulkEntityImportPage = () => {
 
     const breadcrumbEntityType = sourceEntityType ?? entityType;
 
-    if (entityType === EntityType.TEST_CASE) {
-      const testCaseBreadcrumb = getTestCaseBreadcrumbList(
-        breadcrumbEntityType,
+    if (
+      entityType === EntityType.TEST_CASE &&
+      breadcrumbEntityType === EntityType.TABLE
+    ) {
+      const baseBreadcrumb = getBulkEntityBreadcrumbList(
+        EntityType.TABLE,
         entity,
         isBulkEdit,
-        t
+        [
+          {
+            name: t('label.data-quality'),
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              entity.fullyQualifiedName ?? '',
+              EntityTabs.PROFILER,
+              ProfilerTabPath.DATA_QUALITY
+            ),
+          },
+        ]
       );
-      if (testCaseBreadcrumb) {
-        return testCaseBreadcrumb;
-      }
+
+      return baseBreadcrumb;
+    }
+
+    if (
+      entityType === EntityType.TEST_CASE &&
+      breadcrumbEntityType === EntityType.TEST_SUITE
+    ) {
+      return [
+        {
+          name: t('label.test-suite-plural'),
+          url: observabilityRouterClassBase.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES
+          ),
+        },
+        {
+          name: entity.displayName ?? entity.name ?? '',
+          url: getTestSuitePath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
     }
 
     return getBulkEntityBreadcrumbList(
@@ -1175,63 +1011,6 @@ const BulkEntityImportPage = () => {
     ]
   );
 
-  const handleImportJobCompleted = useCallback(
-    (
-      importResults: CSVImportResult | undefined,
-      activeImportJob: CSVImportJobType
-    ) => {
-      setValidationData(importResults);
-      fetchCsvJobs();
-
-      // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
-      // reset to upload step. If rows were processed but all failed, fall through to
-      // show the validation grid so the user can inspect and fix errors.
-      if (
-        ['aborted'].includes(importResults?.status ?? '') ||
-        (importResults?.status === 'failure' &&
-          (importResults?.numberOfRowsProcessed ?? 0) === 0)
-      ) {
-        setValidationData(importResults);
-        handleActiveStepChange(VALIDATION_STEP.UPLOAD);
-        handleResetImportJob();
-
-        return;
-      }
-
-      // If the job is complete and the status is success
-      // and job was for initial load then check if the initial result is available
-      // and then read the initial result
-      if (
-        activeImportJob.type === 'initialLoad' &&
-        activeImportJob.initialResult
-      ) {
-        readString(activeImportJob.initialResult, {
-          worker: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            onCSVReadComplete(results as { data: string[][] });
-            setIsValidating(false);
-          },
-        });
-        handleResetImportJob();
-
-        return;
-      }
-
-      handleImportWebsocketResponseWithActiveStep(
-        importResults as CSVImportResult
-      );
-    },
-    [
-      fetchCsvJobs,
-      handleActiveStepChange,
-      handleResetImportJob,
-      readString,
-      onCSVReadComplete,
-      handleImportWebsocketResponseWithActiveStep,
-    ]
-  );
-
   const handleImportWebsocketResponse = useCallback(
     (websocketResponse: CSVImportAsyncWebsocketResponse) => {
       if (!websocketResponse.jobId) {
@@ -1265,7 +1044,51 @@ const BulkEntityImportPage = () => {
 
         if (websocketResponse.status === 'COMPLETED') {
           appendActiveImportLogLine(t('message.import-csv-job-completed'));
-          handleImportJobCompleted(websocketResponse.result, activeImportJob);
+          const importResults = websocketResponse.result;
+          setValidationData(importResults);
+          fetchCsvJobs();
+
+          // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
+          // reset to upload step. If rows were processed but all failed, fall through to
+          // show the validation grid so the user can inspect and fix errors.
+          if (
+            ['aborted'].includes(importResults?.status ?? '') ||
+            (importResults?.status === 'failure' &&
+              (importResults?.numberOfRowsProcessed ?? 0) === 0)
+          ) {
+            setValidationData(importResults);
+
+            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          // If the job is complete and the status is success
+          // and job was for initial load then check if the initial result is available
+          // and then read the initial result
+          if (
+            activeImportJob.type === 'initialLoad' &&
+            activeImportJob.initialResult
+          ) {
+            readString(activeImportJob.initialResult, {
+              worker: true,
+              skipEmptyLines: true,
+              complete: (results) => {
+                onCSVReadComplete(results as { data: string[][] });
+                setIsValidating(false);
+              },
+            });
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          handleImportWebsocketResponseWithActiveStep(
+            importResults as CSVImportResult
+          );
         }
 
         if (websocketResponse.status === 'FAILED') {
@@ -1280,9 +1103,12 @@ const BulkEntityImportPage = () => {
     [
       isBulkActionProcessingRef,
       activeAsyncImportJobRef,
+      onCSVReadComplete,
       setActiveAsyncImportJob,
+      handleResetImportJob,
       fetchCsvJobs,
-      handleImportJobCompleted,
+      handleActiveStepChange,
+      handleImportWebsocketResponseWithActiveStep,
       appendActiveImportLogLine,
       t,
     ]
@@ -1493,10 +1319,8 @@ const BulkEntityImportPage = () => {
     );
   }, [activeImportLogLines, activePersistedJob?.logs]);
 
-  const isCsvPreviewProcessing = useMemo(
-    () => activeAsyncImportJob?.type === 'initialLoad' && isValidating,
-    [activeAsyncImportJob?.type, isValidating]
-  );
+  const isCsvPreviewProcessing =
+    activeAsyncImportJob?.type === 'initialLoad' && isValidating;
 
   const previewProcessingProgress = useMemo(() => {
     if (activeJobProgress > 0) {
@@ -1851,10 +1675,12 @@ const BulkEntityImportPage = () => {
     </div>
   );
 
-  const shouldRenderMetricImportEditor = useMemo(
-    () => isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE,
-    [isRichGridImport, activeStep]
-  );
+  const shouldRenderMetricImportEditor =
+    isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
+
+  const isAsyncValidationInProgress = isValidating && activeAsyncImportJob;
+  const isRichGridUpdateStep =
+    isRichGridImport && activeStep === VALIDATION_STEP.UPDATE;
 
   const metricImportWorkflowHeaderConfig = useMemo(
     () => ({
@@ -1868,75 +1694,13 @@ const BulkEntityImportPage = () => {
     [entityPluralDisplayName, t, translatedSteps]
   );
 
-  const showBulkEditEntity = useMemo(
-    () => isBulkEdit || shouldRenderMetricImportEditor,
-    [isBulkEdit, shouldRenderMetricImportEditor]
-  );
-
-  const bulkEditEntityDerivedProps = useMemo(
-    () => ({
-      isExportHydrationRequired: isBulkEdit ? !isListingBulkEdit : false,
-      isNextDisabled: isBulkEdit
-        ? bulkEditChangeSummary.changedCellCount === 0
-        : dataSource.length === 0,
-      workflowHeaderConfig: shouldRenderMetricImportEditor
-        ? metricImportWorkflowHeaderConfig
-        : undefined,
-      workflowMode: (shouldRenderMetricImportEditor ? 'import' : 'bulkEdit') as
-        | 'import'
-        | 'bulkEdit',
-    }),
-    [
-      isBulkEdit,
-      isListingBulkEdit,
-      bulkEditChangeSummary.changedCellCount,
-      dataSource.length,
-      shouldRenderMetricImportEditor,
-      metricImportWorkflowHeaderConfig,
-    ]
-  );
-
-  const showUploadFooter = useMemo(
-    () => activeStep === 0 && !validationData?.abortReason,
-    [activeStep, validationData?.abortReason]
-  );
-
-  const showRichGridDoneFooter = useMemo(
-    () =>
-      isRichGridImport &&
-      activeStep === VALIDATION_STEP.UPDATE &&
-      !isValidating,
-    [isRichGridImport, activeStep, isValidating]
-  );
-
-  const showWizardFooter = useMemo(
-    () =>
-      activeStep > 0 &&
-      !(isValidating && activeAsyncImportJob) &&
-      !(isRichGridImport && activeStep === VALIDATION_STEP.UPDATE),
-    [activeStep, isValidating, activeAsyncImportJob, isRichGridImport]
-  );
-
-  const showActiveImportBanner = useMemo(
-    () =>
-      Boolean(activeAsyncImportJob?.jobId) &&
-      !isCsvPreviewProcessing &&
-      activeStep !== VALIDATION_STEP.UPDATE,
-    [activeAsyncImportJob?.jobId, isCsvPreviewProcessing, activeStep]
-  );
-
-  const showStep2Results = useMemo(
-    () => activeStep === 2 && Boolean(validationData),
-    [activeStep, validationData]
-  );
-
   return (
     <PageLayoutV1
       pageTitle={t('label.import-entity', {
         entity: entityType,
       })}>
       <div className="p-x-lg csv-import-page-stack">
-        {showBulkEditEntity ? (
+        {isBulkEdit || shouldRenderMetricImportEditor ? (
           <BulkEditEntity
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
@@ -1955,11 +1719,13 @@ const BulkEntityImportPage = () => {
             handleRevertChanges={handleRevertChanges}
             handleValidate={handleValidate}
             initialDataSource={initialDataSource}
-            isExportHydrationRequired={
-              bulkEditEntityDerivedProps.isExportHydrationRequired
-            }
+            isExportHydrationRequired={isBulkEdit ? !isListingBulkEdit : false}
             isLoadingSourceData={bulkEditLoadState.isLoading}
-            isNextDisabled={bulkEditEntityDerivedProps.isNextDisabled}
+            isNextDisabled={
+              isBulkEdit
+                ? bulkEditChangeSummary.changedCellCount === 0
+                : dataSource.length === 0
+            }
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
             setGridContainer={setGridContainer}
@@ -1967,13 +1733,17 @@ const BulkEntityImportPage = () => {
             validateCSVData={validateCSVData}
             validationData={validationData}
             workflowHeaderConfig={
-              bulkEditEntityDerivedProps.workflowHeaderConfig
+              shouldRenderMetricImportEditor
+                ? metricImportWorkflowHeaderConfig
+                : undefined
             }
-            workflowMode={bulkEditEntityDerivedProps.workflowMode}
+            workflowMode={
+              shouldRenderMetricImportEditor ? 'import' : 'bulkEdit'
+            }
             onCSVReadComplete={onCSVReadComplete}
           />
         ) : (
-          <>
+          <Fragment>
             <CsvWorkflowHeader
               activeStep={activeStep}
               breadcrumbList={breadcrumbList}
@@ -1985,71 +1755,202 @@ const BulkEntityImportPage = () => {
               })}
             />
             <div>
-              {showActiveImportBanner && (
-                <ActiveImportBanner
-                  activeAsyncImportJob={activeAsyncImportJob}
-                />
-              )}
+              {activeAsyncImportJob?.jobId &&
+                !isCsvPreviewProcessing &&
+                activeStep !== VALIDATION_STEP.UPDATE && (
+                  <div className="csv-import-banner-stack">
+                    <Banner
+                      className="border-radius"
+                      isLoading={
+                        isEmpty(activeAsyncImportJob.error) &&
+                        activeAsyncImportJob.status !== 'IN_PROGRESS'
+                      }
+                      message={
+                        activeAsyncImportJob.error ??
+                        activeAsyncImportJob.message ??
+                        ''
+                      }
+                      type={
+                        activeAsyncImportJob.error
+                          ? 'error'
+                          : activeAsyncImportJob.status === 'IN_PROGRESS'
+                          ? 'info'
+                          : 'success'
+                      }
+                    />
+                    {activeAsyncImportJob.status === 'IN_PROGRESS' &&
+                      activeAsyncImportJob.total !== undefined &&
+                      activeAsyncImportJob.total > 0 && (
+                        <ProgressBar
+                          value={
+                            activeAsyncImportJob.total > 0
+                              ? Math.round(
+                                  ((activeAsyncImportJob.progress ?? 0) /
+                                    activeAsyncImportJob.total) *
+                                    100
+                                )
+                              : 0
+                          }
+                        />
+                      )}
+                  </div>
+                )}
             </div>
             <div>
               {activeStep === 0 && (
-                <Step0UploadContent
-                  abortReason={validationData?.abortReason}
-                  isCsvPreviewProcessing={isCsvPreviewProcessing}
-                  processingPreview={renderProcessingCsvPreview()}
-                  uploadStep={renderUploadStep()}
-                  onRetryCsvUpload={handleRetryCsvUpload}
-                />
+                <>
+                  {isCsvPreviewProcessing ? (
+                    renderProcessingCsvPreview()
+                  ) : validationData?.abortReason ? (
+                    <div className="csv-import-card m-t-lg">
+                      <div className="csv-import-abort-state">
+                        <p className="text-center" data-testid="abort-reason">
+                          <strong className="d-block">
+                            {t('label.aborted')}
+                          </strong>{' '}
+                          {validationData.abortReason}
+                        </p>
+                        <Button
+                          color="secondary"
+                          data-testid="cancel-button"
+                          onPress={handleRetryCsvUpload}>
+                          {t('label.back')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    renderUploadStep()
+                  )}
+                </>
               )}
               {activeStep === 1 && (
-                <Step1EditGridContent
-                  editDataGrid={editDataGrid}
-                  validationData={validationData}
-                  onAddRow={handleAddRow}
-                  onRevertChanges={handleRevertChanges}
-                  onToggleRowFilter={() =>
-                    setRowFilter((filter) =>
-                      filter === 'all' ? 'failed' : 'all'
-                    )
-                  }
-                />
+                <div className="csv-import-card">
+                  <div className="csv-import-stack">
+                    <div className="csv-import-grid-toolbar">
+                      <div>
+                        {validationData && (
+                          <ImportStatus csvImportResult={validationData} />
+                        )}
+                      </div>
+                      <div className="csv-import-action-row">
+                        <Button
+                          color="secondary"
+                          data-testid="add-row-btn"
+                          iconLeading={Plus}
+                          onPress={handleAddRow}>
+                          {t('label.add-row')}
+                        </Button>
+                        <Button
+                          color="secondary"
+                          iconLeading={FilterLines}
+                          onPress={() =>
+                            setRowFilter((filter) =>
+                              filter === 'all' ? 'failed' : 'all'
+                            )
+                          }>
+                          {t('label.filter')}
+                        </Button>
+                        <Button
+                          color="secondary"
+                          iconLeading={RefreshCcw01}
+                          onPress={handleRevertChanges}>
+                          {t('label.revert-changes')}
+                        </Button>
+                      </div>
+                    </div>
+                    {editDataGrid}
+                  </div>
+                </div>
               )}
-              {showStep2Results && (
-                <Step2ResultsContent
-                  hasActiveAsyncImportJob={Boolean(activeAsyncImportJob)}
-                  importOperationSummary={importOperationSummary}
-                  importProgress={renderImportProgress()}
-                  importResultColumns={importResultColumns}
-                  isValidating={isValidating}
-                  validateCSVData={validateCSVData}
-                  validationData={validationData}
-                />
+              {activeStep === 2 && validationData && (
+                <Fragment>
+                  {isValidating && activeAsyncImportJob ? (
+                    renderImportProgress()
+                  ) : (
+                    <div className="csv-import-card">
+                      <div className="csv-import-stack">
+                        <div className="csv-import-results-header">
+                          {importOperationSummary && (
+                            <OperationSummary
+                              operations={IMPORT_OPERATIONS}
+                              summary={importOperationSummary}
+                            />
+                          )}
+                          <ImportStatus csvImportResult={validationData} />
+                        </div>
+
+                        <div>
+                          {validateCSVData && (
+                            <div className="om-rdg csv-import-results-rdg">
+                              <LazyDataGrid
+                                className="rdg-light"
+                                columns={importResultColumns}
+                                rowClass={getImportOperationRowClass}
+                                rowHeight={(row: Record<string, string>) =>
+                                  getCsvGridRowHeight(row, importResultColumns)
+                                }
+                                rows={validateCSVData.dataSource}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Fragment>
               )}
             </div>
 
-            {showUploadFooter && renderUploadFooter()}
+            {activeStep === 0 &&
+              !validationData?.abortReason &&
+              renderUploadFooter()}
 
-            {showRichGridDoneFooter && (
-              <div className="csv-import-wizard-footer import-footer">
-                <Button color="secondary" onPress={handleRetryCsvUpload}>
-                  {t('label.import-more')}
-                </Button>
-                <Button color="primary" onPress={handleRunInBackground}>
-                  {t('label.done')}
-                </Button>
-              </div>
-            )}
+            {isRichGridImport &&
+              activeStep === VALIDATION_STEP.UPDATE &&
+              !isValidating && (
+                <div className="csv-import-wizard-footer import-footer">
+                  <Button color="secondary" onPress={handleRetryCsvUpload}>
+                    {t('label.import-more')}
+                  </Button>
+                  <Button color="primary" onPress={handleRunInBackground}>
+                    {t('label.done')}
+                  </Button>
+                </div>
+              )}
 
-            {showWizardFooter && (
-              <ImportWizardFooter
-                activeStep={activeStep}
-                isRichGridImport={isRichGridImport}
-                isValidating={isValidating}
-                onBack={handleBack}
-                onCancel={handleRunInBackground}
-                onValidate={handleValidate}
-              />
-            )}
+            {activeStep > 0 &&
+              !isAsyncValidationInProgress &&
+              !isRichGridUpdateStep && (
+                <div className="csv-import-wizard-footer import-footer">
+                  {activeStep > 0 && (
+                    <Button
+                      color="secondary"
+                      isDisabled={isValidating}
+                      onPress={handleBack}>
+                      {t('label.previous')}
+                    </Button>
+                  )}
+                  <div className="csv-import-wizard-footer-actions">
+                    <Button
+                      color="secondary"
+                      isDisabled={isValidating}
+                      onPress={handleRunInBackground}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      color="primary"
+                      isDisabled={isValidating}
+                      onPress={handleValidate}>
+                      {activeStep === VALIDATION_STEP.EDIT_VALIDATE &&
+                      isRichGridImport
+                        ? `${t('label.start')} ${t('label.import')}`
+                        : activeStep === VALIDATION_STEP.UPDATE
+                        ? t('label.update')
+                        : t('label.next')}
+                    </Button>
+                  </div>
+                </div>
+              )}
             {isColumnReferenceOpen && (
               <ModalOverlay
                 isOpen={isColumnReferenceOpen}
@@ -2069,7 +1970,7 @@ const BulkEntityImportPage = () => {
                 </Modal>
               </ModalOverlay>
             )}
-          </>
+          </Fragment>
         )}
       </div>
     </PageLayoutV1>
