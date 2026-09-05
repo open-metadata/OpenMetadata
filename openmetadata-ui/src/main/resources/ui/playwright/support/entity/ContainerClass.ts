@@ -236,8 +236,8 @@ export class ContainerClass extends EntityClass {
       this.entityResponseData.dataModel?.columns?.[0].fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 

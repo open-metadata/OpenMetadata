@@ -174,9 +174,9 @@ export class WorksheetClass extends EntityClass {
       this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
-      spreadsheet: spreadsheetResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
+      spreadsheet: this.spreadsheetResponseData,
     };
   }
 
