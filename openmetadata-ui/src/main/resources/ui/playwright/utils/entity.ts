@@ -36,6 +36,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
 } from './common';
@@ -732,27 +733,7 @@ export const updateDescription = async (
     await editButton.click();
   }
 
-  // `descriptionBox` is page-global, and the edit action can leave two editors
-  // mounted at once: the inline one on the entity page plus the one in the modal
-  // it just opened. `.first()` took whichever came first in DOM order — the
-  // inline editor *behind* the overlay. It is visible, so `toBeVisible()` passed,
-  // and the click then failed on "ant-modal-wrap ... intercepts pointer events",
-  // retrying until the 60s test timeout. Scope to the dialog whenever the edit
-  // opened one; assert a single match either way so a genuinely ambiguous page
-  // fails here, naming the scope to narrow, instead of timing out on a click.
-  const descriptionDialog = page
-    .locator('[role="dialog"]')
-    .filter({ has: page.locator(descriptionBox) });
-
-  let descBox = page.locator(descriptionBox);
-  await expect(async () => {
-    descBox = (await descriptionDialog.count())
-      ? descriptionDialog.locator(descriptionBox)
-      : page.locator(descriptionBox);
-
-    await expect(descBox).toHaveCount(1);
-    await expect(descBox).toBeVisible();
-  }).toPass({ timeout: 15_000 });
+  const descBox = await resolveDescriptionBox(page);
 
   await descBox.click();
   await descBox.clear();

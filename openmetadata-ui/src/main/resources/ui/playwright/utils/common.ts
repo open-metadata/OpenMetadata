@@ -78,6 +78,41 @@ export const fillDescriptionBox = async (
   await editor.fill(value);
 };
 
+/**
+ * Resolve the description editor that an `edit-description` click just opened.
+ *
+ * Editing a description can mount the editor inline on the page or inside a
+ * modal, and on an entity page both can be present at once. `.first()` picks
+ * whichever comes first in the DOM — the inline editor *behind* the overlay. It
+ * is visible, so `toBeVisible()` passes, and the click then fails on
+ * "ant-modal-wrap ... intercepts pointer events" and retries until the test
+ * times out; the trace shows a 45s click on an editor nothing could reach.
+ *
+ * Prefers the editor inside the dialog whenever the edit opened one, and asserts
+ * a single match either way, so a genuinely ambiguous page fails here — naming
+ * the scope that needs narrowing — instead of somewhere downstream. Retrying
+ * covers the modal's enter animation, during which the dialog is not yet
+ * attached.
+ */
+export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: getDescriptionBox(page) });
+
+  let editor = getDescriptionBox(page);
+
+  await expect(async () => {
+    editor = (await descriptionDialog.count())
+      ? getDescriptionBox(descriptionDialog)
+      : getDescriptionBox(page);
+
+    await expect(editor).toHaveCount(1);
+    await expect(editor).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
+  return editor;
+};
+
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',

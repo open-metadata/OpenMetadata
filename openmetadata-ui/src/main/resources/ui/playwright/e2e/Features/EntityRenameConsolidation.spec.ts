@@ -25,6 +25,7 @@ import {
   createNewPage,
   getDescriptionBox,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
@@ -115,9 +116,11 @@ async function updateDescription(
   await page.getByTestId('edit-description').click();
 
   const descriptionBox = '.om-block-editor[contenteditable="true"]';
-  await getDescriptionBox(page).first().click();
-  await getDescriptionBox(page).first().clear();
-  await getDescriptionBox(page).first().fill(description);
+  const editor = await resolveDescriptionBox(page);
+
+  await editor.click();
+  await editor.clear();
+  await editor.fill(description);
 
   const patchResponse = page.waitForResponse(
     (response) =>

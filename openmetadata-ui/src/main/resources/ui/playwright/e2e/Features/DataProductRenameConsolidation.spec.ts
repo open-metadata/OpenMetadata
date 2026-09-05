@@ -26,6 +26,7 @@ import {
   getApiContext,
   getDescriptionBox,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../utils/common';
 import {
@@ -110,9 +111,11 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.getByTestId('edit-description').click();
 
     const descriptionBox = '.om-block-editor[contenteditable="true"]';
-    await getDescriptionBox(page).first().click();
-    await getDescriptionBox(page).first().clear();
-    await getDescriptionBox(page).first().fill(description);
+    const editor = await resolveDescriptionBox(page);
+
+    await editor.click();
+    await editor.clear();
+    await editor.fill(description);
 
     const patchResponse = page.waitForResponse(
       (response) =>

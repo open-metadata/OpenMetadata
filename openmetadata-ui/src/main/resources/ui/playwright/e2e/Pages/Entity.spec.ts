@@ -47,6 +47,7 @@ import {
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
   verifyDomainPropagation,
@@ -1624,8 +1625,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await editDescriptionButton.click();
 
             // Wait for description box to be visible and ready
-            const descBox = getDescriptionBox(page).first();
-            await expect(descBox).toBeVisible();
+            const descBox = await resolveDescriptionBox(page);
             await descBox.clear();
             await descBox.fill(newDescription);
 
