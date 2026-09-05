@@ -345,15 +345,11 @@ jobs:
               --ignore=tests/integration/ssrs
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile || true
+          df -h
 
       - name: Checkout
         uses: actions/checkout@v7
