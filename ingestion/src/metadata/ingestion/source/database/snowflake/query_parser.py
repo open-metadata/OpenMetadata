@@ -13,10 +13,7 @@ Snowflake Query parser module
 """
 
 from abc import ABC
-from collections.abc import Iterable
 from datetime import datetime
-
-from sqlalchemy import event
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -24,13 +21,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.ingestion.source.database.snowflake.queries import (
-    set_session_tag_query,
-)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -84,26 +77,6 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
         ):
             return True
         return False
-
-    def set_session_query_tag(self) -> None:
-        """
-        Register a pool event on the engine so that every connection
-        checked out from the pool gets the QUERY_TAG set automatically.
-        In SA 2.0, each engine.connect() may return a different pooled
-        connection, so setting the tag on a single connection is not enough.
-        """
-        if self.service_connection.queryTag:
-            query_tag = self.service_connection.queryTag
-
-            @event.listens_for(self.engine, "connect")
-            def _set_query_tag(dbapi_connection, connection_record):
-                cursor = dbapi_connection.cursor()
-                cursor.execute(set_session_tag_query(query_tag))
-                cursor.close()
-
-    def get_table_query(self) -> Iterable[TableQuery]:
-        self.set_session_query_tag()
-        yield from super().get_table_query()
 
     def get_database_name(self, data: dict) -> str:  # pylint: disable=arguments-differ
         """

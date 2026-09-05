@@ -696,14 +696,6 @@
       "947b8075bd6922219d5b74538e37a1bf21cb15b562cccdb6eb8c18243c048685": 1,
       "e736d5594b512a99713c3fb001f14ebb9146648b90be54faa82e822c913bb0af": 1
     },
-    "ingestion/src/metadata/ingestion/source/dashboard/grafana/metadata.py": {
-      "19f6bd8f4525394333e0833c2e84c7e42c951bb0f6a6c494928cffd8a271fd79": 1,
-      "1c2431fd916279660681ee89db4a3969dbd2d76e141b05d0357ab84a6a7cdffc": 1,
-      "3b87bfa2bd2af058526733769685154d4ddaa8e805e8c42a7eaff6ca53cbea6b": 1,
-      "637985790153d72012ce6c6a0447753499a61468c38be66f4998fa195c1638b8": 1,
-      "9d9be4196bac263f8054a1b10e81e5c7ce30fd47dbeaf8be207603af4d17d9b9": 1,
-      "d446bfa08dbdabc064f5d2bc9566c9bef8db9694d88bcd6d99c48d4eba86f81e": 1
-    },
     "ingestion/src/metadata/ingestion/source/dashboard/hex/client.py": {
       "baee761583c77b309c6b232156c86faf07e7e4f767868e8353289d090ad0c0e9": 1,
       "fb180810b1e39b224b965074af503a7d163c4b8d2807dcd3fb162e43029b3772": 1

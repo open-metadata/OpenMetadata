@@ -439,7 +439,10 @@ const UserListPageV1 = () => {
   }, [isAdminPage, searchValue]);
 
   const tablePlaceholder = useMemo(() => {
-    return isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue ? (
+    const shouldShowErrorPlaceHolder =
+      isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue;
+
+    return shouldShowErrorPlaceHolder ? (
       errorPlaceHolder
     ) : (
       <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />
