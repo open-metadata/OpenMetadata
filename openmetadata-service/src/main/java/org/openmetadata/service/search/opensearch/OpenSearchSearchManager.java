@@ -192,6 +192,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> response;
     try {
       response = client.search(searchRequest, JsonData.class);
+      validateShardFailures(response, searchRequest.index().toString());
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -230,6 +231,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> response;
     try {
       response = client.search(searchRequest, JsonData.class);
+      validateShardFailures(response, searchRequest.index().toString());
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -320,6 +322,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchResponse<JsonData> response;
       try {
         response = client.search(searchRequest, JsonData.class);
+        validateShardFailures(response, index);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -502,6 +505,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchResponse<JsonData> response;
       try {
         response = client.search(searchRequest, JsonData.class);
+        validateShardFailures(response, index);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -570,18 +574,23 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     LOG.info("Searching with NLQ: {}", request.getQuery());
 
     if (nlqService != null) {
+      String transformedQuery;
       try {
-        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
-        if (transformedQuery == null) {
-          LOG.info("Failed to get Transformed NLQ query");
-          return fallbackToBasicSearch(request, subjectContext);
-        }
+        transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
+      } catch (Exception e) {
+        LOG.error("Error transforming NLQ query: {}", e.getMessage(), e);
+        return fallbackToBasicSearch(request, subjectContext);
+      }
 
-        LOG.debug("Transformed NLQ query: {}", transformedQuery);
+      if (transformedQuery == null) {
+        LOG.info("Failed to get Transformed NLQ query");
+        return fallbackToBasicSearch(request, subjectContext);
+      }
 
-        // Start search operation timing
-        Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      LOG.debug("Transformed NLQ query: {}", transformedQuery);
 
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      try {
         OpenSearchRequestBuilder requestBuilder =
             buildNlqRequestBuilder(request, subjectContext, transformedQuery);
 
@@ -590,11 +599,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
         SearchResponse<JsonData> response =
             client.search(requestBuilder.build(request.getIndex()), JsonData.class);
-
-        // End search operation timing
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
+        validateShardFailures(response, request.getIndex());
 
         // Cache successful queries
         if (response.hits() != null
@@ -604,9 +609,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         }
 
         return Response.status(Response.Status.OK).entity(response.toJsonString()).build();
+      } catch (SearchException e) {
+        throw e;
       } catch (Exception e) {
-        LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
+        LOG.error("Error executing NLQ query: {}", e.getMessage(), e);
         return fallbackToBasicSearch(request, subjectContext);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
       }
     } else {
       return fallbackToBasicSearch(request, subjectContext);
@@ -664,6 +675,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchResponse<JsonData> response;
       try {
         response = client.search(searchRequest, JsonData.class);
+        validateShardFailures(response, request.getIndex());
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -868,9 +880,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return client.search(
-          s -> s.index(indexName).query(restrictToOrgWideMemories(boolQuery)).size(1000),
-          JsonData.class);
+      SearchResponse<JsonData> response =
+          client.search(
+              s -> s.index(indexName).query(restrictToOrgWideMemories(boolQuery)).size(1000),
+              JsonData.class);
+      validateShardFailures(response, indexName);
+      return response;
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1226,6 +1241,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     try {
       SearchResponse<JsonData> searchResponse =
           executeRankedSearch(request, subjectContext, searchSettings, clusterAlias);
+      validateShardFailures(searchResponse, request.getIndex());
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toJsonString()).build();
@@ -1241,6 +1257,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  static void validateShardFailures(SearchResponse<?> searchResponse, String index) {
+    if (searchResponse.shards() != null && searchResponse.shards().failed() > 0) {
+      int failedShards = searchResponse.shards().failed();
+      LOG.error("Search on index '{}' returned {} failed shards", index, failedShards);
+      throw new SearchException(
+          String.format("Search on index '%s' returned %d failed shards", index, failedShards));
     }
   }
 
@@ -1331,7 +1356,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
+      SearchResponse<JsonData> response =
+          client.search(requestBuilder.build(request.getIndex()), JsonData.class);
+      validateShardFailures(response, request.getIndex());
+      return response;
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1351,6 +1379,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
       SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      validateShardFailures(response, request.getIndex());
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
@@ -1600,6 +1629,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> searchResponse;
     try {
       searchResponse = client.search(searchRequest, JsonData.class);
+      validateShardFailures(searchResponse, request.getIndex());
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1812,6 +1842,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchResponse<JsonData> searchResponse;
       try {
         searchResponse = client.search(searchRequest, JsonData.class);
+        validateShardFailures(searchResponse, request.getIndex());
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1848,6 +1879,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> searchResponse;
     try {
       searchResponse = client.search(searchRequest, JsonData.class);
+      validateShardFailures(
+          searchResponse, Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1903,6 +1936,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> searchResponse;
     try {
       searchResponse = client.search(searchRequest, JsonData.class);
+      validateShardFailures(
+          searchResponse, Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -2013,6 +2048,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> searchResponse;
     try {
       searchResponse = client.search(searchRequest, JsonData.class);
+      validateShardFailures(
+          searchResponse, Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
