@@ -14,7 +14,22 @@
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 
-export const ENTITY_UUID_REGEX = /\/([a-f0-9-]{36})$/;
+/**
+ * Pulls the entity id off the tail of an RDF node URI
+ * (`https://open-metadata.org/entity/table/<uuid>`).
+ *
+ * Case-insensitive because RFC 4122 §3 makes UUIDs case-insensitive on input:
+ * OpenMetadata's own ids come from Java's `UUID.toString()` and are always
+ * lowercase, but a graph can also carry externally-authored RDF via the
+ * ontology import, and an uppercase id there would otherwise fall through and
+ * hand the detail panel a full URI instead of an id.
+ *
+ * The 8-4-4-4-12 shape is spelled out rather than matched as 36 hex-or-hyphen
+ * characters, which also accepts things that are not ids at all — a bare run
+ * of 36 hyphens, or any node whose URI happens to end in 36 such characters.
+ */
+export const ENTITY_UUID_REGEX =
+  /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 export const PANEL_WIDTH = 576;
 export const FIT_SCALE_FACTOR = 0.9;
 export const ZOOM_IN_FACTOR = 1.2;

@@ -139,13 +139,23 @@ jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => ({
 
 jest.mock('../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () => ({
   __esModule: true,
-  default: jest.fn(({ handleClosePanel }: { handleClosePanel: () => void }) => (
-    <div data-testid="entity-summary-panel">
-      <button data-testid="close-panel" onClick={handleClosePanel}>
-        Close
-      </button>
-    </div>
-  )),
+  default: jest.fn(
+    ({
+      handleClosePanel,
+      entityDetails,
+    }: {
+      handleClosePanel: () => void;
+      entityDetails?: { details?: { id?: string } };
+    }) => (
+      <div
+        data-entity-id={entityDetails?.details?.id}
+        data-testid="entity-summary-panel">
+        <button data-testid="close-panel" onClick={handleClosePanel}>
+          Close
+        </button>
+      </div>
+    )
+  ),
 }));
 
 jest.mock('../OntologyExplorer/ExportGraphPanel', () => ({
@@ -1491,6 +1501,70 @@ describe('KnowledgeGraph', () => {
       // Blanking the graph on a failed refresh would lose the user's context
       // for no reason — the toast already tells them the refresh failed.
       expect(screen.getByTestId('knowledge-graph-canvas')).toBeInTheDocument();
+    });
+  });
+
+  describe('Entity id extraction for the detail panel', () => {
+    /** Selects a node and returns the id handed to EntitySummaryPanel. */
+    const idPassedToPanel = async (nodeId: string) => {
+      let capturedCtx: { setSelectedNode?: (node: GraphNode | null) => void } =
+        {};
+      (setupGraphEventHandlers as jest.Mock).mockImplementation((ctx) => {
+        capturedCtx = ctx;
+      });
+
+      renderKG();
+      await waitFor(() => expect(setupGraphEventHandlers).toHaveBeenCalled());
+
+      act(() => {
+        capturedCtx.setSelectedNode?.({
+          id: nodeId,
+          label: 'MyTable',
+          type: 'table',
+          fullyQualifiedName: 'db.schema.MyTable',
+        });
+      });
+
+      const panel = await screen.findByTestId('entity-summary-panel');
+
+      return panel.getAttribute('data-entity-id');
+    };
+
+    const BASE = 'https://open-metadata.org/entity/table';
+
+    it('extracts a lowercase uuid from the node URI', async () => {
+      await expect(
+        idPassedToPanel(`${BASE}/f6209fa2-2dda-4887-8591-474238312f4d`)
+      ).resolves.toBe('f6209fa2-2dda-4887-8591-474238312f4d');
+    });
+
+    it('extracts an uppercase uuid, which RFC 4122 permits', async () => {
+      await expect(
+        idPassedToPanel(`${BASE}/F6209FA2-2DDA-4887-8591-474238312F4D`)
+      ).resolves.toBe('F6209FA2-2DDA-4887-8591-474238312F4D');
+    });
+
+    it('extracts a mixed-case uuid', async () => {
+      await expect(
+        idPassedToPanel(`${BASE}/F6209fa2-2DDA-4887-8591-474238312f4d`)
+      ).resolves.toBe('F6209fa2-2DDA-4887-8591-474238312f4d');
+    });
+
+    it('does not mistake a run of 36 hex-or-hyphen characters for a uuid', async () => {
+      // The looser `[a-f0-9-]{36}` form matched this, handing the panel a
+      // meaningless id rather than falling back to the URI.
+      const notAUuid = '-'.repeat(36);
+
+      await expect(idPassedToPanel(`${BASE}/${notAUuid}`)).resolves.toBe(
+        `${BASE}/${notAUuid}`
+      );
+    });
+
+    it('falls back to the full URI when the tail is not a uuid', async () => {
+      const columnUri =
+        'https://open-metadata.org/entity/column/db.schema.tbl.col';
+
+      await expect(idPassedToPanel(columnUri)).resolves.toBe(columnUri);
     });
   });
 });
