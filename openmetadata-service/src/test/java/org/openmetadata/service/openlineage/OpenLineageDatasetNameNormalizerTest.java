@@ -14,6 +14,7 @@
 package org.openmetadata.service.openlineage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -254,6 +255,49 @@ class OpenLineageDatasetNameNormalizerTest {
         OpenLineageDatasetNameNormalizer.extractCandidates("pg://h", "public.users", facets);
 
     assertEquals(List.of("public.users"), tableNames(candidates));
+  }
+
+  @Test
+  void extractGlueCatalogId_bareGlueArn_returnsAccountId() {
+    assertEquals(
+        "181882839756",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws:glue:us-west-2:181882839756"));
+  }
+
+  @Test
+  void extractGlueCatalogId_glueArnWithResourceSuffix_returnsAccountId() {
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws:glue:eu-west-1:048372910264:table/data_dev_db_main/fact_adt_event_v2"));
+  }
+
+  @Test
+  void extractGlueCatalogId_nonCommercialPartitions_returnAccountId() {
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws-us-gov:glue:us-gov-west-1:048372910264"),
+        "GovCloud ARNs carry the account id in the same field as commercial ARNs");
+    assertEquals(
+        "048372910264",
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId(
+            "arn:aws-cn:glue:cn-north-1:048372910264:table/db/tbl"));
+  }
+
+  @Test
+  void extractGlueCatalogId_nonGlueNamespace_returnsNull() {
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("s3://experian-bucket"));
+    assertNull(
+        OpenLineageDatasetNameNormalizer.extractGlueCatalogId("arn:aws:athena:us-west-2:1234"));
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId(null));
+  }
+
+  @Test
+  void extractGlueCatalogId_truncatedOrEmptyAccountSegment_returnsNull() {
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("arn:aws:glue:us-west-2"));
+    assertNull(OpenLineageDatasetNameNormalizer.extractGlueCatalogId("arn:aws:glue:us-west-2:"));
   }
 
   @Test

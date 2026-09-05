@@ -21,6 +21,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +52,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.slf4j.LoggerFactory;
 
 class OpenLineageEntityResolverTest {
 
@@ -1983,6 +1988,231 @@ class OpenLineageEntityResolverTest {
           "databricks_svc.catalog_b.sales.new_orders",
           result.getFullyQualifiedName(),
           "Auto-create should place the table under the catalog-qualified schema");
+    }
+  }
+
+  @Test
+  void resolveTable_glueSymlinkAccountIdNamespace_prefersAccountScopedTable() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    SymlinkIdentifier glueSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("arn:aws:glue:eu-west-1:048372910264")
+            .withName("table/data_dev_db_main/fact_adt_event_v2")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets().withSymlinks(new SymlinksFacet().withIdentifiers(List.of(glueSymlink)));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://experian-bucket")
+            .withName("refined/data_dev_db_main.db/fact_adt_event_v2")
+            .withFacets(facets);
+
+    String glueFqn = "aws_glue_catalog_dev.048372910264.data_dev_db_main.fact_adt_event_v2";
+    String athenaFqn = "aws_athena_catalog_dev.default.data_dev_db_main.fact_adt_event_v2";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table glueTable = new Table();
+    glueTable.setId(UUID.randomUUID());
+    glueTable.setName("fact_adt_event_v2");
+    glueTable.setFullyQualifiedName(glueFqn);
+
+    Table athenaTable = new Table();
+    athenaTable.setId(UUID.randomUUID());
+    athenaTable.setName("fact_adt_event_v2");
+    athenaTable.setFullyQualifiedName(athenaFqn);
+
+    EntityReference glueRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(glueFqn);
+
+    EntityReference athenaRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(athenaFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if ("%048372910264.data_dev_db_main.fact_adt_event_v2".equals(suffix)) {
+                  return List.of(glueTable);
+                }
+                if ("%data_dev_db_main.fact_adt_event_v2".equals(suffix)) {
+                  // The account-blind suffix matches both accounts; DB order puts Athena first
+                  return List.of(athenaTable, glueTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(glueFqn), eq(Include.NON_DELETED)))
+          .thenReturn(glueRef);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(athenaFqn), eq(Include.NON_DELETED)))
+          .thenReturn(athenaRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(result);
+      assertEquals(
+          glueFqn,
+          result.getFullyQualifiedName(),
+          "Glue symlink must resolve against the account id in its ARN namespace, "
+              + "not an account-blind schema.table suffix match");
+    }
+  }
+
+  @Test
+  void resolveTable_glueSymlinkNoAccountScopedTable_fallsBackToSuffixMatch() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    SymlinkIdentifier glueSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("arn:aws:glue:eu-west-1:048372910264")
+            .withName("table/data_dev_db_main/fact_adt_event_v2")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets().withSymlinks(new SymlinksFacet().withIdentifiers(List.of(glueSymlink)));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://experian-bucket")
+            .withName("refined/data_dev_db_main.db/fact_adt_event_v2")
+            .withFacets(facets);
+
+    // Glue service ingested with an explicit databaseName, so the database segment is not the
+    // account id and only the account-blind suffix can match.
+    String namedDbFqn = "aws_glue_catalog_dev.my_catalog.data_dev_db_main.fact_adt_event_v2";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table namedDbTable = new Table();
+    namedDbTable.setId(UUID.randomUUID());
+    namedDbTable.setName("fact_adt_event_v2");
+    namedDbTable.setFullyQualifiedName(namedDbFqn);
+
+    EntityReference namedDbRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(namedDbFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if ("%data_dev_db_main.fact_adt_event_v2".equals(suffix)) {
+                  return List.of(namedDbTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(namedDbFqn), eq(Include.NON_DELETED)))
+          .thenReturn(namedDbRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(
+          result,
+          "An unmatched account-id hint must fall through to the existing suffix match, "
+              + "not block resolution");
+      assertEquals(namedDbFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveTable_multipleSuffixMatches_logsAmbiguityWarning() {
+    Logger resolverLogger = (Logger) LoggerFactory.getLogger(OpenLineageEntityResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    resolverLogger.addAppender(appender);
+
+    try {
+      OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+      OpenLineageInputDataset dataset =
+          new OpenLineageInputDataset()
+              .withNamespace("postgresql://host:5432")
+              .withName("public.users");
+
+      String firstFqn = "pg_svc_a.db.public.users";
+      String secondFqn = "pg_svc_b.db.public.users";
+
+      @SuppressWarnings("unchecked")
+      EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+      Fields mockFields = mock(Fields.class);
+
+      Table firstTable = new Table();
+      firstTable.setId(UUID.randomUUID());
+      firstTable.setName("users");
+      firstTable.setFullyQualifiedName(firstFqn);
+
+      Table secondTable = new Table();
+      secondTable.setId(UUID.randomUUID());
+      secondTable.setName("users");
+      secondTable.setFullyQualifiedName(secondFqn);
+
+      EntityReference firstRef =
+          new EntityReference()
+              .withId(UUID.randomUUID())
+              .withType("table")
+              .withFullyQualifiedName(firstFqn);
+
+      try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+        mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+        when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+        when(mockTableRepo.listAll(any(Fields.class), any()))
+            .thenReturn(List.of(firstTable, secondTable));
+        mockedEntity
+            .when(
+                () ->
+                    Entity.getEntityReferenceByName(
+                        eq(Entity.TABLE), eq(firstFqn), eq(Include.NON_DELETED)))
+            .thenReturn(firstRef);
+
+        resolver.resolveTable(dataset);
+      }
+
+      String warnings =
+          appender.list.stream()
+              .filter(event -> event.getLevel() == Level.WARN)
+              .map(ILoggingEvent::getFormattedMessage)
+              .collect(java.util.stream.Collectors.joining("\n"));
+
+      assertTrue(
+          warnings.contains(firstFqn) && warnings.contains(secondFqn),
+          "An ambiguous suffix match must warn with the competing FQNs so the silent "
+              + "wrong-entity pick is diagnosable, got: "
+              + warnings);
+    } finally {
+      resolverLogger.detachAppender(appender);
+      appender.stop();
     }
   }
 

@@ -446,6 +446,68 @@ public class OpenLineageLineageResolutionIT {
     assertNotNull(details, "Edge resolved via Hive warehouse path should exist");
   }
 
+  @Test
+  @Order(14)
+  void glueSymlinkAccountId_prefersAccountScopedTable(TestNamespace ns) throws Exception {
+    String accountId = "123456789012";
+    String tableName = "ol_glue_acct_input_" + uniqueSuffix();
+    String outputName = "ol_glue_acct_output_" + uniqueSuffix();
+
+    // The Glue connector ingests the AWS account id as the OpenMetadata database, so the same
+    // physical table can exist twice under one service: once account-scoped, once not.
+    Database accountDb = Databases.create().name(accountId).in(serviceName).execute();
+    DatabaseSchema accountSchema =
+        DatabaseSchemas.create().name("shopify").in(accountDb.getFullyQualifiedName()).execute();
+    String accountSchemaFqn = accountSchema.getFullyQualifiedName();
+
+    Tables.create()
+        .name(tableName)
+        .inSchema(accountSchemaFqn)
+        .withColumns(DEFAULT_COLUMNS)
+        .execute();
+    Tables.create().name(tableName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Map<String, Object> glueInput =
+        Map.of(
+            "namespace",
+            "s3://it-test-bucket",
+            "name",
+            "warehouse/zone/shopify.db/" + tableName,
+            "facets",
+            Map.of(
+                "symlinks",
+                Map.of(
+                    "identifiers",
+                    List.of(
+                        Map.of(
+                            "namespace", "arn:aws:glue:us-west-2:" + accountId,
+                            "name", "table/shopify/" + tableName,
+                            "type", "TABLE")))));
+
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("glue_account_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(glueInput)
+            .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+            .send();
+
+    JsonNode json = MAPPER.readTree(response);
+    assertEquals("success", json.get("status").asText());
+
+    String outputFqn = schemaFqn + "." + outputName;
+    assertNotNull(
+        fetchOpenLineageEdgeDetailsByFqn(accountSchemaFqn + "." + tableName, outputFqn),
+        "Edge must attach to the table under the account id carried by the Glue ARN namespace");
+    assertNoOpenLineageEdge(
+        schemaFqn + "." + tableName,
+        outputFqn,
+        "Edge must not attach to the same-named table in another database");
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================
@@ -478,44 +540,63 @@ public class OpenLineageLineageResolutionIT {
         "Expected at least one lineage edge, got: " + response);
   }
 
-  @SuppressWarnings("unchecked")
   private static Map<?, ?> fetchOpenLineageEdgeDetails(
       String inputTableName, String outputTableName) {
-    String inputFqn = schemaFqn + "." + inputTableName;
-    String outputFqn = schemaFqn + "." + outputTableName;
+    return fetchOpenLineageEdgeDetailsByFqn(
+        schemaFqn + "." + inputTableName, schemaFqn + "." + outputTableName);
+  }
+
+  private static Map<?, ?> fetchOpenLineageEdgeDetailsByFqn(String inputFqn, String outputFqn) {
     Map<?, ?>[] holder = new Map<?, ?>[1];
-    Awaitility.await("OpenLineage edge from " + inputTableName + " to " + outputTableName)
+    Awaitility.await("OpenLineage edge from " + inputFqn + " to " + outputFqn)
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
         .until(
             () -> {
-              LineageAPI.LineageGraph graph =
-                  LineageAPI.forName$("table", inputFqn).upstream(0).downstream(1).fetch();
-              Map<String, Object> lineage = MAPPER.readValue(graph.getRaw(), Map.class);
-              List<?> edges = (List<?>) lineage.get("downstreamEdges");
-              if (edges == null) {
-                return false;
-              }
-              Map<String, String> nodeIdToFqn = buildNodeIdToFqnMap(lineage);
-              for (Object raw : edges) {
-                Map<?, ?> edge = (Map<?, ?>) raw;
-                Map<?, ?> details = (Map<?, ?>) edge.get("lineageDetails");
-                if (details == null
-                    || !"OpenLineage".equals(details.get("source"))
-                    || details.get("createdAt") == null) {
-                  continue;
-                }
-                Object toEntityId = edge.get("toEntity");
-                String toFqn = toEntityId == null ? null : nodeIdToFqn.get(toEntityId.toString());
-                if (outputFqn.equals(toFqn)) {
-                  holder[0] = details;
-                  return true;
-                }
-              }
-              return false;
+              holder[0] = findOpenLineageEdge(inputFqn, outputFqn);
+              return holder[0] != null;
             });
     return holder[0];
+  }
+
+  /**
+   * Lineage reads are eventually consistent, so a single absence sample can pass simply because
+   * nothing is visible yet. Require the absence to hold for a window instead.
+   */
+  private static void assertNoOpenLineageEdge(String inputFqn, String outputFqn, String message) {
+    Awaitility.await(message)
+        .during(Duration.ofSeconds(3))
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> findOpenLineageEdge(inputFqn, outputFqn) == null);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<?, ?> findOpenLineageEdge(String inputFqn, String outputFqn) throws Exception {
+    LineageAPI.LineageGraph graph =
+        LineageAPI.forName$("table", inputFqn).upstream(0).downstream(1).fetch();
+    Map<String, Object> lineage = MAPPER.readValue(graph.getRaw(), Map.class);
+    List<?> edges = (List<?>) lineage.get("downstreamEdges");
+    if (edges == null) {
+      return null;
+    }
+    Map<String, String> nodeIdToFqn = buildNodeIdToFqnMap(lineage);
+    for (Object raw : edges) {
+      Map<?, ?> edge = (Map<?, ?>) raw;
+      Map<?, ?> details = (Map<?, ?>) edge.get("lineageDetails");
+      if (details == null
+          || !"OpenLineage".equals(details.get("source"))
+          || details.get("createdAt") == null) {
+        continue;
+      }
+      Object toEntityId = edge.get("toEntity");
+      String toFqn = toEntityId == null ? null : nodeIdToFqn.get(toEntityId.toString());
+      if (outputFqn.equals(toFqn)) {
+        return details;
+      }
+    }
+    return null;
   }
 
   @SuppressWarnings("unchecked")
