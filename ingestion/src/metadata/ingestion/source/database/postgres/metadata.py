@@ -57,6 +57,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
 from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
@@ -124,7 +125,7 @@ PGDialect.get_foreign_keys = get_foreign_keys
 PGDialect.get_schema_names = get_schema_names
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
