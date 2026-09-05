@@ -62,7 +62,7 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   })),
 }));
 
-jest.mock('../../common/Table/Table', () => {
+jest.mock('../../common/Table/TableV2', () => {
   return function MockTable({
     columns,
     dataSource,

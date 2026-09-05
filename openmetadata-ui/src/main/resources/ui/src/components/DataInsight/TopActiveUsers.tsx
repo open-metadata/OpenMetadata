@@ -27,8 +27,8 @@ import {
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
-import Table from '../common/Table/Table';
 import { ColumnsType } from '../common/Table/Table.interface';
+import Table from '../common/Table/TableV2';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
