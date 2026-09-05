@@ -93,6 +93,39 @@ const getAreRequiredStepsPassing = (
   );
 };
 
+interface ConnectionTestFlags {
+  isConnectionTestInProgress: boolean;
+  isReadyToTestCard: boolean;
+  isTestConnectionDisabled: boolean;
+}
+
+const computeConnectionTestFlags = (
+  isTestingConnection: boolean,
+  isTestingDisabled: boolean | undefined,
+  isFormValidationPending: boolean,
+  allowTestConn: boolean,
+  isAirflowAvailable: boolean,
+  testStatus: TestStatus | undefined,
+  missingRequiredFieldsCount: number
+): ConnectionTestFlags => {
+  const isConnectionTestInProgress =
+    isTestingConnection || isTestingDisabled || isFormValidationPending;
+
+  const isTestConnectionDisabled =
+    isConnectionTestInProgress || !allowTestConn || !isAirflowAvailable;
+
+  const isReadyToTestCard =
+    !isTestConnectionDisabled &&
+    !testStatus &&
+    missingRequiredFieldsCount === 0;
+
+  return {
+    isConnectionTestInProgress,
+    isReadyToTestCard,
+    isTestConnectionDisabled,
+  };
+};
+
 const getHasOptionalStepsFailing = (
   resultSteps: TestConnectionStepResult[],
   definitionSteps: TestConnectionStep[]
@@ -193,16 +226,16 @@ const TestConnection: FC<TestConnectionProps> = ({
     return shouldTestConnection(connectionType);
   }, [connectionType]);
 
-  const isConnectionTestInProgress =
-    isTestingConnection || isTestingDisabled || isFormValidationPending;
-
-  const isTestConnectionDisabled =
-    isConnectionTestInProgress || !allowTestConn || !isAirflowAvailable;
-
-  const isReadyToTestCard =
-    !isTestConnectionDisabled &&
-    !testStatus &&
-    missingRequiredFieldsCount === 0;
+  const { isReadyToTestCard, isTestConnectionDisabled } =
+    computeConnectionTestFlags(
+      isTestingConnection,
+      isTestingDisabled,
+      isFormValidationPending,
+      allowTestConn,
+      isAirflowAvailable,
+      testStatus,
+      missingRequiredFieldsCount
+    );
 
   const connectionDisplayName = (() => {
     const formData = getData();
@@ -736,64 +769,72 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   // rendering
 
+  function renderAlertCard() {
+    return (
+      <Alert
+        iconOutlined
+        className={cx('tw:mt-3.5')}
+        data-testid={`test-connection-card-${testStatus ?? 'ready-to-test'}`}
+        icon={alertIcon}
+        iconBgColor="white"
+        iconRadius="lg"
+        iconShape="square"
+        iconSize="md"
+        rightContent={
+          <Tooltip title={buttonTooltipTitle}>
+            <Button
+              color={isReadyToTestCard ? 'primary' : 'secondary'}
+              data-testid="test-connection-btn"
+              isDisabled={isTestConnectionDisabled}
+              isLoading={isTestingConnection}
+              size="md"
+              onClick={handleTestConnection}>
+              {connectionButtonLabel}
+            </Button>
+          </Tooltip>
+        }
+        title={connectionCardTitle}
+        variant={alertVariant}>
+        <div
+          className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
+          data-testid="message-container">
+          {connectionCardDescription}
+          {(testStatus || isTestingConnection) && (
+            <Button
+              className="p-0 [&>span]:tw:underline"
+              color="link-color"
+              data-testid="test-connection-details-btn"
+              size="sm"
+              onClick={() => setDialogOpen(true)}>
+              {t('label.view')}
+            </Button>
+          )}
+        </div>
+      </Alert>
+    );
+  }
+
+  function renderSimpleTestButton() {
+    return (
+      <Tooltip title={buttonTooltipTitle}>
+        <Button
+          color="primary"
+          data-testid="test-connection-button"
+          isDisabled={isTestConnectionDisabled}
+          isLoading={isTestingConnection}
+          size="sm"
+          onClick={handleTestConnection}>
+          {t('label.test-entity', {
+            entity: t('label.connection'),
+          })}
+        </Button>
+      </Tooltip>
+    );
+  }
+
   return (
     <>
-      {showDetails ? (
-        <Alert
-          iconOutlined
-          className={cx('tw:mt-3.5')}
-          data-testid={`test-connection-card-${testStatus ?? 'ready-to-test'}`}
-          icon={alertIcon}
-          iconBgColor="white"
-          iconRadius="lg"
-          iconShape="square"
-          iconSize="md"
-          rightContent={
-            <Tooltip title={buttonTooltipTitle}>
-              <Button
-                color={isReadyToTestCard ? 'primary' : 'secondary'}
-                data-testid="test-connection-btn"
-                isDisabled={isTestConnectionDisabled}
-                isLoading={isTestingConnection}
-                size="md"
-                onClick={handleTestConnection}>
-                {connectionButtonLabel}
-              </Button>
-            </Tooltip>
-          }
-          title={connectionCardTitle}
-          variant={alertVariant}>
-          <div
-            className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
-            data-testid="message-container">
-            {connectionCardDescription}
-            {(testStatus || isTestingConnection) && (
-              <Button
-                className="p-0 [&>span]:tw:underline"
-                color="link-color"
-                data-testid="test-connection-details-btn"
-                size="sm"
-                onClick={() => setDialogOpen(true)}>
-                {t('label.view')}
-              </Button>
-            )}
-          </div>
-        </Alert>
-      ) : (
-        <Tooltip title={buttonTooltipTitle}>
-          <Button
-            color="primary"
-            data-testid="test-connection-button"
-            isDisabled={isTestConnectionDisabled}
-            isLoading={isTestingConnection}
-            size="sm"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', {
-              entity: t('label.connection'),
-            })}
-          </Button>
-        </Tooltip>
-      )}
+      {showDetails ? renderAlertCard() : renderSimpleTestButton()}
       <TestConnectionModal
         connectionDisplayName={connectionDisplayName}
         connectionType={connectionType}

@@ -136,3 +136,129 @@ export function getColumnStickyStyle(
 
   return {};
 }
+
+/** Header cell style: sized to its share of the table plus any sticky offset. */
+export function getColumnHeaderStyle(
+  colWidth: number | string | undefined,
+  scrollWidth: number | string | undefined,
+  toColumnWidth: (
+    width: number | string | undefined
+  ) => number | string | undefined,
+  resizableColumns: boolean | undefined,
+  stickyStyle: React.CSSProperties
+): React.CSSProperties {
+  return {
+    ...(colWidth !== undefined
+      ? {
+          width: toColumnWidth(colWidth),
+          ...(scrollWidth !== undefined && typeof colWidth === 'number'
+            ? { minWidth: colWidth }
+            : {}),
+        }
+      : {}),
+    ...(resizableColumns ? { position: 'relative' as const } : {}),
+    ...stickyStyle,
+  };
+}
+
+/** Cell width, matching a header's sizing so columns stay aligned with their cells. */
+export function getCellWidthStyle<T>(
+  cellKey: string,
+  columnWidths: Record<string, number>,
+  colType: ColumnType<T>,
+  scrollWidth: number | string | undefined,
+  toColumnWidth: (
+    width: number | string | undefined
+  ) => number | string | undefined
+): React.CSSProperties {
+  const hasWidth =
+    columnWidths[cellKey] !== undefined || colType.width !== undefined;
+
+  if (!hasWidth) {
+    return {};
+  }
+
+  return {
+    width: toColumnWidth(columnWidths[cellKey] ?? (colType.width as number)),
+    // Scrollable pixel columns only — see the header cell.
+    ...(scrollWidth !== undefined && typeof colType.width === 'number'
+      ? { minWidth: colType.width }
+      : {}),
+  };
+}
+
+/**
+ * `table-fixed`/`table-auto` toggle: resizing always needs fixed (an auto
+ * table re-solves its own widths and swallows the drag); otherwise honour an
+ * explicit `tableLayout`, defaulting to fixed unless the table is sized by
+ * content.
+ */
+export function getTableLayoutClasses(
+  resizableColumns: boolean | undefined,
+  tableLayout: string | undefined,
+  sizeByContent: boolean
+): { fixed: boolean | undefined; auto: boolean | undefined } {
+  return {
+    fixed: resizableColumns || (tableLayout !== 'auto' && !sizeByContent),
+    auto: !resizableColumns && (tableLayout === 'auto' || sizeByContent),
+  };
+}
+
+export function getTableContainerStyle(
+  scrollY: string | number | undefined
+): React.CSSProperties | undefined {
+  return scrollY ? { maxHeight: scrollY, overflowY: 'auto' } : undefined;
+}
+
+export function getTableWidthStyle(
+  scrollWidth: number | string | undefined
+): React.CSSProperties | undefined {
+  return scrollWidth !== undefined
+    ? { width: scrollWidth, minWidth: '100%' }
+    : undefined;
+}
+
+export function getSelectedKeysSet(
+  selectedRowKeys: React.Key[] | undefined
+): Set<string> | undefined {
+  return selectedRowKeys ? new Set(selectedRowKeys.map(String)) : undefined;
+}
+
+export function getSortDescriptorProp(effectiveSort: {
+  columnKey: string | null;
+  direction: 'ascending' | 'descending' | null;
+}): { column: string; direction: 'ascending' | 'descending' } | undefined {
+  return effectiveSort.columnKey && effectiveSort.direction
+    ? { column: effectiveSort.columnKey, direction: effectiveSort.direction }
+    : undefined;
+}
+
+/**
+ * `scroll.x` only counts as a width when it is one — AntD accepts
+ * `scroll={{ x: true }}` to mean "allow sideways scroll, size by content".
+ */
+export function resolveScrollWidth(
+  scrollX: string | number | boolean | undefined
+): string | number | undefined {
+  return typeof scrollX === 'number' || typeof scrollX === 'string'
+    ? scrollX
+    : undefined;
+}
+
+export function resolveShowClientPagination(
+  clientPagination: {
+    hideOnSinglePage: boolean;
+    pageSize: number;
+    serverTotal?: number;
+  } | null,
+  filteredDataSourceLength: number
+): boolean {
+  return Boolean(
+    clientPagination &&
+      !(
+        clientPagination.hideOnSinglePage &&
+        (clientPagination.serverTotal ?? filteredDataSourceLength) <=
+          clientPagination.pageSize
+      )
+  );
+}

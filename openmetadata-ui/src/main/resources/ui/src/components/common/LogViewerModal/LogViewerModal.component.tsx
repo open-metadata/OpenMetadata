@@ -33,6 +33,8 @@ import classNames from 'classnames';
 import {
   ChangeEvent,
   FunctionComponent,
+  ReactNode,
+  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -51,6 +53,384 @@ import {
 import { formatLogPart } from './LogViewerModal.utils';
 import LogViewerToolbarToggle from './LogViewerToolbarToggle.component';
 import { useLogAutoFollow } from './useLogAutoFollow';
+
+interface LogViewerLiveIndicatorProps {
+  isReconnecting: boolean;
+}
+
+const LogViewerLiveIndicator: FunctionComponent<
+  LogViewerLiveIndicatorProps
+> = ({ isReconnecting }) => {
+  const { t } = useTranslation();
+
+  return isReconnecting ? (
+    <span
+      aria-label={t('label.reconnecting')}
+      className="lvm-dot lvm-dot--reconnecting"
+      data-testid="log-viewer-reconnecting-indicator"
+      role="status"
+      title={t('label.reconnecting')}
+    />
+  ) : (
+    <span
+      aria-label={t('label.live')}
+      className="lvm-dot lvm-dot--live"
+      data-testid="log-viewer-live-indicator"
+    />
+  );
+};
+
+interface LogViewerSearchBoxProps {
+  searchText: string;
+  onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}
+
+const LogViewerSearchBox: FunctionComponent<LogViewerSearchBoxProps> = ({
+  searchText,
+  onSearchChange,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="lvm-search">
+      <SearchMd aria-hidden className="lvm-search-icon" />
+      <input
+        aria-label={t('label.search-entity', {
+          entity: t('label.log-lowercase-plural'),
+        })}
+        className="lvm-search-input"
+        data-testid="log-viewer-search"
+        placeholder={t('label.search-entity', {
+          entity: t('label.log-lowercase-plural'),
+        })}
+        type="text"
+        value={searchText}
+        onChange={onSearchChange}
+      />
+    </div>
+  );
+};
+
+interface LogViewerCopyButtonProps {
+  hasCopied: boolean;
+  onCopy: () => void;
+}
+
+const LogViewerCopyButton: FunctionComponent<LogViewerCopyButtonProps> = ({
+  hasCopied,
+  onCopy,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip
+      delay={500}
+      placement="top"
+      title={hasCopied ? t('label.copied') : t('label.copy')}>
+      <TooltipTrigger
+        className="lvm-copy-button"
+        data-testid="log-viewer-copy"
+        onPress={onCopy}>
+        <Copy01 aria-hidden className="lvm-copy-icon" />
+        <span>{hasCopied ? t('label.copied') : t('label.copy')}</span>
+      </TooltipTrigger>
+    </Tooltip>
+  );
+};
+
+interface LogViewerDownloadButtonProps {
+  downloading: boolean;
+  onDownload: () => void;
+}
+
+const LogViewerDownloadButton: FunctionComponent<
+  LogViewerDownloadButtonProps
+> = ({ downloading, onDownload }) => {
+  const { t } = useTranslation();
+
+  return downloading ? (
+    <span className="lvm-icon-button" data-testid="log-viewer-download-loader">
+      <Loader size="x-small" />
+    </span>
+  ) : (
+    <Tooltip delay={500} placement="top" title={t('label.download')}>
+      <TooltipTrigger
+        aria-label={t('label.download')}
+        className="lvm-icon-button"
+        data-testid="log-viewer-download"
+        onPress={onDownload}>
+        <Download01 aria-hidden className="lvm-icon" />
+      </TooltipTrigger>
+    </Tooltip>
+  );
+};
+
+interface LogViewerHeaderActionsProps {
+  isLive: boolean;
+  isReconnecting: boolean;
+  enableSearch: boolean;
+  searchText: string;
+  onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  query: string;
+  matchCount: number;
+  enableCopy: boolean;
+  hasCopied: boolean;
+  onCopyToClipBoard: () => void;
+  followTail: boolean;
+  toggleFollow: () => void;
+  handleJumpToEnd: () => void;
+  wrap: boolean;
+  handleToggleWrap: () => void;
+  isFullScreen: boolean;
+  handleToggleFullScreen: () => void;
+  onDownload?: () => void;
+  downloading: boolean;
+  onClose: () => void;
+  theme: LogViewerModalProps['theme'];
+}
+
+const LogViewerHeaderActions: FunctionComponent<
+  LogViewerHeaderActionsProps
+> = ({
+  isLive,
+  isReconnecting,
+  enableSearch,
+  searchText,
+  onSearchChange,
+  query,
+  matchCount,
+  enableCopy,
+  hasCopied,
+  onCopyToClipBoard,
+  followTail,
+  toggleFollow,
+  handleJumpToEnd,
+  wrap,
+  handleToggleWrap,
+  isFullScreen,
+  handleToggleFullScreen,
+  onDownload,
+  downloading,
+  onClose,
+  theme,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
+      {isLive && <LogViewerLiveIndicator isReconnecting={isReconnecting} />}
+      {enableSearch && (
+        <LogViewerSearchBox
+          searchText={searchText}
+          onSearchChange={onSearchChange}
+        />
+      )}
+      {Boolean(query) && (
+        <span className="lvm-match-count" data-testid="log-viewer-match-count">
+          {`${matchCount} ${t('label.matches')}`}
+        </span>
+      )}
+      {enableCopy && (
+        <LogViewerCopyButton hasCopied={hasCopied} onCopy={onCopyToClipBoard} />
+      )}
+      {isLive && (
+        <LogViewerToolbarToggle
+          icon={<ArrowDown aria-hidden className="lvm-icon" />}
+          isActive={followTail}
+          label={t('label.live-auto-scroll')}
+          testId="log-viewer-follow"
+          onToggle={toggleFollow}
+        />
+      )}
+      <Tooltip delay={500} placement="top" title={t('label.jump-to-end')}>
+        <TooltipTrigger
+          aria-label={t('label.jump-to-end')}
+          className="lvm-icon-button"
+          data-testid="log-viewer-jump-to-end"
+          onPress={handleJumpToEnd}>
+          <ChevronDownDouble aria-hidden className="lvm-icon" />
+        </TooltipTrigger>
+      </Tooltip>
+      <LogViewerToolbarToggle
+        icon={<AlignLeft aria-hidden className="lvm-icon" />}
+        isActive={wrap}
+        label={t('label.wrap')}
+        testId="log-viewer-wrap"
+        onToggle={handleToggleWrap}
+      />
+      <LogViewerToolbarToggle
+        icon={
+          isFullScreen ? (
+            <Minimize01 aria-hidden className="lvm-icon" />
+          ) : (
+            <Maximize01 aria-hidden className="lvm-icon" />
+          )
+        }
+        isActive={isFullScreen}
+        label={
+          isFullScreen
+            ? t('label.exit-full-screen')
+            : t('label.full-screen-view')
+        }
+        testId="log-viewer-fullscreen"
+        onToggle={handleToggleFullScreen}
+      />
+      {onDownload && (
+        <LogViewerDownloadButton
+          downloading={downloading}
+          onDownload={onDownload}
+        />
+      )}
+      <Tooltip delay={500} placement="top" title={t('label.close')}>
+        <CloseButton
+          className="lvm-close-button"
+          data-testid="log-viewer-close"
+          size="sm"
+          theme={theme === 'dark' ? 'dark' : 'light'}
+          onPress={onClose}
+        />
+      </Tooltip>
+    </div>
+  );
+};
+
+interface LogViewerNoticesProps {
+  streamTruncated: boolean;
+  streamError: ReactNode;
+}
+
+const LogViewerNotices: FunctionComponent<LogViewerNoticesProps> = ({
+  streamTruncated,
+  streamError,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {streamTruncated && (
+        <div
+          className="lvm-notice tw:px-4 tw:py-2"
+          data-testid="log-viewer-truncated-notice"
+          role="status">
+          {t('message.log-stream-truncated')}
+        </div>
+      )}
+      {streamError && (
+        <div
+          className="lvm-notice lvm-notice--error tw:px-4 tw:py-2"
+          data-testid="log-viewer-stream-error"
+          role="alert">
+          {streamError}
+        </div>
+      )}
+    </>
+  );
+};
+
+interface LogViewerBodyProps {
+  bodyRef: RefObject<HTMLDivElement>;
+  resolvedLoading: boolean;
+  showEmptyState: boolean;
+  colorize: boolean;
+  resolvedFollow: boolean;
+  lazyLogRef: RefObject<LazyLog>;
+  filteredLogs: string;
+  wrap: boolean;
+  handleScroll: (scrollValues: LogViewerScrollValues) => void;
+}
+
+const LogViewerBody: FunctionComponent<LogViewerBodyProps> = ({
+  bodyRef,
+  resolvedLoading,
+  showEmptyState,
+  colorize,
+  resolvedFollow,
+  lazyLogRef,
+  filteredLogs,
+  wrap,
+  handleScroll,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
+      data-testid="log-viewer-body"
+      ref={bodyRef}>
+      {resolvedLoading ? (
+        <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
+          <Loader />
+        </div>
+      ) : showEmptyState ? (
+        <div
+          className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
+          data-testid="log-viewer-empty">
+          {t('label.no-result-found')}
+        </div>
+      ) : (
+        <LazyLog
+          caseInsensitive
+          enableLineNumbers
+          selectableLines
+          enableSearch={false}
+          extraLines={1}
+          follow={resolvedFollow}
+          formatPart={colorize ? formatLogPart : undefined}
+          ref={lazyLogRef}
+          rowHeight={25}
+          text={filteredLogs}
+          wrapLines={wrap}
+          onScroll={handleScroll}
+        />
+      )}
+    </div>
+  );
+};
+
+interface LogViewerFooterProps {
+  status: LogViewerModalProps['status'];
+  resolvedTotalLines?: number;
+  runId?: string;
+  lastRun?: string;
+}
+
+const LogViewerFooter: FunctionComponent<LogViewerFooterProps> = ({
+  status,
+  resolvedTotalLines,
+  runId,
+  lastRun,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="lvm-footer tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-2"
+      data-testid="log-viewer-footer">
+      <div className="lvm-footer-left">
+        {status && (
+          <span
+            className={classNames(
+              'lvm-status',
+              `lvm-status--${status.tone ?? 'muted'}`
+            )}
+            data-testid="log-viewer-status">
+            <span aria-hidden className="lvm-status-dot" />
+            {status.label}
+          </span>
+        )}
+        {resolvedTotalLines !== undefined && (
+          <span data-testid="log-viewer-total-lines">
+            {`${resolvedTotalLines} ${t('label.line-plural').toLowerCase()}`}
+          </span>
+        )}
+      </div>
+      <div className="lvm-footer-right">
+        {runId && <span data-testid="log-viewer-run-id">{runId}</span>}
+        {lastRun && <span data-testid="log-viewer-last-run">{lastRun}</span>}
+      </div>
+    </div>
+  );
+};
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
@@ -242,221 +622,52 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                   {title}
                 </span>
               </div>
-              <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
-                {isLive &&
-                  (isReconnecting ? (
-                    <span
-                      aria-label={t('label.reconnecting')}
-                      className="lvm-dot lvm-dot--reconnecting"
-                      data-testid="log-viewer-reconnecting-indicator"
-                      role="status"
-                      title={t('label.reconnecting')}
-                    />
-                  ) : (
-                    <span
-                      aria-label={t('label.live')}
-                      className="lvm-dot lvm-dot--live"
-                      data-testid="log-viewer-live-indicator"
-                    />
-                  ))}
-                {enableSearch && (
-                  <div className="lvm-search">
-                    <SearchMd aria-hidden className="lvm-search-icon" />
-                    <input
-                      aria-label={t('label.search-entity', {
-                        entity: t('label.log-lowercase-plural'),
-                      })}
-                      className="lvm-search-input"
-                      data-testid="log-viewer-search"
-                      placeholder={t('label.search-entity', {
-                        entity: t('label.log-lowercase-plural'),
-                      })}
-                      type="text"
-                      value={searchText}
-                      onChange={handleSearchChange}
-                    />
-                  </div>
-                )}
-                {Boolean(query) && (
-                  <span
-                    className="lvm-match-count"
-                    data-testid="log-viewer-match-count">
-                    {`${matchCount} ${t('label.matches')}`}
-                  </span>
-                )}
-                {enableCopy && (
-                  <Tooltip
-                    delay={500}
-                    placement="top"
-                    title={hasCopied ? t('label.copied') : t('label.copy')}>
-                    <TooltipTrigger
-                      className="lvm-copy-button"
-                      data-testid="log-viewer-copy"
-                      onPress={() => onCopyToClipBoard(resolvedLogs)}>
-                      <Copy01 aria-hidden className="lvm-copy-icon" />
-                      <span>
-                        {hasCopied ? t('label.copied') : t('label.copy')}
-                      </span>
-                    </TooltipTrigger>
-                  </Tooltip>
-                )}
-                {isLive && (
-                  <LogViewerToolbarToggle
-                    icon={<ArrowDown aria-hidden className="lvm-icon" />}
-                    isActive={followTail}
-                    label={t('label.live-auto-scroll')}
-                    testId="log-viewer-follow"
-                    onToggle={toggleFollow}
-                  />
-                )}
-                <Tooltip
-                  delay={500}
-                  placement="top"
-                  title={t('label.jump-to-end')}>
-                  <TooltipTrigger
-                    aria-label={t('label.jump-to-end')}
-                    className="lvm-icon-button"
-                    data-testid="log-viewer-jump-to-end"
-                    onPress={handleJumpToEnd}>
-                    <ChevronDownDouble aria-hidden className="lvm-icon" />
-                  </TooltipTrigger>
-                </Tooltip>
-                <LogViewerToolbarToggle
-                  icon={<AlignLeft aria-hidden className="lvm-icon" />}
-                  isActive={wrap}
-                  label={t('label.wrap')}
-                  testId="log-viewer-wrap"
-                  onToggle={handleToggleWrap}
-                />
-                <LogViewerToolbarToggle
-                  icon={
-                    isFullScreen ? (
-                      <Minimize01 aria-hidden className="lvm-icon" />
-                    ) : (
-                      <Maximize01 aria-hidden className="lvm-icon" />
-                    )
-                  }
-                  isActive={isFullScreen}
-                  label={
-                    isFullScreen
-                      ? t('label.exit-full-screen')
-                      : t('label.full-screen-view')
-                  }
-                  testId="log-viewer-fullscreen"
-                  onToggle={handleToggleFullScreen}
-                />
-                {onDownload &&
-                  (downloading ? (
-                    <span
-                      className="lvm-icon-button"
-                      data-testid="log-viewer-download-loader">
-                      <Loader size="x-small" />
-                    </span>
-                  ) : (
-                    <Tooltip
-                      delay={500}
-                      placement="top"
-                      title={t('label.download')}>
-                      <TooltipTrigger
-                        aria-label={t('label.download')}
-                        className="lvm-icon-button"
-                        data-testid="log-viewer-download"
-                        onPress={onDownload}>
-                        <Download01 aria-hidden className="lvm-icon" />
-                      </TooltipTrigger>
-                    </Tooltip>
-                  ))}
-                <Tooltip delay={500} placement="top" title={t('label.close')}>
-                  <CloseButton
-                    className="lvm-close-button"
-                    data-testid="log-viewer-close"
-                    size="sm"
-                    theme={theme === 'dark' ? 'dark' : 'light'}
-                    onPress={onClose}
-                  />
-                </Tooltip>
-              </div>
+              <LogViewerHeaderActions
+                downloading={downloading}
+                enableCopy={enableCopy}
+                enableSearch={enableSearch}
+                followTail={followTail}
+                handleJumpToEnd={handleJumpToEnd}
+                handleToggleFullScreen={handleToggleFullScreen}
+                handleToggleWrap={handleToggleWrap}
+                hasCopied={hasCopied}
+                isFullScreen={isFullScreen}
+                isLive={isLive}
+                isReconnecting={isReconnecting}
+                matchCount={matchCount}
+                query={query}
+                searchText={searchText}
+                theme={theme}
+                toggleFollow={toggleFollow}
+                wrap={wrap}
+                onClose={onClose}
+                onCopyToClipBoard={() => onCopyToClipBoard(resolvedLogs)}
+                onDownload={onDownload}
+                onSearchChange={handleSearchChange}
+              />
             </div>
-            {streamTruncated && (
-              <div
-                className="lvm-notice tw:px-4 tw:py-2"
-                data-testid="log-viewer-truncated-notice"
-                role="status">
-                {t('message.log-stream-truncated')}
-              </div>
-            )}
-            {streamError && (
-              <div
-                className="lvm-notice lvm-notice--error tw:px-4 tw:py-2"
-                data-testid="log-viewer-stream-error"
-                role="alert">
-                {streamError}
-              </div>
-            )}
-            <div
-              className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
-              data-testid="log-viewer-body"
-              ref={bodyRef}>
-              {resolvedLoading ? (
-                <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
-                  <Loader />
-                </div>
-              ) : showEmptyState ? (
-                <div
-                  className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
-                  data-testid="log-viewer-empty">
-                  {t('label.no-result-found')}
-                </div>
-              ) : (
-                <LazyLog
-                  caseInsensitive
-                  enableLineNumbers
-                  selectableLines
-                  enableSearch={false}
-                  extraLines={1}
-                  follow={resolvedFollow}
-                  formatPart={colorize ? formatLogPart : undefined}
-                  ref={lazyLogRef}
-                  rowHeight={25}
-                  text={filteredLogs}
-                  wrapLines={wrap}
-                  onScroll={handleScroll}
-                />
-              )}
-            </div>
+            <LogViewerNotices
+              streamError={streamError}
+              streamTruncated={streamTruncated}
+            />
+            <LogViewerBody
+              bodyRef={bodyRef}
+              colorize={colorize}
+              filteredLogs={filteredLogs}
+              handleScroll={handleScroll}
+              lazyLogRef={lazyLogRef}
+              resolvedFollow={resolvedFollow}
+              resolvedLoading={resolvedLoading}
+              showEmptyState={showEmptyState}
+              wrap={wrap}
+            />
             {hasFooter && (
-              <div
-                className="lvm-footer tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-2"
-                data-testid="log-viewer-footer">
-                <div className="lvm-footer-left">
-                  {status && (
-                    <span
-                      className={classNames(
-                        'lvm-status',
-                        `lvm-status--${status.tone ?? 'muted'}`
-                      )}
-                      data-testid="log-viewer-status">
-                      <span aria-hidden className="lvm-status-dot" />
-                      {status.label}
-                    </span>
-                  )}
-                  {resolvedTotalLines !== undefined && (
-                    <span data-testid="log-viewer-total-lines">
-                      {`${resolvedTotalLines} ${t(
-                        'label.line-plural'
-                      ).toLowerCase()}`}
-                    </span>
-                  )}
-                </div>
-                <div className="lvm-footer-right">
-                  {runId && (
-                    <span data-testid="log-viewer-run-id">{runId}</span>
-                  )}
-                  {lastRun && (
-                    <span data-testid="log-viewer-last-run">{lastRun}</span>
-                  )}
-                </div>
-              </div>
+              <LogViewerFooter
+                lastRun={lastRun}
+                resolvedTotalLines={resolvedTotalLines}
+                runId={runId}
+                status={status}
+              />
             )}
           </div>
         </AriaDialog>

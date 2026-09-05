@@ -81,7 +81,9 @@ import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
-import Searchbar from '../SearchBarComponent/SearchBar.component';
+import Searchbar, {
+  SearchBarProps,
+} from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
 import type {
   ColumnsType,
@@ -103,9 +105,18 @@ import type {
 } from './TableV2.interface';
 import {
   flattenTreeRows,
+  getCellWidthStyle,
+  getColumnHeaderStyle,
   getColumnStickyStyle,
+  getSelectedKeysSet,
+  getSortDescriptorProp,
+  getTableContainerStyle,
+  getTableLayoutClasses,
+  getTableWidthStyle,
   resolveCellValue,
   resolveColumnTitle,
+  resolveScrollWidth,
+  resolveShowClientPagination,
 } from './TableV2Utils';
 
 /**
@@ -168,6 +179,18 @@ const toCoreSize = (size: TableComponentProps<never>['size']) =>
   CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
+ * The core `Table` root's `size` prop only accepts `'sm' | 'md'` today — the
+ * `'compact'` cell-padding step above has no matching row/header density in
+ * the core component yet, so it collapses to the nearest supported size
+ * rather than a table density it doesn't implement.
+ */
+const toCoreTableSize = (size: TableComponentProps<never>['size']) => {
+  const coreSize = toCoreSize(size);
+
+  return coreSize === 'compact' ? 'sm' : coreSize;
+};
+
+/**
  * Cell padding per AntD size.
  *
  * The core `Table.Cell` sizes its own padding, but every cell here also carries
@@ -187,6 +210,38 @@ const toCellPaddingClass = (size: TableComponentProps<never>['size']) =>
   CELL_PADDING_BY_ANTD_SIZE[size ?? 'middle'] ??
   CELL_PADDING_BY_ANTD_SIZE.middle;
 
+const resolvePageSize = (
+  pageSizeOverride: number | null,
+  cfg: TablePaginationConfig
+): number => pageSizeOverride ?? (cfg.pageSize as number) ?? DEFAULT_PAGE_SIZE;
+
+/**
+ * A `total` larger than the rows in hand means the parent fetched one page
+ * and is driving the rest itself. AntD renders those rows as-is and reports
+ * page changes through `onChange`; slicing them again would leave every
+ * page after the first empty.
+ */
+const resolveServerTotal = (
+  cfg: TablePaginationConfig,
+  rowCount: number
+): number | undefined =>
+  typeof cfg.total === 'number' && cfg.total > rowCount ? cfg.total : undefined;
+
+const resolveControlledCurrent = (
+  cfg: TablePaginationConfig
+): number | undefined =>
+  typeof cfg.current === 'number' ? cfg.current : undefined;
+
+interface ClientPaginationConfig {
+  controlledCurrent?: number;
+  hideOnSinglePage: boolean;
+  onShowSizeChange: TablePaginationConfig['onShowSizeChange'];
+  pageSize: number;
+  pageSizeOptions: number[];
+  serverTotal?: number;
+  showSizeChanger: boolean;
+}
+
 /**
  * Internal pagination is off whenever the parent owns paging, so a server page
  * is never sliced a second time.
@@ -196,28 +251,20 @@ const resolveClientPagination = <T,>(
   pageSizeOverride: number | null,
   hasParentPagination: boolean,
   rowCount: number
-) => {
+): ClientPaginationConfig | null => {
   if (pagination === false || hasParentPagination) {
     return null;
   }
   const cfg = (pagination ?? {}) as TablePaginationConfig;
 
   return {
-    pageSize: pageSizeOverride ?? (cfg.pageSize as number) ?? DEFAULT_PAGE_SIZE,
+    pageSize: resolvePageSize(pageSizeOverride, cfg),
     hideOnSinglePage: cfg.hideOnSinglePage ?? false,
     showSizeChanger: cfg.showSizeChanger ?? false,
     pageSizeOptions: (cfg.pageSizeOptions ?? []).map(Number),
     onShowSizeChange: cfg.onShowSizeChange,
-    // A `total` larger than the rows in hand means the parent fetched one page
-    // and is driving the rest itself. AntD renders those rows as-is and reports
-    // page changes through `onChange`; slicing them again would leave every
-    // page after the first empty.
-    serverTotal:
-      typeof cfg.total === 'number' && cfg.total > rowCount
-        ? cfg.total
-        : undefined,
-    controlledCurrent:
-      typeof cfg.current === 'number' ? cfg.current : undefined,
+    serverTotal: resolveServerTotal(cfg, rowCount),
+    controlledCurrent: resolveControlledCurrent(cfg),
   };
 };
 
@@ -426,6 +473,284 @@ const getColumnKeys = <T,>(columns: ColumnsType<T>): string[] =>
 const getColumnIds = (columnKeys: string[]): string[] =>
   disambiguate(columnKeys.map((key) => `${COLUMN_ID_PREFIX}${key}`));
 
+interface ColumnCustomizeDropdownProps {
+  columnDropdownSelections: string[];
+  dropdownColumnList: TableColumnDropdownList[];
+  onBulkAction: () => void;
+  onMoveItem: (updatedList: TableColumnDropdownList[]) => void;
+  onSelect: (key: string, selected: boolean) => void;
+}
+
+/** The "customize columns" dropdown hung off the toolbar's filter row. */
+const ColumnCustomizeDropdown = ({
+  columnDropdownSelections,
+  dropdownColumnList,
+  onBulkAction,
+  onMoveItem,
+  onSelect,
+}: ColumnCustomizeDropdownProps) => {
+  const { t } = useTranslation();
+  const allSelected =
+    dropdownColumnList.length === columnDropdownSelections.length;
+
+  return (
+    <Dropdown.Root>
+      <Button
+        color="tertiary"
+        data-testid="column-dropdown"
+        iconLeading={ColumnIcon}
+        size="sm"
+        title={t('label.show-or-hide-column-plural')}>
+        {t('label.customize')}
+      </Button>
+      <Dropdown.Popover>
+        <Dropdown.Menu>
+          <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
+            <Typography
+              className="tw:text-tertiary"
+              data-testid="column-dropdown-title"
+              weight="medium">
+              {t('label.column')}
+            </Typography>
+            <Button
+              color="link-color"
+              data-testid="column-dropdown-action-button"
+              size="xs"
+              onClick={onBulkAction}>
+              {allSelected ? t('label.hide-all') : t('label.view-all')}
+            </Button>
+          </Dropdown.SectionHeader>
+
+          <Dropdown.Separator />
+          <Dropdown.Section>
+            {dropdownColumnList.map((item, index) => (
+              <DraggableMenuItemV2
+                currentItem={item}
+                index={index}
+                itemList={dropdownColumnList}
+                key={item.value}
+                selectedOptions={columnDropdownSelections}
+                onMoveItem={onMoveItem}
+                onSelect={onSelect}
+              />
+            ))}
+          </Dropdown.Section>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+interface TableToolbarProps {
+  columnDropdownSelections: string[];
+  dropdownColumnList: TableColumnDropdownList[];
+  extraTableFilters?: ReactNode;
+  extraTableFiltersClassName?: string;
+  isCustomizeColumnEnable: boolean;
+  onBulkColumnAction: () => void;
+  onMoveColumnItem: (updatedList: TableColumnDropdownList[]) => void;
+  onSearch: (value: string) => void;
+  onSelectColumnItem: (key: string, selected: boolean) => void;
+  searchProps?: SearchBarProps;
+}
+
+/** Search box and extra/customize-column filters row above the table. */
+const TableToolbar = ({
+  columnDropdownSelections,
+  dropdownColumnList,
+  extraTableFilters,
+  extraTableFiltersClassName,
+  isCustomizeColumnEnable,
+  onBulkColumnAction,
+  onMoveColumnItem,
+  onSearch,
+  onSelectColumnItem,
+  searchProps,
+}: TableToolbarProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:flex tw:items-center">
+      {searchProps && (
+        <div style={{ flex: 1 }}>
+          <Searchbar
+            {...searchProps}
+            removeMargin
+            placeholder={searchProps?.placeholder ?? t('label.search')}
+            searchValue={searchProps?.searchValue}
+            typingInterval={searchProps?.typingInterval ?? 500}
+            onSearch={onSearch}
+          />
+        </div>
+      )}
+      {(extraTableFilters || isCustomizeColumnEnable) && (
+        <div
+          className={classNames(
+            'd-flex justify-end items-center gap-5',
+            extraTableFiltersClassName
+          )}
+          style={{ flex: 1 }}>
+          {extraTableFilters}
+          {isCustomizeColumnEnable && (
+            <ColumnCustomizeDropdown
+              columnDropdownSelections={columnDropdownSelections}
+              dropdownColumnList={dropdownColumnList}
+              onBulkAction={onBulkColumnAction}
+              onMoveItem={onMoveColumnItem}
+              onSelect={onSelectColumnItem}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface ExpandControlProps<T extends object> {
+  ExpandIcon: NonNullable<TableV2Props<T>['expandable']>['expandIcon'];
+  hasChildren: boolean;
+  isExpanded: boolean;
+  record: T;
+  rowKey: string;
+  onToggle: (record: T, rowKey: string) => void;
+}
+
+/**
+ * The expander cell of a tree row: the call site's own `expandIcon` render
+ * prop when supplied, else the default chevron button — kept as leaf/no-leaf
+ * pairs so a leafless row still reserves the gutter's width.
+ */
+const ExpandControl = <T extends object>({
+  ExpandIcon,
+  hasChildren,
+  isExpanded,
+  record,
+  rowKey,
+  onToggle,
+}: ExpandControlProps<T>) => {
+  if (hasChildren) {
+    if (ExpandIcon) {
+      return (
+        <ExpandIcon
+          expandable={hasChildren}
+          expanded={isExpanded}
+          prefixCls=""
+          record={record}
+          onExpand={(rec, e) => {
+            e.stopPropagation();
+            onToggle(rec as T, rowKey);
+          }}
+        />
+      );
+    }
+
+    return (
+      <button
+        aria-expanded={isExpanded}
+        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        data-testid="expand-icon"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(record, rowKey);
+        }}>
+        {isExpanded ? (
+          <ChevronDown className="tw:size-4" />
+        ) : (
+          <ChevronRight className="tw:size-4" />
+        )}
+      </button>
+    );
+  }
+
+  if (ExpandIcon) {
+    return (
+      <ExpandIcon
+        expandable={false}
+        expanded={false}
+        prefixCls=""
+        record={record}
+        onExpand={(_rec, _e) => {}}
+      />
+    );
+  }
+
+  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+};
+
+interface SizeChangerProps {
+  onPageSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
+}
+
+interface TableFooterSectionProps<T extends object> {
+  clientPagination: ClientPaginationConfig | null;
+  currentPage: number;
+  customPaginationProps: CustomPaginationProps | undefined;
+  filteredDataSourceLength: number;
+  footer: TableV2Props<T>['footer'];
+  onPageChange: (page: number) => void;
+  pagedDataSource: T[];
+  showClientPagination: boolean;
+  showCustomPagination: boolean | undefined;
+  sizeChangerProps: SizeChangerProps;
+}
+
+/** The footer slot plus whichever pager applies: the parent's own, or the core one. */
+const TableFooterSection = <T extends object>({
+  clientPagination,
+  currentPage,
+  customPaginationProps,
+  filteredDataSourceLength,
+  footer,
+  onPageChange,
+  pagedDataSource,
+  showClientPagination,
+  showCustomPagination,
+  sizeChangerProps,
+}: TableFooterSectionProps<T>) => {
+  let pager: ReactNode = null;
+  if (showCustomPagination && customPaginationProps) {
+    pager = (
+      <div>
+        <NextPrevious {...customPaginationProps} />
+      </div>
+    );
+  } else if (clientPagination && showClientPagination) {
+    pager = (
+      <div>
+        {/*
+          The core pager rather than NextPrevious: it navigates by page
+          number instead of one step at a time, and it is react-aria rather
+          than AntD, which is the point of the migration. `total` here is a
+          page count, not a row count.
+        */}
+        <PaginationCardWithControls
+          page={currentPage}
+          pageSize={clientPagination.pageSize}
+          total={computeTotalPages(
+            clientPagination.pageSize,
+            clientPagination.serverTotal ?? filteredDataSourceLength
+          )}
+          onPageChange={onPageChange}
+          {...sizeChangerProps}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {footer && (
+        <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
+          {footer(pagedDataSource)}
+        </div>
+      )}
+
+      {pager}
+    </>
+  );
+};
+
 const TableV2 = <T extends object>(
   {
     loading,
@@ -509,10 +834,7 @@ const TableV2 = <T extends object>(
    * React) and, worse, switched on the pixel min-width floors, pinning every
    * sized column on a table that was never going to overflow.
    */
-  const scrollWidth =
-    typeof scroll?.x === 'number' || typeof scroll?.x === 'string'
-      ? scroll.x
-      : undefined;
+  const scrollWidth = resolveScrollWidth(scroll?.x);
 
   /**
    * AntD's `scroll={{ x: 'max-content' }}` means "size the table by its
@@ -1119,15 +1441,11 @@ const TableV2 = <T extends object>(
 
   const showCustomPagination =
     customPaginationProps && customPaginationProps.showPagination;
+  // Server-paged: the rows in hand are one page by definition, so only the
+  // reported total says whether there is anything to page to.
   const showClientPagination =
-    clientPagination &&
-    !(
-      clientPagination.hideOnSinglePage &&
-      // Server-paged: the rows in hand are one page by definition, so only
-      // the reported total says whether there is anything to page to.
-      (clientPagination.serverTotal ?? filteredDataSource.length) <=
-        clientPagination.pageSize
-    );
+    clientPagination !== null &&
+    resolveShowClientPagination(clientPagination, filteredDataSource.length);
 
   return (
     <div
@@ -1143,79 +1461,18 @@ const TableV2 = <T extends object>(
             searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
         })}
         data-testid="table-toolbar">
-        <div className="tw:flex tw:items-center">
-          {searchProps && (
-            <div style={{ flex: 1 }}>
-              <Searchbar
-                {...searchProps}
-                removeMargin
-                placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.searchValue}
-                typingInterval={searchProps?.typingInterval ?? 500}
-                onSearch={handleSearchAction}
-              />
-            </div>
-          )}
-          {(rest.extraTableFilters || isCustomizeColumnEnable) && (
-            <div
-              className={classNames(
-                'd-flex justify-end items-center gap-5',
-                rest.extraTableFiltersClassName
-              )}
-              style={{ flex: 1 }}>
-              {rest.extraTableFilters}
-              {isCustomizeColumnEnable && (
-                <Dropdown.Root>
-                  <Button
-                    color="tertiary"
-                    data-testid="column-dropdown"
-                    iconLeading={ColumnIcon}
-                    size="sm"
-                    title={t('label.show-or-hide-column-plural')}>
-                    {t('label.customize')}
-                  </Button>
-                  <Dropdown.Popover>
-                    <Dropdown.Menu>
-                      <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
-                        <Typography
-                          className="tw:text-tertiary"
-                          data-testid="column-dropdown-title"
-                          weight="medium">
-                          {t('label.column')}
-                        </Typography>
-                        <Button
-                          color="link-color"
-                          data-testid="column-dropdown-action-button"
-                          size="xs"
-                          onClick={handleBulkColumnAction}>
-                          {dropdownColumnList.length ===
-                          columnDropdownSelections.length
-                            ? t('label.hide-all')
-                            : t('label.view-all')}
-                        </Button>
-                      </Dropdown.SectionHeader>
-
-                      <Dropdown.Separator />
-                      <Dropdown.Section>
-                        {dropdownColumnList.map((item, index) => (
-                          <DraggableMenuItemV2
-                            currentItem={item}
-                            index={index}
-                            itemList={dropdownColumnList}
-                            key={item.value}
-                            selectedOptions={columnDropdownSelections}
-                            onMoveItem={handleMoveItem}
-                            onSelect={handleColumnItemSelect}
-                          />
-                        ))}
-                      </Dropdown.Section>
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown.Root>
-              )}
-            </div>
-          )}
-        </div>
+        <TableToolbar
+          columnDropdownSelections={columnDropdownSelections}
+          dropdownColumnList={dropdownColumnList}
+          extraTableFilters={rest.extraTableFilters}
+          extraTableFiltersClassName={rest.extraTableFiltersClassName}
+          isCustomizeColumnEnable={isCustomizeColumnEnable}
+          searchProps={searchProps}
+          onBulkColumnAction={handleBulkColumnAction}
+          onMoveColumnItem={handleMoveItem}
+          onSearch={handleSearchAction}
+          onSelectColumnItem={handleColumnItemSelect}
+        />
       </div>
 
       <div
@@ -1241,6 +1498,11 @@ const TableV2 = <T extends object>(
         )}
 
         {(() => {
+          const tableLayoutClasses = getTableLayoutClasses(
+            rest.resizableColumns,
+            rest.tableLayout,
+            sizeByContent
+          );
           const tableContent = (
             <UntitledTable
               aria-label="data-table"
@@ -1258,21 +1520,12 @@ const TableV2 = <T extends object>(
                 // AntD were sized by content and need to stay that way.
                 // Resizing needs fixed regardless: an auto table re-solves its
                 // own widths and swallows the drag.
-                'tw:table-fixed':
-                  rest.resizableColumns ||
-                  (rest.tableLayout !== 'auto' && !sizeByContent),
-                'tw:table-auto':
-                  !rest.resizableColumns &&
-                  (rest.tableLayout === 'auto' || sizeByContent),
+                'tw:table-fixed': tableLayoutClasses.fixed,
+                'tw:table-auto': tableLayoutClasses.auto,
               })}
-              containerStyle={
-                scroll?.y
-                  ? {
-                      maxHeight: scroll.y as string | number,
-                      overflowY: 'auto',
-                    }
-                  : undefined
-              }
+              containerStyle={getTableContainerStyle(
+                scroll?.y as string | number | undefined
+              )}
               disabledBehavior="selection"
               disabledKeys={disabledRowKeys}
               dragAndDropHooks={
@@ -1289,35 +1542,19 @@ const TableV2 = <T extends object>(
                   typeof UntitledTable
                 >['dragAndDropHooks']
               }
-              selectedKeys={
+              selectedKeys={getSelectedKeysSet(
                 rest.rowSelection?.selectedRowKeys
-                  ? new Set(rest.rowSelection.selectedRowKeys.map(String))
-                  : undefined
-              }
+              )}
               selectionBehavior={rest.rowSelection ? 'toggle' : undefined}
               selectionMode={selectionMode}
-              size={toCoreSize(rest.size)}
-              sortDescriptor={
-                effectiveSort.columnKey && effectiveSort.direction
-                  ? {
-                      column: effectiveSort.columnKey,
-                      direction: effectiveSort.direction,
-                    }
-                  : undefined
-              }
+              size={toCoreTableSize(rest.size)}
+              sortDescriptor={getSortDescriptorProp(effectiveSort)}
               stickyHeader={Boolean(rest.sticky) || Boolean(scroll?.y)}
-              style={
-                // AntD reads `scroll.x` as the table's own width and lets the
-                // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
-                // table is squeezed into its container instead, and columns
-                // that cannot wrap spill over their neighbours.
-                scrollWidth !== undefined
-                  ? {
-                      width: scrollWidth,
-                      minWidth: '100%',
-                    }
-                  : undefined
-              }
+              // AntD reads `scroll.x` as the table's own width and lets the
+              // wrapper scroll: `width: <x>; min-width: 100%`. Without it the
+              // table is squeezed into its container instead, and columns
+              // that cannot wrap spill over their neighbours.
+              style={getTableWidthStyle(scrollWidth)}
               onRowAction={
                 rest.onRowAction
                   ? (key) =>
@@ -1355,31 +1592,22 @@ const TableV2 = <T extends object>(
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
-                      style={{
-                        ...(colWidth !== undefined
-                          ? {
-                              width: toColumnWidth(colWidth),
-                              // A floor only holds a pixel column open where
-                              // the table is allowed to overflow. Without
-                              // `scroll.x` it instead pins every column at its
-                              // declared width, so a fixed-layout table stops
-                              // spreading the leftover space and leaves a gap
-                              // after the last column — AntD puts its widths on
-                              // `<col>` with no floor and always fills. A
-                              // percentage floor is worse still: rounded up per
-                              // column it totals over 100% and raises a
-                              // scrollbar on a table that fits.
-                              ...(scrollWidth !== undefined &&
-                              typeof colWidth === 'number'
-                                ? { minWidth: colWidth }
-                                : {}),
-                            }
-                          : {}),
-                        ...(rest.resizableColumns
-                          ? { position: 'relative' }
-                          : {}),
-                        ...stickyStyle,
-                      }}>
+                      // A floor only holds a pixel column open where the
+                      // table is allowed to overflow. Without `scroll.x` it
+                      // instead pins every column at its declared width, so a
+                      // fixed-layout table stops spreading the leftover space
+                      // and leaves a gap after the last column — AntD puts
+                      // its widths on `<col>` with no floor and always fills.
+                      // A percentage floor is worse still: rounded up per
+                      // column it totals over 100% and raises a scrollbar on
+                      // a table that fits.
+                      style={getColumnHeaderStyle(
+                        colWidth,
+                        scrollWidth,
+                        toColumnWidth,
+                        rest.resizableColumns,
+                        stickyStyle
+                      )}>
                       <div
                         className="tw:flex tw:items-center tw:gap-1"
                         data-testid="column-header-content">
@@ -1558,21 +1786,13 @@ const TableV2 = <T extends object>(
                             )}
                             key={cellKey}
                             style={{
-                              ...(columnWidths[cellKey] !== undefined ||
-                              colType.width !== undefined
-                                ? {
-                                    width: toColumnWidth(
-                                      columnWidths[cellKey] ??
-                                        (colType.width as number)
-                                    ),
-                                    // Scrollable pixel columns only — see the
-                                    // header cell.
-                                    ...(scrollWidth !== undefined &&
-                                    typeof colType.width === 'number'
-                                      ? { minWidth: colType.width }
-                                      : {}),
-                                  }
-                                : {}),
+                              ...getCellWidthStyle(
+                                cellKey,
+                                columnWidths,
+                                colType,
+                                scrollWidth,
+                                toColumnWidth
+                              ),
                               ...stickyStyle,
                               ...getIndentStyle(
                                 Boolean(showExpandInCell),
@@ -1595,45 +1815,14 @@ const TableV2 = <T extends object>(
                               })}>
                               {showExpandInCell && (
                                 <div className="tw:flex tw:items-center tw:shrink-0">
-                                  {hasChildren ? (
-                                    ExpandIcon ? (
-                                      <ExpandIcon
-                                        expandable={hasChildren}
-                                        expanded={isExpanded}
-                                        prefixCls=""
-                                        record={record}
-                                        onExpand={(rec, e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(rec as T, rowKey);
-                                        }}
-                                      />
-                                    ) : (
-                                      <button
-                                        aria-expanded={isExpanded}
-                                        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
-                                        data-testid="expand-icon"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(record, rowKey);
-                                        }}>
-                                        {isExpanded ? (
-                                          <ChevronDown className="tw:size-4" />
-                                        ) : (
-                                          <ChevronRight className="tw:size-4" />
-                                        )}
-                                      </button>
-                                    )
-                                  ) : ExpandIcon ? (
-                                    <ExpandIcon
-                                      expandable={false}
-                                      expanded={false}
-                                      prefixCls=""
-                                      record={record}
-                                      onExpand={(_rec, _e) => {}}
-                                    />
-                                  ) : (
-                                    <span className="tw:inline-block tw:w-4 tw:mr-1" />
-                                  )}
+                                  <ExpandControl
+                                    ExpandIcon={ExpandIcon}
+                                    hasChildren={hasChildren}
+                                    isExpanded={isExpanded}
+                                    record={record}
+                                    rowKey={rowKey}
+                                    onToggle={handleExpandToggle}
+                                  />
                                 </div>
                               )}
                               {colType.ellipsis ? (
@@ -1693,36 +1882,18 @@ const TableV2 = <T extends object>(
         })()}
       </div>
 
-      {rest.footer && (
-        <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-          {rest.footer(pagedDataSource)}
-        </div>
-      )}
-
-      {showCustomPagination ? (
-        <div>
-          <NextPrevious {...customPaginationProps} />
-        </div>
-      ) : showClientPagination ? (
-        <div>
-          {/*
-            The core pager rather than NextPrevious: it navigates by page
-            number instead of one step at a time, and it is react-aria rather
-            than AntD, which is the point of the migration. `total` here is a
-            page count, not a row count.
-          */}
-          <PaginationCardWithControls
-            page={currentPage}
-            pageSize={clientPagination.pageSize}
-            total={computeTotalPages(
-              clientPagination.pageSize,
-              clientPagination.serverTotal ?? filteredDataSource.length
-            )}
-            onPageChange={handlePageChange}
-            {...sizeChangerProps}
-          />
-        </div>
-      ) : null}
+      <TableFooterSection
+        clientPagination={clientPagination}
+        currentPage={currentPage}
+        customPaginationProps={customPaginationProps}
+        filteredDataSourceLength={filteredDataSource.length}
+        footer={rest.footer}
+        pagedDataSource={pagedDataSource}
+        showClientPagination={showClientPagination}
+        showCustomPagination={showCustomPagination}
+        sizeChangerProps={sizeChangerProps}
+        onPageChange={handlePageChange}
+      />
     </div>
   );
 };

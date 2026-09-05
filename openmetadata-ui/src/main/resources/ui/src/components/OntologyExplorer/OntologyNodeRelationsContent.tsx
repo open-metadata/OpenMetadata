@@ -313,6 +313,101 @@ export const OntologyNodeRelationsContent: React.FC<
     );
   };
 
+  const renderRelationsSection = () => {
+    if (totalRelations === 0) {
+      return (
+        <Typography
+          as="div"
+          className="tw:py-8 tw:text-center"
+          size="text-sm"
+          weight="regular">
+          {t('message.no-relations-found')}
+        </Typography>
+      );
+    }
+
+    return (
+      <>
+        {renderSection(
+          t('label.outgoing-relation-plural'),
+          nodeRelations.outgoing.length,
+          nodeRelations.outgoing,
+          'outgoing-relation-label',
+          'outgoing-relation-count'
+        )}
+        {renderSection(
+          t('label.incoming-relation-plural'),
+          nodeRelations.incoming.length,
+          nodeRelations.incoming,
+          'incoming-relation-label',
+          'incoming-relation-count'
+        )}
+      </>
+    );
+  };
+
+  const renderMappingEditor = () => {
+    if (!(isEditMode && isValidUUID(termId))) {
+      return null;
+    }
+
+    if (!isAddingMapping) {
+      return (
+        <Button
+          className="tw:w-full!"
+          color="secondary"
+          data-testid="add-concept-mapping"
+          size="sm"
+          onClick={() => setIsAddingMapping(true)}>
+          {t('label.add-mapping')}
+        </Button>
+      );
+    }
+
+    return (
+      <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-utility-gray-blue-200 tw:p-3 tw:shadow-sm">
+        <Select
+          aria-label={t('label.mapping-type')}
+          items={Object.values(ConceptMappingType).map((type) => ({
+            id: type,
+            label: t(mappingLabelKeys[type]),
+          }))}
+          size="sm"
+          value={mappingType}
+          onChange={(key) => setMappingType(String(key) as ConceptMappingType)}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+        <Input
+          data-testid="concept-mapping-iri"
+          placeholder={t('label.concept-iri')}
+          value={mappingIri}
+          onChange={setMappingIri}
+        />
+        <div className="tw:flex tw:justify-end tw:gap-2">
+          <Button
+            color="tertiary"
+            size="sm"
+            onClick={() => {
+              setMappingIri('');
+              setIsAddingMapping(false);
+            }}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="save-concept-mapping"
+            isDisabled={isSavingMapping || !mappingIri.trim()}
+            size="sm"
+            onClick={handleAddMapping}>
+            {t('label.add-mapping')}
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <div className="tw:flex tw:flex-col tw:gap-4">
       {parentCount > 1 ? (
@@ -343,32 +438,7 @@ export const OntologyNodeRelationsContent: React.FC<
         />
       ) : null}
 
-      {totalRelations === 0 ? (
-        <Typography
-          as="div"
-          className="tw:py-8 tw:text-center"
-          size="text-sm"
-          weight="regular">
-          {t('message.no-relations-found')}
-        </Typography>
-      ) : (
-        <>
-          {renderSection(
-            t('label.outgoing-relation-plural'),
-            nodeRelations.outgoing.length,
-            nodeRelations.outgoing,
-            'outgoing-relation-label',
-            'outgoing-relation-count'
-          )}
-          {renderSection(
-            t('label.incoming-relation-plural'),
-            nodeRelations.incoming.length,
-            nodeRelations.incoming,
-            'incoming-relation-label',
-            'incoming-relation-count'
-          )}
-        </>
-      )}
+      {renderRelationsSection()}
 
       <div
         className="tw:flex tw:flex-col tw:gap-2"
@@ -399,61 +469,7 @@ export const OntologyNodeRelationsContent: React.FC<
             </Typography>
           </Card>
         ))}
-        {isEditMode && isValidUUID(termId) ? (
-          isAddingMapping ? (
-            <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-utility-gray-blue-200 tw:p-3 tw:shadow-sm">
-              <Select
-                aria-label={t('label.mapping-type')}
-                items={Object.values(ConceptMappingType).map((type) => ({
-                  id: type,
-                  label: t(mappingLabelKeys[type]),
-                }))}
-                size="sm"
-                value={mappingType}
-                onChange={(key) =>
-                  setMappingType(String(key) as ConceptMappingType)
-                }>
-                {(item) => (
-                  <Select.Item id={item.id} key={item.id} label={item.label} />
-                )}
-              </Select>
-              <Input
-                data-testid="concept-mapping-iri"
-                placeholder={t('label.concept-iri')}
-                value={mappingIri}
-                onChange={setMappingIri}
-              />
-              <div className="tw:flex tw:justify-end tw:gap-2">
-                <Button
-                  color="tertiary"
-                  size="sm"
-                  onClick={() => {
-                    setMappingIri('');
-                    setIsAddingMapping(false);
-                  }}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary"
-                  data-testid="save-concept-mapping"
-                  isDisabled={isSavingMapping || !mappingIri.trim()}
-                  size="sm"
-                  onClick={handleAddMapping}>
-                  {t('label.add-mapping')}
-                </Button>
-              </div>
-            </Card>
-          ) : (
-            <Button
-              className="tw:w-full!"
-              color="secondary"
-              data-testid="add-concept-mapping"
-              size="sm"
-              onClick={() => setIsAddingMapping(true)}>
-              {t('label.add-mapping')}
-            </Button>
-          )
-        ) : null}
+        {renderMappingEditor()}
       </div>
     </div>
   );

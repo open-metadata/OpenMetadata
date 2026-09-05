@@ -12,6 +12,7 @@
  */
 
 import { CloseButton } from '@openmetadata/ui-core-components';
+import { TFunction } from 'i18next';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,7 +24,13 @@ import {
 import { KnowledgeGraph3DPanelProps } from './KnowledgeGraph3D.interface';
 import { colorFor } from './nodeCanvas';
 import { relationsOf, RELATION_LABEL_KEYS } from './rdfGraphAdapter';
-import { GraphNode3D, NodeType, RelationRow, SharedConceptRow } from './types';
+import {
+  GraphNode3D,
+  NodeRelations,
+  NodeType,
+  RelationRow,
+  SharedConceptRow,
+} from './types';
 
 const MEMBER_ACCENT = '#26C281';
 const MAPPED_ACCENT = '#17B26A';
@@ -143,6 +150,140 @@ const SharedRowItem: FC<{
   );
 };
 
+const hasKnowledgeGraphBody = (relations: NodeRelations) =>
+  [
+    relations.mapped,
+    relations.shared,
+    relations.hierarchy,
+    relations.technical,
+    relations.members,
+  ].some((relationList) => relationList.length > 0);
+
+const getHierarchyTitle = (nodeType: NodeType, t: TFunction) =>
+  nodeType === 'concept'
+    ? t('label.concept-hierarchy')
+    : t('label.ontology-relation-plural');
+
+const getMembersTitle = (nodeType: NodeType, t: TFunction) =>
+  nodeType === 'table' ? t('label.belongs-to') : t('label.member-plural');
+
+const MappedCoverageBadge: FC<{ mapped?: boolean }> = ({ mapped }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:mt-3.5 tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-xs"
+      style={{
+        color: mapped ? '#75E0A7' : '#FDA29B',
+        background: mapped ? 'rgba(23,178,106,0.12)' : 'rgba(240,68,56,0.12)',
+        borderColor: mapped ? 'rgba(23,178,106,0.25)' : 'rgba(240,68,56,0.3)',
+      }}>
+      <span
+        className="tw:size-1.5 tw:rounded-full"
+        style={{ background: mapped ? MAPPED_ACCENT : COVERAGE_GAP_COLOR }}
+      />
+      {mapped
+        ? t('message.mapped-to-business-ontology')
+        : t('message.coverage-gap-no-ontology')}
+    </div>
+  );
+};
+
+const RelationSections: FC<{
+  relations: NodeRelations;
+  hierarchyTitle: string;
+  membersTitle: string;
+  onSelectNode: (node: GraphNode3D) => void;
+}> = ({ relations, hierarchyTitle, membersTitle, onSelectNode }) => {
+  const { t } = useTranslation();
+  const hasBody = hasKnowledgeGraphBody(relations);
+
+  return (
+    <>
+      {relations.mapped.length > 0 && (
+        <Section
+          accent={LINK_ONTOLOGY_COLOR}
+          count={relations.mapped.length}
+          title={t('label.mapped-business-concept-plural')}>
+          {relations.mapped.map((row) => (
+            <RelationRowItem
+              key={`${row.direction}-${row.label}-${row.other.id}`}
+              row={row}
+              onSelectNode={onSelectNode}
+            />
+          ))}
+        </Section>
+      )}
+
+      {relations.shared.length > 0 && (
+        <Section
+          accent={ONTOLOGY_PARTICLE_COLOR}
+          count={relations.shared.length}
+          title={t('label.related-through-shared-concept-plural')}>
+          {relations.shared.map((row) => (
+            <SharedRowItem
+              key={row.asset.id}
+              row={row}
+              onSelectNode={onSelectNode}
+            />
+          ))}
+        </Section>
+      )}
+
+      {relations.hierarchy.length > 0 && (
+        <Section
+          accent={LINK_ONTOLOGY_COLOR}
+          count={relations.hierarchy.length}
+          title={hierarchyTitle}>
+          {relations.hierarchy.map((row) => (
+            <RelationRowItem
+              key={`${row.direction}-${row.label}-${row.other.id}`}
+              row={row}
+              onSelectNode={onSelectNode}
+            />
+          ))}
+        </Section>
+      )}
+
+      {relations.technical.length > 0 && (
+        <Section
+          accent={LINK_TECHNICAL_COLOR}
+          count={relations.technical.length}
+          title={t('label.knowledge-graph-relation-plural')}>
+          {relations.technical.map((row) => (
+            <RelationRowItem
+              key={`${row.direction}-${row.label}-${row.other.id}`}
+              row={row}
+              onSelectNode={onSelectNode}
+            />
+          ))}
+        </Section>
+      )}
+
+      {relations.members.length > 0 && (
+        <Section
+          accent={MEMBER_ACCENT}
+          count={relations.members.length}
+          title={membersTitle}>
+          {relations.members.map((row) => (
+            <RelationRowItem
+              key={`${row.direction}-${row.label}-${row.other.id}`}
+              row={row}
+              onSelectNode={onSelectNode}
+            />
+          ))}
+        </Section>
+      )}
+
+      {!hasBody && (
+        <div className="kg3d-panel-text-subtle tw:py-6 tw:text-sm">
+          {t('message.no-relation-at-level')}
+        </div>
+      )}
+    </>
+  );
+};
+
 const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   graph,
   node,
@@ -156,21 +297,8 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   );
   const dotColor = colorFor(node.type);
 
-  const hierarchyTitle =
-    node.type === 'concept'
-      ? t('label.concept-hierarchy')
-      : t('label.ontology-relation-plural');
-  const membersTitle =
-    node.type === 'table' ? t('label.belongs-to') : t('label.member-plural');
-
-  const hasPrimaryRelations =
-    relations.mapped.length > 0 ||
-    relations.shared.length > 0 ||
-    relations.hierarchy.length > 0;
-  const hasBody =
-    hasPrimaryRelations ||
-    relations.technical.length > 0 ||
-    relations.members.length > 0;
+  const hierarchyTitle = getHierarchyTitle(node.type, t);
+  const membersTitle = getMembersTitle(node.type, t);
 
   return (
     <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
@@ -203,112 +331,16 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
           />
         </div>
 
-        {node.type === 'table' && (
-          <div
-            className="tw:mt-3.5 tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-xs"
-            style={{
-              color: node.mapped ? '#75E0A7' : '#FDA29B',
-              background: node.mapped
-                ? 'rgba(23,178,106,0.12)'
-                : 'rgba(240,68,56,0.12)',
-              borderColor: node.mapped
-                ? 'rgba(23,178,106,0.25)'
-                : 'rgba(240,68,56,0.3)',
-            }}>
-            <span
-              className="tw:size-1.5 tw:rounded-full"
-              style={{
-                background: node.mapped ? MAPPED_ACCENT : COVERAGE_GAP_COLOR,
-              }}
-            />
-            {node.mapped
-              ? t('message.mapped-to-business-ontology')
-              : t('message.coverage-gap-no-ontology')}
-          </div>
-        )}
+        {node.type === 'table' && <MappedCoverageBadge mapped={node.mapped} />}
       </div>
 
       <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-1 tw:pb-4.5">
-        {relations.mapped.length > 0 && (
-          <Section
-            accent={LINK_ONTOLOGY_COLOR}
-            count={relations.mapped.length}
-            title={t('label.mapped-business-concept-plural')}>
-            {relations.mapped.map((row) => (
-              <RelationRowItem
-                key={`${row.direction}-${row.label}-${row.other.id}`}
-                row={row}
-                onSelectNode={onSelectNode}
-              />
-            ))}
-          </Section>
-        )}
-
-        {relations.shared.length > 0 && (
-          <Section
-            accent={ONTOLOGY_PARTICLE_COLOR}
-            count={relations.shared.length}
-            title={t('label.related-through-shared-concept-plural')}>
-            {relations.shared.map((row) => (
-              <SharedRowItem
-                key={row.asset.id}
-                row={row}
-                onSelectNode={onSelectNode}
-              />
-            ))}
-          </Section>
-        )}
-
-        {relations.hierarchy.length > 0 && (
-          <Section
-            accent={LINK_ONTOLOGY_COLOR}
-            count={relations.hierarchy.length}
-            title={hierarchyTitle}>
-            {relations.hierarchy.map((row) => (
-              <RelationRowItem
-                key={`${row.direction}-${row.label}-${row.other.id}`}
-                row={row}
-                onSelectNode={onSelectNode}
-              />
-            ))}
-          </Section>
-        )}
-
-        {relations.technical.length > 0 && (
-          <Section
-            accent={LINK_TECHNICAL_COLOR}
-            count={relations.technical.length}
-            title={t('label.knowledge-graph-relation-plural')}>
-            {relations.technical.map((row) => (
-              <RelationRowItem
-                key={`${row.direction}-${row.label}-${row.other.id}`}
-                row={row}
-                onSelectNode={onSelectNode}
-              />
-            ))}
-          </Section>
-        )}
-
-        {relations.members.length > 0 && (
-          <Section
-            accent={MEMBER_ACCENT}
-            count={relations.members.length}
-            title={membersTitle}>
-            {relations.members.map((row) => (
-              <RelationRowItem
-                key={`${row.direction}-${row.label}-${row.other.id}`}
-                row={row}
-                onSelectNode={onSelectNode}
-              />
-            ))}
-          </Section>
-        )}
-
-        {!hasBody && (
-          <div className="kg3d-panel-text-subtle tw:py-6 tw:text-sm">
-            {t('message.no-relation-at-level')}
-          </div>
-        )}
+        <RelationSections
+          hierarchyTitle={hierarchyTitle}
+          membersTitle={membersTitle}
+          relations={relations}
+          onSelectNode={onSelectNode}
+        />
       </div>
     </div>
   );

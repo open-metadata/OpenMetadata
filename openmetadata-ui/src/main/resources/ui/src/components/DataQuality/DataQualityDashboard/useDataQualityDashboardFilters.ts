@@ -102,6 +102,61 @@ interface OptionState {
 
 const EMPTY_OPTION_STATE: OptionState = { defaultOptions: [], options: [] };
 
+// Pure derivations for useDataQualityDashboardFilters() - no hook dependency,
+// so they live at module scope.
+const computeVisibleFilterFlags = (hiddenFilters: DqHiddenFilter[]) => {
+  const showOwnerFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.OWNER);
+  const showTierFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TIER);
+  const showCertificationFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.CERTIFICATION
+  );
+  const showTagsFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TAGS);
+  const showGlossaryTermsFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.GLOSSARY_TERMS
+  );
+  const showDataProductsFilter = !hiddenFilters.includes(
+    DQ_FILTER_KEYS.DATA_PRODUCTS
+  );
+  const showEntityFilters =
+    showTagsFilter || showGlossaryTermsFilter || showDataProductsFilter;
+  const hasVisibleFilters =
+    showOwnerFilter ||
+    showTierFilter ||
+    showCertificationFilter ||
+    showEntityFilters;
+
+  return {
+    showOwnerFilter,
+    showTierFilter,
+    showCertificationFilter,
+    showTagsFilter,
+    showGlossaryTermsFilter,
+    showDataProductsFilter,
+    hasVisibleFilters,
+  };
+};
+
+const computeHasActiveFilters = (
+  selectedTierFilter: SearchDropdownOption[],
+  selectedCertificationFilter: SearchDropdownOption[],
+  selectedTagFilter: SearchDropdownOption[],
+  selectedGlossaryTermFilter: SearchDropdownOption[],
+  selectedDataProductFilter: SearchDropdownOption[],
+  selectedOwnerFilter?: EntityReference[]
+): boolean => {
+  const hasSelectedEntityFilters =
+    !isEmpty(selectedGlossaryTermFilter) ||
+    !isEmpty(selectedDataProductFilter) ||
+    !isEmpty(selectedOwnerFilter);
+
+  return (
+    !isEmpty(selectedTierFilter) ||
+    !isEmpty(selectedCertificationFilter) ||
+    !isEmpty(selectedTagFilter) ||
+    hasSelectedEntityFilters
+  );
+};
+
 export interface UseDataQualityDashboardFiltersReturn {
   chartFilter: DqDashboardChartFilters;
   defaultFilters: DqDashboardChartFilters;
@@ -625,18 +680,15 @@ export const useDataQualityDashboardFilters = ({
   // render due to a new array reference (e.g. hiddenFilters={['tags']} literal).
   const hiddenFiltersKey = hiddenFilters.join(',');
 
-  const showOwnerFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.OWNER);
-  const showTierFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TIER);
-  const showCertificationFilter = !hiddenFilters.includes(
-    DQ_FILTER_KEYS.CERTIFICATION
-  );
-  const showTagsFilter = !hiddenFilters.includes(DQ_FILTER_KEYS.TAGS);
-  const showGlossaryTermsFilter = !hiddenFilters.includes(
-    DQ_FILTER_KEYS.GLOSSARY_TERMS
-  );
-  const showDataProductsFilter = !hiddenFilters.includes(
-    DQ_FILTER_KEYS.DATA_PRODUCTS
-  );
+  const {
+    showOwnerFilter,
+    showTierFilter,
+    showCertificationFilter,
+    showTagsFilter,
+    showGlossaryTermsFilter,
+    showDataProductsFilter,
+    hasVisibleFilters,
+  } = computeVisibleFilterFlags(hiddenFilters);
 
   useEffect(() => {
     if (hideFilterBar) {
@@ -720,23 +772,14 @@ export const useDataQualityDashboardFilters = ({
   );
 
   const showFilterBar = !hideFilterBar;
-  const showEntityFilters =
-    showTagsFilter || showGlossaryTermsFilter || showDataProductsFilter;
-  const hasVisibleFilters =
-    showOwnerFilter ||
-    showTierFilter ||
-    showCertificationFilter ||
-    showEntityFilters;
-
-  const hasSelectedEntityFilters =
-    !isEmpty(selectedGlossaryTermFilter) ||
-    !isEmpty(selectedDataProductFilter) ||
-    !isEmpty(selectedOwnerFilter);
-  const hasActiveFilters =
-    !isEmpty(selectedTierFilter) ||
-    !isEmpty(selectedCertificationFilter) ||
-    !isEmpty(selectedTagFilter) ||
-    hasSelectedEntityFilters;
+  const hasActiveFilters = computeHasActiveFilters(
+    selectedTierFilter,
+    selectedCertificationFilter,
+    selectedTagFilter,
+    selectedGlossaryTermFilter,
+    selectedDataProductFilter,
+    selectedOwnerFilter
+  );
 
   const clearAll = () => {
     setSelectedTierFilter([]);

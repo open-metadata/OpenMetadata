@@ -138,10 +138,11 @@ const ensureTransitionCommentFields = (
   }
 
   const nextFormSchema = cloneDeep(
-    formSchema ?? {
-      type: 'object',
-      properties: {},
-    }
+    formSchema ??
+      ({
+        type: 'object',
+        properties: {},
+      } as JsonSchemaObject)
   );
   const nextUiSchema = cloneDeep(uiSchema ?? {});
   const properties =

@@ -15,6 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
 import Tooltip from 'antd/lib/tooltip';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { Fragment, useMemo } from 'react';
@@ -51,8 +52,156 @@ const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
   </Tooltip>
 );
 
+interface OwnerRetValProps {
+  displayVal: ExtraInfo['value'];
+  userDetails: Record<string, string | undefined> | undefined;
+  isEntityDetails: boolean | undefined;
+  isTeamOwner: boolean;
+  data: ExtraInfo;
+}
+
+function OwnerRetVal({
+  displayVal,
+  userDetails,
+  isEntityDetails,
+  isTeamOwner,
+  data,
+}: OwnerRetValProps) {
+  const { t } = useTranslation();
+
+  if (!displayVal || displayVal === '--') {
+    return (
+      <span className="d-flex gap-1 items-center" data-testid="owner-link">
+        {t('label.no-entity', { entity: t('label.owner-plural') })}
+      </span>
+    );
+  }
+
+  if (!isString(displayVal)) {
+    return <></>;
+  }
+
+  return (
+    <Fragment>
+      {!isUndefined(userDetails) && isEntityDetails && (
+        <>
+          <ProfilePicture
+            displayName={userDetails.ownerName}
+            name={userDetails.ownerName ?? ''}
+            width="24"
+          />
+          <span data-testid="owner-link">{userDetails.ownerName}</span>
+          <span className="m-r-xss d-inline-block text-grey-muted">
+            {t('label.pipe-symbol')}
+          </span>
+        </>
+      )}
+      {isTeamOwner ? (
+        <IconTeamsGrey className="align-middle" height={18} width={18} />
+      ) : (
+        <ProfilePicture
+          displayName={displayVal}
+          name={data.profileName ?? ''}
+          width={data.avatarWidth ?? '24'}
+        />
+      )}
+    </Fragment>
+  );
+}
+
+function TierRetVal({ displayVal }: { displayVal: ExtraInfo['value'] }) {
+  const { t } = useTranslation();
+
+  if (!displayVal || displayVal === '--') {
+    return <>{t('label.no-entity', { entity: t('label.tier') })}</>;
+  }
+
+  return <></>;
+}
+
+function UsageRetVal() {
+  const { t } = useTranslation();
+
+  return <>{`${t('label.usage')} - `}</>;
+}
+
+function DomainRetVal({ displayVal }: { displayVal: ExtraInfo['value'] }) {
+  const { t } = useTranslation();
+
+  if (isEmpty(displayVal)) {
+    return (
+      <span className="d-flex gap-1 items-center" data-testid="owner-link">
+        {t('label.no-entity', { entity: t('label.domain-plural') })}
+      </span>
+    );
+  }
+
+  return (
+    <DomainIcon
+      className="d-flex"
+      color={DE_ACTIVE_COLOR}
+      height={16}
+      name="folder"
+      width={16}
+    />
+  );
+}
+
+function DefaultRetVal({
+  data,
+  displayVal,
+}: {
+  data: ExtraInfo;
+  displayVal: ExtraInfo['value'];
+}) {
+  const { t } = useTranslation();
+
+  if (!data.key) {
+    return <>{null}</>;
+  }
+
+  if (!displayVal) {
+    return (
+      <>
+        {`${t('label.no-entity', {
+          entity: t(
+            `label.${toLower(
+              data.localizationKey ? data.localizationKey : data.key
+            )}`
+          ),
+        })}`}
+      </>
+    );
+  }
+
+  if (!data.showLabel) {
+    return <>{null}</>;
+  }
+
+  return <>{`${t(`label.${toLower(data.key)}`)} - `}</>;
+}
+
+function getOwnerTooltipContent(
+  displayVal: ExtraInfo['value'],
+  userDetails: Record<string, string | undefined> | undefined,
+  t: TFunction
+) {
+  if (!displayVal) {
+    return '';
+  }
+
+  return `${t('message.entity-owned-by-name', {
+    entityOwner: displayVal ?? '',
+  })}
+
+                        ${t('message.and-followed-owned-by-name', {
+                          userName: !isUndefined(userDetails)
+                            ? userDetails.ownerName
+                            : '',
+                        })}`;
+}
+
 const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
-  let retVal = <></>;
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const displayVal = data.placeholderText || data.value;
@@ -73,115 +222,93 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
       };
     }, [data]);
 
-  switch (data.key) {
-    case 'Owner':
-      {
-        retVal =
-          displayVal && displayVal !== '--' ? (
-            isString(displayVal) ? (
-              <Fragment>
-                {!isUndefined(userDetails) && isEntityDetails && (
-                  <>
-                    <ProfilePicture
-                      displayName={userDetails.ownerName}
-                      name={userDetails.ownerName ?? ''}
-                      width="24"
-                    />
-                    <span data-testid="owner-link">
-                      {userDetails.ownerName}
-                    </span>
-                    <span className="m-r-xss d-inline-block text-grey-muted">
-                      {t('label.pipe-symbol')}
-                    </span>
-                  </>
-                )}
-                {isTeamOwner ? (
-                  <IconTeamsGrey
-                    className="align-middle"
-                    height={18}
-                    width={18}
-                  />
-                ) : (
-                  <ProfilePicture
-                    displayName={displayVal}
-                    name={data.profileName ?? ''}
-                    width={data.avatarWidth ?? '24'}
-                  />
-                )}
-              </Fragment>
-            ) : (
-              <></>
-            )
-          ) : (
-            <span
-              className="d-flex gap-1 items-center"
-              data-testid="owner-link">
-              {t('label.no-entity', { entity: t('label.owner-plural') })}
-            </span>
-          );
-      }
-
-      break;
-
-    case 'Tier':
-      {
-        retVal =
-          !displayVal || displayVal === '--' ? (
-            <>{t('label.no-entity', { entity: t('label.tier') })}</>
-          ) : (
-            <></>
-          );
-      }
-
-      break;
-
-    case 'Usage':
-      {
-        retVal = <>{`${t('label.usage')} - `}</>;
-      }
-
-      break;
-
-    case 'Domain':
-      {
-        retVal = !isEmpty(displayVal) ? (
-          <DomainIcon
-            className="d-flex"
-            color={DE_ACTIVE_COLOR}
-            height={16}
-            name="folder"
-            width={16}
+  function computeRetVal() {
+    switch (data.key) {
+      case 'Owner':
+        return (
+          <OwnerRetVal
+            data={data}
+            displayVal={displayVal}
+            isEntityDetails={isEntityDetails}
+            isTeamOwner={isTeamOwner}
+            userDetails={userDetails}
           />
+        );
+      case 'Tier':
+        return <TierRetVal displayVal={displayVal} />;
+      case 'Usage':
+        return <UsageRetVal />;
+      case 'Domain':
+        return <DomainRetVal displayVal={displayVal} />;
+      default:
+        return <DefaultRetVal data={data} displayVal={displayVal} />;
+    }
+  }
+
+  const retVal = computeRetVal();
+
+  function renderLinkContent() {
+    return (
+      <Fragment>
+        <a
+          className={classNames(
+            'd-inline-block truncate link-text align-middle',
+            {
+              'w-52': (displayVal as string).length > 32,
+            }
+          )}
+          data-testid={`${lowerCase(data.key)}-link`}
+          href={data.value as string}
+          rel="noopener noreferrer"
+          target={data.openInNewTab ? '_blank' : '_self'}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}>
+          {displayVal}
+          {data.openInNewTab && (
+            <>
+              &nbsp;
+              <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+            </>
+          )}
+        </a>
+
+        {isEntityDetails && !isUndefined(userDetails) ? (
+          <InfoIcon
+            content={getOwnerTooltipContent(displayVal, userDetails, t)}
+          />
+        ) : null}
+      </Fragment>
+    );
+  }
+
+  function renderDisplayValue() {
+    return (
+      <Fragment>
+        {data.isLink ? (
+          renderLinkContent()
+        ) : isOwner ? (
+          <div className="d-flex" data-testid="owner-link">
+            {displayVal}
+          </div>
+        ) : isTier ? (
+          <Space
+            className={classNames(
+              'd-inline-block truncate link-text align-middle',
+              {
+                'w-52': (displayVal as string).length > 32,
+              }
+            )}
+            data-testid="tier-name"
+            direction="horizontal"
+            title={displayVal as string}>
+            <span data-testid="Tier">{displayVal}</span>
+          </Space>
         ) : (
-          <span className="d-flex gap-1 items-center" data-testid="owner-link">
-            {t('label.no-entity', { entity: t('label.domain-plural') })}
-          </span>
-        );
-      }
-
-      break;
-    default:
-      {
-        retVal = (
-          <>
-            {data.key
-              ? displayVal
-                ? data.showLabel
-                  ? `${t(`label.${toLower(data.key)}`)} - `
-                  : null
-                : `${t('label.no-entity', {
-                    entity: t(
-                      `label.${toLower(
-                        data.localizationKey ? data.localizationKey : data.key
-                      )}`
-                    ),
-                  })}`
-              : null}
-          </>
-        );
-      }
-
-      break;
+          <span>{displayVal}</span>
+        )}
+      </Fragment>
+    );
   }
 
   return (
@@ -190,73 +317,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
       data-testid="entity-summary-details"
       direction="horizontal">
       {retVal}
-      {displayVal && (
-        <Fragment>
-          {data.isLink ? (
-            <Fragment>
-              <a
-                className={classNames(
-                  'd-inline-block truncate link-text align-middle',
-                  {
-                    'w-52': (displayVal as string).length > 32,
-                  }
-                )}
-                data-testid={`${lowerCase(data.key)}-link`}
-                href={data.value as string}
-                rel="noopener noreferrer"
-                target={data.openInNewTab ? '_blank' : '_self'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}>
-                {displayVal}
-                {data.openInNewTab && (
-                  <>
-                    &nbsp;
-                    <Icon component={IconExternalLink} style={ICON_DIMENSION} />
-                  </>
-                )}
-              </a>
-
-              {isEntityDetails && !isUndefined(userDetails) ? (
-                <InfoIcon
-                  content={
-                    displayVal
-                      ? `${t('message.entity-owned-by-name', {
-                          entityOwner: displayVal ?? '',
-                        })}
-                        
-                        ${t('message.and-followed-owned-by-name', {
-                          userName: !isUndefined(userDetails)
-                            ? userDetails.ownerName
-                            : '',
-                        })}`
-                      : ''
-                  }
-                />
-              ) : null}
-            </Fragment>
-          ) : isOwner ? (
-            <div className="d-flex" data-testid="owner-link">
-              {displayVal}
-            </div>
-          ) : isTier ? (
-            <Space
-              className={classNames(
-                'd-inline-block truncate link-text align-middle',
-                {
-                  'w-52': (displayVal as string).length > 32,
-                }
-              )}
-              data-testid="tier-name"
-              direction="horizontal"
-              title={displayVal as string}>
-              <span data-testid="Tier">{displayVal}</span>
-            </Space>
-          ) : (
-            <span>{displayVal}</span>
-          )}
-        </Fragment>
-      )}
+      {displayVal && renderDisplayValue()}
     </Space>
   );
 };

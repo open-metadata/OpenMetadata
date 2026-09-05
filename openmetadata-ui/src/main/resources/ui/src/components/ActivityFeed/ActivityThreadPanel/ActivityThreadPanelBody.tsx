@@ -212,6 +212,127 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const hasNoConversations =
     conversations.length === 0 && !isConversationLoading;
 
+  const newConversationHandler =
+    conversations.length > 0 && isUndefined(selectedConversation)
+      ? setShowNewConversation
+      : undefined;
+
+  const renderActiveTaskView = () => {
+    if (isUndefined(selectedTask)) {
+      return null;
+    }
+
+    return (
+      <Fragment>
+        <Button
+          className="m-b-sm p-0"
+          size="small"
+          type="link"
+          onClick={onBack}>
+          {t('label.back')}
+        </Button>
+        <TaskTabNew
+          entityType={
+            (selectedTask.about?.type as EntityType) ?? EntityType.TABLE
+          }
+          hasGlossaryReviewer={false}
+          owners={[]}
+          task={selectedTask}
+        />
+      </Fragment>
+    );
+  };
+
+  const renderActiveConversationView = () => (
+    <Fragment>
+      <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
+        {t('label.back')}
+      </Button>
+      <ActivityFeedCardNew
+        isForFeedTab
+        isOpenInDrawer
+        showThread
+        feed={selectedConversation}
+      />
+    </Fragment>
+  );
+
+  const renderTaskList = () =>
+    tasks.length === 0 && !loading ? (
+      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph>
+          {isTaskClosed
+            ? t('message.no-closed-task')
+            : t('message.no-open-task')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    ) : (
+      <div className={classNames(className, 'd-flex flex-col gap-3')}>
+        {tasks.map((task) => (
+          <TaskFeedCardFromTask
+            isOpenInDrawer
+            isActive={selectedTask?.id === task.id}
+            key={task.id}
+            task={task}
+            onAfterClose={() => getPanelData()}
+            onTaskClick={setActiveTask}
+          />
+        ))}
+      </div>
+    );
+
+  const renderConversationList = () => (
+    <div className={classNames(className, 'd-flex flex-col gap-3')}>
+      {conversations.map((conversation) => (
+        <FeedPanelBodyV1New
+          isForFeedTab
+          feed={conversation}
+          isActive={false}
+          key={conversation.id}
+          onFeedClick={setActiveConversation}
+        />
+      ))}
+    </div>
+  );
+
+  const renderListView = () => (
+    <Fragment>
+      {(showNewConversation || hasNoConversations) && isConversationType && (
+        <Space className="w-full" direction="vertical">
+          <Typography.Paragraph>
+            {t('message.new-conversation')}
+          </Typography.Paragraph>
+          <ActivityFeedEditor
+            placeHolder={t('message.enter-a-field', {
+              field: t('label.message-lowercase'),
+            })}
+            onSave={onPostConversation}
+          />
+        </Space>
+      )}
+
+      {isTaskType ? renderTaskList() : renderConversationList()}
+
+      <div
+        data-testid="observer-element"
+        id="observer-element"
+        ref={elementRef as RefObject<HTMLDivElement>}>
+        {(isTaskType ? loading : isConversationLoading) ? <Loader /> : null}
+      </div>
+    </Fragment>
+  );
+
+  const renderMainContent = () => {
+    if (isTaskType && !isUndefined(selectedTask)) {
+      return renderActiveTaskView();
+    }
+    if (!isUndefined(selectedConversation)) {
+      return renderActiveConversationView();
+    }
+
+    return renderListView();
+  };
+
   return (
     <Fragment>
       <div id="thread-panel-body">
@@ -220,11 +341,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             entityLink={selectedConversation?.about ?? threadLink}
             noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}
-            onShowNewConversation={
-              conversations.length > 0 && isUndefined(selectedConversation)
-                ? setShowNewConversation
-                : undefined
-            }
+            onShowNewConversation={newConversationHandler}
           />
         )}
         {isTaskType && (
@@ -244,106 +361,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Space>
         )}
 
-        {isTaskType && !isUndefined(selectedTask) ? (
-          <Fragment>
-            <Button
-              className="m-b-sm p-0"
-              size="small"
-              type="link"
-              onClick={onBack}>
-              {t('label.back')}
-            </Button>
-            <TaskTabNew
-              entityType={
-                (selectedTask.about?.type as EntityType) ?? EntityType.TABLE
-              }
-              hasGlossaryReviewer={false}
-              owners={[]}
-              task={selectedTask}
-            />
-          </Fragment>
-        ) : !isUndefined(selectedConversation) ? (
-          <Fragment>
-            <Button
-              className="m-b-sm p-0"
-              size="small"
-              type="link"
-              onClick={onBack}>
-              {t('label.back')}
-            </Button>
-            <ActivityFeedCardNew
-              isForFeedTab
-              isOpenInDrawer
-              showThread
-              feed={selectedConversation}
-            />
-          </Fragment>
-        ) : (
-          <Fragment>
-            {(showNewConversation || hasNoConversations) &&
-              isConversationType && (
-                <Space className="w-full" direction="vertical">
-                  <Typography.Paragraph>
-                    {t('message.new-conversation')}
-                  </Typography.Paragraph>
-                  <ActivityFeedEditor
-                    placeHolder={t('message.enter-a-field', {
-                      field: t('label.message-lowercase'),
-                    })}
-                    onSave={onPostConversation}
-                  />
-                </Space>
-              )}
-
-            {isTaskType ? (
-              tasks.length === 0 && !loading ? (
-                <ErrorPlaceHolder
-                  className="mt-24"
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph>
-                    {isTaskClosed
-                      ? t('message.no-closed-task')
-                      : t('message.no-open-task')}
-                  </Typography.Paragraph>
-                </ErrorPlaceHolder>
-              ) : (
-                <div className={classNames(className, 'd-flex flex-col gap-3')}>
-                  {tasks.map((task) => (
-                    <TaskFeedCardFromTask
-                      isOpenInDrawer
-                      isActive={selectedTask?.id === task.id}
-                      key={task.id}
-                      task={task}
-                      onAfterClose={() => getPanelData()}
-                      onTaskClick={setActiveTask}
-                    />
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className={classNames(className, 'd-flex flex-col gap-3')}>
-                {conversations.map((conversation) => (
-                  <FeedPanelBodyV1New
-                    isForFeedTab
-                    feed={conversation}
-                    isActive={false}
-                    key={conversation.id}
-                    onFeedClick={setActiveConversation}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {(isTaskType ? loading : isConversationLoading) ? (
-                <Loader />
-              ) : null}
-            </div>
-          </Fragment>
-        )}
+        {renderMainContent()}
       </div>
     </Fragment>
   );

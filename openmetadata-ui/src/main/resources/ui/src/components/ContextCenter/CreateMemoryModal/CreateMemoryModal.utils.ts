@@ -144,6 +144,35 @@ export const submitMemoryCreate = async ({
   onCreated();
 };
 
+// Splits the linked assets picked in the modal into the `primaryEntity` /
+// `relatedEntities` shape the API expects, dropping any option that never
+// resolved to a real entity reference.
+export const getPrimaryAndRelatedEntities = (
+  linkedAssets: DataAssetOption[]
+): {
+  primaryEntity: EntityReference | undefined;
+  relatedEntities: EntityReference[];
+} => {
+  const validAssets = linkedAssets.filter(
+    (a): a is DataAssetOption & { reference: EntityReference } =>
+      Boolean(a.reference?.id && a.reference?.type)
+  );
+  const toRef = (
+    a: DataAssetOption & { reference: EntityReference }
+  ): EntityReference => ({
+    id: a.reference.id,
+    type: a.reference.type,
+    name: a.reference?.name,
+    displayName: a.reference?.displayName,
+    fullyQualifiedName: a.reference?.fullyQualifiedName,
+  });
+
+  return {
+    primaryEntity: validAssets[0] ? toRef(validAssets[0]) : undefined,
+    relatedEntities: validAssets.slice(1).map(toRef),
+  };
+};
+
 export const memoryEntityToAssetOption = (
   ref: EntityReference
 ): DataAssetOption => ({

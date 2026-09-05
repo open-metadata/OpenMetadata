@@ -28,6 +28,7 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
@@ -80,6 +81,32 @@ const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
 };
 
+interface ColumnEditPermissionFlags {
+  tags: boolean;
+  glossaryTerms: boolean;
+  description: boolean;
+  viewAllPermission: boolean;
+  customProperties: boolean;
+  displayName: boolean;
+}
+
+function computeHasEditPermission(
+  permissions: OperationPermission,
+  deleted: boolean
+): ColumnEditPermissionFlags {
+  const canEdit = (specific: boolean) =>
+    (specific || permissions.EditAll) && !deleted;
+
+  return {
+    tags: canEdit(permissions.EditTags),
+    glossaryTerms: canEdit(permissions.EditGlossaryTerms),
+    description: canEdit(permissions.EditDescription),
+    viewAllPermission: permissions.ViewAll,
+    customProperties: canEdit(permissions.EditCustomFields),
+    displayName: canEdit(permissions.EditDisplayName),
+  };
+}
+
 export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   column,
   tableFqn,
@@ -125,18 +152,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   );
 
   const hasEditPermission = useMemo(
-    () => ({
-      tags: (permissions.EditTags || permissions.EditAll) && !deleted,
-      glossaryTerms:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
-      description:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
-      viewAllPermission: permissions.ViewAll,
-      customProperties:
-        (permissions.EditCustomFields || permissions.EditAll) && !deleted,
-      displayName:
-        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
-    }),
+    () => computeHasEditPermission(permissions, deleted),
     [permissions, deleted]
   );
 
@@ -648,6 +664,63 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     setActiveTab(tab);
   };
 
+  const renderDescriptionBlock = () => {
+    if (isDescriptionLoading) {
+      return (
+        <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
+          <Loader size="small" />
+        </div>
+      );
+    }
+
+    return (
+      <DescriptionSection
+        changeSummaryEntry={
+          changeSummary?.[
+            `columns.${EntityLink.getTableColumnNameFromColumnFqn(
+              activeColumn?.fullyQualifiedName ?? '',
+              false
+            )}.description`
+          ]
+        }
+        description={activeColumn?.description}
+        entityFqn={activeColumn?.fullyQualifiedName}
+        entityType={entityType}
+        hasPermission={hasEditPermission?.description ?? false}
+        onDescriptionUpdate={handleDescriptionUpdate}
+      />
+    );
+  };
+
+  const renderKeyProfileMetrics = () =>
+    isColumn(activeColumn ?? null) && entityType === EntityType.TABLE ? (
+      <KeyProfileMetrics profile={activeColumn.profile} />
+    ) : null;
+
+  const renderNestedColumnsBlock = () =>
+    isColumn(activeColumn ?? null) ? (
+      <NestedColumnsSection
+        columns={nestedColumns}
+        entityType={entityType}
+        onColumnClick={handleNestedColumnClick}
+      />
+    ) : null;
+
+  const renderDataQualityBlock = () => {
+    if (statusCounts.total <= 0) {
+      return null;
+    }
+
+    return isTestCaseLoading ? (
+      <Loader size="small" />
+    ) : (
+      <DataQualitySection
+        tests={dataQualityTests}
+        totalTests={statusCounts.total}
+      />
+    );
+  };
+
   const renderOverviewTab = () => {
     if (isColumnDataLoading) {
       return (
@@ -659,49 +732,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <Space className="tw:w-full" direction="vertical" size="large">
-        {isDescriptionLoading ? (
-          <div className="tw:flex tw:items-center tw:justify-center tw:p-6">
-            <Loader size="small" />
-          </div>
-        ) : (
-          <DescriptionSection
-            changeSummaryEntry={
-              changeSummary?.[
-                `columns.${EntityLink.getTableColumnNameFromColumnFqn(
-                  activeColumn?.fullyQualifiedName ?? '',
-                  false
-                )}.description`
-              ]
-            }
-            description={activeColumn?.description}
-            entityFqn={activeColumn?.fullyQualifiedName}
-            entityType={entityType}
-            hasPermission={hasEditPermission?.description ?? false}
-            onDescriptionUpdate={handleDescriptionUpdate}
-          />
-        )}
+        {renderDescriptionBlock()}
 
-        {isColumn(activeColumn ?? null) && entityType === EntityType.TABLE && (
-          <KeyProfileMetrics profile={activeColumn.profile} />
-        )}
+        {renderKeyProfileMetrics()}
 
-        {isColumn(activeColumn ?? null) && (
-          <NestedColumnsSection
-            columns={nestedColumns}
-            entityType={entityType}
-            onColumnClick={handleNestedColumnClick}
-          />
-        )}
+        {renderNestedColumnsBlock()}
 
-        {statusCounts.total > 0 &&
-          (isTestCaseLoading ? (
-            <Loader size="small" />
-          ) : (
-            <DataQualitySection
-              tests={dataQualityTests}
-              totalTests={statusCounts.total}
-            />
-          ))}
+        {renderDataQualityBlock()}
 
         <GlossaryTermsSection
           entityId={activeColumn?.fullyQualifiedName || ''}
@@ -779,141 +816,189 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     entityType === EntityType.TABLE ||
     entityType === EntityType.DASHBOARD_DATA_MODEL;
 
-  const columnTitle = activeColumn ? (
-    <div className="title-section">
-      <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
-        {breadcrumbPath.length > 1 &&
-          breadcrumbPath.map((breadcrumb, index) => {
-            const isLastItem = index === breadcrumbPath.length - 1;
+  function renderBreadcrumbs() {
+    if (breadcrumbPath.length <= 1) {
+      return null;
+    }
 
-            return (
-              <div
-                className="tw:inline-flex tw:items-center tw:min-w-0"
-                key={breadcrumb.fullyQualifiedName}>
-                <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-                  <Typography.Text
-                    className={classNames('tw:text-xs tw:truncate', {
-                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
-                        isLastItem,
-                      'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
-                        !isLastItem,
-                    })}
-                    title={getEntityName(breadcrumb)}
-                    onClick={
-                      isLastItem
-                        ? undefined
-                        : () => handleBreadcrumbClick(breadcrumb)
-                    }>
-                    {getEntityName(breadcrumb)}
-                  </Typography.Text>
-                  {index < breadcrumbPath.length - 1 && (
-                    <ChevronRight
-                      className="tw:text-gray-400 tw:shrink-0"
-                      height={16}
-                      width={16}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-      </div>
-      <div className="title-container tw:items-start tw:gap-4">
-        <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:min-w-0 tw:overflow-hidden">
-          <div
-            className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
-            style={{ flex: 1 }}>
-            <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
-              <ColumnIcon className="tw:h-5 tw:w-5 tw:text-secondary" />
-            </div>
-            <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
-              <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={getEntityName(activeColumn)}
-                  trigger="hover">
-                  <Typography.Text
-                    ellipsis
-                    className="entity-title-link"
-                    data-testid="entity-link">
-                    {stringToHTML(
-                      (activeColumn as { displayName?: string }).displayName ||
-                        activeColumn.name ||
-                        ''
-                    )}
-                  </Typography.Text>
-                </Tooltip>
+    return breadcrumbPath.map((breadcrumb, index) => {
+      const isLastItem = index === breadcrumbPath.length - 1;
 
-                {hasEditPermission.displayName &&
-                  (entityType === EntityType.TABLE ||
-                    entityType === EntityType.DASHBOARD_DATA_MODEL) && (
-                    <EditIconButton
-                      newLook
-                      className="tw:ml-2"
-                      data-testid="edit-displayName-button"
-                      disabled={false}
-                      icon={
-                        <IconEdit
-                          color={DE_ACTIVE_COLOR}
-                          height={18}
-                          width={18}
-                        />
-                      }
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.display-name'),
-                      })}
-                      onClick={() => setIsDisplayNameEditing(true)}
-                    />
-                  )}
-              </div>
-              {activeColumn.displayName &&
-                activeColumn.displayName !== activeColumn.name &&
-                isTableOrDashboardDataModel && (
-                  <Typography.Text
-                    className="tw:text-gray-400 tw:text-xs"
-                    data-testid="entity-name"
-                    ellipsis={{ tooltip: true }}>
-                    {stringToHTML(activeColumn.name || '')}
-                  </Typography.Text>
-                )}
-            </div>
-          </div>
-          <div className="tw:shrink-0">
-            <Button
-              color="secondary"
-              data-testid="close-button"
-              iconLeading={XClose}
-              size="sm"
-              onClick={onClose}
-            />
+      return (
+        <div
+          className="tw:inline-flex tw:items-center tw:min-w-0"
+          key={breadcrumb.fullyQualifiedName}>
+          <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
+            <Typography.Text
+              className={classNames('tw:text-xs tw:truncate', {
+                'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
+                  isLastItem,
+                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                  !isLastItem,
+              })}
+              title={getEntityName(breadcrumb)}
+              onClick={
+                isLastItem ? undefined : () => handleBreadcrumbClick(breadcrumb)
+              }>
+              {getEntityName(breadcrumb)}
+            </Typography.Text>
+            {index < breadcrumbPath.length - 1 && (
+              <ChevronRight
+                className="tw:text-gray-400 tw:shrink-0"
+                height={16}
+                width={16}
+              />
+            )}
           </div>
         </div>
-        <div className="tw:flex tw:items-center tw:gap-2">
-          {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
-            <Tooltip
-              placement="bottom"
-              title={getDataTypeDisplay(activeColumn)}
-              trigger="hover">
-              <div
-                className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
+      );
+    });
+  }
+
+  function renderEditDisplayNameButton() {
+    if (!hasEditPermission.displayName) {
+      return null;
+    }
+    if (
+      entityType !== EntityType.TABLE &&
+      entityType !== EntityType.DASHBOARD_DATA_MODEL
+    ) {
+      return null;
+    }
+
+    return (
+      <EditIconButton
+        newLook
+        className="tw:ml-2"
+        data-testid="edit-displayName-button"
+        disabled={false}
+        icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
+        size="small"
+        title={t('label.edit-entity', {
+          entity: t('label.display-name'),
+        })}
+        onClick={() => setIsDisplayNameEditing(true)}
+      />
+    );
+  }
+
+  function renderDisplayNameSubtitle() {
+    if (!activeColumn.displayName) {
+      return null;
+    }
+    if (activeColumn.displayName === activeColumn.name) {
+      return null;
+    }
+    if (!isTableOrDashboardDataModel) {
+      return null;
+    }
+
+    return (
+      <Typography.Text
+        className="tw:text-gray-400 tw:text-xs"
+        data-testid="entity-name"
+        ellipsis={{ tooltip: true }}>
+        {stringToHTML(activeColumn.name || '')}
+      </Typography.Text>
+    );
+  }
+
+  function renderDataTypeChip() {
+    if (!isColumn(activeColumn) || !getDataTypeDisplay(activeColumn)) {
+      return null;
+    }
+
+    return (
+      <Tooltip
+        placement="bottom"
+        title={getDataTypeDisplay(activeColumn)}
+        trigger="hover">
+        <div
+          className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
                   tw:text-ellipsis data-type-chip
                   ">
-                {getDataTypeDisplay(activeColumn) || ''}
+          {getDataTypeDisplay(activeColumn) || ''}
+        </div>
+      </Tooltip>
+    );
+  }
+
+  function renderPrimaryKeyChip() {
+    if (!isColumn(activeColumn) || !isPrimaryKey) {
+      return null;
+    }
+
+    return (
+      <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
+        <KeyIcon height={12} width={12} />
+        {t('label.primary-key')}
+      </div>
+    );
+  }
+
+  function renderColumnTitle() {
+    if (!activeColumn) {
+      return null;
+    }
+
+    return (
+      <div className="title-section">
+        <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
+          {renderBreadcrumbs()}
+        </div>
+        <div className="title-container tw:items-start tw:gap-4">
+          <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:min-w-0 tw:overflow-hidden">
+            <div
+              className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
+              style={{ flex: 1 }}>
+              <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
+                <ColumnIcon className="tw:h-5 tw:w-5 tw:text-secondary" />
               </div>
-            </Tooltip>
-          )}
-          {isColumn(activeColumn) && isPrimaryKey && (
-            <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
-              <KeyIcon height={12} width={12} />
-              {t('label.primary-key')}
+              <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
+                <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
+                  <Tooltip
+                    mouseEnterDelay={0.5}
+                    placement="topLeft"
+                    title={getEntityName(activeColumn)}
+                    trigger="hover">
+                    <Typography.Text
+                      ellipsis
+                      className="entity-title-link"
+                      data-testid="entity-link">
+                      {stringToHTML(
+                        (activeColumn as { displayName?: string })
+                          .displayName ||
+                          activeColumn.name ||
+                          ''
+                      )}
+                    </Typography.Text>
+                  </Tooltip>
+
+                  {renderEditDisplayNameButton()}
+                </div>
+                {renderDisplayNameSubtitle()}
+              </div>
             </div>
-          )}
+            <div className="tw:shrink-0">
+              <Button
+                color="secondary"
+                data-testid="close-button"
+                iconLeading={XClose}
+                size="sm"
+                onClick={onClose}
+              />
+            </div>
+          </div>
+          <div className="tw:flex tw:items-center tw:gap-2">
+            {renderDataTypeChip()}
+            {renderPrimaryKeyChip()}
+          </div>
         </div>
       </div>
-    </div>
-  ) : null;
+    );
+  }
+
+  const columnTitle = renderColumnTitle();
 
   const renderTabContent = () => {
     if (!activeColumn) {
@@ -945,6 +1030,59 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     return null;
   }
 
+  function renderColumnCountLabel() {
+    if (!isColumnInList || flattenedColumns.length <= 0) {
+      return null;
+    }
+
+    return (
+      <Typography.Text className="pagination-header-text tw:font-medium">
+        {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
+        {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
+      </Typography.Text>
+    );
+  }
+
+  function renderLocalToastAlert() {
+    if (!localToast.open) {
+      return null;
+    }
+
+    return (
+      <div className="tw:sticky tw:-top-5 tw:z-1 tw:mr-4 tw:mb-4 tw:ml-2 column-panel-alert-wrapper">
+        <AlertBar
+          defaultExpand
+          className="show-alert"
+          message={localToast.message}
+          type={localToast.type}
+        />
+      </div>
+    );
+  }
+
+  function renderDisplayNameModal() {
+    if (!isDisplayNameEditing || !activeColumn) {
+      return null;
+    }
+
+    const displayName = (activeColumn as { displayName?: string }).displayName;
+
+    return (
+      <EntityNameModal
+        entity={{
+          name: isString(activeColumn.name) ? activeColumn.name : '',
+          displayName: isString(displayName) ? displayName : undefined,
+        }}
+        title={t('label.edit-entity', {
+          entity: t('label.display-name'),
+        })}
+        visible={isDisplayNameEditing}
+        onCancel={() => setIsDisplayNameEditing(false)}
+        onSave={handleDisplayNameUpdate}
+      />
+    );
+  }
+
   const navFooter = (
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
@@ -962,12 +1100,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           size="sm"
           onClick={handleNextColumn}
         />
-        {isColumnInList && flattenedColumns.length > 0 && (
-          <Typography.Text className="pagination-header-text tw:font-medium">
-            {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
-            {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-          </Typography.Text>
-        )}
+        {renderColumnCountLabel()}
       </div>
     </div>
   );
@@ -982,16 +1115,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       title={columnTitle}
       width="40%"
       onClose={onClose}>
-      {localToast.open && (
-        <div className="tw:sticky tw:-top-5 tw:z-1 tw:mr-4 tw:mb-4 tw:ml-2 column-panel-alert-wrapper">
-          <AlertBar
-            defaultExpand
-            className="show-alert"
-            message={localToast.message}
-            type={localToast.type}
-          />
-        </div>
-      )}
+      {renderLocalToastAlert()}
       <div className="column-detail-panel-container">
         <div className="tw:flex tw:gap-2 tw:h-full">
           <Card bordered={false} className="summary-panel-container">
@@ -1012,24 +1136,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         </div>
       </div>
-      {isDisplayNameEditing && activeColumn && (
-        <EntityNameModal
-          entity={{
-            name: isString(activeColumn.name) ? activeColumn.name : '',
-            displayName: isString(
-              (activeColumn as { displayName?: string }).displayName
-            )
-              ? (activeColumn as { displayName?: string }).displayName
-              : undefined,
-          }}
-          title={t('label.edit-entity', {
-            entity: t('label.display-name'),
-          })}
-          visible={isDisplayNameEditing}
-          onCancel={() => setIsDisplayNameEditing(false)}
-          onSave={handleDisplayNameUpdate}
-        />
-      )}
+      {renderDisplayNameModal()}
     </Drawer>
   );
 };
