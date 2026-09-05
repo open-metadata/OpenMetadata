@@ -25,9 +25,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
-  descriptionBox,
   getApiContext,
-  getDescriptionBox,
   redirectToHomePage,
   resolveDescriptionBox,
   uuid,

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import { createOrFetch } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 interface AlertConfig {

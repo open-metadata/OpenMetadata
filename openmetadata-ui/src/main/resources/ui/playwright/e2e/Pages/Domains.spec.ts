@@ -39,7 +39,6 @@ import {
 } from '../../utils/assetDrawerQuickFilter';
 import {
   clickOutside,
-  descriptionBox,
   getApiContext,
   getDescriptionBox,
   redirectToHomePage,

@@ -33,10 +33,10 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
-  fillDescriptionBox,
-  getDescriptionBox,
   fetchCompletedCsvAsyncJobResult,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   uuid,
 } from './common';
 import {

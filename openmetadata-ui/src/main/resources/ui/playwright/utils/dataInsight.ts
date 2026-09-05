@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { KPIData } from '../constant/dataInsight.interface';
-import { descriptionBox, fillDescriptionBox } from './common';
+import { fillDescriptionBox } from './common';
 
 export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
   const kpis = await apiRequest.get('/api/v1/kpi').then((res) => res.json());

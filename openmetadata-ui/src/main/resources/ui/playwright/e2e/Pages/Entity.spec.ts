@@ -43,7 +43,6 @@ import {
   generateRandomUsername,
   getApiContext,
   getAuthContext,
-  getDescriptionBox,
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,

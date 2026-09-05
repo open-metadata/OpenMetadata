@@ -18,7 +18,6 @@ import {
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
-  getDescriptionBox,
   redirectToHomePage,
   resolveDescriptionBox,
 } from '../../utils/common';

@@ -23,7 +23,6 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
-  getDescriptionBox,
   redirectToHomePage,
   resolveDescriptionBox,
   uuid,

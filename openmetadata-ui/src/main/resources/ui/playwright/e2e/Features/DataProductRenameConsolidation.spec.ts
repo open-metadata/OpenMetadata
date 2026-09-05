@@ -24,7 +24,6 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   getApiContext,
-  getDescriptionBox,
   redirectToHomePage,
   resolveDescriptionBox,
   uuid,
