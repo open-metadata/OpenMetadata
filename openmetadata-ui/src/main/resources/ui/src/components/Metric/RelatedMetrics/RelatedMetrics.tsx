@@ -154,9 +154,14 @@ const RelatedMetrics: FC = () => {
     [onMetricUpdate, relatedMetrics]
   );
 
+  // Upstream extracted this guard as `!isEdit && permissions.EditAll && !metricDetails.deleted`;
+  // `canEditAll` is derived from the same permissions with `metricDetails.deleted` already
+  // applied (see the useMemo above), so `!isEdit && canEditAll` is the identical condition
+  // without the raw EditAll read.
+  const canEditRelatedMetrics = !isEdit && canEditAll;
+
   const headerExtra =
-    !isEdit &&
-    canEditAll &&
+    canEditRelatedMetrics &&
     (isEmpty(relatedMetrics) ? (
       <WidgetPlusButton
         data-testid="add-related-metrics-container"

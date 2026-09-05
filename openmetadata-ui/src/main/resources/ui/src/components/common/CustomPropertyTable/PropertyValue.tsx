@@ -1199,45 +1199,49 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 : '32px',
           }}>
           {showInput ? getPropertyInput() : getValueElement()}
-          {hasEditPermissions && !showInput && (
-            <Tooltip
-              placement="left"
-              title={t('label.edit-entity', {
-                entity: getEntityName(property),
-              })}>
+        </div>
+        {!showInput && (hasEditPermissions || isOverflowing) && (
+          <div className="d-flex items-center gap-1 flex-shrink-0">
+            {hasEditPermissions && (
+              <Tooltip
+                placement="left"
+                title={t('label.edit-entity', {
+                  entity: getEntityName(property),
+                })}>
+                <Icon
+                  component={EditIconComponent}
+                  data-testid={`edit-icon${
+                    isRenderedInRightPanel ? '-right-panel' : ''
+                  }`}
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  tabIndex={0}
+                  onClick={onShowInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onShowInput();
+                    }
+                  }}
+                />
+              </Tooltip>
+            )}
+            {isOverflowing && (
               <Icon
-                component={EditIconComponent}
-                data-testid={`edit-icon${
-                  isRenderedInRightPanel ? '-right-panel' : ''
-                }`}
+                className={classNames('custom-property-value-toggle-btn', {
+                  active: isExpanded,
+                })}
+                component={ArrowIconComponent}
+                data-testid={`toggle-${propertyName}`}
                 style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                 tabIndex={0}
-                onClick={onShowInput}
+                onClick={toggleExpand}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    onShowInput();
+                    toggleExpand();
                   }
                 }}
               />
-            </Tooltip>
-          )}
-        </div>
-        {isOverflowing && !showInput && (
-          <Icon
-            className={classNames('custom-property-value-toggle-btn', {
-              active: isExpanded,
-            })}
-            component={ArrowIconComponent}
-            data-testid={`toggle-${propertyName}`}
-            style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-            tabIndex={0}
-            onClick={toggleExpand}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                toggleExpand();
-              }
-            }}
-          />
+            )}
+          </div>
         )}
       </div>
     </div>

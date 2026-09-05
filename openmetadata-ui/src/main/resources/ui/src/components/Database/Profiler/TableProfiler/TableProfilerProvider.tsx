@@ -303,10 +303,9 @@ export const TableProfilerProvider = ({
   };
 
   useEffect(() => {
+    const isProfilerFetchable = !isTableDeleted && datasetFQN && !isTourOpen;
     const fetchProfiler =
-      !isTableDeleted &&
-      datasetFQN &&
-      !isTourOpen &&
+      isProfilerFetchable &&
       [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
         activeTab
       ) &&

@@ -762,29 +762,33 @@ export function useGraphDataBuilder({
         const isCrossTeam = Boolean(
           fromGlossary && toGlossary && fromGlossary !== toGlossary
         );
+        const isScopedHighlighted =
+          selectedScopedIds != null &&
+          (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to));
         const isHighlighted =
           selectedNodeId === rep.from ||
           selectedNodeId === rep.to ||
-          (selectedScopedIds != null &&
-            (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to)));
-        const isDimmedBySelection =
+          isScopedHighlighted;
+        const isOtherNodeSelected =
           selectedNodeId !== null &&
           selectedNodeId !== rep.from &&
-          selectedNodeId !== rep.to &&
-          !(
-            selectedScopedIds?.has(rep.from) || selectedScopedIds?.has(rep.to)
-          ) &&
+          selectedNodeId !== rep.to;
+        const isOutsideScopedSelection = !(
+          selectedScopedIds?.has(rep.from) || selectedScopedIds?.has(rep.to)
+        );
+        const isDimmedBySelection =
+          isOtherNodeSelected &&
+          isOutsideScopedSelection &&
           !neighborSet.has(rep.from) &&
           !neighborSet.has(rep.to);
 
         const fromType = nodeIdToType.get(rep.from);
         const toType = nodeIdToType.get(rep.to);
+        const isFromTypeTerm =
+          fromType !== 'dataAsset' && fromType !== 'metric';
+        const isToTypeTerm = toType !== 'dataAsset' && toType !== 'metric';
         const isTermTermInDataMode =
-          explorationMode === 'data' &&
-          fromType !== 'dataAsset' &&
-          fromType !== 'metric' &&
-          toType !== 'dataAsset' &&
-          toType !== 'metric';
+          explorationMode === 'data' && isFromTypeTerm && isToTypeTerm;
 
         return group.map((singleEdge, i) => {
           const edgeId = getOntologyEdgeId(singleEdge);
@@ -801,31 +805,32 @@ export function useGraphDataBuilder({
           const isObservedLineage =
             singleEdge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND;
 
-          const rawEdgeColor =
+          const isDataModeAssetEdge =
             explorationMode === 'data' &&
             !isTermTermInDataMode &&
-            !isSemanticProjection
-              ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
-              : customRelationColorMap[singleEdge.relationType] ??
-                RELATION_COLORS[singleEdge.relationType] ??
-                EDGE_STROKE_COLOR;
+            !isSemanticProjection;
+          const rawEdgeColor = isDataModeAssetEdge
+            ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
+            : customRelationColorMap[singleEdge.relationType] ??
+              RELATION_COLORS[singleEdge.relationType] ??
+              EDGE_STROKE_COLOR;
           const edgeColor = getCanvasColor(
             rawEdgeColor,
-            explorationMode === 'data' &&
-              !isTermTermInDataMode &&
-              !isSemanticProjection
+            isDataModeAssetEdge
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
               : EDGE_STROKE_COLOR
           );
 
-          const showLabel =
-            settings.showEdgeLabels &&
-            (explorationMode === 'model' ||
-              explorationMode === 'hierarchy' ||
-              isClickedEdge ||
-              isTermTermInDataMode ||
-              isSemanticProjection ||
-              isObservedLineage);
+          const isLabelableByMode =
+            explorationMode === 'model' ||
+            explorationMode === 'hierarchy' ||
+            isClickedEdge;
+          const isLabelableEdge =
+            isLabelableByMode ||
+            isTermTermInDataMode ||
+            isSemanticProjection ||
+            isObservedLineage;
+          const showLabel = settings.showEdgeLabels && isLabelableEdge;
 
           const labelText = showLabel
             ? singleEdge.inverseRelationType

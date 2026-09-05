@@ -469,6 +469,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     messageSchema?.schemaFields,
   ]);
 
+  const hasNoSchemaContent =
+    isEmpty(messageSchema?.schemaFields) && isEmpty(messageSchema?.schemaText);
+
   return (
     <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
@@ -481,8 +484,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           )}
         </Col>
       )}
-      {isEmpty(messageSchema?.schemaFields) &&
-      isEmpty(messageSchema?.schemaText) ? (
+      {hasNoSchemaContent ? (
         <ErrorPlaceHolder />
       ) : (
         <>

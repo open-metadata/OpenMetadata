@@ -17,7 +17,7 @@ import Tooltip from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -79,7 +79,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
         retVal =
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
-              <>
+              <Fragment>
                 {!isUndefined(userDetails) && isEntityDetails && (
                   <>
                     <ProfilePicture
@@ -108,7 +108,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
                     width={data.avatarWidth ?? '24'}
                   />
                 )}
-              </>
+              </Fragment>
             ) : (
               <></>
             )
@@ -191,9 +191,9 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
       direction="horizontal">
       {retVal}
       {displayVal && (
-        <>
+        <Fragment>
           {data.isLink ? (
-            <>
+            <Fragment>
               <a
                 className={classNames(
                   'd-inline-block truncate link-text align-middle',
@@ -234,7 +234,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
                   }
                 />
               ) : null}
-            </>
+            </Fragment>
           ) : isOwner ? (
             <div className="d-flex" data-testid="owner-link">
               {displayVal}
@@ -255,7 +255,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
           ) : (
             <span>{displayVal}</span>
           )}
-        </>
+        </Fragment>
       )}
     </Space>
   );

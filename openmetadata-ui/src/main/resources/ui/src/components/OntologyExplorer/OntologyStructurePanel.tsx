@@ -385,10 +385,10 @@ const OntologyStructurePanel = ({
       values.sourceGlossaryId !== values.targetGlossaryId &&
       values.subsetTermIds.length
   );
+  const hasSelectedFields =
+    canDiff && diff && selections.some((selection) => selection.fields.length);
   const canMerge = Boolean(
-    canDiff &&
-      diff &&
-      selections.some((selection) => selection.fields.length) &&
+    hasSelectedFields &&
       values.changeSetName.trim() &&
       values.changeSetDescription.trim()
   );

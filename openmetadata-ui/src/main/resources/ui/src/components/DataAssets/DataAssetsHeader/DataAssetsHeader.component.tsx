@@ -501,10 +501,11 @@ export const DataAssetsHeader = ({
   const hasTriggerPermission = can(Operation.Trigger);
   const editStylePermission = Boolean(onStyleUpdate) && flags.canEditAll;
 
+  const hasEditableEntityMetadata =
+    editDomainPermission || editOwnerPermission || editTierPermission;
+
   const hasEditableMetadata =
-    editDomainPermission ||
-    editOwnerPermission ||
-    editTierPermission ||
+    hasEditableEntityMetadata ||
     editCertificationPermission ||
     editStylePermission;
 
@@ -715,6 +716,9 @@ export const DataAssetsHeader = ({
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 
+  const canShowFollowStat =
+    !excludeEntityService && !deleted && !isCustomizedView;
+
   return (
     <>
       <div
@@ -743,24 +747,21 @@ export const DataAssetsHeader = ({
             </TitleBreadcrumbSkeleton>
           </div>
           <div className="tw:flex tw:items-center tw:gap-4">
-            {!excludeEntityService &&
-              !deleted &&
-              !isCustomizedView &&
-              onFollowClick && (
-                <StatItem
-                  iconNode={
-                    <FollowStarIcon
-                      className="tw:size-[29px]"
-                      selected={isFollowing}
-                    />
-                  }
-                  loading={isFollowingLoading}
-                  srLabel={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  testId="entity-follow-button"
-                  tooltip={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  onClick={handleFollowingClick}
-                />
-              )}
+            {canShowFollowStat && onFollowClick && (
+              <StatItem
+                iconNode={
+                  <FollowStarIcon
+                    className="tw:size-[29px]"
+                    selected={isFollowing}
+                  />
+                }
+                loading={isFollowingLoading}
+                srLabel={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                testId="entity-follow-button"
+                tooltip={t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                onClick={handleFollowingClick}
+              />
+            )}
             {onUpdateVote && (
               <>
                 <StatItem

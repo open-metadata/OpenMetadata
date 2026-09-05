@@ -371,10 +371,10 @@ const CustomControls: FC<{
     [updateURLParams]
   );
   const lineageEditButton = useMemo(() => {
+    const isEditableLineageView =
+      hasEditAccess && !deleted && platformView === LineagePlatformView.None;
     const showEditOption =
-      hasEditAccess &&
-      !deleted &&
-      platformView === LineagePlatformView.None &&
+      isEditableLineageView &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
 

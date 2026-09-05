@@ -185,7 +185,9 @@ const renderGlossaryExpandIcon = (
     </AriaButton>
   );
 
-  return (childrenCount ?? children?.length ?? 0) > 0 ? (
+  const totalChildrenCount = childrenCount ?? children?.length ?? 0;
+
+  return totalChildrenCount > 0 ? (
     <>
       {dragHandle}
       {isLoading ? (
@@ -1392,11 +1394,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       rowExpandable: (record) => {
         const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
+        const hasChildren =
+          (rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0;
 
-        return (
-          !isLoadMoreRow &&
-          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
-        );
+        return !isLoadMoreRow && hasChildren;
       },
     }),
     [

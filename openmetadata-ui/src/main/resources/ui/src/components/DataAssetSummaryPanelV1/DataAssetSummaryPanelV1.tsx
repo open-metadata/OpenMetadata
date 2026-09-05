@@ -325,29 +325,30 @@ export const DataAssetSummaryPanelV1 = ({
     editDataProductPermission,
     editDescriptionPermission,
     editGlossaryTermsPermission,
-  } = useMemo(
-    () => ({
+  } = useMemo(() => {
+    // Columns inherit owners, domains, tier, and data products from their parent
+    // table, so those fields are never editable on a column summary.
+    const canEditColumnField = canEditSummary && !isColumnEntity;
+
+    return {
       // Columns inherit domain from table - not editable
       editDomainPermission:
-        canEditSummary &&
-        !isColumnEntity &&
+        canEditColumnField &&
         flags.canEditAll &&
         panelPath !== ENTITY_PATH.dataProductsTab,
       editDescriptionPermission: canEditSummary && flags.canEditDescription,
       editGlossaryTermsPermission: canEditSummary && flags.canEditGlossaryTerms,
       // Columns inherit owners from table - not editable
-      editOwnerPermission:
-        canEditSummary && !isColumnEntity && flags.canEditOwners,
+      editOwnerPermission: canEditColumnField && flags.canEditOwners,
       // Columns inherit tier from table - not editable
-      editTierPermission:
-        canEditSummary && !isColumnEntity && flags.canEditTier,
+      editTierPermission: canEditColumnField && flags.canEditTier,
       editTagsPermission: canEditSummary && flags.canEditTags,
       // Columns inherit data products from table - not editable
-      editDataProductPermission:
-        canEditSummary && !isColumnEntity && flags.canEditAll,
-    }),
-    [canEditSummary, flags, isColumnEntity, panelPath]
-  );
+      editDataProductPermission: canEditColumnField && flags.canEditAll,
+    };
+    // `flags` already folds in entityPermissions and dataAsset.deleted, so neither belongs
+    // in the dependency list any more.
+  }, [canEditSummary, flags, isColumnEntity, panelPath]);
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
