@@ -84,6 +84,13 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
   const isExportInProgress =
     csvExportJob?.status === 'IN_PROGRESS' && !csvExportJob.statusUnavailable;
 
+  let alertVariant: 'error' | 'brand' | 'success' = 'success';
+  if (csvExportJob?.error || csvExportJob?.statusUnavailable) {
+    alertVariant = 'error';
+  } else if (downloading) {
+    alertVariant = 'brand';
+  }
+
   return (
     <ModalOverlay isOpen>
       <Modal>
@@ -173,13 +180,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
                           })
                         : csvExportJob.error ?? csvExportJob.message ?? ''
                     }
-                    variant={
-                      csvExportJob.error || csvExportJob.statusUnavailable
-                        ? 'error'
-                        : downloading
-                        ? 'brand'
-                        : 'success'
-                    }
+                    variant={alertVariant}
                   />
                 )}
               </Fragment>

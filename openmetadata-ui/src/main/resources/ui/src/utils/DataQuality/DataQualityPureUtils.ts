@@ -140,14 +140,13 @@ export const createUpdatedTestCasePatch = ({
     ...(value.tags ?? []),
     ...(value.glossaryTerms ?? []),
   ];
+  const nonEmptyDescription = isEmpty(value.description)
+    ? undefined
+    : value.description;
   const updatedTestCase = {
     ...testCase,
     ...createTestCaseObject,
-    description: showOnlyParameter
-      ? testCase.description
-      : isEmpty(value.description)
-      ? undefined
-      : value.description,
+    description: showOnlyParameter ? testCase.description : nonEmptyDescription,
     displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
     computePassedFailedRowCount: isComputeRowCountFieldVisible
       ? value.computePassedFailedRowCount

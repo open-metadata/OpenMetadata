@@ -89,13 +89,18 @@ export const DomainLabelV2 = <
       try {
         const entityDetailsResponse = await entityDetails;
         if (entityDetailsResponse) {
+          let domainsPayload: EntityReference[];
+          if (Array.isArray(selectedDomain)) {
+            domainsPayload = selectedDomain;
+          } else if (isEmpty(selectedDomain)) {
+            domainsPayload = [];
+          } else {
+            domainsPayload = [selectedDomain];
+          }
+
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            domains: Array.isArray(selectedDomain)
-              ? selectedDomain
-              : isEmpty(selectedDomain)
-              ? []
-              : [selectedDomain],
+            domains: domainsPayload,
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);

@@ -198,6 +198,29 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
 
   const isFullScreenClass = isFullScreen ? 'lvm-fullscreen' : '';
 
+  const logBodyContent = showEmptyState ? (
+    <div
+      className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
+      data-testid="log-viewer-empty">
+      {t('label.no-result-found')}
+    </div>
+  ) : (
+    <LazyLog
+      caseInsensitive
+      enableLineNumbers
+      selectableLines
+      enableSearch={false}
+      extraLines={1}
+      follow={resolvedFollow}
+      formatPart={colorize ? formatLogPart : undefined}
+      ref={lazyLogRef}
+      rowHeight={25}
+      text={filteredLogs}
+      wrapLines={wrap}
+      onScroll={handleScroll}
+    />
+  );
+
   return (
     <ModalOverlay
       isDismissable
@@ -401,27 +424,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
                   <Loader />
                 </div>
-              ) : showEmptyState ? (
-                <div
-                  className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
-                  data-testid="log-viewer-empty">
-                  {t('label.no-result-found')}
-                </div>
               ) : (
-                <LazyLog
-                  caseInsensitive
-                  enableLineNumbers
-                  selectableLines
-                  enableSearch={false}
-                  extraLines={1}
-                  follow={resolvedFollow}
-                  formatPart={colorize ? formatLogPart : undefined}
-                  ref={lazyLogRef}
-                  rowHeight={25}
-                  text={filteredLogs}
-                  wrapLines={wrap}
-                  onScroll={handleScroll}
-                />
+                logBodyContent
               )}
             </div>
             {hasFooter && (

@@ -434,14 +434,16 @@ export function useOntologyGraphDerived({
   const selectedGlossaryIds = withoutOntologyAutocompleteAll(
     filters.glossaryIds
   );
-  const exportableGlossaryId =
-    scope === 'glossary'
-      ? glossaryId
-      : scope === 'term'
-      ? termGlossaryId
-      : selectedGlossaryIds.length === 1
-      ? selectedGlossaryIds[0]
-      : undefined;
+  let exportableGlossaryId: string | undefined;
+  if (scope === 'glossary') {
+    exportableGlossaryId = glossaryId;
+  } else if (scope === 'term') {
+    exportableGlossaryId = termGlossaryId;
+  } else if (selectedGlossaryIds.length === 1) {
+    exportableGlossaryId = selectedGlossaryIds[0];
+  } else {
+    exportableGlossaryId = undefined;
+  }
 
   const exportableGlossaryName = exportableGlossaryId
     ? glossaries.find((g) => g.id === exportableGlossaryId)?.name ??

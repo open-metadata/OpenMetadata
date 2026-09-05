@@ -161,12 +161,15 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   const getLinkTooltip = useCallback<
     NonNullable<KnowledgeGraph3DSceneProps['getLinkTooltip']>
   >(
-    (link) =>
-      link.derived && link.relation
-        ? formatDerivedRelation(t, link.relation)
-        : RELATION_LABEL_KEYS[link.label]
+    (link) => {
+      if (link.derived && link.relation) {
+        return formatDerivedRelation(t, link.relation);
+      }
+
+      return RELATION_LABEL_KEYS[link.label]
         ? t(RELATION_LABEL_KEYS[link.label])
-        : link.label,
+        : link.label;
+    },
     [t]
   );
 
@@ -189,12 +192,12 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         truncated,
       };
     }
-    const levelKey =
-      level === 'asset'
-        ? 'data-asset'
-        : level === 'product'
-        ? 'data-product'
-        : 'domain';
+    let levelKey = 'domain';
+    if (level === 'asset') {
+      levelKey = 'data-asset';
+    } else if (level === 'product') {
+      levelKey = 'data-product';
+    }
     const lensSuffix =
       lens === 'all' ? '' : t(`message.knowledge-graph-lens-${lens}-suffix`);
 

@@ -274,7 +274,12 @@ export const UserTeamSelectableList = ({
   };
 
   useEffect(() => {
-    const activeOwners = isArray(owner) ? owner : owner ? [owner] : [];
+    let activeOwners: EntityReference[] = [];
+    if (isArray(owner)) {
+      activeOwners = owner;
+    } else if (owner) {
+      activeOwners = [owner];
+    }
     setSelectedUsers(activeOwners);
   }, [owner]);
 

@@ -312,11 +312,12 @@ const BotListV1 = ({
         width: 90,
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
-          const title = isSystemBot
-            ? t('message.ingestion-bot-cant-be-deleted')
-            : isAdminUser
-            ? t('label.delete')
-            : t('message.admin-only-action');
+          let title = t('message.admin-only-action');
+          if (isSystemBot) {
+            title = t('message.ingestion-bot-cant-be-deleted');
+          } else if (isAdminUser) {
+            title = t('label.delete');
+          }
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (

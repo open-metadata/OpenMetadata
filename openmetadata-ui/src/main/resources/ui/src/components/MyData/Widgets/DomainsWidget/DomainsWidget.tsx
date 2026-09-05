@@ -278,6 +278,8 @@ const DomainsWidget = ({
     ]
   );
 
+  const domainsContent = isEmpty(domains) ? emptyState : domainsList;
+
   return (
     <WidgetWrapper
       dataTestId="KnowledgePanel.Domains"
@@ -291,10 +293,8 @@ const DomainsWidget = ({
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               {error}
             </ErrorPlaceHolder>
-          ) : isEmpty(domains) ? (
-            emptyState
           ) : (
-            domainsList
+            domainsContent
           )}
         </div>
         {!isEmpty(domains) && footer}

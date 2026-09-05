@@ -116,8 +116,12 @@ const generateDescription = (cronConfig: CronConfig): string => {
   const hourNum = parseInt(hour);
   const minuteNum = parseInt(minute);
   const ampm = hourNum >= 12 ? 'PM' : 'AM';
-  const displayHour =
-    hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+  let displayHour = hourNum;
+  if (hourNum === 0) {
+    displayHour = 12;
+  } else if (hourNum > 12) {
+    displayHour = hourNum - 12;
+  }
   const timeStr = `${displayHour}:${minute} ${ampm}`;
 
   if (every === 'Hour') {

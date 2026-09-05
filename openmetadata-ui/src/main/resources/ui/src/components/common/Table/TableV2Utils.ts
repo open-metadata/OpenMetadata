@@ -66,15 +66,17 @@ export function resolveCellValue<T>(
   index: number
 ): ReactNode {
   const { dataIndex, render } = col;
-  const rawValue = Array.isArray(dataIndex)
-    ? dataIndex.reduce(
-        (obj: unknown, key) =>
-          (obj as Record<string, unknown>)?.[key as string],
-        record as unknown
-      )
-    : typeof dataIndex === 'string'
-    ? (record as Record<string, unknown>)[dataIndex]
-    : undefined;
+  let rawValue: unknown;
+  if (Array.isArray(dataIndex)) {
+    rawValue = dataIndex.reduce(
+      (obj: unknown, key) => (obj as Record<string, unknown>)?.[key as string],
+      record as unknown
+    );
+  } else if (typeof dataIndex === 'string') {
+    rawValue = (record as Record<string, unknown>)[dataIndex];
+  } else {
+    rawValue = undefined;
+  }
 
   if (render) {
     const rendered = render(rawValue, record, index);

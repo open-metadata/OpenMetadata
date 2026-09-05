@@ -76,6 +76,20 @@ const KPILegend: React.FC<KPILegendProps> = ({
         const isTargetMet = targetResult.targetMet;
         const isTargetMissed = !targetResult.targetMet && daysLeft <= 0;
 
+        let centerContent: JSX.Element;
+        if (isTargetMet) {
+          centerContent = <GoalCompleted />;
+        } else if (isTargetMissed) {
+          centerContent = <GoalMissed />;
+        } else {
+          centerContent = (
+            <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">
+              {daysLeft <= 0 ? 0 : daysLeft}{' '}
+              {t('label.days-left').toUpperCase()}
+            </Typography.Text>
+          );
+        }
+
         if (isFullSize) {
           return (
             <div className="kpi-full-legend" key={key}>
@@ -111,18 +125,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
                     {suffix}
                   </Typography.Text>
                 </div>
-                <div className="kpi-legend-center-section">
-                  {isTargetMet ? (
-                    <GoalCompleted />
-                  ) : isTargetMissed ? (
-                    <GoalMissed />
-                  ) : (
-                    <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">
-                      {daysLeft <= 0 ? 0 : daysLeft}{' '}
-                      {t('label.days-left').toUpperCase()}
-                    </Typography.Text>
-                  )}
-                </div>
+                <div className="kpi-legend-center-section">{centerContent}</div>
                 <div className="kpi-legend-value-section">
                   <Typography.Text className="text-xss kpi-legend-value">
                     {target.toFixed(0)}

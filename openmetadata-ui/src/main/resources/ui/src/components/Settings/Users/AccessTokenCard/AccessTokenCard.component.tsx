@@ -307,13 +307,15 @@ const AccessTokenCard: FC<MockProps> = ({
     </Card>
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : disabled ? (
-    <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>
-  ) : (
-    tokenCard
-  );
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (disabled) {
+    return <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>;
+  }
+
+  return tokenCard;
 };
 
 export default AccessTokenCard;

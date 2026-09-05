@@ -96,25 +96,28 @@ export const formatSearchQueryResponse = <
     hits: {
       ..._data.hits,
       hits: isArray(_data.hits.hits)
-        ? _data.hits.hits.map((hit) =>
-            '_source' in hit
-              ? 'entityType' in hit._source
-                ? {
-                    ...hit,
-                    _source: {
-                      ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                        ? SI[number]
-                        : SI]),
-                      type: (
-                        hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                          ? SI[number]
-                          : SI]
-                      ).entityType,
-                    },
-                  }
-                : hit
-              : hit
-          )
+        ? _data.hits.hits.map((hit) => {
+            if (!('_source' in hit)) {
+              return hit;
+            }
+            if (!('entityType' in hit._source)) {
+              return hit;
+            }
+
+            return {
+              ...hit,
+              _source: {
+                ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                  ? SI[number]
+                  : SI]),
+                type: (
+                  hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                    ? SI[number]
+                    : SI]
+                ).entityType,
+              },
+            };
+          })
         : [],
     },
   };
@@ -178,12 +181,8 @@ export const rawSearchQuery = <
   const includeDeletedParam =
     'includeDeleted' in req ? req.includeDeleted : false;
 
-  const apiQuery =
-    query && query !== '**'
-      ? filters
-        ? `${queryWithSlash} AND `
-        : queryWithSlash
-      : '';
+  const filteredQuery = filters ? `${queryWithSlash} AND ` : queryWithSlash;
+  const apiQuery = query && query !== '**' ? filteredQuery : '';
 
   const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 

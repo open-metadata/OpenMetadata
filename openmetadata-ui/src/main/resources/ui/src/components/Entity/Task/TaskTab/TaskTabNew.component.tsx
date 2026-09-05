@@ -500,11 +500,10 @@ export const TaskTabNew = ({
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isTaskTerminalStatus(task.status);
-  const isTaskActionable = !isTaskClosed
-    ? isWorkflowDrivenTask
-      ? Boolean(task.availableTransitions?.length)
-      : task.status === TaskEntityStatus.Open
-    : false;
+  const openTaskActionable = isWorkflowDrivenTask
+    ? Boolean(task.availableTransitions?.length)
+    : task.status === TaskEntityStatus.Open;
+  const isTaskActionable = !isTaskClosed && openTaskActionable;
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
@@ -811,12 +810,13 @@ export const TaskTabNew = ({
       status.toLowerCase() === 'approved'
         ? TaskResolutionType.Approved
         : TaskResolutionType.Rejected;
-    const newValue =
-      isApprovalWorkflowTask && status.toLowerCase() === 'approved'
+    const approvalWorkflowValue =
+      status.toLowerCase() === 'approved'
         ? taskHandler.approvedValue
-        : isApprovalWorkflowTask
-        ? taskHandler.rejectedValue
-        : suggestedValue;
+        : taskHandler.rejectedValue;
+    const newValue = isApprovalWorkflowTask
+      ? approvalWorkflowValue
+      : suggestedValue;
     updateTaskData({ newValue }, resolutionType);
   };
 

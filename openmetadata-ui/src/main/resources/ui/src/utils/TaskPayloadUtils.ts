@@ -77,11 +77,9 @@ export const getNormalizedTaskPayload = (
         ]
       : suggestedTagsFromLegacyPayload;
 
-  const suggestedValue = isTagTask
-    ? suggestedTags.length > 0
-      ? JSON.stringify(suggestedTags)
-      : undefined
-    : newDescription;
+  const tagSuggestedValue =
+    suggestedTags.length > 0 ? JSON.stringify(suggestedTags) : undefined;
+  const suggestedValue = isTagTask ? tagSuggestedValue : newDescription;
 
   const isSuggestionEmpty = isTagTask
     ? suggestedTags.length === 0

@@ -93,11 +93,16 @@ const OntologyQueryResults = ({
     return values;
   }, [resultTable]);
   const hasResultGraph = resultGraph.edges.length > 0;
-  const isGraphView = resultView === 'graph' && hasResultGraph;
 
   useEffect(() => {
     setResultView('table');
   }, [result]);
+
+  const showGraphView = resultView === 'graph' && hasResultGraph;
+  const showConceptChips = !showGraphView && Boolean(conceptResults);
+  const showResultTable =
+    !showGraphView && !showConceptChips && resultTable.variables.length > 0;
+  const showRawBody = !showGraphView && !showConceptChips && !showResultTable;
 
   return (
     <div data-testid="ontology-sparql-result">
@@ -127,7 +132,7 @@ const OntologyQueryResults = ({
         ) : null}
       </div>
 
-      {isGraphView ? (
+      {showGraphView && (
         <div
           className="tw:h-96 tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-primary"
           data-testid="ontology-sparql-result-graph">
@@ -147,7 +152,8 @@ const OntologyQueryResults = ({
             onPaneClick={NO_OP}
           />
         </div>
-      ) : conceptResults ? (
+      )}
+      {showConceptChips && conceptResults && (
         <div
           className="tw:flex tw:flex-wrap tw:gap-2"
           data-testid="ontology-sparql-chips">
@@ -159,7 +165,8 @@ const OntologyQueryResults = ({
             </span>
           ))}
         </div>
-      ) : resultTable.variables.length > 0 ? (
+      )}
+      {showResultTable && (
         <div className="tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary">
           <table className="tw:w-full tw:border-collapse tw:text-xs">
             <thead>
@@ -188,7 +195,8 @@ const OntologyQueryResults = ({
             </tbody>
           </table>
         </div>
-      ) : (
+      )}
+      {showRawBody && (
         <pre className="tw:m-0 tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary">
           {result.body}
         </pre>
