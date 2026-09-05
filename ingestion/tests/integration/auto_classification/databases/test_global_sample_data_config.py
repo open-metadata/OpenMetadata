@@ -6,10 +6,12 @@ workflow.
 """
 
 import uuid
+from collections.abc import Generator
 
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -17,6 +19,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
     SampleDataIngestionConfig,
 )
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -34,8 +37,15 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
     DatabaseMetadataConfigType,
 )
 from metadata.generated.schema.settings.settings import Settings, SettingType
+from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
+from metadata.generated.schema.type.recognizer import Recognizer, RecognizerConfig, Target
+from metadata.generated.schema.type.recognizers.patterns import Pattern
+from metadata.generated.schema.type.recognizers.regexFlags import RegexFlags
+from metadata.generated.schema.type.tagLabel import LabelType, State
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.pii.constants import PII
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -116,6 +126,7 @@ def autoclassification_config(db_service, bot_workflow_config, sink_config):
                     "type": "AutoClassification",
                     "tableFilterPattern": FilterPattern(includes=["^example_table$"]),
                     "storeSampleData": True,
+                    "enableAutoClassification": True,
                 }
             },
         },
@@ -154,7 +165,7 @@ def _cleanup_profiler_config(metadata):
     )
 
 
-def _set_global_profiler_config(metadata: OpenMetadata, store: bool):
+def _set_global_profiler_config(metadata: OpenMetadata, store: bool, read: bool = True):
     """Set the global profiler configuration for sample data."""
     metadata.create_or_update_settings(
         Settings(
@@ -162,11 +173,50 @@ def _set_global_profiler_config(metadata: OpenMetadata, store: bool):
             config_value=ProfilerConfiguration(
                 sampleDataConfig=SampleDataIngestionConfig(
                     storeSampleData=store,
-                    readSampleData=True,
+                    readSampleData=read,
                 ),
             ),
         )
     )
+
+
+@pytest.fixture
+def column_name_tag(metadata: OpenMetadata) -> Generator[Tag, None, None]:
+    """A tag whose only recognizer matches on the column name, never on values.
+
+    It has to live under the seeded ``PII`` classification: the workflow builds its
+    processor with ``classification_filter=[PII]``, so tags from any other
+    classification are dropped before they ever become candidates.
+    """
+    recognizer = Recognizer(
+        name="AddressColumnNameRecognizer",
+        recognizerConfig=RecognizerConfig(
+            root=PatternRecognizer(
+                type="pattern",
+                patterns=[Pattern(name="address-column", regex=r"^address$", score=1.0)],
+                regexFlags=RegexFlags(),
+                supportedLanguage=ClassificationLanguage.en,
+            )
+        ),
+        confidenceThreshold=0.8,
+        target=Target.column_name,
+    )
+    tag = metadata.create_or_update(
+        CreateTagRequest(
+            name=f"ColumnNameOnly{uuid.uuid4().hex[:8]}",
+            classification=PII,
+            description="Metadata-only classification driven by the column name",
+            recognizers=[recognizer],
+            autoClassificationEnabled=True,
+        )
+    )
+
+    try:
+        yield tag
+    finally:
+        # PII is a seeded, system classification: drop only the tag we added, or
+        # its column-name recognizer leaks into every later test on this server.
+        metadata.delete(entity=Tag, entity_id=tag.id, recursive=True, hard_delete=True)
 
 
 def test_store_sample_data_when_global_config_enabled(
@@ -211,3 +261,34 @@ def test_no_sample_data_when_global_config_disabled(
 
     has_sample_data = result is not None and result.sampleData is not None and len(result.sampleData.rows) > 0
     assert not has_sample_data, "Expected no sample data when global storeSampleData is disabled"
+
+
+def test_column_name_classification_when_sample_data_access_disabled(
+    metadata: OpenMetadata,
+    load_metadata: MetadataWorkflow,
+    run_workflow,
+    autoclassification_config,
+    table_fqn,
+    column_name_tag: Tag,
+):
+    """A column-name recognizer must still propose its tag when the pipeline is
+    forbidden from both reading and storing sample values."""
+    _set_global_profiler_config(metadata, store=False, read=False)
+
+    run_workflow(AutoClassificationWorkflow, autoclassification_config)
+
+    table = metadata.get_by_name(entity=Table, fqn=table_fqn)
+    sample_data = metadata.get_sample_data(table)
+    has_sample_data = (
+        sample_data is not None and sample_data.sampleData is not None and len(sample_data.sampleData.rows) > 0
+    )
+    assert not has_sample_data, "Expected no sample data when reading and storing are both disabled"
+
+    columns = metadata.get_table_columns(table_fqn, fields=["tags"])
+    # Postgres folds unquoted identifiers, so init.sql's ADDRESS arrives as `address`.
+    address_column = next(column for column in columns if column.name.root == "address")
+    matching_tags = [tag for tag in address_column.tags or [] if tag.tagFQN.root == column_name_tag.fullyQualifiedName]
+
+    assert len(matching_tags) == 1, f"Expected the column-name tag on `address`, got {address_column.tags}"
+    assert matching_tags[0].labelType is LabelType.Generated
+    assert matching_tags[0].state is State.Suggested
