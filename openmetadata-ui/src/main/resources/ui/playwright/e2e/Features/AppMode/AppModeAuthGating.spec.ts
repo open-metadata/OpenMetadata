@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage, getApiContext } from '../../../utils/common';
 import { withAppConfigLock } from '../../Utils/appConfigMutex';

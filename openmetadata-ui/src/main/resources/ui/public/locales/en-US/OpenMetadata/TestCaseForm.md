@@ -522,11 +522,13 @@ $$section
 
 **Dimension**: Validity  
 
-**Description**: Tests that all values in a column are members of a specified set of allowed values.
+**Description**: Checks column values against a specified set. The result depends on the **Match enum** setting.
 
 **Parameters**:
-- **Allowed Values** (ARRAY, Required) - List of acceptable values for this column. Any value not in this list will cause the test to fail
-- **Match enum** (BOOLEAN, Optional) - When enabled, validates each value independently against the allowed set
+- **Allowed Values** (ARRAY, Required) - Values used for the comparison. Neither mode requires every allowed value to occur in the column
+- **Match enum** (BOOLEAN, Optional) - When enabled, every observed value must belong to the allowed set. When disabled or omitted, the test passes if at least one allowed value occurs, even if other values are outside the set
+
+For example, with allowed values `['AA', 'BB', 'CC']`, a column containing `['AA', 'DD']` passes when **Match enum** is disabled and fails when it is enabled. A column containing only `['DD']` fails in either mode.
 
 **Supported Data Types**: NUMBER, INT, FLOAT, DOUBLE, DECIMAL, TINYINT, SMALLINT, BIGINT, BYTEINT, BYTES, STRING, MEDIUMTEXT, TEXT, CHAR, VARCHAR, BOOLEAN
 

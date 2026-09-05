@@ -72,7 +72,10 @@ def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
     """
     for bucket in buckets:
         try:
-            client.list_objects(Bucket=bucket, MaxKeys=1)  # pyright: ignore[reportAttributeAccessIssue]
+            # ExpectedBucketOwner is unavailable for generic S3-compatible stores supported by this check.
+            client.list_objects(  # NOSONAR(S7608)  # pyright: ignore[reportAttributeAccessIssue]
+                Bucket=bucket, MaxKeys=1
+            )
         except Exception as cause:
             raise CheckError(cause, Evidence(command=f"s3:ListBucket ({bucket})")) from cause
     return Evidence(

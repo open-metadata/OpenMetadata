@@ -910,11 +910,14 @@ export const TaskTabNew = ({
    *
    * @returns True if has access otherwise false
    */
+  const isOwnerWithoutReviewer = !hasGlossaryReviewer && isOwner;
+  const isAssigneeTeamMemberNonCreator =
+    Boolean(isPartOfAssigneeTeam) && !isCreator;
   const hasEditAccess =
     isAdminUser ||
     isAssignee ||
-    (!hasGlossaryReviewer && isOwner) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    isOwnerWithoutReviewer ||
+    isAssigneeTeamMemberNonCreator;
 
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
@@ -1731,6 +1734,8 @@ export const TaskTabNew = ({
     setHasAddedComment(false);
   }, [task.id]);
 
+  const taskTitleDisplayName = task.displayName ?? taskDisplayMessage;
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1930,12 +1935,10 @@ export const TaskTabNew = ({
           open={showEditTaskModel}
           title={
             isWorkflowDrivenTask && selectedTransition
-              ? `${selectedTransition.label} #${taskDisplayId} ${
-                  task.displayName ?? taskDisplayMessage
-                }`
+              ? `${selectedTransition.label} #${taskDisplayId} ${taskTitleDisplayName}`
               : `${t('label.edit-entity', {
                   entity: t('label.task-lowercase'),
-                })} #${taskDisplayId} ${task.displayName ?? taskDisplayMessage}`
+                })} #${taskDisplayId} ${taskTitleDisplayName}`
           }
           width={768}
           onCancel={() => {
