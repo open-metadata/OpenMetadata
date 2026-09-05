@@ -175,7 +175,10 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
         super().__init__(config, metadata, get_engine=get_engine)
         # ClickZetta is not yet part of the global mapper. ANSI is the safe
         # parser choice until a vendor-specific sqlglot dialect is contributed.
-        self.dialect = Dialect.ANSI.value
+        # QueryParserSource annotates this as a string, but inherited CSV
+        # usage parsing reads ``self.dialect.value``. Keep the enum runtime
+        # contract while narrowing only the inaccurate parent annotation.
+        self.dialect = cast("str", cast("object", Dialect.ANSI))
 
     @property
     def query_history_table(self) -> str:

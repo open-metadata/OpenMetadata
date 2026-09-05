@@ -63,6 +63,9 @@ from metadata.ingestion.source.database.clickzetta.service_spec import (  # noqa
 from metadata.ingestion.source.database.clickzetta.usage import (  # noqa: E402
     ClickzettaUsageSource,
 )
+from metadata.ingestion.source.database.query_parser_source import (  # noqa: E402
+    QueryParserSource,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (  # noqa: E402
     SQAProfilerInterface,
 )
@@ -316,6 +319,33 @@ def test_usage_source_uses_one_bounded_window_with_a_fake_engine():
     assert "FROM seller_center.query_history" in executed_sql
     assert "LIMIT 2" in executed_sql
     source.warn_if_query_log_truncated.assert_called_once_with(1, "usage")
+
+
+def test_usage_source_reads_query_log_file_with_the_ansi_dialect(tmp_path, monkeypatch):
+    query_log = tmp_path / "clickzetta-query-log.csv"
+    query_log.write_text(
+        "query_text,user_name,start_time,end_time,duration,cost\n"
+        "select * from orders,catalog_reader,2026-08-05 01:02:03.000000,2026-08-05 01:02:04.000000,1.0,0.0\n"
+    )
+    config = SimpleNamespace(
+        serviceName="clickzetta",
+        sourceConfig=SimpleNamespace(config=SimpleNamespace(queryLogFilePath=str(query_log))),
+    )
+
+    def initialize_parent(source, config, metadata, get_engine=True):
+        source.config = config
+
+    monkeypatch.setattr(QueryParserSource, "__init__", initialize_parent)
+    source = ClickzettaUsageSource(config, MagicMock(), get_engine=False)
+    source.service_connection = SimpleNamespace(databaseName="quick_start", databaseSchema="seller_center")
+
+    batches = list(source.get_table_query())
+
+    assert len(batches) == 1
+    query = batches[0].queries[0]
+    assert query.dialect == "ansi"
+    assert query.databaseName == "quick_start"
+    assert query.databaseSchema == "seller_center"
 
 
 def test_usage_source_scans_full_daily_windows_without_duplicate_rows():
