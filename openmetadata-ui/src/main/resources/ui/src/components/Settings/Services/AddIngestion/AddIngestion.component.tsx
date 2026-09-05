@@ -60,7 +60,7 @@ import {
   IngestionExtraConfig,
   ScheduleIntervalHandle,
   WorkflowExtraConfig,
-} from './Steps/ScheduleInterval.interface';
+} from './Steps/ScheduleInterval.types';
 import ScheduleIntervalStep from './Steps/ScheduleIntervalStep';
 
 const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(

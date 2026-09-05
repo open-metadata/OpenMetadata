@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 
 /**
- * Helpers for the ScheduleIntervalV1 scheduler used by the Add / Edit Ingestion
+ * Helpers for the ScheduleInterval scheduler used by the Add / Edit Ingestion
  * wizard. The scheduler is built on react-aria components, so selects are
  * opened through their trigger button and options are picked by role.
  */
@@ -38,6 +38,16 @@ export const selectScheduleFrequency = async (
 ) => {
   await page.getByTestId('cron-container').waitFor();
   await page.getByTestId(`frequency-${frequency}`).click();
+};
+
+export const expectScheduleFrequencySelected = async (
+  page: Page,
+  frequency: ScheduleFrequency
+) => {
+  await expect(page.getByTestId(`frequency-${frequency}`)).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
 };
 
 const selectOption = async (page: Page, testId: string, option: string) => {

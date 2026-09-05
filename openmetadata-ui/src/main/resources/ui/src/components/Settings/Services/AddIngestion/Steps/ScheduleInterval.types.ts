@@ -11,40 +11,25 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
-import { ReactNode } from 'react';
-import { SchedularOptions } from '../../../../../enums/Schedular.enum';
-
 export interface ScheduleIntervalHandle {
   submit: () => void;
 }
 
-export type ScheduleIntervalProps<T> = {
-  status: LoadingState;
-  initialData?: WorkflowExtraConfig & T;
-  defaultSchedule?: string;
-  includePeriodOptions?: string[];
-  children?: ReactNode;
+export interface ScheduleIntervalProps {
+  value?: string;
+  onChange?: (value: string | undefined) => void;
   disabled?: boolean;
-  isEditMode?: boolean;
-  onBack?: () => void;
-  onDeploy?: (values: WorkflowExtraConfig & T) => void;
-  buttonProps?: {
-    okText?: string;
-    cancelText?: string;
-  };
-  debugLog?: {
-    allow?: boolean;
-    initialValue?: boolean;
-  };
-  topChildren?: ReactNode;
-  showActionButtons?: boolean;
-  schedularOptions: {
-    title: string;
-    description: string;
-    value: SchedularOptions;
-  }[];
-};
+  includePeriodOptions?: string[];
+  defaultSchedule?: string;
+  entity?: string;
+  /**
+   * Notifies the owner of the submit action whether the scheduler currently
+   * holds a usable value. A custom cron that is empty or malformed is reported
+   * as invalid so the form can block submission - an empty schedule is only
+   * valid through the On Demand card.
+   */
+  onValidityChange?: (isValid: boolean) => void;
+}
 
 export interface WorkflowExtraConfig {
   cron?: string;
@@ -69,9 +54,4 @@ export interface StateValue {
   dow: string;
   dom: string;
   cron?: string;
-}
-
-export interface CronOption {
-  label: string;
-  value: string;
 }

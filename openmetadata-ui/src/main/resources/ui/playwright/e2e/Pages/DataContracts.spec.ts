@@ -86,6 +86,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
+import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 import { submitTestCaseForm } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
@@ -454,11 +455,13 @@ test.describe('Data Contracts', () => {
             .locator('input')
             .fill('test-pipeline');
 
-          await page.getByTestId('schedular-on-demand').click();
+          await selectOnDemandSchedule(page);
 
-          await expect(page.locator('.expression-text')).toContainText(
-            'Pipeline will only be triggered manually.'
-          );
+          await expect(
+            page.getByText('Pipeline will only be triggered manually.', {
+              exact: true,
+            })
+          ).toBeVisible();
 
           await submitTestCaseForm(page);
 

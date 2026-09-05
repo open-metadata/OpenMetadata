@@ -23,6 +23,11 @@ import {
   getCurrentMillis,
   getEpochMillisForFutureDays,
 } from '../../utils/dateTime';
+import {
+  expectScheduleFrequencySelected,
+  selectScheduleFrequency,
+  setScheduleTime,
+} from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -57,17 +62,12 @@ test.describe.serial(
       // Click on the edit button
       await page.getByTestId('edit-button').click();
 
-      // Select cron type
-      await page.getByTestId('cron-type').click();
-      await page.click('.rc-virtual-list [title="Day"]');
-
-      // Select hour
-      await page.click('[data-testid="hour-options"]');
-      await page.click('#hour-select_list + .rc-virtual-list [title="06"]');
-
-      // Select minute
-      await page.click('[data-testid="minute-options"]');
-      await page.click('#minute-select_list + .rc-virtual-list [title="00"]');
+      await selectScheduleFrequency(page, 'day');
+      await setScheduleTime(page, {
+        hour: '06',
+        minute: '00',
+        period: 'AM',
+      });
 
       // Click on deploy button
       await page.click('.ant-modal-body [data-testid="deploy-button"]');
@@ -138,13 +138,8 @@ test.describe.serial(
       // Submit the form
       await page.click('[data-testid="submit-btn"]');
 
-      // Set cron type
-      await page.click('[data-testid="cron-type"]');
-      await page.click('.rc-virtual-list [title="Day"]');
-
-      await expect(
-        page.locator('[data-testid="cron-type"] .ant-select-selection-item')
-      ).toHaveText('Day');
+      await selectScheduleFrequency(page, 'day');
+      await expectScheduleFrequencySelected(page, 'day');
 
       // Click on the deploy button
       await page.click('[data-testid="deploy-button"]');

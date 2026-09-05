@@ -15,6 +15,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { expectScheduleFrequencySelected } from './scheduleInterval';
 import { sidebarClick } from './sidebar';
 import { submitTestCaseForm } from './testCases';
 
@@ -300,7 +301,7 @@ export const addTestSuitePipeline = async (page: Page) => {
   await expect(selectAllTestCases).toBeVisible();
   await selectAllTestCases.click();
 
-  await expect(page.getByTestId('cron-type').getByText('Day')).toBeAttached();
+  await expectScheduleFrequencySelected(page, 'day');
 
   const deployResponse = page.waitForResponse(
     (res) =>
