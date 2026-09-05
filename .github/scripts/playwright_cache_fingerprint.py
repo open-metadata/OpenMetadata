@@ -121,8 +121,16 @@ INGESTION_PREFIXES = (
     "docker/run_local_docker_common.sh",
 )
 
+# playwright.config.ts is deliberately NOT an entrypoint. It only *consumes*
+# the fixture (`storageState: 'playwright/.auth/admin.json'`) at test time;
+# the paths it reads are defined in auth.setup.ts, which writes them, and in
+# create_playwright_fixture.sh, which packs them — both already fingerprinted.
+# Everything else the config carries (projects, shard counts, timeouts,
+# reporters, the quarantine grep) changes what runs, never what is seeded, and
+# it has no relative imports so it contributes only itself to the scan. Listing
+# it here made every retry/quarantine/shard edit miss the golden-fixture cache
+# and pay a ~17 min rebuild for a file the fixture never reads.
 FIXTURE_TYPESCRIPT_ENTRYPOINTS = (
-    "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts",
     "openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts",
 )

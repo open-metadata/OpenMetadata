@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.resources.rdf;
+package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,12 +26,20 @@ class RdfResourceLineageQueryTest {
     UUID entityId = UUID.randomUUID();
 
     String upstream =
-        RdfResource.buildLineageQuery(entityId, "table", "upstream", "https://open-metadata.org/");
+        RdfGraphService.buildLineageQuery(
+            entityId,
+            "table",
+            RdfGraphService.LineageDirection.UPSTREAM,
+            "https://open-metadata.org/");
     String downstream =
-        RdfResource.buildLineageQuery(
-            entityId, "table", "downstream", "https://open-metadata.org/");
+        RdfGraphService.buildLineageQuery(
+            entityId,
+            "table",
+            RdfGraphService.LineageDirection.DOWNSTREAM,
+            "https://open-metadata.org/");
     String both =
-        RdfResource.buildLineageQuery(entityId, "table", "both", "https://open-metadata.org/");
+        RdfGraphService.buildLineageQuery(
+            entityId, "table", RdfGraphService.LineageDirection.BOTH, "https://open-metadata.org/");
 
     assertTrue(upstream.contains("(prov:wasDerivedFrom|^om:UPSTREAM)+"));
     assertTrue(downstream.contains("(om:UPSTREAM|^prov:wasDerivedFrom)+"));

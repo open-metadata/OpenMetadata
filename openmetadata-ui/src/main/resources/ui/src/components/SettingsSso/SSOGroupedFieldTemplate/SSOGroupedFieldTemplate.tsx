@@ -73,12 +73,9 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     idSchema.$id === 'root/authenticationConfiguration/samlConfiguration';
 
   // Only apply special grouping to these specific main configuration objects
+  const isAuthProviderConfig = isOIDCConfig || isLDAPConfig || isSAMLConfig;
   const shouldApplyGrouping =
-    isAuthConfigRoot ||
-    isAuthorizerConfig ||
-    isOIDCConfig ||
-    isLDAPConfig ||
-    isSAMLConfig;
+    isAuthConfigRoot || isAuthorizerConfig || isAuthProviderConfig;
 
   const filterVisibleProperties = (
     properties: ObjectFieldTemplatePropertyType[]

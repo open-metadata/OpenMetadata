@@ -73,6 +73,7 @@ public abstract class AbstractEventConsumer
   private long pendingGapSince;
   private boolean gapStateChanged;
   private long startingOffset = -1;
+  private Long startingTimestamp;
 
   private AlertMetrics alertMetrics;
 
@@ -118,6 +119,7 @@ public abstract class AbstractEventConsumer
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.startingTimestamp = eventSubscriptionOffset.getStartingTimestamp();
       this.lastReadOffset = this.offset;
       this.pendingGapSince = loadPendingGapSince();
       this.gapStateChanged = false;
@@ -251,7 +253,8 @@ public abstract class AbstractEventConsumer
     if (events.isEmpty()) {
       return;
     }
-    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    Map<ChangeEvent, Set<UUID>> filteredEvents =
+        getFilteredEvents(eventSubscription, events, startingTimestamp);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -352,6 +355,7 @@ public abstract class AbstractEventConsumer
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
             .withStartingOffset(startingOffset)
+            .withStartingTimestamp(startingTimestamp)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()

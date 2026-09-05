@@ -30,18 +30,16 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
-import { GlossaryTermRelationType } from '../../../../generated/configuration/glossaryTermRelationSettings';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
 import { TermRelation } from '../../../../generated/type/termRelation';
-import {
-  getGlossaryTermRelationSettings,
-  searchGlossaryTermsPaginated,
-} from '../../../../rest/glossaryAPI';
+import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
+import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getChangedEntityNewValue,
@@ -156,9 +154,7 @@ const RelatedTerms = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingRows, setEditingRows] = useState<RelationEditRow[]>([]);
-  const [relationTypes, setRelationTypes] = useState<
-    GlossaryTermRelationType[]
-  >([]);
+  const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [preloadedTerms, setPreloadedTerms] = useState<GlossaryTerm[]>([]);
 
   const termRelations = useMemo(() => {
@@ -171,10 +167,8 @@ const RelatedTerms = () => {
 
   const fetchRelationTypes = useCallback(async () => {
     try {
-      const settings = await getGlossaryTermRelationSettings();
-      if (settings?.relationTypes) {
-        setRelationTypes(settings.relationTypes);
-      }
+      const response = await listRelationshipTypes({ limit: 1000 });
+      setRelationTypes(response.data);
     } catch {
       setRelationTypes(DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK);
     }
@@ -450,39 +444,39 @@ const RelatedTerms = () => {
     getRelationDisplayName,
   ]);
 
+  const canEditRelatedTerms =
+    getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) &&
+    !isVersionView &&
+    !isEditing &&
+    !isAdding;
+
   const header = (
     <div className="d-flex items-center justify-between w-full">
       <div className="d-flex items-center gap-2">
         <Typography as="span" className="text-sm font-medium">
           {t('label.related-term-plural')}
         </Typography>
-        {getPrioritizedEditPermission(
-          permissions,
-          Operation.EditGlossaryTerms
-        ) &&
-          !isVersionView &&
-          !isEditing &&
-          !isAdding && (
-            <>
-              <EditIconButton
-                newLook
-                data-testid="edit-button"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartEditing}
-              />
-              <PlusIconButton
-                data-testid="related-term-add-button"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartAdding}
-              />
-            </>
-          )}
+        {canEditRelatedTerms && (
+          <>
+            <EditIconButton
+              newLook
+              data-testid="edit-button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={handleStartEditing}
+            />
+            <PlusIconButton
+              data-testid="related-term-add-button"
+              size="small"
+              title={t('label.add-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={handleStartAdding}
+            />
+          </>
+        )}
       </div>
       {(isEditing || isAdding) && (
         <div className="d-flex items-center gap-2">

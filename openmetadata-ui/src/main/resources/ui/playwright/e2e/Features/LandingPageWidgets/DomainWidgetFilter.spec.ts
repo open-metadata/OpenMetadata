@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
+import { expect, test } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import {
   createNewPage,

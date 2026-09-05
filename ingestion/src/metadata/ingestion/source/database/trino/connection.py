@@ -13,13 +13,12 @@
 Source connection handler
 """
 
-from copy import deepcopy  # noqa: I001
-from typing import Optional, cast
+from copy import deepcopy
+from typing import cast
 from urllib.parse import quote_plus
 
 from requests import Session
 from sqlalchemy.engine import Engine
-from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -54,6 +53,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.trino.queries import TRINO_GET_DATABASE
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import get_azure_access_token
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
 
 # pylint: disable=unused-argument
@@ -101,8 +101,8 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

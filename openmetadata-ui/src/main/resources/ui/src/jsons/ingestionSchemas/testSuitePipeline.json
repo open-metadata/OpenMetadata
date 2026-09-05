@@ -13054,7 +13054,9 @@
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                          "description": "Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not supported.",
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "additionalProperties": false

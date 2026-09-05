@@ -3,7 +3,6 @@ Exasol system metrics implementation.
 """
 
 import re
-from typing import List  # noqa: UP035
 
 from pydantic import TypeAdapter
 from sqlalchemy import text
@@ -43,7 +42,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         self.schema = runner.schema_name
         self.table = runner.table_name
 
-    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_inserts(self) -> list[SystemProfile]:
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.INSERT.value}",
             self._get_queries,
@@ -51,7 +50,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
         return get_metric_result(queries, self.table)
 
-    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_deletes(self) -> list[SystemProfile]:
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.DELETE.value}",
             self._get_queries,
@@ -59,7 +58,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
         return get_metric_result(queries, self.table)
 
-    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_updates(self) -> list[SystemProfile]:
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{self.table}.{DatabaseDMLOperations.UPDATE.value}",
             self._get_queries,
@@ -67,7 +66,7 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
         return get_metric_result(queries, self.table)
 
-    def _get_queries(self, operation: str) -> List[QueryResult]:  # noqa: UP006
+    def _get_queries(self, operation: str) -> list[QueryResult]:
         if not self.schema or not self.table:
             return []
 
@@ -104,9 +103,9 @@ class ExasolSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         return rf"(?s).*\b{escaped_schema_name}\.{escaped_table_name}\b.*"
 
 
-def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemProfile]:  # noqa: UP006
+def get_metric_result(ddls: list[QueryResult], table_name: str) -> list[SystemProfile]:
     """Convert audit log rows into system profiles."""
-    return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
+    return TypeAdapter(list[SystemProfile]).validate_python(
         [
             {
                 "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),

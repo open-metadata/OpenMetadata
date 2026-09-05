@@ -18,6 +18,7 @@ import {
   EmptyPlaceholder,
   Input,
   TableCard,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
@@ -183,7 +184,9 @@ const renderGlossaryExpandIcon = (
     </AriaButton>
   );
 
-  return (childrenCount ?? children?.length ?? 0) > 0 ? (
+  const totalChildrenCount = childrenCount ?? children?.length ?? 0;
+
+  return totalChildrenCount > 0 ? (
     <>
       {dragHandle}
       {isLoading ? (
@@ -873,7 +876,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         title: t('label.description'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: tableColumnsWidth.description,
         render: (description: string, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 
@@ -881,14 +883,24 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             return null;
           }
 
-          return description?.trim() ? (
-            <RichTextEditorPreviewerNew
-              clampByLines
-              enableSeeMoreVariant
-              markdown={description}
-            />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+          return (
+            <div
+              style={{
+                maxWidth: tableColumnsWidth.descriptionMax,
+                minWidth: tableColumnsWidth.descriptionMin,
+              }}>
+              {description?.trim() ? (
+                <RichTextEditorPreviewerNew
+                  clampByLines
+                  enableSeeMoreVariant
+                  markdown={description}
+                />
+              ) : (
+                <Typography color="secondary">
+                  {t('label.no-description')}
+                </Typography>
+              )}
+            </div>
           );
         },
       },
@@ -1370,11 +1382,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       rowExpandable: (record) => {
         const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
+        const hasChildren =
+          (rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0;
 
-        return (
-          !isLoadMoreRow &&
-          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
-        );
+        return !isLoadMoreRow && hasChildren;
       },
     }),
     [
@@ -1784,6 +1795,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 pagination={false}
                 rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
+                scroll={GLOSSARY_TABLE_SCROLL}
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               />

@@ -13,7 +13,7 @@ MSSQL SQLAlchemy Helper Methods
 """
 
 import traceback
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
@@ -479,7 +479,7 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
     return view_names  # noqa: RET504
 
 
-def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> str | None:
     """
     returns sqlaclhemdy engine date format by running config query
     """
@@ -499,7 +499,7 @@ class QueryStoreStatus(NamedTuple):
     is_ag_secondary: bool
 
 
-def get_query_store_status(engine: Optional[Engine]) -> QueryStoreStatus:  # noqa: UP045
+def get_query_store_status(engine: Engine | None) -> QueryStoreStatus:
     """Probe Query Store availability and, when unavailable, why.
 
     `enabled=False` when:
@@ -537,7 +537,7 @@ def get_query_store_status(engine: Optional[Engine]) -> QueryStoreStatus:  # noq
     return QueryStoreStatus(enabled=enabled, is_ag_secondary=is_ag_secondary)
 
 
-def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
+def is_query_store_enabled(engine: Engine | None) -> bool:
     """Return True if Query Store holds this database's own workload history.
 
     See `get_query_store_status` for the full decision logic.

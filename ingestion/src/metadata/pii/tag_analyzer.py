@@ -1,6 +1,7 @@
 import copy
+from collections.abc import Sequence
 from itertools import groupby
-from typing import List, Optional, Sequence, final  # noqa: UP035
+from typing import final
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -21,7 +22,9 @@ from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
+    combine_patchers,
     date_time_patcher,
+    named_entity_patcher,
 )
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
@@ -44,9 +47,9 @@ TARGET_MAP = {
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
-    explanation: Optional[str]  # noqa: UP045
-    recognizer_results: List[RecognizerResult] = []  # noqa: UP006
-    target: Optional[recognizer.Target] = None  # noqa: UP045
+    explanation: str | None
+    recognizer_results: list[RecognizerResult] = []
+    target: recognizer.Target | None = None
     column_name_matched: bool = False
 
     @final
@@ -141,8 +144,8 @@ class TagAnalyzer:
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
-        nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
-        effective_language: Optional[str] = None,  # noqa: UP045
+        nlp_engine: NlpEngine | None = None,
+        effective_language: str | None = None,
     ) -> AnalyzerEngine:
         effective_lang = effective_language or self._language.value
         if effective_lang == ClassificationLanguage.any.value:
@@ -164,8 +167,8 @@ class TagAnalyzer:
         self,
         text_or_values: str | Sequence[str],
         recognizers: list[EntityRecognizer],
-        context: Optional[list[str]] = None,  # noqa: UP045
-        result_patcher: Optional[PresidioRecognizerResultPatcher] = None,  # noqa: UP045
+        context: list[str] | None = None,
+        result_patcher: PresidioRecognizerResultPatcher | None = None,
     ) -> list[RecognizerResult]:
         values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []
@@ -222,9 +225,18 @@ class TagAnalyzer:
                     str_values,
                     content_recognizers,
                     context=context,
-                    result_patcher=date_time_patcher,
+                    # Scoring on the strongest single match means every stray NER hit counts,
+                    # where the old average buried them; the patchers are what keeps identifier
+                    # columns from turning into PII.
+                    result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
-                content_score = min(sum(r.score for r in content_results) / len(str_values), 1.0)
+                # Use the maximum individual recogniser score rather than the average over all
+                # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
+                # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any
+                # reasonable minimumConfidence.  For a security control, sensitivity is
+                # contaminating, not statistical: one confirmed hit is enough to classify the
+                # column as PII.  (Fixes #32070)
+                content_score = max((r.score for r in content_results), default=0.0)
 
         column_results: list[RecognizerResult] = []
         column_score = 0.0

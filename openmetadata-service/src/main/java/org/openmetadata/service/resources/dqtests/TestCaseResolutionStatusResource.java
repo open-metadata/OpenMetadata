@@ -387,7 +387,10 @@ public class TestCaseResolutionStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResolutionStatus.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatus.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test case failure status for instance {id} is not found")
       })
   public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
@@ -395,7 +398,7 @@ public class TestCaseResolutionStatusResource
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
     TestCaseResolutionStatus testCaseResolutionStatus =
-        repository.getById(testCaseResolutionStatusId);
+        repository.getByIdOrNotFound(testCaseResolutionStatusId);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -615,7 +618,7 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch) {
 
-    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    TestCaseResolutionStatus testCaseResolutionStatus = repository.getByIdOrNotFound(id);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -839,6 +842,11 @@ public class TestCaseResolutionStatusResource
             entityResourceContext));
   }
 
+  /**
+   * Incident writes are allowed for {@code EditStatus} on the test case in addition to the
+   * historical {@code EditTests}/{@code EditAll} grants, so that a role can manage incidents
+   * (status, severity, assignment) without edit rights on the test case itself.
+   */
   protected static List<AuthRequest> buildEditAuthRequests(
       ResourceContextInterface testCaseResourceContext,
       ResourceContextInterface entityResourceContext) {
@@ -848,6 +856,9 @@ public class TestCaseResolutionStatusResource
             entityResourceContext),
         new AuthRequest(
             new OperationContext(Entity.TABLE, MetadataOperation.EDIT_ALL), entityResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext),
         new AuthRequest(
             new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
             testCaseResourceContext),

@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   PROFILER_EMPTY_RESPONSE_CONFIG,
   PROFILER_REQUEST_CONFIG,
 } from '../../constant/profilerConfiguration';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
