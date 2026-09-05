@@ -852,10 +852,12 @@ public final class SearchUtils {
    *
    * <p>The flush runs once per request now rather than once per consolidation pass, so a write lost
    * to a version conflict is no longer re-issued by a later pass — a conflict is a dropped rewrite,
-   * not a retryable hiccup, and is logged as such. {@code updatedDocuments == 0} for a non-empty
-   * request is equally worth surfacing: it is the expected result when nothing downstream
-   * references the columns, and also what a missing index (tolerated via {@code ignoreUnavailable})
-   * or a silently misresolved index selector looks like.
+   * not a retryable hiccup, and warns. {@code updatedDocuments == 0} for a non-empty request stays
+   * at debug: it is the ordinary result whenever nothing downstream references the columns, which
+   * is most column deletes and renames during ingestion, so warning on it would be noise. It is
+   * also what a missing index (tolerated via {@code ignoreUnavailable}) or a misresolved index
+   * selector looks like, but that failure mode is caught at build time by the test pinning the
+   * selector to the resolver registry rather than by watching production logs.
    */
   public static void logColumnLineageFlush(ColumnLineageFlushOutcome outcome) {
     if (!outcome.failureReasons().isEmpty()) {
@@ -875,7 +877,7 @@ public final class SearchUtils {
           outcome.updatedDocuments(),
           outcome.requestedFqnCount());
     } else if (outcome.updatedDocuments() == 0 && outcome.requestedFqnCount() > 0) {
-      LOG.warn(
+      LOG.debug(
           "{} in upstream lineage matched no documents for index {} ({} FQN(s) requested). Expected "
               + "when nothing downstream references those columns; also what a missing index or an "
               + "unresolved index selector looks like.",
