@@ -16,7 +16,7 @@ Tableau Source Model module
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AirflowBaseModel(BaseModel):
@@ -47,6 +47,24 @@ class AirflowTask(BaseModel):
 
     # Allow picking up data from key `inlets` and `_inlets`
     model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def lift_mapped_xlets(cls, data: Any) -> Any:
+        """
+        A dynamically mapped task (`.partial(...).expand(...)`) serializes its
+        inlets and outlets inside `partial_kwargs` instead of at the top level.
+        """
+        if not isinstance(data, dict):
+            return data
+        partial_kwargs = data.get("partial_kwargs")
+        if not isinstance(partial_kwargs, dict):
+            return data
+        lifted = dict(data)
+        for key in ("inlets", "outlets"):
+            if not lifted.get(key) and not lifted.get(f"_{key}") and partial_kwargs.get(key):
+                lifted[key] = partial_kwargs[key]
+        return lifted
 
 
 class TaskList(BaseModel):

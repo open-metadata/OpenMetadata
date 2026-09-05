@@ -247,22 +247,23 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
   }
 };
 
+const BRAND_CSS_VAR_KEYWORDS = [
+  'brand',
+  'error',
+  'success',
+  'warning',
+  'info',
+  'blue',
+];
+
 const clearBrandCssVars = (root: HTMLElement) => {
   const allSet = Array.from(root.style);
-  const brandTokenGroups = [
-    'brand',
-    'error',
-    'success',
-    'warning',
-    'info',
-    'blue',
-  ];
 
   allSet
     .filter(
-      (property) =>
-        property.startsWith('--tw-') &&
-        brandTokenGroups.some((group) => property.includes(group))
+      (p) =>
+        p.startsWith('--tw-') &&
+        BRAND_CSS_VAR_KEYWORDS.some((keyword) => p.includes(keyword))
     )
     .forEach((property) => root.style.removeProperty(property));
 };

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { isEmpty } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
@@ -20,6 +19,7 @@ import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionCl
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { checkAutoPilotStatus } from '../../utils/AutoPilot';
 import {

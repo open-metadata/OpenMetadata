@@ -385,12 +385,10 @@ const ContextCenterArticlesPage = () => {
     handleToggleRightPanel,
   ]);
 
+  const isArticleListingUnfiltered =
+    !fqn && !version && !articleSearchQuery && !permissionFetchFailed;
   const showArticlesEmptyState =
-    isArticlesListEmpty &&
-    !fqn &&
-    !version &&
-    !articleSearchQuery &&
-    !permissionFetchFailed;
+    isArticlesListEmpty && isArticleListingUnfiltered;
 
   return (
     <div

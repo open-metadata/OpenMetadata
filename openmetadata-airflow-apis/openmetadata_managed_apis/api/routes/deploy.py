@@ -22,6 +22,7 @@ from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracef
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.utils.logger import routes_logger
+from openmetadata_managed_apis.utils.parser import parse_validation_err
 
 logger = routes_logger()
 
@@ -81,7 +82,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             )
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload. IngestionPipeline expected: {err}",
+                error=parse_validation_err(err),
             )
 
         except Exception as exc:

@@ -124,6 +124,8 @@ const BotDetails: FC<BotsDetailProps> = ({
   };
 
   const fetchLeftPanel = () => {
+    const canEditDisplayName = displayNamePermission || editAllPermission;
+
     return (
       <Row gutter={[0, 20]}>
         <Col span={24}>
@@ -176,7 +178,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           })}
                         </Typography.Text>
                       )}
-                      {(displayNamePermission || editAllPermission) && (
+                      {canEditDisplayName && (
                         <div>
                           <EditIconButton
                             newLook

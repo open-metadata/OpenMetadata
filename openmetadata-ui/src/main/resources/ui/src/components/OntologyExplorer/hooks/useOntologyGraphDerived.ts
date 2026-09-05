@@ -259,13 +259,12 @@ export function useOntologyGraphDerived({
       filteredEdges = filteredEdges.filter((e) => {
         const fromType = nodeTypeMap.get(e.from);
         const toType = nodeTypeMap.get(e.to);
-        if (
-          explorationMode === 'data' &&
-          (fromType === ASSET_NODE_TYPE ||
-            fromType === METRIC_NODE_TYPE ||
-            toType === ASSET_NODE_TYPE ||
-            toType === METRIC_NODE_TYPE)
-        ) {
+        const involvesAssetOrMetric =
+          fromType === ASSET_NODE_TYPE ||
+          fromType === METRIC_NODE_TYPE ||
+          toType === ASSET_NODE_TYPE ||
+          toType === METRIC_NODE_TYPE;
+        if (explorationMode === 'data' && involvesAssetOrMetric) {
           return e.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND
             ? relationTypeFilterIds.includes(e.relationType)
             : true;

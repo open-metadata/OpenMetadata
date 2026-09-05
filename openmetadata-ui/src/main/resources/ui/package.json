@@ -14,8 +14,10 @@
   "scripts": {
     "start": "vite",
     "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build && yarn bundle:check",
+    "build:release": "yarn build && yarn compress:brotli",
     "analyze": "vite build --mode analyze",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
+    "compress:brotli": "node scripts/compress-brotli.mjs",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",

@@ -733,12 +733,9 @@ const MetricListPage = () => {
     </div>
   );
 
-  const isMetricListEmpty =
-    !isMetricsFetching &&
-    !isSearchPending &&
-    metrics.length === 0 &&
-    !searchText &&
-    !statusFilter;
+  const isMetricsDataEmpty =
+    !isMetricsFetching && !isSearchPending && metrics.length === 0;
+  const isMetricListEmpty = isMetricsDataEmpty && !searchText && !statusFilter;
 
   const metricEmptyState = (
     <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl">

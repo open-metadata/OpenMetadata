@@ -355,6 +355,14 @@ public final class SearchUtils {
     return aggregationJson.getString("key");
   }
 
+  /**
+   * Decides whether the caller's policy conditions are compiled into the search query. Bots are
+   * evaluated exactly like humans: they used to be exempt, which left every bot-authenticated search
+   * unfiltered even with access control on, because a skipped injection leaves the query matching
+   * everything rather than failing closed. {@code DefaultAuthorizer#authorize} already evaluates the
+   * same policies on a bot's REST reads, so exempting search made it the laxer of the two. Admins
+   * stay exempt because their compiled query would match everything anyway.
+   */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
@@ -363,7 +371,6 @@ public final class SearchUtils {
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && rbacConditionEvaluator != null;
   }
 

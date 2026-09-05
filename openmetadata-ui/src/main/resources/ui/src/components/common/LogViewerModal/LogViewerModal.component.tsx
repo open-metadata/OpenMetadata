@@ -167,7 +167,9 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     (scrollValues: LogViewerScrollValues) => {
       const { isBottom } = trackScroll(scrollValues);
 
-      if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
+      const canLoadMore = isBottom && hasMore && !loadingMore;
+
+      if (canLoadMore && !query && onLoadMore) {
         onLoadMore();
       }
     },
