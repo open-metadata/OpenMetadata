@@ -31,7 +31,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -122,7 +122,7 @@ public class AIContextFinder {
   private VectorSearchResponse searchKnowledge(String query, int size) {
     VectorSearchResponse response = null;
     if (Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-      OpenSearchVectorService service = OpenSearchVectorService.getInstance();
+      VectorIndexService service = Entity.getSearchRepository().getVectorIndexService();
       if (service != null) {
         try {
           // Over-fetch: collectHit dedupes chunk documents per FQN, so a long item occupying
