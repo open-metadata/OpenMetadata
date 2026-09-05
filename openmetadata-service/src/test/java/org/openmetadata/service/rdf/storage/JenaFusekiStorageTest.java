@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf.storage;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,13 +21,25 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.ConnectException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.OptionalLong;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.Query;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.update.UpdateAction;
+import org.apache.jena.update.UpdateFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -45,6 +58,8 @@ import org.openmetadata.service.rdf.RdfWriteMode;
  */
 @DisplayName("JenaFusekiStorage helper tests")
 class JenaFusekiStorageTest {
+
+  private static final String RDF_TYPE_URI = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
   @Nested
   @DisplayName("configuration defaults")
@@ -174,6 +189,7 @@ class JenaFusekiStorageTest {
                       () -> {},
                       () -> {},
                       failureRecords::incrementAndGet,
+                      () -> false,
                       () -> false));
 
       assertSame(failure, thrown);
@@ -204,12 +220,146 @@ class JenaFusekiStorageTest {
           () -> {},
           successes::incrementAndGet,
           failureRecords::incrementAndGet,
+          () -> false,
           () -> false);
 
       assertEquals(3, attempts.get());
       assertEquals(1, successes.get());
       assertEquals(2, failureRecords.get());
       assertEquals(750, delayMs.get());
+    }
+
+    @Test
+    @DisplayName("timeouts on large payloads abort retries with RdfPayloadTooLargeException")
+    void largePayloadTimeoutAbortsRetries() {
+      AtomicInteger attempts = new AtomicInteger();
+      AtomicInteger failureRecords = new AtomicInteger();
+
+      RdfPayloadTooLargeException thrown =
+          assertThrows(
+              RdfPayloadTooLargeException.class,
+              () ->
+                  JenaFusekiStorage.runWriteWithRetry(
+                      () -> {
+                        attempts.incrementAndGet();
+                        throw new RuntimeException("timed out", new TimeoutException());
+                      },
+                      "testWrite",
+                      2,
+                      250,
+                      2_000,
+                      delay -> {},
+                      () -> {},
+                      () -> {},
+                      failureRecords::incrementAndGet,
+                      () -> false,
+                      () -> true));
+
+      assertTrue(thrown.getMessage().contains("split the batch"));
+      assertEquals(1, attempts.get(), "an oversized timeout must never retry at the same size");
+      assertEquals(1, failureRecords.get(), "the timeout still counts toward the breaker");
+    }
+
+    @Test
+    @DisplayName("non-timeout transient failures still retry even when the payload is large")
+    void largePayloadConnectFailureStillRetries() {
+      AtomicInteger attempts = new AtomicInteger();
+
+      JenaFusekiStorage.runWriteWithRetry(
+          () -> {
+            if (attempts.incrementAndGet() <= 1) {
+              throw new RuntimeException("connect", new ConnectException("refused"));
+            }
+          },
+          "testWrite",
+          2,
+          250,
+          2_000,
+          delay -> {},
+          () -> {},
+          () -> {},
+          () -> {},
+          () -> false,
+          () -> true);
+
+      assertEquals(2, attempts.get(), "connect failures are transient regardless of payload size");
+    }
+  }
+
+  @Nested
+  @DisplayName("payload guard")
+  class PayloadGuardTests {
+
+    @Test
+    @DisplayName("oversized batches bisect until each part fits under the cap")
+    void oversizedBatchesAreBisectedUntilUnderCap() {
+      List<RdfStorageInterface.EntityWriteRequest> requests =
+          List.of(request(), request(), request(), request());
+      List<Integer> executedSizes = new ArrayList<>();
+      AtomicInteger oversizedSingles = new AtomicInteger();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          requests,
+          chunk -> "x".repeat(100 * chunk.size()),
+          150,
+          (update, chunk) -> executedSizes.add(chunk.size()),
+          oversized -> oversizedSingles.incrementAndGet());
+
+      assertEquals(List.of(1, 1, 1, 1), executedSizes);
+      assertEquals(0, oversizedSingles.get());
+    }
+
+    @Test
+    @DisplayName("a batch under the cap executes once, unsplit")
+    void underCapBatchExecutesOnce() {
+      List<RdfStorageInterface.EntityWriteRequest> requests = List.of(request(), request());
+      List<Integer> executedSizes = new ArrayList<>();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          requests,
+          chunk -> "x".repeat(50 * chunk.size()),
+          150,
+          (update, chunk) -> executedSizes.add(chunk.size()),
+          oversized -> {});
+
+      assertEquals(List.of(2), executedSizes);
+    }
+
+    @Test
+    @DisplayName("a single oversized request is still sent, alone, with the warning callback")
+    void singleOversizedRequestIsSentAloneWithWarning() {
+      List<Integer> executedSizes = new ArrayList<>();
+      AtomicInteger oversizedSingles = new AtomicInteger();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          List.of(request()),
+          chunk -> "x".repeat(400),
+          150,
+          (update, chunk) -> executedSizes.add(chunk.size()),
+          oversized -> oversizedSingles.incrementAndGet());
+
+      assertEquals(List.of(1), executedSizes);
+      assertEquals(1, oversizedSingles.get());
+    }
+
+    @Test
+    @DisplayName("an empty update never executes")
+    void emptyUpdateNeverExecutes() {
+      AtomicInteger executions = new AtomicInteger();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          List.of(request()),
+          chunk -> "",
+          150,
+          (update, chunk) -> executions.incrementAndGet(),
+          oversized -> executions.incrementAndGet());
+
+      assertEquals(0, executions.get());
+    }
+
+    private RdfStorageInterface.EntityWriteRequest request() {
+      return new RdfStorageInterface.EntityWriteRequest(
+          "table", UUID.randomUUID(), ModelFactory.createDefaultModel());
     }
   }
 
@@ -254,6 +404,165 @@ class JenaFusekiStorageTest {
       assertFalse(update.contains("DELETE"));
       assertTrue(update.startsWith("INSERT DATA"));
       assertTrue(update.contains("orders"));
+    }
+
+    @Test
+    @DisplayName("reconcile update carries exactly one WHERE-bearing operation")
+    void reconcileUpdateHasSingleWhereBearingOperation() {
+      UUID entityId = UUID.randomUUID();
+      String entityUri = "https://open-metadata.org/entity/table/" + entityId;
+      Model model = ModelFactory.createDefaultModel();
+      Resource entity = model.createResource(entityUri);
+      entity.addProperty(
+          model.createProperty("http://www.w3.org/2000/01/rdf-schema#label"), "orders");
+      entity.addProperty(
+          model.createProperty(RDF_TYPE_URI),
+          model.createResource("https://open-metadata.org/ontology/Table"));
+
+      String update = JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model);
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertEquals(1, countOccurrences(update, "DELETE"), update);
+      assertTrue(update.contains("!isIRI(?o)"), update);
+      assertTrue(update.contains("?p IN ("), update);
+    }
+
+    @Test
+    @DisplayName("delete filter degrades to the literal sweep when no predicates are managed")
+    void reconcileUpdateWithoutManagedPredicatesSweepsLiteralsOnly() {
+      String entityUri = "https://open-metadata.org/entity/table/" + UUID.randomUUID();
+      Model model = ModelFactory.createDefaultModel();
+      model
+          .createResource(entityUri)
+          .addProperty(
+              model.createProperty("https://open-metadata.org/ontology/unmanaged"), "value");
+
+      String update = JenaFusekiStorage.buildEntityUpsertUpdate(entityUri, model);
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertTrue(update.contains("!isIRI(?o)"), update);
+    }
+
+    @Test
+    @DisplayName("bulk reconcile combines all entity deletes into one WHERE operation")
+    void bulkReconcileUsesOneWhereOperation() {
+      UUID firstId = UUID.randomUUID();
+      UUID secondId = UUID.randomUUID();
+      String baseUri = "https://open-metadata.org/";
+      List<RdfStorageInterface.EntityWriteRequest> requests =
+          List.of(entityRequest(firstId, "orders"), entityRequest(secondId, "customers"));
+
+      String update = JenaFusekiStorage.buildBulkReconcileUpdate(baseUri, requests);
+      Dataset dataset = DatasetFactory.createTxnMem();
+      Model graph = dataset.getNamedModel("https://open-metadata.org/graph/knowledge");
+      Resource first = graph.createResource(baseUri + "entity/table/" + firstId);
+      Resource second = graph.createResource(baseUri + "entity/table/" + secondId);
+      Resource outsider = graph.createResource("urn:outsider");
+      Resource target = graph.createResource("urn:target");
+      Property label = graph.createProperty("http://www.w3.org/2000/01/rdf-schema#label");
+      Property contains = graph.createProperty("https://open-metadata.org/ontology/contains");
+      graph.add(first, label, "old orders");
+      graph.add(second, label, "old customers");
+      graph.add(first, contains, target);
+      graph.add(outsider, label, "preserved");
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertEquals(1, countOccurrences(update, "DELETE"), update);
+      assertTrue(update.contains("VALUES ?entity"), update);
+      assertTrue(update.contains(firstId.toString()), update);
+      assertTrue(update.contains(secondId.toString()), update);
+      assertDoesNotThrow(() -> UpdateAction.parseExecute(update, dataset));
+      assertFalse(graph.contains(first, label, "old orders"));
+      assertFalse(graph.contains(second, label, "old customers"));
+      assertTrue(graph.contains(first, label, "orders"));
+      assertTrue(graph.contains(second, label, "customers"));
+      assertTrue(graph.contains(first, contains, target));
+      assertTrue(graph.contains(outsider, label, "preserved"));
+      dataset.close();
+    }
+  }
+
+  @Nested
+  @DisplayName("relationship reconciliation query")
+  class RelationshipReconciliationQueryTests {
+
+    @Test
+    @DisplayName("multiple sources share one WHERE-bearing delete")
+    void multipleSourcesShareOneWhereOperation() {
+      UUID firstId = UUID.randomUUID();
+      UUID secondId = UUID.randomUUID();
+      String baseUri = "https://open-metadata.org/";
+      Set<String> sources =
+          new LinkedHashSet<>(
+              List.of(baseUri + "entity/table/" + firstId, baseUri + "entity/table/" + secondId));
+      RdfStorageInterface.RelationshipData relationship =
+          new RdfStorageInterface.RelationshipData(
+              "table", firstId, "database", UUID.randomUUID(), "contains");
+
+      String update =
+          JenaFusekiStorage.buildBulkRelationshipUpdate(baseUri, List.of(relationship), sources);
+
+      assertEquals(1, countOccurrences(update, "WHERE"), update);
+      assertEquals(1, countOccurrences(update, "DELETE"), update);
+      assertTrue(update.contains("VALUES ?source"), update);
+      assertTrue(update.contains(firstId.toString()), update);
+      assertTrue(update.contains(secondId.toString()), update);
+      assertTrue(update.contains("INSERT DATA"), update);
+      assertDoesNotThrow(() -> UpdateFactory.create(update));
+    }
+  }
+
+  @Nested
+  @DisplayName("dataset redirection")
+  class DatasetRedirectionTests {
+
+    @Test
+    @DisplayName("redirects the dataset path, preserving scheme host and port")
+    void redirectsDatasetPath() {
+      assertEquals(
+          "http://fuseki:3030/openmetadata_a",
+          JenaFusekiStorage.redirectToDataset("http://fuseki:3030/openmetadata", "openmetadata_a"));
+    }
+
+    @Test
+    @DisplayName("encodes spaces in the dataset path segment")
+    void encodesSpacesInDatasetPath() {
+      assertEquals(
+          "http://fuseki:3030/openmetadata%20blue",
+          JenaFusekiStorage.redirectToDataset(
+              "http://fuseki:3030/openmetadata", "openmetadata blue"));
+    }
+
+    @Test
+    @DisplayName("encodes reserved characters in the dataset path segment")
+    void encodesReservedCharactersInDatasetPath() {
+      assertEquals(
+          "http://fuseki:3030/openmetadata%2Fblue%3Fstate%3Dready%23current",
+          JenaFusekiStorage.redirectToDataset(
+              "http://fuseki:3030/openmetadata", "openmetadata/blue?state=ready#current"));
+    }
+
+    @Test
+    @DisplayName("preserves embedded credentials so admin calls stay authenticated")
+    void preservesEmbeddedCredentials() {
+      assertEquals(
+          "http://user:pass@fuseki:3030/openmetadata_b",
+          JenaFusekiStorage.redirectToDataset(
+              "http://user:pass@fuseki:3030/openmetadata", "openmetadata_b"));
+    }
+
+    @Test
+    @DisplayName("no override leaves the endpoint untouched")
+    void noOverrideLeavesEndpointUntouched() {
+      String endpoint = "http://fuseki:3030/openmetadata";
+      assertEquals(endpoint, JenaFusekiStorage.redirectToDataset(endpoint, null));
+      assertEquals(endpoint, JenaFusekiStorage.redirectToDataset(endpoint, "  "));
+    }
+
+    @Test
+    @DisplayName("an unparseable endpoint falls back rather than targeting the wrong dataset")
+    void unparseableEndpointFallsBack() {
+      assertEquals("not-a-url", JenaFusekiStorage.redirectToDataset("not-a-url", "openmetadata_a"));
     }
   }
 
@@ -324,6 +633,10 @@ class JenaFusekiStorageTest {
     @DisplayName("malformed URL returns null (caller skips the admin operation)")
     void malformedUrlReturnsNull() {
       assertNull(JenaFusekiStorage.parseDatasetEndpoint("not a url"));
+      // Parses as a relative URI, so it must be rejected on the missing scheme/host rather
+      // than producing a "null://null" server base.
+      assertNull(JenaFusekiStorage.parseDatasetEndpoint("not-a-url"));
+      assertNull(JenaFusekiStorage.parseDatasetEndpoint("/openmetadata"));
     }
 
     @Test
@@ -393,6 +706,37 @@ class JenaFusekiStorageTest {
       String result = JenaFusekiStorage.maskUserInfo("not a url://user:pw@host/ds");
       assertNotNull(result);
       assertFalse(result.contains("user:pw"));
+    }
+  }
+
+  @Nested
+  @DisplayName("parseJvmMaxHeapBytes")
+  class MetricsParsingTests {
+
+    @Test
+    @DisplayName("Prometheus heap samples sum across pools, skipping unbounded pools")
+    void prometheusHeapParsing() {
+      String text =
+          """
+          # HELP jvm_memory_max_bytes The maximum amount of memory in bytes
+          # TYPE jvm_memory_max_bytes gauge
+          jvm_memory_max_bytes{area="heap",id="G1 Eden Space",} -1.0
+          jvm_memory_max_bytes{area="heap",id="G1 Old Gen",} 4.294967296E9
+          jvm_memory_max_bytes{area="heap",id="G1 Survivor Space",} 1.073741824E9
+          jvm_memory_max_bytes{area="nonheap",id="Metaspace",} 2.68435456E8
+          """;
+
+      OptionalLong parsed = JenaFusekiStorage.parseJvmMaxHeapBytes(text);
+
+      assertTrue(parsed.isPresent());
+      assertEquals((4L << 30) + (1L << 30), parsed.getAsLong());
+    }
+
+    @Test
+    @DisplayName("metrics text without heap samples parses to empty")
+    void noHeapSamplesParsesEmpty() {
+      assertTrue(
+          JenaFusekiStorage.parseJvmMaxHeapBytes("jvm_threads_live_threads 42.0\n").isEmpty());
     }
   }
 
@@ -518,5 +862,24 @@ class JenaFusekiStorageTest {
     void malformedJson() {
       assertFalse(JenaFusekiStorage.isTaskFinished("not json"));
     }
+  }
+
+  private static RdfStorageInterface.EntityWriteRequest entityRequest(UUID id, String label) {
+    String entityUri = "https://open-metadata.org/entity/table/" + id;
+    Model model = ModelFactory.createDefaultModel();
+    model
+        .createResource(entityUri)
+        .addProperty(model.createProperty("http://www.w3.org/2000/01/rdf-schema#label"), label);
+    return new RdfStorageInterface.EntityWriteRequest("table", id, model);
+  }
+
+  private static int countOccurrences(String haystack, String needle) {
+    int count = 0;
+    int from = 0;
+    while ((from = haystack.indexOf(needle, from)) >= 0) {
+      count++;
+      from += needle.length();
+    }
+    return count;
   }
 }

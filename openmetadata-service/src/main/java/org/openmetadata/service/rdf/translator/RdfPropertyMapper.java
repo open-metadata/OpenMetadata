@@ -22,6 +22,7 @@ import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
@@ -38,6 +39,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class RdfPropertyMapper {
 
   private static final int MAX_IDENTIFIER_CACHE_ENTRIES = 1_000;
+  private static final int MAX_UNMAPPED_JSON_LITERAL_CHARS = 32_768;
+  private static final int MAX_MERGED_CONTEXT_ENTRIES = 50;
   private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
   private static final String CLASSIFICATION_SOURCE = "Classification";
   private static final String GLOSSARY_SOURCE = "Glossary";
@@ -81,6 +84,27 @@ public class RdfPropertyMapper {
   private static final Set<String> LINEAGE_PROPERTIES =
       Set.of("upstreamEdges", "downstreamEdges", "lineage");
 
+  static {
+    // Jena 6.2.0 cannot bootstrap itself from a vocabulary constant. Dereferencing RDF.type
+    // below reaches NodeFactory.<clinit>, which calls JenaSystem.init() from inside that
+    // nested initializer; InitJenaCore then runs TypeMapper.reset() against datatype
+    // constants that are still null and dies with an NPE. NodeFactory stays permanently
+    // unusable for the life of the JVM ("Could not initialize class
+    // org.apache.jena.graph.NodeFactory"), which takes every later Jena call - glossary RDF
+    // import, ontology export, the translator - down with it. Reproduced on jena-core +
+    // jena-arq 6.2.0 alone; Jena 5.6.0 bootstraps from the same first touch without error.
+    // Entering through JenaSystem.init() instead completes subsystem init while nothing is
+    // half-built.
+    //
+    // OpenMetadataApplication.run() calls JenaSystem.init() too, and that covers the server
+    // whichever class reaches Jena first. This one is not redundant with it: it covers JVMs
+    // that never boot the application - unit tests, tooling, and the forked probe in
+    // RdfJenaBootstrapTest, which loads this class directly and fails without this block.
+    // JenaSystem.init() is idempotent, so having both costs nothing. Remove both together
+    // when Jena fixes the initialization order upstream.
+    JenaSystem.init();
+  }
+
   // Direct URI-valued predicates the translator emits from an entity. These
   // are the predicates whose VALUE can change (or shrink to empty) between
   // writes of the same entity — e.g. tags removed, owner changed, domain
@@ -120,6 +144,10 @@ public class RdfPropertyMapper {
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
+  // Contexts are static after startup, so each context array is flattened once per
+  // mapper rather than once per entity.
+  private final Cache<String, Map<String, Object>> mergedContextCache =
+      Caffeine.newBuilder().maximumSize(MAX_MERGED_CONTEXT_ENTRIES).build();
   private final Cache<String, Optional<UUID>> glossaryTermIdCache = identifierCache();
   private final Cache<String, Optional<UUID>> classificationTagIdCache = identifierCache();
 
@@ -143,11 +171,12 @@ public class RdfPropertyMapper {
     Model requiredModel = Objects.requireNonNull(model, "model");
     JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
     String entityType = requiredEntity.getEntityReference().getType();
-    Object context = contextCache.get(getContextName(entityType));
+    String contextName = getContextName(entityType);
+    Object context = contextCache.get(contextName);
 
     switch (context) {
       case List<?> contextArray -> processArrayContext(
-          contextArray, entityJson, requiredResource, requiredModel);
+          contextName, contextArray, entityJson, requiredResource, requiredModel);
       case Map<?, ?> contextMap -> processContextMappings(
           toStringObjectMap(contextMap), entityJson, requiredResource, requiredModel);
       case null -> throw new IllegalStateException(
@@ -179,7 +208,19 @@ public class RdfPropertyMapper {
   }
 
   private void processArrayContext(
-      List<?> contextArray, JsonNode entityJson, Resource entityResource, Model model) {
+      String contextName,
+      List<?> contextArray,
+      JsonNode entityJson,
+      Resource entityResource,
+      Model model) {
+    processContextMappings(
+        mergedContextCache.get(contextName, key -> flattenContext(contextArray)),
+        entityJson,
+        entityResource,
+        model);
+  }
+
+  private static Map<String, Object> flattenContext(List<?> contextArray) {
     // Flatten all context maps in the array into one combined map BEFORE iterating
     // entity fields, so each field gets resolved against the union of mappings
     // exactly once. Without this, processContextMappings runs per-context-map and
@@ -195,7 +236,7 @@ public class RdfPropertyMapper {
         mergedContext.putAll(toStringObjectMap(contextMap));
       }
     }
-    processContextMappings(mergedContext, entityJson, entityResource, model);
+    return mergedContext;
   }
 
   private static Map<String, Object> toStringObjectMap(Map<?, ?> source) {
@@ -380,9 +421,20 @@ public class RdfPropertyMapper {
     } else if (fieldValue.isBoolean()) {
       entityResource.addProperty(property, model.createTypedLiteral(fieldValue.asBoolean()));
     } else if (fieldValue.isArray() || fieldValue.isObject()) {
-      // Store complex types as JSON
+      // Store complex types as JSON, bounded: an unmapped blob (a wide table's columns,
+      // a large sampleData payload) is stringified whole and would otherwise put megabytes
+      // into one literal, inflating every write request for a value nothing queries.
+      String serialized = fieldValue.toString();
+      if (serialized.length() > MAX_UNMAPPED_JSON_LITERAL_CHARS) {
+        LOG.debug(
+            "Skipping unmapped field {} - serialized JSON is {} chars, above the {} cap",
+            fieldName,
+            serialized.length(),
+            MAX_UNMAPPED_JSON_LITERAL_CHARS);
+        return;
+      }
       entityResource.addProperty(
-          property, model.createTypedLiteral(fieldValue.toString(), XSDDatatype.XSDstring));
+          property, model.createTypedLiteral(serialized, XSDDatatype.XSDstring));
     }
   }
 
@@ -1515,32 +1567,11 @@ public class RdfPropertyMapper {
   }
 
   private String getContextName(String entityType) {
-    return switch (entityType.toLowerCase()) {
-      case "table",
-          "database",
-          "databaseschema",
-          "storedprocedure",
-          "pipeline",
-          "topic",
-          "dashboard",
-          "dashboarddatamodel",
-          "chart",
-          "mlmodel",
-          "container",
-          "searchindex",
-          "apiendpoint",
-          "apicollection",
-          "report" -> "dataAsset-complete";
-      case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice" -> "service";
-      case "user", "team", "role" -> "team";
-      case "glossary", "glossaryterm", "tag", "classification" -> "governance";
-      default -> "base";
-    };
+    // Shared with JsonLdTranslator. These were two divergent switches: 44 entity types
+    // (testCase, domain, dataProduct, query, metric, the AI/automation types, ...) routed
+    // to a real context on export but fell through to "base" here, so their fields were
+    // written as opaque om:<field> JSON string literals instead of mapped predicates.
+    return RdfContextRegistry.contextNameFor(entityType);
   }
 
   private String getRdfType(String entityType) {

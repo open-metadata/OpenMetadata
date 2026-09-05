@@ -134,7 +134,14 @@
          at local resources, so an update could read data off the machine
          running the engine; 6.2.0 restricts them to http/ftp). There is no
          5.x line with the fix — 5.6.0 is the last 5.x release — so the only
-         way off the CVE is the major bump. Do not go back below 6.2.0. -->
+         way off the CVE is the major bump. Do not go back below 6.2.0.
+
+         The client can run against a 5.6 or 6.2 Fuseki interchangeably: the
+         SPARQL/GSP protocols and the RDF Thrift wire format are identical
+         across the two, so client and server upgrade independently. That
+         decoupling is what lets the server-side Fuseki bump roll out on its
+         own schedule; it is not a reason to leave a server on 5.6, which is
+         still exposed to the CVE above. -->
     <jena.version>6.2.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>

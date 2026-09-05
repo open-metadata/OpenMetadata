@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -68,6 +69,16 @@ class RdfIndexAppTest {
 
     TestableRdfIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
       super(collectionDAO, searchRepository);
+      // The mocked CollectionDAO cannot back the cross-app admission signals; these
+      // tests exercise the indexing flow, so the guard always admits.
+      admissionGuard =
+          new RdfReindexAdmissionGuard(
+              collectionDAO, Optional::empty, () -> 0L, waitMs -> {}, 1, 1) {
+            @Override
+            public Optional<String> currentContention() {
+              return Optional.empty();
+            }
+          };
     }
 
     @Override
@@ -110,6 +121,276 @@ class RdfIndexAppTest {
     lenient().when(mockRdfRepository.isEnabled()).thenReturn(true);
     clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
+  }
+
+  @Nested
+  @DisplayName("Search-reindex admission tests")
+  class AdmissionTests {
+
+    private TestableRdfIndexApp appWithContendedGuard(boolean awaitAdmits) {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+      testApp.admissionGuard =
+          new RdfReindexAdmissionGuard(
+              collectionDAO, Optional::empty, () -> 0L, waitMs -> {}, 1, 1) {
+            @Override
+            public Optional<String> currentContention() {
+              return Optional.of("search reindex lock held by job test-job");
+            }
+
+            @Override
+            public AdmissionResult awaitAdmission() {
+              return new AdmissionResult(
+                  awaitAdmits, awaitAdmits ? null : "search reindex lock held by job test-job", 0);
+            }
+          };
+      return testApp;
+    }
+
+    private void seedJobData(TestableRdfIndexApp testApp) throws Exception {
+      EventPublisherJob jobConfig = new EventPublisherJob();
+      jobConfig.setEntities(Set.of("table"));
+      jobConfig.setStatus(EventPublisherJob.Status.STARTED);
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+    }
+
+    private JobExecutionContext contextWithTrigger(String triggerType) {
+      JobExecutionContext context = mock(JobExecutionContext.class);
+      JobDetail jobDetail = mock(JobDetail.class);
+      JobDataMap jobDataMap = new JobDataMap();
+      if (triggerType != null) {
+        jobDataMap.put("triggerType", triggerType);
+      }
+      when(context.getJobDetail()).thenReturn(jobDetail);
+      lenient().when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
+      lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+      return context;
+    }
+
+    @Test
+    @DisplayName("cron run that never gets admitted ends STOPPED without indexing")
+    void cronRunDeferredPastWindowEndsStopped() throws Exception {
+      TestableRdfIndexApp testApp = appWithContendedGuard(false);
+      seedJobData(testApp);
+
+      testApp.execute(contextWithTrigger("Weekly"));
+
+      assertEquals(EventPublisherJob.Status.STOPPED, testApp.getJobData().getStatus());
+      assertNotNull(testApp.getJobData().getFailure());
+      assertTrue(testApp.getJobData().getFailure().getMessage().contains("deferred"));
+      assertTrue(testApp.pushedUpdate, "deferred run must push a final status update");
+      verify(mockRdfRepository, never()).ensureStorageReady();
+    }
+
+    @Test
+    @DisplayName("cron run proceeds once the guard admits after deferral")
+    void cronRunProceedsWhenGuardAdmits() throws Exception {
+      TestableRdfIndexApp testApp = appWithContendedGuard(true);
+      seedJobData(testApp);
+
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "admitAgainstSearchReindex", JobExecutionContext.class);
+      method.setAccessible(true);
+
+      assertTrue((boolean) method.invoke(testApp, contextWithTrigger(null)));
+      assertEquals(EventPublisherJob.Status.STARTED, testApp.getJobData().getStatus());
+    }
+
+    @Test
+    @DisplayName("on-demand run bypasses the guard despite contention")
+    void onDemandRunBypassesGuard() throws Exception {
+      TestableRdfIndexApp testApp = appWithContendedGuard(false);
+      seedJobData(testApp);
+
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "admitAgainstSearchReindex", JobExecutionContext.class);
+      method.setAccessible(true);
+
+      assertTrue((boolean) method.invoke(testApp, contextWithTrigger("OnDemandJob")));
+      assertEquals(EventPublisherJob.Status.STARTED, testApp.getJobData().getStatus());
+    }
+  }
+
+  @Nested
+  @DisplayName("Blue/green lifecycle tests")
+  class BlueGreenLifecycleTests {
+
+    private TestableRdfIndexApp appWith(boolean recreate, boolean blueGreen) throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      EventPublisherJob jobConfig =
+          new EventPublisherJob()
+              .withEntities(Set.of("table"))
+              .withRecreateIndex(recreate)
+              .withBlueGreenRebuild(blueGreen);
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+      return testApp;
+    }
+
+    private Object invoke(TestableRdfIndexApp app, String method) throws Exception {
+      var m = RdfIndexApp.class.getDeclaredMethod(method);
+      m.setAccessible(true);
+      return m.invoke(app);
+    }
+
+    @Test
+    @DisplayName("blue/green is chosen only when recreate, the app flag, and support all agree")
+    void buildDatasetRequiresRecreateFlagAndSupport() throws Exception {
+      doReturn(true).when(mockRdfRepository).supportsBlueGreenRebuild();
+      doReturn("openmetadata_a").when(mockRdfRepository).resolveBuildDatasetName();
+
+      assertEquals("openmetadata_a", invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+      assertNull(
+          invoke(appWith(true, false), "resolveBlueGreenBuildDataset"),
+          "the per-run app flag governs; a capable server alone must not opt a run in");
+      assertNull(
+          invoke(appWith(false, true), "resolveBlueGreenBuildDataset"),
+          "an incremental run has no build dataset to promote");
+    }
+
+    @Test
+    @DisplayName("an unsupported backend falls back to rebuilding in place")
+    void unsupportedBackendFallsBackInPlace() throws Exception {
+      doReturn(false).when(mockRdfRepository).supportsBlueGreenRebuild();
+
+      assertNull(invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+      verify(mockRdfRepository, never()).resolveBuildDatasetName();
+    }
+
+    @Test
+    @DisplayName("a failure resolving the target degrades to an in-place rebuild, not a crash")
+    void resolutionFailureDegradesToInPlace() throws Exception {
+      doReturn(true).when(mockRdfRepository).supportsBlueGreenRebuild();
+      doThrow(new IllegalStateException("pointer table unreadable"))
+          .when(mockRdfRepository)
+          .resolveBuildDatasetName();
+
+      assertNull(invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+    }
+
+    @Test
+    @DisplayName("preparing a build dataset empties and re-seeds it before any write")
+    void prepareBuildDatasetEmptiesAndSeeds() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      RdfRepository buildRepository = mock(RdfRepository.class);
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "prepareBuildDataset", RdfRepository.class, String.class);
+      method.setAccessible(true);
+
+      method.invoke(testApp, buildRepository, "openmetadata_a");
+
+      // Order matters: an un-cleared reuse would merge the previous rebuild's triples.
+      InOrder order = inOrder(mockRdfRepository, buildRepository);
+      order.verify(mockRdfRepository).createBuildDataset("openmetadata_a");
+      order.verify(buildRepository).clearAll();
+      order.verify(buildRepository).compactStorage();
+      order.verify(buildRepository).reloadOntologies();
+    }
+
+    @Test
+    @DisplayName("abandoning a build leaves the serving pointer untouched")
+    void abandoningBuildLeavesServingAlone() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      var buildField = RdfIndexApp.class.getDeclaredField("buildDataset");
+      buildField.setAccessible(true);
+      buildField.set(testApp, "openmetadata_a");
+
+      invoke(testApp, "abandonBuildDataset");
+
+      assertNull(buildField.get(testApp));
+      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString());
+    }
+  }
+
+  @Nested
+  @DisplayName("Promotion ratio gate tests")
+  class PromotionRatioGateTests {
+
+    private TestableRdfIndexApp appReadyToPromote(
+        long totalRecords, long successRecords, Double minSuccessRatio) throws Exception {
+      TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+
+      EventPublisherJob jobConfig = new EventPublisherJob();
+      jobConfig.setEntities(Set.of("table"));
+      jobConfig.setMinSuccessRatio(minSuccessRatio);
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+
+      var buildDatasetField = RdfIndexApp.class.getDeclaredField("buildDataset");
+      buildDatasetField.setAccessible(true);
+      buildDatasetField.set(testApp, "openmetadata_a");
+
+      if (totalRecords >= 0) {
+        Stats stats =
+            new Stats()
+                .withJobStats(
+                    new StepStats()
+                        .withTotalRecords((int) totalRecords)
+                        .withSuccessRecords((int) successRecords));
+        var statsField = RdfIndexApp.class.getDeclaredField("rdfIndexStats");
+        statsField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        java.util.concurrent.atomic.AtomicReference<Stats> statsRef =
+            (java.util.concurrent.atomic.AtomicReference<Stats>) statsField.get(testApp);
+        statsRef.set(stats);
+      }
+      return testApp;
+    }
+
+    private void promote(TestableRdfIndexApp testApp) throws Exception {
+      var method = RdfIndexApp.class.getDeclaredMethod("promoteBuildDataset", RdfRepository.class);
+      method.setAccessible(true);
+      try {
+        method.invoke(testApp, mockRdfRepository);
+      } catch (java.lang.reflect.InvocationTargetException e) {
+        if (e.getCause() instanceof RuntimeException runtimeException) {
+          throw runtimeException;
+        }
+        throw e;
+      }
+    }
+
+    @Test
+    @DisplayName("success ratio below threshold refuses promotion; old dataset keeps serving")
+    void lowSuccessRatioRefusesPromotion() throws Exception {
+      when(mockRdfRepository.getTripleCount()).thenReturn(1000L);
+      TestableRdfIndexApp testApp = appReadyToPromote(100, 80, 0.95);
+
+      IllegalStateException refusal =
+          assertThrows(IllegalStateException.class, () -> promote(testApp));
+
+      assertTrue(refusal.getMessage().contains("minSuccessRatio"));
+      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("success ratio at or above threshold activates the build dataset")
+    void sufficientSuccessRatioPromotes() throws Exception {
+      when(mockRdfRepository.getTripleCount()).thenReturn(1000L);
+      TestableRdfIndexApp testApp = appReadyToPromote(100, 96, 0.95);
+
+      promote(testApp);
+
+      verify(mockRdfRepository).activateDataset(eq("openmetadata_a"), anyString());
+    }
+
+    @Test
+    @DisplayName("missing totals do not veto promotion")
+    void missingTotalsDoNotVeto() throws Exception {
+      when(mockRdfRepository.getTripleCount()).thenReturn(1000L);
+      TestableRdfIndexApp testApp = appReadyToPromote(-1, 0, 0.95);
+
+      promote(testApp);
+
+      verify(mockRdfRepository).activateDataset(eq("openmetadata_a"), anyString());
+    }
   }
 
   @Nested
@@ -736,7 +1017,7 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      // Four-step recreate flow on TDB2:
+      // Three-step recreate flow on TDB2:
       //  1. clearAll()       — SPARQL CLEAR ALL (logical delete only)
       //  2. compactStorage() — physically reclaim disk via /$/compact admin
       //                        endpoint while the dataset is empty; MUST run
@@ -745,16 +1026,15 @@ class RdfIndexAppTest {
       //  3. reloadOntologies() — repopulate ontology/shapes graphs that
       //                        CLEAR ALL wiped, so post-wipe inference /
       //                        federated SPARQL queries keep working.
-      //  4. compactStorage() — final compaction at end of successful run to
-      //                        cap journal/free-list growth from the reindex
-      //                        churn itself. Fires on every successful run
-      //                        regardless of branch.
+      // No end-of-run compaction on recreate: the store was compacted while
+      // empty and INSERT_ONLY appends leave nothing to reclaim, while TDB2
+      // compaction blocks writers for up to ten minutes.
       // Use InOrder so a future change reordering these calls fails this test.
       InOrder recreateFlow = inOrder(mockRdfRepository);
       recreateFlow.verify(mockRdfRepository).clearAll();
       recreateFlow.verify(mockRdfRepository).compactStorage();
       recreateFlow.verify(mockRdfRepository).reloadOntologies();
-      recreateFlow.verify(mockRdfRepository).compactStorage();
+      verify(mockRdfRepository, times(1)).compactStorage();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
       assertFalse(RdfProjectionHealth.isDegraded());
     }
@@ -811,8 +1091,9 @@ class RdfIndexAppTest {
       // pre-reindex compactStorage live behind the recreateIndex=true branch.
       verify(mockRdfRepository, never()).clearAll();
       verify(mockRdfRepository, never()).reloadOntologies();
-      // …but the FINAL compactStorage call still fires on every successful
-      // run regardless of branch. Pre-this-PR, the incremental path's
+      // …but the FINAL compactStorage call still fires at the end of every
+      // successful INCREMENTAL run (recreate runs skip it — they compacted the
+      // empty store up front and only appended after). The incremental path's
       // clearAllGlossaryTermRelations + re-add cycle leaked free space on
       // every weekly run with no compaction ever — the customer's
       // 50 GB-on-2k-entities case. End-of-run compaction caps growth at

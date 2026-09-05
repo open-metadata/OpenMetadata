@@ -128,7 +128,7 @@ class DistributedRdfIndexCoordinatorTest {
         .thenReturn(
             List.of(
                 new CollectionDAO.RdfIndexPartitionDAO.RdfEntityStatsRecord(
-                    "table", 25L, 0L, 0L, 0L, 1, 0, 0)));
+                    "table", 25L, 0L, 0L, 0L, 0L, 0L, 0L, 1, 0, 0)));
     when(partitionDAO.getServerStats(jobId.toString())).thenReturn(List.of());
 
     RdfIndexJob refreshed = coordinator.getJobWithAggregatedStats(jobId);
@@ -185,7 +185,7 @@ class DistributedRdfIndexCoordinatorTest {
         .thenReturn(
             List.of(
                 new CollectionDAO.RdfIndexPartitionDAO.RdfEntityStatsRecord(
-                    "table", 25L, 25L, 25L, 0L, 1, 1, 0)));
+                    "table", 25L, 25L, 25L, 0L, 0L, 0L, 0L, 1, 1, 0)));
     when(partitionDAO.getServerStats(jobId.toString())).thenReturn(List.of());
 
     RdfIndexJob refreshed = coordinator.getJobWithAggregatedStats(jobId);
@@ -241,7 +241,7 @@ class DistributedRdfIndexCoordinatorTest {
         .thenReturn(
             List.of(
                 new CollectionDAO.RdfIndexPartitionDAO.RdfEntityStatsRecord(
-                    "table", 25L, 25L, 25L, 0L, 1, 1, 0)));
+                    "table", 25L, 25L, 25L, 0L, 0L, 0L, 0L, 1, 1, 0)));
     when(partitionDAO.getServerStats(jobId.toString())).thenReturn(List.of());
 
     RdfIndexJob refreshed = coordinator.getJobWithAggregatedStats(jobId);
@@ -287,6 +287,9 @@ class DistributedRdfIndexCoordinatorTest {
                     100L,
                     1,
                     "PROCESSING",
+                    0L,
+                    0L,
+                    0L,
                     0L,
                     0L,
                     0L,
@@ -1006,6 +1009,10 @@ class DistributedRdfIndexCoordinatorTest {
         1,
         status,
         0L,
+        0L,
+        0L,
+        0L,
+        // readerTimeMs / processTimeMs / sinkTimeMs
         0L,
         0L,
         0L,

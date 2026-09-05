@@ -2,12 +2,19 @@ package org.openmetadata.service.rdf.storage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
@@ -21,20 +28,28 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.atlas.web.HttpException;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -48,13 +63,18 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.rdfconnection.RDFConnectionFuseki;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.riot.system.StreamRDFOps;
+import org.apache.jena.riot.system.StreamRDFWriter;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
@@ -73,11 +93,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   // Defaults keep TCP connect fail-fast while giving production Fuseki enough
   // time for larger SPARQL UPDATE transactions. The request timeout bounds the
-  // per-request body via a CompletableFuture wrapper around every blocking
+  // per-request body via an interruptible Future around every blocking
   // RDFConnection call below — caller thread frees on timeout even when Fuseki
   // accepts the TCP connection and then stalls on the response.
   //
-  // We use CompletableFuture rather than Jena's QueryExecution.setTimeout
+  // We use an executor Future rather than Jena's QueryExecution.setTimeout
   // (removed in Jena 5; broke integration tests previously) or Jena's
   // QueryExecutionHTTPBuilder / UpdateExecHTTPBuilder (API surface differs
   // between Jena 4 and Jena 5, and our two classpaths use different
@@ -87,13 +107,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // CIRCUIT_BREAKER_FAILURE_THRESHOLD connect/timeout failures and
   // short-circuits new traffic for CIRCUIT_BREAKER_COOLDOWN_MS.
   static final int DEFAULT_CONNECT_TIMEOUT_MS = 2_000;
-  static final long DEFAULT_REQUEST_TIMEOUT_MS = 60_000L;
+  static final long DEFAULT_REQUEST_TIMEOUT_MS = RdfStorageInterface.DEFAULT_REQUEST_TIMEOUT_MS;
   static final int DEFAULT_WRITE_MAX_RETRIES = 2;
   static final long DEFAULT_WRITE_RETRY_INITIAL_BACKOFF_MS = 250L;
   static final long DEFAULT_WRITE_RETRY_MAX_BACKOFF_MS = 2_000L;
 
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
+
+  private static final long SLOW_REQUEST_WARN_THRESHOLD_MS = 10_000L;
+
+  private static final int STREAM_PIPE_BUFFER_BYTES = 64 * 1024;
+  private static final String CONTENT_TYPE_RDF_THRIFT = "application/rdf+thrift";
+  private static final String HEADER_CONTENT_TYPE = "Content-Type";
+  private static final String HEADER_CONTENT_ENCODING = "Content-Encoding";
+  private static final String ENCODING_GZIP = "gzip";
+  private static final String METRIC_FUSEKI_REQUEST = "rdf.fuseki.request";
+  private static final String METRIC_FUSEKI_TIMEOUTS = "rdf.fuseki.timeouts";
+  private static final String METRIC_FUSEKI_PAYLOAD_BYTES = "rdf.fuseki.payload.bytes";
+  private static final String METRIC_FUSEKI_WRITER_WAIT = "rdf.fuseki.writer.wait";
+  private static final String TAG_OPERATION = "operation";
+  private static final String TAG_OUTCOME = "outcome";
+  private static final String REQUEST_OUTCOME_SUCCESS = "success";
+  private static final String REQUEST_OUTCOME_TIMEOUT = "timeout";
+  private static final String REQUEST_OUTCOME_ERROR = "error";
 
   // Compaction polls /$/tasks/{taskId} until the task reports finished. Fuseki
   // does not stream progress, so we poll on a fixed cadence. Total budget is
@@ -107,16 +144,21 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
   // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
   // block its worker thread until OS-level TCP give-up, and on commonPool that
-  // would starve unrelated CompletableFuture / parallel-stream work elsewhere
+  // would starve unrelated asynchronous work elsewhere
   // in the service. Virtual threads are cheap to leak (a few KB stack each)
   // and the circuit breaker bounds how many can pile up.
   private static final ExecutorService TIMEOUT_EXECUTOR =
       Executors.newThreadPerTaskExecutor(
           Thread.ofVirtual().name("rdf-storage-timeout-", 0).factory());
 
-  private final RDFConnection connection;
+  // Volatile so a blue/green flip can re-point this instance at the newly built
+  // dataset without threading a dataset argument through every read and write.
+  // Swapping the reference is safe for in-flight work: each call captured the
+  // previous connection and completes against it, and the old connection is left
+  // for GC rather than closed underneath a request.
+  private volatile RDFConnection connection;
   private final String baseUri;
-  private final String endpoint;
+  private volatile String endpoint;
   private final String username;
   private final String password;
   private final Duration connectTimeout;
@@ -124,23 +166,38 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final int writeMaxRetries;
   private final long writeRetryInitialBackoffMs;
   private final long writeRetryMaxBackoffMs;
+  private final int maxUpdatePayloadBytes;
+  private final int maxAppendPayloadBytes;
+  private final boolean streamingAppendEnabled;
+  private final boolean gzipRequests;
+  private final HttpClient streamingHttpClient;
   private final LongConsumer retryDelayMs;
 
   private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
   private final AtomicLong circuitOpenUntilMs = new AtomicLong(0L);
+  private final Semaphore writePermit = new Semaphore(1, true);
 
   public JenaFusekiStorage(RdfConfiguration config) {
-    this(config, JenaFusekiStorage::sleepRetryDelay);
+    this(config, (String) null);
+  }
+
+  public JenaFusekiStorage(RdfConfiguration config, String datasetNameOverride) {
+    this(config, JenaFusekiStorage::sleepRetryDelay, datasetNameOverride);
   }
 
   JenaFusekiStorage(RdfConfiguration config, LongConsumer retryDelayMs) {
+    this(config, retryDelayMs, null);
+  }
+
+  JenaFusekiStorage(RdfConfiguration config, LongConsumer retryDelayMs, String datasetOverride) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
-    this.endpoint =
+    String configuredEndpoint =
         config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
             ? config.getRemoteEndpoint().toString()
             : "http://openmetadata-fuseki:3030/openmetadata";
+    this.endpoint = redirectToDataset(configuredEndpoint, datasetOverride);
     this.username = config.getUsername();
     this.password = config.getPassword();
     this.connectTimeout = Duration.ofMillis(resolveConnectTimeoutMs(config));
@@ -148,36 +205,38 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     this.writeMaxRetries = resolveWriteMaxRetries(config);
     this.writeRetryInitialBackoffMs = resolveWriteRetryInitialBackoffMs(config);
     this.writeRetryMaxBackoffMs = resolveWriteRetryMaxBackoffMs(config);
+    this.maxUpdatePayloadBytes = RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
+    this.maxAppendPayloadBytes = RdfStorageInterface.resolveMaxAppendPayloadBytes(config);
+    this.streamingAppendEnabled =
+        config.getStreamingAppendEnabled() == null || config.getStreamingAppendEnabled();
+    this.gzipRequests = Boolean.TRUE.equals(config.getGzipRequests());
+    this.streamingHttpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
     this.retryDelayMs = retryDelayMs;
 
     // Best-effort attempt to create the dataset at startup; callers should invoke
     // ensureStorageReady() before running work to recover from later restarts of the RDF server.
     ensureDatasetExists(endpoint, username, password);
 
-    if (username != null && password != null) {
-      java.net.http.HttpClient httpClient =
-          java.net.http.HttpClient.newBuilder()
-              .connectTimeout(connectTimeout)
-              .authenticator(
-                  new java.net.Authenticator() {
-                    @Override
-                    protected java.net.PasswordAuthentication getPasswordAuthentication() {
-                      return new java.net.PasswordAuthentication(
-                          config.getUsername(), config.getPassword().toCharArray());
-                    }
-                  })
-              .build();
-
-      this.connection =
-          RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
-    } else {
-      java.net.http.HttpClient httpClient =
-          java.net.http.HttpClient.newBuilder().connectTimeout(connectTimeout).build();
-      this.connection =
-          RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
-    }
+    this.connection = buildConnection(endpoint);
     LOG.info("Connected to Apache Jena Fuseki at {}", maskUserInfo(endpoint));
     loadOntology();
+  }
+
+  private RDFConnection buildConnection(String destination) {
+    HttpClient.Builder clientBuilder = HttpClient.newBuilder().connectTimeout(connectTimeout);
+    if (username != null && password != null) {
+      clientBuilder.authenticator(
+          new java.net.Authenticator() {
+            @Override
+            protected java.net.PasswordAuthentication getPasswordAuthentication() {
+              return new java.net.PasswordAuthentication(username, password.toCharArray());
+            }
+          });
+    }
+    return RDFConnectionFuseki.create()
+        .destination(destination)
+        .httpClient(clientBuilder.build())
+        .build();
   }
 
   static int resolveConnectTimeoutMs(RdfConfiguration config) {
@@ -185,7 +244,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static long resolveRequestTimeoutMs(RdfConfiguration config) {
-    return positiveLong(config.getRequestTimeoutMs(), DEFAULT_REQUEST_TIMEOUT_MS);
+    return RdfStorageInterface.resolveRequestTimeoutMs(config);
   }
 
   static int resolveWriteMaxRetries(RdfConfiguration config) {
@@ -204,10 +263,6 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private static int positiveInt(Integer value, int defaultValue) {
     return value != null && value > 0 ? value : defaultValue;
-  }
-
-  private static long positiveLong(Integer value, long defaultValue) {
-    return value != null && value > 0 ? value.longValue() : defaultValue;
   }
 
   private static long nonNegativeLong(Integer value, long defaultValue) {
@@ -257,11 +312,47 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // Package-private (vs private) so the test class in the same package can
   // exercise URL-parsing edge cases directly. Same rationale applies to the
   // other static helpers below.
+  /**
+   * Point an endpoint at a different dataset on the same server, preserving scheme, host, port and
+   * any embedded credentials. Returns the endpoint unchanged when no override is requested or when
+   * the endpoint cannot be parsed — callers get today's behaviour rather than a silently wrong
+   * target.
+   */
+  static String redirectToDataset(String endpoint, String datasetName) {
+    String result = endpoint;
+    if (datasetName != null && !datasetName.isBlank()) {
+      DatasetEndpoint parsed = parseDatasetEndpoint(endpoint);
+      if (parsed == null) {
+        LOG.warn(
+            "Could not parse RDF endpoint {}; ignoring dataset override {}",
+            maskUserInfo(endpoint),
+            datasetName);
+      } else {
+        StringBuilder redirected = new StringBuilder();
+        int schemeEnd = parsed.serverBaseUrl().indexOf("://");
+        redirected.append(parsed.serverBaseUrl(), 0, schemeEnd + 3);
+        if (parsed.userInfo() != null) {
+          redirected.append(parsed.userInfo()).append('@');
+        }
+        redirected.append(parsed.serverBaseUrl().substring(schemeEnd + 3));
+        redirected.append('/').append(encodePathSegment(datasetName));
+        result = redirected.toString();
+      }
+    }
+    return result;
+  }
+
   static DatasetEndpoint parseDatasetEndpoint(String endpoint) {
     URI uri;
     try {
       uri = URI.create(endpoint);
     } catch (IllegalArgumentException e) {
+      return null;
+    }
+    // A relative URI ("openmetadata", "not-a-url") parses successfully but has no scheme or host,
+    // which would otherwise yield a "null://null" server base and silently produce admin URLs and
+    // dataset redirects pointing nowhere.
+    if (uri.getScheme() == null || uri.getHost() == null) {
       return null;
     }
     String path = uri.getPath();
@@ -444,6 +535,119 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  @Override
+  public boolean supportsDatasetManagement() {
+    return true;
+  }
+
+  @Override
+  public String currentDatasetName() {
+    DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    return info != null ? info.datasetName() : null;
+  }
+
+  /**
+   * Re-point this instance at another dataset on the same server. Used by blue/green rebuilds so
+   * the flip is a reference swap rather than a rebuild of every caller's storage handle.
+   */
+  @Override
+  public void repointToDataset(String datasetName) {
+    if (datasetName == null || datasetName.isBlank()) {
+      return;
+    }
+    String newEndpoint = redirectToDataset(endpoint, datasetName);
+    if (newEndpoint.equals(endpoint)) {
+      return;
+    }
+    RDFConnection newConnection = buildConnection(newEndpoint);
+    this.endpoint = newEndpoint;
+    this.connection = newConnection;
+    LOG.info("RDF storage now serving dataset '{}'", datasetName);
+  }
+
+  @Override
+  public void createDatasetIfMissing(String datasetName) {
+    DatasetEndpoint info = requireServerInfo("createDatasetIfMissing");
+    if (!datasetExists(datasetName)) {
+      createDataset(info.serverBaseUrl(), datasetName, username, password);
+      if (!datasetExists(datasetName)) {
+        throw new IllegalStateException(
+            "Fuseki dataset '" + datasetName + "' could not be created");
+      }
+    }
+  }
+
+  /**
+   * Removes the dataset from the running server and its configuration. Fuseki does not guarantee
+   * that the on-disk files are reclaimed, which is why blue/green alternates between two fixed
+   * dataset names and clears the target before reuse rather than minting a new name per run —
+   * otherwise every rebuild would leak a dataset directory.
+   */
+  @Override
+  public void deleteDataset(String datasetName) {
+    DatasetEndpoint info = requireServerInfo("deleteDataset");
+    try {
+      HttpResponse<String> response =
+          sendAdminRequest(
+              info.serverBaseUrl() + "/$/datasets/" + encodePathSegment(datasetName),
+              builder -> builder.DELETE(),
+              info.userInfo());
+      int status = response.statusCode();
+      if (status == 200 || status == 204 || status == 404) {
+        LOG.info("Removed Fuseki dataset '{}' (status {})", datasetName, status);
+      } else {
+        throw new IllegalStateException(
+            "Failed to delete Fuseki dataset '"
+                + datasetName
+                + "': "
+                + status
+                + " - "
+                + response.body());
+      }
+    } catch (IOException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      throw new IllegalStateException("Error deleting Fuseki dataset '" + datasetName + "'", e);
+    }
+  }
+
+  @Override
+  public boolean datasetExists(String datasetName) {
+    DatasetEndpoint info = requireServerInfo("datasetExists");
+    try {
+      HttpResponse<String> response =
+          sendAdminRequest(
+              info.serverBaseUrl() + "/$/datasets/" + encodePathSegment(datasetName),
+              HttpRequest.Builder::GET,
+              info.userInfo());
+      return response.statusCode() == 200;
+    } catch (IOException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      throw new IllegalStateException("Error checking Fuseki dataset '" + datasetName + "'", e);
+    }
+  }
+
+  private DatasetEndpoint requireServerInfo(String operation) {
+    DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    if (info == null) {
+      throw new IllegalStateException(
+          "Cannot " + operation + ": unparseable RDF endpoint " + maskUserInfo(endpoint));
+    }
+    return info;
+  }
+
+  private HttpResponse<String> sendAdminRequest(
+      String url, UnaryOperator<HttpRequest.Builder> method, String endpointUserInfo)
+      throws IOException, InterruptedException {
+    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+    HttpRequest.Builder builder = method.apply(HttpRequest.newBuilder().uri(URI.create(url)));
+    addBasicAuth(builder, username, password, endpointUserInfo);
+    return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
   private void loadOntology() {
     try {
       String checkQuery = String.format("ASK { GRAPH <%s> { ?s ?p ?o } }", METADATA_GRAPH);
@@ -466,7 +670,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           Objects.requireNonNull(getClass().getResourceAsStream("/rdf/ontology/openmetadata.ttl")),
           org.apache.jena.riot.Lang.TURTLE);
 
-      connection.load(METADATA_GRAPH, ontologyModel);
+      runWriteWithTimeout(() -> connection.load(METADATA_GRAPH, ontologyModel), "loadOntology");
       LOG.info("Loaded OpenMetadata ontology to Fuseki");
     } catch (Exception e) {
       LOG.error("Failed to load ontology to Fuseki", e);
@@ -516,7 +720,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     Throwable cause = t;
     boolean result = false;
     while (cause != null && !result) {
-      if (cause instanceof org.apache.jena.atlas.web.HttpException httpException) {
+      if (cause instanceof HttpException httpException) {
         int code = httpException.getStatusCode();
         result = code == 502 || code == 503 || code == 504;
       }
@@ -561,6 +765,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private void runWriteWithRetry(Runnable op, String description) {
+    runWriteWithRetry(op, description, 0, maxUpdatePayloadBytes);
+  }
+
+  /**
+   * Variant for callers that know their payload size. A timeout on a payload above half the
+   * applicable cap is not retried at the same size: the client deadline does not cancel the
+   * server-side update, so a same-size retry re-submits the full body against a backend that is
+   * still chewing on the first attempt — the multiplication that turns one slow request into a
+   * death spiral. The thrown {@link RdfPayloadTooLargeException} tells callers to split instead.
+   *
+   * <p>The cap is passed in rather than read from a field because append writes budget against a
+   * much larger ceiling than reconciling updates; classifying a normal-sized append as "large"
+   * against the update cap would suppress legitimate transient-timeout retries.
+   */
+  private void runWriteWithRetry(
+      Runnable op, String description, long payloadBytes, long budgetBytes) {
+    boolean largePayload = payloadBytes > budgetBytes / 2;
     runWriteWithRetry(
         op,
         description,
@@ -571,7 +792,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         () -> throwIfCircuitOpen(description),
         this::recordSuccess,
         this::recordFailure,
-        this::isCircuitOpen);
+        this::isCircuitOpen,
+        () -> largePayload);
   }
 
   static void runWriteWithRetry(
@@ -584,7 +806,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       Runnable throwIfCircuitOpen,
       Runnable recordSuccess,
       Runnable recordFailure,
-      BooleanSupplier isCircuitOpen) {
+      BooleanSupplier isCircuitOpen,
+      BooleanSupplier abortTimeoutRetries) {
     RuntimeException lastException = null;
     for (int attempt = 0; attempt <= writeMaxRetries; attempt++) {
       throwIfCircuitOpen.run();
@@ -600,6 +823,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         recordFailure.run();
         if (isCircuitOpen.getAsBoolean()) {
           throw new RdfStorageCircuitOpenException(description, e);
+        }
+        if (abortTimeoutRetries.getAsBoolean() && isTimeoutError(e)) {
+          throw new RdfPayloadTooLargeException(description, e);
         }
         if (attempt >= writeMaxRetries) {
           throw e;
@@ -664,31 +890,59 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   // Run a blocking RDFConnection call with a request-level deadline.
-  // CompletableFuture.runAsync executes the supplier on the common ForkJoinPool;
-  // get(requestTimeoutMs, …) frees this thread when the deadline hits, even
+  // The supplier runs on the dedicated virtual-thread executor above;
+  // get(requestTimeoutMs, …) frees the caller when the deadline hits, even
   // if the underlying HTTP request continues blocking until the server
   // responds (or the OS gives up on the socket). Exceptions thrown by the
   // supplier are unwrapped from ExecutionException so the caller sees the
   // original Jena HttpException, IOException, etc. and can decide whether to
   // retry or surface to the circuit breaker.
   private <T> T runWithTimeout(Supplier<T> op, String description) {
-    CompletableFuture<T> future = CompletableFuture.supplyAsync(op, TIMEOUT_EXECUTOR);
+    long startNanos = System.nanoTime();
+    Future<T> future = TIMEOUT_EXECUTOR.submit(op::get);
     try {
-      return future.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
+      T result = future.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_SUCCESS);
+      return result;
     } catch (TimeoutException te) {
-      // Cancellation doesn't actually interrupt Jena's HTTP call, but
-      // releases this thread; the leaked task continues until OS TCP timeout.
+      // Cancellation interrupts work that is still queued for the writer. An active Jena HTTP
+      // call may ignore interruption and therefore keeps the writer permit until it really exits.
       future.cancel(true);
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_TIMEOUT);
+      Metrics.counter(METRIC_FUSEKI_TIMEOUTS, TAG_OPERATION, description).increment();
       throw new RuntimeException(description + " timed out after " + requestTimeoutMs + "ms", te);
     } catch (ExecutionException ee) {
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR);
       Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
       if (cause instanceof RuntimeException re) {
         throw re;
       }
       throw new RuntimeException(description + " failed", cause);
     } catch (InterruptedException ie) {
+      future.cancel(true);
       Thread.currentThread().interrupt();
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR);
       throw new RuntimeException(description + " interrupted", ie);
+    }
+  }
+
+  /**
+   * Every Fuseki round trip flows through runWithTimeout, so this is the one spot that can answer
+   * "where does the time go" — the 164-hour production incident was invisible precisely because
+   * no pipeline stat measured the storage round trip. The WARN threshold surfaces individual slow
+   * requests with their operation name; the timer feeds dashboards/alerts.
+   */
+  private void recordRequestMetrics(String description, long startNanos, String outcome) {
+    long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+    Metrics.timer(METRIC_FUSEKI_REQUEST, TAG_OPERATION, description, TAG_OUTCOME, outcome)
+        .record(elapsedMs, TimeUnit.MILLISECONDS);
+    if (elapsedMs >= SLOW_REQUEST_WARN_THRESHOLD_MS) {
+      LOG.warn(
+          "Slow RDF request {}: {} ms (outcome={}, timeout budget {} ms)",
+          description,
+          elapsedMs,
+          outcome,
+          requestTimeoutMs);
     }
   }
 
@@ -697,6 +951,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         () -> {
           op.run();
           return null;
+        },
+        description);
+  }
+
+  void runWriteWithTimeout(Runnable op, String description) {
+    runWithTimeout(
+        () -> {
+          long queuedAt = System.nanoTime();
+          boolean acquired = false;
+          try {
+            writePermit.acquire();
+            acquired = true;
+            Metrics.timer(METRIC_FUSEKI_WRITER_WAIT, TAG_OPERATION, description)
+                .record(System.nanoTime() - queuedAt, TimeUnit.NANOSECONDS);
+            op.run();
+            return null;
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for the RDF writer", e);
+          } finally {
+            if (acquired) {
+              writePermit.release();
+            }
+          }
         },
         description);
   }
@@ -721,52 +999,74 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     StmtIterator stmts = entityModel.listStatements(entityResource, null, (RDFNode) null);
     while (stmts.hasNext()) {
       String predicateUri = stmts.next().getPredicate().getURI();
-      if (org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(
-          predicateUri)) {
+      if (RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(predicateUri)) {
         continue;
       }
       predicates.add(predicateUri);
     }
     // Defensive belt-and-braces in case a future change adds a hook predicate
     // to the static set: filter the static set the same way.
-    predicates.removeAll(org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
+    predicates.removeAll(RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
     return predicates;
   }
 
   private static String buildPredicateScopedDelete(String entityUri, Set<String> predicates) {
-    // Always delete literal-/blank-node-valued triples regardless of predicate.
-    // Predicates that emit literals (description, displayName, name, ...) may
-    // SHRINK TO EMPTY between writes — the new translator output simply omits
-    // the triple — and the old literal would persist unless we sweep it here.
-    // Hook-managed URI triples (om:owns / om:contains / lineage / etc.) are
-    // safe because the FILTER below requires isIRI(?o) for them to qualify.
-    String literalSweep =
-        String.format(
-            "DELETE { GRAPH <%s> { <%s> ?p ?o } } "
-                + "WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(!isIRI(?o)) } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
-    if (predicates.isEmpty()) {
-      return literalSweep;
+    // ONE operation, not two. Everything this must remove is expressed as a single filter:
+    //
+    //   !isIRI(?o)      literal-/blank-node-valued triples, whatever the predicate. Predicates
+    //                   that emit literals (description, displayName, name, ...) may SHRINK TO
+    //                   EMPTY between writes - the new translator output simply omits the triple -
+    //                   and the old literal would persist unless swept here.
+    //   ?p IN (...)     URI-valued triples for predicates the translator owns, so its fresh output
+    //                   replaces the prior values. Hook-managed URI predicates (om:UPSTREAM,
+    //                   om:owns / om:contains, lineage, ...) are absent from the set and survive.
+    //
+    // The two used to be separate DELETE...WHERE operations chained with ';'. They cannot be:
+    // Fuseki rejects an update request carrying more than one WHERE-bearing operation with
+    // "400 Bad Request" (logged server-side as "Bad request: null") whenever arq:updateTimeout
+    // is configured, because the timeout controller governs a single execution per request.
+    // Operations without a WHERE (INSERT DATA) are unaffected and may still be chained.
+    // Merging is exactly equivalent - !isIRI(?o) || (isIRI(?o) && ?p IN (P)) reduces to
+    // !isIRI(?o) || ?p IN (P) - and it scans the entity's triples once instead of twice.
+    String filter =
+        predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
+    return String.format(
+        "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(%s) } }",
+        KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filter);
+  }
+
+  private static String buildPredicateScopedDelete(Set<String> entityUris, Set<String> predicates) {
+    if (entityUris.isEmpty()) {
+      return "";
     }
-    StringBuilder filterIn = new StringBuilder();
-    boolean first = true;
-    for (String pred : predicates) {
-      if (!first) {
-        filterIn.append(", ");
+    String filter =
+        predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
+    return String.format(
+        "DELETE { GRAPH <%s> { ?entity ?p ?o } } WHERE { GRAPH <%s> { "
+            + "VALUES ?entity { %s } ?entity ?p ?o . FILTER(%s) } }",
+        KNOWLEDGE_GRAPH, KNOWLEDGE_GRAPH, iriValues(entityUris), filter);
+  }
+
+  private static String iriList(Set<String> predicates) {
+    StringBuilder list = new StringBuilder();
+    for (String predicate : predicates) {
+      if (!list.isEmpty()) {
+        list.append(", ");
       }
-      first = false;
-      filterIn.append('<').append(pred).append('>');
+      list.append('<').append(predicate).append('>');
     }
-    // Chain the literal sweep + the predicate-scoped URI delete in one update.
-    // The literal sweep on its own would leave stale URI triples for
-    // translator predicates that disappeared from the new model (rare, but
-    // possible if a JSON-LD context predicate is removed); the predicate-scoped
-    // URI delete on its own would leave stale literals as Copilot flagged.
-    return literalSweep
-        + "; "
-        + String.format(
-            "DELETE { GRAPH <%s> { <%s> ?p ?o } } WHERE { GRAPH <%s> { <%s> ?p ?o . FILTER(isIRI(?o) && ?p IN (%s)) } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
+    return list.toString();
+  }
+
+  private static String iriValues(Iterable<String> iris) {
+    StringBuilder values = new StringBuilder();
+    for (String iri : iris) {
+      if (!values.isEmpty()) {
+        values.append(' ');
+      }
+      values.append('<').append(iri).append('>');
+    }
+    return values.toString();
   }
 
   static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {
@@ -798,19 +1098,21 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /**
-   * Bulk variant: one combined DELETE + INSERT DATA SPARQL UPDATE for the
-   * whole batch, in a SINGLE transaction at the Fuseki side. Batching collapses
-   * N per-entity updates into one request per repository chunk.
+   * Bulk variant: one request per repository chunk, in a SINGLE transaction at the Fuseki side,
+   * with a hard payload-size guard.
    *
-   * <p>Atomicity: previously the bulk path issued a SPARQL UPDATE for the
-   * DELETE and a separate GSP POST for the LOAD, which could leave the
-   * dataset in a half-applied state if the second call failed — every
-   * entity's prior translator-managed predicates would be gone but the new
-   * triples never landed. Now we serialise the combined model as N-Triples
-   * and embed it in the SAME SPARQL UPDATE via {@code INSERT DATA}; multi-
-   * statement SPARQL UPDATEs run in one Fuseki transaction so the batch is
-   * either fully applied or fully rolled back. Failure semantics stay
-   * all-or-nothing from the caller's perspective.
+   * <p>Transport differs by write mode. RECONCILE embeds one VALUES-scoped DELETE and the unioned
+   * N-Triples in one multi-operation SPARQL UPDATE — Fuseki runs it in one
+   * transaction, so the delete/insert pair can never half-apply. INSERT_ONLY has no DELETE side, so
+   * it appends via the Graph Store Protocol instead ({@link #bulkAppendEntities}) — Fuseki parses
+   * the streamed body with the RIOT parser rather than the SPARQL grammar, which is materially
+   * cheaper for multi-MB payloads, and one GSP POST is still one transaction.
+   *
+   * <p>Payload guard: repository chunks are budgeted by estimated triple size, but DELETE
+   * statements and long literals can push the serialized body past the estimate. RECONCILE chunks
+   * that serialize above {@code maxUpdatePayloadBytes} are split in half and retried recursively —
+   * one oversized request is what turns a slow Fuseki into a timeout-retry spiral. A single entity
+   * above the cap is still sent alone (never dropped), with a WARN.
    */
   @Override
   public void bulkStoreEntities(List<EntityWriteRequest> requests) {
@@ -823,54 +1125,318 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       return;
     }
     throwIfCircuitOpen("bulkStoreEntities");
+    if (writeMode == RdfWriteMode.INSERT_ONLY) {
+      bulkAppendEntities(requests);
+    } else {
+      bulkReconcileEntities(requests);
+    }
+  }
 
-    StringBuilder combinedDelete = new StringBuilder();
-    Model combinedModel = ModelFactory.createDefaultModel();
-    boolean first = true;
-    for (EntityWriteRequest req : requests) {
-      if (writeMode != RdfWriteMode.INSERT_ONLY) {
-        String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
-        Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
-        String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
-        if (!first) {
-          combinedDelete.append(";\n");
-        }
-        first = false;
-        combinedDelete.append(deleteQuery);
+  private void bulkReconcileEntities(List<EntityWriteRequest> requests) {
+    writeWithPayloadGuard(
+        requests,
+        chunk -> buildBulkReconcileUpdate(baseUri, chunk),
+        maxUpdatePayloadBytes,
+        this::executeReconcileUpdate,
+        oversized ->
+            LOG.warn(
+                "Single entity {}/{} serializes above maxUpdatePayloadBytes={}; sending alone",
+                oversized.entityType(),
+                oversized.entityId(),
+                maxUpdatePayloadBytes));
+  }
+
+  /**
+   * Recursive halving guard applied AFTER serialization, where the true payload size is known.
+   * Splitting re-unions each half's models before serializing again — per-entity N-Triples
+   * fragments cannot simply be concatenated because blank-node labels are scoped to one
+   * serialization. N-Triples output is ASCII (the writer escapes non-ASCII), so {@code
+   * String.length()} equals the payload byte count.
+   */
+  static void writeWithPayloadGuard(
+      List<EntityWriteRequest> requests,
+      Function<List<EntityWriteRequest>, String> updateBuilder,
+      int maxPayloadBytes,
+      BiConsumer<String, List<EntityWriteRequest>> executor,
+      Consumer<EntityWriteRequest> oversizedSingleLogger) {
+    String update = updateBuilder.apply(requests);
+    boolean overCap = update.length() > maxPayloadBytes;
+    if (overCap && requests.size() > 1) {
+      int mid = requests.size() / 2;
+      writeWithPayloadGuard(
+          requests.subList(0, mid),
+          updateBuilder,
+          maxPayloadBytes,
+          executor,
+          oversizedSingleLogger);
+      writeWithPayloadGuard(
+          requests.subList(mid, requests.size()),
+          updateBuilder,
+          maxPayloadBytes,
+          executor,
+          oversizedSingleLogger);
+    } else if (!update.isEmpty()) {
+      if (overCap) {
+        oversizedSingleLogger.accept(requests.getFirst());
       }
+      executor.accept(update, requests);
+    }
+  }
+
+  static String buildBulkReconcileUpdate(String baseUri, List<EntityWriteRequest> requests) {
+    Set<String> entityUris = new LinkedHashSet<>();
+    Set<String> predicatesToDelete = new LinkedHashSet<>();
+    Model combinedModel = ModelFactory.createDefaultModel();
+    for (EntityWriteRequest req : requests) {
+      String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
+      entityUris.add(entityUri);
+      predicatesToDelete.addAll(collectTranslatorPredicates(entityUri, req.model()));
       combinedModel.add(req.model());
     }
-
     String triples = serializeModel(combinedModel);
-    StringBuilder combined = new StringBuilder(combinedDelete);
+    combinedModel.close();
+    StringBuilder combined =
+        new StringBuilder(buildPredicateScopedDelete(entityUris, predicatesToDelete));
     if (!triples.isBlank()) {
-      if (combined.length() > 0) {
+      if (!combined.isEmpty()) {
         combined.append(";\n");
       }
       combined.append(buildInsertData(triples));
     }
+    return combined.toString();
+  }
 
-    if (combined.isEmpty()) {
-      return;
-    }
-
+  private void executeReconcileUpdate(String update, List<EntityWriteRequest> requests) {
     try {
-      UpdateRequest updateRequest = UpdateFactory.create(combined.toString());
+      Metrics.summary(METRIC_FUSEKI_PAYLOAD_BYTES, TAG_OPERATION, "bulkStoreEntities")
+          .record(update.length());
+      UpdateRequest updateRequest = UpdateFactory.create(update);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities"),
-          "bulkStoreEntities");
+          () -> runWriteWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities"),
+          "bulkStoreEntities",
+          update.length(),
+          maxUpdatePayloadBytes);
       // DEBUG, not INFO: this fires per-batch in a hot reindex loop (default
       // batchSize=100 → tens of thousands of log lines on a real reindex).
       // Keep INFO reserved for events ops actually want to grep for.
-      LOG.debug(
-          "Bulk-stored {} entities in {} ({} triples)",
-          requests.size(),
-          KNOWLEDGE_GRAPH,
-          combinedModel.size());
+      LOG.debug("Bulk-reconciled {} entities in {}", requests.size(), KNOWLEDGE_GRAPH);
     } catch (Exception e) {
       LOG.error("Failed to bulk-store {} entities in Fuseki", requests.size(), e);
       throw new RuntimeException("Failed to bulk-store entities in RDF", e);
     }
+  }
+
+  /**
+   * INSERT_ONLY append via GSP POST. Chunk size is trusted from the repository-side triple-count
+   * budget (same {@code maxUpdatePayloadBytes} config) — there are no DELETE statements to inflate
+   * the body past the estimate, so no post-serialization guard is needed. Duplicate-on-retry
+   * semantics match the previous {@code INSERT DATA} transport: re-POSTing ground triples is a
+   * set-semantics no-op, and blank-node subtrees can duplicate until the next recreate — the same
+   * accepted race as before.
+   */
+  private void bulkAppendEntities(List<EntityWriteRequest> requests) {
+    long estimatedBytes = 0;
+    long tripleCount = 0;
+    for (EntityWriteRequest req : requests) {
+      tripleCount += req.model().size();
+    }
+    estimatedBytes = tripleCount * RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE;
+    if (tripleCount == 0) {
+      return;
+    }
+    Metrics.summary(METRIC_FUSEKI_PAYLOAD_BYTES, TAG_OPERATION, "bulkAppendEntities")
+        .record(estimatedBytes);
+    try {
+      if (streamingAppendEnabled) {
+        runWriteWithRetry(
+            () -> runWriteWithTimeout(() -> streamAppend(requests), "bulkAppendEntities"),
+            "bulkAppendEntities",
+            estimatedBytes,
+            maxAppendPayloadBytes);
+      } else {
+        appendViaLibraryUpload(requests, estimatedBytes);
+      }
+      LOG.debug(
+          "Bulk-appended {} entities ({} triples) to {}",
+          requests.size(),
+          tripleCount,
+          KNOWLEDGE_GRAPH);
+    } catch (Exception e) {
+      LOG.error("Failed to bulk-append {} entities in Fuseki", requests.size(), e);
+      throw new RuntimeException("Failed to bulk-store entities in RDF", e);
+    }
+  }
+
+  /**
+   * Fallback transport ({@code streamingAppendEnabled=false}): union the models and hand the
+   * upload to the connection library. Costs peak heap proportional to chunk size — the reason the
+   * streaming path is the default.
+   */
+  private void appendViaLibraryUpload(List<EntityWriteRequest> requests, long estimatedBytes) {
+    Model combinedModel = ModelFactory.createDefaultModel();
+    try {
+      for (EntityWriteRequest req : requests) {
+        combinedModel.add(req.model());
+      }
+      runWriteWithRetry(
+          () ->
+              runWriteWithTimeout(
+                  () -> connection.load(KNOWLEDGE_GRAPH, combinedModel), "bulkAppendEntities"),
+          "bulkAppendEntities",
+          estimatedBytes,
+          maxAppendPayloadBytes);
+    } finally {
+      combinedModel.close();
+    }
+  }
+
+  /**
+   * Streamed GSP POST: per-entity models are written incrementally into the request body as RDF
+   * Thrift, so indexer memory stays constant regardless of chunk size and no combined model or
+   * body string is ever materialized. Blank-node labels stay correctly scoped because all models
+   * share one continuous serialization. Optionally gzips the body — Fuseki inflates gzip request
+   * bodies, and since it reads the body INSIDE its single-writer transaction, compression directly
+   * shortens writer-lock hold time on slow links. Only gzip: Fuseki maps {@code deflate} to a
+   * compressing stream (upstream bug), so it must never be sent.
+   */
+  private void streamAppend(List<EntityWriteRequest> requests) {
+    String gspUrl =
+        endpoint + "/data?graph=" + URLEncoder.encode(KNOWLEDGE_GRAPH, StandardCharsets.UTF_8);
+    try {
+      PipedOutputStream pipeOut = new PipedOutputStream();
+      PipedInputStream pipeIn = new PipedInputStream(pipeOut, STREAM_PIPE_BUFFER_BYTES);
+      Future<?> bodyProducer = TIMEOUT_EXECUTOR.submit(() -> writeThriftBody(requests, pipeOut));
+      try {
+        HttpRequest.Builder requestBuilder =
+            HttpRequest.newBuilder()
+                .uri(URI.create(gspUrl))
+                .header(HEADER_CONTENT_TYPE, CONTENT_TYPE_RDF_THRIFT)
+                .POST(HttpRequest.BodyPublishers.ofInputStream(() -> pipeIn));
+        if (gzipRequests) {
+          requestBuilder.header(HEADER_CONTENT_ENCODING, ENCODING_GZIP);
+        }
+        addBasicAuth(requestBuilder, username, password);
+        HttpResponse<String> response =
+            streamingHttpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() / 100 != 2) {
+          // HttpException is the type the circuit-breaker classification already
+          // understands (502/503/504 count as availability failures).
+          throw new HttpException(response.statusCode(), "GSP append failed", response.body());
+        }
+        // A 2xx alone is not proof the whole graph arrived: if serialization died partway
+        // the stream still ends cleanly and Fuseki may accept what it got. Observe the
+        // producer so a partial body becomes a write failure instead of silent data loss.
+        awaitBodyProducer(bodyProducer);
+      } finally {
+        // If the HTTP side failed before consuming the body, the producer is
+        // parked writing into the pipe; cancelling + closing unblocks it.
+        bodyProducer.cancel(true);
+        closeQuietly(pipeIn);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("GSP streaming append failed", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("GSP streaming append interrupted", e);
+    }
+  }
+
+  /**
+   * Runs on a producer task; feeds the HTTP request body through the pipe. Returns normally only
+   * when the whole graph was serialized — a partial body must never be reported as a success,
+   * because Fuseki can accept a truncated-but-well-formed stream with 2xx and silently drop the
+   * remaining triples.
+   */
+  private void writeThriftBody(List<EntityWriteRequest> requests, PipedOutputStream rawOut) {
+    try (OutputStream out =
+        gzipRequests ? new GZIPOutputStream(rawOut, STREAM_PIPE_BUFFER_BYTES) : rawOut) {
+      StreamRDF writer = StreamRDFWriter.getWriterStream(out, Lang.RDFTHRIFT);
+      writer.start();
+      for (EntityWriteRequest request : requests) {
+        StreamRDFOps.sendGraphToStream(request.model().getGraph(), writer);
+      }
+      writer.finish();
+    } catch (IOException e) {
+      // The HTTP side closing the pipe first is normal teardown after its own failure; the
+      // caller decides which error to surface.
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  /** Surfaces a body-producer failure; the request is only complete if it finished cleanly. */
+  private static void awaitBodyProducer(Future<?> bodyProducer) {
+    try {
+      bodyProducer.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while completing the RDF request body", e);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(
+          "RDF request body was truncated before the graph was fully serialized", e.getCause());
+    }
+  }
+
+  private static void closeQuietly(Closeable closeable) {
+    try {
+      closeable.close();
+    } catch (IOException e) {
+      LOG.debug("Ignoring close failure: {}", e.getMessage());
+    }
+  }
+
+  @Override
+  public OptionalLong fetchServerMaxHeapBytes() {
+    OptionalLong result = OptionalLong.empty();
+    DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    if (info != null) {
+      try {
+        HttpRequest.Builder requestBuilder =
+            HttpRequest.newBuilder().uri(URI.create(info.serverBaseUrl() + "/$/metrics")).GET();
+        addBasicAuth(requestBuilder, username, password, info.userInfo());
+        HttpResponse<String> response =
+            streamingHttpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200) {
+          result = parseJvmMaxHeapBytes(response.body());
+        }
+      } catch (IOException e) {
+        LOG.debug("Fuseki metrics endpoint unreachable: {}", e.getMessage());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Sums {@code jvm_memory_max_bytes{area="heap",...}} samples from Prometheus text exposition.
+   * Pools reporting -1 (unbounded) are skipped.
+   */
+  static OptionalLong parseJvmMaxHeapBytes(String prometheusText) {
+    double totalBytes = 0;
+    boolean found = false;
+    for (String line : prometheusText.split("\n")) {
+      if (line.startsWith("jvm_memory_max_bytes") && line.contains("area=\"heap\"")) {
+        double value = parseSampleValue(line);
+        if (value > 0) {
+          totalBytes += value;
+          found = true;
+        }
+      }
+    }
+    return found ? OptionalLong.of((long) totalBytes) : OptionalLong.empty();
+  }
+
+  private static double parseSampleValue(String prometheusLine) {
+    double result = -1;
+    int lastSpace = prometheusLine.lastIndexOf(' ');
+    if (lastSpace > 0) {
+      try {
+        result = Double.parseDouble(prometheusLine.substring(lastSpace + 1).trim());
+      } catch (NumberFormatException e) {
+        LOG.debug("Skipping unparsable metrics line: {}", prometheusLine);
+      }
+    }
+    return result;
   }
 
   @Override
@@ -898,7 +1464,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       UpdateRequest request = UpdateFactory.create(upsertQuery);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(request), "storeEntity"), "storeEntity");
+          () -> runWriteWithTimeout(() -> connection.update(request), "storeEntity"),
+          "storeEntity");
       LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
     } catch (Exception e) {
       LOG.error("Failed to store entity in Fuseki", e);
@@ -947,7 +1514,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
       UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(request), "storeRelationship"),
+          () -> runWriteWithTimeout(() -> connection.update(request), "storeRelationship"),
           "storeRelationship");
       LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
     } catch (Exception e) {
@@ -974,97 +1541,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     // with a non-empty relationships list (insert-only, no reconcile).
     Set<String> effectiveSources = sourcesToReconcile != null ? sourcesToReconcile : Set.of();
 
-    // Per-source-entity reconciliation: for each source URI the caller asked
-    // us to reconcile, wipe every outgoing relationship-hook edge first, then
-    // insert the current batch. Sources NOT in sourcesToReconcile (e.g. an
-    // outside-batch upstream entity that contributed only an incoming lineage
-    // row) get their new edges inserted but their existing edges are left
-    // alone — wiping them would destroy unrelated state that this batch
-    // never had visibility into.
-    //
-    // The DELETE filter is scoped to RELATIONSHIP_HOOK_PREDICATES (derived
-    // from the Relationship enum, see RdfRepository) so it ONLY touches
-    // predicates that addRelationship / bulkAddRelationships actually write.
-    // Lineage predicates (managed by addLineageWithDetails) and
-    // translator-managed predicates (om:hasOwner / om:hasTag / etc., managed
-    // by storeEntity's predicate-scoped DELETE) are NOT in the set and are
-    // therefore preserved across reconciliation.
-    String hookPredicateList =
-        org.openmetadata.service.rdf.RdfRepository.buildPredicateInList(
-            org.openmetadata.service.rdf.RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
-
-    StringBuilder deleteUpdate = new StringBuilder();
-    boolean firstDelete = true;
-    for (String sourceUri : effectiveSources) {
-      if (!firstDelete) {
-        deleteUpdate.append("; ");
-      }
-      firstDelete = false;
-      deleteUpdate
-          .append("DELETE { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { <")
-          .append(sourceUri)
-          .append("> ?p ?o } } WHERE { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { <")
-          .append(sourceUri)
-          .append("> ?p ?o . FILTER(?p IN (")
-          .append(hookPredicateList)
-          .append(")) } }");
-    }
-
-    StringBuilder insertData = new StringBuilder();
-    insertData.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
-    for (RelationshipData rel : relationships) {
-      // Use the pre-computed predicateUri (via RdfRepository.getRelationshipPredicate)
-      // so the triple written here matches what addRelationship / removeRelationship
-      // expect for the same relationship type. Fall back to the lowercase
-      // `<baseUri>ontology/<type>` for any caller that built RelationshipData via
-      // the legacy 5-arg constructor — same shape the original implementation used.
-      String predicateUri =
-          rel.getPredicateUri() != null
-              ? rel.getPredicateUri()
-              : baseUri + "ontology/" + rel.getRelationshipType();
-      insertData.append(
-          String.format(
-              "<%sentity/%s/%s> <%s> <%sentity/%s/%s> . ",
-              baseUri,
-              rel.getFromType(),
-              rel.getFromId(),
-              predicateUri,
-              baseUri,
-              rel.getToType(),
-              rel.getToId()));
-    }
-    insertData.append("} }");
-
-    // Combine DELETE and INSERT into a SINGLE SPARQL update so they share a
-    // transaction at the Fuseki side — if the request fails, neither half
-    // commits, and we never leave the graph half-reconciled. (The previous
-    // separate calls + a failed insert could leave sources wiped without
-    // their replacement edges in place until the next weekly recreate-index.)
-    StringBuilder combined = new StringBuilder();
-    if (deleteUpdate.length() > 0) {
-      combined.append(deleteUpdate);
-      if (!relationships.isEmpty()) {
-        combined.append("; ");
-      }
-    }
-    if (!relationships.isEmpty()) {
-      combined.append(insertData);
-    }
+    String combined = buildBulkRelationshipUpdate(baseUri, relationships, effectiveSources);
 
     try {
-      if (combined.length() == 0) {
-        return; // No work — empty relationships AND empty sourcesToReconcile is the early return
-        // above.
-      }
-      UpdateRequest request = UpdateFactory.create(combined.toString());
+      UpdateRequest request = UpdateFactory.create(combined);
       runWriteWithRetry(
-          () -> runWithTimeout(() -> connection.update(request), "bulkStoreRelationships"),
+          () -> runWriteWithTimeout(() -> connection.update(request), "bulkStoreRelationships"),
           "bulkStoreRelationships");
-      LOG.info(
+      LOG.debug(
           "Bulk stored {} relationships, reconciled {} source entities",
           relationships.size(),
           effectiveSources.size());
@@ -1072,6 +1556,36 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.error("Failed to bulk store relationships in Fuseki", e);
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
     }
+  }
+
+  static String buildBulkRelationshipUpdate(
+      String baseUri, List<RelationshipData> relationships, Set<String> sourcesToReconcile) {
+    String deleteUpdate = RdfRepository.buildOutgoingRelationshipDelete(sourcesToReconcile);
+    StringBuilder combined = new StringBuilder(deleteUpdate);
+    if (!relationships.isEmpty()) {
+      if (!combined.isEmpty()) {
+        combined.append("; ");
+      }
+      combined.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
+      for (RelationshipData relationship : relationships) {
+        String predicateUri =
+            relationship.getPredicateUri() != null
+                ? relationship.getPredicateUri()
+                : baseUri + "ontology/" + relationship.getRelationshipType();
+        combined.append(
+            String.format(
+                "<%sentity/%s/%s> <%s> <%sentity/%s/%s> . ",
+                baseUri,
+                relationship.getFromType(),
+                relationship.getFromId(),
+                predicateUri,
+                baseUri,
+                relationship.getToType(),
+                relationship.getToId()));
+      }
+      combined.append("} }");
+    }
+    return combined.toString();
   }
 
   @Override
@@ -1112,16 +1626,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("deleteEntity");
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
-    // Delete entity and all its relationships from the knowledge graph
-    String deleteQuery =
-        String.format(
-            "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
-            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
+    String deleteQuery = RdfRepository.buildEntityDeleteUpdate(entityUri);
 
     try {
       UpdateRequest request = UpdateFactory.create(deleteQuery);
-      runWithTimeout(() -> connection.update(request), "deleteEntity");
+      runWriteWithTimeout(() -> connection.update(request), "deleteEntity");
       LOG.debug("Deleted entity {} from Fuseki", entityId);
       recordSuccess();
     } catch (Exception e) {
@@ -1228,7 +1737,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("executeSparqlUpdate");
     try {
       UpdateRequest request = UpdateFactory.create(sparqlUpdate);
-      runWithTimeout(() -> connection.update(request), "executeSparqlUpdate");
+      runWriteWithTimeout(() -> connection.update(request), "executeSparqlUpdate");
       LOG.debug("Executed SPARQL update on Fuseki");
       recordSuccess();
     } catch (Exception e) {
@@ -1246,16 +1755,18 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       Model model = ModelFactory.createDefaultModel();
       model.read(turtleStream, null, "TURTLE");
-      try {
-        connection.delete(graphUri);
-      } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getStatusCode() != 404) {
-          throw e;
-        }
-      }
-
-      // Then load the new data
-      connection.load(graphUri, model);
+      runWriteWithTimeout(
+          () -> {
+            try {
+              connection.delete(graphUri);
+            } catch (HttpException e) {
+              if (e.getStatusCode() != 404) {
+                throw e;
+              }
+            }
+            connection.load(graphUri, model);
+          },
+          "loadTurtleFile");
 
       LOG.info("Loaded Turtle file into graph {} with {} triples", graphUri, model.size());
       recordSuccess();
@@ -1359,7 +1870,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public void clearGraph(String graphUri) {
     throwIfCircuitOpen("clearGraph");
     try {
-      connection.delete(graphUri);
+      runWriteWithTimeout(() -> connection.delete(graphUri), "clearGraph");
       LOG.info("Cleared graph: {}", graphUri);
       recordSuccess();
     } catch (Exception e) {
@@ -1442,7 +1953,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       // The Javadoc on compactStorage promises "Failures are logged and
       // swallowed". The HTTP path can throw IllegalArgumentException (URI),
       // RdfStorageCircuitOpenException (if state flips mid-run), the
-      // CompletableFuture wrappers' RuntimeException re-throws, or any of
+      // timeout wrappers' RuntimeException re-throws, or any of
       // Jena's runtime exceptions. Catch them all so a stray RuntimeException
       // never demotes a successful reindex to FAILED.
       LOG.warn(

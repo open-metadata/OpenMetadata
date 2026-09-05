@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
 import org.openmetadata.service.apps.bundles.rdf.RdfIndexingRunContext;
+import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -204,11 +205,20 @@ public class DistributedRdfIndexExecutor {
                     : Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors() * 2));
     int batchSize = jobConfiguration.getBatchSize() != null ? jobConfiguration.getBatchSize() : 100;
+    // Every participating server derives the same build target from the (stable during a run)
+    // serving pointer, so writes from all pods land in the dataset the coordinator will promote.
+    RdfRepository rdfRepository = RdfRepository.getInstance();
+    if (Boolean.TRUE.equals(jobConfiguration.getRecreateIndex())
+        && Boolean.TRUE.equals(jobConfiguration.getBlueGreenRebuild())
+        && rdfRepository.supportsBlueGreenRebuild()) {
+      rdfRepository = rdfRepository.forDataset(rdfRepository.resolveBuildDatasetName());
+    }
     RdfBatchProcessor batchProcessor =
         new RdfBatchProcessor(
             collectionDAO,
-            RdfRepository.getInstance(),
-            RdfIndexingRunContext.forJob(jobConfiguration));
+            rdfRepository,
+            RdfIndexingRunContext.forJob(jobConfiguration)
+                .withJobIdentity(currentJob != null ? currentJob.getId() : null, serverId));
 
     workerExecutor =
         Executors.newFixedThreadPool(
@@ -220,9 +230,15 @@ public class DistributedRdfIndexExecutor {
                         : "rdf-distributed-participant-",
                     0)
                 .factory());
-    try {
+    // One sink per run and per JVM: workers are readers/translators; the sink's
+    // single writer thread is the only place storage writes happen, so this
+    // process never has two requests queued on Fuseki's writer lock at once.
+    // Closed (drained) before returning so completion accounting and blue/green
+    // promotion see every write.
+    try (RdfBulkSink sink = new RdfBulkSink(rdfRepository, batchProcessor, stopped::get)) {
       for (int i = 0; i < workerCount; i++) {
-        RdfPartitionWorker worker = new RdfPartitionWorker(coordinator, batchProcessor, batchSize);
+        RdfPartitionWorker worker =
+            new RdfPartitionWorker(coordinator, sink, batchProcessor, batchSize);
         activeWorkers.add(worker);
         workerExecutor.submit(() -> workerLoop(worker));
       }

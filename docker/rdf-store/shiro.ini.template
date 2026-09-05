@@ -54,6 +54,10 @@ writer = update:*, upload:*, data:*
 [urls]
 /$/ping = anon
 /$/stats/* = anon
+# /$/metrics is deliberately NOT anonymous: it exposes JVM, GC and per-endpoint
+# request detail that is useful for reconnaissance. Prometheus supports basic_auth,
+# so scrape it with the credentials rather than opening the endpoint. Add
+# `/$/metrics = anon` here if your deployment terminates auth at the network edge.
 /openmetadata/sparql = anon
 /openmetadata/query = anon
 /openmetadata/update = authcBasic, roles[writer]

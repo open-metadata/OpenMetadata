@@ -128,7 +128,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
   // ensureDatasetExists() handles dataset creation via /$/datasets, so we
   // don't need stain's `FUSEKI_DATASET_1` shortcut here.
+  // Override with -DrdfContainerImage=openmetadata-fuseki:6.2.0 to run the suite
+  // against the image we ship (docker/rdf-store), e.g. to verify Jena server upgrades.
   private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
+  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
+  private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
+  private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "256m";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -475,8 +480,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         cacheConfig.redis.keyspace);
   }
 
+  private static String fusekiTmpfsSize() {
+    return System.getProperty(RDF_CONTAINER_TMPFS_SIZE_PROPERTY, DEFAULT_FUSEKI_TMPFS_SIZE);
+  }
+
   private void startFuseki() {
-    String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
+    String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY, DEFAULT_FUSEKI_IMAGE);
     LOG.info("Starting Fuseki SPARQL container...");
     // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
     // pre-create a dataset at container start. The maintained image we use
@@ -487,11 +496,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         new GenericContainer<>(DockerImageName.parse(image))
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            // tmpfs the TDB2 dataset dir so each container start gets a clean
-            // store and a long IT run doesn't grow the container's writable
-            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
-            // by default — mounting tmpfs there keeps writes off-disk entirely.
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
+            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
+            // World-writable tmpfs supports both root and non-root Fuseki images.
+            .withTmpFs(
+                Map.of(
+                    "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+                    "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)

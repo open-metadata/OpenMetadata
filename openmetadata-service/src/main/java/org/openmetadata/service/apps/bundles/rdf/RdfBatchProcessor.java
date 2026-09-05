@@ -14,10 +14,13 @@
 package org.openmetadata.service.apps.bundles.rdf;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +36,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfRepository.LineageEdgeData;
+import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 @Slf4j
 public class RdfBatchProcessor {
@@ -71,6 +75,28 @@ public class RdfBatchProcessor {
 
   public BatchProcessingResult processEntities(
       String entityType, List<? extends EntityInterface> entities, BooleanSupplier stopRequested) {
+    return processEntitiesInternal(entityType, entities, null, stopRequested);
+  }
+
+  /**
+   * Variant for the indexing sink: entities arrive with their RDF models already built on the
+   * translate pool, so the single writer thread spends its time on storage round trips instead of
+   * CPU-bound translation. The failure path is byte-identical to {@link #processEntities} — the
+   * bisect retranslates its halves, which is acceptable because it only runs when a write failed.
+   */
+  public BatchProcessingResult processEntitiesPreTranslated(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      List<RdfStorageInterface.EntityWriteRequest> preTranslated,
+      BooleanSupplier stopRequested) {
+    return processEntitiesInternal(entityType, entities, preTranslated, stopRequested);
+  }
+
+  private BatchProcessingResult processEntitiesInternal(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      List<RdfStorageInterface.EntityWriteRequest> preTranslated,
+      BooleanSupplier stopRequested) {
     if (entities == null || entities.isEmpty()) {
       return new BatchProcessingResult(0, 0);
     }
@@ -81,75 +107,92 @@ public class RdfBatchProcessor {
     String lastError = null;
     List<EntityInterface> indexedEntities = new ArrayList<>();
 
+    // An entity whose translation failed has no write request. Count it here so a
+    // skipped record surfaces as one failure rather than vanishing from the totals.
+    List<? extends EntityInterface> writableEntities = entities;
+    if (preTranslated != null && preTranslated.size() != entities.size()) {
+      Set<UUID> translatedIds =
+          preTranslated.stream()
+              .map(RdfStorageInterface.EntityWriteRequest::entityId)
+              .collect(Collectors.toSet());
+      List<EntityInterface> untranslated =
+          entities.stream()
+              .filter(entity -> !translatedIds.contains(entity.getId()))
+              .collect(Collectors.toList());
+      if (!untranslated.isEmpty()) {
+        failedCount += untranslated.size();
+        lastError = "RDF translation failed for " + untranslated.size() + " entity(ies)";
+        recordEntityWriteFailures(entityType, untranslated, lastError);
+        writableEntities =
+            entities.stream()
+                .filter(entity -> translatedIds.contains(entity.getId()))
+                .collect(Collectors.toList());
+      }
+    }
+
     // Fast path: combined SPARQL UPDATE requests for the batch. Batching
     // collapses per-entity update requests and Fuseki transactions into a
     // smaller number of storage-level chunks.
     //
     // Each storage chunk is atomic at the Fuseki side. A stop signal landing
     // mid-HTTP-call still completes the current chunk and is honored on the
-    // next batch boundary.
+    // next split boundary.
     //
     // If the bulk write fails (one bad model rolls back the whole batch), we
-    // fall back to the per-entity loop so the indexer can still attribute the
-    // failure to a specific entity instead of failing the whole batch with a
-    // single composite error. The fallback is skipped when the storage layer
-    // has tripped its circuit breaker (connect failures, request timeouts):
-    // each of the N per-entity attempts would also fail-fast on the same
-    // breaker, wasting time and amplifying error noise. We mark the whole
-    // batch as failed instead and let the indexer move on — the breaker
-    // will close once Fuseki recovers and the next batch retries cleanly.
+    // BISECT: split the batch in half and retry each half, recursing down to
+    // singletons only around the actual bad rows. A poison entity in a batch
+    // of 25 costs ~2·log2(25) write calls instead of 25 sequential per-entity
+    // attempts — and when the failure is payload-size-related (the storage
+    // layer refuses to retry oversized timeouts at the same size), the first
+    // halving usually succeeds outright. The cascade is additionally bounded
+    // by a wall-clock budget (a small multiple of the per-request timeout):
+    // once exhausted, remaining entities are marked failed and the batch
+    // moves on — a pathological batch costs minutes, never hours.
     //
-    // Caveat: the per-entity isolation only works when failures are payload-
-    // data-dependent (one entity emits a model the writer can't serialise).
-    // If the failure is predicate-SHAPE-dependent — e.g. a configured custom
-    // predicate URI contains characters the SPARQL serializer chokes on —
-    // every entity in the batch hits the same parse failure, so per-entity
-    // fallback also fails for all N entities and lastError carries the
-    // composite-style message. Predicate URIs come from the schema-validated
-    // GlossaryTermRelationSettings so this is unlikely in practice, but
-    // operator-injected custom predicates are the failure mode to watch.
+    // Bisection stops immediately when the storage layer trips its circuit
+    // breaker (connect failures, request timeouts): each further attempt
+    // would fail-fast on the same breaker, wasting time and amplifying error
+    // noise. Unattempted entities are marked failed and the breaker closes
+    // once Fuseki recovers.
+    //
+    // Caveat: isolation only works when failures are payload-data-dependent
+    // (one entity emits a model the writer can't serialise). If the failure
+    // is predicate-SHAPE-dependent — e.g. a configured custom predicate URI
+    // the SPARQL serializer chokes on — every split fails all the way to the
+    // leaves, and the budget is what keeps that bounded.
+    // sinkTimeNanos covers the full RDF write path — entity translation +
+    // storage round trips + relationship/lineage/glossary writes. This is the
+    // stage the run stats never measured; the 164-hour incident showed "<1 ms"
+    // averages because all its time lived here, unrecorded.
+    long sinkTimeNanos = 0;
     if (!effectiveStopRequested.getAsBoolean()) {
-      try {
-        rdfRepository.bulkCreateOrUpdate(entities, runContext.writeMode());
-        indexedEntities.addAll(entities);
-        successCount = entities.size();
-      } catch (Exception e) {
-        if (isCircuitBreakerOpen(e)) {
-          LOG.warn(
-              "Bulk write of {} {} entities failed and the RDF circuit breaker is open; "
-                  + "skipping per-entity fallback. Reason: {}",
-              entities.size(),
-              entityType,
-              e.getMessage());
-          failedCount = entities.size();
-          lastError = describeError(entityType + " batch", e);
-        } else {
-          LOG.warn(
-              "Bulk write of {} {} entities failed; falling back to per-entity to isolate the bad row. Reason: {}",
-              entities.size(),
-              entityType,
-              e.getMessage());
-          for (EntityInterface entity : entities) {
-            if (effectiveStopRequested.getAsBoolean()) {
-              break;
-            }
-            try {
-              rdfRepository.bulkCreateOrUpdate(List.of(entity), runContext.writeMode());
-              indexedEntities.add(entity);
-              successCount++;
-            } catch (Exception ee) {
-              LOG.error("Failed to index entity {} to RDF", entity.getId(), ee);
-              failedCount++;
-              lastError = describeEntityError(entityType, entity.getId(), ee);
-            }
-          }
-        }
+      long writeStartNanos = System.nanoTime();
+      BisectResult bisect =
+          preTranslated != null
+              ? writePreTranslatedWithBisectFallback(
+                  entityType,
+                  writableEntities,
+                  preTranslated,
+                  effectiveStopRequested,
+                  indexedEntities)
+              : writeWithBisect(
+                  entityType,
+                  entities,
+                  effectiveStopRequested,
+                  bisectDeadlineNanos(),
+                  indexedEntities);
+      sinkTimeNanos += System.nanoTime() - writeStartNanos;
+      successCount = bisect.successCount();
+      failedCount += bisect.failedCount();
+      if (bisect.lastError() != null) {
+        lastError = bisect.lastError();
       }
     }
 
     int relationshipFailures = 0;
     String relationshipError = null;
     if (!indexedEntities.isEmpty()) {
+      long relationshipStartNanos = System.nanoTime();
       RelationshipProcessingResult relResult =
           processBatchRelationships(entityType, indexedEntities);
       relationshipFailures += relResult.failureCount();
@@ -164,6 +207,7 @@ public class RdfBatchProcessor {
           relationshipError = glossResult.lastError();
         }
       }
+      sinkTimeNanos += System.nanoTime() - relationshipStartNanos;
     }
 
     // Relationship failures are tracked separately from entity write failures.
@@ -176,7 +220,371 @@ public class RdfBatchProcessor {
       lastError = relationshipError;
     }
 
-    return new BatchProcessingResult(successCount, failedCount, relationshipFailures, lastError);
+    return new BatchProcessingResult(
+        successCount,
+        failedCount,
+        relationshipFailures,
+        lastError,
+        TimeUnit.NANOSECONDS.toMillis(sinkTimeNanos));
+  }
+
+  private long bisectDeadlineNanos() {
+    long budgetMs = rdfRepository.batchWriteBudgetMs();
+    return budgetMs > 0
+        ? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budgetMs)
+        : Long.MAX_VALUE;
+  }
+
+  /**
+   * First attempt uses the pre-built models; any failure falls into the standard bisect over the
+   * ENTITY list (retranslating halves), so failure semantics, budget, breaker handling and
+   * failure-record writing are shared with the non-pre-translated path. The bisect deadline
+   * starts here — at flush — so time spent queued in the sink never consumes the write budget.
+   */
+  private BisectResult writePreTranslatedWithBisectFallback(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      List<RdfStorageInterface.EntityWriteRequest> preTranslated,
+      BooleanSupplier stopRequested,
+      List<EntityInterface> indexedEntities) {
+    BisectResult result;
+    if (stopRequested.getAsBoolean()) {
+      result = BisectResult.EMPTY;
+    } else {
+      try {
+        rdfRepository.bulkStorePreTranslated(preTranslated, runContext.writeMode());
+        indexedEntities.addAll(entities);
+        result = BisectResult.success(entities.size());
+      } catch (Exception e) {
+        result =
+            handleBisectFailure(
+                entityType, entities, stopRequested, bisectDeadlineNanos(), indexedEntities, e);
+      }
+    }
+    return result;
+  }
+
+  private BisectResult writeWithBisect(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      BooleanSupplier stopRequested,
+      long deadlineNanos,
+      List<EntityInterface> indexedEntities) {
+    BisectResult result;
+    if (stopRequested.getAsBoolean()) {
+      result = BisectResult.EMPTY;
+    } else {
+      try {
+        rdfRepository.bulkCreateOrUpdate(entities, runContext.writeMode());
+        indexedEntities.addAll(entities);
+        result = BisectResult.success(entities.size());
+      } catch (Exception e) {
+        result =
+            handleBisectFailure(
+                entityType, entities, stopRequested, deadlineNanos, indexedEntities, e);
+      }
+    }
+    return result;
+  }
+
+  private BisectResult handleBisectFailure(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      BooleanSupplier stopRequested,
+      long deadlineNanos,
+      List<EntityInterface> indexedEntities,
+      Exception cause) {
+    BisectResult result;
+    if (isCircuitBreakerOpen(cause)) {
+      LOG.warn(
+          "Bulk write of {} {} entities failed and the RDF circuit breaker is open; "
+              + "not bisecting further. Reason: {}",
+          entities.size(),
+          entityType,
+          cause.getMessage());
+      recordEntityWriteFailures(entityType, entities, describeFailureMessage(cause));
+      result =
+          BisectResult.allFailed(
+              entities.size(), describeError(entityType + " batch", cause), true);
+    } else if (System.nanoTime() >= deadlineNanos) {
+      LOG.warn(
+          "Write budget exhausted while bisecting {} {} entities; marking the remainder failed. "
+              + "Last reason: {}",
+          entities.size(),
+          entityType,
+          cause.getMessage());
+      recordEntityWriteFailures(entityType, entities, describeFailureMessage(cause));
+      result =
+          BisectResult.allFailed(
+              entities.size(),
+              describeError(entityType + " batch (write budget exhausted)", cause),
+              false);
+    } else if (entities.size() == 1) {
+      EntityInterface entity = entities.getFirst();
+      LOG.error("Failed to index entity {} to RDF", entity.getId(), cause);
+      recordEntityWriteFailures(entityType, entities, describeFailureMessage(cause));
+      result =
+          BisectResult.allFailed(1, describeEntityError(entityType, entity.getId(), cause), false);
+    } else {
+      LOG.warn(
+          "Bulk write of {} {} entities failed; bisecting to isolate the bad rows. Reason: {}",
+          entities.size(),
+          entityType,
+          cause.getMessage());
+      result = bisectHalves(entityType, entities, stopRequested, deadlineNanos, indexedEntities);
+    }
+    return result;
+  }
+
+  private BisectResult bisectHalves(
+      String entityType,
+      List<? extends EntityInterface> entities,
+      BooleanSupplier stopRequested,
+      long deadlineNanos,
+      List<EntityInterface> indexedEntities) {
+    int mid = entities.size() / 2;
+    BisectResult left =
+        writeWithBisect(
+            entityType, entities.subList(0, mid), stopRequested, deadlineNanos, indexedEntities);
+    BisectResult right;
+    if (left.circuitOpen()) {
+      // The breaker opened while writing the left half; every right-half
+      // attempt would fail-fast on the same breaker.
+      List<? extends EntityInterface> rightHalf = entities.subList(mid, entities.size());
+      recordEntityWriteFailures(entityType, rightHalf, left.lastError());
+      right = BisectResult.allFailed(rightHalf.size(), left.lastError(), true);
+    } else {
+      right =
+          writeWithBisect(
+              entityType,
+              entities.subList(mid, entities.size()),
+              stopRequested,
+              deadlineNanos,
+              indexedEntities);
+    }
+    return left.merge(right);
+  }
+
+  /**
+   * Per-source degradation for a failed bulk relationship write. The bulk call is all-or-nothing
+   * at the Fuseki side; retrying source-by-source isolates the failing source so every other
+   * source's edges (and zero-edge reconciles) still land, and only the failing source's edges are
+   * counted as failures — previously one bad chunk marked every edge in the batch failed.
+   */
+  private RelationshipProcessingResult retryRelationshipsPerSource(
+      String entityType,
+      List<org.openmetadata.schema.type.EntityRelationship> allRelationships,
+      Set<RdfRepository.EntitySourceRef> batchSources) {
+    int failures = 0;
+    String lastError = null;
+    Set<UUID> batchSourceIds = new HashSet<>();
+    for (RdfRepository.EntitySourceRef source : batchSources) {
+      batchSourceIds.add(source.entityId());
+    }
+    Map<UUID, List<org.openmetadata.schema.type.EntityRelationship>> edgesBySource =
+        new HashMap<>();
+    List<org.openmetadata.schema.type.EntityRelationship> outsideBatchEdges = new ArrayList<>();
+    for (org.openmetadata.schema.type.EntityRelationship edge : allRelationships) {
+      if (edge.getFromId() != null && batchSourceIds.contains(edge.getFromId())) {
+        edgesBySource.computeIfAbsent(edge.getFromId(), key -> new ArrayList<>()).add(edge);
+      } else {
+        outsideBatchEdges.add(edge);
+      }
+    }
+    // Isolating one bad source among many is worth doing; attempting every source after a
+    // systemic failure is how a slow backend turns one bad batch into hours of timeouts. The
+    // budget counts only FAILED attempts, so successful isolation is never penalised: a batch
+    // with a single bad source still gets every other source written.
+    long deadlineNanos = bisectDeadlineNanos();
+    List<RdfRepository.EntitySourceRef> pending = new ArrayList<>(batchSources);
+    int failedAttempts = 0;
+    int firstUnattempted = pending.size();
+    for (int index = 0; index < pending.size(); index++) {
+      if (failedAttempts >= runContext.maxRetries() || System.nanoTime() >= deadlineNanos) {
+        firstUnattempted = index;
+        break;
+      }
+      RdfRepository.EntitySourceRef source = pending.get(index);
+      List<org.openmetadata.schema.type.EntityRelationship> edges =
+          edgesBySource.getOrDefault(source.entityId(), List.of());
+      try {
+        rdfRepository.bulkAddRelationships(edges, Set.of(source), runContext.writeMode());
+      } catch (Exception sourceFailure) {
+        failedAttempts++;
+        // A zero-edge source whose reconcile failed still counts once: its
+        // stale edges were left in place.
+        failures += Math.max(1, edges.size());
+        lastError =
+            describeBulkError(entityType, "relationships:" + source.entityId(), sourceFailure);
+        recordRelationshipFailure(entityType, source, sourceFailure);
+        if (isCircuitBreakerOpen(sourceFailure)) {
+          firstUnattempted = index + 1;
+          break;
+        }
+      }
+    }
+
+    boolean abandoned = firstUnattempted < pending.size();
+    if (abandoned) {
+      failures += countUnattempted(pending, firstUnattempted, edgesBySource);
+      LOG.warn(
+          "Stopped per-source relationship isolation for {} after {} failed attempt(s); "
+              + "{} source(s) not attempted. Raise maxRetries on the RDF index app to isolate "
+              + "further. Last reason: {}",
+          entityType,
+          failedAttempts,
+          pending.size() - firstUnattempted,
+          lastError);
+    }
+    if (!abandoned && !outsideBatchEdges.isEmpty()) {
+      try {
+        rdfRepository.bulkAddRelationships(outsideBatchEdges, Set.of(), runContext.writeMode());
+      } catch (Exception outsideFailure) {
+        failures += outsideBatchEdges.size();
+        lastError = describeBulkError(entityType, "outsideBatchRelationships", outsideFailure);
+      }
+    }
+    return new RelationshipProcessingResult(failures, lastError);
+  }
+
+  private static int countUnattempted(
+      List<RdfRepository.EntitySourceRef> sources,
+      int fromIndex,
+      Map<UUID, List<org.openmetadata.schema.type.EntityRelationship>> edgesBySource) {
+    int unattempted = 0;
+    for (int index = fromIndex; index < sources.size(); index++) {
+      List<org.openmetadata.schema.type.EntityRelationship> edges =
+          edgesBySource.getOrDefault(sources.get(index).entityId(), List.of());
+      unattempted += Math.max(1, edges.size());
+    }
+    return unattempted;
+  }
+
+  private void recordRelationshipFailure(
+      String entityType, RdfRepository.EntitySourceRef source, Exception cause) {
+    if (runContext.jobId() != null) {
+      try {
+        collectionDAO
+            .rdfIndexFailureDAO()
+            .insert(
+                UUID.randomUUID().toString(),
+                runContext.jobId().toString(),
+                serverIdOrUnknown(),
+                entityType,
+                source.entityId() != null ? source.entityId().toString() : null,
+                null,
+                CollectionDAO.RdfIndexFailureDAO.STAGE_RELATIONSHIP,
+                describeFailureMessage(cause),
+                null,
+                System.currentTimeMillis());
+      } catch (Exception recordingFailure) {
+        LOG.warn(
+            "Could not persist RDF relationship failure record for {}",
+            entityType,
+            recordingFailure);
+      }
+    }
+  }
+
+  private static final int MAX_RECORDED_ERROR_MESSAGE_CHARS = 4_096;
+  private static final String SERVER_ID_UNKNOWN = "unknown";
+
+  /**
+   * Persist an un-deserializable reader drop. No entity id is available — the row never
+   * materialized — so the record is evidence for operators rather than retry input.
+   */
+  public void recordReaderFailure(String entityType, String message) {
+    if (runContext.jobId() != null) {
+      try {
+        collectionDAO
+            .rdfIndexFailureDAO()
+            .insert(
+                UUID.randomUUID().toString(),
+                runContext.jobId().toString(),
+                serverIdOrUnknown(),
+                entityType,
+                null,
+                null,
+                CollectionDAO.RdfIndexFailureDAO.STAGE_READER,
+                message,
+                null,
+                System.currentTimeMillis());
+      } catch (Exception recordingFailure) {
+        LOG.warn(
+            "Could not persist RDF reader failure record for {}", entityType, recordingFailure);
+      }
+    }
+  }
+
+  private String serverIdOrUnknown() {
+    return runContext.serverId() != null ? runContext.serverId() : SERVER_ID_UNKNOWN;
+  }
+
+  /**
+   * Persist failed entity identities so the end-of-run retry pass (and operators) can act on them.
+   * No-op on the legacy path (no job identity) and never throws — a failure-recording failure must
+   * not fail the write path it is describing.
+   */
+  private void recordEntityWriteFailures(
+      String entityType, List<? extends EntityInterface> entities, String message) {
+    if (runContext.jobId() == null || entities == null || entities.isEmpty()) {
+      return;
+    }
+    try {
+      long now = System.currentTimeMillis();
+      String serverId = serverIdOrUnknown();
+      List<CollectionDAO.RdfIndexFailureDAO.RdfIndexFailureRecord> records =
+          entities.stream()
+              .map(
+                  entity ->
+                      new CollectionDAO.RdfIndexFailureDAO.RdfIndexFailureRecord(
+                          UUID.randomUUID().toString(),
+                          runContext.jobId().toString(),
+                          serverId,
+                          entityType,
+                          entity.getId() != null ? entity.getId().toString() : null,
+                          entity.getFullyQualifiedName(),
+                          CollectionDAO.RdfIndexFailureDAO.STAGE_ENTITY_WRITE,
+                          message,
+                          null,
+                          now))
+              .toList();
+      collectionDAO.rdfIndexFailureDAO().insertBatch(records);
+    } catch (Exception recordingFailure) {
+      LOG.warn(
+          "Could not persist {} RDF index failure record(s) for {}",
+          entities.size(),
+          entityType,
+          recordingFailure);
+    }
+  }
+
+  private static String describeFailureMessage(Exception cause) {
+    String message =
+        cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+    return message.length() > MAX_RECORDED_ERROR_MESSAGE_CHARS
+        ? message.substring(0, MAX_RECORDED_ERROR_MESSAGE_CHARS)
+        : message;
+  }
+
+  record BisectResult(int successCount, int failedCount, String lastError, boolean circuitOpen) {
+    static final BisectResult EMPTY = new BisectResult(0, 0, null, false);
+
+    static BisectResult success(int count) {
+      return new BisectResult(count, 0, null, false);
+    }
+
+    static BisectResult allFailed(int count, String error, boolean circuitOpen) {
+      return new BisectResult(0, count, error, circuitOpen);
+    }
+
+    BisectResult merge(BisectResult other) {
+      return new BisectResult(
+          successCount + other.successCount,
+          failedCount + other.failedCount,
+          other.lastError() != null ? other.lastError() : lastError,
+          circuitOpen || other.circuitOpen);
+    }
   }
 
   public record RelationshipProcessingResult(int failureCount, String lastError) {
@@ -332,14 +740,18 @@ public class RdfBatchProcessor {
         // where this batch's entity is the `to`); reconciling those would
         // wipe the outside-batch entity's unrelated outgoing edges.
         rdfRepository.bulkAddRelationships(allRelationships, batchSources, runContext.writeMode());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to bulk add {} relationships for entity type {}",
+      } catch (Exception bulkFailure) {
+        LOG.warn(
+            "Bulk relationship write of {} edges for {} failed; degrading per-source. Reason: {}",
             allRelationships.size(),
             entityType,
-            e);
-        failures += allRelationships.size();
-        lastError = describeBulkError(entityType, "bulkRelationships", e);
+            bulkFailure.getMessage());
+        RelationshipProcessingResult perSource =
+            retryRelationshipsPerSource(entityType, allRelationships, batchSources);
+        failures += perSource.failureCount();
+        if (perSource.lastError() != null) {
+          lastError = perSource.lastError();
+        }
       }
 
       RelationshipProcessingResult lineageResult = processLineageEdges(entityType, lineageEdges);
@@ -548,13 +960,38 @@ public class RdfBatchProcessor {
    * @param lastError most recent failure message (entity or relationship)
    */
   public record BatchProcessingResult(
-      int successCount, int failedCount, int relationshipFailureCount, String lastError) {
+      int successCount,
+      int failedCount,
+      int relationshipFailureCount,
+      String lastError,
+      long sinkTimeMs,
+      long processTimeMs) {
     public BatchProcessingResult(int successCount, int failedCount) {
-      this(successCount, failedCount, 0, null);
+      this(successCount, failedCount, 0, null, 0L, 0L);
+    }
+
+    public BatchProcessingResult(
+        int successCount,
+        int failedCount,
+        int relationshipFailureCount,
+        String lastError,
+        long sinkTimeMs) {
+      this(successCount, failedCount, relationshipFailureCount, lastError, sinkTimeMs, 0L);
+    }
+
+    /** Translation is measured by the sink, which owns the translate pool. */
+    public BatchProcessingResult withProcessTimeMs(long translateMs) {
+      return new BatchProcessingResult(
+          successCount, failedCount, relationshipFailureCount, lastError, sinkTimeMs, translateMs);
     }
 
     public BatchProcessingResult(int successCount, int failedCount, String lastError) {
-      this(successCount, failedCount, 0, lastError);
+      this(successCount, failedCount, 0, lastError, 0L);
+    }
+
+    public BatchProcessingResult(
+        int successCount, int failedCount, int relationshipFailureCount, String lastError) {
+      this(successCount, failedCount, relationshipFailureCount, lastError, 0L);
     }
 
     public boolean hasAnyFailure() {

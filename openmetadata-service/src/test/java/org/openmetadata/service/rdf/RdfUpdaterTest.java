@@ -41,10 +41,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
@@ -62,6 +64,32 @@ class RdfUpdaterTest {
 
   private RdfRepository originalRepository;
   private RdfRepository mockRepository;
+
+  @Test
+  @DisplayName("live Fuseki writes remain single-file when an old config requests concurrency")
+  void fusekiWritesClampLegacyConcurrencyToOne() {
+    AsyncOperationsConfiguration asyncConfiguration = new AsyncOperationsConfiguration();
+    asyncConfiguration.setMaxConcurrentRdfWrites(8);
+
+    assertEquals(
+        1,
+        RdfUpdater.effectiveMaxConcurrentWrites(
+            new RdfConfiguration().withStorageType(RdfConfiguration.StorageType.FUSEKI),
+            asyncConfiguration));
+  }
+
+  @Test
+  @DisplayName("non-TDB2 storage can retain configured live-write concurrency")
+  void nonFusekiStorageRetainsConfiguredConcurrency() {
+    AsyncOperationsConfiguration asyncConfiguration = new AsyncOperationsConfiguration();
+    asyncConfiguration.setMaxConcurrentRdfWrites(8);
+
+    assertEquals(
+        8,
+        RdfUpdater.effectiveMaxConcurrentWrites(
+            new RdfConfiguration().withStorageType(RdfConfiguration.StorageType.QLEVER),
+            asyncConfiguration));
+  }
 
   @BeforeEach
   void setUp() throws Exception {

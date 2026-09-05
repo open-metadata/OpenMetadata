@@ -1,6 +1,17 @@
-# Fuseki configuration for OpenMetadata RDF Store
+# Fuseki assembler configuration for the OpenMetadata RDF store.
+#
+# Why --config instead of --loc: the union default graph and server-side execution
+# deadlines below are assembler-only settings. OpenMetadata-generated updates contain
+# at most one WHERE-bearing operation because Jena 6.2.0 mishandles a second one when
+# arq:updateTimeout is active. The OpenMetadata SPARQL API rejects that unsupported
+# shape explicitly; direct Fuseki clients must use VALUES/UNION or separate requests.
+#
+# NOTE ON UPGRADES: the original `--loc=/fuseki-data` layout stored TDB2 files
+# directly in /fuseki-data, while this assembler uses the /fuseki-data/openmetadata
+# subdirectory. Pointing at the wrong location does not fail — it silently starts
+# an EMPTY store — so verify a triple count before and after any launch-mode change.
+# See docs/rdf-production-setup.md for the runbook.
 
-@prefix :      <#> .
 @prefix fuseki: <http://jena.apache.org/fuseki#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
@@ -26,7 +37,18 @@
 
 <#dataset> rdf:type tdb2:DatasetTDB2 ;
     tdb2:location "/fuseki-data/openmetadata" ;
+    # Required, not cosmetic: OpenMetadata writes every entity into a NAMED graph, so
+    # without this a plain `?s ?p ?o` against the default graph returns zero rows while
+    # the data sits in <https://open-metadata.org/graph/knowledge>. That is the shape the
+    # SPARQL playground and the MCP knowledge-graph tools generate, so turning this off
+    # yields silently empty results rather than an error. Queries that need to target one
+    # graph must say so with an explicit GRAPH clause.
     tdb2:unionDefaultGraph true ;
+    # Bound abandoned reads and writes inside Fuseki itself. These fire before the
+    # shipped 60-second client deadline because releasing an OpenMetadata thread does
+    # not cancel server work holding TDB2's writer or consuming read resources.
+    ja:context [ ja:cxtName "arq:queryTimeout" ; ja:cxtValue "50000" ] ;
+    ja:context [ ja:cxtName "arq:updateTimeout" ; ja:cxtValue "50000" ] ;
     .
 
 # Enable full-text search
@@ -41,10 +63,10 @@
     text:defaultField "text" ;
     text:entityField "uri" ;
     text:map (
-        [ text:field "text" ; 
+        [ text:field "text" ;
           text:predicate rdfs:label ]
-        [ text:field "description" ; 
+        [ text:field "description" ;
           text:predicate <http://purl.org/dc/terms/description> ]
-        [ text:field "name" ; 
+        [ text:field "name" ;
           text:predicate <https://open-metadata.org/ontology/name> ]
     ) .
