@@ -25,9 +25,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
-  descriptionBox,
   getApiContext,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../utils/common';
 import {
@@ -1314,14 +1314,16 @@ test.describe('Context Center Articles', () => {
       await waitForRelatedArticles;
 
       await page.getByTestId('edit-description').click();
-      await page.locator(descriptionBox).first().click();
-      await page.locator(descriptionBox).first().clear();
+
+      const editor = await resolveDescriptionBox(page);
+
+      await editor.click();
+      await editor.clear();
 
       const mentionResponse = page.waitForResponse('/api/v1/search/query?**');
-      await page
-        .locator(descriptionBox)
-        .first()
-        .fill(`#${relatedKnowledgeCenter.knowledgePages[0].displayName}`);
+      await editor.fill(
+        `#${relatedKnowledgeCenter.knowledgePages[0].displayName}`
+      );
       await mentionResponse;
 
       await page

@@ -39,8 +39,8 @@ import {
 } from '../../utils/assetDrawerQuickFilter';
 import {
   clickOutside,
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -181,7 +181,7 @@ test.describe('Domains', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     const typed = 'hello world ';
 
     await description.click();
@@ -2133,6 +2133,15 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   test('Rename domain with assets (tables, topics, dashboards) preserves associations', async ({
     page,
   }) => {
+    // Seeds three assets, renames the domain twice and re-verifies the
+    // associations after each rename, which does not fit the 60s default. It was
+    // covered by the describe-scope test.slow(true) that #32360 removed; the
+    // per-test measurements that drove that change did not include this describe,
+    // and it has since timed out at exactly 60000ms in every merge_group run,
+    // ejecting four unrelated PRs across six runs. Per-test, not blanket — the
+    // rest of the describe keeps the default budget.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -3700,7 +3709,7 @@ test.describe('Domain description editor popups', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     await description.click();
 
     await test.step('Slash command inserts an image block', async () => {

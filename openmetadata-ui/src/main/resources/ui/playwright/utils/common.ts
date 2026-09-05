@@ -41,6 +41,97 @@ export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
 
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ *
+ * `page` is accepted as a scope for the pages that really do host a single
+ * editor: it buys no narrowing, but it still routes through the count assertion
+ * in {@link fillDescriptionBox}, so an editor that appears alongside another one
+ * later fails where the ambiguity is rather than somewhere downstream.
+ */
+export const getDescriptionBox = (scope: Page | Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Resolve the description editor that an `edit-description` click just opened.
+ *
+ * Editing a description can mount the editor inline on the page or inside a
+ * modal, and on an entity page both can be present at once. `.first()` picks
+ * whichever comes first in the DOM — the inline editor *behind* the overlay. It
+ * is visible, so `toBeVisible()` passes, and the click then fails on
+ * "ant-modal-wrap ... intercepts pointer events" and retries until the test
+ * times out; the trace shows a 45s click on an editor nothing could reach.
+ *
+ * Prefers the editor inside the dialog whenever the edit opened one. Retrying
+ * covers the modal's enter animation, during which the dialog is not yet
+ * attached.
+ */
+export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: getDescriptionBox(page) });
+
+  let editor = getDescriptionBox(page);
+
+  await expect(async () => {
+    if (await descriptionDialog.count()) {
+      editor = getDescriptionBox(descriptionDialog);
+
+      // The one place a single-editor invariant actually holds. Two editors in
+      // one open dialog means the dialog selector matched something it should
+      // not have, which is worth failing on.
+      await expect(editor).toHaveCount(1);
+    } else {
+      // No dialog: a page legitimately hosts several editors at once — an entity
+      // description alongside per-column ones — so there is nothing to assert
+      // and nothing better to discriminate on. This is the long-standing
+      // behaviour, and it was never the bug: the bug was taking the first match
+      // *while a modal was open*, which the branch above now handles.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- a page may hold several description editors; with no dialog to scope to there is no better discriminator
+      editor = getDescriptionBox(page).first();
+    }
+
+    await expect(editor).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
+  return editor;
+};
+
+/**
+ * Fill the description editor for `scope`.
+ *
+ * A `Page` scope means the caller has not narrowed anything, so resolve the way
+ * a person would — the editor in the dialog the edit just opened, falling back
+ * to the page's own. Asserting a single match against the whole page instead
+ * would turn the very case this helper exists for (an entity page with its
+ * description modal open, so two editors mounted) into a hard failure: a test
+ * that was green because `.first()` happened to pick correctly would go red,
+ * ejecting PRs exactly like the flakes this is meant to remove.
+ *
+ * An explicit `Locator` scope is a container the author chose deliberately, so
+ * two editors inside it is a real authoring bug and still fails here, naming
+ * the scope that needs narrowing rather than typing into an arbitrary editor.
+ */
+export const fillDescriptionBox = async (
+  scope: Page | Locator,
+  value: string
+) => {
+  if ('goto' in scope) {
+    await (await resolveDescriptionBox(scope)).fill(value);
+
+    return;
+  }
+
+  await getDescriptionBox(scope).fill(value);
+};
+
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
@@ -1432,7 +1523,7 @@ export const waitForMetricsSearchResponse = (page: Page) =>
 export const testMetricsPaginationNavigation = async (page: Page) => {
   const page1ResponsePromise = waitForMetricsSearchResponse(page);
 
-  await page.goto('/metrics?pageSize=15');
+  await page.goto('/metrics?pageSize=15', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);

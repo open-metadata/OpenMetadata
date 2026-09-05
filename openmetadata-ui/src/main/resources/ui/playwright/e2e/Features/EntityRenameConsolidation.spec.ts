@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
@@ -112,11 +113,11 @@ async function updateDescription(
   apiEndpoint: string
 ): Promise<void> {
   await page.getByTestId('edit-description').click();
+  const editor = await resolveDescriptionBox(page);
 
-  const descriptionBox = '.om-block-editor[contenteditable="true"]';
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  await editor.click();
+  await editor.clear();
+  await editor.fill(description);
 
   const patchResponse = page.waitForResponse(
     (response) =>

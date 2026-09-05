@@ -103,233 +103,229 @@ test.describe(
       await expect(testDefinitionRows).not.toHaveCount(0);
     });
 
-    test(
-      'should create, edit, and delete a test definition',
-      { tag: '@quarantine' },
-      async ({ page }) => {
-        await test.step('Create a new test definition', async () => {
-          // Navigate to Test Library
-          await page.goto('/test-library');
+    test('should create, edit, and delete a test definition', async ({
+      page,
+    }) => {
+      await test.step('Create a new test definition', async () => {
+        // Navigate to Test Library
+        await page.goto('/test-library');
 
-          const testDefinitionFormDoc = page.waitForResponse(
-            '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
-          );
+        const testDefinitionFormDoc = page.waitForResponse(
+          '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
+        );
 
-          // Click add button
-          await page.getByTestId('add-test-definition-button').click();
+        // Click add button
+        await page.getByTestId('add-test-definition-button').click();
 
-          // Wait for drawer to open
-          await page
-            .getByTestId('test-definition-form-body')
-            .waitFor({ state: 'visible' });
-          await testDefinitionFormDoc;
+        // Wait for drawer to open
+        await page
+          .getByTestId('test-definition-form-body')
+          .waitFor({ state: 'visible' });
+        await testDefinitionFormDoc;
 
-          // The form body + doc panel confirm the drawer opened. We don't assert
-          // the "Add Test Definition" title text because it also matches the list
-          // page's Add button (strict-mode ambiguity).
-          await expect(
-            page.locator('.drawer-doc-panel.service-doc-panel')
-          ).toBeVisible();
+        // The form body + doc panel confirm the drawer opened. We don't assert
+        // the "Add Test Definition" title text because it also matches the list
+        // page's Add button (strict-mode ambiguity).
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toBeVisible();
 
-          // Fill in form fields
-          await page
-            .getByTestId('test-definition-name')
-            .locator('input')
-            .fill(TEST_DEFINITION_NAME);
-          await expect(
-            page.locator('.drawer-doc-panel.service-doc-panel')
-          ).toContainText('Name');
-          await page
-            .getByTestId('display-name')
-            .locator('input')
-            .fill(TEST_DEFINITION_DISPLAY_NAME);
-          await page
-            .getByTestId('description')
-            .locator('textarea')
-            .fill(TEST_DEFINITION_DESCRIPTION);
+        // Fill in form fields
+        await page
+          .getByTestId('test-definition-name')
+          .locator('input')
+          .fill(TEST_DEFINITION_NAME);
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toContainText('Name');
+        await page
+          .getByTestId('display-name')
+          .locator('input')
+          .fill(TEST_DEFINITION_DISPLAY_NAME);
+        await page
+          .getByTestId('description')
+          .locator('textarea')
+          .fill(TEST_DEFINITION_DESCRIPTION);
 
-          // Select entity type (react-aria Select: click the field, pick option)
-          await page.locator('[id="root/entityType"]').click();
-          const entityTypeOption = page.getByRole('option', {
-            name: 'TABLE',
+        // Select entity type (react-aria Select: click the field, pick option)
+        await page.locator('[id="root/entityType"]').click();
+        const entityTypeOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
+        });
+        await entityTypeOption.click();
+
+        // Supported data types (core MultiSelect: type into its combobox input to
+        // populate the options, then pick — required while the OpenMetadata
+        // platform is set). Post antd->core migration the RJSF field id sits on
+        // the field wrapper, not the input, so scope to the combobox input.
+        // The combobox closes on selection, so no Escape (Escape closes the drawer).
+        const supportedDataTypes = page.getByTestId('supported-data-types');
+        await supportedDataTypes
+          .locator('input[role="combobox"]')
+          .fill('NUMBER');
+        await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
+        await expect(
+          supportedDataTypes.getByText('NUMBER', {
             exact: true,
-          });
-          await entityTypeOption.click();
+          })
+        ).toBeVisible();
 
-          // Supported data types (core MultiSelect: type into its combobox input to
-          // populate the options, then pick — required while the OpenMetadata
-          // platform is set). Post antd->core migration the RJSF field id sits on
-          // the field wrapper, not the input, so scope to the combobox input.
-          // The combobox closes on selection, so no Escape (Escape closes the drawer).
-          const supportedDataTypes = page.getByTestId('supported-data-types');
-          await supportedDataTypes
-            .locator('input[role="combobox"]')
-            .fill('NUMBER');
-          await page
-            .getByRole('option', { name: 'NUMBER', exact: true })
-            .click();
-          await expect(
-            supportedDataTypes.getByText('NUMBER', {
-              exact: true,
-            })
-          ).toBeVisible();
+        // Add a test platform (core MultiSelect)
+        const testPlatforms = page.getByTestId('test-platforms');
+        await testPlatforms.locator('input[role="combobox"]').fill('dbt');
+        await page.getByRole('option', { name: 'dbt', exact: true }).click();
+        await expect(
+          testPlatforms.getByText('dbt', { exact: true })
+        ).toBeVisible();
 
-          // Add a test platform (core MultiSelect)
-          const testPlatforms = page.getByTestId('test-platforms');
-          await testPlatforms.locator('input[role="combobox"]').fill('dbt');
-          await page.getByRole('option', { name: 'dbt', exact: true }).click();
-          await expect(
-            testPlatforms.getByText('dbt', { exact: true })
-          ).toBeVisible();
+        // Wait for POST response when creating test definition
+        const testDefinitionResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'POST'
+        );
 
-          // Wait for POST response when creating test definition
-          const testDefinitionResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'POST'
-          );
+        // Click save
+        await page.getByTestId('save-test-definition').click();
 
-          // Click save
-          await page.getByTestId('save-test-definition').click();
+        // Wait for API response
+        const responseData = await testDefinitionResponse;
 
-          // Wait for API response
-          const responseData = await testDefinitionResponse;
+        expect(responseData.status()).toBe(201);
 
-          expect(responseData.status()).toBe(201);
+        // Wait for success toast
+        await toastNotification(page, /created successfully/i);
 
-          // Wait for success toast
-          await toastNotification(page, /created successfully/i);
+        // Verify test definition appears in table
+        await expect(page.getByTestId(TEST_DEFINITION_NAME)).toBeVisible();
+      });
 
-          // Verify test definition appears in table
-          await expect(page.getByTestId(TEST_DEFINITION_NAME)).toBeVisible();
+      await test.step('Edit Test Definition', async () => {
+        // Wait for table to load
+        await page.getByTestId('test-definition-table').waitFor({
+          state: 'visible',
         });
 
-        await test.step('Edit Test Definition', async () => {
-          // Wait for table to load
-          await page.getByTestId('test-definition-table').waitFor({
-            state: 'visible',
-          });
+        // Find and click edit button on first row
+        const firstEditButton = page
+          .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
+          .first();
+        await firstEditButton.click();
 
-          // Find and click edit button on first row
-          const firstEditButton = page
-            .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-            .first();
-          await firstEditButton.click();
+        // Wait for drawer to open (form body confirms the edit drawer opened).
+        await page
+          .getByTestId('test-definition-form-body')
+          .waitFor({ state: 'visible' });
 
-          // Wait for drawer to open (form body confirms the edit drawer opened).
-          await page
-            .getByTestId('test-definition-form-body')
-            .waitFor({ state: 'visible' });
+        // Verify name field is disabled in edit mode
+        const nameInput = page
+          .getByTestId('test-definition-name')
+          .locator('input');
 
-          // Verify name field is disabled in edit mode
-          const nameInput = page
-            .getByTestId('test-definition-name')
-            .locator('input');
+        await expect(nameInput).toBeDisabled();
 
-          await expect(nameInput).toBeDisabled();
+        // Update display name
+        const displayNameInput = page
+          .getByTestId('display-name')
+          .locator('input');
+        await displayNameInput.clear();
+        await displayNameInput.fill(UPDATE_TEST_DEFINITION_DISPLAY_NAME);
 
-          // Update display name
-          const displayNameInput = page
-            .getByTestId('display-name')
-            .locator('input');
-          await displayNameInput.clear();
-          await displayNameInput.fill(UPDATE_TEST_DEFINITION_DISPLAY_NAME);
+        // Wait for POST response when creating test definition
+        const testDefinitionResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'PATCH'
+        );
 
-          // Wait for POST response when creating test definition
-          const testDefinitionResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'PATCH'
-          );
+        // Click save
+        await page.getByTestId('save-test-definition').click();
+        // Wait for API response
+        const responseData = await testDefinitionResponse;
 
-          // Click save
-          await page.getByTestId('save-test-definition').click();
-          // Wait for API response
-          const responseData = await testDefinitionResponse;
+        expect(responseData.status()).toBe(200);
 
-          expect(responseData.status()).toBe(200);
+        // Wait for success toast
+        await toastNotification(page, /updated successfully/i);
+      });
 
-          // Wait for success toast
-          await toastNotification(page, /updated successfully/i);
+      await test.step('should enable/disable test definition', async () => {
+        // Wait for table to load
+        await page.getByTestId('test-definition-table').waitFor({
+          state: 'visible',
         });
 
-        await test.step('should enable/disable test definition', async () => {
-          // Wait for table to load
-          await page.getByTestId('test-definition-table').waitFor({
-            state: 'visible',
-          });
+        // Find first enabled switch
+        const firstSwitch = page.getByTestId(
+          `enable-switch-${TEST_DEFINITION_NAME}`
+        );
 
-          // Find first enabled switch
-          const firstSwitch = page.getByTestId(
-            `enable-switch-${TEST_DEFINITION_NAME}`
-          );
+        // Wait for API call
+        const testDefinitionResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'PATCH'
+        );
+        // Toggle the switch
+        await firstSwitch.click();
 
-          // Wait for API call
-          const testDefinitionResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'PATCH'
-          );
-          // Toggle the switch
-          await firstSwitch.click();
+        // Wait for API response
+        const responseData = await testDefinitionResponse;
 
-          // Wait for API response
-          const responseData = await testDefinitionResponse;
+        expect(responseData.status()).toBe(200);
 
-          expect(responseData.status()).toBe(200);
+        // Wait for success toast
+        await toastNotification(page, /updated successfully/i);
 
-          // Wait for success toast
-          await toastNotification(page, /updated successfully/i);
+        // Verify switch state changed
+        await expect(firstSwitch).toHaveAttribute(
+          'aria-checked',
+          String('false')
+        );
+      });
 
-          // Verify switch state changed
-          await expect(firstSwitch).toHaveAttribute(
-            'aria-checked',
-            String('false')
-          );
+      await test.step('should delete a test definition', async () => {
+        // Wait for table to load
+        await page.getByTestId('test-definition-table').waitFor({
+          state: 'visible',
         });
 
-        await test.step('should delete a test definition', async () => {
-          // Wait for table to load
-          await page.getByTestId('test-definition-table').waitFor({
-            state: 'visible',
-          });
+        // Find and click delete button
+        const deleteButton = page.getByTestId(
+          `delete-test-definition-${TEST_DEFINITION_NAME}`
+        );
+        await deleteButton.click();
 
-          // Find and click delete button
-          const deleteButton = page.getByTestId(
-            `delete-test-definition-${TEST_DEFINITION_NAME}`
-          );
-          await deleteButton.click();
+        // Wait for confirmation modal
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
 
-          // Wait for confirmation modal
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        // Verify modal content
+        await expect(
+          page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)
+        ).toBeVisible();
 
-          // Verify modal content
-          await expect(
-            page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)
-          ).toBeVisible();
+        // Wait for API call
+        const deleteTestDefinitionResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'DELETE'
+        );
 
-          // Wait for API call
-          const deleteTestDefinitionResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'DELETE'
-          );
+        // Click confirm delete
+        await fillDeleteConfirmationIfPresent(page);
+        await page.getByTestId('confirm-button').click();
 
-          // Click confirm delete
-          await fillDeleteConfirmationIfPresent(page);
-          await page.getByTestId('confirm-button').click();
+        const response = await deleteTestDefinitionResponse;
+        expect(response.status()).toBe(200);
 
-          const response = await deleteTestDefinitionResponse;
-          expect(response.status()).toBe(200);
+        // Wait for success toast
+        await toastNotification(page, /deleted successfully/i);
 
-          // Wait for success toast
-          await toastNotification(page, /deleted successfully/i);
-
-          // Verify test definition is removed from table
-          await expect(page.getByText(TEST_DEFINITION_NAME)).not.toBeVisible();
-        });
-      }
-    );
+        // Verify test definition is removed from table
+        await expect(page.getByText(TEST_DEFINITION_NAME)).not.toBeVisible();
+      });
+    });
 
     test('should validate required fields in create form', async ({ page }) => {
       // Navigate to Test Library
@@ -1187,199 +1183,191 @@ test.describe(
       });
     });
 
-    test(
-      'should maintain page on edit and reset to first page on delete',
-      { tag: '@quarantine' },
-      async ({ page }) => {
-        test.slow();
-        const PAGINATION_TEST_NAME = `zzzzPaginationTest${uuid()}`;
-        const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
-        const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
+    test('should maintain page on edit and reset to first page on delete', async ({
+      page,
+    }) => {
+      test.slow();
+      const PAGINATION_TEST_NAME = `zzzzPaginationTest${uuid()}`;
+      const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
+      const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
-        await test.step('Create a test definition starting with "z"', async () => {
-          await page.goto('/test-library');
-          await page.getByTestId('add-test-definition-button').click();
-          await expect(
-            page.getByTestId('test-definition-form-body')
-          ).toBeVisible();
+      await test.step('Create a test definition starting with "z"', async () => {
+        await page.goto('/test-library');
+        await page.getByTestId('add-test-definition-button').click();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-          await page
-            .getByTestId('test-definition-name')
-            .locator('input')
-            .fill(PAGINATION_TEST_NAME);
-          await page
-            .getByTestId('display-name')
-            .locator('input')
-            .fill(PAGINATION_TEST_DISPLAY_NAME);
-          await page
-            .getByTestId('description')
-            .locator('textarea')
-            .fill('Test definition for pagination behavior testing');
+        await page
+          .getByTestId('test-definition-name')
+          .locator('input')
+          .fill(PAGINATION_TEST_NAME);
+        await page
+          .getByTestId('display-name')
+          .locator('input')
+          .fill(PAGINATION_TEST_DISPLAY_NAME);
+        await page
+          .getByTestId('description')
+          .locator('textarea')
+          .fill('Test definition for pagination behavior testing');
 
-          await page.getByTestId('entity-type').click();
-          const entityTypeOption = page.getByRole('option', {
-            name: 'TABLE',
-            exact: true,
-          });
-          await entityTypeOption.click();
-
-          // Select supported data types (required when OpenMetadata platform is selected)
-          await page.getByTestId('supported-data-types').click();
-          await page
-            .getByTestId('supported-data-types')
-            .locator('input')
-            .fill('NUMBER');
-          await page
-            .getByRole('option', { name: 'NUMBER', exact: true })
-            .click();
-          await page.keyboard.press('Escape');
-
-          const createResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'POST'
-          );
-
-          await page.getByTestId('save-test-definition').click();
-
-          const responseData = await createResponse;
-          expect(responseData.status()).toBe(201);
-          await toastNotification(page, /created successfully/i);
+        await page.getByTestId('entity-type').click();
+        const entityTypeOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
         });
+        await entityTypeOption.click();
 
-        await test.step('Change page size to 25', async () => {
-          const pageSizeDropdown = page.getByTestId(
-            'page-size-selection-dropdown'
-          );
-          await expect(pageSizeDropdown).toBeVisible();
-          await pageSizeDropdown.click();
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.getByTestId('supported-data-types').click();
+        await page
+          .getByTestId('supported-data-types')
+          .locator('input')
+          .fill('NUMBER');
+        await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
+        await page.keyboard.press('Escape');
 
-          const pageChangeResponse = page.waitForResponse(
-            // Wait for pagination response
+        const createResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'POST'
+        );
+
+        await page.getByTestId('save-test-definition').click();
+
+        const responseData = await createResponse;
+        expect(responseData.status()).toBe(201);
+        await toastNotification(page, /created successfully/i);
+      });
+
+      await test.step('Change page size to 25', async () => {
+        const pageSizeDropdown = page.getByTestId(
+          'page-size-selection-dropdown'
+        );
+        await expect(pageSizeDropdown).toBeVisible();
+        await pageSizeDropdown.click();
+
+        const pageChangeResponse = page.waitForResponse(
+          // Wait for pagination response
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'GET'
+        );
+        // Wait for dropdown to open and select 25
+        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await pageChangeResponse;
+      });
+
+      await test.step('Navigate until we find our test definition or reach last page', async () => {
+        const nextButton = page.getByTestId('next');
+        const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
+
+        // Check if item is already visible on current page
+        let isItemVisible = await testDefLocator.isVisible();
+
+        // Navigate until we find our test definition or reach the last page
+        while (!isItemVisible && (await nextButton.isEnabled())) {
+          const fetchResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&
               response.request().method() === 'GET'
           );
-          // Wait for dropdown to open and select 25
-          await page.locator('.ant-dropdown:visible').getByText('25').click();
-          await pageChangeResponse;
+          await nextButton.click();
+          await fetchResponse;
+
+          // Check again after page load
+          isItemVisible = await testDefLocator.isVisible();
+        }
+
+        // Verify our test definition is now visible
+        await expect(testDefLocator).toBeVisible({
+          timeout: 10000,
         });
+      });
 
-        await test.step('Navigate until we find our test definition or reach last page', async () => {
-          const nextButton = page.getByTestId('next');
-          const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
+      await test.step('Edit the test definition and verify we stay on the same page', async () => {
+        // Verify our test definition is visible on this page
+        await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
 
-          // Check if item is already visible on current page
-          let isItemVisible = await testDefLocator.isVisible();
+        // Get current page indicator before edit
+        const previousButton = page.getByTestId('previous');
+        const prevDisabledBefore = await previousButton.isDisabled();
 
-          // Navigate until we find our test definition or reach the last page
-          while (!isItemVisible && (await nextButton.isEnabled())) {
-            const fetchResponse = page.waitForResponse(
-              (response) =>
-                response
-                  .url()
-                  .includes('/api/v1/dataQuality/testDefinitions') &&
-                response.request().method() === 'GET'
-            );
-            await nextButton.click();
-            await fetchResponse;
+        // Edit the test definition
+        await page
+          .getByTestId(`edit-test-definition-${PAGINATION_TEST_NAME}`)
+          .click();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-            // Check again after page load
-            isItemVisible = await testDefLocator.isVisible();
-          }
+        const displayNameInput = page
+          .getByTestId('display-name')
+          .locator('input');
+        await displayNameInput.clear();
+        await displayNameInput.fill(UPDATED_DISPLAY_NAME);
 
-          // Verify our test definition is now visible
-          await expect(testDefLocator).toBeVisible({
-            timeout: 10000,
-          });
-        });
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'PATCH'
+        );
 
-        await test.step('Edit the test definition and verify we stay on the same page', async () => {
-          // Verify our test definition is visible on this page
-          await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
+        await page.getByTestId('save-test-definition').click();
+        const updateResponse = await patchResponse;
+        expect(updateResponse.status()).toBe(200);
 
-          // Get current page indicator before edit
-          const previousButton = page.getByTestId('previous');
-          const prevDisabledBefore = await previousButton.isDisabled();
+        await toastNotification(page, /updated successfully/i);
 
-          // Edit the test definition
-          await page
-            .getByTestId(`edit-test-definition-${PAGINATION_TEST_NAME}`)
-            .click();
-          await expect(
-            page.getByTestId('test-definition-form-body')
-          ).toBeVisible();
-
-          const displayNameInput = page
-            .getByTestId('display-name')
-            .locator('input');
-          await displayNameInput.clear();
-          await displayNameInput.fill(UPDATED_DISPLAY_NAME);
-
-          const patchResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'PATCH'
-          );
-
-          await page.getByTestId('save-test-definition').click();
-          const updateResponse = await patchResponse;
-          expect(updateResponse.status()).toBe(200);
-
-          await toastNotification(page, /updated successfully/i);
-
-          // Verify we stayed on the same page (previous button state should be unchanged)
-          if (prevDisabledBefore) {
-            await expect(previousButton).toBeDisabled();
-          } else {
-            await expect(previousButton).toBeEnabled();
-          }
-
-          // Verify the updated test definition is still visible
-          await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
-        });
-
-        await test.step('Delete the test definition and verify redirect to first page', async () => {
-          await page
-            .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
-            .click();
-
-          await expect(page.getByTestId('delete-modal')).toBeVisible();
-
-          // Set up both DELETE and the subsequent GET response waits BEFORE clicking
-          const deleteResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'DELETE'
-          );
-
-          const getResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'GET'
-          );
-
-          await fillDeleteConfirmationIfPresent(page);
-          await page.getByTestId('confirm-button').click();
-
-          const deleteResult = await deleteResponse;
-          expect(deleteResult.status()).toBe(200);
-
-          // Wait for the GET that happens after delete (page reset + fetch)
-          await getResponse;
-
-          await toastNotification(page, /deleted successfully/i);
-
-          // Previous button should be disabled on first page
-          const previousButton = page.getByTestId('previous');
+        // Verify we stayed on the same page (previous button state should be unchanged)
+        if (prevDisabledBefore) {
           await expect(previousButton).toBeDisabled();
+        } else {
+          await expect(previousButton).toBeEnabled();
+        }
 
-          // Verify the deleted test definition is no longer visible
-          await expect(
-            page.getByTestId(PAGINATION_TEST_NAME)
-          ).not.toBeVisible();
-        });
-      }
-    );
+        // Verify the updated test definition is still visible
+        await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
+      });
+
+      await test.step('Delete the test definition and verify redirect to first page', async () => {
+        await page
+          .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
+          .click();
+
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
+
+        // Set up both DELETE and the subsequent GET response waits BEFORE clicking
+        const deleteResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'DELETE'
+        );
+
+        const getResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'GET'
+        );
+
+        await fillDeleteConfirmationIfPresent(page);
+        await page.getByTestId('confirm-button').click();
+
+        const deleteResult = await deleteResponse;
+        expect(deleteResult.status()).toBe(200);
+
+        // Wait for the GET that happens after delete (page reset + fetch)
+        await getResponse;
+
+        await toastNotification(page, /deleted successfully/i);
+
+        // Previous button should be disabled on first page
+        const previousButton = page.getByTestId('previous');
+        await expect(previousButton).toBeDisabled();
+
+        // Verify the deleted test definition is no longer visible
+        await expect(page.getByTestId(PAGINATION_TEST_NAME)).not.toBeVisible();
+      });
+    });
   }
 );

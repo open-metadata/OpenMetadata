@@ -544,7 +544,10 @@ const cleanupFixtures = async () => {
 
 const waitForMetricsPage = async (page: Page) => {
   const metricsResponse = waitForMetricsSearchResponse(page);
-  await page.goto('/metrics');
+  // domcontentloaded, not the default 'load': /metrics pulls enough subresources
+  // that waiting for all of them exceeded the 60s navigation timeout under merge
+  // queue load. The real readiness signal is the search response awaited next.
+  await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('heading')).toHaveText('Metrics');

@@ -21,7 +21,11 @@ import {
 } from '../../../src/generated/entity/data/container';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -172,24 +176,22 @@ export class ContainerClass extends EntityClass {
     apiContext: APIRequestContext,
     customChildContainer?: { name: string; displayName: string }[]
   ) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/storageServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/containers', {
-      data: this.entity,
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'ContainerClass.create service',
+      createPath: '/api/v1/services/storageServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
     });
 
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'ContainerClass.create'
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'ContainerClass.create'
-    );
+    // `dataModel` is in ContainerResource.FIELDS, so a by-name lookup omits it
+    // unless asked — and childrenSelectorId below reads dataModel.columns[0].
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'ContainerClass.create container',
+      createPath: '/api/v1/containers',
+      fqnSegments: [this.service.name, this.entity.name],
+      fields: 'dataModel',
+      data: this.entity,
+    });
 
     if (isUndefined(customChildContainer)) {
       const childContainer = {
@@ -234,8 +236,8 @@ export class ContainerClass extends EntityClass {
       this.entityResponseData.dataModel?.columns?.[0].fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
