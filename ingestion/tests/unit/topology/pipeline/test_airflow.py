@@ -1623,7 +1623,7 @@ class TestAirflow(TestCase):
         """
         from collections import namedtuple
         from datetime import datetime, timezone
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
 
         from airflow.models import DagRun
 
@@ -1640,13 +1640,19 @@ class TestAirflow(TestCase):
             Row(dag_id="dag1", run_id="sched_run", queued_at=None, date_value=scheduled_dt, start_date=scheduled_dt, state="success"),
         ]
 
+        mock_session = MagicMock()
         mock_query = MagicMock()
         mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+        mock_session.query.return_value = mock_query
 
-        with patch.object(self.airflow, "session") as mock_session:
-            mock_session.query.return_value = mock_query
-
+        # session is a @property backed by _session — inject mock directly
+        self.airflow._session = mock_session
+        self.airflow._status_cache_dag_id = None
+        try:
             result = self.airflow.get_pipeline_status("dag1")
+        finally:
+            self.airflow._session = None
+            self.airflow._status_cache_dag_id = None
 
         # Both rows are returned as DagRun objects
         self.assertEqual(len(result), 2)
@@ -1669,7 +1675,7 @@ class TestAirflow(TestCase):
         hitting the session again.
         """
         from collections import namedtuple
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
 
         Row = namedtuple("Row", ["dag_id", "run_id", "queued_at", "date_value", "start_date", "state"])
 
@@ -1677,14 +1683,20 @@ class TestAirflow(TestCase):
             Row(dag_id="dag_cached", run_id="run_1", queued_at=None, date_value=None, start_date=None, state="success"),
         ]
 
+        mock_session = MagicMock()
         mock_query = MagicMock()
         mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+        mock_session.query.return_value = mock_query
 
-        with patch.object(self.airflow, "session") as mock_session:
-            mock_session.query.return_value = mock_query
-
+        # session is a @property backed by _session — inject mock directly
+        self.airflow._session = mock_session
+        self.airflow._status_cache_dag_id = None
+        try:
             first = self.airflow.get_pipeline_status("dag_cached")
             second = self.airflow.get_pipeline_status("dag_cached")
+        finally:
+            self.airflow._session = None
+            self.airflow._status_cache_dag_id = None
 
         # Session was queried only once — second call used the cache
         self.assertEqual(mock_session.query.call_count, 1)
