@@ -17,20 +17,18 @@ export const LOGS_VIEWER_PIPELINE_STATUS_RETRY_INTERVAL_MS = 30_000;
 export const LOGS_VIEWER_PIPELINE_STATUS_MAX_WAIT_MS = 5 * 60_000;
 
 /**
- * Budget for a freshly triggered run to report its first `running` status row.
+ * Budget for one triggered run to report its first `running` status row.
  *
- * Bounded so a scheduler that never starts the DAG is reported rather than
- * waited on indefinitely — but the previous 60s was tighter than the budget it
- * sits inside. The `beforeAll` that calls this declares `setTimeout(180_000)`
- * and spends roughly 6s reaching the wait, so 60s left ~114s of the hook's
- * budget unused and gave up while the pipeline was still `queued`: the
- * scheduler was working, just slow under merge-queue load (run 33970886957).
- *
- * 120s keeps a real ceiling, still lands ~54s inside the hook's 180s, and only
- * spends headroom that already existed. A `queued` pipeline at this point means
- * the run was accepted; only a terminal state or this ceiling is a real failure.
+ * Deliberately shorter than the whole hook: a run still `queued` at this point
+ * usually means the trigger raced the scheduler serializing a freshly deployed
+ * DAG, and a re-trigger unsticks it faster than waiting longer ever did (60s ->
+ * 120s still stalled, run 34023457610). Callers retry with
+ * LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS.
  */
-export const LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS = 120_000;
+export const LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS = 45_000;
+
+/** Triggers to spend waiting for a run to start before giving up. */
+export const LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS = 3;
 
 /** Delay between two reads while waiting for that first `running` row. */
 export const LOGS_VIEWER_RUNNING_STATUS_INTERVAL_MS = 2_000;

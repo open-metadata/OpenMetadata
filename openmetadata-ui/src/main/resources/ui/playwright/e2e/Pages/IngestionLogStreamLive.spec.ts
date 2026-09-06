@@ -16,6 +16,7 @@ import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../constant/config';
+import { LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS } from '../../constant/logsViewer';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
@@ -67,23 +68,10 @@ let pipelineId = '';
 let pipelineFqn = '';
 let runId = '';
 
-const deployAndTrigger = async (
+const triggerPipeline = async (
   apiContext: APIRequestContext,
   id: string
 ): Promise<void> => {
-  const deployResponse = await apiContext.post(
-    `/api/v1/services/ingestionPipelines/deploy/${id}`
-  );
-
-  expect(
-    deployResponse.ok(),
-    `Deploying pipeline ${id} failed with ${deployResponse.status()}`
-  ).toBeTruthy();
-
-  // The DAG file is written by the deploy call but the scheduler needs a moment
-  // to pick it up; triggering immediately returns a 404 for an unknown DAG.
-  await new Promise((resolve) => setTimeout(resolve, DEPLOY_SETTLE_MS));
-
   let lastStatus: number | undefined;
   let lastBody = '';
 
@@ -111,6 +99,26 @@ const deployAndTrigger = async (
   );
 };
 
+const deployAndTrigger = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<void> => {
+  const deployResponse = await apiContext.post(
+    `/api/v1/services/ingestionPipelines/deploy/${id}`
+  );
+
+  expect(
+    deployResponse.ok(),
+    `Deploying pipeline ${id} failed with ${deployResponse.status()}`
+  ).toBeTruthy();
+
+  // The DAG file is written by the deploy call but the scheduler needs a moment
+  // to pick it up; triggering immediately returns a 404 for an unknown DAG.
+  await new Promise((resolve) => setTimeout(resolve, DEPLOY_SETTLE_MS));
+
+  await triggerPipeline(apiContext, id);
+};
+
 test.describe(
   'Ingestion logs stream live for a running agent',
   {
@@ -126,8 +134,9 @@ test.describe(
     );
 
     test.beforeAll(async ({ browser }) => {
-      // Hooks do not inherit test.slow(); give this one the same 180s ceiling.
-      test.setTimeout(180_000);
+      // Hooks do not inherit test.slow(). Sized for the re-trigger loop:
+      // LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS x 45s plus deploy/settle and setup.
+      test.setTimeout(240_000);
 
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -191,31 +200,34 @@ test.describe(
 
       await deployAndTrigger(apiContext, pipelineId);
 
-      // A scheduler that never moves the run off `queued` says nothing about the
-      // code under test — the trigger was accepted and Airflow simply did not pick
-      // the DAG up. Failing here ejects whatever PR happens to be in the queue for
-      // an Airflow capacity problem, which is the misattribution this suite has
-      // been fighting. Raising the ceiling was already tried and did not hold: 60s
-      // -> 120s still stalled (run 34023457610), and the hook's own 180s budget
-      // leaves no room to keep bidding it up.
-      //
-      // Note the split: only the never-started case is tolerated. A pipeline that
-      // reaches a terminal state throws a plain Error and still fails the run,
-      // because that *is* a signal about the code.
-      try {
-        ({ runId } = await waitForRunningPipelineStatus(
-          apiContext,
-          pipelineFqn
-        ));
-      } catch (error) {
-        if (error instanceof SchedulerDidNotStartError) {
-          await afterAction();
+      // A run still `queued` after the wait means the trigger raced the
+      // scheduler serializing a freshly deployed DAG; re-triggering is what
+      // unsticks it, the same way IncidentManager re-triggers. A terminal state
+      // is a real signal and rethrows immediately.
+      for (
+        let attempt = 1;
+        attempt <= LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS;
+        attempt++
+      ) {
+        try {
+          ({ runId } = await waitForRunningPipelineStatus(
+            apiContext,
+            pipelineFqn
+          ));
 
-          // eslint-disable-next-line playwright/no-skipped-test -- an Airflow scheduler that never starts the DAG is an environment condition, not a result about this change; a terminal pipeline state still fails
-          test.skip(true, error.message);
+          break;
+        } catch (error) {
+          if (
+            !(error instanceof SchedulerDidNotStartError) ||
+            attempt === LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS
+          ) {
+            await afterAction();
+
+            throw error;
+          }
+
+          await triggerPipeline(apiContext, pipelineId);
         }
-
-        throw error;
       }
 
       await afterAction();
