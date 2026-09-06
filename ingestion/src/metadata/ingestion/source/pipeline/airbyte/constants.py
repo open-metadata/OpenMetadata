@@ -21,6 +21,7 @@ class AirbyteSource(Enum):
     POSTGRES = "Postgres"
     MSSQL = "Microsoft SQL Server (MSSQL)"
     MONGODB = "MongoDb"
+    SNOWFLAKE = "Snowflake"
 
 
 class AirbyteDestination(Enum):
@@ -43,6 +44,10 @@ SOURCE_TYPE_LOOKUP = {
     AirbyteSource.MONGODB.value: AirbyteSource.MONGODB,
     "mongodb": AirbyteSource.MONGODB,
     "mongodb-v2": AirbyteSource.MONGODB,
+    # Snowflake source exposes a top-level `database`; the schema comes from the
+    # per-stream namespace (generic path, like Postgres), not the config. Issue #26993.
+    AirbyteSource.SNOWFLAKE.value: AirbyteSource.SNOWFLAKE,
+    "snowflake": AirbyteSource.SNOWFLAKE,
 }
 
 DESTINATION_TYPE_LOOKUP = {

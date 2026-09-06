@@ -576,7 +576,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_source_table_details(
                 stream,
-                AirbyteSourceResponse(sourceType="snowflake", configuration={"database": "x"}),
+                AirbyteSourceResponse(sourceType="bigquery", configuration={"database": "x"}),
             )
             is None
         )
@@ -829,7 +829,21 @@ def test_get_source_table_details_mongodb_null_database_config():
 
 
 def test_get_source_table_details_unsupported():
-    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="snowflake")) is None
+    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
+    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="bigquery")) is None
+
+
+def test_get_source_table_details_snowflake():
+    """Snowflake source (issue #26993): database from config, schema from the stream namespace.
+
+    Unlike the destination, the source schema comes from the per-stream namespace,
+    not the config `schema`, so a config schema is deliberately ignored here.
+    """
+    td = get_source_table_details(
+        _stream(),
+        AirbyteSourceResponse(sourceType="snowflake", configuration={"database": "SNOW_DB", "schema": "IGNORED"}),
+    )
+    assert (td.schema, td.database) == ("mock_source_schema", "SNOW_DB")
 
 
 def test_get_destination_table_details_public_slugs():
