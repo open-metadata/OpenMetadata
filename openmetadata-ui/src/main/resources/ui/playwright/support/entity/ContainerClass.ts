@@ -202,14 +202,17 @@ export class ContainerClass extends EntityClass {
         },
       };
 
-      const childResponse = await apiContext.post('/api/v1/containers', {
+      // A child container's FQN hangs off its parent, not the service.
+      this.childResponseData = await createOrFetch(apiContext, {
+        label: 'ContainerClass.create child container',
+        createPath: '/api/v1/containers',
+        fqnSegments: [
+          this.service.name,
+          this.entity.name,
+          this.childContainer.name,
+        ],
         data: childContainer,
       });
-
-      this.childResponseData = await okJson(
-        childResponse,
-        'ContainerClass.create'
-      );
     } else {
       const childArrayResponseData: ResponseDataType[] = [];
       for (const child of customChildContainer) {

@@ -180,7 +180,9 @@ export class DashboardClass extends EntityClass {
     this.dataModelResponseData = await createOrFetch(apiContext, {
       label: 'DashboardClass.create dataModel',
       createPath: '/api/v1/dashboard/datamodels',
-      fqnSegments: [this.service.name, this.dataModel.name],
+      // `<serviceFqn>.model.<name>` — DashboardDataModelRepository inserts a
+      // literal `model` segment that no other entity type has.
+      fqnSegments: [this.service.name, 'model', this.dataModel.name],
       data: this.dataModel,
     });
 
