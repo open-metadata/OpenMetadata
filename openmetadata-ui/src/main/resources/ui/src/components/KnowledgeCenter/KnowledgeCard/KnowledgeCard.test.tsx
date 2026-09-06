@@ -79,8 +79,7 @@ jest.mock('../../../components/common/atoms/TagChip/TagChip', () =>
     <span
       data-color={tagColor}
       data-icon={icon}
-      data-testid={props['data-testid'] ?? 'tag-chip'}
-      title={label}>
+      data-testid={props['data-testid'] ?? 'tag-chip'}>
       {label}
     </span>
   ))
@@ -270,7 +269,7 @@ describe('Knowledge Card', () => {
 
     const styledTag = KNOWLEDGE_PAGE_TAGS.find((t) => t.style?.color);
     if (styledTag) {
-      const chip = screen.getByTitle(styledTag.displayName ?? styledTag.name);
+      const chip = screen.getByText(styledTag.displayName ?? styledTag.name);
 
       expect(chip).toHaveAttribute('data-color', styledTag.style?.color);
     }

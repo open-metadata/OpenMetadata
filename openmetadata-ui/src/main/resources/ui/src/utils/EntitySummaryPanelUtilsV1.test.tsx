@@ -93,8 +93,7 @@ jest.mock('../components/common/atoms/TagChip/TagChip', () =>
     <span
       data-color={tagColor}
       data-icon={icon}
-      data-testid={props['data-testid'] ?? 'tag-chip'}
-      title={label}>
+      data-testid={props['data-testid'] ?? 'tag-chip'}>
       {label}
     </span>
   ))
