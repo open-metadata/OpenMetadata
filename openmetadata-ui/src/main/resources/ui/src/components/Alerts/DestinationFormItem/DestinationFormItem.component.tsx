@@ -185,9 +185,15 @@ function DestinationFormItem({
                   type="number"
                   value={field.value === undefined ? '' : String(field.value)}
                   onBlur={field.onBlur}
-                  onChange={(val) => field.onChange(val)}
+                  onChange={(val) =>
+                    field.onChange(val === '' ? undefined : Number(val))
+                  }
                 />
               )}
+              rules={{
+                required: true,
+                validate: (v) => Number.isFinite(Number(v)) && Number(v) > 0,
+              }}
             />
           </Grid.Item>
 
@@ -219,9 +225,15 @@ function DestinationFormItem({
                   type="number"
                   value={field.value === undefined ? '' : String(field.value)}
                   onBlur={field.onBlur}
-                  onChange={(val) => field.onChange(val)}
+                  onChange={(val) =>
+                    field.onChange(val === '' ? undefined : Number(val))
+                  }
                 />
               )}
+              rules={{
+                required: true,
+                validate: (v) => Number.isFinite(Number(v)) && Number(v) > 0,
+              }}
             />
           </Grid.Item>
 

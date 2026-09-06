@@ -242,6 +242,25 @@ describe('AlertsClassBase', () => {
       expect(destination?.downstreamDepth).toBe(2);
     });
 
+    it('forwards undefined timeout and readTimeout (never "") so the backend keeps its defaults', () => {
+      const dataWithClearedTimeouts = {
+        ...mockModifiedData,
+        timeout: undefined,
+        readTimeout: undefined,
+      } as unknown as ModifiedCreateEventSubscription;
+
+      const result = alertsClass.getCommonAlertFieldsData(
+        dataWithClearedTimeouts
+      );
+
+      const destination = result.destinations?.[0];
+
+      expect(destination?.timeout).toBeUndefined();
+      expect(destination?.readTimeout).toBeUndefined();
+      expect(destination?.timeout).not.toBe('');
+      expect(destination?.readTimeout).not.toBe('');
+    });
+
     it('should merge with initial destination data if available', () => {
       const result = alertsClass.getCommonAlertFieldsData(
         mockModifiedData,
