@@ -87,7 +87,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
               activeDomains={domains}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
-              multiple={entityRules.canAddMultipleDataProducts}
+              multiple={isRulesLoaded && entityRules.canAddMultipleDataProducts}
               requireDomainForDataProduct={
                 !isRulesLoaded || entityRules.requireDomainForDataProduct
               }

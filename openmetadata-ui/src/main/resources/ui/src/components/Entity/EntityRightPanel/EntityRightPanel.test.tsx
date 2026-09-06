@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
 
@@ -224,5 +225,78 @@ describe('EntityRightPanel component test', () => {
     );
 
     expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
+
+  describe('Data Products multi-select rule gating', () => {
+    const getDataProductsContainerMock = () =>
+      jest.requireMock(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      ) as jest.Mock;
+
+    beforeEach(() => {
+      getDataProductsContainerMock().mockClear();
+    });
+
+    const renderPanel = () =>
+      render(
+        <EntityRightPanel
+          editGlossaryTermsPermission
+          editTagPermission
+          entityType={EntityType.TABLE}
+          selectedTags={mockSelectedTags}
+          onTagSelectionChange={mockOnTagSelectionChange}
+        />
+      );
+
+    it('holds single-select (multiple=false) while entity rules are loading', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+
+      renderPanel();
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
+
+    it('enables multiple select when rules are loaded and multi-product rule is not enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      renderPanel();
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: true });
+    });
+
+    it('keeps single select when rules are loaded and multi-product rule is enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: false,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      renderPanel();
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
   });
 });

@@ -181,7 +181,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     () => (
       <DataProductsSelectListV1
         fetchOptions={fetchAPI}
-        multiSelect={entityRules.canAddMultipleDataProducts}
+        multiSelect={isRulesLoaded && entityRules.canAddMultipleDataProducts}
         popoverProps={{
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
@@ -201,6 +201,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       handlePopoverOpenChange,
       editingDataProducts,
       handleSaveWithDataProducts,
+      isRulesLoaded,
       entityRules.canAddMultipleDataProducts,
       cancelEditing,
     ]
