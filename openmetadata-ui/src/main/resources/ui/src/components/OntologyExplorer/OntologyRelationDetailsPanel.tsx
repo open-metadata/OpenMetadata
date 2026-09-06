@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
-import { Key, useEffect, useMemo, useState } from 'react';
+import { Key, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Provenance as UpdateProvenance,
@@ -217,7 +217,7 @@ export const OntologyRelationDetailsPanel = ({
   const [status, setStatus] = useState(UpdateEntityStatus.Draft);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setRelationType(edge?.relationType ?? '');
     setProvenance(toUpdateProvenance(edge?.provenance));
     setStatus(toUpdateStatus(edge?.status));

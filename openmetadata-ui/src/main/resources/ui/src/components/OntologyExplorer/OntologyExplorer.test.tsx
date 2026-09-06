@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { PaletteKey } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
@@ -19,6 +19,7 @@ import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyExplorer from './OntologyExplorer';
 import { LayoutType } from './OntologyExplorer.constants';
 import {
+  MergedEdge,
   OntologyGraphData,
   OntologyGraphHandle,
   OntologyNode,
@@ -33,6 +34,7 @@ interface OntologyGraphMockProps {
 }
 
 const mockOntologyGraph = jest.fn<void, [OntologyGraphMockProps]>();
+const mockRelationPanelMount = jest.fn();
 
 jest.mock('./hooks/useOntologyExplorer', () => ({
   useOntologyExplorer: jest.fn(),
@@ -78,6 +80,25 @@ jest.mock('./OntologyConceptDraftInspector', () => ({
     <div data-testid="ontology-concept-draft-inspector">{node.label}</div>
   ),
 }));
+
+jest.mock('./OntologyRelationDetailsPanel', () => {
+  const { useEffect } = jest.requireActual<typeof import('react')>('react');
+
+  return {
+    __esModule: true,
+    OntologyRelationDetailsPanel: ({ edge }: { edge: MergedEdge | null }) => {
+      useEffect(() => {
+        mockRelationPanelMount();
+      }, []);
+
+      return (
+        <div data-testid="ontology-relation-details-panel">
+          {edge?.id ?? ''}
+        </div>
+      );
+    },
+  };
+});
 
 const mockUseOntologyExplorer = useOntologyExplorer as jest.MockedFunction<
   typeof useOntologyExplorer
@@ -615,5 +636,48 @@ describe('OntologyExplorer Studio data controls', () => {
     expect(
       screen.queryByTestId('ontology-data-render-cap')
     ).not.toBeInTheDocument();
+  });
+
+  it('remounts the relation details panel when the selected edge changes', () => {
+    const state = createExplorerState();
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer isEditMode scope="global" />);
+
+    expect(
+      screen.queryByTestId('ontology-relation-details-panel')
+    ).not.toBeInTheDocument();
+
+    const graphProps = mockOntologyGraph.mock.calls[0][0] as unknown as {
+      onEdgeClick: (edge: MergedEdge | null) => void;
+    };
+    const edgeA: MergedEdge = {
+      from: 'a',
+      id: 'edge-a',
+      isBidirectional: false,
+      relationType: 'partOf',
+      to: 'b',
+    };
+    const edgeB: MergedEdge = {
+      from: 'c',
+      id: 'edge-b',
+      isBidirectional: false,
+      relationType: 'relatedTo',
+      to: 'd',
+    };
+
+    act(() => graphProps.onEdgeClick(edgeA));
+
+    expect(
+      screen.getByTestId('ontology-relation-details-panel')
+    ).toHaveTextContent('edge-a');
+    expect(mockRelationPanelMount).toHaveBeenCalledTimes(1);
+
+    act(() => graphProps.onEdgeClick(edgeB));
+
+    expect(
+      screen.getByTestId('ontology-relation-details-panel')
+    ).toHaveTextContent('edge-b');
+    expect(mockRelationPanelMount).toHaveBeenCalledTimes(2);
   });
 });

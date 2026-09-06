@@ -1211,6 +1211,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 selectedEdge.provenance !== Provenance.Inferred
             )}
             isSaving={isSavingRelation}
+            key={selectedEdge.id}
             nodes={graphDataWithLocalConcept?.nodes ?? []}
             relationshipTypes={relationTypes}
             onClose={() => setSelectedEdge(null)}

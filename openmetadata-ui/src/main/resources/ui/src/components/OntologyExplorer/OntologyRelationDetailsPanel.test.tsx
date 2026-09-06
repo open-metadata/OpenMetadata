@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { ObjectKind } from '../../generated/api/data/ontologyInferenceExplanationRequest';
 import { ProjectionState } from '../../generated/api/rdf/rdfStatus';
 import { EntityStatus, Provenance } from '../../generated/type/termRelation';
@@ -206,5 +212,109 @@ describe('OntologyRelationDetailsPanel', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-relation-btn'));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(AUTHORED_EDGE));
+  });
+
+  it('renders the selected edge values in the editable controls', () => {
+    render(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={{
+          ...AUTHORED_EDGE,
+          id: 'imported-approved-edge',
+          provenance: Provenance.Imported,
+          status: EntityStatus.Approved,
+          relationType: 'partOf',
+        }}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={[createRelationshipTypeMock({ name: 'partOf' })]}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('partOf');
+    expect(
+      within(screen.getByTestId('relation-provenance-select')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('label.imported');
+    expect(
+      within(screen.getByTestId('relation-status-select')).getByRole('button')
+    ).toHaveTextContent('label.approved');
+  });
+
+  it('re-seeds the editable controls when the edge prop changes', () => {
+    const relationshipTypes = [
+      createRelationshipTypeMock({ name: 'partOf' }),
+      createRelationshipTypeMock({ name: 'relatedTo' }),
+    ];
+    const edgeA: MergedEdge = {
+      ...AUTHORED_EDGE,
+      id: 'edge-a',
+      provenance: Provenance.Manual,
+      status: EntityStatus.Draft,
+      relationType: 'partOf',
+    };
+    const edgeB: MergedEdge = {
+      ...AUTHORED_EDGE,
+      id: 'edge-b',
+      provenance: Provenance.Imported,
+      status: EntityStatus.Approved,
+      relationType: 'relatedTo',
+    };
+
+    const { rerender } = render(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={edgeA}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={relationshipTypes}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('partOf');
+    expect(
+      within(screen.getByTestId('relation-provenance-select')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('label.manual');
+    expect(
+      within(screen.getByTestId('relation-status-select')).getByRole('button')
+    ).toHaveTextContent('label.draft');
+
+    rerender(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={edgeB}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={relationshipTypes}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('relatedTo');
+    expect(
+      within(screen.getByTestId('relation-provenance-select')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('label.imported');
+    expect(
+      within(screen.getByTestId('relation-status-select')).getByRole('button')
+    ).toHaveTextContent('label.approved');
   });
 });
