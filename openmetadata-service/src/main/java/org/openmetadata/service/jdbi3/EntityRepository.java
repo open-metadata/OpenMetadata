@@ -2870,11 +2870,63 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (page.isBackward()) {
       Collections.reverse(entities);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
+    entities = hydrateHistoryPage(entities);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
     return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+  }
+
+  /**
+   * The version rows are read without a lock, so an entity in the page can be hard-deleted by a
+   * concurrent request before it is hydrated: its relationships and referenced entities vanish
+   * first, then its versions and its own row. Hydration must not turn that into a 404 for the
+   * whole page, and the page must not list an entity that no longer exists.
+   */
+  private List<T> hydrateHistoryPage(List<T> entities) {
+    List<T> hydrated;
+    try {
+      hydrateHistoryBatch(entities);
+      hydrated = entities;
+    } catch (EntityNotFoundException e) {
+      hydrated = hydrateHistoryEntitiesOneByOne(entities);
+    }
+    return dropVanishedHistoryEntities(hydrated);
+  }
+
+  private void hydrateHistoryBatch(List<T> entities) {
+    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
+  }
+
+  private List<T> hydrateHistoryEntitiesOneByOne(List<T> entities) {
+    List<T> hydrated = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      try {
+        hydrateHistoryBatch(new ArrayList<>(List.of(entity)));
+        hydrated.add(entity);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Skipping history of {} {} deleted mid-request: {}",
+            entityType,
+            entity.getId(),
+            e.getMessage());
+      }
+    }
+    return hydrated;
+  }
+
+  private List<T> dropVanishedHistoryEntities(List<T> entities) {
+    if (entities.isEmpty()) {
+      return entities;
+    }
+    List<UUID> ids = entities.stream().map(EntityInterface::getId).distinct().toList();
+    Set<UUID> existing =
+        dao.findReferencesByIds(ids, ALL).stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    return entities.stream()
+        .filter(entity -> existing.contains(entity.getId()))
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 
   private ResultList<T> historyPageResult(

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1804,7 +1805,17 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     assertTrue(data.isArray(), "Data should be an array");
     assertTrue(data.size() > 0, "Should have at least one version in the time range");
 
+    // The window is server-wide, so only this test's own versions are asserted on: a database
+    // another test is hard-deleting at the same moment is legitimately mid-teardown.
+    List<JsonNode> ownVersions = new ArrayList<>();
     for (JsonNode entityNode : data) {
+      if (database.getId().toString().equals(entityNode.path("id").asText())) {
+        ownVersions.add(entityNode);
+      }
+    }
+    assertEquals(2, ownVersions.size(), "Both versions of the test database must be listed");
+
+    for (JsonNode entityNode : ownVersions) {
       assertTrue(
           entityNode.has("service") && !entityNode.get("service").isNull(),
           "Each database version must include the required 'service' field, but got: "
