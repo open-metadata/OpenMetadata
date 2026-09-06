@@ -83,10 +83,9 @@ Modify these existing files:
   {"$ref": "connections/database/myDbConnection.json"}
   ```
 
-### 3b. UI service utils: `openmetadata-ui/src/main/resources/ui/src/utils/DatabaseServiceUtils.tsx`
+### 3b. UI service utils: `openmetadata-ui/src/main/resources/ui/src/utils/DatabaseServicePureUtils.ts`
 
-- Import the resolved connection schema for `MyDb`
-- Add a `case 'MyDb':` in the switch statement that returns the schema
+- Add a `MyDb` entry to `databaseSchemaLoaders` that calls `loadConnectionSchema('connections/database/myDbConnection.json')`
 
 ### 3c. Localization
 

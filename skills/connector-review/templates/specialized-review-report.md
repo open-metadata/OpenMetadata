@@ -37,7 +37,7 @@ This review focused on **{{FOCUS_AREA}}** only. Other aspects of the connector w
 - [ ] Capability flags match implementation
 - [ ] Test connection JSON steps match test_fn keys
 - [ ] Registered in service schema enum and oneOf
-- [ ] UI utils updated with schema import and switch case
+- [ ] UI utils updated with schema loader entry
 - [ ] i18n keys added
 {{/IF}}
 
