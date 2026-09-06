@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../constant/config';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import {

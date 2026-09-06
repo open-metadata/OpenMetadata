@@ -145,10 +145,11 @@ const RelatedMetrics: FC = () => {
     [onMetricUpdate, relatedMetrics]
   );
 
+  const canEditRelatedMetrics =
+    !isEdit && permissions.EditAll && !metricDetails.deleted;
+
   const headerExtra =
-    !isEdit &&
-    permissions.EditAll &&
-    !metricDetails.deleted &&
+    canEditRelatedMetrics &&
     (isEmpty(relatedMetrics) ? (
       <WidgetPlusButton
         data-testid="add-related-metrics-container"

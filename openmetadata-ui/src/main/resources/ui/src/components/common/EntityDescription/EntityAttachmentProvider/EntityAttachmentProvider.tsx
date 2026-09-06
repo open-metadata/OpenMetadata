@@ -207,16 +207,15 @@ export const EntityAttachmentProvider = ({
           view.dispatch(currentTr);
         }
 
-        showInlineAlert
-          ? setErrorMessage(
-              !isUndefined(errorMessage) && isString(errorMessage)
-                ? errorMessage
-                : t('label.failed-to-upload-file')
-            )
-          : showErrorToast(
-              error as AxiosError,
-              t('label.failed-to-upload-file')
-            );
+        if (showInlineAlert) {
+          const inlineErrorMessage =
+            !isUndefined(errorMessage) && isString(errorMessage)
+              ? errorMessage
+              : t('label.failed-to-upload-file');
+          setErrorMessage(inlineErrorMessage);
+        } else {
+          showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
+        }
       }
     },
     [onImageUpload, allowImageUpload, allowFileUpload, entityType, entityFqn, t]

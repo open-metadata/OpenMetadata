@@ -265,6 +265,76 @@ async function resolveRelatedTerms(terms: GlossaryTerm[]): Promise<void> {
   }
 }
 
+const mergeIncomingGraphResults = (
+  prev: OntologyGraphData | null,
+  results: OntologyGraphData[]
+): OntologyGraphData => {
+  const base = prev ?? { nodes: [], edges: [] };
+  const existingEdgeKeys = new Set(
+    base.edges.map(
+      (e) => `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`
+    )
+  );
+  const newNodes = [...base.nodes];
+  const newEdges = [...base.edges];
+  const nodeIndexes = new Map(newNodes.map((node, index) => [node.id, index]));
+
+  results.forEach((result) => {
+    result.nodes.forEach((node) => {
+      const existingIndex = nodeIndexes.get(node.id);
+      if (existingIndex === undefined) {
+        nodeIndexes.set(node.id, newNodes.length);
+        newNodes.push(node);
+      } else if (
+        node.isDataModeSeed &&
+        !newNodes[existingIndex].isDataModeSeed
+      ) {
+        newNodes[existingIndex] = {
+          ...newNodes[existingIndex],
+          ...node,
+          isDataModeSeed: true,
+        };
+      }
+    });
+    result.edges.forEach((e) => {
+      const key = `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
+      if (!existingEdgeKeys.has(key)) {
+        newEdges.push(e);
+        existingEdgeKeys.add(key);
+      }
+    });
+  });
+
+  return { nodes: newNodes, edges: newEdges };
+};
+
+const mergeLoadMorePage = (
+  prev: OntologyGraphData | null,
+  newPageData: OntologyGraphData
+): OntologyGraphData => {
+  if (!prev) {
+    return newPageData;
+  }
+  const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
+  const existingEdgeKeys = new Set(
+    prev.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
+  );
+
+  return {
+    ...prev,
+    nodes: [
+      ...prev.nodes,
+      ...newPageData.nodes.filter((n) => !existingNodeIds.has(n.id)),
+    ],
+    edges: [
+      ...prev.edges,
+      ...newPageData.edges.filter(
+        (e) => !existingEdgeKeys.has(`${e.from}-${e.to}-${e.relationType}`)
+      ),
+    ],
+  };
+};
+
 export function useOntologyExplorer({
   scope,
   entityId,
@@ -427,11 +497,14 @@ export function useOntologyExplorer({
             .map((termNode) => termNode.glossaryId)
             .filter((id): id is string => Boolean(id))
         );
-        const requestedGlossaryIds = scopedGlossaryId
-          ? [scopedGlossaryId]
-          : glossaryFilterIds.length > 0
-          ? glossaryFilterIds.filter((id) => termGlossaryIds.has(id))
-          : [];
+        let requestedGlossaryIds: string[] = [];
+        if (scopedGlossaryId) {
+          requestedGlossaryIds = [scopedGlossaryId];
+        } else if (glossaryFilterIds.length > 0) {
+          requestedGlossaryIds = glossaryFilterIds.filter((id) =>
+            termGlossaryIds.has(id)
+          );
+        }
         const glossaryFqnsToFetch = requestedGlossaryIds
           .map(
             (id) =>
@@ -841,47 +914,7 @@ export function useOntologyExplorer({
   }, [filters.glossaryIds, scope, entityId, fetchTermAssetCounts]);
 
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
-    setGraphData((prev) => {
-      const base = prev ?? { nodes: [], edges: [] };
-      const existingEdgeKeys = new Set(
-        base.edges.map(
-          (e) => `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`
-        )
-      );
-      const newNodes = [...base.nodes];
-      const newEdges = [...base.edges];
-      const nodeIndexes = new Map(
-        newNodes.map((node, index) => [node.id, index])
-      );
-
-      results.forEach((result) => {
-        result.nodes.forEach((node) => {
-          const existingIndex = nodeIndexes.get(node.id);
-          if (existingIndex === undefined) {
-            nodeIndexes.set(node.id, newNodes.length);
-            newNodes.push(node);
-          } else if (
-            node.isDataModeSeed &&
-            !newNodes[existingIndex].isDataModeSeed
-          ) {
-            newNodes[existingIndex] = {
-              ...newNodes[existingIndex],
-              ...node,
-              isDataModeSeed: true,
-            };
-          }
-        });
-        result.edges.forEach((e) => {
-          const key = `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
-          if (!existingEdgeKeys.has(key)) {
-            newEdges.push(e);
-            existingEdgeKeys.add(key);
-          }
-        });
-      });
-
-      return { nodes: newNodes, edges: newEdges };
-    });
+    setGraphData((prev) => mergeIncomingGraphResults(prev, results));
   }, []);
 
   const loadMissingFilteredGlossaries = useCallback(
@@ -1317,30 +1350,7 @@ export function useOntologyExplorer({
     loadNextTermPage()
       .then((terms) => {
         const newPageData = buildGraphFromAllTermsCb(terms, glossaries);
-        setGraphData((prev) => {
-          if (!prev) {
-            return newPageData;
-          }
-          const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
-          const existingEdgeKeys = new Set(
-            prev.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
-          );
-
-          return {
-            ...prev,
-            nodes: [
-              ...prev.nodes,
-              ...newPageData.nodes.filter((n) => !existingNodeIds.has(n.id)),
-            ],
-            edges: [
-              ...prev.edges,
-              ...newPageData.edges.filter(
-                (e) =>
-                  !existingEdgeKeys.has(`${e.from}-${e.to}-${e.relationType}`)
-              ),
-            ],
-          };
-        });
+        setGraphData((prev) => mergeLoadMorePage(prev, newPageData));
       })
       .catch(() => {})
       .finally(() => {

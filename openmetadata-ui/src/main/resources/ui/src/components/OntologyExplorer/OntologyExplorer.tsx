@@ -27,7 +27,9 @@ import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
+  Fragment,
   Key,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -296,10 +298,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const showConceptInspector = Boolean(
     scope === 'global' && surface === 'graph' && isTermConcept && !selectedEdge
   );
+  const isEntitySurface = surface !== 'term' && !isAuthoringMode;
   const showEntityPanel = Boolean(
-    surface !== 'term' &&
+    isEntitySurface &&
       selectedNode &&
-      !isAuthoringMode &&
       (scope !== 'global' || isDataAssetLikeNode(selectedNode))
   );
   // Editing authors concepts, not the read-only data projection. Entering Edit
@@ -900,14 +902,72 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   }
 
-  const showOnboardingEmptyState =
+  const hasEmptyConceptGraph =
     !loading &&
     graphDataWithLocalConcept !== null &&
-    graphDataWithLocalConcept.nodes.length === 0 &&
+    graphDataWithLocalConcept.nodes.length === 0;
+  const hasNoActiveOntologyFilters =
     withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
     withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
     filters.viewMode === 'overview' &&
     !filters.searchQuery.trim();
+  const showOnboardingEmptyState =
+    hasEmptyConceptGraph && hasNoActiveOntologyFilters;
+
+  const nonGraphSurfaceContent =
+    surface === 'tree' ? (
+      <OntologyTreeView
+        groups={treeGroups}
+        selectedNodeId={selectedNode?.id}
+        onSelect={setSelectedNode}
+      />
+    ) : (
+      <OntologyTermEditor
+        edges={(filteredGraphData?.edges ?? []).filter(
+          (edge) => edge.relationType !== ASSET_RELATION_TYPE
+        )}
+        isEditable={isEditMode}
+        nodes={filteredGraphData?.nodes ?? []}
+        relationTypes={relationTypes}
+        selectedNode={selectedNode}
+        onCreateRelation={handleCreateRelation}
+        onDeleteTerm={() => {
+          setSelectedNode(null);
+          handleRefresh();
+        }}
+        onSelectNode={setSelectedNode}
+      />
+    );
+
+  let conceptInspectorContent: ReactNode = null;
+  if (showConceptInspector && selectedNode) {
+    conceptInspectorContent = selectedNode.isDraft ? (
+      <OntologyConceptDraftInspector
+        glossaries={glossaries}
+        isLeaseOwned={isEditMode}
+        key={selectedNode.id}
+        node={selectedNode}
+        onCancel={handleConceptDraftCancel}
+        onChange={handleConceptDraftChange}
+        onCreated={handleConceptCreated}
+      />
+    ) : (
+      <OntologyAuthoringInspector
+        edges={(filteredGraphData?.edges ?? []).filter(
+          (edge) => edge.relationType !== ASSET_RELATION_TYPE
+        )}
+        isEditable={isEditMode}
+        key={selectedNode.id}
+        node={selectedNode}
+        nodes={filteredGraphData?.nodes ?? []}
+        relationTypes={relationTypes}
+        onCreateRelation={handleCreateRelation}
+        onRequestEdit={isEditMode ? undefined : onRequestEdit}
+        onShowDataAssets={() => handleModeChange('data')}
+        onShowFullDetails={() => handleGraphNodeDoubleClick(selectedNode)}
+      />
+    );
+  }
 
   return (
     <div
@@ -931,7 +991,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           {surface === 'graph' ? (
             <>
               {!showOnboardingEmptyState ? (
-                <>
+                <Fragment>
                   {explorationMode === 'data' ? (
                     <Card
                       className={classNames(
@@ -1121,7 +1181,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                       ))}
                     </Card>
                   ) : null}
-                </>
+                </Fragment>
               ) : null}
 
               <div
@@ -1134,28 +1194,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 {renderGraphContent()}
               </div>
             </>
-          ) : surface === 'tree' ? (
-            <OntologyTreeView
-              groups={treeGroups}
-              selectedNodeId={selectedNode?.id}
-              onSelect={setSelectedNode}
-            />
           ) : (
-            <OntologyTermEditor
-              edges={(filteredGraphData?.edges ?? []).filter(
-                (edge) => edge.relationType !== ASSET_RELATION_TYPE
-              )}
-              isEditable={isEditMode}
-              nodes={filteredGraphData?.nodes ?? []}
-              relationTypes={relationTypes}
-              selectedNode={selectedNode}
-              onCreateRelation={handleCreateRelation}
-              onDeleteTerm={() => {
-                setSelectedNode(null);
-                handleRefresh();
-              }}
-              onSelectNode={setSelectedNode}
-            />
+            nonGraphSurfaceContent
           )}
 
           {showEntityPanel && selectedNode ? (
@@ -1214,38 +1254,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             onUpdate={handleRelationUpdate}
           />
         ) : null}
-        {showConceptInspector && selectedNode ? (
-          selectedNode.isDraft ? (
-            <OntologyConceptDraftInspector
-              glossaries={glossaries}
-              isLeaseOwned={isEditMode}
-              key={selectedNode.id}
-              node={selectedNode}
-              onCancel={handleConceptDraftCancel}
-              onChange={handleConceptDraftChange}
-              onCreated={handleConceptCreated}
-            />
-          ) : (
-            <OntologyAuthoringInspector
-              edges={(filteredGraphData?.edges ?? []).filter(
-                (edge) => edge.relationType !== ASSET_RELATION_TYPE
-              )}
-              isEditable={isEditMode}
-              key={selectedNode.id}
-              node={selectedNode}
-              nodes={filteredGraphData?.nodes ?? []}
-              relationTypes={relationTypes}
-              onCreateRelation={handleCreateRelation}
-              onRequestEdit={isEditMode ? undefined : onRequestEdit}
-              onShowDataAssets={() => handleModeChange('data')}
-              onShowFullDetails={() => {
-                if (selectedNode) {
-                  handleGraphNodeDoubleClick(selectedNode);
-                }
-              }}
-            />
-          )
-        ) : null}
+        {conceptInspectorContent}
         {showHealth && !showConceptInspector && !selectedEdge ? (
           <OntologyHealthPanel
             health={healthSummary}

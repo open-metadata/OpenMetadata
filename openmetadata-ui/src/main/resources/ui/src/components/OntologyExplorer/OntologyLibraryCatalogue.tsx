@@ -113,6 +113,34 @@ const OntologyLibraryCatalogue = ({
             pack,
             pack.modules.map((module) => module.id)
           );
+          const uninstalledAction = pack.bundled ? (
+            <Button
+              className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
+              color="link-color"
+              data-testid={`ontology-pack-details-${pack.id}`}
+              iconTrailing={
+                <ArrowRight className="tw:size-3 tw:text-fg-brand-primary" />
+              }
+              size="xs"
+              onPress={() => onSelect(pack)}>
+              {t('label.install')}
+            </Button>
+          ) : (
+            <Button
+              className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
+              color="link-color"
+              data-testid={`ontology-pack-source-${pack.id}`}
+              href={pack.sourceUrl}
+              iconTrailing={
+                <ArrowUpRight className="tw:size-3 tw:text-fg-brand-primary" />
+              }
+              rel="noreferrer"
+              size="xs"
+              target="_blank">
+              {t('label.source')}
+            </Button>
+          );
+          const packActionButton = installation ? null : uninstalledAction;
 
           return (
             <Card
@@ -168,33 +196,7 @@ const OntologyLibraryCatalogue = ({
                   {t('label.relation-plural').toLocaleLowerCase()}
                 </span>
                 <span className="tw:flex-1" />
-                {!installation && pack.bundled ? (
-                  <Button
-                    className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
-                    color="link-color"
-                    data-testid={`ontology-pack-details-${pack.id}`}
-                    iconTrailing={
-                      <ArrowRight className="tw:size-3 tw:text-fg-brand-primary" />
-                    }
-                    size="xs"
-                    onPress={() => onSelect(pack)}>
-                    {t('label.install')}
-                  </Button>
-                ) : !installation ? (
-                  <Button
-                    className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
-                    color="link-color"
-                    data-testid={`ontology-pack-source-${pack.id}`}
-                    href={pack.sourceUrl}
-                    iconTrailing={
-                      <ArrowUpRight className="tw:size-3 tw:text-fg-brand-primary" />
-                    }
-                    rel="noreferrer"
-                    size="xs"
-                    target="_blank">
-                    {t('label.source')}
-                  </Button>
-                ) : null}
+                {packActionButton}
               </div>
             </Card>
           );

@@ -544,7 +544,10 @@ const cleanupFixtures = async () => {
 
 const waitForMetricsPage = async (page: Page) => {
   const metricsResponse = waitForMetricsSearchResponse(page);
-  await page.goto('/metrics');
+  // domcontentloaded, not the default 'load': /metrics pulls enough subresources
+  // that waiting for all of them exceeded the 60s navigation timeout under merge
+  // queue load. The real readiness signal is the search response awaited next.
+  await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('heading')).toHaveText('Metrics');
@@ -651,15 +654,45 @@ const expectVisibleAfterHorizontalScroll = async (
   page: Page,
   locator: Locator
 ) => {
-  for (const scrollLeft of [0, 400, 800, 1200, 1600, 2000, 2400]) {
-    await scrollBulkEditGridTo(page, scrollLeft);
+  const grid = page.locator('.bulk-edit-grid-shell .rdg');
 
-    if (await locator.isVisible().catch(() => false)) {
-      return;
+  // Two things move underneath a sweep of this grid. React Data Grid virtualises
+  // columns, so a cell is only in the DOM while its column overlaps the
+  // viewport; and the complex fields — glossary terms, tags, tier — hydrate from
+  // the listing after the first paint, which is what `waitForMetricBulkEditGrid`
+  // does *not* wait for: it returns once the header row and the name cell are
+  // up. A single sweep can therefore miss a cell twice over — the column was not
+  // mounted when we passed it, or the value had not arrived yet — and
+  // `.catch(() => false)` swallows both, so the pass ends with a bare
+  // "element not found" on a cell that was simply late.
+  //
+  // Re-sweep until it appears, recomputing the range each attempt because
+  // scrollWidth itself grows as more columns mount.
+  await expect(async () => {
+    const maxScrollLeft = await grid.evaluate(
+      (el) => el.scrollWidth - el.clientWidth
+    );
+
+    const step = 250;
+    const positions: number[] = [];
+    for (let x = 0; x < maxScrollLeft; x += step) {
+      positions.push(x);
     }
-  }
+    positions.push(Math.max(0, maxScrollLeft));
 
-  await expect(locator).toBeVisible();
+    for (const scrollLeft of positions) {
+      await scrollBulkEditGridTo(page, scrollLeft);
+
+      if (await locator.isVisible().catch(() => false)) {
+        return;
+      }
+    }
+
+    throw new Error(
+      `No column position exposed ${locator}; the cell is either off the ` +
+        `scroll range or has not hydrated yet.`
+    );
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
 };
 
 const waitForMetricImportResponse = (page: Page, dryRun: boolean) =>

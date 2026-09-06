@@ -250,6 +250,27 @@ const CreateUser = ({
       allowImpersonation,
     } = values;
 
+    let authMechanismConfig: Partial<CreateUserFormData> = {};
+    if (forceBot) {
+      authMechanismConfig = {
+        authenticationMechanism: {
+          authType: AuthType.Jwt,
+          config: {
+            JWTTokenExpiry: tokenExpiry,
+          },
+        },
+        allowImpersonation,
+      };
+    } else if (isAuthProviderBasic) {
+      authMechanismConfig = {
+        password: isPasswordGenerated ? generatedPassword : password,
+        confirmPassword: isPasswordGenerated
+          ? generatedPassword
+          : confirmPassword,
+        createPasswordType: CreatePasswordType.AdminCreate,
+      };
+    }
+
     const userProfile: CreateUserFormData = {
       description,
       name: email.split('@')[0],
@@ -261,25 +282,7 @@ const CreateUser = ({
       isAdmin: isAdmin,
       domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
       isBot: isBot,
-      ...(forceBot
-        ? {
-            authenticationMechanism: {
-              authType: AuthType.Jwt,
-              config: {
-                JWTTokenExpiry: tokenExpiry,
-              },
-            },
-            allowImpersonation,
-          }
-        : isAuthProviderBasic
-        ? {
-            password: isPasswordGenerated ? generatedPassword : password,
-            confirmPassword: isPasswordGenerated
-              ? generatedPassword
-              : confirmPassword,
-            createPasswordType: CreatePasswordType.AdminCreate,
-          }
-        : {}),
+      ...authMechanismConfig,
     };
     onSave(userProfile);
   };
@@ -319,6 +322,122 @@ const CreateUser = ({
       debouncedFetchRoleOptions.cancel();
     };
   }, [debouncedFetchRoleOptions]);
+
+  const passwordConfigSection = isAuthProviderBasic && (
+    <>
+      <Form.Item name="passwordGenerator">
+        <Radio.Group>
+          <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
+            {t('label.automatically-generate')}
+          </Radio>
+          <Radio value={CreatePasswordGenerator.CreatePassword}>
+            {t('label.password-type', {
+              type: t('label.create'),
+            })}
+          </Radio>
+        </Radio.Group>
+      </Form.Item>
+
+      {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
+        <div className="m-t-sm">
+          <Form.Item
+            label={t('label.password')}
+            name="password"
+            rules={[
+              {
+                required: true,
+              },
+              {
+                pattern: passwordRegex,
+                message: t('message.password-error-message'),
+              },
+            ]}>
+            <Input.Password
+              autoComplete="off"
+              name="password"
+              placeholder={t('label.password-type', {
+                type: t('label.enter'),
+              })}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={t('label.password-type', {
+              type: t('label.confirm'),
+            })}
+            name="confirmPassword"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (value !== password) {
+                    return Promise.reject(t('label.password-not-match'));
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+            ]}>
+            <Input.Password
+              autoComplete="off"
+              name="confirmPassword"
+              placeholder={t('label.password-type', {
+                type: t('label.confirm'),
+              })}
+            />
+          </Form.Item>
+        </div>
+      ) : (
+        <div className="m-t-sm">
+          <Form.Item
+            label={t('label.password-type', {
+              type: t('label.generate'),
+            })}
+            name="generatedPassword"
+            rules={[
+              {
+                required: true,
+              },
+            ]}>
+            <Input.Password
+              readOnly
+              addonAfter={
+                <div className="flex-center w-16">
+                  <div
+                    className="w-8 h-7 flex-center cursor-pointer"
+                    data-testid="password-generator"
+                    role="button"
+                    tabIndex={0}
+                    onClick={generateRandomPassword}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        generateRandomPassword();
+                      }
+                    }}>
+                    {isPasswordGenerating ? (
+                      <Loader size="small" type="default" />
+                    ) : (
+                      <Icon
+                        className="align-middle"
+                        component={IconSync}
+                        style={{ fontSize: '16px' }}
+                      />
+                    )}
+                  </div>
+
+                  <div className="w-8 h-7 flex-center">
+                    <CopyToClipboardButton copyText={generatedPassword} />
+                  </div>
+                </div>
+              }
+              autoComplete="off"
+              name="generatedPassword"
+              value={generatedPassword}
+            />
+          </Form.Item>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <Form
@@ -387,125 +506,7 @@ const CreateUser = ({
 
       {!forceBot && (
         <>
-          {isAuthProviderBasic && (
-            <>
-              <Form.Item name="passwordGenerator">
-                <Radio.Group>
-                  <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
-                    {t('label.automatically-generate')}
-                  </Radio>
-                  <Radio value={CreatePasswordGenerator.CreatePassword}>
-                    {t('label.password-type', {
-                      type: t('label.create'),
-                    })}
-                  </Radio>
-                </Radio.Group>
-              </Form.Item>
-
-              {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
-                <div className="m-t-sm">
-                  <Form.Item
-                    label={t('label.password')}
-                    name="password"
-                    rules={[
-                      {
-                        required: true,
-                      },
-                      {
-                        pattern: passwordRegex,
-                        message: t('message.password-error-message'),
-                      },
-                    ]}>
-                    <Input.Password
-                      autoComplete="off"
-                      name="password"
-                      placeholder={t('label.password-type', {
-                        type: t('label.enter'),
-                      })}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    label={t('label.password-type', {
-                      type: t('label.confirm'),
-                    })}
-                    name="confirmPassword"
-                    rules={[
-                      {
-                        validator: (_, value) => {
-                          if (value !== password) {
-                            return Promise.reject(
-                              t('label.password-not-match')
-                            );
-                          }
-
-                          return Promise.resolve();
-                        },
-                      },
-                    ]}>
-                    <Input.Password
-                      autoComplete="off"
-                      name="confirmPassword"
-                      placeholder={t('label.password-type', {
-                        type: t('label.confirm'),
-                      })}
-                    />
-                  </Form.Item>
-                </div>
-              ) : (
-                <div className="m-t-sm">
-                  <Form.Item
-                    label={t('label.password-type', {
-                      type: t('label.generate'),
-                    })}
-                    name="generatedPassword"
-                    rules={[
-                      {
-                        required: true,
-                      },
-                    ]}>
-                    <Input.Password
-                      readOnly
-                      addonAfter={
-                        <div className="flex-center w-16">
-                          <div
-                            className="w-8 h-7 flex-center cursor-pointer"
-                            data-testid="password-generator"
-                            role="button"
-                            tabIndex={0}
-                            onClick={generateRandomPassword}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                generateRandomPassword();
-                              }
-                            }}>
-                            {isPasswordGenerating ? (
-                              <Loader size="small" type="default" />
-                            ) : (
-                              <Icon
-                                className="align-middle"
-                                component={IconSync}
-                                style={{ fontSize: '16px' }}
-                              />
-                            )}
-                          </div>
-
-                          <div className="w-8 h-7 flex-center">
-                            <CopyToClipboardButton
-                              copyText={generatedPassword}
-                            />
-                          </div>
-                        </div>
-                      }
-                      autoComplete="off"
-                      name="generatedPassword"
-                      value={generatedPassword}
-                    />
-                  </Form.Item>
-                </div>
-              )}
-            </>
-          )}
+          {passwordConfigSection}
           {!isAdminPage && (
             <>
               <Form.Item label={t('label.team-plural')} name="teams">

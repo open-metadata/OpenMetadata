@@ -198,6 +198,14 @@ export const ContextRuleEditor = ({
 
   const sectionsDisabled = fullyRendered || isKnowledgeRule;
 
+  const nonKnowledgeFullyRenderedKey =
+    entityType === EntityType.DATA_PRODUCT
+      ? 'message.persona-context-data-product-fully-rendered-description'
+      : 'message.persona-context-fully-rendered-description';
+  const fullyRenderedDescriptionKey = isKnowledgeRule
+    ? 'message.persona-context-knowledge-fully-rendered'
+    : nonKnowledgeFullyRenderedKey;
+
   useEffect(() => {
     if (!open) {
       previewRequestRef.current++;
@@ -532,13 +540,7 @@ export const ContextRuleEditor = ({
                   {t('label.fully-rendered')}
                 </Typography>
                 <Typography className="tw:text-[12px] tw:text-quaternary">
-                  {t(
-                    isKnowledgeRule
-                      ? 'message.persona-context-knowledge-fully-rendered'
-                      : entityType === EntityType.DATA_PRODUCT
-                      ? 'message.persona-context-data-product-fully-rendered-description'
-                      : 'message.persona-context-fully-rendered-description'
-                  )}
+                  {t(fullyRenderedDescriptionKey)}
                 </Typography>
               </Box>
               <Toggle

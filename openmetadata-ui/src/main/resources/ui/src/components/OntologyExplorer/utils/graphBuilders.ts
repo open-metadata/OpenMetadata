@@ -111,13 +111,9 @@ export function projectOntologyRelationsToAssets(
     }
     const fromNode = nodeById.get(edge.from);
     const toNode = nodeById.get(edge.to);
-    if (
-      !fromNode ||
-      !toNode ||
-      !isTermNode(fromNode) ||
-      !isTermNode(toNode) ||
-      edge.relationType.toLowerCase() === 'parentof'
-    ) {
+    const hasInvalidTermNodes =
+      !fromNode || !toNode || !isTermNode(fromNode) || !isTermNode(toNode);
+    if (hasInvalidTermNodes || edge.relationType.toLowerCase() === 'parentof') {
       continue;
     }
     const fromAssetIds = termToAssetIds.get(edge.from) ?? [];
@@ -307,10 +303,9 @@ export function buildGraphFromAllTerms(
       return;
     }
 
-    const hasRelations =
-      (term.relatedTerms && term.relatedTerms.length > 0) ||
-      (term.children && term.children.length > 0) ||
-      term.parent;
+    const hasRelatedTerms = term.relatedTerms && term.relatedTerms.length > 0;
+    const hasChildren = term.children && term.children.length > 0;
+    const hasRelations = hasRelatedTerms || hasChildren || term.parent;
 
     nodesMap.set(term.id, {
       id: term.id,

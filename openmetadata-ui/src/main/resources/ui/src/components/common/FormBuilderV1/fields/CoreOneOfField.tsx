@@ -55,10 +55,13 @@ const shouldRenderSegmentedOptions = (
     getOptionTitle(element, index)
   );
 
-  return (
+  const isSegmentedOptionCountWithinLimit =
     options.length > 1 &&
     options.length <= MAX_SEGMENTED_OPTION_COUNT &&
-    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
+    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID);
+
+  return (
+    isSegmentedOptionCountWithinLimit &&
     !COMPACT_SELECTOR_ID_PATTERN.test(id) &&
     optionLabels.every(
       (label) => label.length <= MAX_SEGMENTED_OPTION_LABEL_LENGTH

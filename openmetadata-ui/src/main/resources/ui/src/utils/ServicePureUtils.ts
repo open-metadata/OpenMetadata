@@ -65,16 +65,18 @@ export const getIngestionName = (
 };
 
 export const shouldTestConnection = (serviceType: string) => {
-  return (
+  const isNotCustomCoreService =
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
-    serviceType !== MlModelServiceType.CustomMlModel &&
+    serviceType !== MlModelServiceType.CustomMlModel;
+  const isNotCustomExtendedService =
     serviceType !== PipelineServiceType.CustomPipeline &&
     serviceType !== StorageServiceType.CustomStorage &&
     serviceType !== SearchServiceType.CustomSearch &&
-    serviceType !== DriveServiceType.CustomDrive
-  );
+    serviceType !== DriveServiceType.CustomDrive;
+
+  return isNotCustomCoreService && isNotCustomExtendedService;
 };
 
 export const getServiceType = (serviceCat: ServiceCategory) =>

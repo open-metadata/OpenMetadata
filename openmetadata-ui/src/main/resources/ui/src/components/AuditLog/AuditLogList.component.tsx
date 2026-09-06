@@ -218,10 +218,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     log.entityFQN ??
     log.changeEvent?.entityFullyQualifiedName ??
     log.changeEvent?.entity?.fullyQualifiedName;
-  const entityLabel =
+  const entityNameLabel =
     getEntityName(log.changeEvent?.entity) ||
-    (log.changeEvent?.entity as { name?: string })?.name ||
-    (entityFQN ? Fqn.split(entityFQN).pop() : undefined) ||
+    (log.changeEvent?.entity as { name?: string })?.name;
+  const splitEntityFqn = entityFQN ? Fqn.split(entityFQN).pop() : undefined;
+  const entityLabel =
+    entityNameLabel ||
+    splitEntityFqn ||
     log.changeEvent?.entityFullyQualifiedName ||
     log.entityId;
   const normalizedType = resolveEntityType(entityType);
@@ -344,12 +347,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             change.newValue,
             `updated-new-${change.name}`
           );
+          const hasValueChange = oldValueNode || newValueNode;
 
           details.push(
             <span className="change-detail" key={`updated-${change.name}`}>
               <span className="change-action">{updatedLabel}</span>{' '}
               <span className="change-field">{label || fallbackField}</span>
-              {(oldValueNode || newValueNode) && (
+              {hasValueChange && (
                 <>
                   : {oldValueNode}
                   {oldValueNode && newValueNode && ' → '}

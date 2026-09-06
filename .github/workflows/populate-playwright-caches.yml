@@ -16,11 +16,33 @@
 #    against apt mirrors / registry.yarnpkg.com / the Playwright CDN, and a
 #    bad day on any of those takes the whole matrix down (runs 32157314266,
 #    32166970973, 32209207109, 32222855561, 32233411840).
+#    Re-observed 2026-09-04 for the expensive tier: 11.34 GB active against the
+#    10 GB budget, 5.1 GB of it four ~1.28 GB ingestion images stranded on dead
+#    merge-queue refs. prune-ephemeral-caches.yml now collects those; the saves
+#    that created them are gated off merge_group in the reusable.
 #
 # The fix has two halves: playwright-e2e-reusable.yml uses RESTORE-ONLY
 # cache steps (no saves from ephemeral refs), and THIS workflow is the one
-# writer — it saves the apt, yarn, and browser caches from main's scope so
-# every downstream run gets a hit.
+# writer — it saves from main's scope so every downstream run gets a hit.
+#
+# It covers TWO tiers, in two independent jobs:
+#
+#   populate     apt, yarn, browser. Cheap, no build, single runner.
+#   warm-fixture the OpenMetadata distribution, the golden fixture (seeded DB +
+#                OpenSearch + auth state) and the ingestion image. These are
+#                what actually cost time: 13 consecutive merge-queue runs
+#                measured on 2026-09-04 missed the golden fixture 13 times and
+#                rebuilt it for ~17 min each — 31% of a 55 min suite, on the
+#                critical path of every entry in the queue. Warming them needs
+#                the real build-and-seed pipeline, so this job CALLS
+#                playwright-e2e-reusable.yml with `warm_caches_only: true`,
+#                which runs it for its cache side effects and stops before the
+#                shards. The commit was already tested by the queue entry that
+#                produced it; re-running the suite on main proves nothing.
+#
+# Keeping both tiers here is deliberate. A second warmer workflow would be a
+# second writer, which is exactly the drift the one-writer rule above prevents:
+# add a cache to the pipeline and you have one place to teach about it.
 #
 # STRUCTURE: each cache is warmed INDEPENDENTLY. The apt populate runs
 # first (most critical, no node/yarn dependency); the yarn and browser
@@ -36,9 +58,18 @@
 #   * schedule (6h)      — keeps last_accessed fresh and re-saves after any
 #                          eviction or runner-image roll.
 #   * workflow_dispatch  — populate immediately (first run / mid-incident).
-#   * push to main touching the reusable workflow, this file, or yarn.lock —
-#                          key inputs changed; repopulate the new keys right
-#                          away instead of waiting ≤6 h.
+#   * push to main       — repopulate the new keys right away instead of
+#                          waiting ≤6 h.
+#
+# The push trigger carries NO `paths:` filter. It once listed the reusable
+# workflow, this file and yarn.lock, which covers the apt/yarn/browser keys —
+# but the fixture and distribution fingerprints span bootstrap/sql,
+# openmetadata-spec, the service resources, the sample-data seeds and the
+# compose files (see FIXTURE_PREFIXES / DISTRIBUTION_PREFIXES in
+# .github/scripts/playwright_cache_fingerprint.py). Restating those lists here
+# would rot, and a warm that gets skipped costs every queue entry ~17 min.
+# Unchanged fingerprints make the run cheap instead — every cache restores,
+# nothing rebuilds — so running on each main push is the safe default.
 #
 # IMPORTANT: the cache keys and the apt package list below MUST stay
 # identical to their counterparts in playwright-e2e-reusable.yml — a drifted
@@ -52,21 +83,19 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/playwright-e2e-reusable.yml
-      - .github/workflows/populate-playwright-apt-cache.yml
-      - openmetadata-ui/src/main/resources/ui/yarn.lock
-      - openmetadata-ui/src/main/resources/ui/.nvmrc
 
 permissions:
   contents: read
 
-concurrency:
-  group: populate-playwright-apt-cache
-  cancel-in-progress: false
+# Concurrency is per-JOB, not workflow-level: the two tiers want opposite
+# cancel policies and must not serialise behind each other.
 
 jobs:
   populate:
+    # Cheap and quick; let an in-flight warm finish rather than restart it.
+    concurrency:
+      group: populate-playwright-caches-apt
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -176,3 +205,44 @@ jobs:
             echo "::error::cache warmers failed:$failed — downstream runs stay on the previous main-scoped copies (or the resilient miss path) until the next populate"
             exit 1
           fi
+
+  # The expensive tier. Independent of `populate` above: an apt-mirror outage
+  # must not stop the fixture refreshing, and a build failure here must not
+  # stop the apt/yarn/browser copies being kept warm.
+  #
+  # COST: when the fingerprints are unchanged this is nearly free — the
+  # distribution and fixture both restore and prepare-playwright-fixture
+  # short-circuits. Only a main commit that actually changes a fixture or
+  # distribution input pays the full build-and-seed.
+  #
+  # DATABASE: postgresql only, matching the PR/merge-queue pipeline this warms
+  # for. Note the three cache keys do NOT encode the database flavour while the
+  # fixture itself is a postgres dump — safe today because the mysql nightly is
+  # workflow_dispatch-only against release branches and so never writes main's
+  # scope, but the keys should grow a flavour segment before that changes.
+  warm-fixture:
+    # Newest wins: a burst of merges to main should leave one run warming the
+    # newest tree, not a queue of runs each warming a tree already stale.
+    concurrency:
+      group: populate-playwright-caches-fixture
+      cancel-in-progress: true
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: postgresql
+      profile: postgresql-warm
+      # Reuse the PR pipeline's timing artifacts; the shard planner still runs
+      # (prepare-playwright-fixture needs its requires_airflow output) even
+      # though no shard is dispatched.
+      workflow_filename: playwright-postgresql-e2e.yml
+      warm_caches_only: true
+      # Must match what the merge queue restores, or the fingerprints differ
+      # and the warm populates keys nobody reads.
+      full_suite: true
+      protocol: http
+      coarse_bundle: true

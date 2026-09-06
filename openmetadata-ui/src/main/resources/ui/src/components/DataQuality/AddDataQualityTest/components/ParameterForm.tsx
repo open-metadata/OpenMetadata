@@ -70,6 +70,87 @@ const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );
 
+type TableDiffSearchHit = SearchHitBody<
+  SearchIndex.TABLE,
+  Pick<
+    TableSearchSource,
+    'name' | 'displayName' | 'fullyQualifiedName' | 'columns'
+  >
+>;
+
+const findTableByFqn = (tableList: TableDiffSearchHit[], fqn?: string) =>
+  tableList.find((hit) => hit._source.fullyQualifiedName === fqn);
+
+const ParameterArrayField: React.FC<{
+  data: TestCaseParameterDefinition;
+  dynamicField?: ReactElement;
+}> = ({ data, dynamicField }) => {
+  const { t } = useTranslation();
+  const label = getEntityName(data);
+
+  return (
+    <Form.List
+      initialValue={[{ value: undefined }]}
+      key={data.name}
+      name={data.name || ''}>
+      {(fields, { add, remove }) => (
+        <Form.Item
+          key={data.name}
+          label={
+            <>
+              <span>{data.displayName}</span>
+              <Button
+                className="m-x-sm list-add-btn"
+                icon={<PlusOutlined />}
+                size="small"
+                type="primary"
+                onClick={() => add()}
+              />
+            </>
+          }
+          name={data.name}
+          tooltip={data.description}>
+          {fields.map(({ key, name, ...restField }) => (
+            <div className="d-flex w-full" key={key}>
+              <Form.Item
+                className="w-full m-b-0"
+                {...restField}
+                name={[name, 'value']}
+                rules={[
+                  {
+                    required: data.required,
+                    message: `${t('message.field-text-is-required', {
+                      fieldText: label,
+                    })}`,
+                  },
+                ]}>
+                {dynamicField ?? (
+                  <Input
+                    placeholder={`${t('message.enter-a-field', {
+                      field: label,
+                    })}`}
+                  />
+                )}
+              </Form.Item>
+              <Button
+                icon={
+                  <Icon
+                    className="align-middle"
+                    component={IconDelete}
+                    style={{ fontSize: '16px' }}
+                  />
+                }
+                type="text"
+                onClick={() => remove(name)}
+              />
+            </div>
+          ))}
+        </Form.Item>
+      )}
+    </Form.List>
+  );
+};
+
 interface TableDiffFormProps {
   definition: ParameterFormProps['definition'];
   table: ParameterFormProps['table'];
@@ -172,9 +253,7 @@ const TableDiffForm = ({
 
                     // Update columns or clear them
                     if (value) {
-                      const selectedTable = tableList.find(
-                        (hit) => hit._source.fullyQualifiedName === value
-                      );
+                      const selectedTable = findTableByFqn(tableList, value);
                       setTable2Columns(selectedTable?._source.columns);
                     } else {
                       setTable2Columns(undefined);
@@ -416,65 +495,11 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           );
 
           return (
-            <Form.List
-              initialValue={[{ value: undefined }]}
+            <ParameterArrayField
+              data={data}
+              dynamicField={DynamicField}
               key={data.name}
-              name={data.name || ''}>
-              {(fields, { add, remove }) => (
-                <Form.Item
-                  key={data.name}
-                  label={
-                    <>
-                      <span>{data.displayName}</span>
-                      <Button
-                        className="m-x-sm list-add-btn"
-                        icon={<PlusOutlined />}
-                        size="small"
-                        type="primary"
-                        onClick={() => add()}
-                      />
-                    </>
-                  }
-                  name={data.name}
-                  tooltip={data.description}>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <div className="d-flex w-full" key={key}>
-                      <Form.Item
-                        className="w-full m-b-0"
-                        {...restField}
-                        name={[name, 'value']}
-                        rules={[
-                          {
-                            required: data.required,
-                            message: `${t('message.field-text-is-required', {
-                              fieldText: label,
-                            })}`,
-                          },
-                        ]}>
-                        {DynamicField ?? (
-                          <Input
-                            placeholder={`${t('message.enter-a-field', {
-                              field: label,
-                            })}`}
-                          />
-                        )}
-                      </Form.Item>
-                      <Button
-                        icon={
-                          <Icon
-                            className="align-middle"
-                            component={IconDelete}
-                            style={{ fontSize: '16px' }}
-                          />
-                        }
-                        type="text"
-                        onClick={() => remove(name)}
-                      />
-                    </div>
-                  ))}
-                </Form.Item>
-              )}
-            </Form.List>
+            />
           );
       }
     }
