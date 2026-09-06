@@ -335,6 +335,53 @@ test.describe(
       );
     });
 
+    test('a long stack trace scrolls inside the remediation card instead of filling the modal', async ({
+      page,
+    }) => {
+      // A driver that dumps a full stack trace (teradatasql, JDBC, ...) used to
+      // push the card past the height of the modal, burying the capability
+      // checks and the footer actions below it.
+      const longTrace = Array.from(
+        { length: 40 },
+        (_, index) => `  at some/driver/frame.method StackFrame.go:${index}`
+      ).join('\n');
+
+      const failureResponse = {
+        id: MOCK_WORKFLOW_ID,
+        status: 'Failed',
+        response: {
+          status: 'Failed',
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: false,
+              mandatory: true,
+              errorLog: `OperationalError: connection failed\n${longTrace}`,
+            },
+          ],
+        },
+      };
+
+      await navigateToMysqlConnectionForm(page);
+      await setupWorkflowApiMocks(page, failureResponse);
+
+      await page.getByTestId('test-connection-btn').click();
+
+      const card = page.getByTestId('connection-remediation-card');
+
+      await expect(card).toBeVisible({ timeout: 30000 });
+
+      const trace = card.locator('pre');
+      const box = await trace.boundingBox();
+
+      expect(box).not.toBeNull();
+      // Capped, and scrollable rather than truncated.
+      expect(box!.height).toBeLessThanOrEqual(240);
+      expect(
+        await trace.evaluate((el) => el.scrollHeight > el.clientHeight)
+      ).toBe(true);
+    });
+
     test('Edit Connection click dismisses the modal', async ({ page }) => {
       const failureResponse = {
         id: MOCK_WORKFLOW_ID,
