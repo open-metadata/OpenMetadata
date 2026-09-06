@@ -71,6 +71,23 @@ const defaultSelections = (diff: OntologyStructuralDiff): FieldSelection[] =>
     subsetTermId: termDiff.subsetTerm.id,
   }));
 
+const applyFieldToggle = (
+  selections: FieldSelection[],
+  subsetTermId: string,
+  field: DiffField,
+  selected: boolean
+): FieldSelection[] =>
+  selections.map((selection) =>
+    selection.subsetTermId === subsetTermId
+      ? {
+          ...selection,
+          fields: selected
+            ? [...selection.fields, field]
+            : selection.fields.filter((candidate) => candidate !== field),
+        }
+      : selection
+  );
+
 const toMergeField = (field: DiffField): MergeField => {
   let result: MergeField;
 
@@ -356,16 +373,7 @@ const OntologyStructurePanel = ({
     selected: boolean
   ) => {
     setSelections((current) =>
-      current.map((selection) =>
-        selection.subsetTermId === subsetTermId
-          ? {
-              ...selection,
-              fields: selected
-                ? [...selection.fields, field]
-                : selection.fields.filter((candidate) => candidate !== field),
-            }
-          : selection
-      )
+      applyFieldToggle(current, subsetTermId, field, selected)
     );
   };
 
