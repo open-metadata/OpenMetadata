@@ -91,11 +91,12 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
         // "newest" would blank the figure the moment the next run is scheduled.
         a.pipelineType === PipelineType.Metadata && a.status !== 'queued'
     )
-    .reduce<Agent | undefined>(
-      (latest, a) =>
-        !latest || (a.lastRunAt ?? 0) > (latest.lastRunAt ?? 0) ? a : latest,
-      undefined
-    );
+    .reduce<Agent | undefined>((latest, a) => {
+      const isNewerRun =
+        !latest || (a.lastRunAt ?? 0) > (latest.lastRunAt ?? 0);
+
+      return isNewerRun ? a : latest;
+    }, undefined);
   const assets = latestMetadataAgent?.assets ?? 0;
   const errors = activeAgents.reduce((sum, a) => sum + a.errors, 0);
   const etas = activeAgents

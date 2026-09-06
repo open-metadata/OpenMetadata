@@ -88,13 +88,14 @@ export const getSelectEqualsNotEqualsProperties = (
 ) => {
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
-  const valueType = isEqualNotEqualOp
-    ? isBoolean(value)
-      ? ['boolean']
-      : ['text']
-    : Array.isArray(value)
+  const equalityValueType = isBoolean(value) ? ['boolean'] : ['text'];
+  const membershipValueType = Array.isArray(value)
     ? ['multiselect']
     : ['select'];
+  const valueType = isEqualNotEqualOp ? equalityValueType : membershipValueType;
+  const listValues = Array.isArray(value)
+    ? value.map((item) => ({ key: item, value: item, children: item }))
+    : [{ key: value, value, children: value }];
 
   return {
     [id]: {
@@ -106,11 +107,7 @@ export const getSelectEqualsNotEqualsProperties = (
         valueSrc: ['value'],
         operatorOptions: null,
         valueType: valueType,
-        asyncListValues: isEqualNotEqualOp
-          ? undefined
-          : Array.isArray(value)
-          ? value.map((item) => ({ key: item, value: item, children: item }))
-          : [{ key: value, value, children: value }],
+        asyncListValues: isEqualNotEqualOp ? undefined : listValues,
       },
       id,
       path: [...parentPath, id],
@@ -662,10 +659,10 @@ export const jsonLogicToElasticsearch = (
     ].includes(parentOp as JSONLOGIC_OPERATORS);
 
     const [parentKey] = field.var.split('.');
+    const isSplittableVar =
+      typeof field === 'object' && field.var && field.var.includes('.');
     if (
-      typeof field === 'object' &&
-      field.var &&
-      field.var.includes('.') &&
+      isSplittableVar &&
       !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
         parentKey as EntityReferenceFields
       ) &&
@@ -810,10 +807,11 @@ export const migrateJsonLogic = (
   };
 
   const isVarObject = (value: unknown): value is { var: string } => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return false;
+    }
+
     return (
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value) &&
       'var' in value &&
       typeof (value as Record<string, unknown>)['var'] === 'string'
     );

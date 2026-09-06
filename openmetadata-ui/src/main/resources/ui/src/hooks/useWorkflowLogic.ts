@@ -189,10 +189,12 @@ export const useWorkflowLogic = ({
       }
 
       if (reactFlowNodes.length <= 1) {
-        const isConfigured = Boolean(
+        const hasNodeContent =
           startNode.data?.lastSaved ||
-            startNode.data?.userModified ||
-            (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||
+          startNode.data?.userModified ||
+          (startNode.data?.name && startNode.data?.dataAssets?.length > 0);
+        const isConfigured = Boolean(
+          hasNodeContent ||
             startNode.data?.triggerType ||
             startNode.data?.eventType ||
             startNode.data?.scheduleType

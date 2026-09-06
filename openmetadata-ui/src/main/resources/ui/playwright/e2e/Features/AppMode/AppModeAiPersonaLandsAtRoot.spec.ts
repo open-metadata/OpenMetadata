@@ -34,7 +34,8 @@
  * the URL `/` after boot.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';

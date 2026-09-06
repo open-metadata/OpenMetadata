@@ -28,7 +28,6 @@ import {
   Cell as AriaCell,
   Collection as AriaCollection,
   Column as AriaColumn,
-  Group as AriaGroup,
   Row as AriaRow,
   Table as AriaTable,
   TableBody as AriaTableBody,
@@ -39,7 +38,7 @@ import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 
 export const TableRowActionsDropdown = () => {
@@ -359,7 +358,10 @@ const TableHead = ({
         )
       }>
       {(state) => (
-        <AriaGroup className="tw:flex tw:items-center tw:gap-1">
+        // Layout only — a real Group (role="group") here makes Chromium
+        // compute an EMPTY accessible name for the columnheader, breaking
+        // every getByRole('columnheader', { name }) locator.
+        <div className="tw:flex tw:items-center tw:gap-1">
           <div className="tw:flex tw:items-center tw:gap-1">
             {label && (
               <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
@@ -370,10 +372,11 @@ const TableHead = ({
           </div>
 
           {tooltip && (
-            <Tooltip placement="top" title={tooltip}>
-              <TooltipTrigger className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
-                <HelpCircle className="tw:size-4" />
-              </TooltipTrigger>
+            <Tooltip
+              placement="top"
+              title={tooltip}
+              triggerClassName="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
+              <HelpCircle className="tw:size-4" />
             </Tooltip>
           )}
 
@@ -392,7 +395,7 @@ const TableHead = ({
                 strokeWidth={3}
               />
             ))}
-        </AriaGroup>
+        </div>
       )}
     </AriaColumn>
   );

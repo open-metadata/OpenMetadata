@@ -352,6 +352,97 @@ const OntologyExplorerPage: React.FC = () => {
     }
   };
 
+  const renderMainContent = () => {
+    if (mode === 'ai' && isOntologyAiEnabled) {
+      return (
+        <OntologyAiAssistant
+          canCreateDraft={canEditOntology}
+          glossary={selectedGlossary}
+          graphData={graphData}
+          relationshipTypes={relationTypes}
+          onOpenQuery={(query) => {
+            setGeneratedQuery(query);
+            setQuerySurface('console');
+            setMode('query');
+          }}
+        />
+      );
+    }
+
+    if (mode === 'query' && !isRdfEnabled && !isCapabilityLoading) {
+      return <RdfDisabledNotice />;
+    }
+
+    if (mode === 'query') {
+      return (
+        <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
+          {querySurface === 'console' ? (
+            <OntologyStudioQueryConsole
+              graphData={graphData}
+              initialQuery={generatedQuery}
+              relationTypes={relationTypes}
+              selectedGlossaryIds={selectedGlossaryIds}
+            />
+          ) : (
+            <OntologyVisualQueryBuilder
+              graphData={graphData}
+              relationTypes={relationTypes}
+              selectedGlossaryIds={selectedGlossaryIds}
+              onEditAsSparql={(query) => {
+                setGeneratedQuery(query);
+                setQuerySurface('console');
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    if (mode === 'edit' && editSurface === 'model') {
+      return (
+        <OntologyModelingWorkbench
+          glossaries={glossaries}
+          graphData={graphData}
+          selectedGlossary={selectedGlossary}
+        />
+      );
+    }
+
+    return (
+      <OntologyExplorer
+        className="tw:min-h-0 tw:flex-1"
+        conceptDraftId={conceptDraft?.id}
+        defaultConceptGlossaryId={conceptDraft?.defaultGlossaryId}
+        globalGlossaryIds={selectedGlossaryIds}
+        height="100%"
+        isAuthoringMode={mode === 'edit'}
+        isEditMode={mode === 'edit' && isLeaseOwned}
+        key={explorerRevision}
+        scope="global"
+        showHealth={mode === 'view'}
+        surface={explorerSurface}
+        onConceptCreated={(concept) => {
+          setConceptDraft(undefined);
+          if (concept.glossary?.id) {
+            setSelectedGlossaryId(concept.glossary.id);
+          }
+        }}
+        onConceptDraftClose={() => setConceptDraft(undefined)}
+        onGlossariesChange={handleGlossariesChange}
+        onGraphDataChange={handleGraphDataChange}
+        onRelationTypesChange={handleRelationTypesChange}
+        onRequestEdit={() => {
+          setEditSurface('graph');
+          setMode('edit');
+        }}
+        onSelectedNodeChange={(node) =>
+          setAuthoringGlossaryId(node?.glossaryId)
+        }
+        onStatsChange={handleStatsChange}
+      />
+    );
+  };
+
   return (
     <PageLayoutV1
       fullHeight
@@ -588,80 +679,7 @@ const OntologyExplorerPage: React.FC = () => {
               ? 'tw:bg-secondary'
               : 'tw:bg-primary'
           )}>
-          {mode === 'ai' && isOntologyAiEnabled ? (
-            <OntologyAiAssistant
-              canCreateDraft={canEditOntology}
-              glossary={selectedGlossary}
-              graphData={graphData}
-              relationshipTypes={relationTypes}
-              onOpenQuery={(query) => {
-                setGeneratedQuery(query);
-                setQuerySurface('console');
-                setMode('query');
-              }}
-            />
-          ) : mode === 'query' && !isRdfEnabled && !isCapabilityLoading ? (
-            <RdfDisabledNotice />
-          ) : mode === 'query' ? (
-            <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
-              {querySurface === 'console' ? (
-                <OntologyStudioQueryConsole
-                  graphData={graphData}
-                  initialQuery={generatedQuery}
-                  relationTypes={relationTypes}
-                  selectedGlossaryIds={selectedGlossaryIds}
-                />
-              ) : (
-                <OntologyVisualQueryBuilder
-                  graphData={graphData}
-                  relationTypes={relationTypes}
-                  selectedGlossaryIds={selectedGlossaryIds}
-                  onEditAsSparql={(query) => {
-                    setGeneratedQuery(query);
-                    setQuerySurface('console');
-                  }}
-                />
-              )}
-            </div>
-          ) : mode === 'edit' && editSurface === 'model' ? (
-            <OntologyModelingWorkbench
-              glossaries={glossaries}
-              graphData={graphData}
-              selectedGlossary={selectedGlossary}
-            />
-          ) : (
-            <OntologyExplorer
-              className="tw:min-h-0 tw:flex-1"
-              conceptDraftId={conceptDraft?.id}
-              defaultConceptGlossaryId={conceptDraft?.defaultGlossaryId}
-              globalGlossaryIds={selectedGlossaryIds}
-              height="100%"
-              isAuthoringMode={mode === 'edit'}
-              isEditMode={mode === 'edit' && isLeaseOwned}
-              key={explorerRevision}
-              scope="global"
-              showHealth={mode === 'view'}
-              surface={explorerSurface}
-              onConceptCreated={(concept) => {
-                setConceptDraft(undefined);
-                if (concept.glossary?.id) {
-                  setSelectedGlossaryId(concept.glossary.id);
-                }
-              }}
-              onConceptDraftClose={() => setConceptDraft(undefined)}
-              onGlossariesChange={handleGlossariesChange}
-              onGraphDataChange={handleGraphDataChange}
-              onRelationTypesChange={handleRelationTypesChange}
-              onRequestEdit={() => {
-                setEditSurface('graph');
-                setMode('edit');
-              }}
-              onSelectedNodeChange={(node) =>
-                setAuthoringGlossaryId(node?.glossaryId)
-              }
-              onStatsChange={handleStatsChange}
-            />
-          )}
+          {renderMainContent()}
         </section>
 
         {isLibraryOpen ? (

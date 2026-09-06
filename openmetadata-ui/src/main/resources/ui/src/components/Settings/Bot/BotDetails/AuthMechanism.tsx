@@ -64,6 +64,9 @@ const AuthMechanism: FC<Props> = ({
   }, [isBot, authenticationMechanism]);
 
   const { tokenExpiryDate, isTokenExpired } = getTokenExpiry(JWTTokenExpiresAt);
+  const tokenExpiryText = isTokenExpired
+    ? `Expired on ${tokenExpiryDate}.`
+    : `Expires on ${tokenExpiryDate}.`;
 
   return (
     <>
@@ -148,11 +151,7 @@ const AuthMechanism: FC<Props> = ({
           {!isSCIMBot && (
             <p className="text-grey-muted" data-testid="token-expiry">
               {JWTTokenExpiresAt ? (
-                isTokenExpired ? (
-                  `Expired on ${tokenExpiryDate}.`
-                ) : (
-                  `Expires on ${tokenExpiryDate}.`
-                )
+                tokenExpiryText
               ) : (
                 <>
                   <Icon
