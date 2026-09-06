@@ -659,6 +659,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "number"))
           @QueryParam("maxDuration")
           Long maxDuration) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatuses(
         fqn, startTs, endTs, limitParam, before, after, status, search, minDuration, maxDuration);
   }
