@@ -163,6 +163,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
 | `pr-checklist` | opening/finalizing a PR (fills the repo PR template) |
+| `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at
 > session start when the `openmetadata-skills` plugin is installed.
