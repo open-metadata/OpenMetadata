@@ -26,6 +26,7 @@ export type BannerDetails = {
   type: 'warning' | 'danger';
   softLimitExceed?: boolean;
   hardLimitExceed?: boolean;
+  resource?: string;
 };
 
 const buildDisabledResourceLimit = (
@@ -62,6 +63,7 @@ const maybeShowLimitBanner = (
   resource: string,
   plan: string,
   showBanner: boolean,
+  bannerDetails: BannerDetails | null,
   setBannerDetails: (details: BannerDetails | null) => void
 ): void => {
   const {
@@ -76,24 +78,27 @@ const maybeShowLimitBanner = (
     limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
   const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
 
-  if (!isAnyLimitExceeded || !showBanner) {
-    return;
+  if (isAnyLimitExceeded && showBanner) {
+    const resourceLabel =
+      resource === 'metric' ? i18n.t('label.metric') : startCase(resource);
+
+    setBannerDetails({
+      header: i18n.t('server.entity-limit-reached', {
+        entity: resourceLabel,
+      }),
+      type: hardLimitExceed ? 'danger' : 'warning',
+      subheader: `${currentCount}/${
+        limits.hardLimit
+      } (${plan}, ${getLimitThresholdPercentage(limits, hardLimitExceed)}%)`,
+      softLimitExceed,
+      hardLimitExceed,
+      resource,
+    });
+  } else if (showBanner && bannerDetails?.resource === resource) {
+    // Clear only the banner this resource owns, so a sub-limit refresh of
+    // one resource does not clobber a banner set by a different resource.
+    setBannerDetails(null);
   }
-
-  const resourceLabel =
-    resource === 'metric' ? i18n.t('label.metric') : startCase(resource);
-
-  setBannerDetails({
-    header: i18n.t('server.entity-limit-reached', {
-      entity: resourceLabel,
-    }),
-    type: hardLimitExceed ? 'danger' : 'warning',
-    subheader: `${currentCount}/${
-      limits.hardLimit
-    } (${plan}, ${getLimitThresholdPercentage(limits, hardLimitExceed)}%)`,
-    softLimitExceed,
-    hardLimitExceed,
-  });
 };
 
 /**
@@ -103,6 +108,10 @@ export const useLimitStore = create<{
   config: null | LimitConfig;
   resourceLimit: Record<string, ResourceLimit['featureLimitStatuses'][number]>;
   bannerDetails: BannerDetails | null;
+  // Monotonic per-resource counter of in-flight fetches. The most recent
+  // fetch holds the highest id, so a stale response (lower id) that resolves
+  // out of order can be detected and dropped before it mutates the store.
+  resourceRequestSeq: Record<string, number>;
   getResourceLimit: (
     resource: string,
     showBanner?: boolean,
@@ -118,6 +127,7 @@ export const useLimitStore = create<{
   config: null,
   resourceLimit: {},
   bannerDetails: null,
+  resourceRequestSeq: {},
 
   setConfig: (config: LimitConfig) => {
     set({ config });
@@ -146,6 +156,16 @@ export const useLimitStore = create<{
 
     let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
+      // Reserve a sequence id for this fetch; any later fetch for the same
+      // resource bumps it, so the most recent request holds the highest id.
+      set((state) => ({
+        resourceRequestSeq: {
+          ...state.resourceRequestSeq,
+          [resource]: (state.resourceRequestSeq[resource] ?? 0) + 1,
+        },
+      }));
+      const seq = get().resourceRequestSeq[resource];
+
       const limit = await getLimitByResource(resource);
       const status = limit?.featureLimitStatuses?.[0];
 
@@ -156,17 +176,29 @@ export const useLimitStore = create<{
         return buildDisabledResourceLimit(resource);
       }
 
+      // A newer fetch for this resource started while this one was in
+      // flight. Apply only the newer result, so a stale sub-limit reply
+      // cannot overwrite the resourceLimit or clear a banner the newer
+      // over-limit reply installed.
+      if (get().resourceRequestSeq[resource] !== seq) {
+        return status;
+      }
+
       setResourceLimit(resource, status);
       rLimit = status;
     }
 
     if (rLimit) {
       const plan = config?.limits?.config.plan ?? 'FREE';
+      // Re-read the banner after the awaited fetch: a concurrent refresh may
+      // have changed it while this call was waiting, so the value captured
+      // before the await is stale for the ownership check in maybeShowLimitBanner.
       maybeShowLimitBanner(
         rLimit,
         resource,
         plan,
         showBanner,
+        get().bannerDetails,
         setBannerDetails
       );
     }
