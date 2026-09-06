@@ -23,6 +23,7 @@ export const TABLE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.DATABASE_SCHEMA,
   EntityReferenceFields.TABLE_TYPE,
   EntityReferenceFields.TEST_SUITE,
+  EntityReferenceFields.COLUMN_TAG,
 ];
 
 export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [

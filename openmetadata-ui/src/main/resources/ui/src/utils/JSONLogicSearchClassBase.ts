@@ -11,32 +11,33 @@
  *  limitations under the License.
  */
 import {
-  AsyncFetchListValuesResult,
-  Config,
-  FieldOrGroup,
-  Fields,
-  ListItem,
-  Operators,
-  SelectFieldSettings,
+    AsyncFetchListValuesResult,
+    Config,
+    FieldOrGroup,
+    Fields,
+    ListItem,
+    Operators,
+    SelectFieldSettings
 } from '@react-awesome-query-builder/ui';
 import { get, sortBy, toLower } from 'lodash';
 import {
-  LIST_VALUE_OPERATORS,
-  MULTISELECT_FIELD_OPERATORS,
-  RANGE_FIELD_OPERATORS,
-  TEXT_FIELD_DESCRIPTION_OPERATORS,
+    LIST_VALUE_OPERATORS,
+    MULTISELECT_FIELD_OPERATORS,
+    RANGE_FIELD_OPERATORS,
+    SEARCH_INDICES_WITH_COLUMNS_FIELD,
+    TEXT_FIELD_DESCRIPTION_OPERATORS
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
-  COMMON_ENTITY_FIELDS_KEYS,
-  GLOSSARY_ENTITY_FIELDS_KEYS,
-  KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
-  TABLE_ENTITY_FIELDS_KEYS,
+    COMMON_ENTITY_FIELDS_KEYS,
+    GLOSSARY_ENTITY_FIELDS_KEYS,
+    KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
+    TABLE_ENTITY_FIELDS_KEYS
 } from '../constants/JSONLogicSearch.constants';
 import {
-  EntityFields,
-  EntityReferenceFields,
+    EntityFields,
+    EntityReferenceFields
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
@@ -697,6 +698,16 @@ class JSONLogicSearchClassBase {
 
     for (const index of entitySearchIndex) {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
+    }
+
+    const shouldAddColumnTag = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+    if (shouldAddColumnTag) {
+      configs = {
+        ...configs,
+        ...getFieldsByKeys([EntityReferenceFields.COLUMN_TAG], this.mapFields),
+      };
     }
 
     return configs;
