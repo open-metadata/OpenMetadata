@@ -175,7 +175,9 @@ that already runs on every UI PR. A finding in your editor is the finding Sonar 
 
 The high-backlog SonarJS rules are also enforced *blockingly* by SonarCloud, whose Clean-as-You-Code
 model scopes them to **new lines** — something ESLint fundamentally cannot express. So
-`cognitive-complexity` and `no-duplicate-string` warn locally and block on new code in the PR gate.
+`cognitive-complexity` warns locally and blocks on new code in the PR gate. The stock
+`sonarjs/no-duplicate-string` is `off` because it flags i18n keys (`t('label.…')`) that must stay
+inline; the i18n-aware `openmetadata-i18n/no-duplicate-string` replacement is enforced at `error`.
 
 `eslint-plugin-sonarjs` is pinned **exactly** (`4.2.0`). SonarCloud upgrades its analyzer server-side
 on its own schedule and that drift is silent.
