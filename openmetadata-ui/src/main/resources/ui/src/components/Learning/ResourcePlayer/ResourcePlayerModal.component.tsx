@@ -68,12 +68,14 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
   const displayResource = fetchedResource ?? resource;
 
+  const durationUnitLabel =
+    displayResource.resourceType === 'Article'
+      ? t('label.min-read')
+      : t('label.min-watch');
   const formattedDuration = displayResource.estimatedDuration
-    ? `${Math.floor(displayResource.estimatedDuration / 60)} ${
-        displayResource.resourceType === 'Article'
-          ? t('label.min-read')
-          : t('label.min-watch')
-      }`
+    ? `${Math.floor(
+        displayResource.estimatedDuration / 60
+      )} ${durationUnitLabel}`
     : null;
 
   const formattedDate = displayResource.updatedAt

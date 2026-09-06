@@ -419,11 +419,12 @@ const getEntityReferenceOption = (
 const getEntityReferenceInitialOptions = (
   value: ExtensionDataTypes | undefined
 ) => {
-  const references = Array.isArray(value)
-    ? value.filter(isEntityReferenceValue)
-    : isEntityReferenceValue(value)
-    ? [value]
-    : [];
+  let references: EntityReference[] = [];
+  if (Array.isArray(value)) {
+    references = value.filter(isEntityReferenceValue);
+  } else if (isEntityReferenceValue(value)) {
+    references = [value];
+  }
 
   return references.map(getEntityReferenceOption);
 };
@@ -1134,6 +1135,81 @@ const InlineBulkEditReferencePickerEditor = ({
     onComplete(serializeBulkEditPickerValues(columnKey, draft));
   const handleClearAll = () => setDraft([]);
 
+  let pickerContent: React.ReactNode;
+  if (isLoading) {
+    pickerContent = (
+      <span className="bulk-edit-picker-loading">{t('label.loading')}</span>
+    );
+  } else if (hasOptions) {
+    pickerContent = (
+      <div className="bulk-edit-picker-option-list">
+        {options.map((option) => {
+          const isSelected = selectedSet.has(option.value);
+
+          return (
+            <button
+              className={`bulk-edit-picker-option${
+                isSelected ? ' selected' : ''
+              }`}
+              key={option.value}
+              type="button"
+              onClick={() => handleToggleOption(option)}>
+              {renderBulkEditPickerOptionMarker(option)}
+              <span className="bulk-edit-picker-option-meta">
+                <span className="bulk-edit-picker-option-label">
+                  {option.label}
+                </span>
+                {option.description && (
+                  <span className="bulk-edit-picker-option-value">
+                    {option.description}
+                  </span>
+                )}
+              </span>
+              {isSelected && <Check size={18} />}
+            </button>
+          );
+        })}
+      </div>
+    );
+  } else {
+    pickerContent = (
+      <div className="bulk-edit-picker-empty-state">
+        <div className={`bulk-edit-picker-empty-icon ${config.actionStyle}`}>
+          {config.emptyIcon}
+        </div>
+        <div className="bulk-edit-picker-empty-title">{config.emptyTitle}</div>
+        <div className="bulk-edit-picker-empty-description">
+          {config.description}
+        </div>
+        <button
+          className={`bulk-edit-picker-empty-action ${config.actionStyle}`}
+          type="button"
+          onClick={() => openBulkEditPickerPath(config.actionPath)}>
+          {config.actionStyle === 'primary' ? (
+            <Plus size={14} />
+          ) : (
+            <ArrowUpRight size={14} />
+          )}
+          <span>{config.primaryActionLabel}</span>
+        </button>
+        {config.secondaryActionLabel && config.secondaryActionPath && (
+          <button
+            className="bulk-edit-picker-empty-secondary-action"
+            type="button"
+            onClick={() =>
+              openBulkEditPickerPath(config.secondaryActionPath ?? '')
+            }>
+            <span>{config.secondaryActionLabel}</span>
+            <ArrowUpRight size={14} />
+          </button>
+        )}
+        {config.hint && (
+          <span className="bulk-edit-picker-empty-hint">{config.hint}</span>
+        )}
+      </div>
+    );
+  }
+
   const editor = (
     <KeyDownStopPropagationWrapper>
       <div
@@ -1156,82 +1232,7 @@ const InlineBulkEditReferencePickerEditor = ({
               onChange={(event) => setSearchText(event.target.value)}
             />
           </div>
-          <div className="bulk-edit-picker-content">
-            {isLoading ? (
-              <span className="bulk-edit-picker-loading">
-                {t('label.loading')}
-              </span>
-            ) : hasOptions ? (
-              <div className="bulk-edit-picker-option-list">
-                {options.map((option) => {
-                  const isSelected = selectedSet.has(option.value);
-
-                  return (
-                    <button
-                      className={`bulk-edit-picker-option${
-                        isSelected ? ' selected' : ''
-                      }`}
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleToggleOption(option)}>
-                      {renderBulkEditPickerOptionMarker(option)}
-                      <span className="bulk-edit-picker-option-meta">
-                        <span className="bulk-edit-picker-option-label">
-                          {option.label}
-                        </span>
-                        {option.description && (
-                          <span className="bulk-edit-picker-option-value">
-                            {option.description}
-                          </span>
-                        )}
-                      </span>
-                      {isSelected && <Check size={18} />}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="bulk-edit-picker-empty-state">
-                <div
-                  className={`bulk-edit-picker-empty-icon ${config.actionStyle}`}>
-                  {config.emptyIcon}
-                </div>
-                <div className="bulk-edit-picker-empty-title">
-                  {config.emptyTitle}
-                </div>
-                <div className="bulk-edit-picker-empty-description">
-                  {config.description}
-                </div>
-                <button
-                  className={`bulk-edit-picker-empty-action ${config.actionStyle}`}
-                  type="button"
-                  onClick={() => openBulkEditPickerPath(config.actionPath)}>
-                  {config.actionStyle === 'primary' ? (
-                    <Plus size={14} />
-                  ) : (
-                    <ArrowUpRight size={14} />
-                  )}
-                  <span>{config.primaryActionLabel}</span>
-                </button>
-                {config.secondaryActionLabel && config.secondaryActionPath && (
-                  <button
-                    className="bulk-edit-picker-empty-secondary-action"
-                    type="button"
-                    onClick={() =>
-                      openBulkEditPickerPath(config.secondaryActionPath ?? '')
-                    }>
-                    <span>{config.secondaryActionLabel}</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                )}
-                {config.hint && (
-                  <span className="bulk-edit-picker-empty-hint">
-                    {config.hint}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          <div className="bulk-edit-picker-content">{pickerContent}</div>
           {hasOptions && (
             <div className="bulk-edit-picker-footer">
               <button
@@ -1463,14 +1464,13 @@ const InlineCustomPropertiesEditor = ({
       }));
 
       const handleEnumChange = (selectedValue?: string | string[]) => {
-        handleUpdateDraft(
-          customProperty.name,
-          Array.isArray(selectedValue)
-            ? selectedValue
-            : selectedValue
-            ? [selectedValue]
-            : []
-        );
+        let normalizedValue: string[] = [];
+        if (Array.isArray(selectedValue)) {
+          normalizedValue = selectedValue;
+        } else if (selectedValue) {
+          normalizedValue = [selectedValue];
+        }
+        handleUpdateDraft(customProperty.name, normalizedValue);
       };
 
       return (

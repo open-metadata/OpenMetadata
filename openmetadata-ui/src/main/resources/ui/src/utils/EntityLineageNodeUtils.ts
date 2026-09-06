@@ -491,14 +491,17 @@ export const createNodes = (
     const hasOutgoing = outgoingMap.has(node.id);
     const isOutputNode = hasIncoming && !hasOutgoing;
     const isInputNode = !hasIncoming && hasOutgoing;
-    const type =
-      node.type === EntityLineageNodeType.LOAD_MORE
-        ? node.type
-        : isOutputNode
-        ? EntityLineageNodeType.OUTPUT
-        : isInputNode
-        ? EntityLineageNodeType.INPUT
-        : EntityLineageNodeType.DEFAULT;
+
+    let type: EntityLineageNodeType | string;
+    if (node.type === EntityLineageNodeType.LOAD_MORE) {
+      type = node.type;
+    } else if (isOutputNode) {
+      type = EntityLineageNodeType.OUTPUT;
+    } else if (isInputNode) {
+      type = EntityLineageNodeType.INPUT;
+    } else {
+      type = EntityLineageNodeType.DEFAULT;
+    }
 
     const nodeHeight = isExpanded ? 550 : NODE_HEIGHT;
 

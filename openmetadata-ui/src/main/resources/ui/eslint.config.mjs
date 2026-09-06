@@ -28,6 +28,7 @@ import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
@@ -108,6 +109,7 @@ export default [
       'openmetadata-i18n': openMetadataI18n,
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
+      'openmetadata-ui-patterns': openMetadataUiPatterns,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -322,6 +324,7 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -348,7 +351,9 @@ export default [
       // extracting sub-expressions into named consts (short-circuit preserved);
       // backlog is zero and this ratchets it.
       'sonarjs/expression-complexity': 'error',
-      'sonarjs/no-nested-conditional': 'warn', // 16
+      // Promoted to error: all nested-ternary violations refactored to
+      // intermediate variables / if-else; backlog is zero and this ratchets it.
+      'sonarjs/no-nested-conditional': 'error',
       // Promoted to error: all 75 deeply-nested functions refactored by
       // hoisting the innermost callback to a shallower named scope; backlog is
       // zero and this ratchets it.

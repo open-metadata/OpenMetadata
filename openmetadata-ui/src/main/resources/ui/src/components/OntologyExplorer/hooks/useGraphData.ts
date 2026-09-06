@@ -538,25 +538,24 @@ export function useGraphDataBuilder({
       const shouldTruncateLabel =
         isInModelMode || (explorationMode === 'data' && !isDataAsset);
       const estimatedWidth = estimateNodeWidth(rawLabel);
-      const nodeWidth = studioMode
-        ? MODEL_NODE_MAX_WIDTH
-        : shouldTruncateLabel
+      const truncatedNodeWidth = shouldTruncateLabel
         ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
         : estimatedWidth;
+      const nodeWidth = studioMode ? MODEL_NODE_MAX_WIDTH : truncatedNodeWidth;
       const label = shouldTruncateLabel
         ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
         : rawLabel;
       const studioAccentColor = studioMode
         ? getStudioNodeAccentColor(node)
         : undefined;
-      const pos =
-        explorationMode === 'hierarchy'
-          ? nodePositions?.[node.id]
-          : explorationMode === 'data'
-          ? isDataAsset
-            ? undefined
-            : dataModeTermPositions[node.id]
-          : undefined;
+      let pos: { x: number; y: number } | undefined;
+      if (explorationMode === 'hierarchy') {
+        pos = nodePositions?.[node.id];
+      } else if (explorationMode === 'data' && !isDataAsset) {
+        pos = dataModeTermPositions[node.id];
+      } else {
+        pos = undefined;
+      }
       const isSelected =
         explorationMode === 'hierarchy'
           ? node.termId === selectedNodeId || selectedNodeId === node.id
@@ -832,13 +831,12 @@ export function useGraphDataBuilder({
             isObservedLineage;
           const showLabel = settings.showEdgeLabels && isLabelableEdge;
 
-          const labelText = showLabel
-            ? singleEdge.inverseRelationType
-              ? `${formatRelationLabel(
-                  singleEdge.relationType
-                )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
-              : formatRelationLabel(singleEdge.relationType)
-            : undefined;
+          const relationLabelText = singleEdge.inverseRelationType
+            ? `${formatRelationLabel(
+                singleEdge.relationType
+              )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
+            : formatRelationLabel(singleEdge.relationType);
+          const labelText = showLabel ? relationLabelText : undefined;
           const displayLabel =
             studioMode && labelText ? labelText.toLocaleLowerCase() : labelText;
 

@@ -458,6 +458,13 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     }
   );
 
+  const viewModeNodeDragEnabled = canDragNodesInViewMode
+    ? () => true
+    : () => false;
+  const canvasNodeDragEnabled = canDragNodes
+    ? isNodeDragEnabledWrapper
+    : viewModeNodeDragEnabled;
+
   return (
     <PageLayoutV1
       fullHeight
@@ -525,13 +532,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 focusedConnection={focusedConnection}
                 isConnectionModalOpen={isConnectionModalOpen}
                 isDragging={isDragging}
-                isNodeDragEnabled={
-                  canDragNodes
-                    ? isNodeDragEnabledWrapper
-                    : canDragNodesInViewMode
-                    ? () => true
-                    : () => false
-                }
+                isNodeDragEnabled={canvasNodeDragEnabled}
                 nodes={nodes}
                 pendingConnection={pendingConnection}
                 onConnect={onConnect}

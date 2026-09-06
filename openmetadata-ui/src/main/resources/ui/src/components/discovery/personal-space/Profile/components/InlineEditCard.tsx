@@ -87,13 +87,14 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
   const showLock = !isEditing && !canEdit && Boolean(lockedLabel);
   // Reserve space on the right so the value never sits under the pencil
   // (narrow) or the "Admin-managed" lock (wider).
-  const rightPadding = isEditing
-    ? 'tw:w-full'
-    : canEdit
-    ? 'tw:w-full tw:pr-8'
-    : showLock
-    ? 'tw:w-full tw:pr-32'
-    : 'tw:w-full';
+  let rightPadding = 'tw:w-full';
+  if (!isEditing) {
+    if (canEdit) {
+      rightPadding = 'tw:w-full tw:pr-8';
+    } else if (showLock) {
+      rightPadding = 'tw:w-full tw:pr-32';
+    }
+  }
 
   return (
     <Box

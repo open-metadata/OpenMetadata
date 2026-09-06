@@ -497,11 +497,14 @@ export function useOntologyExplorer({
             .map((termNode) => termNode.glossaryId)
             .filter((id): id is string => Boolean(id))
         );
-        const requestedGlossaryIds = scopedGlossaryId
-          ? [scopedGlossaryId]
-          : glossaryFilterIds.length > 0
-          ? glossaryFilterIds.filter((id) => termGlossaryIds.has(id))
-          : [];
+        let requestedGlossaryIds: string[] = [];
+        if (scopedGlossaryId) {
+          requestedGlossaryIds = [scopedGlossaryId];
+        } else if (glossaryFilterIds.length > 0) {
+          requestedGlossaryIds = glossaryFilterIds.filter((id) =>
+            termGlossaryIds.has(id)
+          );
+        }
         const glossaryFqnsToFetch = requestedGlossaryIds
           .map(
             (id) =>
