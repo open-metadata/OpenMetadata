@@ -674,6 +674,31 @@ const OntologyDataGraph = ({
     );
   }
 
+  const renderLoadMore = (term: OntologyNode, remainingAssetCount: number) =>
+    remainingAssetCount > 0 || term.isLoadingAssets ? (
+      <Button
+        noTextPadding
+        className={classNames(
+          'tw:inline-flex tw:items-center tw:gap-1.5 tw:border-0 tw:bg-transparent',
+          'tw:px-0.5 tw:pt-1.5 tw:pb-0.5 tw:font-body tw:text-[10px] tw:leading-normal',
+          'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled tw:*:data-icon:size-3'
+        )}
+        color="tertiary"
+        data-testid={`ontology-load-more-assets-${term.id}`}
+        iconLeading={ChevronDown}
+        isDisabled={term.isLoadingAssets}
+        onClick={() => onLoadMore(term)}>
+        {term.isLoadingAssets ? (
+          t('label.loading')
+        ) : (
+          <>
+            {t('label.load-more')} ({remainingAssetCount}{' '}
+            {t('label.more-lowercase')})
+          </>
+        )}
+      </Button>
+    ) : null;
+
   return (
     <div
       className={classNames(
@@ -869,29 +894,7 @@ const OntologyDataGraph = ({
                 })}
               </div>
 
-              {remainingAssetCount > 0 || term.isLoadingAssets ? (
-                <Button
-                  noTextPadding
-                  className={classNames(
-                    'tw:inline-flex tw:items-center tw:gap-1.5 tw:border-0 tw:bg-transparent',
-                    'tw:px-0.5 tw:pt-1.5 tw:pb-0.5 tw:font-body tw:text-[10px] tw:leading-normal',
-                    'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled tw:*:data-icon:size-3'
-                  )}
-                  color="tertiary"
-                  data-testid={`ontology-load-more-assets-${term.id}`}
-                  iconLeading={ChevronDown}
-                  isDisabled={term.isLoadingAssets}
-                  onClick={() => onLoadMore(term)}>
-                  {term.isLoadingAssets ? (
-                    t('label.loading')
-                  ) : (
-                    <>
-                      {t('label.load-more')} ({remainingAssetCount}{' '}
-                      {t('label.more-lowercase')})
-                    </>
-                  )}
-                </Button>
-              ) : null}
+              {renderLoadMore(term, remainingAssetCount)}
             </div>
           );
         })}
