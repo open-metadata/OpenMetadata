@@ -444,13 +444,15 @@ const RelatedTerms = () => {
     getRelationDisplayName,
   ]);
 
-  const canEditRelatedTerms =
+  // Whether the edit/add icons show in the header; isolated so its && chain
+  // doesn't add to the component's own complexity.
+  const canEditRelatedTerms = (() =>
     getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) &&
     !isVersionView &&
     !isEditing &&
-    !isAdding;
+    !isAdding)();
 
-  const header = (
+  const renderHeader = () => (
     <div className="d-flex items-center justify-between w-full">
       <div className="d-flex items-center gap-2">
         <Typography as="span" className="text-sm font-medium">
@@ -519,21 +521,34 @@ const RelatedTerms = () => {
     </div>
   );
 
-  let cardContent = relatedTermsContainer;
+  // Picks which body to render; isolated so the if/else-if doesn't add to
+  // the component's own complexity.
+  const cardContent = (() => {
+    if (isEditing) {
+      return editingContent;
+    }
+    if (isAdding) {
+      return addingContent;
+    }
 
-  if (isEditing) {
-    cardContent = editingContent;
-  } else if (isAdding) {
-    cardContent = addingContent;
-  }
+    return relatedTermsContainer;
+  })();
+
+  // Groups the ExpandableCard prop derivations so their && / || chains are
+  // scoped here instead of adding to the component's own complexity.
+  const { defaultExpanded, isExpandDisabled, expandableCardKey } = (() => ({
+    defaultExpanded: isEditing || isAdding || !isEmpty(termRelations),
+    isExpandDisabled: !isAdding && !isEditing && termRelations.length === 0,
+    expandableCardKey: isEditing || isAdding ? 'active' : 'inactive',
+  }))();
 
   return (
     <ExpandableCard
-      cardProps={{ title: header }}
+      cardProps={{ title: renderHeader() }}
       dataTestId="related-term-container"
-      defaultExpanded={isEditing || isAdding || !isEmpty(termRelations)}
-      isExpandDisabled={!isAdding && !isEditing && termRelations.length === 0}
-      key={isEditing || isAdding ? 'active' : 'inactive'}>
+      defaultExpanded={defaultExpanded}
+      isExpandDisabled={isExpandDisabled}
+      key={expandableCardKey}>
       {cardContent}
     </ExpandableCard>
   );

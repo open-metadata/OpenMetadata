@@ -19,12 +19,16 @@ import {
   ProgressBarBase,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
+import { TFunction } from 'i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
-import { Status } from '../../../../generated/entity/automations/workflow';
+import {
+  Status,
+  TestConnectionStepResult,
+} from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -41,6 +45,96 @@ import {
 import { partitionConnectionSteps } from '../../../../utils/TestConnectionUtils';
 import InlineAlert from '../../InlineAlert/InlineAlert';
 import { TestConnectionModalProps } from './TestConnectionModal.interface';
+
+const resolveGateResult = (
+  gateStep: TestConnectionStep | undefined,
+  getConnectionStepResult: (
+    step: TestConnectionStep
+  ) => TestConnectionStepResult | undefined
+) => (gateStep ? getConnectionStepResult(gateStep) : undefined);
+
+const resolveProgressPercent = (
+  totalCount: number,
+  completedCount: number,
+  progress: number
+): number =>
+  totalCount
+    ? Math.min(
+        100,
+        Math.max(progress, Math.round((completedCount / totalCount) * 100))
+      )
+    : progress;
+
+/**
+ * Gate failed either because the gate step itself failed, or because the API
+ * errored before the workflow ran (no step results at all but test is done).
+ */
+const resolveConnectionFailed = (
+  isTestingConnection: boolean,
+  isFailed: boolean,
+  gateResult: TestConnectionStepResult | undefined
+): boolean => {
+  const gateStepFailed = gateResult !== undefined && !gateResult.passed;
+  const failedWithoutGate = isFailed && gateResult === undefined;
+
+  return !isTestingConnection && (gateStepFailed || failedWithoutGate);
+};
+
+interface ConnectionCompletionState {
+  canProceed: boolean;
+  connectionFailed: boolean;
+  isComplete: boolean;
+  isFailed: boolean;
+  isSuccessful: boolean;
+  isWarning: boolean;
+}
+
+const resolveConnectionCompletionState = (
+  isTestingConnection: boolean,
+  progress: number,
+  areRequiredStepsPassing: boolean,
+  hasOptionalFailures: boolean,
+  gateResult: TestConnectionStepResult | undefined
+): ConnectionCompletionState => {
+  const isComplete = !isTestingConnection && progress >= 100;
+  const canProceed = isComplete && areRequiredStepsPassing;
+  const isSuccessful = canProceed && !hasOptionalFailures;
+  const isWarning = canProceed && hasOptionalFailures;
+  const isFailed = isComplete && !areRequiredStepsPassing;
+  const connectionFailed = resolveConnectionFailed(
+    isTestingConnection,
+    isFailed,
+    gateResult
+  );
+
+  return {
+    isComplete,
+    canProceed,
+    isSuccessful,
+    isWarning,
+    isFailed,
+    connectionFailed,
+  };
+};
+
+const getRawLogLineCount = (rawLog: string): number =>
+  rawLog ? rawLog.split('\n').filter((line) => line.trim()).length : 0;
+
+const resolveShowGateCard = (
+  gateStep: TestConnectionStep | undefined,
+  isFailed: boolean
+): boolean => Boolean(gateStep) && !isFailed;
+
+const resolveShowRemediationCard = (
+  isComplete: boolean,
+  isFailed: boolean
+): boolean => isComplete && isFailed;
+
+const resolveGateDescription = (
+  t: TFunction,
+  gateStep: TestConnectionStep | undefined,
+  gateResult: TestConnectionStepResult | undefined
+): string => (gateStep ? getGateDescription(t, gateResult, gateStep) : '');
 
 const TestConnectionModal = ({
   isOpen,
@@ -84,7 +178,7 @@ const TestConnectionModal = ({
     [testConnectionStep]
   );
 
-  const gateResult = gateStep ? getConnectionStepResult(gateStep) : undefined;
+  const gateResult = resolveGateResult(gateStep, getConnectionStepResult);
 
   const completedCount = useMemo(
     () =>
@@ -120,25 +214,20 @@ const TestConnectionModal = ({
     (step) => getConnectionStepResult(step)?.passed === false
   );
 
-  const progressPercent = totalCount
-    ? Math.min(
-        100,
-        Math.max(progress, Math.round((completedCount / totalCount) * 100))
-      )
-    : progress;
+  const progressPercent = resolveProgressPercent(
+    totalCount,
+    completedCount,
+    progress
+  );
 
-  const isComplete = !isTestingConnection && progress >= 100;
-  const canProceed = isComplete && areRequiredStepsPassing;
-  const isSuccessful = canProceed && !hasOptionalFailures;
-  const isWarning = canProceed && hasOptionalFailures;
-  const isFailed = isComplete && !areRequiredStepsPassing;
-
-  // Gate failed either because the gate step itself failed, or because the API
-  // errored before the workflow ran (no step results at all but test is done).
-  const gateStepFailed = gateResult !== undefined && !gateResult.passed;
-  const failedWithoutGate = isFailed && gateResult === undefined;
-  const connectionFailed =
-    !isTestingConnection && (gateStepFailed || failedWithoutGate);
+  const { isComplete, isSuccessful, isWarning, isFailed, connectionFailed } =
+    resolveConnectionCompletionState(
+      isTestingConnection,
+      progress,
+      areRequiredStepsPassing,
+      hasOptionalFailures,
+      gateResult
+    );
 
   const rawLog = useMemo(
     () =>
@@ -179,9 +268,7 @@ const TestConnectionModal = ({
   );
 
   const { onCopyToClipBoard } = useClipboard(rawLog);
-  const rawLogLineCount = rawLog
-    ? rawLog.split('\n').filter((line) => line.trim()).length
-    : 0;
+  const rawLogLineCount = getRawLogLineCount(rawLog);
 
   const serviceLogo = useMemo(
     () =>
@@ -200,9 +287,9 @@ const TestConnectionModal = ({
   };
 
   const message = getConnectionTimeoutMessage(t, serviceType, hostIp);
-  const gateDescription = gateStep
-    ? getGateDescription(t, gateResult, gateStep)
-    : '';
+  const gateDescription = resolveGateDescription(t, gateStep, gateResult);
+  const showGateCard = resolveShowGateCard(gateStep, isFailed);
+  const showRemediationCard = resolveShowRemediationCard(isComplete, isFailed);
 
   useEffect(() => {
     if (isTestingConnection) {
@@ -301,7 +388,7 @@ const TestConnectionModal = ({
 
                 <Divider />
                 <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-5 tw:py-4">
-                  {gateStep && !isFailed && (
+                  {showGateCard && (
                     <ConnectionGateCard
                       gateDescription={gateDescription}
                       gateResult={gateResult}
@@ -315,7 +402,7 @@ const TestConnectionModal = ({
                     />
                   )}
 
-                  {isComplete && isFailed && (
+                  {showRemediationCard && (
                     <ConnectionRemediationCard
                       capabilitySteps={capabilitySteps}
                       connectionFailed={connectionFailed}
