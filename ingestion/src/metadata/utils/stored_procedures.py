@@ -33,7 +33,11 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     We'll return the lowered procedure name
     """
 
-    res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else None)
+    res = re.search(
+        NAME_PATTERN,
+        query_text,
+        (re.IGNORECASE | re.DOTALL) if not sensitive_match else re.DOTALL,
+    )
     if not res:
         return None
 
