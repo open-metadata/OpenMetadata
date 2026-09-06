@@ -4467,6 +4467,7 @@
     "request-tags-message": "طلب علامات لـ",
     "request-test-case-failure-resolution-message": "طلب حل فشل حالة الاختبار لـ",
     "request-update-description": "طلب تحديث الوصف",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "هل أنت متأكد أنك تريد تطبيق \"التخطيط الافتراضي\"؟",
     "reset-link-has-been-sent": "تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

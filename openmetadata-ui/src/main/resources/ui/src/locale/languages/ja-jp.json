@@ -4467,6 +4467,7 @@
     "request-tags-message": "次の内容に関するタグのリクエスト：",
     "request-test-case-failure-resolution-message": "次のテストケース失敗に関する対応リクエスト：",
     "request-update-description": "更新内容の説明リクエスト",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "「デフォルトレイアウト」を適用してもよろしいですか？",
     "reset-link-has-been-sent": "パスワードリセット用のリンクがあなたのメールアドレスに送信されました",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

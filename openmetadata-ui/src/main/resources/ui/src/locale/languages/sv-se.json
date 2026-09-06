@@ -4467,6 +4467,7 @@
     "request-tags-message": "Begär taggar för",
     "request-test-case-failure-resolution-message": "Begär lösning av testfallsfel för",
     "request-update-description": "Begär uppdateringsbeskrivning",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "Är du säker på att du vill tillämpa \"Standardlayout\"?",
     "reset-link-has-been-sent": "En återställningslänk har skickats till din e-post",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

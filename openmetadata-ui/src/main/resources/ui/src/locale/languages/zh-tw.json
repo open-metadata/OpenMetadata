@@ -4467,6 +4467,7 @@
     "request-tags-message": "請求標籤",
     "request-test-case-failure-resolution-message": "請求測試案例失敗解決方案",
     "request-update-description": "請求更新描述",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "您確定要套用「預設版面配置」嗎？",
     "reset-link-has-been-sent": "重設連結已傳送到您的電子郵件",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

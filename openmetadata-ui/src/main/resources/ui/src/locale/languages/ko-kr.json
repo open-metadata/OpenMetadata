@@ -4467,6 +4467,7 @@
     "request-tags-message": "다음에 대한 태그 요청:",
     "request-test-case-failure-resolution-message": "다음에 대한 테스트 케이스 실패 해결 요청:",
     "request-update-description": "설명 업데이트 요청",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "\"기본 레이아웃\"을 적용하시겠습니까?",
     "reset-link-has-been-sent": "재설정 링크가 이메일로 전송되었습니다",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

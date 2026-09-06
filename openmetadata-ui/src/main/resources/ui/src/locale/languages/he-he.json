@@ -4467,6 +4467,7 @@
     "request-tags-message": "בקש תגיות עבור",
     "request-test-case-failure-resolution-message": "בקש פתרון כשל מקרה בדיקה עבור",
     "request-update-description": "תיאור עדכון לבקשה",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "האם אתה בטוח שברצונך להחיל את \"Default Layout\"?",
     "reset-link-has-been-sent": "קישור לאיפוס נשלח לדוא\"ל שלך",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

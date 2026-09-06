@@ -4467,6 +4467,7 @@
     "request-tags-message": "Request tags for",
     "request-test-case-failure-resolution-message": "Request TestCase Failure Resolution for",
     "request-update-description": "Request update description",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "Are you sure you want to apply the \"Default Layout\"?",
     "reset-link-has-been-sent": "Reset link has been sent to your email",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

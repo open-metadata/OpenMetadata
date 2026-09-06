@@ -4467,6 +4467,7 @@
     "request-tags-message": "แท็กคำขอสำหรับ",
     "request-test-case-failure-resolution-message": "ขอการแก้ไขกรณีทดสอบที่ล้มเหลวสำหรับ",
     "request-update-description": "คำขออัปเดตคำอธิบาย",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "คุณแน่ใจหรือไม่ว่าต้องการใช้ \"เลย์เอาต์เริ่มต้น\"?",
     "reset-link-has-been-sent": "ลิงก์รีเซ็ตได้ถูกส่งไปยังอีเมลของคุณ",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",

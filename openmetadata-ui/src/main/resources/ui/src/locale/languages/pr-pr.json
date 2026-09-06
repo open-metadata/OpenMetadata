@@ -4467,6 +4467,7 @@
     "request-tags-message": "درخواست برچسب‌ها برای",
     "request-test-case-failure-resolution-message": "درخواست حل مشکل شکست مورد تست برای",
     "request-update-description": "درخواست به‌روزرسانی توضیحات.",
+    "reserved-column-name": "Column name '{{name}}' is reserved for internal use and cannot be used as a table custom property column.",
     "reset-layout-confirmation": "آیا مطمئن هستید که می‌خواهید \"طرح پیش‌فرض\" را اعمال کنید؟",
     "reset-link-has-been-sent": "پیوند بازنشانی به ایمیل شما ارسال شد.",
     "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
