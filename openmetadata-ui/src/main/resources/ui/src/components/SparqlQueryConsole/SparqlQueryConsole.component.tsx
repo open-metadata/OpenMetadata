@@ -869,7 +869,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           <SavedQueriesList
             savedQueries={savedQueries}
             t={t}
-            onDeleteSavedQuery={(id) => void deleteSavedQuery(id)}
+            onDeleteSavedQuery={(id) => deleteSavedQuery(id)}
             onLoadSaved={handleLoadSaved}
           />
         </Card>

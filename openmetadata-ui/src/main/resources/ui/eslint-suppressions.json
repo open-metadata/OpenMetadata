@@ -1169,5 +1169,60 @@
     "om-playwright/no-positional-locator": {
       "count": 1
     }
+  },
+  "src/components/Database/ColumnDetailPanel/ColumnDetailPanel.component.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/components/Learning/ResourcePlayer/VideoPlayer.component.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyLibraryDetail.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 3
+    }
+  },
+  "src/components/ServiceAgents/components/AgentCard.component.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionWorkflowForm/ProfileSampleConfigField.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Services.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/components/common/LogViewerModal/LogViewerModal.component.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/context/LineageProvider/LineageProvider.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/pages/ColumnBulkOperations/ColumnGrid/ColumnGrid.component.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
+  },
+  "src/utils/ServiceInsightsWidgets.tsx": {
+    "openmetadata-ui-patterns/no-raw-title-attribute": {
+      "count": 1
+    }
   }
 }

@@ -288,7 +288,7 @@ const OntologyQuerySidebar = ({
                   icon={Trash01}
                   size="xs"
                   tooltip={`${t('label.delete')} ${savedQuery.name}`}
-                  onClick={() => void onDeleteSavedQuery(savedQuery.id)}
+                  onClick={() => onDeleteSavedQuery(savedQuery.id)}
                 />
               </div>
             );
