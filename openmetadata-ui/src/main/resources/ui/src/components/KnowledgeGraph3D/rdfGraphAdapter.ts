@@ -488,29 +488,24 @@ const expandSharedConcepts = (
   return expanded;
 };
 
-// A mapping edge connects a table and a concept in either direction. The
-// concept endpoint is the one we've expanded; the other endpoint is the
-// shared asset. Resolving by endpoint (not by source/target position) keeps
-// this correct for reverse-direction (concept->table) mappings.
-const resolveConceptId = (
-  source: string,
-  target: string,
+const resolveMappingEndpoints = (
+  link: GraphLink3D,
+  byId: Map<string, GraphNode3D>,
   expanded: Map<string, string>
-): string | undefined => {
+): { conceptId?: string; assetId: string; asset?: GraphNode3D } => {
+  const source = idOf(link.source);
+  const target = idOf(link.target);
+  let conceptId: string | undefined;
   if (expanded.has(source)) {
-    return source;
+    conceptId = source;
+  } else if (expanded.has(target)) {
+    conceptId = target;
   }
+  const assetId = conceptId === source ? target : source;
+  const asset = conceptId ? byId.get(assetId) : undefined;
 
-  return expanded.has(target) ? target : undefined;
+  return { conceptId, assetId, asset };
 };
-
-const isNewSharedTableAsset = (
-  asset: GraphNode3D | undefined,
-  assetId: string,
-  selfId: string,
-  seen: Set<string>
-): asset is GraphNode3D =>
-  asset?.type === 'table' && assetId !== selfId && !seen.has(assetId);
 
 const collectSharedAssets = (
   links: GraphLink3D[],
@@ -524,12 +519,16 @@ const collectSharedAssets = (
     if (link.kind !== 'ontology' || link.label !== MAPPED_TO_LABEL) {
       return;
     }
-    const source = idOf(link.source);
-    const target = idOf(link.target);
-    const conceptId = resolveConceptId(source, target, expanded);
-    const assetId = conceptId === source ? target : source;
-    const asset = conceptId ? byId.get(assetId) : undefined;
-    if (isNewSharedTableAsset(asset, assetId, selfId, seen)) {
+    // A mapping edge connects a table and a concept in either direction. The
+    // concept endpoint is the one we've expanded; the other endpoint is the
+    // shared asset. Resolving by endpoint (not by source/target position) keeps
+    // this correct for reverse-direction (concept->table) mappings.
+    const { conceptId, assetId, asset } = resolveMappingEndpoints(
+      link,
+      byId,
+      expanded
+    );
+    if (asset?.type === 'table' && assetId !== selfId && !seen.has(assetId)) {
       seen.add(assetId);
       shared.push({
         asset,

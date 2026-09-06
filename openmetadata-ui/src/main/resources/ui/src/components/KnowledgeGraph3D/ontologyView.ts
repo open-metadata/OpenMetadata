@@ -156,12 +156,12 @@ const addTo = (
   map.set(key, set);
 };
 
-const addMappedTo = (
+const addMappedRelation = (
+  mapped: Map<string, Set<string>>,
   source: string,
   target: string,
   sourceIsConcept: boolean,
-  targetIsConcept: boolean,
-  mapped: Map<string, Set<string>>
+  targetIsConcept: boolean
 ): void => {
   if (targetIsConcept && !sourceIsConcept) {
     addTo(mapped, source, target);
@@ -170,26 +170,31 @@ const addMappedTo = (
   }
 };
 
-type RelationLabelHandler = (
-  source: string,
-  target: string,
+const addOntologyRelation = (
+  link: GraphLink3D,
+  byId: Map<string, GraphNode3D>,
   lookups: Lookups
-) => void;
-
-const RELATION_LABEL_HANDLERS: Record<string, RelationLabelHandler> = {
-  [PARENT_OF]: (source, target, { parentOf }) =>
-    addTo(parentOf, target, source),
-  [BROADER_NARROWER]: (source, target, { parentOf }) =>
-    addTo(parentOf, target, source),
-  [CHILD_OF]: (source, target, { parentOf }) => addTo(parentOf, source, target),
-  [RELATED_TO]: (source, target, { related }) => {
-    addTo(related, source, target);
-    addTo(related, target, source);
-  },
-  [SYNONYM]: (source, target, { related }) => {
-    addTo(related, source, target);
-    addTo(related, target, source);
-  },
+): void => {
+  const source = idOf(link.source);
+  const target = idOf(link.target);
+  const sourceIsConcept = byId.get(source)?.type === 'concept';
+  const targetIsConcept = byId.get(target)?.type === 'concept';
+  if (link.label === MAPPED_TO) {
+    addMappedRelation(
+      lookups.mapped,
+      source,
+      target,
+      sourceIsConcept,
+      targetIsConcept
+    );
+  } else if (link.label === PARENT_OF || link.label === BROADER_NARROWER) {
+    addTo(lookups.parentOf, target, source);
+  } else if (link.label === CHILD_OF) {
+    addTo(lookups.parentOf, source, target);
+  } else if (link.label === RELATED_TO || link.label === SYNONYM) {
+    addTo(lookups.related, source, target);
+    addTo(lookups.related, target, source);
+  }
 };
 
 const buildLookups = (
@@ -205,25 +210,7 @@ const buildLookups = (
     if (link.kind !== 'ontology') {
       return;
     }
-    const source = idOf(link.source);
-    const target = idOf(link.target);
-    if (link.label === MAPPED_TO) {
-      const sourceIsConcept = byId.get(source)?.type === 'concept';
-      const targetIsConcept = byId.get(target)?.type === 'concept';
-      addMappedTo(
-        source,
-        target,
-        sourceIsConcept,
-        targetIsConcept,
-        lookups.mapped
-      );
-
-      return;
-    }
-    const handler = RELATION_LABEL_HANDLERS[link.label];
-    if (handler) {
-      handler(source, target, lookups);
-    }
+    addOntologyRelation(link, byId, lookups);
   });
 
   return lookups;
