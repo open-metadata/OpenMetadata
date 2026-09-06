@@ -52,6 +52,12 @@ class LineagePermissionFilterTest {
   @BeforeAll
   static void registerRepository() {
     TableRepository tableRepository = mock(TableRepository.class);
+    // This registration is global and never torn down, so the stand-in must answer the indexing
+    // policy hooks the way the real repository does. A bare mock answers false, which would make
+    // Entity.isSearchIndexable/isVectorEmbeddable report every table as excluded for the rest of
+    // the JVM.
+    when(tableRepository.isSearchIndexable(any())).thenReturn(true);
+    when(tableRepository.isVectorEmbeddable(any())).thenReturn(true);
     when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     when(tableRepository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
     when(tableRepository.get(isNull(), anyList(), any(Fields.class), any(Include.class)))

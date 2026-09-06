@@ -199,6 +199,8 @@ const ChartDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -206,6 +208,8 @@ const ChartDetails = ({
           entity: t('label.chart'),
         })
       );
+
+      return false;
     }
   };
 
