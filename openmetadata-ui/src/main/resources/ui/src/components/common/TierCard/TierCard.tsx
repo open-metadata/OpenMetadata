@@ -122,6 +122,12 @@ const TierCard = ({
     }
   }, [popoverProps?.open]);
 
+  useEffect(() => {
+    if (popoverProps?.open) {
+      setSelectedTier(currentTier ?? '');
+    }
+  }, [popoverProps?.open, currentTier]);
+
   return (
     <Popover
       className="p-0"
