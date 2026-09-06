@@ -1,9 +1,7 @@
 import { Plus } from '@untitledui/icons';
 import type { ButtonProps as AriaButtonProps } from 'react-aria-components';
-import {
-  Tooltip as AriaTooltip,
-  TooltipTrigger as AriaTooltipTrigger,
-} from '@/components/base/tooltip/tooltip';
+import { Button as AriaButton } from 'react-aria-components';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 
 const sizes = {
@@ -24,8 +22,8 @@ export const AvatarAddButton = ({
   title = 'Add user',
   ...props
 }: AvatarAddButtonProps) => (
-  <AriaTooltip title={title}>
-    <AriaTooltipTrigger
+  <Tooltip title={title}>
+    <AriaButton
       {...props}
       aria-label={title}
       className={cx(
@@ -39,6 +37,6 @@ export const AvatarAddButton = ({
           sizes[size].icon
         )}
       />
-    </AriaTooltipTrigger>
-  </AriaTooltip>
+    </AriaButton>
+  </Tooltip>
 );

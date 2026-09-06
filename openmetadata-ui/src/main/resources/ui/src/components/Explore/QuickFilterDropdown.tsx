@@ -171,6 +171,38 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
     setIsOpen(false);
   };
 
+  const optionListContent =
+    displayedOptions.length > 0 ? (
+      displayedOptions.map((option) => (
+        <div
+          className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover"
+          key={option.key}>
+          <Checkbox
+            data-testid={`${option.label}-checkbox`}
+            isSelected={isOptionSelected(option)}
+            label={
+              option.icon ? (
+                <span className="tw:flex tw:items-center tw:gap-1.5">
+                  {option.icon}
+                  {option.label}
+                </span>
+              ) : (
+                option.label
+              )
+            }
+            onChange={() => handleOptionToggle(option)}
+          />
+          {!hideCounts && !isUndefined(option.count) && (
+            <span className="tw:text-xs tw:text-tertiary">{option.count}</span>
+          )}
+        </div>
+      ))
+    ) : (
+      <div className="tw:px-2 tw:py-3 tw:text-center tw:text-sm tw:text-tertiary">
+        {t('message.no-data-available')}
+      </div>
+    );
+
   return (
     <PopoverTrigger isOpen={isOpen} onOpenChange={handleOpenChange}>
       <Button
@@ -228,37 +260,8 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
               <div className="tw:flex tw:justify-center tw:py-3">
                 <Loader size="small" />
               </div>
-            ) : displayedOptions.length > 0 ? (
-              displayedOptions.map((option) => (
-                <div
-                  className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover"
-                  key={option.key}>
-                  <Checkbox
-                    data-testid={`${option.label}-checkbox`}
-                    isSelected={isOptionSelected(option)}
-                    label={
-                      option.icon ? (
-                        <span className="tw:flex tw:items-center tw:gap-1.5">
-                          {option.icon}
-                          {option.label}
-                        </span>
-                      ) : (
-                        option.label
-                      )
-                    }
-                    onChange={() => handleOptionToggle(option)}
-                  />
-                  {!hideCounts && !isUndefined(option.count) && (
-                    <span className="tw:text-xs tw:text-tertiary">
-                      {option.count}
-                    </span>
-                  )}
-                </div>
-              ))
             ) : (
-              <div className="tw:px-2 tw:py-3 tw:text-center tw:text-sm tw:text-tertiary">
-                {t('message.no-data-available')}
-              </div>
+              optionListContent
             )}
           </div>
 

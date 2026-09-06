@@ -942,11 +942,14 @@ export function useOntologyGraph({
               loadedAssetCount > 0 &&
               assetCount > DATA_MODE_ASSET_LOAD_PAGE_SIZE &&
               remaining > 0;
-            const badgeText = isLoadingAssets
-              ? '...'
-              : assetsExpanded
-              ? '\u2212'
-              : `+${assetCount}`;
+            let badgeText: string;
+            if (isLoadingAssets) {
+              badgeText = '...';
+            } else if (assetsExpanded) {
+              badgeText = '\u2212';
+            } else {
+              badgeText = `+${assetCount}`;
+            }
             const label = d?.label ?? datum.id;
             const badgeDiameterBase = isLoadingAssets
               ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE

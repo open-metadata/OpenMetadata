@@ -557,27 +557,31 @@ export function getEdgeRelationLabelStyle(
     ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
     : undefined;
 
+  const metaBackgroundFill = meta
+    ? getCanvasColor(meta.background, '#fafafa')
+    : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8');
+  const metaBackgroundStroke = meta
+    ? 'none'
+    : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF');
+  const metaBackgroundLineWidth = meta ? 0 : 1;
+  const metaBackgroundRadius = meta
+    ? EDGE_LABEL_BADGE_RADIUS
+    : EDGE_LABEL_BG_RADIUS;
+  const metaFontWeight = meta
+    ? EDGE_LABEL_BADGE_FONT_WEIGHT
+    : EDGE_LABEL_FONT_WEIGHT;
+
   return {
     labelText,
     labelPosition: 'center',
     labelBackground: true,
     labelBackgroundOpacity: 1,
-    labelBackgroundFill: studioMode
-      ? '#FFFFFF'
-      : meta
-      ? getCanvasColor(meta.background, '#fafafa')
-      : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8'),
+    labelBackgroundFill: studioMode ? '#FFFFFF' : metaBackgroundFill,
     labelBackgroundStroke: studioMode
       ? studioBorderColor ?? '#E9EAEB'
-      : meta
-      ? 'none'
-      : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF'),
-    labelBackgroundLineWidth: studioMode ? 1 : meta ? 0 : 1,
-    labelBackgroundRadius: studioMode
-      ? 9999
-      : meta
-      ? EDGE_LABEL_BADGE_RADIUS
-      : EDGE_LABEL_BG_RADIUS,
+      : metaBackgroundStroke,
+    labelBackgroundLineWidth: studioMode ? 1 : metaBackgroundLineWidth,
+    labelBackgroundRadius: studioMode ? 9999 : metaBackgroundRadius,
     labelPadding: edgeLabelPadding,
     labelBackgroundShadowColor: meta
       ? 'transparent'
@@ -589,11 +593,7 @@ export function getEdgeRelationLabelStyle(
       ? getCanvasColor(meta.color, '#717680')
       : getCanvasColor(EDGE_LABEL_FILL, '#8C93AE'),
     labelFontSize: EDGE_LABEL_FONT_SIZE,
-    labelFontWeight: studioMode
-      ? EDGE_LABEL_FONT_WEIGHT
-      : meta
-      ? EDGE_LABEL_BADGE_FONT_WEIGHT
-      : EDGE_LABEL_FONT_WEIGHT,
+    labelFontWeight: studioMode ? EDGE_LABEL_FONT_WEIGHT : metaFontWeight,
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,
     labelLetterSpacing: EDGE_LABEL_LETTER_SPACING,
     labelAutoRotate: true,

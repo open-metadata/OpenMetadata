@@ -1237,13 +1237,10 @@ export const setupGraphEventHandlers = (ctx: GraphInteractionCtx): void => {
 
     const srcId = String(edge.source);
     const tgtId = String(edge.target);
-    // Focus the endpoint that isn't currently selected; default to target when nothing is selected.
-    const farId =
-      selectedNodeIdRef.current === srcId
-        ? tgtId
-        : selectedNodeIdRef.current === tgtId
-        ? srcId
-        : tgtId;
+    // Focus the endpoint that isn't currently selected. Only a selection sitting
+    // on the target sends us to the source; selecting the source, or selecting
+    // nothing at all, both travel to the target.
+    const farId = selectedNodeIdRef.current === tgtId ? srcId : tgtId;
 
     void graph.focusElement(farId, {
       duration: ZOOM_DURATION_MS,

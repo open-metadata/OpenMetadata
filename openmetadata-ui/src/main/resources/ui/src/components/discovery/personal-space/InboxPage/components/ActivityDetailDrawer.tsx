@@ -349,11 +349,12 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   const canComment = Boolean(feed?.id);
   const feedDeleteAccess = useFeedDeleteAccess(open && canComment);
   // Guard: the drawer renders even when nothing is selected (both undefined).
-  const actionLabel = activity
-    ? getActivityEventLabel(activity, t)
-    : feed
-    ? t('label.posted-on')
-    : '';
+  let actionLabel = '';
+  if (activity) {
+    actionLabel = getActivityEventLabel(activity, t);
+  } else if (feed) {
+    actionLabel = t('label.posted-on');
+  }
   const entity = isActivity ? activity?.entity : feed?.entityRef;
   const entityName = entity?.displayName || entity?.name || entity?.type;
   const bodyMessage = isActivity

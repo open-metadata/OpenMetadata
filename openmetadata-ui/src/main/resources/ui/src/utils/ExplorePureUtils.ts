@@ -539,11 +539,15 @@ export const getQueryFilterMust = (
 ): QueryFieldInterface[] => {
   const parsedMust = get(queryFilter, 'query.bool.must');
 
-  return Array.isArray(parsedMust)
-    ? parsedMust
-    : parsedMust
-    ? [parsedMust]
-    : [];
+  if (Array.isArray(parsedMust)) {
+    return parsedMust;
+  }
+
+  if (parsedMust) {
+    return [parsedMust];
+  }
+
+  return [];
 };
 
 /**

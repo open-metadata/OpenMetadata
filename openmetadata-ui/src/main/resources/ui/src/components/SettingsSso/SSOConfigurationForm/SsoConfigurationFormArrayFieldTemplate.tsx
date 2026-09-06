@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
@@ -23,12 +24,22 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
+
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
   const { label, closable, onClose } = props;
+  const labelStr = (label as string) ?? '';
+
+  const labelNode = labelStr ? (
+    <Tooltip title={labelStr}>
+      <span className="ant-select-selection-item-content">{label}</span>
+    </Tooltip>
+  ) : (
+    <span className="ant-select-selection-item-content">{label}</span>
+  );
 
   return (
-    <span className="ant-select-selection-item" title={(label as string) ?? ''}>
-      <span className="ant-select-selection-item-content">{label}</span>
+    <span className="ant-select-selection-item">
+      {labelNode}
       {closable && (
         <button className="ant-select-selection-item-remove" onClick={onClose}>
           <CloseIcon width={8} />
@@ -174,11 +185,12 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const handleChange = useCallback(
     (newValue: string[]) => {
       // Handle scope field conversion from array (UI) to string (backend)
-      const convertedValue = isScopeField
-        ? Array.isArray(newValue)
+      let convertedValue: string | string[] = newValue;
+      if (isScopeField) {
+        convertedValue = Array.isArray(newValue)
           ? newValue.join(' ')
-          : newValue
-        : newValue;
+          : newValue;
+      }
 
       props.onChange(convertedValue);
       // Clear field-specific error when value changes
