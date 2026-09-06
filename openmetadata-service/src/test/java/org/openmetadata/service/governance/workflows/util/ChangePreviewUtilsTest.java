@@ -14,18 +14,23 @@
 package org.openmetadata.service.governance.workflows.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
 
 class ChangePreviewUtilsTest {
@@ -485,6 +490,71 @@ class ChangePreviewUtilsTest {
     Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
 
     assertNull(proposed.get("tags"));
+  }
+
+  @Test
+  void buildProposedChangesPayload_heldChangeWinsOverIncremental() {
+    // The held approval-gated edit (description) is what the reviewer must approve. An intervening
+    // persisted edit - here a status transition to 'In Review' - shows up as the incremental diff.
+    // The preview must surface the HELD change and must not let the status transition shadow it.
+    UUID id = UUID.randomUUID();
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withId(id)
+            .withName("t")
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("entityStatus")
+                                .withOldValue("Unprocessed")
+                                .withNewValue("In Review"))));
+    ChangeDescription held =
+        new ChangeDescription()
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName("description")
+                        .withOldValue("<p>old</p>")
+                        .withNewValue("<p>new</p>")));
+
+    try (MockedStatic<PendingApprovalChangeStore> store =
+        mockStatic(PendingApprovalChangeStore.class)) {
+      store.when(() -> PendingApprovalChangeStore.get(id, "alice")).thenReturn(held);
+
+      Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null, "alice");
+      Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+      assertNotNull(proposed.get("description"));
+      assertNull(proposed.get("entityStatus"));
+    }
+  }
+
+  @Test
+  void buildProposedChangesPayload_heldChangeSurfacedWhenNoPersistedDiff() {
+    // The gated edit was reverted off the entity, so it carries no change description of its own;
+    // the hold is the only source of the proposed change and must still be surfaced.
+    UUID id = UUID.randomUUID();
+    EntityInterface entity = new GlossaryTerm().withId(id).withName("t");
+    ChangeDescription held =
+        new ChangeDescription()
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName("description")
+                        .withOldValue("<p>old</p>")
+                        .withNewValue("<p>new</p>")));
+
+    try (MockedStatic<PendingApprovalChangeStore> store =
+        mockStatic(PendingApprovalChangeStore.class)) {
+      store.when(() -> PendingApprovalChangeStore.get(id, "alice")).thenReturn(held);
+
+      Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null, "alice");
+      Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+      assertNotNull(proposed.get("description"));
+    }
   }
 
   @Test

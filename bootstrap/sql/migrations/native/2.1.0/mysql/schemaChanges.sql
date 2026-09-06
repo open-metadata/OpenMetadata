@@ -267,3 +267,14 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt bigint unsigned NOT NULL,
   PRIMARY KEY (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Approval gated pending change hold (issue #4673). Holds an edit off the entity until its
+-- governance workflow commits or discards it. `json` is the ChangeDescription shaped held diff,
+-- keyed by (entity_id, updated_by); cleaned up on commit or discard.
+CREATE TABLE IF NOT EXISTS pending_approval_change (
+    entity_id VARCHAR(36) NOT NULL,
+    updated_by VARCHAR(256) NOT NULL,
+    json JSON NOT NULL,
+    updated_at BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (entity_id, updated_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

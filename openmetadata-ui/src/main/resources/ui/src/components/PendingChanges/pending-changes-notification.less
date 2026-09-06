@@ -1,0 +1,187 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.pending-changes-popover {
+  max-height: 480px;
+  overflow-y: auto;
+  width: 480px;
+  // Inherit the app font so the diff reads like the rest of the UI, not a smaller/off face.
+  font-family: inherit;
+  font-size: var(--om-font-size-sm);
+  color: var(--om-color-text-primary);
+}
+
+.pending-changes-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 456px;
+  padding: 2px 0;
+}
+
+.pending-changes-title {
+  font-size: var(--om-font-size-lg);
+  font-weight: var(--om-font-weight-semibold);
+  color: var(--om-color-text-primary);
+}
+
+.pending-changes-filter {
+  min-width: 150px;
+}
+
+.pending-changes-requester {
+  padding: 14px 0;
+
+  &:first-child {
+    padding-top: 4px;
+  }
+
+  & + .pending-changes-requester {
+    border-top: 1px solid var(--om-color-gray-blue-100);
+  }
+}
+
+.pending-changes-requester-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: var(--om-font-size-sm);
+}
+
+.pending-changes-requester-name {
+  font-size: var(--om-font-size-md);
+  font-weight: var(--om-font-weight-semibold);
+  color: var(--ant-primary-color);
+
+  &:hover {
+    color: var(--ant-primary-color);
+    text-decoration: underline;
+  }
+
+  // The requester viewing their own card sees "You" — plain text, not a link.
+  &--self {
+    color: var(--om-color-text-primary);
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+}
+
+.pending-changes-requester-caption {
+  color: var(--om-color-text-secondary);
+  font-size: var(--om-font-size-sm);
+}
+
+.pending-changes-assignees {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: var(--om-font-size-sm);
+}
+
+.pending-changes-assignees-label {
+  color: var(--om-color-text-tertiary);
+  font-weight: var(--om-font-weight-medium);
+}
+
+.pending-changes-assignees-list {
+  color: var(--om-color-text-secondary);
+
+  a {
+    color: var(--ant-primary-color);
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.pending-changes-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pending-changes-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pending-changes-field-name {
+  flex: 0 0 96px;
+  color: var(--om-color-text-secondary);
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
+  line-height: 22px;
+}
+
+.pending-changes-chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pending-changes-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 10px;
+  border-radius: var(--om-radius-sm);
+  font-family: inherit;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-regular);
+  line-height: 20px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+
+  &--added {
+    background-color: var(--om-color-success-50);
+    color: var(--om-legacy-color-027a48);
+    border: 1px solid var(--om-legacy-color-a9efc5);
+  }
+
+  &--removed {
+    background-color: var(--om-color-rose-50);
+    color: var(--om-color-rose-700);
+    border: 1px solid var(--om-color-rose-300);
+    text-decoration: line-through;
+    text-decoration-color: var(--om-color-rose-300);
+  }
+}
+
+.pending-changes-empty {
+  color: var(--om-color-text-tertiary);
+  font-size: var(--om-font-size-sm);
+  line-height: 22px;
+}
+
+.pending-changes-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pending-changes-awaiting {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: var(--om-font-size-sm);
+  font-style: italic;
+  color: var(--om-color-text-tertiary);
+}

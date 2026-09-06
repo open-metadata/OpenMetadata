@@ -106,10 +106,14 @@ const buildTriggerConfig = (
 
     if (
       hasUserChanges &&
-      Array.isArray(startNodeConfig.include) &&
-      startNodeConfig.include.length > 0
+      startNodeConfig.include !== undefined &&
+      Array.isArray(startNodeConfig.include)
     ) {
-      finalTriggerConfig.include = startNodeConfig.include;
+      // Respect a user-cleared list: an explicit empty array means "gate every field"
+      // and must not silently fall back to the previously-saved include.
+      if (startNodeConfig.include.length > 0) {
+        finalTriggerConfig.include = startNodeConfig.include;
+      }
     } else if (existingTriggerConfig?.include) {
       finalTriggerConfig.include = existingTriggerConfig.include;
     }

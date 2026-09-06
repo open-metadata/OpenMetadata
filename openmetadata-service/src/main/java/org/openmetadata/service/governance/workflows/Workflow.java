@@ -12,6 +12,10 @@ public class Workflow {
   public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
   public static final String RELATED_ENTITY_ID_VARIABLE = "relatedEntityId";
+  // Carries the single edit's approval-gated change (a ChangeDescription-shaped diff) on the signal
+  // that the gate raises when it holds a change. The trigger filter reads it to evaluate the fields
+  // and the proposed entity for exactly that edit, rather than the requester's accumulated hold.
+  public static final String PENDING_HELD_CHANGE_VARIABLE = "pendingHeldChange";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
