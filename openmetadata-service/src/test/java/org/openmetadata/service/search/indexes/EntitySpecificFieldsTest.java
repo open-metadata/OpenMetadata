@@ -356,9 +356,9 @@ class EntitySpecificFieldsTest {
     Map<String, Object> result = new APIEndpointIndex(endpoint).buildSearchIndexDocInternal(doc);
 
     @SuppressWarnings("unchecked")
-    List<String> reqNames = (List<String>) result.get("request_field_names");
+    List<String> reqNames = (List<String>) result.get("requestFieldNames");
     @SuppressWarnings("unchecked")
-    List<String> respNames = (List<String>) result.get("response_field_names");
+    List<String> respNames = (List<String>) result.get("responseFieldNames");
     assertTrue(reqNames.contains("order.zzapitracking"));
     assertTrue(respNames.contains("result.zzapiresponsecode"));
     assertTrue(((String) result.get("request_field_namesFuzzy")).contains("order.zzapitracking"));
