@@ -49,7 +49,9 @@ class AtlasClient:
         return entities  # noqa: RET504
 
     def get_entity(self, table):
-        response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
+        guids = table if isinstance(table, list) else [table]
+        guid_params = "&".join(f"guid={guid}" for guid in guids)
+        response = self.client.get(f"/atlas/v2/entity/bulk?{guid_params}")
         return response  # noqa: RET504
 
     def get_lineage(self, source_guid):
