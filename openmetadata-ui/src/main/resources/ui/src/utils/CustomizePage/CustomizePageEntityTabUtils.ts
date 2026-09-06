@@ -125,6 +125,7 @@ export const checkIfExpandViewSupported = (
         activeTab === EntityTabs.OVERVIEW
       );
     case PageType.Dashboard:
+    case PageType.Chart:
       return (
         (!activeTab && firstTab.key === EntityTabs.DETAILS) ||
         activeTab === EntityTabs.DETAILS
