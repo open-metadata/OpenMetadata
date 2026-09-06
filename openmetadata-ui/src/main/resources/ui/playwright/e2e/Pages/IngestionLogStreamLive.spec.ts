@@ -20,8 +20,8 @@ import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import {
-  SchedulerDidNotStartError,
   getLogViewerLineCount,
+  SchedulerDidNotStartError,
   waitForRunningPipelineStatus,
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
