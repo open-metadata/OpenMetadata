@@ -301,13 +301,6 @@ class TableClassBase {
         },
       },
       CUSTOM_PROPERTIES_WIDGET,
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-        name: i18n.t('label.article-plural'),
-        data: {
-          gridSizes: ['large'] as GridSizes[],
-        },
-      },
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
