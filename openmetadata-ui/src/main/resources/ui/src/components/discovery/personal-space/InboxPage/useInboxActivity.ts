@@ -23,7 +23,7 @@ import {
   ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,
   getActivityWindowDays,
-  getFeedTimestamp,
+  getFeedSortTimestamp,
   InboxDateRange,
   InboxScope,
 } from './inbox.utils';
@@ -126,10 +126,24 @@ export const useInboxActivity = (
       ...(data?.activities ?? []).map((activity) => ({ activity })),
       ...(data?.threads ?? []).map((feed) => ({ feed })),
     ];
+    // Sort merges newest-first by last activity (updatedAt-first for
+    // conversations), matching upstream's ActivityFeedListV1New sort. The id
+    // localeCompare tiebreaker mirrors upstream exactly; without it equal-
+    // timestamp ordering would fall back to JS sort stability + server order.
+    // The id is coerced to a string so a non-string id (e.g. a numeric mock or
+    // malformed payload) cannot crash the sort with `localeCompare is not a
+    // function`; upstream avoids this by normalizing `id: string` up front.
     const itemTimestamp = (item: InboxActivityItem) =>
-      item.activity?.timestamp ?? (item.feed ? getFeedTimestamp(item.feed) : 0);
+      item.activity?.timestamp ??
+      (item.feed ? getFeedSortTimestamp(item.feed) : 0);
+    const itemId = (item: InboxActivityItem): string =>
+      String(item.activity?.id ?? item.feed?.id ?? '');
 
-    return merged.sort((a, b) => itemTimestamp(b) - itemTimestamp(a));
+    return merged.sort(
+      (a, b) =>
+        itemTimestamp(b) - itemTimestamp(a) ||
+        itemId(a).localeCompare(itemId(b))
+    );
   }, [data]);
 
   return {

@@ -240,10 +240,22 @@ export interface ActivityBucket {
   items: Conversation[];
 }
 
-// Exported because useInboxActivity sorts the merged activity+conversation list
-// by it. createdAt is the Conversation V2 counterpart of the legacy threadTs.
+// Display timestamp for a conversation card/drawer ("Posted on …"). createdAt is
+// the Conversation V2 counterpart of the legacy threadTs, so the posted time is
+// shown createdAt-first (matches upstream's card display). Used by
+// ActivityDetailDrawer and by getActivityBuckets (display grouping), NOT by the
+// merged-list sort (use getFeedSortTimestamp for that).
 export const getFeedTimestamp = (feed: Conversation): number =>
   feed.createdAt ?? feed.updatedAt ?? 0;
+
+// Sort key for the merged inbox list. Mirrors upstream's getConversationTimestamp
+// (ActivityFeedListV1New.component.tsx): last-activity (updatedAt) first, falling
+// back to createdAt. Kept separate from getFeedTimestamp so the displayed
+// timestamp (createdAt-first) is unaffected — many products order threads by
+// last activity while showing the original post time, which is what upstream and
+// the inbox display both do (OpenMetadata#30879, #30909).
+export const getFeedSortTimestamp = (feed: Conversation): number =>
+  feed.updatedAt ?? feed.createdAt ?? 0;
 
 const SINGLE_DAY_FORMAT = 'cccc, LLLL d';
 const RANGE_DAY_FORMAT = 'LLLL d';
