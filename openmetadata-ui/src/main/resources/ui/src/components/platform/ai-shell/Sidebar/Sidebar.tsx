@@ -15,7 +15,8 @@ import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Intent, SubNavConfig } from '../AppModule.types';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { Intent, SubNavConfig, SubNavItem } from '../AppModule.types';
 import { useAllAppModules } from '../sharedAppModules';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import { emitIntent } from '../useIntent';
@@ -86,6 +87,8 @@ const Sidebar: React.FC = () => {
   // by sub-nav item key.
   const contextCenterBadges = useContextCenterBadges(isContextCenter);
 
+  const { permissions } = usePermissionProvider();
+
   const handleUploadFile = useCallback(() => emitIntent(Intent.UploadFile), []);
   const handleCreateArticle = useCallback(
     () => emitIntent(Intent.CreateArticle),
@@ -132,6 +135,20 @@ const Sidebar: React.FC = () => {
     toggleSubCollapsed();
   }, [subCollapsed, toggleSubCollapsed, setCollapsed]);
 
+  const handleSubRailItemClick = useCallback(
+    (item: SubNavItem) => {
+      if (item.intent) {
+        emitIntent(item.intent);
+
+        return;
+      }
+      if (item.path) {
+        navigate(item.path);
+      }
+    },
+    [navigate]
+  );
+
   const subRailItems: RailItem[] = useMemo(() => {
     if (!activeSubNav) {
       return [];
@@ -150,19 +167,27 @@ const Sidebar: React.FC = () => {
           return [];
         }
 
+        const { requiredPermission: required } = item;
+        if (
+          required &&
+          !permissions?.[required.resource]?.[required.operation]
+        ) {
+          return [];
+        }
+
         const railItem: RailItem = {
           key: item.key,
           icon,
           activeIcon: item.railActiveIcon ?? item.activeIcon,
           label: t(item.railLabelKey ?? item.labelKey),
           href: item.path,
-          onClick: () => item.path && navigate(item.path),
+          onClick: () => handleSubRailItemClick(item),
           isActive: activeKey === item.key,
         };
 
         return [railItem];
       });
-  }, [activeSubNav, pathname, state, navigate, t]);
+  }, [activeSubNav, pathname, state, handleSubRailItemClick, permissions, t]);
 
   return (
     <div
