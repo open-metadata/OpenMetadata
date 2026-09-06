@@ -12,7 +12,10 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.lightdash.connection import LightdashConnection
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.lightdash.connection"
@@ -38,3 +41,21 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_step.return_value
+
+
+def test_get_client_wraps_construction_failure_with_interpolated_message():
+    connection = MagicMock()
+    connection.__str__ = MagicMock(return_value="LightdashConfig(hostPort='https://lightdash.example.com')")
+    underlying = RuntimeError("kaboom")
+    with patch(f"{CONNECTION_MODULE}.LightdashApiClient", side_effect=underlying):
+        conn = LightdashConnection(connection)
+        with pytest.raises(SourceConnectionException) as exc_info:
+            _ = conn.client
+
+    assert exc_info.value.__cause__ is underlying
+    message = str(exc_info.value)
+    assert "Unknown error connecting with" in message
+    assert "LightdashConfig(hostPort='https://lightdash.example.com')" in message
+    assert "kaboom" in message
+    assert "{connection}" not in message
+    assert "{exc}" not in message
