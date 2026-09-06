@@ -474,13 +474,12 @@ const BulkEditEntity = ({
             const operationClass = `bulk-edit-op-row-${String(
               row[BULK_EDIT_OPERATION_KEY] ?? 'NO_CHANGE'
             ).toLowerCase()}`;
+            const highlightSuffix = isNewMetricRowMissingName(row)
+              ? ''
+              : ' bulk-edit-row-highlight';
 
             return row.id === highlightedRowId
-              ? `${operationClass}${
-                  isNewMetricRowMissingName(row)
-                    ? ''
-                    : ' bulk-edit-row-highlight'
-                }`
+              ? `${operationClass}${highlightSuffix}`
               : operationClass;
           }}
           rowHeight={52}
@@ -791,17 +790,19 @@ const BulkEditEntity = ({
     </Fragment>
   );
 
+  const renderMainContent = () => {
+    if (isExportHydrationRequired && csvExportError) {
+      return renderExportErrorCard();
+    }
+
+    return shouldShowLoader ? <Loader /> : renderWorkflowBody();
+  };
+
   return (
     <>
       {renderHeader()}
       {renderImportJobBanner()}
-      {isExportHydrationRequired && csvExportError ? (
-        renderExportErrorCard()
-      ) : shouldShowLoader ? (
-        <Loader />
-      ) : (
-        renderWorkflowBody()
-      )}
+      {renderMainContent()}
     </>
   );
 };

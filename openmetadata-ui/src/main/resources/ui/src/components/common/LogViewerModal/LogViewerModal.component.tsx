@@ -352,37 +352,49 @@ const LogViewerBody: FunctionComponent<LogViewerBodyProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  return (
-    <div
-      className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
-      data-testid="log-viewer-body"
-      ref={bodyRef}>
-      {resolvedLoading ? (
+  const renderBodyContent = () => {
+    if (resolvedLoading) {
+      return (
         <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
           <Loader />
         </div>
-      ) : showEmptyState ? (
+      );
+    }
+
+    if (showEmptyState) {
+      return (
         <div
           className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
           data-testid="log-viewer-empty">
           {t('label.no-result-found')}
         </div>
-      ) : (
-        <LazyLog
-          caseInsensitive
-          enableLineNumbers
-          selectableLines
-          enableSearch={false}
-          extraLines={1}
-          follow={resolvedFollow}
-          formatPart={colorize ? formatLogPart : undefined}
-          ref={lazyLogRef}
-          rowHeight={25}
-          text={filteredLogs}
-          wrapLines={wrap}
-          onScroll={handleScroll}
-        />
-      )}
+      );
+    }
+
+    return (
+      <LazyLog
+        caseInsensitive
+        enableLineNumbers
+        selectableLines
+        enableSearch={false}
+        extraLines={1}
+        follow={resolvedFollow}
+        formatPart={colorize ? formatLogPart : undefined}
+        ref={lazyLogRef}
+        rowHeight={25}
+        text={filteredLogs}
+        wrapLines={wrap}
+        onScroll={handleScroll}
+      />
+    );
+  };
+
+  return (
+    <div
+      className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
+      data-testid="log-viewer-body"
+      ref={bodyRef}>
+      {renderBodyContent()}
     </div>
   );
 };

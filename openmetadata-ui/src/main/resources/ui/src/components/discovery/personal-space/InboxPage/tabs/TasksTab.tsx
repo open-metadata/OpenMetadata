@@ -117,6 +117,23 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const detailContent = selectedTaskId ? (
+    <TaskDetailPanel
+      fallbackTask={tasks.find((task) => task.id === selectedTaskId)}
+      key={selectedTaskId}
+      taskId={selectedTaskId}
+      onCommentsChanged={handleCommentsChanged}
+      onResolved={handleResolved}
+      onTaskUpdated={handleTaskUpdated}
+    />
+  ) : (
+    <Box align="center" className="tw:w-full tw:justify-center tw:py-16">
+      <Typography className="tw:text-secondary">
+        {t('label.no-tasks-right-now')}
+      </Typography>
+    </Box>
+  );
+
   return (
     <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
       <div
@@ -149,24 +166,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
       <Box
         className="tw:h-full tw:w-full tw:overflow-y-auto tw:p-5"
         direction="col">
-        {isLoading ? (
-          <TaskDetailSkeleton />
-        ) : selectedTaskId ? (
-          <TaskDetailPanel
-            fallbackTask={tasks.find((task) => task.id === selectedTaskId)}
-            key={selectedTaskId}
-            taskId={selectedTaskId}
-            onCommentsChanged={handleCommentsChanged}
-            onResolved={handleResolved}
-            onTaskUpdated={handleTaskUpdated}
-          />
-        ) : (
-          <Box align="center" className="tw:w-full tw:justify-center tw:py-16">
-            <Typography className="tw:text-secondary">
-              {t('label.no-tasks-right-now')}
-            </Typography>
-          </Box>
-        )}
+        {isLoading ? <TaskDetailSkeleton /> : detailContent}
       </Box>
     </Box>
   );
@@ -285,12 +285,9 @@ const TasksTab: React.FC<TasksTabProps> = ({
       // filter. A Data Access Request that was just Approved stays Open (it is
       // awaiting grant), so removing it optimistically would make it vanish and
       // then reappear on refresh — update it in place instead.
-      const stillVisible =
-        status === 'all'
-          ? true
-          : status === 'open'
-          ? isTaskOpen(resolved)
-          : !isTaskOpen(resolved);
+      const matchesOpenFilter =
+        status === 'open' ? isTaskOpen(resolved) : !isTaskOpen(resolved);
+      const stillVisible = status === 'all' ? true : matchesOpenFilter;
 
       if (stillVisible) {
         setItems((prev) =>

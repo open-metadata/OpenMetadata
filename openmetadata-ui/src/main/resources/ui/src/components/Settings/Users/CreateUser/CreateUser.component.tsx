@@ -589,6 +589,27 @@ const CreateUser = ({
       allowImpersonation,
     } = values;
 
+    let authMechanismConfig: Partial<CreateUserFormData> = {};
+    if (forceBot) {
+      authMechanismConfig = {
+        authenticationMechanism: {
+          authType: AuthType.Jwt,
+          config: {
+            JWTTokenExpiry: tokenExpiry,
+          },
+        },
+        allowImpersonation,
+      };
+    } else if (isAuthProviderBasic) {
+      authMechanismConfig = {
+        password: isPasswordGenerated ? generatedPassword : password,
+        confirmPassword: isPasswordGenerated
+          ? generatedPassword
+          : confirmPassword,
+        createPasswordType: CreatePasswordType.AdminCreate,
+      };
+    }
+
     const userProfile: CreateUserFormData = {
       description,
       name: email.split('@')[0],
@@ -600,25 +621,7 @@ const CreateUser = ({
       isAdmin: isAdmin,
       domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
       isBot: isBot,
-      ...(forceBot
-        ? {
-            authenticationMechanism: {
-              authType: AuthType.Jwt,
-              config: {
-                JWTTokenExpiry: tokenExpiry,
-              },
-            },
-            allowImpersonation,
-          }
-        : isAuthProviderBasic
-        ? {
-            password: isPasswordGenerated ? generatedPassword : password,
-            confirmPassword: isPasswordGenerated
-              ? generatedPassword
-              : confirmPassword,
-            createPasswordType: CreatePasswordType.AdminCreate,
-          }
-        : {}),
+      ...authMechanismConfig,
     };
     onSave(userProfile);
   };

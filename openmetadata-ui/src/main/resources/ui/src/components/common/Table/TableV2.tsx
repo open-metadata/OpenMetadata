@@ -480,9 +480,9 @@ const recordMatchesActiveFilters = <T,>(
   columnIds: string[]
 ): boolean =>
   activeFilters.every(([colKey, selectedKeys]) => {
-    const col = propsColumns.find(
-      (_c, idx) => columnIds[idx] === colKey
-    ) as ColumnType<T> | undefined;
+    const col = propsColumns.find((_c, idx) => columnIds[idx] === colKey) as
+      | ColumnType<T>
+      | undefined;
     const onFilter = col?.onFilter;
 
     return onFilter
@@ -1332,6 +1332,10 @@ const TableV2 = <T extends object>(
         return;
       }
 
+      const descendingOrder = newDirection === 'descending' ? 'descend' : null;
+      const reportedOrder =
+        newDirection === 'ascending' ? 'ascend' : descendingOrder;
+
       rest.onChange(
         {
           current: internalCurrentPage,
@@ -1343,12 +1347,7 @@ const TableV2 = <T extends object>(
           column: clickedColumn,
           columnKey: reportedKey,
           field: reportedKey,
-          order:
-            newDirection === 'ascending'
-              ? 'ascend'
-              : newDirection === 'descending'
-              ? 'descend'
-              : null,
+          order: reportedOrder,
         } as SorterResult<T>,
         {
           currentDataSource: (rest.dataSource ?? []) as T[],
@@ -1770,6 +1769,42 @@ const TableV2 = <T extends object>(
                           ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
                           {};
 
+                        const cellValue = resolveCellValue(
+                          colType,
+                          record,
+                          actualIndex
+                        );
+                        let cellContent: React.ReactNode;
+                        if (colType.ellipsis) {
+                          // `flex-1 min-w-0` only mean anything inside the
+                          // flex row an expander creates; without one the
+                          // wrapper is `display: contents` and this div is
+                          // a block child of the cell, which already fills
+                          // it. `truncate` is what does the work either way.
+                          cellContent = (
+                            <div
+                              className={classNames('tw:truncate', {
+                                'tw:flex-1 tw:min-w-0': showExpandInCell,
+                              })}>
+                              {cellValue}
+                            </div>
+                          );
+                        } else if (showExpandInCell) {
+                          // Same shrink permission without imposing
+                          // `truncate`: a flex item's min-width is `auto`,
+                          // so a nowrap value the call site ellipsizes
+                          // itself (an AntD Typography link, say) could
+                          // never shrink to the cell and painted across
+                          // the neighbouring columns instead.
+                          cellContent = (
+                            <div className="tw:min-w-0 tw:flex-1">
+                              {cellValue}
+                            </div>
+                          );
+                        } else {
+                          cellContent = cellValue;
+                        }
+
                         return (
                           <UntitledTable.Cell
                             {...cellHandlerProps}
@@ -1839,39 +1874,7 @@ const TableV2 = <T extends object>(
                                   />
                                 </div>
                               )}
-                              {colType.ellipsis ? (
-                                // `flex-1 min-w-0` only mean anything inside the
-                                // flex row an expander creates; without one the
-                                // wrapper is `display: contents` and this div is
-                                // a block child of the cell, which already fills
-                                // it. `truncate` is what does the work either way.
-                                <div
-                                  className={classNames('tw:truncate', {
-                                    'tw:flex-1 tw:min-w-0': showExpandInCell,
-                                  })}>
-                                  {resolveCellValue(
-                                    colType,
-                                    record,
-                                    actualIndex
-                                  )}
-                                </div>
-                              ) : showExpandInCell ? (
-                                // Same shrink permission without imposing
-                                // `truncate`: a flex item's min-width is `auto`,
-                                // so a nowrap value the call site ellipsizes
-                                // itself (an AntD Typography link, say) could
-                                // never shrink to the cell and painted across
-                                // the neighbouring columns instead.
-                                <div className="tw:min-w-0 tw:flex-1">
-                                  {resolveCellValue(
-                                    colType,
-                                    record,
-                                    actualIndex
-                                  )}
-                                </div>
-                              ) : (
-                                resolveCellValue(colType, record, actualIndex)
-                              )}
+                              {cellContent}
                             </div>
                           </UntitledTable.Cell>
                         );

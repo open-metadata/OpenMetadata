@@ -645,11 +645,12 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
       const r = await runSparqlQuery({ query, format, inference });
       setResult(r);
     } catch (e) {
-      const message = isAxiosError(e)
-        ? typeof e.response?.data === 'string'
-          ? e.response.data
-          : e.message
-        : (e as Error).message;
+      const axiosResponseData = isAxiosError(e) ? e.response?.data : undefined;
+      const axiosMessage =
+        typeof axiosResponseData === 'string'
+          ? axiosResponseData
+          : (e as Error).message;
+      const message = isAxiosError(e) ? axiosMessage : (e as Error).message;
       setErrorMessage(message);
       showErrorToast(message);
     } finally {

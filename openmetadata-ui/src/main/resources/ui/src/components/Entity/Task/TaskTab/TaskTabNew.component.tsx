@@ -925,12 +925,13 @@ export const TaskTabNew = ({
       status.toLowerCase() === 'approved'
         ? TaskResolutionType.Approved
         : TaskResolutionType.Rejected;
-    const newValue =
-      isApprovalWorkflowTask && status.toLowerCase() === 'approved'
-        ? taskHandler.approvedValue
-        : isApprovalWorkflowTask
-        ? taskHandler.rejectedValue
-        : suggestedValue;
+    let newValue = suggestedValue;
+    if (isApprovalWorkflowTask) {
+      newValue =
+        status.toLowerCase() === 'approved'
+          ? taskHandler.approvedValue
+          : taskHandler.rejectedValue;
+    }
     updateTaskData({ newValue }, resolutionType);
   };
 

@@ -330,10 +330,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           sampleDataCount,
         } = data;
 
-        const profileSample = profileSampleType
-          ? profileSampleType === ProfileSampleType.Percentage
+        const profileSampleValue =
+          profileSampleType === ProfileSampleType.Percentage
             ? profileSamplePercentage
-            : profileSampleRows
+            : profileSampleRows;
+        const profileSample = profileSampleType
+          ? profileSampleValue
           : undefined;
 
         return {

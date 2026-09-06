@@ -445,11 +445,14 @@ function buildTermAssetBadgeInfo(d: GraphNodeMeta): {
     assetCount,
     remaining
   );
-  const badgeText = isLoadingAssets
-    ? '...'
-    : assetsExpanded
-    ? '−'
-    : `+${assetCount}`;
+  let badgeText: string;
+  if (isLoadingAssets) {
+    badgeText = '...';
+  } else if (assetsExpanded) {
+    badgeText = '−';
+  } else {
+    badgeText = `+${assetCount}`;
+  }
   const assetCountBadgeDiameter = computeAssetCountBadgeDiameter(
     isLoadingAssets,
     assetsExpanded,

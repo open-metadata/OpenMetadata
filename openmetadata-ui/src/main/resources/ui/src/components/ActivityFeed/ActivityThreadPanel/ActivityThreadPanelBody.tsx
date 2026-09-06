@@ -295,32 +295,36 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     </div>
   );
 
-  const renderListView = () => (
-    <Fragment>
-      {(showNewConversation || hasNoConversations) && isConversationType && (
-        <Space className="w-full" direction="vertical">
-          <Typography.Paragraph>
-            {t('message.new-conversation')}
-          </Typography.Paragraph>
-          <ActivityFeedEditor
-            placeHolder={t('message.enter-a-field', {
-              field: t('label.message-lowercase'),
-            })}
-            onSave={onPostConversation}
-          />
-        </Space>
-      )}
+  const renderListView = () => {
+    const isListLoading = isTaskType ? loading : isConversationLoading;
 
-      {isTaskType ? renderTaskList() : renderConversationList()}
+    return (
+      <Fragment>
+        {(showNewConversation || hasNoConversations) && isConversationType && (
+          <Space className="w-full" direction="vertical">
+            <Typography.Paragraph>
+              {t('message.new-conversation')}
+            </Typography.Paragraph>
+            <ActivityFeedEditor
+              placeHolder={t('message.enter-a-field', {
+                field: t('label.message-lowercase'),
+              })}
+              onSave={onPostConversation}
+            />
+          </Space>
+        )}
 
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}>
-        {(isTaskType ? loading : isConversationLoading) ? <Loader /> : null}
-      </div>
-    </Fragment>
-  );
+        {isTaskType ? renderTaskList() : renderConversationList()}
+
+        <div
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}>
+          {isListLoading ? <Loader /> : null}
+        </div>
+      </Fragment>
+    );
+  };
 
   const renderMainContent = () => {
     if (isTaskType && !isUndefined(selectedTask)) {

@@ -78,13 +78,14 @@ const SsoTestLoginModal = ({
     }
 
     const isSuccess = result.status === Status.Success;
-    const description = isSuccess
-      ? t('message.sso-test-login-success', {
-          email: result.resolvedEmail ?? '',
-        })
-      : !isEmpty(result.errors)
-      ? (result.errors ?? []).join(' ')
-      : t('message.sso-test-login-failed');
+    let description = t('message.sso-test-login-failed');
+    if (isSuccess) {
+      description = t('message.sso-test-login-success', {
+        email: result.resolvedEmail ?? '',
+      });
+    } else if (!isEmpty(result.errors)) {
+      description = (result.errors ?? []).join(' ');
+    }
 
     return (
       <Space className="w-full" direction="vertical" size={12}>

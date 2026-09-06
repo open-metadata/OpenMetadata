@@ -562,34 +562,49 @@ const getStudioBorderColor = (
 const getEdgeLabelBackgroundFill = (
   studioMode: boolean,
   meta: RelationMeta | null | undefined
-): string =>
-  studioMode
-    ? '#FFFFFF'
-    : meta
+): string => {
+  if (studioMode) {
+    return '#FFFFFF';
+  }
+
+  return meta
     ? getCanvasColor(meta.background, '#fafafa')
     : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8');
+};
 
 const getEdgeLabelBackgroundStroke = (
   studioMode: boolean,
   meta: RelationMeta | null | undefined,
   studioBorderColor: string | undefined
-): string =>
-  studioMode
-    ? studioBorderColor ?? '#E9EAEB'
-    : meta
-    ? 'none'
-    : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF');
+): string => {
+  if (studioMode) {
+    return studioBorderColor ?? '#E9EAEB';
+  }
+
+  return meta ? 'none' : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF');
+};
 
 const getEdgeLabelBackgroundLineWidth = (
   studioMode: boolean,
   meta: RelationMeta | null | undefined
-): number => (studioMode ? 1 : meta ? 0 : 1);
+): number => {
+  if (studioMode) {
+    return 1;
+  }
+
+  return meta ? 0 : 1;
+};
 
 const getEdgeLabelBackgroundRadius = (
   studioMode: boolean,
   meta: RelationMeta | null | undefined
-): number =>
-  studioMode ? 9999 : meta ? EDGE_LABEL_BADGE_RADIUS : EDGE_LABEL_BG_RADIUS;
+): number => {
+  if (studioMode) {
+    return 9999;
+  }
+
+  return meta ? EDGE_LABEL_BADGE_RADIUS : EDGE_LABEL_BG_RADIUS;
+};
 
 const getEdgeLabelBackgroundShadowColor = (
   meta: RelationMeta | null | undefined
@@ -604,12 +619,13 @@ const getEdgeLabelFill = (meta: RelationMeta | null | undefined): string =>
 const getEdgeLabelFontWeight = (
   studioMode: boolean,
   meta: RelationMeta | null | undefined
-): number =>
-  studioMode
-    ? EDGE_LABEL_FONT_WEIGHT
-    : meta
-    ? EDGE_LABEL_BADGE_FONT_WEIGHT
-    : EDGE_LABEL_FONT_WEIGHT;
+): number => {
+  if (studioMode) {
+    return EDGE_LABEL_FONT_WEIGHT;
+  }
+
+  return meta ? EDGE_LABEL_BADGE_FONT_WEIGHT : EDGE_LABEL_FONT_WEIGHT;
+};
 
 export function getEdgeRelationLabelStyle(
   labelText: string,

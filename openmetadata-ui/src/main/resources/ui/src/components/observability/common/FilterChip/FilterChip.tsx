@@ -397,8 +397,9 @@ const resolveUserChipDisplayText = (
 ): string => {
   const selected = selectedOwners?.[0];
   const selectedText = selected?.displayName ?? selected?.name ?? '';
+  const fallbackText = isString(value) ? value : '';
 
-  return selected ? selectedText : isString(value) ? value : '';
+  return selected ? selectedText : fallbackText;
 };
 
 const UserChipInputTrigger = ({

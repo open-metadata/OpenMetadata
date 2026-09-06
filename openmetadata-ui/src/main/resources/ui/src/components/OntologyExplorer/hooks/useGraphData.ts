@@ -708,11 +708,10 @@ function computeNodeVisualState(
   const shouldTruncateLabel =
     isInModelMode || (ctx.explorationMode === 'data' && !isDataAsset);
   const estimatedWidth = estimateNodeWidth(rawLabel);
-  const nodeWidth = ctx.studioMode
-    ? MODEL_NODE_MAX_WIDTH
-    : shouldTruncateLabel
+  const truncatedWidth = shouldTruncateLabel
     ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
     : estimatedWidth;
+  const nodeWidth = ctx.studioMode ? MODEL_NODE_MAX_WIDTH : truncatedWidth;
   const label = shouldTruncateLabel
     ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
     : rawLabel;
@@ -1139,13 +1138,12 @@ function computeEdgeLabelText(
   showLabel: boolean,
   studioMode: boolean
 ): { labelText: string | undefined; displayLabel: string | undefined } {
-  const labelText = showLabel
-    ? singleEdge.inverseRelationType
-      ? `${formatRelationLabel(
-          singleEdge.relationType
-        )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
-      : formatRelationLabel(singleEdge.relationType)
-    : undefined;
+  const labelWhenShown = singleEdge.inverseRelationType
+    ? `${formatRelationLabel(singleEdge.relationType)} / ${formatRelationLabel(
+        singleEdge.inverseRelationType
+      )}`
+    : formatRelationLabel(singleEdge.relationType);
+  const labelText = showLabel ? labelWhenShown : undefined;
   const displayLabel =
     studioMode && labelText ? labelText.toLocaleLowerCase() : labelText;
 

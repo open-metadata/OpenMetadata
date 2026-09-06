@@ -479,30 +479,42 @@ const getTaskActionButtonColor = (
   reject: boolean,
   approve: boolean,
   actionId: string
-): TaskActionButtonColor =>
-  reject
-    ? 'secondary-destructive'
-    : approve || actionId === 'resolve'
-    ? 'primary'
-    : 'secondary';
+): TaskActionButtonColor => {
+  if (reject) {
+    return 'secondary-destructive';
+  }
+  if (approve || actionId === 'resolve') {
+    return 'primary';
+  }
+
+  return 'secondary';
+};
 
 const getTaskActionTestId = (
   approve: boolean,
   reject: boolean,
   actionId: string
-): string =>
-  approve
-    ? 'task-approve'
-    : reject
-    ? 'task-reject'
-    : `task-transition-${actionId}`;
+): string => {
+  if (approve) {
+    return 'task-approve';
+  }
+  if (reject) {
+    return 'task-reject';
+  }
 
-const getTaskActionIcon = (approve: boolean, reject: boolean): ReactNode =>
-  approve ? (
-    <CheckCircle height={16} width={16} />
-  ) : reject ? (
-    <XCircle height={16} width={16} />
-  ) : undefined;
+  return `task-transition-${actionId}`;
+};
+
+const getTaskActionIcon = (approve: boolean, reject: boolean): ReactNode => {
+  if (approve) {
+    return <CheckCircle height={16} width={16} />;
+  }
+  if (reject) {
+    return <XCircle height={16} width={16} />;
+  }
+
+  return undefined;
+};
 
 /** One resolve/reject/approve/assignee-reassign control in the task header. */
 const TaskActionButton = ({

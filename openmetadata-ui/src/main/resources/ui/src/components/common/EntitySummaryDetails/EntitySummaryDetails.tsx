@@ -282,33 +282,41 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
     );
   }
 
+  function renderDisplayValueContent() {
+    if (data.isLink) {
+      return renderLinkContent();
+    }
+
+    if (isOwner) {
+      return (
+        <div className="d-flex" data-testid="owner-link">
+          {displayVal}
+        </div>
+      );
+    }
+
+    if (isTier) {
+      return (
+        <Space
+          className={classNames(
+            'd-inline-block truncate link-text align-middle',
+            {
+              'w-52': (displayVal as string).length > 32,
+            }
+          )}
+          data-testid="tier-name"
+          direction="horizontal"
+          title={displayVal as string}>
+          <span data-testid="Tier">{displayVal}</span>
+        </Space>
+      );
+    }
+
+    return <span>{displayVal}</span>;
+  }
+
   function renderDisplayValue() {
-    return (
-      <Fragment>
-        {data.isLink ? (
-          renderLinkContent()
-        ) : isOwner ? (
-          <div className="d-flex" data-testid="owner-link">
-            {displayVal}
-          </div>
-        ) : isTier ? (
-          <Space
-            className={classNames(
-              'd-inline-block truncate link-text align-middle',
-              {
-                'w-52': (displayVal as string).length > 32,
-              }
-            )}
-            data-testid="tier-name"
-            direction="horizontal"
-            title={displayVal as string}>
-            <span data-testid="Tier">{displayVal}</span>
-          </Space>
-        ) : (
-          <span>{displayVal}</span>
-        )}
-      </Fragment>
-    );
+    return <Fragment>{renderDisplayValueContent()}</Fragment>;
   }
 
   return (

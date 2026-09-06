@@ -370,12 +370,12 @@ const AddDomainForm = ({
       return;
     }
     setCustomPropertiesLoaded(false);
-    const entityTypeApiName =
-      targetEntityType === TargetEntityType.DataProduct
-        ? 'dataProduct'
-        : targetEntityType === TargetEntityType.Domain
-        ? 'domain'
-        : 'glossaryTerm';
+    let entityTypeApiName = 'glossaryTerm';
+    if (targetEntityType === TargetEntityType.DataProduct) {
+      entityTypeApiName = 'dataProduct';
+    } else if (targetEntityType === TargetEntityType.Domain) {
+      entityTypeApiName = 'domain';
+    }
     getCustomPropertiesByEntityType(entityTypeApiName)
       .then((props) => {
         if (!cancelled) {

@@ -50,14 +50,16 @@ const FULLSCREEN_PLAYER_CLASS = [
 const getFormattedDuration = (
   resource: LearningResource,
   t: TFunction
-): string | null =>
-  resource.estimatedDuration
-    ? `${Math.floor(resource.estimatedDuration / 60)} ${
-        resource.resourceType === 'Article'
-          ? t('label.min-read')
-          : t('label.min-watch')
-      }`
+): string | null => {
+  const durationUnitLabel =
+    resource.resourceType === 'Article'
+      ? t('label.min-read')
+      : t('label.min-watch');
+
+  return resource.estimatedDuration
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${durationUnitLabel}`
     : null;
+};
 
 const getFormattedDate = (resource: LearningResource): string | null =>
   resource.updatedAt

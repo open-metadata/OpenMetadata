@@ -243,37 +243,40 @@ const NumberExtensionField = ({
 
   return (
     <FormField control={control} name={name} rules={rules}>
-      {({ field, fieldState }) => (
-        <ExtensionFieldContainer
-          error={fieldState.error?.message}
-          isRequired={isRequired}
-          label={labelNode}>
-          <Input
-            aria-label={label}
-            inputDataTestId={dataTestId}
-            isInvalid={fieldState.invalid}
+      {({ field, fieldState }) => {
+        let inputValue = '';
+        if (typeof field.value === 'number') {
+          inputValue = String(field.value);
+        } else if (typeof field.value === 'string') {
+          inputValue = field.value;
+        }
+
+        return (
+          <ExtensionFieldContainer
+            error={fieldState.error?.message}
             isRequired={isRequired}
-            name={field.name}
-            step={
-              !timestamp && definition.propertyType.name === 'number'
-                ? 'any'
-                : 1
-            }
-            type="number"
-            value={
-              typeof field.value === 'number'
-                ? String(field.value)
-                : typeof field.value === 'string'
-                ? field.value
-                : ''
-            }
-            onBlur={field.onBlur}
-            onChange={(value) =>
-              field.onChange(value === '' ? undefined : value)
-            }
-          />
-        </ExtensionFieldContainer>
-      )}
+            label={labelNode}>
+            <Input
+              aria-label={label}
+              inputDataTestId={dataTestId}
+              isInvalid={fieldState.invalid}
+              isRequired={isRequired}
+              name={field.name}
+              step={
+                !timestamp && definition.propertyType.name === 'number'
+                  ? 'any'
+                  : 1
+              }
+              type="number"
+              value={inputValue}
+              onBlur={field.onBlur}
+              onChange={(value) =>
+                field.onChange(value === '' ? undefined : value)
+              }
+            />
+          </ExtensionFieldContainer>
+        );
+      }}
     </FormField>
   );
 };
@@ -601,28 +604,31 @@ const TimeIntervalExtensionField = ({
               );
             },
           }}>
-          {({ field, fieldState }) => (
-            <Input
-              hint={fieldState.error?.message}
-              inputDataTestId={`${dataTestId}-${suffix}`}
-              isInvalid={fieldState.invalid}
-              isRequired={isRequired}
-              label={inputLabel}
-              step={1}
-              type="number"
-              value={
-                typeof field.value === 'number'
-                  ? String(field.value)
-                  : typeof field.value === 'string'
-                  ? field.value
-                  : ''
-              }
-              onBlur={field.onBlur}
-              onChange={(nextValue) =>
-                field.onChange(nextValue === '' ? undefined : nextValue)
-              }
-            />
-          )}
+          {({ field, fieldState }) => {
+            let inputValue = '';
+            if (typeof field.value === 'number') {
+              inputValue = String(field.value);
+            } else if (typeof field.value === 'string') {
+              inputValue = field.value;
+            }
+
+            return (
+              <Input
+                hint={fieldState.error?.message}
+                inputDataTestId={`${dataTestId}-${suffix}`}
+                isInvalid={fieldState.invalid}
+                isRequired={isRequired}
+                label={inputLabel}
+                step={1}
+                type="number"
+                value={inputValue}
+                onBlur={field.onBlur}
+                onChange={(nextValue) =>
+                  field.onChange(nextValue === '' ? undefined : nextValue)
+                }
+              />
+            );
+          }}
         </FormField>
       ))}
     </Box>

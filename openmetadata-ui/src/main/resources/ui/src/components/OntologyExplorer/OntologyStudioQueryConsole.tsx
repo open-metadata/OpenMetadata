@@ -480,11 +480,15 @@ const OntologyStudioQueryConsole = ({
           : await runSparqlQuery(queryParams);
         setResult(nextResult);
       } catch (error) {
-        const message = isAxiosError(error)
-          ? typeof error.response?.data === 'string'
-            ? error.response.data
-            : error.message
-          : (error as Error).message;
+        let message: string;
+        if (isAxiosError(error)) {
+          message =
+            typeof error.response?.data === 'string'
+              ? error.response.data
+              : error.message;
+        } else {
+          message = (error as Error).message;
+        }
         setErrorMessage(message);
         showErrorToast(message);
       } finally {

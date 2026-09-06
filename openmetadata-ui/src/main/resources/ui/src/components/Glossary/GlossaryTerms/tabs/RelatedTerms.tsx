@@ -100,6 +100,12 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   onRelatedTermClick,
 }) => {
   const descriptionText = getTextFromHtmlString(entity.description);
+  const removedDiffClassName = versionStatus?.removed
+    ? 'diff-removed'
+    : undefined;
+  const diffClassName = versionStatus?.added
+    ? 'diff-added'
+    : removedDiffClassName;
   const tooltipContent = (
     <div className="tw:p-2 tw:space-y-1">
       <Typography as="p" className="tw:text-white" weight="semibold">
@@ -121,13 +127,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   return (
     <Tooltip arrow placement="bottom left" title={tooltipContent}>
       <TooltipTrigger
-        className={
-          versionStatus?.added
-            ? 'diff-added'
-            : versionStatus?.removed
-            ? 'diff-removed'
-            : undefined
-        }
+        className={diffClassName}
         data-testid={getEntityName(entity)}
         onPress={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}>
         <BadgeWithIcon

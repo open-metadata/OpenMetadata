@@ -131,11 +131,12 @@ function highlightRdf(text: string): ReactNode[] {
     if (match.index > lastIndex) {
       nodes.push(text.slice(lastIndex, match.index));
     }
-    const color = match[1]
-      ? SYNTAX_COLOR.string
-      : match[2] || match[4]
-      ? SYNTAX_COLOR.keyword
-      : SYNTAX_COLOR.term;
+    let color = SYNTAX_COLOR.term;
+    if (match[1]) {
+      color = SYNTAX_COLOR.string;
+    } else if (match[2] || match[4]) {
+      color = SYNTAX_COLOR.keyword;
+    }
     nodes.push(
       <span key={key++} style={{ color }}>
         {match[0]}

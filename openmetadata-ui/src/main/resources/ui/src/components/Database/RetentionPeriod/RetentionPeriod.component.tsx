@@ -36,8 +36,11 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 // Pluralize a duration component, e.g. pluralizeDurationUnit(2, 'year') => '2 years'
-const pluralizeDurationUnit = (value: number, unit: string): string =>
-  value ? `${value} ${unit}${value > 1 ? 's' : ''}` : '';
+const pluralizeDurationUnit = (value: number, unit: string): string => {
+  const pluralSuffix = value > 1 ? 's' : '';
+
+  return value ? `${value} ${unit}${pluralSuffix}` : '';
+};
 
 const ISO_DURATION_REGEX =
   /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/;

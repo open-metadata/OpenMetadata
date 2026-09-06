@@ -1472,22 +1472,25 @@ const BulkEntityImportPage = () => {
     key: string;
     label: string;
     state: CsvProcessingStage;
-  }) => (
-    <div
-      className={`csv-processing-stage csv-processing-stage-${state}`}
-      key={key}>
-      <span className="csv-processing-stage-icon">
-        {state === 'done' ? (
-          <CheckCircle size={16} />
-        ) : state === 'active' ? (
-          <RefreshCw01 className="csv-import-spin" size={16} />
-        ) : (
-          <span className="csv-processing-stage-dot" />
-        )}
-      </span>
-      <span>{label}</span>
-    </div>
-  );
+  }) => {
+    const stageIcon =
+      state === 'active' ? (
+        <RefreshCw01 className="csv-import-spin" size={16} />
+      ) : (
+        <span className="csv-processing-stage-dot" />
+      );
+
+    return (
+      <div
+        className={`csv-processing-stage csv-processing-stage-${state}`}
+        key={key}>
+        <span className="csv-processing-stage-icon">
+          {state === 'done' ? <CheckCircle size={16} /> : stageIcon}
+        </span>
+        <span>{label}</span>
+      </div>
+    );
+  };
 
   const renderSelectedCsvFile = () => {
     if (!selectedCsvFile) {

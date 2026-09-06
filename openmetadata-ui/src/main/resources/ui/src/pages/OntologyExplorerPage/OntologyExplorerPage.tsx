@@ -756,6 +756,55 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
+  function renderMainContent() {
+    if (showAiAssistant) {
+      return (
+        <OntologyAiAssistant
+          canCreateDraft={canEditOntology}
+          glossary={selectedGlossary}
+          graphData={graphData}
+          relationshipTypes={relationTypes}
+          onOpenQuery={(query) => {
+            setGeneratedQuery(query);
+            setQuerySurface('console');
+            setMode('query');
+          }}
+        />
+      );
+    }
+
+    if (showRdfDisabledNotice) {
+      return <RdfDisabledNotice />;
+    }
+
+    if (showQuerySurface) {
+      return (
+        <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
+          {querySurface === 'console' ? (
+            <OntologyStudioQueryConsole
+              graphData={graphData}
+              initialQuery={generatedQuery}
+              relationTypes={relationTypes}
+              selectedGlossaryIds={selectedGlossaryIds}
+            />
+          ) : (
+            <OntologyVisualQueryBuilder
+              graphData={graphData}
+              relationTypes={relationTypes}
+              selectedGlossaryIds={selectedGlossaryIds}
+              onEditAsSparql={(query) => {
+                setGeneratedQuery(query);
+                setQuerySurface('console');
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+
+    return defaultModeContent;
+  }
+
   function renderMainSection() {
     return (
       <section
@@ -765,44 +814,7 @@ const OntologyExplorerPage: React.FC = () => {
             ? 'tw:bg-secondary'
             : 'tw:bg-primary'
         )}>
-        {showAiAssistant ? (
-          <OntologyAiAssistant
-            canCreateDraft={canEditOntology}
-            glossary={selectedGlossary}
-            graphData={graphData}
-            relationshipTypes={relationTypes}
-            onOpenQuery={(query) => {
-              setGeneratedQuery(query);
-              setQuerySurface('console');
-              setMode('query');
-            }}
-          />
-        ) : showRdfDisabledNotice ? (
-          <RdfDisabledNotice />
-        ) : showQuerySurface ? (
-          <div className="tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-auto">
-            {querySurface === 'console' ? (
-              <OntologyStudioQueryConsole
-                graphData={graphData}
-                initialQuery={generatedQuery}
-                relationTypes={relationTypes}
-                selectedGlossaryIds={selectedGlossaryIds}
-              />
-            ) : (
-              <OntologyVisualQueryBuilder
-                graphData={graphData}
-                relationTypes={relationTypes}
-                selectedGlossaryIds={selectedGlossaryIds}
-                onEditAsSparql={(query) => {
-                  setGeneratedQuery(query);
-                  setQuerySurface('console');
-                }}
-              />
-            )}
-          </div>
-        ) : (
-          defaultModeContent
-        )}
+        {renderMainContent()}
       </section>
     );
   }

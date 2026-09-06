@@ -45,6 +45,17 @@ const edgeTypes = {
 const withEnabledHandler = <T,>(enabled: boolean, handler: T): T | undefined =>
   enabled ? handler : undefined;
 
+const getDimmedOpacity = (
+  shouldDim: boolean,
+  isConnectionModalOpen: boolean | undefined
+): number => {
+  if (!shouldDim) {
+    return 1;
+  }
+
+  return isConnectionModalOpen ? 0.15 : 0.3;
+};
+
 const getShouldDimEdge = (
   edge: Edge,
   focusedConnection: WorkflowCanvasProps['focusedConnection'],
@@ -98,7 +109,7 @@ const mapEdgeForRender = (
     style: {
       strokeWidth: edge.style?.strokeWidth || 2,
       ...edge.style,
-      opacity: shouldDimEdge ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
+      opacity: getDimmedOpacity(shouldDimEdge, isConnectionModalOpen),
       transition: 'opacity 0.3s ease',
     },
     labelStyle: {
@@ -182,7 +193,7 @@ const mapNodeForRender = (
     ...node,
     style: {
       ...node.style,
-      opacity: shouldDimNode ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
+      opacity: getDimmedOpacity(shouldDimNode, isConnectionModalOpen),
       transition: 'opacity 0.3s ease',
       cursor: nodeCursor,
     },

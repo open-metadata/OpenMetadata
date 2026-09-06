@@ -113,6 +113,9 @@ const SCROLL_BOTTOM_THRESHOLD = 1;
 // one GET /contextCenter/pages?limit=0 per trigger.
 const KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY = ['knowledge-pages-total-count'];
 
+const dedupePageHierarchyById = (items: PageHierarchy[]): PageHierarchy[] =>
+  Array.from(new Map(items.map((item) => [item.id, item])).values());
+
 const KnowledgePagesHierarchy = forwardRef<
   KnowledgePagesHierarchyRef,
   KnowledgePagesHierarchyProps
@@ -340,13 +343,9 @@ const KnowledgePagesHierarchy = forwardRef<
           );
           setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
         } else {
-          setKnowledgePageHierarchy((prev) => {
-            const merged = prev.concat(data);
-
-            return Array.from(
-              new Map(merged.map((item) => [item.id, item])).values()
-            );
-          });
+          setKnowledgePageHierarchy((prev) =>
+            dedupePageHierarchyById(prev.concat(data))
+          );
         }
       };
 

@@ -1381,6 +1381,40 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   };
 
+  const renderSurfaceContent = () => {
+    if (surface === 'graph') {
+      return renderGraphSurfaceSection();
+    }
+
+    if (surface === 'tree') {
+      return (
+        <OntologyTreeView
+          groups={treeGroups}
+          selectedNodeId={selectedNode?.id}
+          onSelect={setSelectedNode}
+        />
+      );
+    }
+
+    return (
+      <OntologyTermEditor
+        edges={(filteredGraphData?.edges ?? []).filter(
+          (edge) => edge.relationType !== ASSET_RELATION_TYPE
+        )}
+        isEditable={isEditMode}
+        nodes={filteredGraphData?.nodes ?? []}
+        relationTypes={relationTypes}
+        selectedNode={selectedNode}
+        onCreateRelation={handleCreateRelation}
+        onDeleteTerm={() => {
+          setSelectedNode(null);
+          handleRefresh();
+        }}
+        onSelectNode={setSelectedNode}
+      />
+    );
+  };
+
   const renderExplorerContent = () => (
     <div
       className={classNames(
@@ -1400,31 +1434,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               ? 'tw:border-0'
               : 'tw:rounded-lg tw:border tw:border-utility-gray-blue-100'
           )}>
-          {surface === 'graph' ? (
-            renderGraphSurfaceSection()
-          ) : surface === 'tree' ? (
-            <OntologyTreeView
-              groups={treeGroups}
-              selectedNodeId={selectedNode?.id}
-              onSelect={setSelectedNode}
-            />
-          ) : (
-            <OntologyTermEditor
-              edges={(filteredGraphData?.edges ?? []).filter(
-                (edge) => edge.relationType !== ASSET_RELATION_TYPE
-              )}
-              isEditable={isEditMode}
-              nodes={filteredGraphData?.nodes ?? []}
-              relationTypes={relationTypes}
-              selectedNode={selectedNode}
-              onCreateRelation={handleCreateRelation}
-              onDeleteTerm={() => {
-                setSelectedNode(null);
-                handleRefresh();
-              }}
-              onSelectNode={setSelectedNode}
-            />
-          )}
+          {renderSurfaceContent()}
 
           {renderEntityPanel()}
         </div>
