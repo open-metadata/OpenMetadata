@@ -34,12 +34,10 @@ export const DataHealthScore: FC<Props> = ({
     {...props}>
     <path
       d="M2.398 6.218c.8-3.033 4.344-5.173 7.719-1.03 3.809-4.673 7.83-1.354 7.882 2.226 0 5.328-6.375 9.702-7.882 9.702-.902 0-3.544-1.564-5.523-3.961"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
       d="M13.273 9.372H11.38l-1.892 2.523L6.967 7.48l-1.892 2.523H2"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

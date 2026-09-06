@@ -34,12 +34,10 @@ export const Version: FC<Props> = ({
     {...props}>
     <path
       d="M10 18a8 8 0 0 1 0-16c3.582 0 6.581 2.354 7.6 5.6h-2"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
       d="M10 6.8V10l1.6 1.601m6.363-.801q.035-.395.036-.8m-5.6 8q.41-.136.8-.313M17.03 14a9 9 0 0 0 .412-.923m-2.49 3.507q.413-.343.78-.739"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

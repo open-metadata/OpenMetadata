@@ -34,7 +34,6 @@ export const RunProfiler: FC<Props> = ({
     {...props}>
     <path
       d="M12.402 2h-4M3.6 11.198A6.8 6.8 0 0 1 15.21 6.39m0 0a6.8 6.8 0 0 1-4.808 11.608H2.8M15.209 6.39l1.192-1.192M6.8 15.602h-4M5.2 13.2H2.8m7.598-2.002 2.8-2.8"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

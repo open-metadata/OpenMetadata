@@ -34,7 +34,6 @@ export const DriveService: FC<Props> = ({
     {...props}>
     <path
       d="M5.991 15.577h8.571a3.428 3.428 0 0 0 .429-6.831 4.8 4.8 0 0 0-9.428-.712 3.777 3.777 0 0 0 .428 7.542"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

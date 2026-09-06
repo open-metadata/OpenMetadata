@@ -34,7 +34,6 @@ export const ApiEndpoint: FC<Props> = ({
     {...props}>
     <path
       d="m5.733 5.733-2.58 2.95a2 2 0 0 0 0 2.634l2.58 2.95m8.534-8.534 2.58 2.95a2 2 0 0 1 0 2.634l-2.58 2.95M11.6 3.066 8.4 16.932"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

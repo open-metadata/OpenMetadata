@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, SVGProps } from 'react';
+import * as React from 'react';
+import type { SVGProps, FC } from 'react';
 interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
@@ -33,7 +34,6 @@ export const NoSearch: FC<Props> = ({
     {...props}>
     <path
       d="m14.445 14.445 3.556 3.556M10 2.051a7.112 7.112 0 1 0 6.168 6.168m.054-6.223L12.81 5.41m3.413 0L12.81 1.996"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

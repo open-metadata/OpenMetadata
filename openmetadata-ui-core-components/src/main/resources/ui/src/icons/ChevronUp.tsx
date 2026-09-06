@@ -34,7 +34,6 @@ export const ChevronUp: FC<Props> = ({
     {...props}>
     <path
       d="M18 13.691 11.058 6.75a1.497 1.497 0 0 0-2.116 0L2 13.69"
-      stroke="currentColor"
       strokeWidth={1.8}
     />
   </svg>

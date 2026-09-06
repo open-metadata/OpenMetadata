@@ -32,14 +32,9 @@ export const Chart: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M2 2v15a1 1 0 0 0 1 1h15"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2 2v15a1 1 0 0 0 1 1h15" strokeWidth={1.3} />
     <path
       d="m5 14.118 2.106-2.633a1 1 0 0 1 1.372-.181l1.102.808a1 1 0 0 0 1.265-.068l5.143-4.689"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

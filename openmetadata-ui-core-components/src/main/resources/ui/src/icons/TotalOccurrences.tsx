@@ -32,14 +32,9 @@ export const TotalOccurrences: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16" strokeWidth={1.3} />
     <path
       d="M10 9.1v1.8m1.2-.9a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

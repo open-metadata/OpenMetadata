@@ -34,7 +34,6 @@ export const ArrowLeft: FC<Props> = ({
     {...props}>
     <path
       d="m9.239 2-6.81 6.942a1.517 1.517 0 0 0 .001 2.116L9.239 18m-6.444-8H18"
-      stroke="currentColor"
       strokeWidth={1.8}
     />
   </svg>

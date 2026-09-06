@@ -32,7 +32,7 @@ export const PlusCircle: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.8}>
+    <g clipPath="url(#a)" strokeWidth={1.8}>
       <circle cx={10.441} cy={9.613} r={8} />
       <path d="M10.441 5.613v8m4-4h-8" />
     </g>

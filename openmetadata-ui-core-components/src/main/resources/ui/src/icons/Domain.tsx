@@ -32,16 +32,9 @@ export const Domain: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
-    <ellipse
-      cx={10.001}
-      cy={10}
-      rx={3.2}
-      ry={8}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path d="M2.8 10h14.4" stroke="currentColor" strokeWidth={1.3} />
+    <circle cx={10} cy={10} r={8} strokeWidth={1.3} />
+    <ellipse cx={10.001} cy={10} rx={3.2} ry={8} strokeWidth={1.3} />
+    <path d="M2.8 10h14.4" strokeWidth={1.3} />
   </svg>
 );
 Domain.displayName = 'Domain';

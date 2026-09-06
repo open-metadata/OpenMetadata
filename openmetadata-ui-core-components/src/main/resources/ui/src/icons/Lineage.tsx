@@ -34,27 +34,12 @@ export const Lineage: FC<Props> = ({
     {...props}>
     <path
       d="M12.183 10H8.547m3.636-5.602c-.764 0-1.382.62-1.382 1.382v8.437a1.38 1.38 0 0 0 1.381 1.381"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
-    <rect
-      height={6.4}
-      rx={3.2}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={6.4}
-      x={2}
-      y={6.801}
-    />
-    <circle cx={16} cy={4} r={1.35} stroke="currentColor" strokeWidth={1.3} />
-    <circle
-      cx={16}
-      cy={9.602}
-      r={1.35}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle cx={16} cy={16} r={1.35} stroke="currentColor" strokeWidth={1.3} />
+    <rect height={6.4} rx={3.2} strokeWidth={1.3} width={6.4} x={2} y={6.801} />
+    <circle cx={16} cy={4} r={1.35} strokeWidth={1.3} />
+    <circle cx={16} cy={9.602} r={1.35} strokeWidth={1.3} />
+    <circle cx={16} cy={16} r={1.35} strokeWidth={1.3} />
   </svg>
 );
 Lineage.displayName = 'Lineage';

@@ -34,12 +34,10 @@ export const MetadataService: FC<Props> = ({
     {...props}>
     <path
       d="M16.222 2.89H3.778A1.78 1.78 0 0 0 2 4.669v10.667c0 .982.796 1.778 1.778 1.778h12.444c.982 0 1.778-.796 1.778-1.778V4.668c0-.981-.796-1.777-1.778-1.777M2 6.89h16"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
       d="M7.332 9.559 5.555 11.78l1.777 2.222m5.334-4.444 1.778 2.222-1.778 2.222"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

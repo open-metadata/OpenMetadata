@@ -32,14 +32,9 @@ export const Help: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16" strokeWidth={1.3} />
     <path
       d="M8 8a2 2 0 1 1 3.13 1.65c-.547.375-1.13.887-1.13 1.55m.1 2.602H10m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

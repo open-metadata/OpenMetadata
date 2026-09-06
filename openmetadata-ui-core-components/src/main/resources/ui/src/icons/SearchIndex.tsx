@@ -34,7 +34,6 @@ export const SearchIndex: FC<Props> = ({
     {...props}>
     <path
       d="M8.5 15a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13m9.497 3-4.2-4.2M6 7h5m-5 3h3"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

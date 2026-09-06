@@ -32,14 +32,9 @@ export const GlossaryTerm: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M3.777 15.777A2.22 2.22 0 0 1 6 13.555h10.222"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M3.777 15.777A2.22 2.22 0 0 1 6 13.555h10.222" strokeWidth={1.3} />
     <path
       d="M6 2h8.222a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2.22 2.22 0 0 1-2.223-2.222V4.222A2.22 2.22 0 0 1 6 2m1.777 4h5.334"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

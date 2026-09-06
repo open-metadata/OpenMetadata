@@ -34,7 +34,6 @@ export const TestDefinition: FC<Props> = ({
     {...props}>
     <path
       d="M3.414 7.914a2 2 0 0 1 0-2.828l1.672-1.672a2 2 0 0 1 2.828 0l8.672 8.672a2 2 0 0 1 0 2.828l-1.672 1.672a2 2 0 0 1-2.828 0zM6.5 6.5l1.6 1.6m1.4-4.6 1.6 1.6M3.733 9.5l1.6 1.6"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

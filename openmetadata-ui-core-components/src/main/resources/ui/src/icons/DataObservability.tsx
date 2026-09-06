@@ -34,14 +34,9 @@ export const DataObservability: FC<Props> = ({
     {...props}>
     <path
       d="M8.5 15a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13m9.5 3-4.2-4.2"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
-    <path
-      d="M5.8 8.5h1.4l1-2.2 1.6 3.8 1-1.6H12"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M5.8 8.5h1.4l1-2.2 1.6 3.8 1-1.6H12" strokeWidth={1.3} />
   </svg>
 );
 DataObservability.displayName = 'DataObservability';

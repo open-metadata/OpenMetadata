@@ -34,17 +34,14 @@ export const StorageService: FC<Props> = ({
     {...props}>
     <path
       d="M10 7.136c3.818 0 6.913-1.15 6.913-2.568S13.818 2 10 2 3.086 3.15 3.086 4.568 6.18 7.136 10 7.136"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
       d="M3.086 4.566v10.865c0 1.432 3.091 2.568 6.914 2.568s6.913-1.136 6.913-2.568V4.566"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
       d="M3.086 10c0 1.432 3.091 2.568 6.914 2.568s6.913-1.136 6.913-2.568"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

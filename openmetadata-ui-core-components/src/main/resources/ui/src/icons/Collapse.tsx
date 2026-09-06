@@ -32,7 +32,7 @@ export const Collapse: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M18 10H2" stroke="currentColor" strokeWidth={1.8} />
+    <path d="M18 10H2" strokeWidth={1.8} />
   </svg>
 );
 Collapse.displayName = 'Collapse';

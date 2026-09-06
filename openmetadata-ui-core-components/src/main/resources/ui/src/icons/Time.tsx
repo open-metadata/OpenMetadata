@@ -32,12 +32,8 @@ export const Time: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path d="M10 6.8V10l1.6 1.6" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16" strokeWidth={1.3} />
+    <path d="M10 6.8V10l1.6 1.6" strokeWidth={1.3} />
   </svg>
 );
 Time.displayName = 'Time';

@@ -34,7 +34,6 @@ export const ListExpand: FC<Props> = ({
     {...props}>
     <path
       d="M2 3.73h6.018M2 7.91h6.018M2 12.09h6.018M2 16.27h6.018m9.983-9.5-3.04-3.04-3.04 3.04m6.08 6.363-3.04 3.04-3.04-3.04"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

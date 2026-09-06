@@ -34,12 +34,10 @@ export const ActivePipeline: FC<Props> = ({
     {...props}>
     <path
       d="M15.605 9.998a2.4 2.4 0 1 1-4.8 0 2.4 2.4 0 0 1 4.8 0"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
       d="M13.2 5.2H6.8a4.8 4.8 0 1 0 0 9.6h6.4a4.8 4.8 0 1 0 0-9.6"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

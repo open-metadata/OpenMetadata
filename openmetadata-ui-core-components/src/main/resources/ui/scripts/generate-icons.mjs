@@ -79,7 +79,20 @@ async function eslintFix(code, filePath) {
 const sharedPlugins = [
   {
     name: 'preset-default',
-    params: { overrides: { removeViewBox: false } },
+    params: {
+      overrides: {
+        removeViewBox: false,
+        // `removeUselessStrokeAndFill` strips stroke-width/linecap/linejoin
+        // from any element that no longer carries a `stroke`. The regular
+        // pipeline's `removePerPathStroke` deliberately removes per-element
+        // `stroke` so paths inherit the root `stroke={color}` — without this
+        // override, a later multipass would treat each path's `stroke-width`
+        // as orphaned and silently delete it, regressing stroke weight. Safe
+        // for the custom pipeline too: the four badge icons regenerate
+        // byte-identical.
+        removeUselessStrokeAndFill: false,
+      },
+    },
   },
   { name: 'cleanupIds', params: { minify: true, remove: true } },
   // Remove the root <svg>'s width/height — SVGR's svgProps re-injects them
@@ -104,6 +117,27 @@ const sharedPlugins = [
 const removeLinecapLinejoin = {
   name: 'removeAttrs',
   params: { attrs: ['stroke-linecap', 'stroke-linejoin'] },
+};
+
+/** Regular icons only: strip the per-element `stroke` that `replaceHardcodedColors`
+ *  emits (hex → currentColor) so every shape inherits the root `stroke={color}`
+ *  binding SVGR injects AFTER SVGO. Without this, each path's `stroke="currentColor"`
+ *  (or a `<g>`'s, where SVGO hoists common stroke attrs onto the parent) shadows
+ *  the root via SVG2 attribute inheritance, so an explicit `color` prop is
+ *  ignored — only the default `'currentColor'` ever appears to "work".
+ *
+ *  Uses SVGO's `removeAttrs` (same plugin already used for linecap/linejoin):
+ *  its matcher anchors the attribute name as `^stroke$`, so it never touches
+ *  `stroke-width`/`stroke-linecap`/`stroke-linejoin`. `preserveCurrentColor`
+ *  is set explicitly to `false` (the svgo@3.3.x default) so
+ *  `stroke="currentColor"` is removed, not re-protected — guarding against a
+ *  future maintainer flipping it to `true`, which would re-introduce the bug.
+ *  Scoped to the regular pipeline only: `svgoCustomConfig` never lists this
+ *  plugin, so the four hand-authored badge icons keep their brand strokes
+ *  (`#C67E17`, etc.). */
+const removePerPathStroke = {
+  name: 'removeAttrs',
+  params: { attrs: ['stroke'], preserveCurrentColor: false },
 };
 
 /** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
@@ -137,6 +171,12 @@ const svgoRegularConfig = {
         },
       }),
     },
+    // Strip the per-element `stroke` written by `replaceHardcodedColors` so
+    // each shape inherits the root `stroke={color}` (SVGR injects that root
+    // binding AFTER SVGO, so it is never touched here). Must run AFTER
+    // `replaceHardcodedColors`; with multipass the result is stable since no
+    // hex stroke survives the first pass for a later pass to re-convert.
+    removePerPathStroke,
   ],
 };
 

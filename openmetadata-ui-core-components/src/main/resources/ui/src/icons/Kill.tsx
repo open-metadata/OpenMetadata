@@ -34,7 +34,6 @@ export const Kill: FC<Props> = ({
     {...props}>
     <path
       d="m12.4 7.6-4.8 4.8m0-4.8 4.8 4.8M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

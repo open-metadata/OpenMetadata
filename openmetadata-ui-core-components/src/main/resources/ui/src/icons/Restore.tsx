@@ -34,7 +34,6 @@ export const Restore: FC<Props> = ({
     {...props}>
     <path
       d="M3.593 2v2.506a.25.25 0 0 0 .444.16A8 8 0 1 1 2 10"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

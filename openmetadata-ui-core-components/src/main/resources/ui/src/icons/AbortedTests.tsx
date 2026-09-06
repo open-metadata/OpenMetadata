@@ -34,7 +34,6 @@ export const AbortedTests: FC<Props> = ({
     {...props}>
     <path
       d="M9.777 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16m-3.152-8h6.305"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>

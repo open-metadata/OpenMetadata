@@ -34,14 +34,9 @@ export const Home: FC<Props> = ({
     {...props}>
     <path
       d="M3.598 16.469V10.25a2 2 0 0 1 .53-1.356l4.4-4.767a2 2 0 0 1 2.94 0l4.4 4.767a2 2 0 0 1 .53 1.357v6.217a1 1 0 0 1-1 1h-2.8a1 1 0 0 1-1-1v-2.594a1 1 0 0 0-1-1h-1.2a1 1 0 0 0-1 1v2.594a1 1 0 0 1-1 1h-2.8a1 1 0 0 1-1-1Z"
-      stroke="currentColor"
       strokeWidth={1.3}
     />
-    <path
-      d="M2 11.069 8.54 4.09a2 2 0 0 1 2.92 0L18 11.07"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2 11.069 8.54 4.09a2 2 0 0 1 2.92 0L18 11.07" strokeWidth={1.3} />
   </svg>
 );
 Home.displayName = 'Home';
