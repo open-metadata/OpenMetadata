@@ -13,5 +13,6 @@
       "$ref": "./openMetadataBaseUrlConfiguration.json"
     }
   },
+  "required": ["email", "serverUrl"],
   "additionalProperties": false
 }
