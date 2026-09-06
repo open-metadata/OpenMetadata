@@ -18,14 +18,22 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.MlModelService;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -44,10 +52,18 @@ class MigrationUtilTest {
   private CollectionDAO.TableDAO tableDAO;
   private CollectionDAO.StoredProcedureDAO storedProcedureDAO;
   private CollectionDAO.DashboardServiceDAO dashboardServiceDAO;
+  private CollectionDAO.DashboardDAO dashboardDAO;
+  private CollectionDAO.ChartDAO chartDAO;
   private CollectionDAO.DataModelDAO dashboardDataModelDAO;
   private CollectionDAO.ApiServiceDAO apiServiceDAO;
   private CollectionDAO.APICollectionDAO apiCollectionDAO;
   private CollectionDAO.APIEndpointDAO apiEndpointDAO;
+  private CollectionDAO.PipelineServiceDAO pipelineServiceDAO;
+  private CollectionDAO.PipelineDAO pipelineDAO;
+  private CollectionDAO.MessagingServiceDAO messagingServiceDAO;
+  private CollectionDAO.TopicDAO topicDAO;
+  private CollectionDAO.MlModelServiceDAO mlModelServiceDAO;
+  private CollectionDAO.MlModelDAO mlModelDAO;
 
   @BeforeEach
   void setUp() {
@@ -60,10 +76,18 @@ class MigrationUtilTest {
     tableDAO = mock(CollectionDAO.TableDAO.class);
     storedProcedureDAO = mock(CollectionDAO.StoredProcedureDAO.class);
     dashboardServiceDAO = mock(CollectionDAO.DashboardServiceDAO.class);
+    dashboardDAO = mock(CollectionDAO.DashboardDAO.class);
+    chartDAO = mock(CollectionDAO.ChartDAO.class);
     dashboardDataModelDAO = mock(CollectionDAO.DataModelDAO.class);
     apiServiceDAO = mock(CollectionDAO.ApiServiceDAO.class);
     apiCollectionDAO = mock(CollectionDAO.APICollectionDAO.class);
     apiEndpointDAO = mock(CollectionDAO.APIEndpointDAO.class);
+    pipelineServiceDAO = mock(CollectionDAO.PipelineServiceDAO.class);
+    pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
+    messagingServiceDAO = mock(CollectionDAO.MessagingServiceDAO.class);
+    topicDAO = mock(CollectionDAO.TopicDAO.class);
+    mlModelServiceDAO = mock(CollectionDAO.MlModelServiceDAO.class);
+    mlModelDAO = mock(CollectionDAO.MlModelDAO.class);
 
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(collectionDAO.dbServiceDAO()).thenReturn(databaseServiceDAO);
@@ -72,10 +96,18 @@ class MigrationUtilTest {
     when(collectionDAO.tableDAO()).thenReturn(tableDAO);
     when(collectionDAO.storedProcedureDAO()).thenReturn(storedProcedureDAO);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(dashboardServiceDAO);
+    when(collectionDAO.dashboardDAO()).thenReturn(dashboardDAO);
+    when(collectionDAO.chartDAO()).thenReturn(chartDAO);
     when(collectionDAO.dashboardDataModelDAO()).thenReturn(dashboardDataModelDAO);
     when(collectionDAO.apiServiceDAO()).thenReturn(apiServiceDAO);
     when(collectionDAO.apiCollectionDAO()).thenReturn(apiCollectionDAO);
     when(collectionDAO.apiEndpointDAO()).thenReturn(apiEndpointDAO);
+    when(collectionDAO.pipelineServiceDAO()).thenReturn(pipelineServiceDAO);
+    when(collectionDAO.pipelineDAO()).thenReturn(pipelineDAO);
+    when(collectionDAO.messagingServiceDAO()).thenReturn(messagingServiceDAO);
+    when(collectionDAO.topicDAO()).thenReturn(topicDAO);
+    when(collectionDAO.mlModelServiceDAO()).thenReturn(mlModelServiceDAO);
+    when(collectionDAO.mlModelDAO()).thenReturn(mlModelDAO);
   }
 
   @Test
@@ -450,6 +482,173 @@ class MigrationUtilTest {
     MigrationUtil.fixApiEndpointFqnHash(handle, collectionDAO);
 
     verify(apiEndpointDAO, never()).update(any(APIEndpoint.class));
+  }
+
+  @Test
+  void fixDashboardFqnHashUpdatesDashboardsUnderQuotedServices() {
+    UUID serviceId = UUID.randomUUID();
+    UUID dashboardId = UUID.randomUUID();
+    stubServiceRows("dashboard_service_entity", serviceId);
+    when(dashboardServiceDAO.findEntityById(serviceId))
+        .thenReturn(
+            new DashboardService()
+                .withId(serviceId)
+                .withName("dash.with.dot")
+                .withFullyQualifiedName("\"dash.with.dot\""));
+    when(relationshipDAO.findTo(
+            serviceId, Entity.DASHBOARD_SERVICE, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD))
+        .thenReturn(List.of(relationship(dashboardId)));
+
+    Dashboard dashboard =
+        new Dashboard()
+            .withId(dashboardId)
+            .withName("sales")
+            .withFullyQualifiedName("dash.with.dot.sales");
+    when(dashboardDAO.findEntityById(dashboardId)).thenReturn(dashboard);
+
+    MigrationUtil.fixDashboardFqnHash(handle, collectionDAO);
+
+    ArgumentCaptor<Dashboard> captor = ArgumentCaptor.forClass(Dashboard.class);
+    verify(dashboardDAO).update(captor.capture());
+    assertEquals(
+        FullyQualifiedName.add("\"dash.with.dot\"", dashboard.getName()),
+        captor.getValue().getFullyQualifiedName());
+  }
+
+  @Test
+  void fixChartFqnHashUpdatesChartsUnderQuotedServices() {
+    UUID serviceId = UUID.randomUUID();
+    UUID chartId = UUID.randomUUID();
+    stubServiceRows("dashboard_service_entity", serviceId);
+    when(dashboardServiceDAO.findEntityById(serviceId))
+        .thenReturn(
+            new DashboardService()
+                .withId(serviceId)
+                .withName("dash.with.dot")
+                .withFullyQualifiedName("\"dash.with.dot\""));
+    when(relationshipDAO.findTo(
+            serviceId, Entity.DASHBOARD_SERVICE, Relationship.CONTAINS.ordinal(), Entity.CHART))
+        .thenReturn(List.of(relationship(chartId)));
+
+    Chart chart =
+        new Chart()
+            .withId(chartId)
+            .withName("revenue")
+            .withFullyQualifiedName("dash.with.dot.revenue");
+    when(chartDAO.findEntityById(chartId)).thenReturn(chart);
+
+    MigrationUtil.fixChartFqnHash(handle, collectionDAO);
+
+    ArgumentCaptor<Chart> captor = ArgumentCaptor.forClass(Chart.class);
+    verify(chartDAO).update(captor.capture());
+    assertEquals(
+        FullyQualifiedName.add("\"dash.with.dot\"", chart.getName()),
+        captor.getValue().getFullyQualifiedName());
+  }
+
+  @Test
+  void fixPipelineFqnHashUpdatesPipelinesUnderQuotedServices() {
+    UUID serviceId = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    stubServiceRows("pipeline_service_entity", serviceId);
+    when(pipelineServiceDAO.findEntityById(serviceId))
+        .thenReturn(
+            new PipelineService()
+                .withId(serviceId)
+                .withName("pipe.with.dot")
+                .withFullyQualifiedName("\"pipe.with.dot\""));
+    when(relationshipDAO.findTo(
+            serviceId, Entity.PIPELINE_SERVICE, Relationship.CONTAINS.ordinal(), Entity.PIPELINE))
+        .thenReturn(List.of(relationship(pipelineId)));
+
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(pipelineId)
+            .withName("etl")
+            .withFullyQualifiedName("pipe.with.dot.etl");
+    when(pipelineDAO.findEntityById(pipelineId)).thenReturn(pipeline);
+
+    MigrationUtil.fixPipelineFqnHash(handle, collectionDAO);
+
+    ArgumentCaptor<Pipeline> captor = ArgumentCaptor.forClass(Pipeline.class);
+    verify(pipelineDAO).update(captor.capture());
+    assertEquals(
+        FullyQualifiedName.add("\"pipe.with.dot\"", pipeline.getName()),
+        captor.getValue().getFullyQualifiedName());
+  }
+
+  @Test
+  void fixPipelineFqnHashSwallowsServiceLookupFailures() {
+    UUID serviceId = UUID.randomUUID();
+    stubServiceRows("pipeline_service_entity", serviceId);
+    when(pipelineServiceDAO.findEntityById(serviceId))
+        .thenThrow(new IllegalStateException("service lookup failed"));
+
+    MigrationUtil.fixPipelineFqnHash(handle, collectionDAO);
+
+    verify(pipelineDAO, never()).update(any(Pipeline.class));
+  }
+
+  @Test
+  void fixTopicFqnHashUpdatesTopicsUnderQuotedServices() {
+    UUID serviceId = UUID.randomUUID();
+    UUID topicId = UUID.randomUUID();
+    stubServiceRows("messaging_service_entity", serviceId);
+    when(messagingServiceDAO.findEntityById(serviceId))
+        .thenReturn(
+            new MessagingService()
+                .withId(serviceId)
+                .withName("msg.with.dot")
+                .withFullyQualifiedName("\"msg.with.dot\""));
+    when(relationshipDAO.findTo(
+            serviceId, Entity.MESSAGING_SERVICE, Relationship.CONTAINS.ordinal(), Entity.TOPIC))
+        .thenReturn(List.of(relationship(topicId)));
+
+    Topic topic =
+        new Topic()
+            .withId(topicId)
+            .withName("events")
+            .withFullyQualifiedName("msg.with.dot.events");
+    when(topicDAO.findEntityById(topicId)).thenReturn(topic);
+
+    MigrationUtil.fixTopicFqnHash(handle, collectionDAO);
+
+    ArgumentCaptor<Topic> captor = ArgumentCaptor.forClass(Topic.class);
+    verify(topicDAO).update(captor.capture());
+    assertEquals(
+        FullyQualifiedName.add("\"msg.with.dot\"", topic.getName()),
+        captor.getValue().getFullyQualifiedName());
+  }
+
+  @Test
+  void fixMlModelFqnHashUpdatesMlModelsUnderQuotedServices() {
+    UUID serviceId = UUID.randomUUID();
+    UUID mlModelId = UUID.randomUUID();
+    stubServiceRows("mlmodel_service_entity", serviceId);
+    when(mlModelServiceDAO.findEntityById(serviceId))
+        .thenReturn(
+            new MlModelService()
+                .withId(serviceId)
+                .withName("ml.with.dot")
+                .withFullyQualifiedName("\"ml.with.dot\""));
+    when(relationshipDAO.findTo(
+            serviceId, Entity.MLMODEL_SERVICE, Relationship.CONTAINS.ordinal(), Entity.MLMODEL))
+        .thenReturn(List.of(relationship(mlModelId)));
+
+    MlModel mlModel =
+        new MlModel()
+            .withId(mlModelId)
+            .withName("classifier")
+            .withFullyQualifiedName("ml.with.dot.classifier");
+    when(mlModelDAO.findEntityById(mlModelId)).thenReturn(mlModel);
+
+    MigrationUtil.fixMlModelFqnHash(handle, collectionDAO);
+
+    ArgumentCaptor<MlModel> captor = ArgumentCaptor.forClass(MlModel.class);
+    verify(mlModelDAO).update(captor.capture());
+    assertEquals(
+        FullyQualifiedName.add("\"ml.with.dot\"", mlModel.getName()),
+        captor.getValue().getFullyQualifiedName());
   }
 
   @Test
