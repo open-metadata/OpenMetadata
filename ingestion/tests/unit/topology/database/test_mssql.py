@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -310,6 +311,34 @@ class MssqlUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+
+        # The executed SQL must scope sys.procedures by the routine's schema so a
+        # same-named procedure in another schema cannot fan out and override the
+        # definition (regression guard for the cross-schema join bug).
+        executed_sql = str(mock_conn.execute.call_args.args[0])
+        self.assertIn("sch.name = r.ROUTINE_SCHEMA", executed_sql)
+        self.assertIn(f"ROUTINE_CATALOG = '{MOCK_DATABASE.name.root}'", executed_sql)
+        self.assertIn(f"ROUTINE_SCHEMA = '{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+
+
+class TestMssqlStoredProceduresQuery:
+    """``MSSQL_GET_STORED_PROCEDURES`` must scope ``sys.procedures`` by schema.
+
+    Joining ``INFORMATION_SCHEMA.ROUTINES`` to ``sys.procedures`` on the bare
+    procedure name only (``p.name = r.ROUTINE_NAME``) causes a 1-to-k fan-out when
+    several schemas in the same database hold a same-named procedure (e.g.
+    ``dbo.cleanup`` and ``sales.cleanup``), so the wrong definition can be
+    attached to the ingested entity. The query must constrain ``sys.procedures``
+    to the routine's schema, matching the disambiguation pattern already used by
+    ``MSSQL_GET_STORED_PROCEDURE_COMMENTS`` and
+    ``MSSQL_GET_ENCRYPTED_STORED_PROCEDURES`` in the same file.
+    """
+
+    def test_query_scopes_sys_procedures_by_routine_schema(self):
+        # The schema predicate on sys.procedures is the actual fix; assert it verbatim
+        # so a future edit that drops it is caught.
+        assert "JOIN sys.schemas sch ON p.schema_id = sch.schema_id" in MSSQL_GET_STORED_PROCEDURES
+        assert "sch.name = r.ROUTINE_SCHEMA" in MSSQL_GET_STORED_PROCEDURES
 
 
 class TestUpdateMssqlIschemaNames:
