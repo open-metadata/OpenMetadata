@@ -655,13 +655,15 @@ const ContextCenterDocumentsPage: FC = () => {
     [fetchFolders]
   );
 
-  const showDocumentsEmptyState =
+  const isDocumentsViewIdle =
     !isDocumentsLoading &&
     !isFoldersLoading &&
     !documentSearchQuery &&
-    !selectedFolderId &&
-    allDocuments.length === 0 &&
-    folders.length === 0;
+    !selectedFolderId;
+  const hasNoDocumentsOrFolders =
+    allDocuments.length === 0 && folders.length === 0;
+  const showDocumentsEmptyState =
+    isDocumentsViewIdle && hasNoDocumentsOrFolders;
 
   return (
     <Box

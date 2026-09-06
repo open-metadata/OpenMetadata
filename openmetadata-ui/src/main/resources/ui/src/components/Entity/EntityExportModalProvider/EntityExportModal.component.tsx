@@ -26,7 +26,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Loading01 } from '@untitledui/icons';
 import { lowerCase } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BETA_EXPORT_TYPES,
@@ -83,6 +83,13 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
   }, [exportData.exportTypes]);
   const isExportInProgress =
     csvExportJob?.status === 'IN_PROGRESS' && !csvExportJob.statusUnavailable;
+
+  let alertVariant: 'error' | 'brand' | 'success' = 'success';
+  if (csvExportJob?.error || csvExportJob?.statusUnavailable) {
+    alertVariant = 'error';
+  } else if (downloading) {
+    alertVariant = 'brand';
+  }
 
   return (
     <ModalOverlay isOpen>
@@ -142,7 +149,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
             </InputGroup>
 
             {csvExportJob?.jobId && (
-              <>
+              <Fragment>
                 {isExportInProgress &&
                   csvExportJob.progress !== undefined &&
                   csvExportJob.total !== undefined && (
@@ -173,16 +180,10 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
                           })
                         : csvExportJob.error ?? csvExportJob.message ?? ''
                     }
-                    variant={
-                      csvExportJob.error || csvExportJob.statusUnavailable
-                        ? 'error'
-                        : downloading
-                        ? 'brand'
-                        : 'success'
-                    }
+                    variant={alertVariant}
                   />
                 )}
-              </>
+              </Fragment>
             )}
           </Dialog.Content>
           <Dialog.Footer>

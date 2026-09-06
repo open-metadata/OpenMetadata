@@ -511,16 +511,16 @@ export function useGraphDataBuilder({
           .filter((n) => n.type !== 'dataAsset' && n.type !== 'metric')
           .map((n) => n.id)
       );
+      const getTermColor = (termId: string) => {
+        const termNode = nodesForGraph.find((n) => n.id === termId);
+
+        return termNode?.glossaryId
+          ? glossaryColorMap[termNode.glossaryId] ?? COLOR_BLUE_600
+          : COLOR_BLUE_600;
+      };
       edgesForGraph.forEach((edge) => {
         const fromIsTerm = termIdSet.has(edge.from);
         const toIsTerm = termIdSet.has(edge.to);
-        const getTermColor = (termId: string) => {
-          const termNode = nodesForGraph.find((n) => n.id === termId);
-
-          return termNode?.glossaryId
-            ? glossaryColorMap[termNode.glossaryId] ?? COLOR_BLUE_600
-            : COLOR_BLUE_600;
-        };
         if (fromIsTerm && !toIsTerm) {
           localAssetToTermColor.set(edge.to, getTermColor(edge.from));
         } else if (toIsTerm && !fromIsTerm) {
@@ -538,25 +538,24 @@ export function useGraphDataBuilder({
       const shouldTruncateLabel =
         isInModelMode || (explorationMode === 'data' && !isDataAsset);
       const estimatedWidth = estimateNodeWidth(rawLabel);
-      const nodeWidth = studioMode
-        ? MODEL_NODE_MAX_WIDTH
-        : shouldTruncateLabel
+      const truncatedNodeWidth = shouldTruncateLabel
         ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
         : estimatedWidth;
+      const nodeWidth = studioMode ? MODEL_NODE_MAX_WIDTH : truncatedNodeWidth;
       const label = shouldTruncateLabel
         ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
         : rawLabel;
       const studioAccentColor = studioMode
         ? getStudioNodeAccentColor(node)
         : undefined;
-      const pos =
-        explorationMode === 'hierarchy'
-          ? nodePositions?.[node.id]
-          : explorationMode === 'data'
-          ? isDataAsset
-            ? undefined
-            : dataModeTermPositions[node.id]
-          : undefined;
+      let pos: { x: number; y: number } | undefined;
+      if (explorationMode === 'hierarchy') {
+        pos = nodePositions?.[node.id];
+      } else if (explorationMode === 'data' && !isDataAsset) {
+        pos = dataModeTermPositions[node.id];
+      } else {
+        pos = undefined;
+      }
       const isSelected =
         explorationMode === 'hierarchy'
           ? node.termId === selectedNodeId || selectedNodeId === node.id
@@ -762,29 +761,33 @@ export function useGraphDataBuilder({
         const isCrossTeam = Boolean(
           fromGlossary && toGlossary && fromGlossary !== toGlossary
         );
+        const isScopedHighlighted =
+          selectedScopedIds != null &&
+          (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to));
         const isHighlighted =
           selectedNodeId === rep.from ||
           selectedNodeId === rep.to ||
-          (selectedScopedIds != null &&
-            (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to)));
-        const isDimmedBySelection =
+          isScopedHighlighted;
+        const isOtherNodeSelected =
           selectedNodeId !== null &&
           selectedNodeId !== rep.from &&
-          selectedNodeId !== rep.to &&
-          !(
-            selectedScopedIds?.has(rep.from) || selectedScopedIds?.has(rep.to)
-          ) &&
+          selectedNodeId !== rep.to;
+        const isOutsideScopedSelection = !(
+          selectedScopedIds?.has(rep.from) || selectedScopedIds?.has(rep.to)
+        );
+        const isDimmedBySelection =
+          isOtherNodeSelected &&
+          isOutsideScopedSelection &&
           !neighborSet.has(rep.from) &&
           !neighborSet.has(rep.to);
 
         const fromType = nodeIdToType.get(rep.from);
         const toType = nodeIdToType.get(rep.to);
+        const isFromTypeTerm =
+          fromType !== 'dataAsset' && fromType !== 'metric';
+        const isToTypeTerm = toType !== 'dataAsset' && toType !== 'metric';
         const isTermTermInDataMode =
-          explorationMode === 'data' &&
-          fromType !== 'dataAsset' &&
-          fromType !== 'metric' &&
-          toType !== 'dataAsset' &&
-          toType !== 'metric';
+          explorationMode === 'data' && isFromTypeTerm && isToTypeTerm;
 
         return group.map((singleEdge, i) => {
           const edgeId = getOntologyEdgeId(singleEdge);
@@ -801,39 +804,39 @@ export function useGraphDataBuilder({
           const isObservedLineage =
             singleEdge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND;
 
-          const rawEdgeColor =
+          const isDataModeAssetEdge =
             explorationMode === 'data' &&
             !isTermTermInDataMode &&
-            !isSemanticProjection
-              ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
-              : customRelationColorMap[singleEdge.relationType] ??
-                RELATION_COLORS[singleEdge.relationType] ??
-                EDGE_STROKE_COLOR;
+            !isSemanticProjection;
+          const rawEdgeColor = isDataModeAssetEdge
+            ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
+            : customRelationColorMap[singleEdge.relationType] ??
+              RELATION_COLORS[singleEdge.relationType] ??
+              EDGE_STROKE_COLOR;
           const edgeColor = getCanvasColor(
             rawEdgeColor,
-            explorationMode === 'data' &&
-              !isTermTermInDataMode &&
-              !isSemanticProjection
+            isDataModeAssetEdge
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
               : EDGE_STROKE_COLOR
           );
 
-          const showLabel =
-            settings.showEdgeLabels &&
-            (explorationMode === 'model' ||
-              explorationMode === 'hierarchy' ||
-              isClickedEdge ||
-              isTermTermInDataMode ||
-              isSemanticProjection ||
-              isObservedLineage);
+          const isLabelableByMode =
+            explorationMode === 'model' ||
+            explorationMode === 'hierarchy' ||
+            isClickedEdge;
+          const isLabelableEdge =
+            isLabelableByMode ||
+            isTermTermInDataMode ||
+            isSemanticProjection ||
+            isObservedLineage;
+          const showLabel = settings.showEdgeLabels && isLabelableEdge;
 
-          const labelText = showLabel
-            ? singleEdge.inverseRelationType
-              ? `${formatRelationLabel(
-                  singleEdge.relationType
-                )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
-              : formatRelationLabel(singleEdge.relationType)
-            : undefined;
+          const relationLabelText = singleEdge.inverseRelationType
+            ? `${formatRelationLabel(
+                singleEdge.relationType
+              )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
+            : formatRelationLabel(singleEdge.relationType);
+          const labelText = showLabel ? relationLabelText : undefined;
           const displayLabel =
             studioMode && labelText ? labelText.toLocaleLowerCase() : labelText;
 

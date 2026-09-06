@@ -100,6 +100,12 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   onRelatedTermClick,
 }) => {
   const descriptionText = getTextFromHtmlString(entity.description);
+  const removedDiffClassName = versionStatus?.removed
+    ? 'diff-removed'
+    : undefined;
+  const diffClassName = versionStatus?.added
+    ? 'diff-added'
+    : removedDiffClassName;
   const tooltipContent = (
     <div className="tw:p-2 tw:space-y-1">
       <Typography as="p" className="tw:text-white" weight="semibold">
@@ -121,13 +127,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   return (
     <Tooltip arrow placement="bottom left" title={tooltipContent}>
       <TooltipTrigger
-        className={
-          versionStatus?.added
-            ? 'diff-added'
-            : versionStatus?.removed
-            ? 'diff-removed'
-            : undefined
-        }
+        className={diffClassName}
         data-testid={getEntityName(entity)}
         onPress={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}>
         <BadgeWithIcon
@@ -444,39 +444,39 @@ const RelatedTerms = () => {
     getRelationDisplayName,
   ]);
 
+  const canEditRelatedTerms =
+    getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) &&
+    !isVersionView &&
+    !isEditing &&
+    !isAdding;
+
   const header = (
     <div className="d-flex items-center justify-between w-full">
       <div className="d-flex items-center gap-2">
         <Typography as="span" className="text-sm font-medium">
           {t('label.related-term-plural')}
         </Typography>
-        {getPrioritizedEditPermission(
-          permissions,
-          Operation.EditGlossaryTerms
-        ) &&
-          !isVersionView &&
-          !isEditing &&
-          !isAdding && (
-            <>
-              <EditIconButton
-                newLook
-                data-testid="edit-button"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartEditing}
-              />
-              <PlusIconButton
-                data-testid="related-term-add-button"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartAdding}
-              />
-            </>
-          )}
+        {canEditRelatedTerms && (
+          <>
+            <EditIconButton
+              newLook
+              data-testid="edit-button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={handleStartEditing}
+            />
+            <PlusIconButton
+              data-testid="related-term-add-button"
+              size="small"
+              title={t('label.add-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={handleStartAdding}
+            />
+          </>
+        )}
       </div>
       {(isEditing || isAdding) && (
         <div className="d-flex items-center gap-2">

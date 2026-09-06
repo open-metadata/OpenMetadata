@@ -311,12 +311,15 @@ export const DataAssetSummaryPanelV1 = ({
     editDataProductPermission,
     editDescriptionPermission,
     editGlossaryTermsPermission,
-  } = useMemo(
-    () => ({
+  } = useMemo(() => {
+    // Columns inherit owners, domains, tier, and data products from their parent
+    // table, so those fields are never editable on a column summary.
+    const canEditColumnField = canEditSummary && !isColumnEntity;
+
+    return {
       // Columns inherit domain from table - not editable
       editDomainPermission:
-        canEditSummary &&
-        !isColumnEntity &&
+        canEditColumnField &&
         entityPermissions?.EditAll &&
         !dataAsset.deleted &&
         panelPath !== ENTITY_PATH.dataProductsTab,
@@ -330,14 +333,12 @@ export const DataAssetSummaryPanelV1 = ({
         !dataAsset.deleted,
       // Columns inherit owners from table - not editable
       editOwnerPermission:
-        canEditSummary &&
-        !isColumnEntity &&
+        canEditColumnField &&
         (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
         !dataAsset.deleted,
       // Columns inherit tier from table - not editable
       editTierPermission:
-        canEditSummary &&
-        !isColumnEntity &&
+        canEditColumnField &&
         (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
         !dataAsset.deleted,
       editTagsPermission:
@@ -346,13 +347,9 @@ export const DataAssetSummaryPanelV1 = ({
         !dataAsset.deleted,
       // Columns inherit data products from table - not editable
       editDataProductPermission:
-        canEditSummary &&
-        !isColumnEntity &&
-        entityPermissions?.EditAll &&
-        !dataAsset.deleted,
-    }),
-    [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]
-  );
+        canEditColumnField && entityPermissions?.EditAll && !dataAsset.deleted,
+    };
+  }, [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]);
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders

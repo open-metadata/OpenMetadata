@@ -96,14 +96,11 @@ const ActivityFeedCardNew = ({
   }, [feed?.about, activity?.about, activity?.entity]);
 
   const createdBy = useMemo(() => {
-    return (
-      post?.author.name ??
-      post?.author.fullyQualifiedName ??
-      feed?.createdBy?.name ??
-      feed?.createdBy?.fullyQualifiedName ??
-      activity?.actor?.name ??
-      ''
-    );
+    const postAuthor = post?.author.name ?? post?.author.fullyQualifiedName;
+    const feedCreator =
+      feed?.createdBy?.name ?? feed?.createdBy?.fullyQualifiedName;
+
+    return postAuthor ?? feedCreator ?? activity?.actor?.name ?? '';
   }, [feed?.createdBy, post?.author, activity?.actor?.name]);
 
   const feedId = feed?.id ?? activity?.id ?? '';
@@ -246,8 +243,9 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   };
 
+  const canShowFeedActions = isHovered && !isActivityEvent && !isPost;
   const feedActions =
-    isHovered && !isActivityEvent && !isPost && feed ? (
+    canShowFeedActions && feed ? (
       <ActivityFeedActions
         conversation={feed}
         conversationId={feed.id}
@@ -427,6 +425,12 @@ const ActivityFeedCardNew = ({
     );
   }
 
+  const hasNoReplies = isActivityEvent
+    ? activityReplies.length === 0
+    : (feed?.replies?.length ?? 0) === 0;
+  const shouldAddBottomMargin =
+    (showActivityFeedEditor && hasNoReplies) || isOpenInDrawer;
+
   return (
     <Card
       className={classNames(
@@ -550,12 +554,7 @@ const ActivityFeedCardNew = ({
               className={classNames(
                 'm-t-md feed-editor activity-feed-editor-container-new',
                 {
-                  'm-b-md':
-                    (showActivityFeedEditor &&
-                      (isActivityEvent
-                        ? activityReplies.length === 0
-                        : (feed?.replies?.length ?? 0) === 0)) ||
-                    isOpenInDrawer,
+                  'm-b-md': shouldAddBottomMargin,
                 }
               )}
               onSave={onSave}

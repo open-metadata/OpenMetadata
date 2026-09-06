@@ -34,7 +34,12 @@ import {
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
 } from './alert';
-import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from './common';
 import {
   ensureAccordionExpanded,
   selectComboBoxOption,
@@ -470,8 +475,8 @@ export const editObservabilityAlert = async ({
   await visitEditAlertPage(page, alertDetails, false);
 
   // Update description
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(ALERT_UPDATED_DESCRIPTION);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
   await page.click('[data-testid="source-select"]');

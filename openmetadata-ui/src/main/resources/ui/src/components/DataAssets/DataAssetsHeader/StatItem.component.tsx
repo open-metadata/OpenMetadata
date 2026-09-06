@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
 
@@ -55,26 +55,18 @@ export const StatItem = ({
     </>
   );
 
-  const interactive = onClick ? (
-    <button
+  return (
+    <Button
       aria-busy={loading || undefined}
       aria-label={srLabel ?? tooltip}
-      className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
+      className="tw:rounded tw:p-0 tw:hover:bg-transparent"
+      color="tertiary"
       data-testid={testId}
-      disabled={isDisabled}
-      type="button"
+      isDisabled={!onClick || isDisabled}
+      tooltip={tooltip}
+      tooltipPlacement="top"
       onClick={onClick}>
       <span className={labelClassName}>{label}</span>
-    </button>
-  ) : (
-    <span className={labelClassName} data-testid={testId}>
-      {label}
-    </span>
-  );
-
-  return (
-    <Tooltip placement="top" title={tooltip}>
-      <TooltipTrigger>{interactive}</TooltipTrigger>
-    </Tooltip>
+    </Button>
   );
 };

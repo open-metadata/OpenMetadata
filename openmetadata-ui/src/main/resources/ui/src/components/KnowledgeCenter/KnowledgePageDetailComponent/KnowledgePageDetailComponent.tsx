@@ -175,12 +175,15 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       });
 
       const draft = getDraft(response.id);
-      const hasChanges =
+      const descriptionChanged =
         draft &&
-        ((draft.description !== undefined &&
-          draft.description !== response.description) ||
-          (draft.displayName !== undefined &&
-            draft.displayName !== response.displayName));
+        draft.description !== undefined &&
+        draft.description !== response.description;
+      const displayNameChanged =
+        draft &&
+        draft.displayName !== undefined &&
+        draft.displayName !== response.displayName;
+      const hasChanges = descriptionChanged || displayNameChanged;
 
       const serverChangedSinceDraft =
         draft?.version !== undefined && draft.version !== response.version;

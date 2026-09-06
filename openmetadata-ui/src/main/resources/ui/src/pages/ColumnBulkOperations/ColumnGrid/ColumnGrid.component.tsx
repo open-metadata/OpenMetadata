@@ -1747,6 +1747,20 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     expandedStructRowsRef.current = columnGridListing.expandedStructRows;
   }, [columnGridListing.expandedRows, columnGridListing.expandedStructRows]);
 
+  const tryScrollToRow = useCallback((selector: string, attempt = 0) => {
+    requestAnimationFrame(() => {
+      const row = document.querySelector(selector);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (attempt < SCROLL_TO_ROW_MAX_RETRIES) {
+        setTimeout(
+          () => tryScrollToRow(selector, attempt + 1),
+          SCROLL_TO_ROW_RETRY_DELAY_MS
+        );
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const rowId = scrollToRowIdRef.current;
     if (!rowId) {
@@ -1754,22 +1768,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     }
     scrollToRowIdRef.current = null;
     const selector = `[data-row-id="${CSS.escape(rowId)}"]`;
-
-    const tryScroll = (attempt = 0) => {
-      requestAnimationFrame(() => {
-        const row = document.querySelector(selector);
-        if (row) {
-          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        } else if (attempt < SCROLL_TO_ROW_MAX_RETRIES) {
-          setTimeout(
-            () => tryScroll(attempt + 1),
-            SCROLL_TO_ROW_RETRY_DELAY_MS
-          );
-        }
-      });
-    };
-    tryScroll();
-  }, [columnGridListing.expandedRows, columnGridListing.expandedStructRows]);
+    tryScrollToRow(selector);
+  }, [
+    columnGridListing.expandedRows,
+    columnGridListing.expandedStructRows,
+    tryScrollToRow,
+  ]);
 
   // Clear highlighted rows after 1s and collapse their expanded state
   useEffect(() => {
@@ -1777,17 +1781,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       return;
     }
     const idsToCollapse = new Set(recentlyUpdatedRowIds);
+    const collapseUpdatedRows = (prev: Set<string>) => {
+      const next = new Set(prev);
+
+      idsToCollapse.forEach((id) => next.delete(id));
+
+      return next;
+    };
     const timer = setTimeout(() => {
       setRecentlyUpdatedRowIds(new Set());
       setIsUpdating(false);
 
-      columnGridListing.setExpandedRows((prev: Set<string>) => {
-        const next = new Set(prev);
-
-        idsToCollapse.forEach((id) => next.delete(id));
-
-        return next;
-      });
+      columnGridListing.setExpandedRows(collapseUpdatedRows);
     }, RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS);
 
     return () => clearTimeout(timer);
@@ -1984,9 +1989,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const validSet = new Set(validKeys);
       const previousSelected = new Set(columnGridListing.selectedEntities);
       const finalSelection = new Set<string>();
-      validKeys.forEach((id) => {
-        getAllDescendantIds(id).forEach((descId) => finalSelection.add(descId));
-      });
+      const addDescendantsToSelection = (rowId: string) => {
+        getAllDescendantIds(rowId).forEach((descId) =>
+          finalSelection.add(descId)
+        );
+      };
+      validKeys.forEach(addDescendantsToSelection);
 
       previousSelected.forEach((id) => {
         if (validSet.has(id)) {
@@ -2012,11 +2020,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           const parentWasNewlySelected = !previousSelected.has(id);
           if (parentWasNewlySelected) {
             const childIds = computeChildRowIdsFromGridItem(id);
-            childIds.forEach((childId) => {
-              getAllDescendantIds(childId).forEach((descId) =>
-                finalSelection.add(descId)
-              );
-            });
+            childIds.forEach(addDescendantsToSelection);
           }
         }
       });
@@ -2224,6 +2228,36 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     return parts[parts.length - 1] || fqn;
   }, []);
 
+  const handleDescriptionChange = useCallback(
+    (description: string, preview: string) => {
+      columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+        prev.map((row: ColumnGridRowData) =>
+          columnGridListing.isSelected(row.id)
+            ? {
+                ...row,
+                editedDescription: description,
+                editedDescriptionPreview: preview,
+              }
+            : row
+        )
+      );
+    },
+    [columnGridListing]
+  );
+
+  const handleDisplayNameSync = useCallback(
+    (value: string) => {
+      columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+        prev.map((row: ColumnGridRowData) =>
+          columnGridListing.isSelected(row.id)
+            ? { ...row, editedDisplayName: value }
+            : row
+        )
+      );
+    },
+    [columnGridListing]
+  );
+
   const drawerContent = useMemo(() => {
     const firstRow = selectedRowsData[0];
     if (!firstRow && selectedCount === 0) {
@@ -2247,28 +2281,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         ref={columnEditFormRef}
         selectedCount={selectedCount}
         selectedRowsData={selectedRowsData}
-        onDescriptionChange={(description, preview) => {
-          columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
-            prev.map((row: ColumnGridRowData) =>
-              columnGridListing.isSelected(row.id)
-                ? {
-                    ...row,
-                    editedDescription: description,
-                    editedDescriptionPreview: preview,
-                  }
-                : row
-            )
-          );
-        }}
-        onDisplayNameSync={(value) => {
-          columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
-            prev.map((row: ColumnGridRowData) =>
-              columnGridListing.isSelected(row.id)
-                ? { ...row, editedDisplayName: value }
-                : row
-            )
-          );
-        }}
+        onDescriptionChange={handleDescriptionChange}
+        onDisplayNameSync={handleDisplayNameSync}
         onTagsUpdate={(rowId, tags) => updateRowField(rowId, 'tags', tags)}
       />
     );
@@ -2280,6 +2294,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     t,
     getTagDisplayLabel,
     updateRowField,
+    handleDescriptionChange,
+    handleDisplayNameSync,
   ]);
 
   const drawerHeaderAssetLink = useMemo(() => {

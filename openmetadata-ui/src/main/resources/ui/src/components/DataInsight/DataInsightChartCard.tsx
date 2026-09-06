@@ -42,6 +42,7 @@ import {
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
@@ -100,6 +101,7 @@ export const DataInsightChartCard = ({
     entitiesSummary,
   } = useDataInsightProvider();
   const isPercentageGraph = isPercentageSystemGraph(type);
+  const chartColors = useDataInsightChartColors();
 
   const { rightSideEntityList, latestData, graphData, changeInValue } =
     useMemo(() => {
@@ -487,7 +489,8 @@ export const DataInsightChartCard = ({
               rightSideEntityList,
               activeKeys,
               activeMouseHoverKey,
-              isPercentageGraph
+              isPercentageGraph,
+              chartColors
             )}
           </ResponsiveContainer>
         </Col>

@@ -959,13 +959,14 @@ const APIEndpointSchemaV1: React.FC<{
           : [];
 
         if (nameMatch || filteredChildren.length > 0) {
+          let matchedChildren = field.children;
+          if (!nameMatch && filteredChildren.length > 0) {
+            matchedChildren = filteredChildren;
+          }
+
           acc.push({
             ...field,
-            children: nameMatch
-              ? field.children
-              : filteredChildren.length > 0
-              ? filteredChildren
-              : field.children,
+            children: matchedChildren,
           });
         }
 

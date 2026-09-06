@@ -302,11 +302,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         sampleDataCount,
       } = data;
 
-      const profileSample = profileSampleType
-        ? profileSampleType === ProfileSampleType.Percentage
+      const sampleByType =
+        profileSampleType === ProfileSampleType.Percentage
           ? profileSamplePercentage
-          : profileSampleRows
-        : undefined;
+          : profileSampleRows;
+      const profileSample = profileSampleType ? sampleByType : undefined;
 
       const profileConfig: TableProfilerConfig = {
         excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,

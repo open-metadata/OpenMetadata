@@ -21,7 +21,14 @@ import {
   XCircle,
 } from '@untitledui/icons';
 import { isEmpty, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   CellClickArgs,
   Column,
@@ -464,12 +471,12 @@ const BulkEditEntity = ({
               row[BULK_EDIT_OPERATION_KEY] ?? 'NO_CHANGE'
             ).toLowerCase()}`;
 
+            const highlightSuffix = isNewMetricRowMissingName(row)
+              ? ''
+              : ' bulk-edit-row-highlight';
+
             return row.id === highlightedRowId
-              ? `${operationClass}${
-                  isNewMetricRowMissingName(row)
-                    ? ''
-                    : ' bulk-edit-row-highlight'
-                }`
+              ? `${operationClass}${highlightSuffix}`
               : operationClass;
           }}
           rowHeight={52}
@@ -535,6 +542,15 @@ const BulkEditEntity = ({
     [dataSource]
   );
 
+  const showExportErrorState = Boolean(
+    isExportHydrationRequired && csvExportError
+  );
+  const showLoaderState =
+    !showExportErrorState &&
+    ((isExportHydrationRequired && isEmpty(csvExportData)) ||
+      isLoadingSourceData);
+  const showWorkflowContent = !showExportErrorState && !showLoaderState;
+
   return (
     <>
       <CsvWorkflowHeader
@@ -569,12 +585,12 @@ const BulkEditEntity = ({
         )}
       </div>
 
-      {isExportHydrationRequired && csvExportError ? (
+      {showExportErrorState && (
         <div className="csv-import-card bulk-edit-card">
           <Banner
             className="border-radius"
             isLoading={false}
-            message={csvExportError}
+            message={csvExportError ?? ''}
             type="error"
           />
           <div className="bulk-edit-retry">
@@ -583,11 +599,10 @@ const BulkEditEntity = ({
             </Button>
           </div>
         </div>
-      ) : (isExportHydrationRequired && isEmpty(csvExportData)) ||
-        isLoadingSourceData ? (
-        <Loader />
-      ) : (
-        <>
+      )}
+      {showLoaderState && <Loader />}
+      {showWorkflowContent && (
+        <Fragment>
           <div>
             {activeStep === 1 && (
               <div className="csv-import-card bulk-edit-card">
@@ -752,7 +767,7 @@ const BulkEditEntity = ({
               </div>
             </div>
           )}
-        </>
+        </Fragment>
       )}
     </>
   );

@@ -331,11 +331,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     };
 
     const existingMust = quickFilterQuery?.query?.bool?.must;
-    const mustArray = Array.isArray(existingMust)
-      ? [...existingMust]
-      : existingMust
-      ? [existingMust]
-      : [];
+    let mustArray: QueryFieldInterface[] = [];
+    if (Array.isArray(existingMust)) {
+      mustArray = [...existingMust];
+    } else if (existingMust) {
+      mustArray = [existingMust];
+    }
 
     const scopedQuery: QueryFilterInterface = {
       query: {
@@ -1622,11 +1623,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               edges: allEdges,
             });
 
-            setNodes((prev) =>
-              prev.map((node) =>
-                updateNodeType(node, sourceNode?.id, targetNode?.id)
-              )
-            );
+            const applyNodeTypeUpdate = (node: Node) =>
+              updateNodeType(node, sourceNode?.id, targetNode?.id);
+
+            setNodes((prev) => prev.map(applyNodeTypeUpdate));
 
             const { edges: createdEdges, columnsHavingLineage } =
               createEdgesAndEdgeMaps(

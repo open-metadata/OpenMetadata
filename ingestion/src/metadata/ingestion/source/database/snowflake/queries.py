@@ -78,17 +78,6 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-SNOWFLAKE_SESSION_TAG_QUERY = "ALTER SESSION SET QUERY_TAG='{query_tag}'"
-
-
-def set_session_tag_query(query_tag: str) -> str:
-    """Return the ALTER SESSION statement setting QUERY_TAG to the given value."""
-    # Snowflake reads backslash escapes inside the literal, so those double first;
-    # an unescaped quote would otherwise start a further ALTER SESSION assignment.
-    escaped = query_tag.replace("\\", "\\\\").replace("'", "''")
-    return SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=escaped)
-
-
 SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME

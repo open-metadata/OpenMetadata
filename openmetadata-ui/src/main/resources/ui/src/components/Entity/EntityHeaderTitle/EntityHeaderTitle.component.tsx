@@ -116,6 +116,9 @@ const EntityHeaderTitle = ({
     [isDisabled, deleted, badge]
   );
 
+  const canShowFollowButton =
+    !excludeEntityService && !deleted && !isCustomizedView;
+
   const content = (
     <Row
       align="middle"
@@ -188,28 +191,25 @@ const EntityHeaderTitle = ({
             />
           </Tooltip>
           {(isEmpty(displayName) || !showName) && suffix}
-          {!excludeEntityService &&
-            !deleted &&
-            !isCustomizedView &&
-            handleFollowingClick && (
-              <Tooltip
-                title={t('label.field-entity', {
-                  field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity: formattedEntityType,
-                })}>
-                <Button
-                  className="entity-follow-button flex-center gap-1 text-sm "
-                  data-testid="entity-follow-button"
-                  disabled={deleted}
-                  icon={<Icon component={StarFilledIcon} />}
-                  loading={isFollowingLoading}
-                  onClick={handleFollowingClick}>
-                  <Typography.Text>
-                    {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  </Typography.Text>
-                </Button>
-              </Tooltip>
-            )}
+          {canShowFollowButton && handleFollowingClick && (
+            <Tooltip
+              title={t('label.field-entity', {
+                field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                entity: formattedEntityType,
+              })}>
+              <Button
+                className="entity-follow-button flex-center gap-1 text-sm "
+                data-testid="entity-follow-button"
+                disabled={deleted}
+                icon={<Icon component={StarFilledIcon} />}
+                loading={isFollowingLoading}
+                onClick={handleFollowingClick}>
+                <Typography.Text>
+                  {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                </Typography.Text>
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </Col>
 
