@@ -20,18 +20,23 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exempt
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.SupersetChartFqnCollisionFix;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
   }
 
   @Override
+  @SneakyThrows
   public void runDataMigration() {
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);
@@ -44,5 +49,11 @@ public class Migration extends MigrationProcessImpl {
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
     exemptQueryFromMultiDomainRules();
+
+    try {
+      SupersetChartFqnCollisionFix.fixSupersetChartFqnCollision(handle, collectionDAO);
+    } catch (Exception e) {
+      LOG.error("Failed to fix Superset chart/dashboard FQN collisions in v210 migration.", e);
+    }
   }
 }
