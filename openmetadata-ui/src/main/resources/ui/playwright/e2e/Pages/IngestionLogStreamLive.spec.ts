@@ -20,6 +20,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import {
+  SchedulerDidNotStartError,
   getLogViewerLineCount,
   waitForRunningPipelineStatus,
 } from '../../utils/logsViewer';
@@ -190,7 +191,32 @@ test.describe(
 
       await deployAndTrigger(apiContext, pipelineId);
 
-      ({ runId } = await waitForRunningPipelineStatus(apiContext, pipelineFqn));
+      // A scheduler that never moves the run off `queued` says nothing about the
+      // code under test — the trigger was accepted and Airflow simply did not pick
+      // the DAG up. Failing here ejects whatever PR happens to be in the queue for
+      // an Airflow capacity problem, which is the misattribution this suite has
+      // been fighting. Raising the ceiling was already tried and did not hold: 60s
+      // -> 120s still stalled (run 34023457610), and the hook's own 180s budget
+      // leaves no room to keep bidding it up.
+      //
+      // Note the split: only the never-started case is tolerated. A pipeline that
+      // reaches a terminal state throws a plain Error and still fails the run,
+      // because that *is* a signal about the code.
+      try {
+        ({ runId } = await waitForRunningPipelineStatus(
+          apiContext,
+          pipelineFqn
+        ));
+      } catch (error) {
+        if (error instanceof SchedulerDidNotStartError) {
+          await afterAction();
+
+          // eslint-disable-next-line playwright/no-skipped-test -- an Airflow scheduler that never starts the DAG is an environment condition, not a result about this change; a terminal pipeline state still fails
+          test.skip(true, error.message);
+        }
+
+        throw error;
+      }
 
       await afterAction();
     });
