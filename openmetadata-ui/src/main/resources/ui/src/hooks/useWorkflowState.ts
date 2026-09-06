@@ -265,19 +265,18 @@ export const useWorkflowState = ({
       (node) => node.type === NodeType.StartEvent
     );
     const hasStart = !!startNode;
+    const startData = startNode?.data;
+    // If start node exists and has any configuration data, consider it configured
+    const hasSavedConfig =
+      startData?.lastSaved ||
+      startData?.userModified ||
+      (startData?.name && startData?.dataAssets?.length > 0);
+    const hasTriggerConfig =
+      startData?.triggerType || startData?.eventType || startData?.scheduleType;
+    const hasInputOutputConfig = startData?.input || startData?.output;
     const isConfigured =
       hasStart &&
-      Boolean(
-        startNode.data?.lastSaved ||
-          startNode.data?.userModified ||
-          (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||
-          // If start node exists and has any configuration data, consider it configured
-          startNode.data?.triggerType ||
-          startNode.data?.eventType ||
-          startNode.data?.scheduleType ||
-          startNode.data?.input ||
-          startNode.data?.output
-      );
+      Boolean(hasSavedConfig || hasTriggerConfig || hasInputOutputConfig);
 
     if (
       state.hasStartNode !== hasStart ||

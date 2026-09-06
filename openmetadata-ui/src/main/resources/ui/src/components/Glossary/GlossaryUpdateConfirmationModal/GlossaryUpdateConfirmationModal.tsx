@@ -106,12 +106,13 @@ export const GlossaryUpdateConfirmationModal = ({
     ];
   }, []);
 
-  const progress =
-    updateState === UpdateState.VALIDATING
-      ? 10
-      : updateState === UpdateState.UPDATING
-      ? 60
-      : 100;
+  let progress = 100;
+
+  if (updateState === UpdateState.VALIDATING) {
+    progress = 10;
+  } else if (updateState === UpdateState.UPDATING) {
+    progress = 60;
+  }
 
   const data = useMemo(() => {
     const footer = (

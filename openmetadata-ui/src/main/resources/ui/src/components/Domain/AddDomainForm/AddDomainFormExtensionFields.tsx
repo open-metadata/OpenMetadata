@@ -125,6 +125,17 @@ interface DateParts {
 // CalendarDate class is nominally different from the DatePicker's DateValue.
 type DatePickerValue = ComponentProps<typeof DatePicker>['value'];
 
+const getNumberInputStringValue = (value: unknown): string => {
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return '';
+};
+
 const getReferenceIcon = (source: ReferenceSearchSource) => {
   const entityType = source.entityType ?? source.type;
   if (entityType === EntityType.TEAM) {
@@ -259,13 +270,7 @@ const NumberExtensionField = ({
                 : 1
             }
             type="number"
-            value={
-              typeof field.value === 'number'
-                ? String(field.value)
-                : typeof field.value === 'string'
-                ? field.value
-                : ''
-            }
+            value={getNumberInputStringValue(field.value)}
             onBlur={field.onBlur}
             onChange={(value) =>
               field.onChange(value === '' ? undefined : value)
@@ -587,12 +592,18 @@ const TimeIntervalExtensionField = ({
           name={fieldName}
           rules={{
             required: isRequired ? requiredMessage : false,
-            validate: (value) =>
-              value === undefined ||
-              value === '' ||
-              (Number.isFinite(Number(value)) &&
-                Number.isInteger(Number(value))) ||
-              t('label.field-invalid', { field: inputLabel }),
+            validate: (value) => {
+              const isEmptyValue = value === undefined || value === '';
+              const isValidInteger =
+                Number.isFinite(Number(value)) &&
+                Number.isInteger(Number(value));
+
+              return (
+                isEmptyValue ||
+                isValidInteger ||
+                t('label.field-invalid', { field: inputLabel })
+              );
+            },
           }}>
           {({ field, fieldState }) => (
             <Input
@@ -603,13 +614,7 @@ const TimeIntervalExtensionField = ({
               label={inputLabel}
               step={1}
               type="number"
-              value={
-                typeof field.value === 'number'
-                  ? String(field.value)
-                  : typeof field.value === 'string'
-                  ? field.value
-                  : ''
-              }
+              value={getNumberInputStringValue(field.value)}
               onBlur={field.onBlur}
               onChange={(nextValue) =>
                 field.onChange(nextValue === '' ? undefined : nextValue)
@@ -688,13 +693,14 @@ const TableExtensionInput = ({
   value: unknown;
 }) => {
   const { t } = useTranslation();
-  const initialRows =
+  const isRowsObject =
     typeof value === 'object' &&
     value !== null &&
     'rows' in value &&
-    Array.isArray(value.rows)
-      ? (value.rows as Record<string, string>[])
-      : [];
+    Array.isArray(value.rows);
+  const initialRows = isRowsObject
+    ? (value as { rows: Record<string, string>[] }).rows
+    : [];
   const [dataSource, setDataSource] = useState<Record<string, string>[]>(() =>
     initialRows.map((row) => ({ ...row }))
   );
@@ -887,6 +893,9 @@ const SimpleExtensionField = ({
   }
   const durationHint =
     kind === 'duration' ? t('message.duration-in-iso-format') : undefined;
+  const enumFieldType = enumConfig?.multiSelect
+    ? FieldTypes.MULTI_SELECT
+    : FieldTypes.SELECT;
   const field: FieldProp = {
     id: `root/${name.replace('.', '/')}`,
     label: labelNode,
@@ -908,12 +917,7 @@ const SimpleExtensionField = ({
     },
     required: isRequired,
     rules,
-    type:
-      kind === 'enum'
-        ? enumConfig?.multiSelect
-          ? FieldTypes.MULTI_SELECT
-          : FieldTypes.SELECT
-        : FieldTypes.TEXT,
+    type: kind === 'enum' ? enumFieldType : FieldTypes.TEXT,
   };
 
   return (

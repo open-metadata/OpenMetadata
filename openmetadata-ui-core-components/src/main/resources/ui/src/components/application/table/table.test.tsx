@@ -41,6 +41,24 @@ const renderTable = (props: Partial<Parameters<typeof Table>[0]> = {}) =>
 const firstCell = () =>
   screen.getAllByRole('row')[1].querySelector('td, th') as HTMLElement;
 
+describe('Table header accessibility', () => {
+  it('names the columnheader from its title content', () => {
+    renderTable();
+
+    // The header content wrapper must stay a plain div: a role="group"
+    // wrapper makes Chromium compute an empty accessible name for the
+    // columnheader, breaking getByRole('columnheader', { name }).
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' })
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('columnheader', { name: 'Name' })
+        .querySelector('[role="group"]')
+    ).toBeNull();
+  });
+});
+
 describe('Table sizes', () => {
   it('applies the compact scale', () => {
     renderTable({ size: 'compact' });

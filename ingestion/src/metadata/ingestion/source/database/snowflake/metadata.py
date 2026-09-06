@@ -21,8 +21,8 @@ from typing import cast
 
 import sqlalchemy.types as sqltypes
 import sqlparse
-from sqlalchemy import event, text
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -109,7 +109,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
-    set_session_tag_query,
 )
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_request,
@@ -308,25 +307,6 @@ class SnowflakeSource(
 
         return self._org_name
 
-    def set_session_query_tag(self) -> None:
-        """
-        Register a pool event on the engine so that every connection
-        checked out from the pool gets the QUERY_TAG set automatically.
-        In SA 2.0, each engine.connect() may return a different pooled
-        connection, so setting the tag on a single connection is not enough.
-
-        Called after set_inspector() which creates a new engine per database,
-        so we register the event on the current self.engine.
-        """
-        if self.service_connection.queryTag:
-            query_tag = self.service_connection.queryTag
-
-            @event.listens_for(self.engine, "connect")
-            def _set_query_tag(dbapi_connection, connection_record):
-                cursor = dbapi_connection.cursor()
-                cursor.execute(set_session_tag_query(query_tag))
-                cursor.close()
-
     def set_partition_details(self) -> None:
         self.partition_details.clear()
         with self.engine.connect() as conn:
@@ -520,7 +500,6 @@ class SnowflakeSource(
         for database_name in self._filtered_database_names():
             try:
                 self.set_inspector(database_name=database_name)
-                self.set_session_query_tag()
                 self.set_partition_details()
                 self.set_schema_description_map()
                 self.set_database_description_map()

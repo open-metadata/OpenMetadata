@@ -688,6 +688,65 @@ export const AuthProvider = ({
     }
   };
 
+  // Drain the queued 401 requests once a refresh settles — retry each with the
+  // new token, or reject them all with the original error. Hoisted to component
+  // scope so its forEach loops don't nest past the depth limit inside the
+  // response interceptor. `pendingRequests` / `isRefreshDriverActive` remain the
+  // module-level bindings so the single-driver invariant is unchanged.
+  const drainPendingRequests = (
+    hasNewToken: boolean,
+    rejectionError: unknown
+  ) => {
+    const queued = pendingRequests;
+    pendingRequests = [];
+    isRefreshDriverActive = false;
+    if (hasNewToken) {
+      queued.forEach(
+        ({ resolve: onResolve, reject: onReject, config: queuedConfig }) =>
+          axiosClient.request(queuedConfig).then(onResolve).catch(onReject)
+      );
+    } else {
+      queued.forEach(({ reject: onReject }) => onReject(rejectionError));
+    }
+  };
+
+  // Drives exactly one token refresh for a batch of 401s in THIS tab. Extracted
+  // from the response interceptor's Promise executor so the refresh-settled
+  // handlers no longer nest past the depth limit. `resolve` / `reject` belong to
+  // the failed request's own Promise; `error` / `config` are that request's
+  // rejection and axios config — all passed in so the closure observes exactly
+  // the values it did inline. `reinit` (the interceptor re-init) is passed in
+  // rather than referenced by name to avoid a use-before-define cycle.
+  const startTokenRefresh = (
+    resolve: (value?: unknown) => void,
+    reject: (reason?: unknown) => void,
+    error: unknown,
+    config: InternalAxiosRequestConfig<unknown>,
+    reinit: () => Promise<void>
+  ) => {
+    pendingRequests.push({ resolve, reject, config });
+    if (isRefreshDriverActive) {
+      return;
+    }
+    isRefreshDriverActive = true;
+
+    tokenService.current
+      .refreshToken()
+      .then(async (token: unknown) => {
+        if (token) {
+          await reinit();
+          drainPendingRequests(true, error);
+        } else {
+          drainPendingRequests(false, error);
+          resetUserDetails(true);
+        }
+      })
+      .catch(() => {
+        drainPendingRequests(false, error);
+        resetUserDetails(true);
+      });
+  };
+
   /**
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
@@ -753,46 +812,15 @@ export const AuthProvider = ({
             // Nothing is left parked. The previous code queued behind a
             // cross-tab localStorage flag that no in-tab driver would clear,
             // hanging the request (and the UI spinner) indefinitely.
-            return new Promise((resolve, reject) => {
-              pendingRequests.push({ resolve, reject, config: error.config });
-              if (isRefreshDriverActive) {
-                return;
-              }
-              isRefreshDriverActive = true;
-
-              const drainPendingRequests = (hasNewToken: boolean) => {
-                const queued = pendingRequests;
-                pendingRequests = [];
-                isRefreshDriverActive = false;
-                if (hasNewToken) {
-                  queued.forEach(
-                    ({ resolve: onResolve, reject: onReject, config }) =>
-                      axiosClient
-                        .request(config)
-                        .then(onResolve)
-                        .catch(onReject)
-                  );
-                } else {
-                  queued.forEach(({ reject: onReject }) => onReject(error));
-                }
-              };
-
-              tokenService.current
-                .refreshToken()
-                .then(async (token) => {
-                  if (token) {
-                    await initializeAxiosInterceptors();
-                    drainPendingRequests(true);
-                  } else {
-                    drainPendingRequests(false);
-                    resetUserDetails(true);
-                  }
-                })
-                .catch(() => {
-                  drainPendingRequests(false);
-                  resetUserDetails(true);
-                });
-            });
+            return new Promise((resolve, reject) =>
+              startTokenRefresh(
+                resolve,
+                reject,
+                error,
+                error.config,
+                initializeAxiosInterceptors
+              )
+            );
           }
         }
 

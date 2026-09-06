@@ -2,7 +2,7 @@
   "name": "columnValuesToBeInSet",
   "fullyQualifiedName": "columnValuesToBeInSet",
   "displayName": "Column Values To Be In Set",
-  "description": "This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.",
+  "description": "Checks column values against an allowed set according to the matchEnum mode.",
   "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata"],
   "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN", "LOWCARDINALITY"],
@@ -10,14 +10,14 @@
     {
       "name": "allowedValues",
       "displayName": "Allowed Values",
-      "description": "An Array of values.",
+      "description": "Values used for matching. Neither mode requires every allowed value to occur in the column.",
       "dataType": "ARRAY",
       "required": true
     },
     {
       "name": "matchEnum",
       "displayName": "Match enum",
-      "description": "If enabled, validate that each value independently matches the enum.",
+      "description": "If true, every observed value must be allowed. If false or omitted, the test passes when at least one allowed value occurs, even if other values are outside the set.",
       "dataType": "BOOLEAN",
       "required": false
     }

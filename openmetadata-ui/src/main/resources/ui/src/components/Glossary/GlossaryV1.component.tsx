@@ -448,6 +448,9 @@ const GlossaryV1 = ({
     updateVote,
   ]);
 
+  const shouldRenderSelectedData =
+    !isLoading && !isPermissionLoading && !isEmpty(selectedData);
+
   return (
     <>
       {(isLoading || isPermissionLoading) && <Loader />}
@@ -463,9 +466,7 @@ const GlossaryV1 = ({
         }
         type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         onUpdate={handleGlossaryUpdate}>
-        {!isLoading &&
-          !isPermissionLoading &&
-          !isEmpty(selectedData) &&
+        {shouldRenderSelectedData &&
           (isGlossaryActive ? (
             glossaryContent
           ) : (

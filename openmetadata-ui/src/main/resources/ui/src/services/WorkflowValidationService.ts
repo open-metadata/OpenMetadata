@@ -441,12 +441,16 @@ const migrateInputNamespaceMap = (
 
       const allPredecessors = findAllPredecessorsInSave(node.name, edges);
 
-      const shouldMigrate =
+      const isKnownGlobalUpdatedBy =
         currentUpdatedBy === 'global' ||
         currentUpdatedBy === 'ApproveGlossaryTerm' ||
-        currentUpdatedBy === 'ApprovalForUpdates' ||
-        (currentUpdatedBy && !nodes.some((n) => n.name === currentUpdatedBy)) ||
-        (currentUpdatedBy && !allPredecessors.includes(currentUpdatedBy));
+        currentUpdatedBy === 'ApprovalForUpdates';
+      const isMissingUpdatedByReference =
+        currentUpdatedBy &&
+        (!nodes.some((n) => n.name === currentUpdatedBy) ||
+          !allPredecessors.includes(currentUpdatedBy));
+      const shouldMigrate =
+        isKnownGlobalUpdatedBy || isMissingUpdatedByReference;
 
       if (shouldMigrate) {
         // Only use a user task that is actually a predecessor (comes before this node)

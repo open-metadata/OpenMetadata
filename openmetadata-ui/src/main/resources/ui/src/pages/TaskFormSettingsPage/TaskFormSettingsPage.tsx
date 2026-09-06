@@ -472,9 +472,9 @@ const TaskFormSettingsPage = () => {
 
   // The heading for the schema being edited — distinct from the document
   // title, which names the settings page itself.
+  const watchedHeading = watchedDisplayName?.trim() || watchedName?.trim();
   const schemaHeading =
-    watchedDisplayName?.trim() ||
-    watchedName?.trim() ||
+    watchedHeading ||
     selectedSchema.displayName ||
     selectedSchema.name ||
     'New Task Form';

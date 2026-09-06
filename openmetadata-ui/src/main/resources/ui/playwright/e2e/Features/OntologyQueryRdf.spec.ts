@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   SavedSparqlQueries,
   SavedSparqlQuery,
 } from '../../../src/generated/api/rdf/savedSparqlQueries';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';

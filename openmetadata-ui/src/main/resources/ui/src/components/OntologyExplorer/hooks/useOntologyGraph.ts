@@ -942,11 +942,14 @@ export function useOntologyGraph({
               loadedAssetCount > 0 &&
               assetCount > DATA_MODE_ASSET_LOAD_PAGE_SIZE &&
               remaining > 0;
-            const badgeText = isLoadingAssets
-              ? '...'
-              : assetsExpanded
-              ? '\u2212'
-              : `+${assetCount}`;
+            let badgeText: string;
+            if (isLoadingAssets) {
+              badgeText = '...';
+            } else if (assetsExpanded) {
+              badgeText = '\u2212';
+            } else {
+              badgeText = `+${assetCount}`;
+            }
             const label = d?.label ?? datum.id;
             const badgeDiameterBase = isLoadingAssets
               ? DATA_MODE_TERM_ASSET_COUNT_BADGE_DIAMETER_WIDE
@@ -1370,9 +1373,10 @@ export function useOntologyGraph({
     const checkEdgeProximity = () => {
       const g = graphRef.current;
       const c = containerRef.current;
+      if (!g || !c) {
+        return;
+      }
       if (
-        !g ||
-        !c ||
         !onScrollNearEdgeRef.current ||
         isProgrammaticTransformRef.current ||
         !graphBoundsRef.current

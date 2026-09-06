@@ -108,13 +108,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       currentUser?.displayName || currentUser?.name || ''
     );
 
-    const leading = isGreeting ? (
-      <ProfilePicture
-        displayName={currentUser?.displayName}
-        name={currentUser?.name ?? ''}
-        width="48"
-      />
-    ) : config.icon ? (
+    const iconLeading = config.icon ? (
       <FeaturedIcon
         color={config.iconColor ?? 'brand'}
         icon={config.icon}
@@ -123,6 +117,16 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         theme="gradient"
       />
     ) : undefined;
+
+    const leading = isGreeting ? (
+      <ProfilePicture
+        displayName={currentUser?.displayName}
+        name={currentUser?.name ?? ''}
+        width="48"
+      />
+    ) : (
+      iconLeading
+    );
 
     const title = isGreeting
       ? t(config.greetingNameKey ?? 'label.hey-comma-name', {

@@ -18,11 +18,19 @@ export const LOGS_VIEWER_PIPELINE_STATUS_MAX_WAIT_MS = 5 * 60_000;
 
 /**
  * Budget for a freshly triggered run to report its first `running` status row.
- * Deliberately short: the live-logs test has to stay inside `test.slow()`, so a
- * scheduler that has not started the DAG by now is a failure to report, not
- * something to keep waiting on.
+ *
+ * Bounded so a scheduler that never starts the DAG is reported rather than
+ * waited on indefinitely — but the previous 60s was tighter than the budget it
+ * sits inside. The `beforeAll` that calls this declares `setTimeout(180_000)`
+ * and spends roughly 6s reaching the wait, so 60s left ~114s of the hook's
+ * budget unused and gave up while the pipeline was still `queued`: the
+ * scheduler was working, just slow under merge-queue load (run 33970886957).
+ *
+ * 120s keeps a real ceiling, still lands ~54s inside the hook's 180s, and only
+ * spends headroom that already existed. A `queued` pipeline at this point means
+ * the run was accepted; only a terminal state or this ceiling is a real failure.
  */
-export const LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS = 60_000;
+export const LOGS_VIEWER_RUNNING_STATUS_MAX_WAIT_MS = 120_000;
 
 /** Delay between two reads while waiting for that first `running` row. */
 export const LOGS_VIEWER_RUNNING_STATUS_INTERVAL_MS = 2_000;
