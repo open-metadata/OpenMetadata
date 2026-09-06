@@ -20,9 +20,15 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
     quote_qualified_identifier,
 )
-from metadata.ingestion.source.database.snowflake.queries import build_get_ddl_query
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_FETCH_DATABASE_TAGS,
+    SNOWFLAKE_FETCH_SCHEMA_TAGS,
+    SNOWFLAKE_FETCH_TABLE_TAGS,
+    build_get_ddl_query,
+)
 from metadata.ingestion.source.database.snowflake.utils import (
     _qualified_identifier,
     _quote_identifier,
@@ -110,3 +116,21 @@ def test_incremental_view_query_only_passes_actual_bind_parameters():
         "schema": "PUBLIC",
         "date": 123456789,
     }
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        SNOWFLAKE_FETCH_TABLE_TAGS,
+        SNOWFLAKE_FETCH_SCHEMA_TAGS,
+        SNOWFLAKE_FETCH_DATABASE_TAGS,
+    ],
+    ids=["table", "schema", "database"],
+)
+def test_tag_templates_bind_object_names_instead_of_interpolating_them(template):
+    """A database named `x' OR 1=1 --` must not be able to close the literal."""
+    rendered = template.format(account_usage=quote_account_usage_schema("SNOWFLAKE.ACCOUNT_USAGE"))
+
+    assert "OBJECT_DATABASE = :database_name" in rendered
+    assert "'{database_name}'" not in rendered
+    assert "{database_name}" not in rendered

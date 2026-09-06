@@ -568,6 +568,65 @@ class SnowflakeUnitTest(TestCase):
             self.assertIn("SCHEMA_CLASSIFICATION.SCHEMA_TAG", tag_fqns)
             self.assertIn("TABLE_CLASSIFICATION.TABLE_TAG", tag_fqns)
 
+    def test_tag_maps_bind_object_names_rather_than_interpolating_them(self):
+        """A Snowflake database named `x' OR 1=1 --` must not reach the SQL text."""
+        evil = "PROD' OR 1=1 UNION SELECT CURRENT_USER(), CURRENT_ROLE(), 'x"
+        for source in self.sources.values():
+            for setter in (source.set_schema_tags_map, source.set_database_tags_map):
+                mock_conn = MagicMock()
+                mock_conn.execute.return_value = []
+                source.engine = MagicMock()
+                source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+                source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+                setter(evil)
+
+                statement, parameters = mock_conn.execute.call_args.args
+                self.assertNotIn(evil, str(statement))
+                self.assertEqual(parameters, {"database_name": evil})
+
+    @staticmethod
+    def _mock_source_connection(source):
+        """Route the cached ``connection`` property at a mock we can assert on."""
+        mock_conn = MagicMock()
+        source.engine = MagicMock()
+        source.engine.connect.return_value = mock_conn
+        source._connection_map.clear()
+        return mock_conn
+
+    def test_yield_tag_binds_database_and_schema_names(self):
+        """The table-tag query must bind both object names, on the primary path."""
+        evil_schema = "PUBLIC' OR 1=1 --"
+        for source in self.sources.values():
+            self._setup_tag_context(source)
+            mock_conn = self._mock_source_connection(source)
+            mock_conn.execute.return_value = []
+
+            list(source.yield_tag(evil_schema))
+
+            statement, parameters = mock_conn.execute.call_args.args
+            self.assertNotIn(evil_schema, str(statement))
+            self.assertEqual(
+                parameters,
+                {"database_name": "TEST_DATABASE", "schema_name": evil_schema},
+            )
+
+    def test_yield_tag_fallback_binds_unquoted_context_names(self):
+        """The retry path must bind too, not splice quoted names into the SQL."""
+        for source in self.sources.values():
+            self._setup_tag_context(source)
+            source.context.get().__dict__["database"] = '"TEST_DATABASE"'
+            mock_conn = self._mock_source_connection(source)
+            mock_conn.execute.side_effect = [Exception("boom"), []]
+
+            list(source.yield_tag("TEST_SCHEMA"))
+
+            _, parameters = mock_conn.execute.call_args.args
+            self.assertEqual(
+                parameters,
+                {"database_name": "TEST_DATABASE", "schema_name": "TEST_SCHEMA"},
+            )
+
     def test_database_tag_inheritance(self):
         """Database tags propagate to schemas and tables when classifications don't overlap."""
         for source in self.sources.values():

@@ -354,10 +354,10 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
-                            database_name=database_name,
                             account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     schema_name = row.SCHEMA_NAME
                     if not row.TAG_VALUE:
@@ -385,10 +385,10 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_DATABASE_TAGS.format(
-                            database_name=database_name,
                             account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     db_name = row.DATABASE_NAME
                     if db_name not in self.database_tags_map:
@@ -611,25 +611,29 @@ class SnowflakeSource(
                 result = self.connection.execute(
                     text(
                         SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
                             account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {
+                        "database_name": self.context.get().database,
+                        "schema_name": schema_name,
+                    },
                 )
 
             except Exception as exc:
                 try:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
+                    logger.warning(f"Error fetching tags {exc}. Retrying with unquoted context names")
                     result = self.connection.execute(
                         text(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                                database_name=f'"{self.context.get().database}"',
-                                schema_name=f'"{self.context.get().database_schema}"',
                                 account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                             )
-                        )
+                        ),
+                        {
+                            "database_name": fqn.unquote_name(self.context.get().database),
+                            "schema_name": fqn.unquote_name(self.context.get().database_schema),
+                        },
                     )
                 except Exception as inner_exc:
                     logger.debug(traceback.format_exc())

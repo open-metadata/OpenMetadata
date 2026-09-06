@@ -89,8 +89,8 @@ SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from {account_usage}.tag_references
-    where OBJECT_DATABASE = '{database_name}'
-      and OBJECT_SCHEMA = '{schema_name}'
+    where OBJECT_DATABASE = :database_name
+      and OBJECT_SCHEMA = :schema_name
       and OBJECT_DELETED IS NULL
 """
 )
@@ -99,7 +99,7 @@ SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_NAME as SCHEMA_NAME
     from {account_usage}.tag_references
-    where OBJECT_DATABASE = '{database_name}'
+    where OBJECT_DATABASE = :database_name
       and OBJECT_SCHEMA IS NULL
       and OBJECT_NAME IS NOT NULL
       and COLUMN_NAME IS NULL
@@ -112,7 +112,7 @@ SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE as DATABASE_NAME
     from {account_usage}.tag_references
-    where OBJECT_DATABASE = '{database_name}'
+    where OBJECT_DATABASE = :database_name
       and OBJECT_SCHEMA IS NULL
       and OBJECT_NAME IS NULL
       and COLUMN_NAME IS NULL
