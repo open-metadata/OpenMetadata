@@ -60,7 +60,7 @@ public class APIEndpointIndex implements DataAssetIndex {
           childTags.add(field.getTags());
         }
       }
-      doc.put("response_field_names", fieldsWithChildrenName);
+      doc.put("responseFieldNames", fieldsWithChildrenName);
       doc.put("response_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 
@@ -78,7 +78,7 @@ public class APIEndpointIndex implements DataAssetIndex {
           childTags.add(field.getTags());
         }
       }
-      doc.put("request_field_names", fieldsWithChildrenName);
+      doc.put("requestFieldNames", fieldsWithChildrenName);
       doc.put("request_field_namesFuzzy", String.join(" ", fieldsWithChildrenName));
     }
 

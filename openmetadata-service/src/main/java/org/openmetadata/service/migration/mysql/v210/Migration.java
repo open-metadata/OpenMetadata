@@ -19,6 +19,7 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignH
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
+import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -44,5 +45,12 @@ public class Migration extends MigrationProcessImpl {
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
     exemptQueryFromMultiDomainRules();
+    // Retarget the stale `fieldsNames` topic/apiEndpoint aggregation field to the mapped keyword
+    // fields, and split the apiEndpoint `fieldNames` aggregation into request/response field-name
+    // aggregations. The seed default never reaches already-migrated clusters (per-asset
+    // aggregations are not re-merged), so existing installs only get the fix through this
+    // migration.
+    // Idempotent.
+    repairFieldNamesAggregations();
   }
 }
