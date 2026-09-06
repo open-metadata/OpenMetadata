@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { isUndefined, toNumber, toString } from 'lodash';
+import { isUndefined, toNumber } from 'lodash';
 
 import type { RuleObject } from 'rc-field-form/es/interface';
 import type {
   Combination,
   StateValue,
   WorkflowExtraConfig,
-} from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
+} from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.types';
 import {
   CRON_COMBINATIONS,
   DAY_OF_MONTH_PATTERN,
@@ -52,27 +52,6 @@ export const getScheduleOptionsFromSchedules = (
 
     return '';
   });
-};
-
-export const getRange = (n: number) => {
-  return [...Array(n).keys()];
-};
-
-export const getRangeOptions = (n: number) => {
-  return getRange(n).map((v) => {
-    return {
-      label: `0${v}`.slice(-2),
-      value: toString(v),
-    };
-  });
-};
-
-export const getMinuteOptions = () => {
-  return getRangeOptions(60);
-};
-
-export const getHourOptions = () => {
-  return getRangeOptions(24);
 };
 
 export const getMinuteCron = (value: Partial<StateValue>) => {

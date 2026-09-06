@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
@@ -273,32 +273,52 @@ const formatMetricExtension = (extension: unknown) => {
     .join(CSV_FIELD_SEPARATOR);
 };
 
-type MetricCsvValueGetter = (metric: Metric) => unknown;
+const getMetricCsvValue = (metric: Metric, columnName: string) => {
+  const expression = metric.metricExpression;
 
-const METRIC_CSV_VALUE_GETTERS: Record<string, MetricCsvValueGetter> = {
-  name: (metric) => metric.name,
-  displayName: (metric) => metric.displayName,
-  description: (metric) => metric.description,
-  metricType: (metric) => metric.metricType,
-  unitOfMeasurement: (metric) => metric.unitOfMeasurement,
-  customUnitOfMeasurement: (metric) => metric.customUnitOfMeasurement,
-  granularity: (metric) => metric.granularity,
-  expressionLanguage: (metric) => metric.metricExpression?.language,
-  expressionCode: (metric) => metric.metricExpression?.code,
-  relatedMetrics: (metric) => joinEntityReferences(metric.relatedMetrics),
-  tags: (metric) => joinMetricTags(metric, TagSource.Classification),
-  glossaryTerms: (metric) => joinMetricTags(metric, TagSource.Glossary),
-  tiers: (metric) => joinMetricTiers(metric),
-  owners: (metric) => joinOwners(metric.owners),
-  reviewers: (metric) => joinOwners(metric.reviewers),
-  domains: (metric) => joinEntityReferences(metric.domains),
-  dataProducts: (metric) => joinEntityReferences(metric.dataProducts),
-  entityStatus: (metric) => metric.entityStatus,
-  extension: (metric) => formatMetricExtension(metric.extension),
+  switch (columnName) {
+    case 'name':
+      return metric.name;
+    case 'displayName':
+      return metric.displayName;
+    case 'description':
+      return metric.description;
+    case 'metricType':
+      return metric.metricType;
+    case 'unitOfMeasurement':
+      return metric.unitOfMeasurement;
+    case 'customUnitOfMeasurement':
+      return metric.customUnitOfMeasurement;
+    case 'granularity':
+      return metric.granularity;
+    case 'expressionLanguage':
+      return expression?.language;
+    case 'expressionCode':
+      return expression?.code;
+    case 'relatedMetrics':
+      return joinEntityReferences(metric.relatedMetrics);
+    case 'tags':
+      return joinMetricTags(metric, TagSource.Classification);
+    case 'glossaryTerms':
+      return joinMetricTags(metric, TagSource.Glossary);
+    case 'tiers':
+      return joinMetricTiers(metric);
+    case 'owners':
+      return joinOwners(metric.owners);
+    case 'reviewers':
+      return joinOwners(metric.reviewers);
+    case 'domains':
+      return joinEntityReferences(metric.domains);
+    case 'dataProducts':
+      return joinEntityReferences(metric.dataProducts);
+    case 'entityStatus':
+      return metric.entityStatus;
+    case 'extension':
+      return formatMetricExtension(metric.extension);
+    default:
+      return '';
+  }
 };
-
-const getMetricCsvValue = (metric: Metric, columnName: string) =>
-  METRIC_CSV_VALUE_GETTERS[columnName]?.(metric) ?? '';
 
 export const getMetricCsvRowsFromMetrics = (
   metrics: Metric[],
@@ -373,105 +393,6 @@ const renderBulkEditSelectCell = (column: string, value: string) => (
   </span>
 );
 
-const CSV_PREVIEW_COLUMNS = new Set([
-  'owners',
-  'owner',
-  'reviewers',
-  'tags',
-  'glossaryTerms',
-  'relatedTerms',
-  'domains',
-  'dataProducts',
-  'relatedMetrics',
-]);
-
-const CSV_SELECT_AFFORDANCE_COLUMNS = new Set([
-  'metricType',
-  'unitOfMeasurement',
-  'granularity',
-  'entityStatus',
-  'tiers',
-]);
-
-const renderExpressionCodeCell = (
-  value: string,
-  row?: Record<string, string>
-) => {
-  if (!value) {
-    return value;
-  }
-
-  const language = String(row?.expressionLanguage ?? '');
-  const firstLine = value.split('\n').find((line) => line.trim()) ?? '';
-  const snippet =
-    firstLine.length > 80 ? `${firstLine.slice(0, 80)}…` : firstLine;
-
-  return (
-    <span className="bulk-edit-code-preview">
-      {language && (
-        <span className={`bulk-edit-code-lang-pill ${language.toLowerCase()}`}>
-          {language}
-        </span>
-      )}
-      <span className="bulk-edit-code-snippet">{snippet}</span>
-    </span>
-  );
-};
-
-const renderDescriptionCell = (
-  value: string,
-  usePlainTextDescription: boolean
-) => {
-  if (usePlainTextDescription) {
-    return value;
-  }
-
-  return (
-    <RichTextEditorPreviewerV1
-      enableSeeMoreVariant={false}
-      markdown={value}
-      reducePreviewLineClass="max-one-line"
-    />
-  );
-};
-
-const renderParameterValuesCell = (value: string) => {
-  if (!value) {
-    return value;
-  }
-
-  return (
-    <Tooltip
-      containerClassName="tw:max-w-sm tw:break-all"
-      placement="top"
-      title={value}>
-      <TooltipTrigger>
-        <span className="tw:block tw:truncate">{value}</span>
-      </TooltipTrigger>
-    </Tooltip>
-  );
-};
-
-const renderExtensionCell = (column: string, value: string) => {
-  if (value) {
-    return <CsvCellPreview column={column} value={value} />;
-  }
-
-  return (
-    <span className="bulk-edit-custom-property-placeholder">
-      {t('label.add-entity', {
-        entity: t('label.custom-property-plural').toLowerCase(),
-      })}
-    </span>
-  );
-};
-
-const renderSelectAffordanceCell = (
-  column: string,
-  value: string,
-  showSelectAffordance?: boolean
-) => (showSelectAffordance ? renderBulkEditSelectCell(column, value) : value);
-
 export const renderColumnDataEditor = (
   column: string,
   recordData: {
@@ -493,80 +414,91 @@ export const renderColumnDataEditor = (
   } = recordData;
   const itemStyles = getCsvCellStyleMetadata(row)?.[column];
 
-  if (CSV_PREVIEW_COLUMNS.has(column)) {
-    return (
-      <CsvCellPreview column={column} itemStyles={itemStyles} value={value} />
-    );
-  }
-
-  if (CSV_SELECT_AFFORDANCE_COLUMNS.has(column)) {
-    return renderSelectAffordanceCell(
-      column,
-      value,
-      options.showSelectAffordance
-    );
-  }
-
   switch (column) {
     case 'status':
       return statusRenderer(value as Status);
     case 'glossaryStatus':
       return <Typography.Text>{glossaryStatus}</Typography.Text>;
-    case 'expressionCode':
-      return renderExpressionCodeCell(value, row);
+    case 'expressionCode': {
+      const language = String(row?.expressionLanguage ?? '');
+      const firstLine = value.split('\n').find((line) => line.trim()) ?? '';
+      const snippet =
+        firstLine.length > 80 ? `${firstLine.slice(0, 80)}…` : firstLine;
+
+      return value ? (
+        <span className="bulk-edit-code-preview">
+          {language && (
+            <span
+              className={`bulk-edit-code-lang-pill ${language.toLowerCase()}`}>
+              {language}
+            </span>
+          )}
+          <span className="bulk-edit-code-snippet">{snippet}</span>
+        </span>
+      ) : (
+        value
+      );
+    }
     case 'description':
-      return renderDescriptionCell(
-        value,
-        Boolean(options.usePlainTextDescription)
+      if (options.usePlainTextDescription) {
+        return value;
+      }
+
+      return (
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant={false}
+          markdown={value}
+          reducePreviewLineClass="max-one-line"
+        />
       );
     case 'parameterValues':
-      return renderParameterValuesCell(value);
+      return value ? (
+        <Tooltip
+          containerClassName="tw:max-w-sm tw:break-all"
+          placement="top"
+          title={value}>
+          <span className="tw:block tw:truncate">{value}</span>
+        </Tooltip>
+      ) : (
+        value
+      );
+
+    case 'owners':
+    case 'owner':
+    case 'reviewers':
+    case 'tags':
+    case 'glossaryTerms':
+    case 'relatedTerms':
+    case 'domains':
+    case 'dataProducts':
+    case 'relatedMetrics':
+      return (
+        <CsvCellPreview column={column} itemStyles={itemStyles} value={value} />
+      );
     case 'extension':
-      return renderExtensionCell(column, value);
+      return value ? (
+        <CsvCellPreview column={column} value={value} />
+      ) : (
+        <span className="bulk-edit-custom-property-placeholder">
+          {t('label.add-entity', {
+            entity: t('label.custom-property-plural').toLowerCase(),
+          })}
+        </span>
+      );
+
+    case 'metricType':
+    case 'unitOfMeasurement':
+    case 'granularity':
+    case 'entityStatus':
+    case 'tiers':
+      return options.showSelectAffordance
+        ? renderBulkEditSelectCell(column, value)
+        : value;
+
     default:
       return value;
   }
 };
-
-interface ColumnConfigFlags {
-  isEnumColumn: boolean;
-  isLockedColumn: boolean;
-  columnDisplayName: string;
-  disabledColumns: boolean;
-  shouldUsePlainTextEditor: boolean;
-}
-
-function computeColumnConfigFlags(
-  column: string,
-  colType: string,
-  isBulkEdit: boolean,
-  useMetricRichGrid: boolean,
-  bulkEditConfig: ReturnType<typeof entityBulkEditConfigClassBase.getConfig>
-): ColumnConfigFlags {
-  const isRichGrid = useMetricRichGrid && Boolean(bulkEditConfig?.richGrid);
-  const isEnumColumn =
-    isRichGrid && Boolean(bulkEditConfig?.enumColumns[colType]);
-  const isLockedColumn =
-    isBulkEdit && Boolean(bulkEditConfig?.lockedColumns.includes(colType));
-  const columnDisplayName =
-    isRichGrid && colType === 'extension'
-      ? t('label.custom-property-plural')
-      : startCase(column);
-  const disabledColumns = Boolean(
-    isBulkEdit && (CSV_DISABLED_COLUMNS.includes(colType) || isLockedColumn)
-  );
-
-  return {
-    isEnumColumn,
-    isLockedColumn,
-    columnDisplayName,
-    disabledColumns,
-    // Bulk edit uses the synchronous inline text editor for text columns. The
-    // lazy (Suspense) text editor does not mount reliably in the bulk-edit grid,
-    // leaving text cells non-editable for non-metric entities.
-    shouldUsePlainTextEditor: isRichGrid || isBulkEdit,
-  };
-}
 
 export const getColumnConfig = (
   column: string,
@@ -582,19 +514,22 @@ export const getColumnConfig = (
 ): Column<Record<string, string>> => {
   const colType = column.split('.').pop() ?? '';
   const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
-  const {
-    isEnumColumn,
-    isLockedColumn,
-    columnDisplayName,
-    disabledColumns,
-    shouldUsePlainTextEditor,
-  } = computeColumnConfigFlags(
-    column,
-    colType,
-    isBulkEdit,
-    useMetricRichGrid,
-    bulkEditConfig
-  );
+  const isRichGrid = useMetricRichGrid && Boolean(bulkEditConfig?.richGrid);
+  const isEnumColumn =
+    isRichGrid && Boolean(bulkEditConfig?.enumColumns[colType]);
+  // Bulk edit uses the synchronous inline text editor for text columns. The
+  // lazy (Suspense) text editor does not mount reliably in the bulk-edit grid,
+  // leaving text cells non-editable for non-metric entities.
+  const shouldUsePlainTextEditor = isRichGrid || isBulkEdit;
+  const isLockedColumn =
+    isBulkEdit && Boolean(bulkEditConfig?.lockedColumns.includes(colType));
+  const columnDisplayName =
+    isRichGrid && colType === 'extension'
+      ? t('label.custom-property-plural')
+      : startCase(column);
+  const disabledColumns = isBulkEdit
+    ? CSV_DISABLED_COLUMNS.includes(colType) || isLockedColumn
+    : false;
 
   return {
     key: column,
