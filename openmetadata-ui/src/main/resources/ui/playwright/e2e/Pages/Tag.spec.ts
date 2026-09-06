@@ -494,6 +494,10 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     adminPage,
     dataConsumerPage,
   }) => {
+    // Three full navigation cycles (add, filter check, remove) overrun the
+    // default budget on slow CI shards — the merge-queue ejection in #32629.
+    test.slow();
+
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataConsumerPage);
 
