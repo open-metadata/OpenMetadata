@@ -94,6 +94,55 @@ interface ExtendedTreeNode {
   children?: ExtendedTreeNode[];
 }
 
+// In single-select mode the assigned term is a lazily-loaded leaf that is
+// absent from the glossary-only root list on first render. Inject it under
+// its parent glossary so antd's SingleSelector can resolve the friendly
+// display name instead of falling back to the raw FQN. De-dupe against the
+// real leaf once the parent has been expanded and the real child is present
+// in `base`. Mutates `base` in place.
+const injectAssignedTermLeaves = (
+  base: ExtendedTreeNode[],
+  initialOptions: SelectOption[] | undefined,
+  isParentSelectable: boolean
+) => {
+  if (!initialOptions?.length) {
+    return;
+  }
+  for (const opt of initialOptions) {
+    const fqn = opt.value;
+    if (!fqn) {
+      continue;
+    }
+    const parent = base.find((g) => fqn.startsWith(`${g.value}.`));
+    if (!parent) {
+      continue;
+    }
+    const existingChildren = Array.isArray(parent.children)
+      ? parent.children
+      : [];
+    if (existingChildren.some((c) => c.value === fqn)) {
+      continue;
+    }
+    // opt.data is a TagLabel (tagFQN, not fullyQualifiedName); normalize it so
+    // convertGlossaryTermsToTreeOptions resolves the FQN-based value.
+    const leafData = {
+      ...(opt.data as ModifiedGlossaryTerm),
+      fullyQualifiedName: fqn,
+    };
+    const leaf = (
+      convertGlossaryTermsToTreeOptions(
+        [leafData],
+        1,
+        isParentSelectable,
+        false
+      ) as ExtendedTreeNode[]
+    )[0];
+    if (leaf) {
+      parent.children = [...existingChildren, leaf];
+    }
+  }
+};
+
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
   initialOptions,
@@ -165,15 +214,27 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   }, []);
 
   const treeData = useMemo(() => {
-    return convertGlossaryTermsToTreeOptions(
+    const base = convertGlossaryTermsToTreeOptions(
       isNull(searchOptions)
         ? (glossaries as ModifiedGlossaryTerm[])
         : (searchOptions as unknown as ModifiedGlossaryTerm[]),
       0,
       isParentSelectable,
       false
-    );
-  }, [glossaries, searchOptions, isParentSelectable]);
+    ) as ExtendedTreeNode[];
+
+    if (!isMultiSelect) {
+      injectAssignedTermLeaves(base, initialOptions, isParentSelectable);
+    }
+
+    return base;
+  }, [
+    glossaries,
+    searchOptions,
+    isParentSelectable,
+    isMultiSelect,
+    initialOptions,
+  ]);
 
   const nodeParentMap = useMemo(() => {
     const map = new Map<
