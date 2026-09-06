@@ -140,97 +140,99 @@ test.describe(
 
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      const serviceResponse = await apiContext.post(
-        '/api/v1/services/messagingServices',
-        {
-          data: {
-            name: serviceName,
-            serviceType: 'Kafka',
-            connection: {
-              config: {
-                type: 'Kafka',
-                bootstrapServers: KAFKA_BOOTSTRAP_SERVERS,
-                schemaRegistryURL: KAFKA_SCHEMA_REGISTRY_URL,
+      // Every failure path below (service/pipeline create, deploy, re-trigger)
+      // must still release the page created above.
+      try {
+        const serviceResponse = await apiContext.post(
+          '/api/v1/services/messagingServices',
+          {
+            data: {
+              name: serviceName,
+              serviceType: 'Kafka',
+              connection: {
+                config: {
+                  type: 'Kafka',
+                  bootstrapServers: KAFKA_BOOTSTRAP_SERVERS,
+                  schemaRegistryURL: KAFKA_SCHEMA_REGISTRY_URL,
+                },
               },
             },
-          },
-        }
-      );
-
-      expect(
-        serviceResponse.status(),
-        `Creating Kafka service failed: ${await serviceResponse.text()}`
-      ).toBe(201);
-
-      const service = await serviceResponse.json();
-      serviceId = service.id;
-      serviceFqn = service.fullyQualifiedName;
-
-      // No topicFilterPattern at all: every topic is ingested, including the
-      // internal `__*` ones the connector otherwise skips. generateSampleData
-      // makes the connector read messages per topic, which is what keeps the
-      // run alive long enough to watch it tail.
-      const pipelineResponse = await apiContext.post(
-        '/api/v1/services/ingestionPipelines',
-        {
-          data: {
-            airflowConfig: { scheduleInterval: '0 0 * * *' },
-            loggerLevel: 'INFO',
-            name: pipelineName,
-            pipelineType: 'metadata',
-            service: { id: serviceId, type: 'messagingService' },
-            sourceConfig: {
-              config: {
-                type: 'MessagingMetadata',
-                generateSampleData: true,
-              },
-            },
-          },
-        }
-      );
-
-      expect(
-        pipelineResponse.status(),
-        `Creating ingestion pipeline failed: ${await pipelineResponse.text()}`
-      ).toBe(201);
-
-      const pipeline = await pipelineResponse.json();
-      pipelineId = pipeline.id;
-      pipelineFqn = pipeline.fullyQualifiedName;
-
-      await deployAndTrigger(apiContext, pipelineId);
-
-      // A run still `queued` after the wait means the trigger raced the
-      // scheduler serializing a freshly deployed DAG; re-triggering is what
-      // unsticks it, the same way IncidentManager re-triggers. A terminal state
-      // is a real signal and rethrows immediately.
-      for (
-        let attempt = 1;
-        attempt <= LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS;
-        attempt++
-      ) {
-        try {
-          ({ runId } = await waitForRunningPipelineStatus(
-            apiContext,
-            pipelineFqn
-          ));
-
-          break;
-        } catch (error) {
-          if (
-            !(error instanceof SchedulerDidNotStartError) ||
-            attempt === LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS
-          ) {
-            await afterAction();
-
-            throw error;
           }
+        );
 
-          await triggerPipeline(apiContext, pipelineId);
+        expect(
+          serviceResponse.status(),
+          `Creating Kafka service failed: ${await serviceResponse.text()}`
+        ).toBe(201);
+
+        const service = await serviceResponse.json();
+        serviceId = service.id;
+        serviceFqn = service.fullyQualifiedName;
+
+        // No topicFilterPattern at all: every topic is ingested, including the
+        // internal `__*` ones the connector otherwise skips. generateSampleData
+        // makes the connector read messages per topic, which is what keeps the
+        // run alive long enough to watch it tail.
+        const pipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: { scheduleInterval: '0 0 * * *' },
+              loggerLevel: 'INFO',
+              name: pipelineName,
+              pipelineType: 'metadata',
+              service: { id: serviceId, type: 'messagingService' },
+              sourceConfig: {
+                config: {
+                  type: 'MessagingMetadata',
+                  generateSampleData: true,
+                },
+              },
+            },
+          }
+        );
+
+        expect(
+          pipelineResponse.status(),
+          `Creating ingestion pipeline failed: ${await pipelineResponse.text()}`
+        ).toBe(201);
+
+        const pipeline = await pipelineResponse.json();
+        pipelineId = pipeline.id;
+        pipelineFqn = pipeline.fullyQualifiedName;
+
+        await deployAndTrigger(apiContext, pipelineId);
+
+        // A run still `queued` after the wait means the trigger raced the
+        // scheduler serializing a freshly deployed DAG; re-triggering is what
+        // unsticks it, the same way IncidentManager re-triggers. A terminal state
+        // is a real signal and rethrows immediately.
+        for (
+          let attempt = 1;
+          attempt <= LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS;
+          attempt++
+        ) {
+          try {
+            ({ runId } = await waitForRunningPipelineStatus(
+              apiContext,
+              pipelineFqn
+            ));
+
+            break;
+          } catch (error) {
+            if (
+              !(error instanceof SchedulerDidNotStartError) ||
+              attempt === LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS
+            ) {
+              throw error;
+            }
+
+            await triggerPipeline(apiContext, pipelineId);
+          }
         }
+      } finally {
+        await afterAction();
       }
-
-      await afterAction();
     });
 
     test.afterAll(async ({ browser }) => {
