@@ -82,6 +82,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
   ) => {
     const { t, i18n } = useTranslation();
     const editorRef = useRef<ReactQuill>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
     const [value, setValue] = useState(() =>
       getSanitizeContent(defaultValue ?? '')
     );
@@ -91,11 +92,12 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
     const { userProfilePics } = useApplicationStore();
 
     const handleClickOutside = useCallback((event: MouseEvent) => {
-      const emojiContainer = document.querySelector(
-        '#om-quill-editor #textarea-emoji'
+      const root = rootRef.current;
+      const emojiContainer = root?.querySelector(
+        '#textarea-emoji'
       ) as HTMLElement;
-      const emojiToggleButton = document.querySelector(
-        '#om-quill-editor .textarea-emoji-control.ql-list'
+      const emojiToggleButton = root?.querySelector(
+        '.textarea-emoji-control.ql-list'
       ) as HTMLElement;
 
       if (
@@ -335,7 +337,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
 
     useEffect(() => {
       // get the editor container
-      const container = document.getElementById('om-quill-editor');
+      const container = rootRef.current;
 
       if (container && editorRef.current) {
         // get the editor instance
@@ -358,9 +360,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
 
     return (
       <div
-        className={className}
+        className={classNames(className, 'feed-editor-root')}
         data-testid="editor-wrapper"
-        id="om-quill-editor">
+        ref={rootRef}>
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
