@@ -238,6 +238,12 @@ const TableDetailsPageV1: React.FC = () => {
   // {@code enabled} gates the fire so we don't fetch in tour mode (we seed the mock directly
   // below) or before view permissions have resolved. The tour case writes to the cache via
   // {@code setQueryData} so {@code tableDetails} below stays one variable.
+  const isTableQueryEnabled = useMemo(
+    () =>
+      Boolean(tableFqn && canViewTableInQuery && !isTourOpen && !isTourPage),
+    [tableFqn, canViewTableInQuery, isTourOpen, isTourPage]
+  );
+
   const {
     data: tableDetails,
     isLoading: tableLoading,
@@ -245,16 +251,16 @@ const TableDetailsPageV1: React.FC = () => {
   } = useQuery({
     queryKey: tableCacheKey,
     queryFn: tableQueryFn(tableFqn, tableFields),
-    enabled: Boolean(
-      tableFqn && canViewTableInQuery && !isTourOpen && !isTourPage
-    ),
+    enabled: isTableQueryEnabled,
   });
+
+  const tableDetailsId = tableDetails?.id ?? '';
 
   // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
   // the render that starts the request, so the badge never flashes a placeholder 0.
   const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
-    queryKey: tableQueryCountKey(tableDetails?.id ?? ''),
-    queryFn: tableQueryCountFn(tableDetails?.id ?? ''),
+    queryKey: tableQueryCountKey(tableDetailsId),
+    queryFn: tableQueryCountFn(tableDetailsId),
     enabled: Boolean(tableDetails?.id),
   });
 
@@ -1013,6 +1019,25 @@ const TableDetailsPageV1: React.FC = () => {
     return <ErrorPlaceHolder className="m-0" />;
   }
 
+  const renderTabs = () => (
+    <Tabs
+      activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
+      className="tabs-new"
+      data-testid="tabs"
+      items={tabs}
+      tabBarExtraContent={
+        isExpandViewSupported && (
+          <AlignRightIconButton
+            className={isTabExpanded ? 'rotate-180' : ''}
+            title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+            onClick={toggleTabExpanded}
+          />
+        )
+      }
+      onChange={handleTabChange}
+    />
+  );
+
   return (
     <PageLayoutV1 pageTitle={entityName}>
       <GenericProvider<Table>
@@ -1053,24 +1078,7 @@ const TableDetailsPageV1: React.FC = () => {
           </Col>
           {/* Entity Tabs */}
           <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
+            {renderTabs()}
           </Col>
           <LimitWrapper resource="table">
             <></>
