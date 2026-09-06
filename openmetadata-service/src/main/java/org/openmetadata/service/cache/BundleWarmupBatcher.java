@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -39,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -50,17 +53,27 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * {@link org.openmetadata.service.apps.bundles.cache.CacheWarmupApp} is trying to avoid — it took
  * hours on modest installs.
  *
- * <p>This batcher takes a different tradeoff: it always pre-warms the cheap bundle fields — tags
- * (one batched {@code SELECT ... WHERE targetFQNHash IN (...)}) and certification (already on the
- * entity JSON we just paged through). Relationship warming is optional because it adds extra
- * relationship-table scans and reference hydration work. When enabled, it warms common
- * low-cardinality relation fields and still leaves high-cardinality graph-style fields to the lazy
- * first-read path.
+ * <p>This batcher takes a different tradeoff: it always pre-warms the cheap bundle field — tags
+ * (one batched {@code SELECT ... WHERE targetFQNHash IN (...)}) — and strips the {@code
+ * Certification.*} tag out of that list, mirroring the canonical read path ({@link
+ * org.openmetadata.service.jdbi3.EntityRepository#fetchAndPutTagsWithCertification} /
+ * {@code getTags(String)}), which routes the certification tag to {@link
+ * org.openmetadata.schema.type.AssetCertification} rather than the normal {@code tags} list.
+ * Certification itself is not pre-warmed: it is stored as a relationship and stripped from the
+ * stored entity JSON before persistence, so the JSON this batcher pages through never carries it;
+ * the warmer therefore marks {@code certificationLoaded=false} and leaves recomputation to the
+ * lazy read path ({@link org.openmetadata.service.jdbi3.EntityRepository#getCertification}), which
+ * rebuilds it from {@code tag_usage}. Caching {@code certificationLoaded=true} with a null value
+ * would instead short-circuit that lookup and serve a wrong null on cache-hit GETs.
+ * Relationship warming is optional because it adds extra relationship-table scans and reference
+ * hydration work. When enabled, it warms common low-cardinality relation fields and still leaves
+ * high-cardinality graph-style fields to the lazy first-read path.
  *
- * <p>Net benefit: tag and certification reads are warm immediately after warmup, eliminating one of
- * the three fan-out queries on every first read post-deploy. Operators can enable relationship
- * warming when they want the first entity-detail reads to avoid the common ownership/domain/reviewer
- * relationship queries as well.
+ * <p>Net benefit: tag reads are warm immediately after warmup, eliminating one of the three
+ * fan-out queries on every first read post-deploy. Certification is recomputed lazily by the read
+ * path (one {@code getCertTagsInternalBatch} query) until the bundle cache back-fills it.
+ * Operators can enable relationship warming when they want the first entity-detail reads to avoid
+ * the common ownership/domain/reviewer relationship queries as well.
  */
 @Slf4j
 public class BundleWarmupBatcher {
@@ -139,6 +152,7 @@ public class BundleWarmupBatcher {
     }
 
     final Map<String, String> bundleKeyValues = new HashMap<>(entitiesByFqnHash.size() * 2);
+    final String certClassification = resolveCertificationClassification();
     int failed = 0;
     for (final Map.Entry<String, EntityInterface> entry : entitiesByFqnHash.entrySet()) {
       final EntityInterface entity = entry.getValue();
@@ -150,10 +164,13 @@ public class BundleWarmupBatcher {
             warmRelationships
                 ? (warmedRelations == null ? emptyRelationshipMap() : warmedRelations)
                 : null;
-        dto.tags = tagsByFqnHash.getOrDefault(entry.getKey(), Collections.emptyList());
+        dto.tags =
+            stripCertificationTags(
+                tagsByFqnHash.getOrDefault(entry.getKey(), Collections.emptyList()),
+                certClassification);
         dto.tagsLoaded = true;
-        dto.certification = entity.getCertification();
-        dto.certificationLoaded = true;
+        dto.certification = null;
+        dto.certificationLoaded = false;
         bundleKeyValues.put(keys.bundle(entityType, entity.getId()), JsonUtils.pojoToJson(dto));
       } catch (final Exception e) {
         failed++;
@@ -170,6 +187,40 @@ public class BundleWarmupBatcher {
       return new BatchResult(0, bundleKeyValues.size() + failed);
     }
     return new BatchResult(bundleKeyValues.size(), failed);
+  }
+
+  private static List<TagLabel> stripCertificationTags(
+      List<TagLabel> tags, String certClassification) {
+    if (certClassification == null || tags == null || tags.isEmpty()) {
+      return tags;
+    }
+    List<TagLabel> normal = new ArrayList<>(tags.size());
+    for (TagLabel tag : tags) {
+      if (tag == null) {
+        continue;
+      }
+      String tagFqn = tag.getTagFQN();
+      if (tagFqn != null && certClassification.equals(FullyQualifiedName.getParentFQN(tagFqn))) {
+        continue;
+      }
+      normal.add(tag);
+    }
+    return normal;
+  }
+
+  private static String resolveCertificationClassification() {
+    try {
+      return SettingsCache.getSettingOrDefault(
+              SettingsType.ASSET_CERTIFICATION_SETTINGS,
+              new AssetCertificationSettings().withAllowedClassification("Certification"),
+              AssetCertificationSettings.class)
+          .getAllowedClassification();
+    } catch (Exception e) {
+      LOG.warn(
+          "Bundle warmup: failed to resolve certification classification; cert tags will not be filtered",
+          e);
+      return null;
+    }
   }
 
   private Map<UUID, Map<String, List<EntityReference>>> warmRelationships(
