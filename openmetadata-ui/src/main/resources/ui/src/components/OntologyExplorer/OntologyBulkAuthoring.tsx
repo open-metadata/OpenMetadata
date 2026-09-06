@@ -22,7 +22,7 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FieldPath, FieldPathValue, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { OntologyBulkJob } from '../../generated/api/data/ontologyBulkJob';
@@ -57,6 +57,8 @@ const OntologyBulkAuthoring = ({
   relationshipTypes,
 }: OntologyBulkAuthoringProps) => {
   const { t } = useTranslation();
+  const tRef = useRef(t);
+  tRef.current = t;
   const hookForm = useForm<OntologyBulkFormState>({
     defaultValues: EMPTY_BULK_FORM,
   });
@@ -75,22 +77,23 @@ const OntologyBulkAuthoring = ({
 
   useEffect(() => {
     const glossaryName = glossary?.displayName ?? glossary?.name;
+    const tr = tRef.current;
 
     setResult(undefined);
     setResultJobId(undefined);
     hookForm.reset({
       ...EMPTY_BULK_FORM,
       changeSetDescription: glossary
-        ? t('message.bulk-edit-entity-help', {
-            entity: t('label.term-plural'),
+        ? tr('message.bulk-edit-entity-help', {
+            entity: tr('label.term-plural'),
           })
         : '',
       changeSetDisplayName: glossary
-        ? `${t('label.bulk-edit')}: ${glossaryName}`
+        ? `${tr('label.bulk-edit')}: ${glossaryName}`
         : '',
       changeSetName: glossary ? `ontology-bulk-${glossary.name}` : '',
     });
-  }, [glossary?.id, glossary?.name, glossary?.displayName, hookForm, t]);
+  }, [glossary?.id, glossary?.name, glossary?.displayName, hookForm]);
 
   const updateForm = <Field extends FieldPath<OntologyBulkFormState>>(
     field: Field,
