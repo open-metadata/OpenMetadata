@@ -212,6 +212,9 @@ const EmptyTags: FC = () => {
   );
 };
 
+const getLinkedAssetKey = (asset: DataAssetOption) =>
+  asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
+
 const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   assets,
 }) => {
@@ -222,10 +225,7 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   return (
     <div className="tw:flex tw:flex-col tw:gap-2">
       {assets.map((asset) => (
-        <LinkedAssetCard
-          asset={asset}
-          key={asset.reference?.fullyQualifiedName ?? String(asset.value ?? '')}
-        />
+        <LinkedAssetCard asset={asset} key={getLinkedAssetKey(asset)} />
       ))}
     </div>
   );
@@ -312,6 +312,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     [memoryToEdit, currentUserName]
   );
 
+  const isReadOnlyForViewer = isViewOnly && !isOwner && !canDelete;
+
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
     const showEditButton = isViewOnly && canEditMemory;
@@ -392,6 +394,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     },
     []
   );
+
+  const handleRemoveLinkedAsset = useCallback((fqn: string) => {
+    setLinkedAssets((prev) => prev.filter((a) => getLinkedAssetKey(a) !== fqn));
+  }, []);
 
   const handleTagSave = useCallback(
     async (tags: DefaultOptionType | DefaultOptionType[]) => {
@@ -596,7 +602,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       return (
         <TextArea
           data-testid="memory-content-input"
-          placeholder={t('message.what-should-ask-collate-remember')}
+          placeholder={t(
+            contextCenterClassBase.getMemoryPromptTranslationKey()
+          )}
           rows={5}
           value={field.value}
           onChange={(value) => field.onChange(value)}
@@ -701,7 +709,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Scrollable body */}
                   <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
                     {/* Read-only banner for non-owners */}
-                    {isViewOnly && !isOwner && !canDelete && memoryToEdit && (
+                    {isReadOnlyForViewer && memoryToEdit && (
                       <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
                         <Lock01
                           className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
@@ -763,7 +771,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               />
                               <Tooltip
                                 title={t(
-                                  'message.what-should-ask-collate-remember'
+                                  contextCenterClassBase.getMemoryPromptTranslationKey()
                                 )}>
                                 <TooltipTrigger className="tw:leading-0">
                                   <InfoCircle
@@ -847,27 +855,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             <EmptyLinkedAssets />
                           ) : (
                             <div className="tw:flex tw:flex-col tw:gap-2">
-                              {linkedAssets.map((asset) => {
-                                const assetKey =
-                                  asset.reference?.fullyQualifiedName ??
-                                  String(asset.value ?? '');
-
-                                return (
-                                  <LinkedAssetCard
-                                    asset={asset}
-                                    key={assetKey}
-                                    onRemove={(fqn) =>
-                                      setLinkedAssets((prev) =>
-                                        prev.filter(
-                                          (a) =>
-                                            (a.reference?.fullyQualifiedName ??
-                                              String(a.value ?? '')) !== fqn
-                                        )
-                                      )
-                                    }
-                                  />
-                                );
-                              })}
+                              {linkedAssets.map((asset) => (
+                                <LinkedAssetCard
+                                  asset={asset}
+                                  key={getLinkedAssetKey(asset)}
+                                  onRemove={handleRemoveLinkedAsset}
+                                />
+                              ))}
                             </div>
                           )}
                         </>

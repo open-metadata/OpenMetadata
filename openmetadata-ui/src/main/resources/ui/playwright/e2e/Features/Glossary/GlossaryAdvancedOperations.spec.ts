@@ -20,7 +20,7 @@ import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -61,7 +61,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillDescriptionBox(page, glossary.data.description);
 
       // Verify mutually exclusive toggle is OFF by default
       const mutuallyExclusiveBtn = page.getByTestId(
@@ -115,7 +115,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillDescriptionBox(page, glossary.data.description);
 
       // Add first user owner
       await addMultiOwnerInDialog({
@@ -386,7 +386,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `ColorTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with custom color');
+      await fillDescriptionBox(page, 'Term with custom color');
 
       // Set custom color
       const customColor = '#FF5733';
@@ -423,7 +423,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `IconTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with custom icon');
+      await fillDescriptionBox(page, 'Term with custom icon');
 
       // Set custom icon URL
       const iconUrl = 'https://example.com/icon.png';
@@ -1015,7 +1015,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `RelatedTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with related terms');
+      await fillDescriptionBox(page, 'Term with related terms');
 
       const searchResponse = page.waitForResponse('/api/v1/search/query*');
 
@@ -1127,7 +1127,7 @@ test.describe('Glossary Advanced Operations', () => {
 
     const glossaryName = `CancelTest${Date.now()}`;
     await page.fill('[data-testid="name"]', glossaryName);
-    await page.locator(descriptionBox).fill('This should be cancelled');
+    await fillDescriptionBox(page, 'This should be cancelled');
 
     // Click cancel button
     await page.click('[data-testid="cancel-glossary"]');
@@ -1154,7 +1154,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `CancelTermTest${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('This should be cancelled');
+      await fillDescriptionBox(page, 'This should be cancelled');
 
       // Click cancel button (X or Cancel)
       await page.getByRole('button', { name: 'Cancel' }).click();
@@ -1301,7 +1301,7 @@ test.describe('Glossary Advanced Operations', () => {
       // Create a long name (128 chars is typically the limit)
       const longName = 'A'.repeat(100) + Date.now().toString().slice(-10);
       await page.fill('[data-testid="name"]', longName);
-      await page.locator(descriptionBox).fill('Term with long name');
+      await fillDescriptionBox(page, 'Term with long name');
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -1335,7 +1335,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Create a long description (5000+ chars)
       const longDescription = 'This is a test. '.repeat(350);
-      await page.locator(descriptionBox).fill(longDescription);
+      await fillDescriptionBox(page, longDescription);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -1363,7 +1363,7 @@ test.describe('Glossary Advanced Operations', () => {
     // Try to enter name exceeding 128 chars
     const tooLongName = 'A'.repeat(150);
     await page.fill('[data-testid="name"]', tooLongName);
-    await page.locator(descriptionBox).fill('Test description');
+    await fillDescriptionBox(page, 'Test description');
 
     // Try to save
     await page.click('[data-testid="save-glossary"]');
@@ -1399,7 +1399,7 @@ test.describe('Glossary Advanced Operations', () => {
       // Try to enter name exceeding 128 chars
       const tooLongName = 'B'.repeat(150);
       await page.fill('[data-testid="name"]', tooLongName);
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       // Try to save
       await page.click('[data-testid="save-glossary-term"]');

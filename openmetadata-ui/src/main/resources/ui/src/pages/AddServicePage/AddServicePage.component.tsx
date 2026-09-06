@@ -74,6 +74,8 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
+const SERVICE_NAME_ID = 'service-name';
+
 const ConnectionConfigForm = lazy(
   () =>
     import(
@@ -274,7 +276,7 @@ const AddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
-      document.getElementById('service-name')?.focus();
+      document.getElementById(SERVICE_NAME_ID)?.focus();
 
       return;
     }
@@ -548,13 +550,13 @@ const AddServicePage = () => {
                               fieldText: t('label.service-name'),
                             })
                           );
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME_ID)?.focus();
 
                           return false;
                         }
 
                         if (nameError || isServiceNameChecking) {
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME_ID)?.focus();
 
                           return false;
                         }

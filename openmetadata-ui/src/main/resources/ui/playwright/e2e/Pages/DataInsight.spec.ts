@@ -176,10 +176,11 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       "descriptionStatus = 'INCOMPLETE'"
     );
 
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.waitForResponse(
+    const descriptionChartResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await descriptionChartResponse;
 
     await page.getByTestId('explore-asset-with-no-owner').click();
     await page.waitForURL('/explore/tables?*');

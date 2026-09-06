@@ -13,7 +13,7 @@ Airflow REST API source to extract metadata via Airflow REST API
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 from urllib.parse import quote
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -80,7 +80,7 @@ class AirflowApiSource(PipelineServiceSource):
     _dag_listing_complete = True
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None) -> "AirflowApiSource":  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None) -> "AirflowApiSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
@@ -158,7 +158,7 @@ class AirflowApiSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: AirflowApiDagDetails) -> str:
         return pipeline_details.dag_id
 
-    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> Optional[PipelineState]:  # noqa: UP045
+    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> PipelineState | None:
         if pipeline_details.is_paused is None:
             return None
         return PipelineState.Inactive if pipeline_details.is_paused else PipelineState.Active
@@ -175,7 +175,7 @@ class AirflowApiSource(PipelineServiceSource):
             return f"{host}/dags/{quote(dag_id)}"
         return f"{host}/dags/{quote(dag_id)}/grid"
 
-    def get_owners(self, owners: Optional[List[str]]) -> Optional[EntityReferenceList]:  # noqa: UP006, UP045
+    def get_owners(self, owners: list[str] | None) -> EntityReferenceList | None:
         if not self.source_config.includeOwners or not owners:
             return None
         refs = EntityReferenceList(root=[])
@@ -188,7 +188,7 @@ class AirflowApiSource(PipelineServiceSource):
                 logger.warning(f"Error while getting details of user {owner_name} - {exc}")
         return refs if refs.root else None
 
-    def _build_tasks(self, dag_details: AirflowApiDagDetails) -> List[Task]:  # noqa: UP006
+    def _build_tasks(self, dag_details: AirflowApiDagDetails) -> list[Task]:
         return [
             Task(
                 name=task.task_id,

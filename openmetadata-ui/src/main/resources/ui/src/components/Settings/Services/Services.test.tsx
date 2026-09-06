@@ -221,16 +221,15 @@ jest.mock('../../common/ListView/ListView.component', () => ({
             })}
           </div>
           <div data-testid="table-props-container">
-            {tableProps.columns.map(
-              (column: ColumnsType[0], key: string) =>
-                column.render && (
-                  <>
-                    <div key={key}>{column.title as string}</div>
-                    <div key={key}>
-                      {column.render(column.title, column, 1) as ReactNode}
-                    </div>
-                  </>
-                )
+            {tableProps.columns.map((column: ColumnsType[0]) =>
+              column.render ? (
+                <React.Fragment key={column.key as string}>
+                  <div>{column.title as string}</div>
+                  <div>
+                    {column.render(column.title, column, 1) as ReactNode}
+                  </div>
+                </React.Fragment>
+              ) : null
             )}
           </div>
         </div>

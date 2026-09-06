@@ -268,6 +268,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
           {scoringLevels.map((level, index) => (
             <div
               className="tw:flex tw:gap-3 tw:mb-3 tw:items-center"
+              // eslint-disable-next-line react/no-array-index-key -- index-addressed form array, no stable id
               key={index}>
               <div className="tw:flex tw:w-1/3 tw:min-w-0 tw:items-center tw:gap-2">
                 <div className="tw:min-w-0 tw:flex-1">

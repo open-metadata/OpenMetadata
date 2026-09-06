@@ -12,11 +12,8 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
-from typing import Optional  # noqa: I001
-
-from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
 from sqlalchemy.dialects.mssql.base import (
     MSBinary,
@@ -476,7 +473,7 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
     return view_names  # noqa: RET504
 
 
-def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> str | None:
     """
     returns sqlaclhemdy engine date format by running config query
     """
@@ -489,7 +486,7 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
     return  # noqa: RET502
 
 
-def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
+def is_query_store_enabled(engine: Engine | None) -> bool:
     """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
     enabled = False
     if engine is not None:

@@ -99,6 +99,7 @@ const renderStatWithBoldNumbers = (stat: string): ReactNode =>
     STAT_NUMBER_TEST.test(part) ? (
       <strong
         className="tw:font-semibold tw:text-primary"
+        // eslint-disable-next-line react/no-array-index-key -- tokenized string parts, fixed order, may repeat
         key={`${part}-${index}`}>
         {part}
       </strong>
@@ -457,6 +458,7 @@ export const ContextPreviewModal = ({
                 activeHeading === index,
                 heading.level > 1
               )}
+              // eslint-disable-next-line react/no-array-index-key -- heading position is the navigation identity
               key={`${heading.label}-${index}`}
               onClick={() => scrollToHeading(index)}>
               {heading.label}

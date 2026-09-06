@@ -28,39 +28,9 @@ import {
   OntologyImportFormat,
   OntologyImportResult,
 } from '../../../rest/importExportAPI';
+import { detectOntologyImportFormat } from '../../../utils/OntologyImportUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ImportOntologyModalProps } from './ImportOntologyModal.interface';
-
-const looksLikeRdfXml = (content: string): boolean => {
-  const head = content.trimStart();
-
-  return (
-    head.startsWith('<?xml') ||
-    head.startsWith('<rdf:RDF') ||
-    head.startsWith('<RDF')
-  );
-};
-
-const getOntologyFormat = (
-  fileName: string,
-  content: string
-): OntologyImportFormat => {
-  const extension = fileName.split('.').pop()?.toLowerCase();
-
-  switch (extension) {
-    case 'rdf':
-    case 'xml':
-      return 'rdfxml';
-    case 'owl':
-      // .owl is not tied to one serialization: classic OWL is RDF/XML, but most
-      // modern OWL 2 files are Turtle. Detect from the content instead of guessing.
-      return looksLikeRdfXml(content) ? 'rdfxml' : 'turtle';
-    case 'nt':
-      return 'ntriples';
-    default:
-      return 'turtle';
-  }
-};
 
 const ImportOntologyModal = ({
   glossaryName,
@@ -121,7 +91,7 @@ const ImportOntologyModal = ({
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = (event.target?.result as string) ?? '';
-        const ontologyFormat = getOntologyFormat(file.name, content);
+        const ontologyFormat = detectOntologyImportFormat(file.name, content);
         setFileName(file.name);
         setFileContent(content);
         setFormat(ontologyFormat);

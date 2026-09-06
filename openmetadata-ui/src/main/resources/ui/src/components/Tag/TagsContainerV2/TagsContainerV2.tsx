@@ -184,7 +184,7 @@ const TagsContainerV2 = ({
         name: option.name,
         displayName: option.displayName,
         description: option.description,
-        style: option.style ?? {},
+        style: option.style,
         href: option.href,
         appliedBy: option.appliedBy,
         appliedAt: option.appliedAt,

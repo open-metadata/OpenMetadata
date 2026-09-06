@@ -68,12 +68,14 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
   const displayResource = fetchedResource ?? resource;
 
+  const durationUnitLabel =
+    displayResource.resourceType === 'Article'
+      ? t('label.min-read')
+      : t('label.min-watch');
   const formattedDuration = displayResource.estimatedDuration
-    ? `${Math.floor(displayResource.estimatedDuration / 60)} ${
-        displayResource.resourceType === 'Article'
-          ? t('label.min-read')
-          : t('label.min-watch')
-      }`
+    ? `${Math.floor(
+        displayResource.estimatedDuration / 60
+      )} ${durationUnitLabel}`
     : null;
 
   const formattedDate = displayResource.updatedAt
@@ -239,10 +241,10 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 <Box className="tw:flex-1 tw:min-w-0">
                   {contextItems.length > 0 && (
                     <Box className="tw:flex-wrap tw:gap-2">
-                      {contextItems.map((ctx, idx) => (
+                      {contextItems.map((ctx) => (
                         <Badge
                           color="gray"
-                          key={`${ctx.pageId}-${idx}`}
+                          key={ctx.pageId}
                           size="sm"
                           type="color">
                           {getContextLabel(ctx.pageId)}

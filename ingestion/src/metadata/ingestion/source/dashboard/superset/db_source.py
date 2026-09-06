@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine  # noqa: TC002
@@ -97,7 +97,7 @@ class SupersetDBSource(SupersetSourceMixin):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch chart list due to - {err}]")
 
-    def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:  # noqa: UP045
+    def get_column_list(self, table_id: int | None) -> Iterable[FetchChart]:
         try:
             if table_id:
                 with self.engine.connect() as conn:
@@ -157,7 +157,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 )
             )
 
-    def _get_datasource_fqn_for_lineage(self, chart_json: FetchChart, db_service_prefix: Optional[str]):  # noqa: UP045
+    def _get_datasource_fqn_for_lineage(self, chart_json: FetchChart, db_service_prefix: str | None):
         return self._get_datasource_fqn(db_service_prefix, chart_json) if chart_json.table_name else None
 
     def yield_dashboard_chart(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateChartRequest]]:
@@ -192,7 +192,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
                 )
 
-    def _get_database_name(self, sqa_str: str, db_service_entity: DatabaseService) -> Optional[str]:  # noqa: UP045
+    def _get_database_name(self, sqa_str: str, db_service_entity: DatabaseService) -> str | None:
         default_db_name = None
         if sqa_str:
             sqa_url = make_url(sqa_str)
@@ -200,7 +200,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
-    def _get_datasource_fqn(self, db_service_prefix: Optional[str], chart_json: FetchChart) -> Optional[str]:  # noqa: UP045
+    def _get_datasource_fqn(self, db_service_prefix: str | None, chart_json: FetchChart) -> str | None:
         try:
             (
                 db_service_name,
@@ -275,7 +275,7 @@ class SupersetDBSource(SupersetSourceMixin):
                         )
                     )
 
-    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:  # noqa: UP006
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> list[str]:
         """
         Args:
             chart_json: FetchChart

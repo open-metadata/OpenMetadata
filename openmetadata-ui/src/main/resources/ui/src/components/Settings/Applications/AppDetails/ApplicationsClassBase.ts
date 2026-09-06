@@ -11,13 +11,22 @@
  *  limitations under the License.
  */
 
-import { ComponentType, FC, lazy } from 'react';
+import type { ComponentType, FC } from 'react';
+import { lazy } from 'react';
 import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
-import { AppPlugin } from '../plugins/AppPlugin';
+import type { AppPlugin } from '../plugins/AppPlugin';
+// Glob maps live in a sibling `.assets.ts` file so ts-jest can mock them (see
+// jest.config.js `moduleNameMapper` — `import.meta.glob` is Vite-only syntax
+// that ts-jest cannot parse). Runtime behaviour is unchanged.
+import {
+  applicationSchemaLoaders,
+  appLogoLoaders,
+  appScreenshotUrls,
+} from './ApplicationsClassBase.assets';
 
 const ApplicationConfiguration =
   withSuspenseFallback<ApplicationConfigurationProps>(
@@ -26,12 +35,20 @@ const ApplicationConfiguration =
 
 class ApplicationsClassBase {
   public async importSchema(fqn: string) {
-    const module = await import(
-      `../../../../jsons/applicationSchemas/${fqn}.json`
-    );
-    const schema = module.default || module;
+    const key = `../../../../jsons/applicationSchemas/${fqn}.json`;
+    const loader = applicationSchemaLoaders[key];
+    if (!loader) {
+      // Callers (e.g. AppDetails.component) rely on a rejected promise to
+      // surface a toast + fallback UI. Preserve that contract instead of
+      // silently returning an empty object.
+      throw new Error(`Application schema not found: ${fqn}`);
+    }
+    const module = await loader();
 
-    return schema;
+    return (
+      (module as { default?: unknown }).default ??
+      (module as Record<string, unknown>)
+    );
   }
   public getJSONUISchema() {
     return {
@@ -51,8 +68,13 @@ class ApplicationsClassBase {
     };
   }
   public async importAppLogo(appName: string) {
+    const key = `../../../../assets/svg/${appName}.svg`;
+    const loader = appLogoLoaders[key];
+    if (!loader) {
+      return { ReactComponent: DefaultAppLogo };
+    }
     try {
-      return await import(`../../../../assets/svg/${appName}.svg`);
+      return await loader();
     } catch {
       return { ReactComponent: DefaultAppLogo };
     }
@@ -70,10 +92,18 @@ class ApplicationsClassBase {
     return [];
   }
 
-  public importAppScreenshot(screenshotName: string) {
-    return import(
-      `../../../../assets/img/appScreenshots/${screenshotName}.png`
-    );
+  public async importAppScreenshot(screenshotName: string) {
+    const key = `../../../../assets/img/appScreenshots/${screenshotName}.png`;
+    const url = appScreenshotUrls[key];
+    if (!url) {
+      // Callers (e.g. MarketPlaceAppDetails) `try/catch` around this to drop
+      // missing screenshots. Preserve the rejection semantics of the old
+      // dynamic `import()` so the catch path still runs and we don't render
+      // an `<img>` with no `src`.
+      throw new Error(`App screenshot not found: ${screenshotName}`);
+    }
+
+    return { default: url };
   }
 
   public appPluginRegistry: Record<

@@ -500,11 +500,10 @@ export const TaskTabNew = ({
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isTaskTerminalStatus(task.status);
-  const isTaskActionable = !isTaskClosed
-    ? isWorkflowDrivenTask
-      ? Boolean(task.availableTransitions?.length)
-      : task.status === TaskEntityStatus.Open
-    : false;
+  const openTaskActionable = isWorkflowDrivenTask
+    ? Boolean(task.availableTransitions?.length)
+    : task.status === TaskEntityStatus.Open;
+  const isTaskActionable = !isTaskClosed && openTaskActionable;
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
@@ -811,12 +810,13 @@ export const TaskTabNew = ({
       status.toLowerCase() === 'approved'
         ? TaskResolutionType.Approved
         : TaskResolutionType.Rejected;
-    const newValue =
-      isApprovalWorkflowTask && status.toLowerCase() === 'approved'
+    const approvalWorkflowValue =
+      status.toLowerCase() === 'approved'
         ? taskHandler.approvedValue
-        : isApprovalWorkflowTask
-        ? taskHandler.rejectedValue
-        : suggestedValue;
+        : taskHandler.rejectedValue;
+    const newValue = isApprovalWorkflowTask
+      ? approvalWorkflowValue
+      : suggestedValue;
     updateTaskData({ newValue }, resolutionType);
   };
 
@@ -910,11 +910,14 @@ export const TaskTabNew = ({
    *
    * @returns True if has access otherwise false
    */
+  const isOwnerWithoutReviewer = !hasGlossaryReviewer && isOwner;
+  const isAssigneeTeamMemberNonCreator =
+    Boolean(isPartOfAssigneeTeam) && !isCreator;
   const hasEditAccess =
     isAdminUser ||
     isAssignee ||
-    (!hasGlossaryReviewer && isOwner) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    isOwnerWithoutReviewer ||
+    isAssigneeTeamMemberNonCreator;
 
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
@@ -1631,7 +1634,7 @@ export const TaskTabNew = ({
     </div>
   );
 
-  const ActionRequired = () => {
+  const renderActionRequired = () => {
     if (!actionButtons) {
       return null;
     }
@@ -1731,6 +1734,8 @@ export const TaskTabNew = ({
     setHasAddedComment(false);
   }, [task.id]);
 
+  const taskTitleDisplayName = task.displayName ?? taskDisplayMessage;
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1766,34 +1771,34 @@ export const TaskTabNew = ({
                         {startCase(field)}
                       </Typography.Text>
                       <div className="task-proposed-changes-chips">
-                        {removed.map((val, index) =>
+                        {removed.map((val) =>
                           getUrl ? (
                             <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              key={`${field}-removed-${val}-${index}`}
+                              key={`${field}-removed-${val}`}
                               to={getUrl(val)}>
                               {val}
                             </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                              key={`${field}-removed-${val}-${index}`}>
+                              key={`${field}-removed-${val}`}>
                               {stripHtmlTags(val)}
                             </span>
                           )
                         )}
-                        {added.map((val, index) =>
+                        {added.map((val) =>
                           getUrl ? (
                             <Link
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              key={`${field}-added-${val}-${index}`}
+                              key={`${field}-added-${val}`}
                               to={getUrl(val)}>
                               {val}
                             </Link>
                           ) : (
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                              key={`${field}-added-${val}-${index}`}>
+                              key={`${field}-added-${val}`}>
                               {stripHtmlTags(val)}
                             </span>
                           )
@@ -1836,7 +1841,7 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {isTaskActionable && !rest.isOpenInDrawer && ActionRequired()}
+        {isTaskActionable && !rest.isOpenInDrawer && renderActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
@@ -1930,12 +1935,10 @@ export const TaskTabNew = ({
           open={showEditTaskModel}
           title={
             isWorkflowDrivenTask && selectedTransition
-              ? `${selectedTransition.label} #${taskDisplayId} ${
-                  task.displayName ?? taskDisplayMessage
-                }`
+              ? `${selectedTransition.label} #${taskDisplayId} ${taskTitleDisplayName}`
               : `${t('label.edit-entity', {
                   entity: t('label.task-lowercase'),
-                })} #${taskDisplayId} ${task.displayName ?? taskDisplayMessage}`
+                })} #${taskDisplayId} ${taskTitleDisplayName}`
           }
           width={768}
           onCancel={() => {

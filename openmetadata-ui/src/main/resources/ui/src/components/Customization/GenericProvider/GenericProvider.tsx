@@ -124,7 +124,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     selectedColumnRef.current = selectedColumn;
   }, [selectedColumn]);
 
-  const { entityRules } = useEntityRules(type);
+  const { entityRules, isRulesLoaded } = useEntityRules(type);
 
   // limit=1000 is the backend max. Entities with more tracked field changes
   // will have entries beyond this limit silently omitted. Use fieldPrefix
@@ -236,8 +236,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     (column: ColumnOrTask) => {
       const columnFqn = column.fullyQualifiedName;
 
-      // If the column is already selected, don't do anything to avoid loops
-      if (selectedColumn?.fullyQualifiedName === columnFqn) {
+      // Use ref so the callback is not recreated on every selection change,
+      // which would cause useFqnDeepLink to re-run and reopen the panel on close.
+      if (selectedColumnRef.current?.fullyQualifiedName === columnFqn) {
         return;
       }
 
@@ -267,7 +268,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       routeTab,
       navigate,
       location.pathname,
-      selectedColumn?.fullyQualifiedName,
       extractedColumns,
     ]
   );
@@ -423,6 +423,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     () => ({
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,
@@ -445,6 +446,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,

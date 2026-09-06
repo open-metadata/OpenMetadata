@@ -130,10 +130,13 @@ export const shouldSpanFullWidth = ({
     return true;
   }
 
-  return (
+  const hasComplexSchemaType =
     hasSchemaType(schemaProperty, 'object') ||
     hasSchemaType(schemaProperty, 'array') ||
-    hasSchemaType(schemaProperty, 'boolean') ||
+    hasSchemaType(schemaProperty, 'boolean');
+
+  return (
+    hasComplexSchemaType ||
     Boolean(schemaProperty?.oneOf?.length) ||
     Boolean(schemaProperty?.anyOf?.length) ||
     hasLongValueSignal(name, schemaProperty)
@@ -199,12 +202,10 @@ export const getFormSeperationConfig = ({
     (title === AWS_S3_STORAGE_CONFIG_TITLE && hasIamAuthToggle);
   const isGatedCredentialConfig =
     !isRoot && !schema.additionalProperties && hasIamAuthToggle;
+  const isNonRootNestedSection =
+    !isRoot && !schema.additionalProperties && !isSampleDataSection;
   const isGenericNestedConfig =
-    !isRoot &&
-    !schema.additionalProperties &&
-    !isSampleDataSection &&
-    !isSampleDataConfig &&
-    !isAwsS3StorageConfig;
+    isNonRootNestedSection && !isSampleDataConfig && !isAwsS3StorageConfig;
   const isNestedConfigGrid =
     isSampleDataConfig || isAwsS3StorageConfig || isGenericNestedConfig;
   const isCredentialAdvancedDisclosure =
@@ -308,15 +309,21 @@ export const partitionProperties = (
         isGatedCredentialConfig &&
         !GATED_CREDENTIAL_VISIBLE_PROPERTIES.has(prop.name) &&
         !isRequiredSchemaProperty(schema, prop.name);
+      const isImpersonateObject =
+        prop.name.toLowerCase().includes('impersonate') &&
+        hasSchemaType(schemaProperty, 'object');
+      const isTypeWithConstOrDefault =
+        prop.name === 'type' &&
+        (schemaProperty?.const !== undefined ||
+          schemaProperty?.default !== undefined);
+      const isAdvancedPropertyName =
+        DEFAULT_ADVANCED_PROPERTY_NAMES.has(prop.name) ||
+        isImpersonateObject ||
+        isTypeWithConstOrDefault;
       const isDefaultAdvanced =
         !isRoot &&
         !isRequiredSchemaProperty(schema, prop.name) &&
-        (DEFAULT_ADVANCED_PROPERTY_NAMES.has(prop.name) ||
-          (prop.name.toLowerCase().includes('impersonate') &&
-            hasSchemaType(schemaProperty, 'object')) ||
-          (prop.name === 'type' &&
-            (schemaProperty?.const !== undefined ||
-              schemaProperty?.default !== undefined)));
+        isAdvancedPropertyName;
 
       if (
         ADVANCED_PROPERTIES.has(prop.name) ||

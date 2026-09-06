@@ -19,6 +19,11 @@ import { CSMode } from '../../../../../../enums/codemirror.enum';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import './manifest-json-widget.less';
 
+const EXPECTED_STRING_ARRAY_ERROR = 'expected-string-array' as const;
+const EXPECTED_OBJECT_ARRAY_ERROR = 'expected-object-array' as const;
+const PARTITION_COLUMN_REQUIRED_ERROR = 'partition-column-required' as const;
+const ENTRY_REQUIRED_FIELD_ERROR = 'entry-required-field' as const;
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -197,15 +202,15 @@ const getTypeMismatch = (
         : { kind: 'expected-number', got: typeof value };
     case 'string[]':
       if (!Array.isArray(value)) {
-        return { kind: 'expected-string-array' };
+        return { kind: EXPECTED_STRING_ARRAY_ERROR };
       }
 
       return value.every((item) => typeof item === 'string')
         ? null
-        : { kind: 'expected-string-array' };
+        : { kind: EXPECTED_STRING_ARRAY_ERROR };
     case 'object[]':
       if (!Array.isArray(value)) {
-        return { kind: 'expected-object-array' };
+        return { kind: EXPECTED_OBJECT_ARRAY_ERROR };
       }
 
       return value.every(
@@ -213,7 +218,7 @@ const getTypeMismatch = (
           typeof item === 'object' && item !== null && !Array.isArray(item)
       )
         ? null
-        : { kind: 'expected-object-array' };
+        : { kind: EXPECTED_OBJECT_ARRAY_ERROR };
     default:
       return null;
   }
@@ -251,7 +256,7 @@ const validatePartitionColumns = (
     }
     if (typeof columnRecord.name !== 'string' || !columnRecord.name.trim()) {
       return {
-        code: 'partition-column-required',
+        code: PARTITION_COLUMN_REQUIRED_ERROR,
         entryIndex: entryIndex + 1,
         colIndex,
         field: 'name',
@@ -262,7 +267,7 @@ const validatePartitionColumns = (
       !columnRecord.dataType.trim()
     ) {
       return {
-        code: 'partition-column-required',
+        code: PARTITION_COLUMN_REQUIRED_ERROR,
         entryIndex: entryIndex + 1,
         colIndex,
         field: 'dataType',
@@ -352,7 +357,7 @@ export const validateManifestJson = (raw: string): ValidationState => {
       return {
         status: 'error',
         error: {
-          code: 'entry-required-field',
+          code: ENTRY_REQUIRED_FIELD_ERROR,
           index: i + 1,
           field: 'containerName',
         },
@@ -365,7 +370,7 @@ export const validateManifestJson = (raw: string): ValidationState => {
       return {
         status: 'error',
         error: {
-          code: 'entry-required-field',
+          code: ENTRY_REQUIRED_FIELD_ERROR,
           index: i + 1,
           field: 'dataPath',
         },
@@ -409,9 +414,9 @@ const formatTypeMismatch = (mismatch: TypeMismatch, t: TFunction): string => {
       });
     case 'expected-number':
       return t('message.expected-a-number-got-type', { type: mismatch.got });
-    case 'expected-string-array':
+    case EXPECTED_STRING_ARRAY_ERROR:
       return t('message.expected-an-array-of-strings');
-    case 'expected-object-array':
+    case EXPECTED_OBJECT_ARRAY_ERROR:
       return t('message.expected-an-array-of-objects');
     default:
       return '';
@@ -448,7 +453,7 @@ export const formatValidationError = (
         suggestion: suggestionText,
       });
     }
-    case 'entry-required-field':
+    case ENTRY_REQUIRED_FIELD_ERROR:
       return t('message.manifest-entry-required-field', {
         index: error.index,
         field: error.field,
@@ -478,7 +483,7 @@ export const formatValidationError = (
         suggestion: suggestionText,
       });
     }
-    case 'partition-column-required':
+    case PARTITION_COLUMN_REQUIRED_ERROR:
       return t('message.manifest-partition-column-required', {
         entryIndex: error.entryIndex,
         colIndex: error.colIndex,

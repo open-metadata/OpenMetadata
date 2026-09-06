@@ -279,8 +279,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       outerRadius={70}
                       paddingAngle={0}
                       startAngle={90}>
-                      {columnTestData.map((entry, index) => (
-                        <Cell fill={entry.color} key={`cell-${index}`} />
+                      {columnTestData.map((entry) => (
+                        <Cell fill={entry.color} key={`cell-${entry.name}`} />
                       ))}
                     </Pie>
                     <Tooltip />

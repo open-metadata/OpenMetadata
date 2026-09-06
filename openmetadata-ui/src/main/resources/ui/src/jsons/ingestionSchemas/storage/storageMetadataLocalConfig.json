@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Storage Metadata Local Config",
+  "description": "Storage Metadata Manifest file path config.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataLocalConfig",
+  "type": "object",
+  "properties": {
+    "manifestFilePath": {
+      "title": "Storage Metadata Manifest File Path",
+      "description": "Storage Metadata manifest file path to extract locations to ingest from.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "manifestFilePath"
+  ]
+}

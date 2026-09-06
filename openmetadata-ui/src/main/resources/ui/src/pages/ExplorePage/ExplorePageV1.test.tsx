@@ -160,7 +160,7 @@ describe('ExplorePageV1', () => {
     const mockNavigate = jest.fn();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
     (useCustomLocation as jest.Mock).mockReturnValue({
-      pathname: '/context-center/dashboard',
+      pathname: '/context-center/overview',
       search: '',
     });
 
@@ -192,7 +192,7 @@ describe('ExplorePageV1', () => {
       getExploreTabPath('tables')
     );
     expect(mockNavigate.mock.calls[0][0].pathname).not.toEqual(
-      '/context-center/dashboard'
+      '/context-center/overview'
     );
   });
 

@@ -13,7 +13,7 @@
 
 import { Skeleton, Space, Typography } from 'antd';
 import { compact, startCase } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo } from 'react';
+import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
@@ -180,22 +180,20 @@ const renderEntityLinks = (
     return plainValue ? [plainValue] : [];
   }
 
-  return entities.map((entity, idx) => {
+  return entities.map((entity) => {
     const link = getEntityLinkForField(fieldName, entity);
     const label = entity.displayName ?? entity.name;
+    const entityKey = `${keyPrefix}-${entity.fqn ?? entity.name}`;
 
     if (link) {
       return (
-        <Link
-          className="change-entity-link"
-          key={`${keyPrefix}-${idx}`}
-          to={link}>
+        <Link className="change-entity-link" key={entityKey} to={link}>
           {label}
         </Link>
       );
     }
 
-    return <span key={`${keyPrefix}-${idx}`}>{label}</span>;
+    return <span key={entityKey}>{label}</span>;
   });
 };
 
@@ -220,10 +218,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     log.entityFQN ??
     log.changeEvent?.entityFullyQualifiedName ??
     log.changeEvent?.entity?.fullyQualifiedName;
-  const entityLabel =
+  const entityNameLabel =
     getEntityName(log.changeEvent?.entity) ||
-    (log.changeEvent?.entity as { name?: string })?.name ||
-    (entityFQN ? Fqn.split(entityFQN).pop() : undefined) ||
+    (log.changeEvent?.entity as { name?: string })?.name;
+  const splitEntityFqn = entityFQN ? Fqn.split(entityFQN).pop() : undefined;
+  const entityLabel =
+    entityNameLabel ||
+    splitEntityFqn ||
     log.changeEvent?.entityFullyQualifiedName ||
     log.entityId;
   const normalizedType = resolveEntityType(entityType);
@@ -279,7 +280,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                 return (
                   <span
                     className="change-value-item"
-                    key={`${keyPrefix}-wrap-${idx}`}>
+                    key={`${keyPrefix}-wrap-${entity?.fqn ?? entity?.name}`}>
                     {showProfilePic && entity && (
                       <ProfilePicture
                         displayName={entity.displayName ?? entity.name}
@@ -315,16 +316,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       const removedLabel = startCase(t('label.removed-lowercase'));
       const fallbackField = t('label.field', { defaultValue: 'field' });
 
-      (changeDescription.fieldsAdded ?? []).forEach((change, idx) => {
+      (changeDescription.fieldsAdded ?? []).forEach((change) => {
         const label = getFieldLabel(change.name);
         const valueNode = renderChangeValue(
           change,
           change.newValue,
-          `added-${idx}`
+          `added-${change.name}`
         );
 
         details.push(
-          <span className="change-detail" key={`added-${idx}`}>
+          <span className="change-detail" key={`added-${change.name}`}>
             <span className="change-action">{addedLabel}</span>{' '}
             <span className="change-field">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
@@ -334,24 +335,25 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
       (changeDescription.fieldsUpdated ?? [])
         .filter((change) => change.name !== 'deleted')
-        .forEach((change, idx) => {
+        .forEach((change) => {
           const label = getFieldLabel(change.name);
           const oldValueNode = renderChangeValue(
             change,
             change.oldValue,
-            `updated-old-${idx}`
+            `updated-old-${change.name}`
           );
           const newValueNode = renderChangeValue(
             change,
             change.newValue,
-            `updated-new-${idx}`
+            `updated-new-${change.name}`
           );
+          const hasValueChange = oldValueNode || newValueNode;
 
           details.push(
-            <span className="change-detail" key={`updated-${idx}`}>
+            <span className="change-detail" key={`updated-${change.name}`}>
               <span className="change-action">{updatedLabel}</span>{' '}
               <span className="change-field">{label || fallbackField}</span>
-              {(oldValueNode || newValueNode) && (
+              {hasValueChange && (
                 <>
                   : {oldValueNode}
                   {oldValueNode && newValueNode && ' → '}
@@ -362,16 +364,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           );
         });
 
-      (changeDescription.fieldsDeleted ?? []).forEach((change, idx) => {
+      (changeDescription.fieldsDeleted ?? []).forEach((change) => {
         const label = getFieldLabel(change.name);
         const valueNode = renderChangeValue(
           change,
           change.oldValue,
-          `deleted-${idx}`
+          `deleted-${change.name}`
         );
 
         details.push(
-          <span className="change-detail" key={`deleted-${idx}`}>
+          <span className="change-detail" key={`deleted-${change.name}`}>
             <span className="change-action">{removedLabel}</span>{' '}
             <span className="change-field">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
@@ -479,7 +481,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           {descriptionNodes.length > 0 ? (
             <div className="description-content">
               {descriptionNodes.map((node, idx) => (
-                <span className="description-item" key={idx}>
+                <span
+                  className="description-item"
+                  key={isValidElement(node) ? node.key : undefined}>
                   {node}
                   {idx < descriptionNodes.length - 1 && (
                     <span className="description-separator">; </span>

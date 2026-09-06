@@ -73,12 +73,9 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     idSchema.$id === 'root/authenticationConfiguration/samlConfiguration';
 
   // Only apply special grouping to these specific main configuration objects
+  const isAuthProviderConfig = isOIDCConfig || isLDAPConfig || isSAMLConfig;
   const shouldApplyGrouping =
-    isAuthConfigRoot ||
-    isAuthorizerConfig ||
-    isOIDCConfig ||
-    isLDAPConfig ||
-    isSAMLConfig;
+    isAuthConfigRoot || isAuthorizerConfig || isAuthProviderConfig;
 
   const filterVisibleProperties = (
     properties: ObjectFieldTemplatePropertyType[]
@@ -358,14 +355,14 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
               // Default for non-grouped only
               'default-object-field': !shouldApplyGrouping,
             })}
-            key={`group-${groupIndex}`}>
+            key={`group-${group.title}`}>
             {/* Render properties */}
-            {group.properties.map((element, index) => (
+            {group.properties.map((element) => (
               <div
                 className={classNames('property-wrapper', {
                   'additional-fields': schema.additionalProperties,
                 })}
-                key={`${element.content.key}-${index}`}>
+                key={element.content.key}>
                 {element.content}
               </div>
             ))}
@@ -386,12 +383,12 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
                 'sso-field-group-box': shouldApplyGrouping,
                 'default-object-field': !shouldApplyGrouping,
               })}>
-              {advancedProperties.map((element, index) => (
+              {advancedProperties.map((element) => (
                 <div
                   className={classNames('property-wrapper', {
                     'additional-fields': schema.additionalProperties,
                   })}
-                  key={`${element.content.key}-${index}`}>
+                  key={element.content.key}>
                   {element.content}
                 </div>
               ))}

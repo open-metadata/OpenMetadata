@@ -183,9 +183,11 @@ function ConditionBuilderValueControl(
   }
 
   const options = hasFetchOptions ? asyncOptions : staticOptions;
-  const items: SelectItemType[] = (
-    hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions
-  ).map((o) => ({ id: o.value, label: o.label }));
+  const itemsSource = hasFetchOptions && loading ? [] : options;
+  const items: SelectItemType[] = itemsSource.map((o) => ({
+    id: o.value,
+    label: o.label,
+  }));
 
   return (
     <Autocomplete

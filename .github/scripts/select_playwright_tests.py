@@ -89,7 +89,11 @@ def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
     impact_map = json.loads(args.impact_map.read_text(encoding="utf-8"))
-    full_event = args.event_name in {"merge_group", "schedule"}
+    # `push` is the main-scoped cache warmer (populate-playwright-caches.yml).
+    # It carries no PR diff to narrow against, and the fixture it warms has to be
+    # the one a full merge-queue run restores — a targeted plan would leave
+    # requires_airflow false and skip warming the ingestion image entirely.
+    full_event = args.event_name in {"merge_group", "schedule", "push"}
     full_requested = (
         args.event_name == "workflow_dispatch" and args.full_suite == "true"
     )
@@ -169,7 +173,7 @@ def main() -> None:
             # @knowledge-graph, Auth, nightly, VisualRegression, …). A directly
             # changed delegated spec already routes to delegatedChangedSpecs
             # above; this also drops ones pulled in by a source->spec mapping
-            # glob (e.g. `OntologyExplorer*.spec.ts` matching the RDF spec), which
+            # glob (e.g. `OntologyStudio*.spec.ts` matching the RDF spec), which
             # otherwise plan a postgres shard with zero runnable tests.
             "selectors": [
                 {"spec": spec, "projects": sorted(projects)}
