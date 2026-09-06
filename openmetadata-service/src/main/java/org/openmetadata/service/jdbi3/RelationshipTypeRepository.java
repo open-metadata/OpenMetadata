@@ -184,8 +184,14 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
       recordChange("inverse", original.getInverse(), updated.getInverse());
       recordChange("domain", original.getDomain(), updated.getDomain(), true);
       recordChange("range", original.getRange(), updated.getRange(), true);
-      recordChange(
-          "characteristics", original.getCharacteristics(), updated.getCharacteristics(), true);
+      boolean characteristicsChanged =
+          recordChange(
+              "characteristics", original.getCharacteristics(), updated.getCharacteristics(), true);
+      // Defense-in-depth: the resource layer already validates via prepareInternal, but re-run the
+      // validator here so the invariant holds for any updater caller that skips prepareInternal.
+      if (characteristicsChanged) {
+        RelationshipTypeValidator.validate(updated);
+      }
       recordChange("cardinality", original.getCardinality(), updated.getCardinality());
       recordChange("propertyChain", original.getPropertyChain(), updated.getPropertyChain(), true);
       recordChange("disjointWith", original.getDisjointWith(), updated.getDisjointWith(), true);
