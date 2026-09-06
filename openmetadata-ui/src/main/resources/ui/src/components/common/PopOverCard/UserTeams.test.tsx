@@ -12,22 +12,17 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { User } from '../../../generated/entity/teams/user';
 import { UserTeams } from './UserTeams.component';
 
-const mockUserData = {
+const mockUser: User = {
   name: 'testUser',
   displayName: 'Test User',
   teams: [
     { id: '1', name: 'Team 1', deleted: false },
     { id: '2', name: 'Team 2', deleted: false },
   ],
-};
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    userProfilePics: { testUser: mockUserData },
-  })),
-}));
+} as unknown as User;
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
@@ -37,7 +32,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 
 describe('UserTeams Component', () => {
   it('should render teams when teams are available', () => {
-    render(<UserTeams userName="testUser" />);
+    render(<UserTeams user={mockUser} />);
 
     expect(screen.getByText('label.team-plural')).toBeInTheDocument();
     expect(screen.getByText('Team 1')).toBeInTheDocument();
@@ -45,8 +40,23 @@ describe('UserTeams Component', () => {
   });
 
   it('should not render when no teams are available', () => {
-    const { container } = render(<UserTeams userName="nonExistentUser" />);
+    const { container } = render(<UserTeams user={{} as User} />);
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('should not render deleted teams', () => {
+    const userWithDeletedTeam = {
+      ...mockUser,
+      teams: [
+        { id: '1', name: 'Active Team', deleted: false },
+        { id: '2', name: 'Deleted Team', deleted: true },
+      ],
+    } as unknown as User;
+
+    render(<UserTeams user={userWithDeletedTeam} />);
+
+    expect(screen.getByText('Active Team')).toBeInTheDocument();
+    expect(screen.queryByText('Deleted Team')).toBeNull();
   });
 });
