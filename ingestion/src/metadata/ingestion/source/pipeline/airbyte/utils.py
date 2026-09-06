@@ -43,8 +43,10 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     source_schema = stream.namespace
 
     if source_type is None:
-        logger.warning(
-            f"Lineage of airbyte pipeline with source [{source_connection.resolved_type}] is not supported yet"
+        # Expected branch, not an error: the caller then tries object-store and API resolution.
+        logger.debug(
+            "Airbyte source [%s] is not a relational table; trying object-store / API resolution",
+            source_connection.resolved_type,
         )
         return None
 
@@ -140,8 +142,10 @@ def get_destination_table_details(
     destination_schema = destination_config.get("schema")
 
     if destination_type is None:
-        logger.warning(
-            f"Lineage of airbyte pipeline with destination [{destination_connection.resolved_type}] is not supported yet"
+        # Expected branch, not an error: the caller then tries object-store resolution.
+        logger.debug(
+            "Airbyte destination [%s] is not a relational table; trying object-store resolution",
+            destination_connection.resolved_type,
         )
         return None
 

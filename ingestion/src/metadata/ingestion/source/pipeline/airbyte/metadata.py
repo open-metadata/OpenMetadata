@@ -345,23 +345,33 @@ class AirbyteSource(PipelineServiceSource):
             pipeline_name=self.context.get().pipeline,
         )
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        if not pipeline_entity:
+            logger.warning(
+                "Skipping lineage for connection [%s]: pipeline [%s] not found in OpenMetadata",
+                pipeline_details.connection.connectionId,
+                pipeline_fqn,
+            )
+            return
         pipeline_reference = EntityReference(id=pipeline_entity.id.root, type="pipeline")
 
         for stream in streams:
+            from_reference = self._get_source_entity_reference(stream, source_connection, pipeline_name, source_name)
             to_reference = self._get_destination_entity_reference(
                 stream, destination_connection, pipeline_name, destination_name
             )
 
-            if not to_reference:
+            if from_reference is None and to_reference is None:
                 continue
 
-            from_reference = self._get_source_entity_reference(stream, source_connection, pipeline_name, source_name)
-
-            # An API (or otherwise unsupported) source has no OpenMetadata entity to anchor
-            # the upstream side. Anchoring on the pipeline still records where the data
-            # landed instead of dropping the edge entirely.
+            # Anchor whichever side has no OpenMetadata entity on the pipeline itself, so a
+            # resolved side is never dropped. This covers API destinations — OpenMetadata accepts
+            # apiCollection only as an upstream node, never as a downstream target — and any
+            # otherwise unsupported connector. The pipeline is a valid lineage node either way.
             if from_reference is None:
                 from_reference = pipeline_reference
+                lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
+            elif to_reference is None:
+                to_reference = pipeline_reference
                 lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
             else:
                 lineage_details = LineageDetails(
@@ -445,9 +455,16 @@ class AirbyteSource(PipelineServiceSource):
 
         destination_table_details = get_destination_table_details(stream, destination_connection)
         if not destination_table_details:
-            # Not relational and not an object store. Only an explicitly configured API
-            # service may claim it; otherwise the connector is simply unsupported.
-            return self._get_api_entity_reference(stream, pipeline_name)
+            # Not relational and not an object store (API, Kafka, /dev/null, …). There is no valid
+            # downstream target: OpenMetadata rejects apiCollection as a downstream lineage node, and
+            # an Airbyte stream name does not map to a single apiEndpoint. The caller anchors the
+            # resolved source on the pipeline instead of emitting a server-rejected edge.
+            logger.debug(
+                "Destination [%s] for pipeline [%s] has no supported lineage target",
+                destination_name,
+                pipeline_name,
+            )
+            return None
 
         to_fqn = self._get_table_fqn(destination_table_details)
         if not to_fqn:
@@ -476,7 +493,10 @@ class AirbyteSource(PipelineServiceSource):
 
     def _get_api_entity_reference(self, stream: AirbyteStream, pipeline_name: str) -> Optional[EntityReference]:  # noqa: UP045
         """
-        Resolve the API collection a stream is read from or written to.
+        Resolve the API collection a stream is read from (source side only).
+
+        OpenMetadata accepts an apiCollection only as an *upstream* lineage node — a downstream
+        apiCollection edge is rejected server-side — so this is never used to resolve a destination.
 
         Airbyte API connectors expose no endpoint URL in their configuration, so the stream
         name is the only join key available. That key is weak: Airbyte ships many connectors

@@ -18,6 +18,10 @@ lineage and no log output at all:
 1. The public API returns streams under ``configurations.streams`` while the model only
    read ``syncCatalog.streams``, so the per-stream loop never ran and nothing was logged.
 2. S3 destinations resolve to a ``container`` entity, but lineage was hardcoded to ``table``.
+
+API entities resolve on the **source side only**: OpenMetadata accepts an ``apiCollection`` as an
+upstream lineage node but rejects it as a downstream target (``container -> apiCollection`` returns
+HTTP 500), so an API *destination* is anchored on the pipeline instead of emitting a rejected edge.
 """
 
 from unittest.mock import MagicMock, patch
@@ -399,8 +403,14 @@ class TestPipelineToContainerLineage:
         assert edges[0].edge.fromEntity.type == "container"
         assert edges[0].edge.fromEntity.type != "apiCollection"
 
-    def test_reverse_flow_s3_source_to_api_destination(self, airbyte_source):
-        """S3 -> Airbyte -> API resolves container upstream and API collection downstream."""
+    def test_reverse_flow_s3_source_to_api_destination_anchors_on_pipeline(self, airbyte_source):
+        """
+        S3 -> Airbyte -> API: OpenMetadata rejects apiCollection as a *downstream* lineage target
+        (verified live: `container -> apiCollection` returns HTTP 500), and a stream name does not
+        map to a single apiEndpoint. So the API destination cannot resolve; the resolved S3 source
+        is preserved by anchoring the downstream side on the pipeline (container -> pipeline) rather
+        than emitting a server-rejected edge.
+        """
         airbyte_source.source_config.lineageInformation = LineageInformation(apiServiceNames=["om28591-pokeapi"])
         airbyte_source.client.get_source.return_value = AirbyteSourceResponse(
             sourceType="s3", configuration={"bucket": "om28591-airbyte-dest"}
@@ -416,8 +426,10 @@ class TestPipelineToContainerLineage:
         assert len(edges) == 1
         edge = edges[0].edge
         assert edge.fromEntity.type == "container"
-        assert edge.toEntity.type == "apiCollection"
-        assert str(edge.toEntity.id.root) == API_COLLECTION_ID
+        assert str(edge.fromEntity.id.root) == CONTAINER_ID
+        # The API collection must never be a downstream target — the server rejects it.
+        assert edge.toEntity.type == "pipeline"
+        assert edge.toEntity.type != "apiCollection"
 
     def test_s3_source_path_anchors_on_bucket(self, airbyte_source):
         """The S3 source scopes streams by per-stream globs, so lineage uses the bucket."""
