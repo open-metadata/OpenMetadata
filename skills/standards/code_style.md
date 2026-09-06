@@ -8,8 +8,8 @@ Order: stdlib → third-party → OpenMetadata generated → OpenMetadata intern
 ```python
 import json
 import traceback
+from collections.abc import Iterable
 from functools import partial
-from typing import Iterable, Optional
 
 import requests
 from sqlalchemy.engine import Engine
@@ -30,7 +30,7 @@ from metadata.utils.logger import ingestion_logger
 
 ### Type Annotations
 - All function signatures must have type annotations
-- Use `Optional[T]` for nullable fields
+- Use `T | None` for nullable fields
 - Use `Iterable[Either[...]]` for yield methods
 - Import types from `typing` or `collections.abc`
 
@@ -44,7 +44,7 @@ from metadata.utils.logger import ingestion_logger
 
 When defining Pydantic models for API responses with aliased fields:
 - Always set `model_config = ConfigDict(populate_by_name=True)` when using `Field(alias=...)` — without it, constructing instances with Python attribute names raises `ValidationError`
-- Use `Optional[T]` with `Field(None, alias=...)` for nullable fields
+- Use `T | None` with `Field(None, alias=...)` for nullable fields
 - Create list response wrapper models inheriting from a base OData/pagination response
 
 ```python
@@ -55,11 +55,11 @@ class MyApiReport(BaseModel):
 
     id: str = Field(alias="Id")
     name: str = Field(alias="Name")
-    description: Optional[str] = Field(None, alias="Description")
+    description: str | None = Field(None, alias="Description")
 
 
 class MyApiListResponse(BaseModel):
-    value: List[MyApiReport] = Field(default_factory=list)
+    value: list[MyApiReport] = Field(default_factory=list)
 ```
 
 ### Error Messages

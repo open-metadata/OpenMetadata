@@ -191,7 +191,7 @@ def _get(self, endpoint):
     response = self._session.get(f"{self._base_url}{endpoint}")
     if response.status_code == 429:
         retry_after = int(response.headers.get("Retry-After", 30))
-        logger.warning(f"Rate limited, retrying after {retry_after}s")
+        logger.warning("Rate limited, retrying after %ss", retry_after)
         raise RateLimitError(retry_after)
     response.raise_for_status()
     return response.json()
