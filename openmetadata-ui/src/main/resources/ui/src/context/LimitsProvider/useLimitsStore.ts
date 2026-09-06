@@ -67,6 +67,7 @@ export type BannerDetails = {
   type: 'warning' | 'danger';
   softLimitExceed?: boolean;
   hardLimitExceed?: boolean;
+  resource?: string;
 };
 
 /**
@@ -111,7 +112,13 @@ export const useLimitStore = create<{
     showBanner = true,
     force = false
   ) => {
-    const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
+    const {
+      setResourceLimit,
+      resourceLimit,
+      setBannerDetails,
+      config,
+      bannerDetails,
+    } = get();
 
     let rLimit = resourceLimit[resource];
     if (config?.enable === false) {
@@ -155,8 +162,7 @@ export const useLimitStore = create<{
       const isAnyLimitExceeded =
         softLimitExceed || hardLimitExceed || limitReached;
 
-      isAnyLimitExceeded &&
-        showBanner &&
+      if (isAnyLimitExceeded && showBanner) {
         setBannerDetails({
           header: `You have reached ${
             hardLimitExceed ? '100%' : '75%'
@@ -170,7 +176,13 @@ export const useLimitStore = create<{
             .replace('{{limit}}', limits.hardLimit + ''),
           softLimitExceed,
           hardLimitExceed,
+          resource,
         });
+      } else if (showBanner && bannerDetails?.resource === resource) {
+        // Clear only the banner this resource owns, so a sub-limit refresh of
+        // one resource does not clobber a banner set by a different resource.
+        setBannerDetails(null);
+      }
     }
 
     return rLimit;
