@@ -610,6 +610,95 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     }
   }
 
+  /**
+   * Relays an upstream IdP OAuth error callback back to the MCP client's {@code redirect_uri}.
+   *
+   * <p>When the IdP returns an error response (e.g. {@code login_required}, {@code
+   * access_denied}, {@code server_error}) for an MCP OAuth flow, the MCP client must be
+   * redirected back to its own {@code redirect_uri} carrying {@code error}, {@code
+   * error_description}, {@code state} (the MCP client's original state), and the RFC 9207
+   * {@code iss} parameter — per RFC 6749 §4.1.2.1 and the MCP authorization spec — so it can
+   * surface a meaningful error or fall back to interactive auth. This method looks up the
+   * pending MCP auth request by {@code authRequestId} (the DB-backed state), re-validates the
+   * client's redirect URI (defense-in-depth against open redirect, mirroring {@link
+   * #handleSSOCallbackWithDbState}), builds the error response, and serves an HTML page that
+   * auto-redirects the browser to the client callback. It never invokes the web-SSO callback
+   * handler, so the buffered-response ambiguity that previously swallowed the error cannot
+   * occur.
+   *
+   * @param response The HTTP response (typically a buffered wrapper from the servlet)
+   * @param authRequestId The MCP pending auth request id (without the {@code "mcp:"} prefix)
+   * @param errorCode The OAuth error code from the IdP (e.g. {@code login_required})
+   * @param errorDescription The optional OAuth error_description from the IdP
+   */
+  public void handleSSOErrorCallback(
+      HttpServletResponse response, String authRequestId, String errorCode, String errorDescription)
+      throws Exception {
+
+    if (errorCode == null || errorCode.trim().isEmpty()) {
+      throw new IllegalStateException(
+          "Cannot relay MCP OAuth error: error code is missing from IdP callback");
+    }
+
+    // Look up the pending request to recover the MCP client's redirect_uri and original state.
+    McpPendingAuthRequest pendingRequest = pendingAuthRepository.findByAuthRequestId(authRequestId);
+    if (pendingRequest == null) {
+      throw new IllegalStateException(
+          "Pending auth request not found or expired: " + authRequestId);
+    }
+
+    // Re-validate the redirect URI against the registered client (defense-in-depth against
+    // open redirect; mirrors handleSSOCallbackWithDbState). Even an error redirect must not
+    // be sent to an unregistered URI.
+    OAuthClientInformation client = clientRepository.findByClientId(pendingRequest.clientId());
+    if (client == null) {
+      throw new IllegalStateException(
+          "Client not found for pending auth request: " + pendingRequest.clientId());
+    }
+    URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
+    try {
+      client.validateRedirectUri(requestedRedirectUri);
+    } catch (Exception e) {
+      LOG.error(
+          "SECURITY ALERT: Redirect URI validation failed in MCP error callback for client "
+              + "{}: {}",
+          client.getClientId(),
+          e.getMessage());
+      throw new IllegalStateException("Redirect URI validation failed: " + e.getMessage(), e);
+    }
+
+    // Build the OAuth error response per RFC 6749 §4.1.2.1 and the MCP spec, plus the RFC 9207
+    // iss parameter (added by constructAuthorizationResponseUri when issuer is set).
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("error", errorCode);
+    if (errorDescription != null && !errorDescription.isEmpty()) {
+      queryParams.put("error_description", errorDescription);
+    }
+    if (pendingRequest.mcpState() != null) {
+      queryParams.put("state", pendingRequest.mcpState());
+    }
+    String redirectUrl =
+        UriUtils.constructAuthorizationResponseUri(
+            pendingRequest.redirectUri(), queryParams, issuer);
+
+    LOG.warn(
+        "Relaying IdP OAuth error to MCP client (error={}, client={}, redirectUri={})",
+        errorCode,
+        pendingRequest.clientId(),
+        pendingRequest.redirectUri());
+    serveErrorPage(response, redirectUrl, errorCode, errorDescription);
+
+    // Best-effort cleanup — failure here doesn't affect the relayed error.
+    try {
+      pendingAuthRepository.delete(authRequestId);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
+          authRequestId,
+          e.getMessage());
+    }
+  }
+
   @Override
   public CompletableFuture<OAuthToken> exchangeAuthorizationCode(
       OAuthClientInformation client, AuthorizationCode authCode) throws TokenException {
@@ -1067,6 +1156,62 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         .replace("\r", "\\r")
         .replace("<", "\\x3c")
         .replace(">", "\\x3e");
+  }
+
+  /**
+   * Serves an HTML page that informs the user authentication failed and auto-redirects the
+   * browser to the MCP client's {@code redirect_uri} carrying the OAuth error response.
+   *
+   * <p>Mirrors {@link #serveSuccessPage}: a raw 302 would leave the browser on the SSO callback
+   * URL with no feedback, so we render a short error page first. The {@code error_description}
+   * (sourced from the IdP callback) is HTML-escaped before being rendered so a malicious or
+   * malformed IdP response cannot inject markup into the page.
+   */
+  private void serveErrorPage(
+      HttpServletResponse response, String redirectUrl, String errorCode, String errorDescription)
+      throws IOException {
+    response.setStatus(HttpServletResponse.SC_OK);
+    response.setContentType("text/html; charset=UTF-8");
+
+    String htmlSafeUrl = escapeForHtmlAttribute(redirectUrl);
+    String jsSafeUrl = escapeForJavaScriptString(redirectUrl);
+    String safeErrorCode = escapeForHtmlAttribute(errorCode != null ? errorCode : "");
+    String safeErrorDesc = escapeForHtmlAttribute(errorDescription != null ? errorDescription : "");
+
+    StringBuilder body = new StringBuilder();
+    body.append("<!DOCTYPE html><html><head>")
+        .append("<meta charset=\"UTF-8\">")
+        .append("<meta http-equiv=\"refresh\" content=\"1;url=")
+        .append(htmlSafeUrl)
+        .append("\">")
+        .append("<style>")
+        .append("body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;")
+        .append("display:flex;justify-content:center;align-items:center;min-height:100vh;")
+        .append("margin:0;background:#f5f5f5;color:#333}")
+        .append(".card{text-align:center;background:#fff;border-radius:12px;")
+        .append("padding:48px;box-shadow:0 2px 8px rgba(0,0,0,0.1);max-width:480px}")
+        .append("h1{color:#c62828;margin:0 0 12px}")
+        .append("p{margin:4px 0;color:#666}")
+        .append("</style></head><body>")
+        .append("<div class=\"card\">")
+        .append("<h1>Authentication Failed</h1>")
+        .append("<p>The identity provider could not complete authentication.</p>");
+    if (!safeErrorCode.isEmpty()) {
+      body.append("<p style=\"font-size:13px;margin-top:8px\">Error: ")
+          .append(safeErrorCode)
+          .append("</p>");
+    }
+    if (!safeErrorDesc.isEmpty()) {
+      body.append("<p style=\"font-size:13px\">").append(safeErrorDesc).append("</p>");
+    }
+    body.append(
+            "<p style=\"font-size:13px;margin-top:16px\">Redirecting back to your application...</p>")
+        .append("</div>")
+        .append("<script>setTimeout(function(){window.location.href=\"")
+        .append(jsSafeUrl)
+        .append("\"},500);</script>")
+        .append("</body></html>");
+    response.getWriter().write(body.toString());
   }
 
   private boolean verifyPKCE(String codeVerifier, String codeChallenge) {
