@@ -25,6 +25,7 @@ import {
 import { Copy01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -393,6 +394,10 @@ const TestSuiteDetailsPage = () => {
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
+  }
+
+  if (isUndefined(testSuite)) {
+    return <ErrorPlaceHolder />;
   }
 
   return (

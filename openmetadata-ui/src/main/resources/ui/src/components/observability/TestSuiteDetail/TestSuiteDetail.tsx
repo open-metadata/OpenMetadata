@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { toString } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -311,6 +311,10 @@ const TestSuiteDetail = () => {
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
+  }
+
+  if (isUndefined(testSuite)) {
+    return <ErrorPlaceHolder />;
   }
 
   return (
