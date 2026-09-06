@@ -32,6 +32,8 @@ import {
 
 const TASKS_BASE_URL = '/tasks';
 
+const SUGGESTION_FIELDS = 'about,payload,createdBy';
+
 export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
   limit?: number;
@@ -147,7 +149,7 @@ export const getSuggestionsList = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -170,7 +172,7 @@ export const getSuggestionsByUserId = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -217,7 +219,7 @@ export const approveRejectAllSuggestions = async (
       status: TaskEntityStatus.Open,
       createdById: userId,
       limit: 100,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 

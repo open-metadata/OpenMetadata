@@ -444,39 +444,39 @@ const RelatedTerms = () => {
     getRelationDisplayName,
   ]);
 
+  const canEditRelatedTerms =
+    getPrioritizedEditPermission(permissions, Operation.EditGlossaryTerms) &&
+    !isVersionView &&
+    !isEditing &&
+    !isAdding;
+
   const header = (
     <div className="d-flex items-center justify-between w-full">
       <div className="d-flex items-center gap-2">
         <Typography as="span" className="text-sm font-medium">
           {t('label.related-term-plural')}
         </Typography>
-        {getPrioritizedEditPermission(
-          permissions,
-          Operation.EditGlossaryTerms
-        ) &&
-          !isVersionView &&
-          !isEditing &&
-          !isAdding && (
-            <>
-              <EditIconButton
-                newLook
-                data-testid="edit-button"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartEditing}
-              />
-              <PlusIconButton
-                data-testid="related-term-add-button"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                onClick={handleStartAdding}
-              />
-            </>
-          )}
+        {canEditRelatedTerms && (
+          <>
+            <EditIconButton
+              newLook
+              data-testid="edit-button"
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={handleStartEditing}
+            />
+            <PlusIconButton
+              data-testid="related-term-add-button"
+              size="small"
+              title={t('label.add-entity', {
+                entity: t('label.related-term-plural'),
+              })}
+              onClick={handleStartAdding}
+            />
+          </>
+        )}
       </div>
       {(isEditing || isAdding) && (
         <div className="d-flex items-center gap-2">

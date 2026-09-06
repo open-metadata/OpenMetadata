@@ -299,12 +299,15 @@ const KnowledgePagesHierarchy = forwardRef<
         !isPaginationLoading &&
         consumedCreateHashFqnRef.current !== fqn;
 
+      const hasCachedHierarchyForFqn =
+        isHierarchyInitialized &&
+        knowledgePageHierarchy.length > 0 &&
+        lastFetchedFqnRef.current === fqn;
+
       if (
         !forceRefresh &&
         !isPaginationLoading &&
-        isHierarchyInitialized &&
-        knowledgePageHierarchy.length > 0 &&
-        lastFetchedFqnRef.current === fqn &&
+        hasCachedHierarchyForFqn &&
         !isCreateHash
       ) {
         return;

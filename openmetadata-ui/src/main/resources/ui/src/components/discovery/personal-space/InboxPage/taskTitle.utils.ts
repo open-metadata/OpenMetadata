@@ -45,12 +45,8 @@ export const getTaskTitle = (task: Task, t?: TFunction): string => {
   // key back — that must never reach the UI, so treat it as no label.
   const prefix = typeLabel && typeLabel !== typeKey ? typeLabel : '';
   const entityName = task.about ? getEntityName(task.about) : '';
+  const prefixedEntity = prefix && entityName ? `${prefix} ${entityName}` : '';
+  const preferredTitle = authored || prefixedEntity || task.description?.trim();
 
-  return (
-    authored ||
-    (prefix && entityName ? `${prefix} ${entityName}` : '') ||
-    task.description?.trim() ||
-    task.taskId ||
-    ''
-  );
+  return preferredTitle || task.taskId || '';
 };

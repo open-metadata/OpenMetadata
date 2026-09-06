@@ -25,6 +25,7 @@ import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
@@ -39,6 +40,35 @@ let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
+
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ */
+export const getDescriptionBox = (scope: Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Fill the description editor inside `scope`, asserting it is the only one
+ * there.
+ *
+ * The count assertion is deliberate: `.first()` would also silence the strict
+ * mode violation, but by typing into an arbitrary editor, so the test goes on
+ * to fail somewhere unrelated to the real ambiguity. Failing here names the
+ * scope that needs narrowing.
+ */
+export const fillDescriptionBox = async (scope: Locator, value: string) => {
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
+};
 
 export const INVALID_NAMES = {
   MAX_LENGTH:
@@ -141,6 +171,10 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  // Every spec funnels through here, including the ones that build their own
+  // page with browser.newPage() and so never touch the `context` fixture. This
+  // is the only hook that reaches all of them; the call is idempotent.
+  await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
@@ -238,6 +272,7 @@ export async function createNewPage(
         ? adminStorageStateFile
         : undefined,
     });
+    await installServerLoadReducers(page.context());
     await redirectToHomePage(page);
   }
 
@@ -1774,4 +1809,17 @@ export const testTableSearch = async (
       timeout: 5_000,
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+};
+
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 };

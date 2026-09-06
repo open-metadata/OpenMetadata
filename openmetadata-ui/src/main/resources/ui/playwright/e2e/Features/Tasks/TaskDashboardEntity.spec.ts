@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';

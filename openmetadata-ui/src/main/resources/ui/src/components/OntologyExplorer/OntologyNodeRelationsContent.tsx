@@ -104,12 +104,13 @@ export const OntologyNodeRelationsContent: React.FC<
     (relationType: string) => {
       const relationMeta = relationTypeMap.get(relationType);
       const builtInLabelKey = RELATION_META[relationType]?.labelKey;
+      const overrideLabel =
+        relationMeta?.displayName ||
+        relationMeta?.name ||
+        relationLabelOverrides[relationType];
 
       return (
-        (relationMeta?.displayName ||
-          relationMeta?.name ||
-          relationLabelOverrides[relationType]) ??
-        (builtInLabelKey ? t(builtInLabelKey) : relationType)
+        overrideLabel ?? (builtInLabelKey ? t(builtInLabelKey) : relationType)
       );
     },
     [relationTypeMap, relationLabelOverrides, t]
@@ -131,18 +132,16 @@ export const OntologyNodeRelationsContent: React.FC<
       const relationType = edge.relationType
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '');
-      if (
-        edge.to === node.id &&
-        (relationType === 'parentof' || relationType === 'narrower')
-      ) {
+      const isChildRelation =
+        relationType === 'parentof' || relationType === 'narrower';
+      const isParentRelation =
+        relationType === 'broader' ||
+        relationType === 'isa' ||
+        relationType === 'subclassof' ||
+        hierarchicalRelationNames.has(relationType);
+      if (edge.to === node.id && isChildRelation) {
         parentIds.add(edge.from);
-      } else if (
-        edge.from === node.id &&
-        (relationType === 'broader' ||
-          relationType === 'isa' ||
-          relationType === 'subclassof' ||
-          hierarchicalRelationNames.has(relationType))
-      ) {
+      } else if (edge.from === node.id && isParentRelation) {
         parentIds.add(edge.to);
       }
     });

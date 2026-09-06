@@ -487,12 +487,16 @@ export const createNodes = (
   return uniqueNodesData.map((node) => {
     node.deleted = isDeleted(node.deleted);
 
+    const hasIncoming = incomingMap.has(node.id);
+    const hasOutgoing = outgoingMap.has(node.id);
+    const isOutputNode = hasIncoming && !hasOutgoing;
+    const isInputNode = !hasIncoming && hasOutgoing;
     const type =
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
-        : incomingMap.has(node.id) && !outgoingMap.has(node.id)
+        : isOutputNode
         ? EntityLineageNodeType.OUTPUT
-        : !incomingMap.has(node.id) && outgoingMap.has(node.id)
+        : isInputNode
         ? EntityLineageNodeType.INPUT
         : EntityLineageNodeType.DEFAULT;
 

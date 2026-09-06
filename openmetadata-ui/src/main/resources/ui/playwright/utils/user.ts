@@ -23,6 +23,7 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
@@ -69,6 +70,7 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);

@@ -651,7 +651,22 @@ const expectVisibleAfterHorizontalScroll = async (
   page: Page,
   locator: Locator
 ) => {
-  for (const scrollLeft of [0, 400, 800, 1200, 1600, 2000, 2400]) {
+  const grid = page.locator('.bulk-edit-grid-shell .rdg');
+  const maxScrollLeft = await grid.evaluate(
+    (el) => el.scrollWidth - el.clientWidth
+  );
+
+  // React Data Grid virtualises columns, so a cell is only in the DOM when its
+  // column overlaps the viewport. Step across the whole scroll range in ~250px
+  // increments so we cannot skip past a column between samples.
+  const step = 250;
+  const positions: number[] = [];
+  for (let x = 0; x < maxScrollLeft; x += step) {
+    positions.push(x);
+  }
+  positions.push(Math.max(0, maxScrollLeft));
+
+  for (const scrollLeft of positions) {
     await scrollBulkEditGridTo(page, scrollLeft);
 
     if (await locator.isVisible().catch(() => false)) {

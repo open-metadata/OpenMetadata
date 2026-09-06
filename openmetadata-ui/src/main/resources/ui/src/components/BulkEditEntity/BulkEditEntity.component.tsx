@@ -21,7 +21,14 @@ import {
   XCircle,
 } from '@untitledui/icons';
 import { isEmpty, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   CellClickArgs,
   Column,
@@ -535,6 +542,10 @@ const BulkEditEntity = ({
     [dataSource]
   );
 
+  const shouldShowLoader =
+    (isExportHydrationRequired && isEmpty(csvExportData)) ||
+    isLoadingSourceData;
+
   return (
     <>
       <CsvWorkflowHeader
@@ -583,11 +594,10 @@ const BulkEditEntity = ({
             </Button>
           </div>
         </div>
-      ) : (isExportHydrationRequired && isEmpty(csvExportData)) ||
-        isLoadingSourceData ? (
+      ) : shouldShowLoader ? (
         <Loader />
       ) : (
-        <>
+        <Fragment>
           <div>
             {activeStep === 1 && (
               <div className="csv-import-card bulk-edit-card">
@@ -752,7 +762,7 @@ const BulkEditEntity = ({
               </div>
             </div>
           )}
-        </>
+        </Fragment>
       )}
     </>
   );

@@ -96,6 +96,8 @@ import {
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
+
+const DATE_TIME_CP_TYPE = 'dateTime-cp';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -303,7 +305,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'date-cp':
-      case 'dateTime-cp': {
+      case DATE_TIME_CP_TYPE: {
         const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
@@ -354,7 +356,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
-                  showTime={propertyType.name === 'dateTime-cp'}
+                  showTime={propertyType.name === DATE_TIME_CP_TYPE}
                 />
               </Form.Item>
             </Form>
@@ -1083,7 +1085,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'email':
       case 'timestamp':
       case 'duration':
-      case 'dateTime-cp':
+      case DATE_TIME_CP_TYPE:
       default:
         return (
           <Typography.Text
@@ -1197,45 +1199,49 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 : '32px',
           }}>
           {showInput ? getPropertyInput() : getValueElement()}
-          {hasEditPermissions && !showInput && (
-            <Tooltip
-              placement="left"
-              title={t('label.edit-entity', {
-                entity: getEntityName(property),
-              })}>
+        </div>
+        {!showInput && (hasEditPermissions || isOverflowing) && (
+          <div className="d-flex items-center gap-1 flex-shrink-0">
+            {hasEditPermissions && (
+              <Tooltip
+                placement="left"
+                title={t('label.edit-entity', {
+                  entity: getEntityName(property),
+                })}>
+                <Icon
+                  component={EditIconComponent}
+                  data-testid={`edit-icon${
+                    isRenderedInRightPanel ? '-right-panel' : ''
+                  }`}
+                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  tabIndex={0}
+                  onClick={onShowInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onShowInput();
+                    }
+                  }}
+                />
+              </Tooltip>
+            )}
+            {isOverflowing && (
               <Icon
-                component={EditIconComponent}
-                data-testid={`edit-icon${
-                  isRenderedInRightPanel ? '-right-panel' : ''
-                }`}
+                className={classNames('custom-property-value-toggle-btn', {
+                  active: isExpanded,
+                })}
+                component={ArrowIconComponent}
+                data-testid={`toggle-${propertyName}`}
                 style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                 tabIndex={0}
-                onClick={onShowInput}
+                onClick={toggleExpand}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    onShowInput();
+                    toggleExpand();
                   }
                 }}
               />
-            </Tooltip>
-          )}
-        </div>
-        {isOverflowing && !showInput && (
-          <Icon
-            className={classNames('custom-property-value-toggle-btn', {
-              active: isExpanded,
-            })}
-            component={ArrowIconComponent}
-            data-testid={`toggle-${propertyName}`}
-            style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-            tabIndex={0}
-            onClick={toggleExpand}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                toggleExpand();
-              }
-            }}
-          />
+            )}
+          </div>
         )}
       </div>
     </div>

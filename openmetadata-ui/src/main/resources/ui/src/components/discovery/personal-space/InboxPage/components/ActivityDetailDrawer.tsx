@@ -168,6 +168,8 @@ const CommentRow: React.FC<CommentRowProps> = ({
     }
   }, [reply.id, conversationId, onChanged]);
 
+  const canShowActions = isHovered && !isEditPost;
+
   return (
     <Box
       className="tw:relative"
@@ -187,7 +189,7 @@ const CommentRow: React.FC<CommentRowProps> = ({
             {authorName}
           </Typography>
         </Box>
-        {isHovered && !isEditPost && (canEdit || canDelete) && (
+        {canShowActions && (canEdit || canDelete) && (
           <Box align="center" data-testid="feed-actions" gap={1}>
             {canEdit && (
               <Edit01

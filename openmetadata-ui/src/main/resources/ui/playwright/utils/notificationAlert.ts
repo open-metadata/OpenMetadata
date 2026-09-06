@@ -32,6 +32,7 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import { selectComboBoxOption, selectDropdownOption } from './destination';
 import {
   addMultiOwner,
   updateDescription,
@@ -144,50 +145,51 @@ export const addInternalDestination = async ({
   type?: string;
   searchText?: string;
 }) => {
-  // Open destination category dropdown
-  const categorySelect = page.getByTestId(
-    `destination-category-select-${destinationNumber}`
-  );
-  await expect(categorySelect).toBeVisible();
-  await categorySelect.click();
+  await selectComboBoxOption({
+    page,
+    testId: `destination-category-select-${destinationNumber}`,
+    optionName: category,
+  });
 
-  // Select category option - chain :visible selector inline
-  const categoryOption = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[data-testid="${category}-internal-option"]`);
-  await expect(categoryOption).toBeVisible();
-  await categoryOption.click();
-
-  // Verify dropdown closed
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
-
-  // Select the receivers with proper waiting
   if (typeId) {
     if (category === 'Teams' || category === 'Users') {
       const dropdownTrigger = page.locator(
-        `[data-testid="destination-${destinationNumber}"] [data-testid="dropdown-trigger-button"]`
+        `[data-testid="destination-${destinationNumber}"] [data-testid="team-user-select-trigger-${destinationNumber}"]`
       );
       await expect(dropdownTrigger).toBeVisible();
-      await dropdownTrigger.click();
 
-      const searchInput = page.locator(
-        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input"]`
+      const resultsDropdown = page.getByTestId(
+        `team-user-select-dropdown-${destinationNumber}`
       );
-      await expect(searchInput).toBeVisible();
-
-      const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-      await searchInput.fill(searchText);
-      await getSearchResult;
-
-      // Wait for search results to render
-      const resultsDropdown = page.locator('.ant-dropdown:visible');
-      await resultsDropdown.waitFor({ state: 'visible' });
-
       const option = resultsDropdown.locator(
         `[data-testid="${searchText}-option-label"]`
       );
-      await expect(option).toBeVisible();
-      await option.click();
+
+      await expect(async () => {
+        if (!(await resultsDropdown.isVisible())) {
+          await dropdownTrigger.click();
+        }
+
+        const searchInput = resultsDropdown.getByTestId('search-input-field');
+        await expect(searchInput).toBeVisible();
+
+        // The controlled portal clears its search when React Aria closes it.
+        // Repeat the query after reopening so a late close cannot strand this
+        // helper waiting on an option from an already unmounted popup.
+        if ((await searchInput.inputValue()) !== searchText) {
+          const getSearchResult = page.waitForResponse(
+            '/api/v1/search/query?q=*'
+          );
+          await searchInput.fill(searchText);
+          await getSearchResult;
+        }
+
+        await option.click({ timeout: 3_000 });
+      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+
+      await expect(
+        dropdownTrigger.getByTestId('placeholder-text')
+      ).not.toBeAttached();
     } else {
       const input = page.getByTestId(typeId);
       await expect(input).toBeVisible();
@@ -196,46 +198,22 @@ export const addInternalDestination = async ({
       await input.fill(searchText);
       await getSearchResult;
 
-      // Select option from search results - chain :visible selector inline
-      const option = page
-        .locator('.ant-select-dropdown:visible')
-        .locator(`[title="${searchText}"]`);
+      const option = page.getByRole('option', {
+        exact: true,
+        name: searchText,
+      });
       await expect(option).toBeVisible();
       await option.click();
     }
 
-    // Manually close dropdown
     await clickOutside(page);
-
-    // Verify dropdown closed
-    await expect(
-      page.locator('.ant-select-dropdown:visible')
-    ).not.toBeVisible();
   }
 
-  // Select destination type with proper waiting
-  const typeSelect = page.getByTestId(
-    `destination-type-select-${destinationNumber}`
-  );
-  await expect(typeSelect).toBeVisible();
-  await typeSelect.click();
-
-  // Wait for type dropdown to be visible
-  const typeDropdown = page.locator('.select-options-container:visible');
-  await typeDropdown.waitFor({ state: 'visible' });
-
-  const typeOption = typeDropdown.locator(
-    `[data-testid="${type}-external-option"]`
-  );
-  await expect(typeOption).toBeVisible();
-  await typeOption.click();
-
-  // Verify the selection
-  await expect(
-    page
-      .getByTestId(`destination-type-select-${destinationNumber}`)
-      .getByTestId(`${type}-external-option`)
-  ).toBeAttached();
+  await selectDropdownOption({
+    page,
+    testId: `destination-type-select-${destinationNumber}`,
+    optionName: type,
+  });
 };
 
 export const editSingleFilterAlert = async ({
@@ -486,12 +464,12 @@ export const checkAlertConfigDetails = async ({
 
   await expect(page.getByTestId('filter-select-1')).toHaveText('Entity FQN');
 
-  await expect(page.getByTestId('destination-category-select-0')).toHaveText(
-    'Owners'
-  );
-  await expect(page.getByTestId('destination-type-select-0')).toHaveText(
-    'Email'
-  );
+  await expect(
+    page.getByTestId('destination-category-select-0').getByRole('combobox')
+  ).toHaveValue('Owners');
+  await expect(
+    page.getByTestId('destination-type-select-0').getByRole('button')
+  ).toContainText('Email');
 };
 
 export const checkAlertDetailsForWithPermissionUser = async ({

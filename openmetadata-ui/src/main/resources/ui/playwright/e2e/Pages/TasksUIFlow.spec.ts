@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   authenticateAdminPage,

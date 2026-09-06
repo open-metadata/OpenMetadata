@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import {

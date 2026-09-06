@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   EDIT_USER_FOR_TEAM_RULES,
   OWNER_TEAM_RULES,
@@ -27,6 +22,7 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -164,8 +160,6 @@ const test = base.extend<{
 });
 
 test.describe('Teams Page', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -190,6 +184,7 @@ test.describe('Teams Page', () => {
   });
 
   test('Teams Page Flow', async ({ page, scopedUserPage }) => {
+    test.slow();
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
@@ -645,6 +640,7 @@ test.describe('Teams Page', () => {
   });
 
   test('Team assets should', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
 
@@ -952,8 +948,6 @@ test.describe('Teams Page', () => {
 });
 
 test.describe('Teams Page with EditUser Permission', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await editOnlyUser.create(apiContext);
@@ -1029,8 +1023,6 @@ test.describe('Teams Page with EditUser Permission', () => {
 });
 
 test.describe('Teams Page with Data Consumer User', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await dataConsumerUser.create(apiContext);
@@ -1154,8 +1146,6 @@ test.describe('Teams Page with Data Consumer User', () => {
 });
 
 test.describe('Teams Page action as Owner of Team', () => {
-  test.slow(true);
-
   let teamNoOwner = new TeamClass();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {

@@ -37,7 +37,14 @@ import type { RcFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { unparse } from 'papaparse';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   Column,
   ColumnOrColumnGroup,
@@ -1671,6 +1678,10 @@ const BulkEntityImportPage = () => {
   const shouldRenderMetricImportEditor =
     isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
 
+  const isAsyncValidationInProgress = isValidating && activeAsyncImportJob;
+  const isRichGridUpdateStep =
+    isRichGridImport && activeStep === VALIDATION_STEP.UPDATE;
+
   const metricImportWorkflowHeaderConfig = useMemo(
     () => ({
       currentLabel: t('label.import'),
@@ -1732,7 +1743,7 @@ const BulkEntityImportPage = () => {
             onCSVReadComplete={onCSVReadComplete}
           />
         ) : (
-          <>
+          <Fragment>
             <CsvWorkflowHeader
               activeStep={activeStep}
               breadcrumbList={breadcrumbList}
@@ -1852,7 +1863,7 @@ const BulkEntityImportPage = () => {
                 </div>
               )}
               {activeStep === 2 && validationData && (
-                <>
+                <Fragment>
                   {isValidating && activeAsyncImportJob ? (
                     renderImportProgress()
                   ) : (
@@ -1886,7 +1897,7 @@ const BulkEntityImportPage = () => {
                       </div>
                     </div>
                   )}
-                </>
+                </Fragment>
               )}
             </div>
 
@@ -1908,8 +1919,8 @@ const BulkEntityImportPage = () => {
               )}
 
             {activeStep > 0 &&
-              !(isValidating && activeAsyncImportJob) &&
-              !(isRichGridImport && activeStep === VALIDATION_STEP.UPDATE) && (
+              !isAsyncValidationInProgress &&
+              !isRichGridUpdateStep && (
                 <div className="csv-import-wizard-footer import-footer">
                   {activeStep > 0 && (
                     <Button
@@ -1959,7 +1970,7 @@ const BulkEntityImportPage = () => {
                 </Modal>
               </ModalOverlay>
             )}
-          </>
+          </Fragment>
         )}
       </div>
     </PageLayoutV1>

@@ -52,6 +52,7 @@ import {
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForDraftPersisted,
+  waitForRecentlyViewed,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -688,6 +689,10 @@ test.describe('Context Center Articles', () => {
       url.pathname.includes('/context-center/articles/')
     );
     await waitForAllLoadersToDisappear(page);
+    await waitForRecentlyViewed(
+      page,
+      articleEntity.responseData.displayName as string
+    );
 
     await navigateToArticles(page);
     const rightPanel = page.getByTestId('knowledge-center-right-panel');

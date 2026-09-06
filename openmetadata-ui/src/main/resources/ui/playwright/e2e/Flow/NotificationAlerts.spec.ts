@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';

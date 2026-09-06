@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';

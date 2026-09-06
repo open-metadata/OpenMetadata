@@ -32,6 +32,7 @@ import {
   register,
 } from '@antv/g6';
 import { RelationshipType } from '../../../generated/entity/data/relationshipType';
+import { resolveCssColor } from '../../../utils/common/cssColor.utils';
 import {
   COLOR_META_BY_HEX,
   COMBO_FILL_DEFAULT,
@@ -185,92 +186,10 @@ register(
   CardinalityAwareQuadratic
 );
 
-const CSS_COLOR_CACHE_MAX = 200;
-const cssColorCache = new Map<string, string>();
 const COMBO_LABEL_CHAR_WIDTH = 7;
 const COMBO_LABEL_MEASURE_FONT = `${COMBO_LABEL_FONT_WEIGHT} ${COMBO_LABEL_FONT_SIZE}px sans-serif`;
 
-function parseVarName(cssVar: string): string {
-  const inner = cssVar.slice(4, -1).trim();
-  const firstComma = inner.indexOf(',');
-
-  return (firstComma > 0 ? inner.slice(0, firstComma) : inner).trim();
-}
-
-function cacheCssColor(cssVar: string, color: string): void {
-  if (cssColorCache.size >= CSS_COLOR_CACHE_MAX) {
-    const oldest = cssColorCache.keys().next().value;
-    if (oldest !== undefined) {
-      cssColorCache.delete(oldest);
-    }
-  }
-  cssColorCache.set(cssVar, color);
-}
-
-function isColorLike(val: string): boolean {
-  return (
-    val.length > 0 &&
-    (val.startsWith('rgb') || val.startsWith('#') || val.startsWith('hsl'))
-  );
-}
-
-/**
- * Resolves a color for Canvas/WebGL (G6): pass-through hex/rgb strings, or resolve `var(--token)`
- * to a concrete `rgb(...)` / `rgba(...)` value. G6 cannot paint raw `var()` in canvas backends.
- *
- * `:root` getPropertyValue often returns another `var()`, `oklch()`, etc., which fails `isColorLike`,
- * so we probe with a temporary element first (browser computes to rgb).
- */
-export function getCanvasColor(cssVar: string, fallbackHex: string): string {
-  if (typeof document === 'undefined') {
-    return fallbackHex;
-  }
-
-  if (!cssVar.startsWith('var(')) {
-    return cssVar;
-  }
-
-  const cached = cssColorCache.get(cssVar);
-  if (cached) {
-    cssColorCache.delete(cssVar);
-    cssColorCache.set(cssVar, cached);
-
-    return cached;
-  }
-
-  try {
-    const tempEl = document.createElement('div');
-    tempEl.style.color = cssVar;
-    tempEl.style.display = 'none';
-    document.body.appendChild(tempEl);
-    const fromCascade = getComputedStyle(tempEl).color;
-    document.body.removeChild(tempEl);
-
-    if (
-      fromCascade &&
-      fromCascade !== 'rgba(0, 0, 0, 0)' &&
-      isColorLike(fromCascade)
-    ) {
-      cacheCssColor(cssVar, fromCascade);
-
-      return fromCascade;
-    }
-
-    const varName = parseVarName(cssVar);
-    const rootVal = getComputedStyle(document.documentElement)
-      .getPropertyValue(varName)
-      .trim();
-    if (rootVal && isColorLike(rootVal)) {
-      cacheCssColor(cssVar, rootVal);
-
-      return rootVal;
-    }
-  } catch {
-    // Ignore
-  }
-
-  return fallbackHex;
-}
+export const getCanvasColor = resolveCssColor;
 
 export const STUDIO_EDIT_PORT_KEY = 'ontology-edit';
 export const STUDIO_EDIT_PORT_CLASS_NAME = `port-${STUDIO_EDIT_PORT_KEY}`;

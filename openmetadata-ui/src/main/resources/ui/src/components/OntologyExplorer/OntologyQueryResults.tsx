@@ -93,6 +93,7 @@ const OntologyQueryResults = ({
     return values;
   }, [resultTable]);
   const hasResultGraph = resultGraph.edges.length > 0;
+  const isGraphView = resultView === 'graph' && hasResultGraph;
 
   useEffect(() => {
     setResultView('table');
@@ -126,7 +127,7 @@ const OntologyQueryResults = ({
         ) : null}
       </div>
 
-      {resultView === 'graph' && hasResultGraph ? (
+      {isGraphView ? (
         <div
           className="tw:h-96 tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-primary"
           data-testid="ontology-sparql-result-graph">

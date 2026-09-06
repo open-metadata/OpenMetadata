@@ -662,10 +662,10 @@ export const jsonLogicToElasticsearch = (
     ].includes(parentOp as JSONLOGIC_OPERATORS);
 
     const [parentKey] = field.var.split('.');
+    const isSplittableVar =
+      typeof field === 'object' && field.var && field.var.includes('.');
     if (
-      typeof field === 'object' &&
-      field.var &&
-      field.var.includes('.') &&
+      isSplittableVar &&
       !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
         parentKey as EntityReferenceFields
       ) &&
@@ -810,10 +810,11 @@ export const migrateJsonLogic = (
   };
 
   const isVarObject = (value: unknown): value is { var: string } => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return false;
+    }
+
     return (
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value) &&
       'var' in value &&
       typeof (value as Record<string, unknown>)['var'] === 'string'
     );

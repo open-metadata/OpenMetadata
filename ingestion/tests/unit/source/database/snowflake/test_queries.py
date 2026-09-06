@@ -22,45 +22,13 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 from metadata.ingestion.source.database.snowflake.identifiers import (
     quote_qualified_identifier,
 )
-from metadata.ingestion.source.database.snowflake.queries import (
-    build_get_ddl_query,
-    set_session_tag_query,
-)
+from metadata.ingestion.source.database.snowflake.queries import build_get_ddl_query
 from metadata.ingestion.source.database.snowflake.utils import (
     _qualified_identifier,
     _quote_identifier,
     get_table_names,
     get_view_names,
 )
-
-
-@pytest.mark.parametrize(
-    "query_tag,expected",
-    [
-        ("my_tag", "ALTER SESSION SET QUERY_TAG='my_tag'"),
-        (
-            '{"app":"OpenMetadata"}',
-            'ALTER SESSION SET QUERY_TAG=\'{"app":"OpenMetadata"}\'',
-        ),
-        ("it's a tag", "ALTER SESSION SET QUERY_TAG='it''s a tag'"),
-        ("C:\\temp", "ALTER SESSION SET QUERY_TAG='C:\\\\temp'"),
-        ("tag\\", "ALTER SESSION SET QUERY_TAG='tag\\\\'"),
-        (
-            "x' STATEMENT_TIMEOUT_IN_SECONDS=1 Y='",
-            "ALTER SESSION SET QUERY_TAG='x'' STATEMENT_TIMEOUT_IN_SECONDS=1 Y='''",
-        ),
-    ],
-    ids=[
-        "plain",
-        "json",
-        "apostrophe",
-        "backslash-escape",
-        "trailing-backslash",
-        "parameter-injection",
-    ],
-)
-def test_set_session_tag_query_keeps_the_tag_inside_one_string_literal(query_tag, expected):
-    assert set_session_tag_query(query_tag) == expected
 
 
 def test_identifier_helpers_escape_embedded_double_quotes():

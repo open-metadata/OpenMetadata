@@ -164,6 +164,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
     Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
   const canEdit = isAuthor;
   const canDelete = isAuthor || Boolean(currentUser?.isAdmin);
+  const canModifyComment = canEdit || canDelete;
 
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -218,7 +219,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
             {authorName}
           </Typography>
         </Box>
-        {isHovered && !isEditing && (canEdit || canDelete) && (
+        {isHovered && !isEditing && canModifyComment && (
           <Box align="center" data-testid="task-comment-actions" gap={1}>
             {canEdit && (
               <Edit01

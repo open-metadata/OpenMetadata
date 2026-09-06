@@ -234,6 +234,7 @@ const OntologyImportExportModal = ({
   );
   const previewGlossary = activeGlossary ?? glossaries[0];
   const isRdfFormat = format !== 'csv';
+  const isPreviewReady = isRdfFormat && preview && !isPreviewLoading;
   const importTermTotal = importValidation
     ? importValidation.termsCreated + importValidation.termsUpdated
     : 0;
@@ -612,7 +613,7 @@ const OntologyImportExportModal = ({
                           : 'message.shacl-violations-found'
                       )}
                     </div>
-                  ) : isRdfFormat && preview && !isPreviewLoading ? (
+                  ) : isPreviewReady ? (
                     <div className="tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium tw:text-success-primary">
                       <CheckCircle className="tw:size-3.5" />
                       {t('message.ontology-preview-ready')}

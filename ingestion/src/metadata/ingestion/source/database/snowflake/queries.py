@@ -85,11 +85,6 @@ def _snowflake_string_literal(value: str) -> str:
     return f"'{escaped}'"
 
 
-def set_session_tag_query(query_tag: str) -> str:
-    """Return the ALTER SESSION statement setting QUERY_TAG to the given value."""
-    return f"ALTER SESSION SET QUERY_TAG={_snowflake_string_literal(query_tag)}"
-
-
 SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME

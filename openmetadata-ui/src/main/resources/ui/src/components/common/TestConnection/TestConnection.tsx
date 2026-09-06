@@ -193,12 +193,11 @@ const TestConnection: FC<TestConnectionProps> = ({
     return shouldTestConnection(connectionType);
   }, [connectionType]);
 
+  const isConnectionTestInProgress =
+    isTestingConnection || isTestingDisabled || isFormValidationPending;
+
   const isTestConnectionDisabled =
-    isTestingConnection ||
-    isTestingDisabled ||
-    isFormValidationPending ||
-    !allowTestConn ||
-    !isAirflowAvailable;
+    isConnectionTestInProgress || !allowTestConn || !isAirflowAvailable;
 
   const isReadyToTestCard =
     !isTestConnectionDisabled &&

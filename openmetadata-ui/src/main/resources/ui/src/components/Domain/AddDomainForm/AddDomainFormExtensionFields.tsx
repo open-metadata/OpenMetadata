@@ -587,12 +587,18 @@ const TimeIntervalExtensionField = ({
           name={fieldName}
           rules={{
             required: isRequired ? requiredMessage : false,
-            validate: (value) =>
-              value === undefined ||
-              value === '' ||
-              (Number.isFinite(Number(value)) &&
-                Number.isInteger(Number(value))) ||
-              t('label.field-invalid', { field: inputLabel }),
+            validate: (value) => {
+              const isEmptyValue = value === undefined || value === '';
+              const isValidInteger =
+                Number.isFinite(Number(value)) &&
+                Number.isInteger(Number(value));
+
+              return (
+                isEmptyValue ||
+                isValidInteger ||
+                t('label.field-invalid', { field: inputLabel })
+              );
+            },
           }}>
           {({ field, fieldState }) => (
             <Input
@@ -688,13 +694,14 @@ const TableExtensionInput = ({
   value: unknown;
 }) => {
   const { t } = useTranslation();
-  const initialRows =
+  const isRowsObject =
     typeof value === 'object' &&
     value !== null &&
     'rows' in value &&
-    Array.isArray(value.rows)
-      ? (value.rows as Record<string, string>[])
-      : [];
+    Array.isArray(value.rows);
+  const initialRows = isRowsObject
+    ? (value as { rows: Record<string, string>[] }).rows
+    : [];
   const [dataSource, setDataSource] = useState<Record<string, string>[]>(() =>
     initialRows.map((row) => ({ ...row }))
   );

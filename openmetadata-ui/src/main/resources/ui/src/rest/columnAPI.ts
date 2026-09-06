@@ -18,6 +18,8 @@ import { GroupedColumnsResponse } from '../generated/api/data/groupedColumnsResp
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import APIClient from './index';
 
+const TEXT_PLAIN_CONTENT_TYPE = 'text/plain';
+
 export interface CSVImportResponse {
   jobId: string;
   message: string;
@@ -131,7 +133,7 @@ export const exportColumnsCSV = async (
   const response = await APIClient.get<string>(
     `/columns/export?${queryParams.toString()}`,
     {
-      headers: { Accept: 'text/plain' },
+      headers: { Accept: TEXT_PLAIN_CONTENT_TYPE },
     }
   );
 
@@ -166,7 +168,7 @@ export const importColumnsCSV = async (
     `/columns/import?${queryParams.toString()}`,
     params.csv,
     {
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': TEXT_PLAIN_CONTENT_TYPE },
     }
   );
 
@@ -198,7 +200,7 @@ export const importColumnsCSVAsync = async (
     string,
     AxiosResponse<CSVImportResponse>
   >(`/columns/import-async?${queryParams.toString()}`, params.csv, {
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': TEXT_PLAIN_CONTENT_TYPE },
   });
 
   return response.data;

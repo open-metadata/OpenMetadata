@@ -97,8 +97,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      test.slow(true);
-
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
       await waitForAllLoadersToDisappear(page);

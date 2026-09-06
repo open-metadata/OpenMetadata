@@ -26,7 +26,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Loading01 } from '@untitledui/icons';
 import { lowerCase } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BETA_EXPORT_TYPES,
@@ -142,7 +142,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
             </InputGroup>
 
             {csvExportJob?.jobId && (
-              <>
+              <Fragment>
                 {isExportInProgress &&
                   csvExportJob.progress !== undefined &&
                   csvExportJob.total !== undefined && (
@@ -182,7 +182,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
                     }
                   />
                 )}
-              </>
+              </Fragment>
             )}
           </Dialog.Content>
           <Dialog.Footer>

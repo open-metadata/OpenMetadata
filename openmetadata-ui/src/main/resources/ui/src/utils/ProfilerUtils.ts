@@ -45,27 +45,24 @@ export const getImageWithResolutionAndFallback = (
   const { image, image24, image32, image48, image72, image192, image512 } =
     imageList || {};
 
+  const fallbackFrom48 = image48 || image32 || image24 || image;
+  const fallbackFrom72 = image72 || fallbackFrom48;
+  const fallbackFrom192 = image192 || fallbackFrom72;
+  const fallbackFrom512 = image512 || fallbackFrom192;
+
   switch (quality) {
     case ImageQuality['1.5x']:
       return image24 || image;
     case ImageQuality['2x']:
       return image32 || image24 || image;
     case ImageQuality['3x']:
-      return image48 || image32 || image24 || image;
+      return fallbackFrom48;
     case ImageQuality['4x']:
-      return image72 || image48 || image32 || image24 || image;
+      return fallbackFrom72;
     case ImageQuality['5x']:
-      return image192 || image72 || image48 || image32 || image24 || image;
+      return fallbackFrom192;
     case ImageQuality['6x']:
-      return (
-        image512 ||
-        image192 ||
-        image72 ||
-        image48 ||
-        image32 ||
-        image24 ||
-        image
-      );
+      return fallbackFrom512;
     case ImageQuality['1x']:
     default:
       return image;

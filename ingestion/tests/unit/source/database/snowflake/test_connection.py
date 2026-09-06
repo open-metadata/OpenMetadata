@@ -34,10 +34,12 @@ from metadata.core.connections.test_connection.network import NetworkUnreachable
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection as SnowflakeConnectionConfig,
 )
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.connection import (
     SNOWFLAKE_ERRORS,
     SNOWFLAKE_PORT,
     SnowflakeChecks,
+    SnowflakeConnection,
 )
 
 
@@ -45,6 +47,68 @@ def _config(**overrides) -> SnowflakeConnectionConfig:
     base = {"username": "user", "account": "ue18849.us-east-2.aws", "warehouse": "wh"}
     base.update(overrides)
     return SnowflakeConnectionConfig(**base)
+
+
+def _owned_client(config: SnowflakeConnectionConfig):
+    return SnowflakeConnection(config).client
+
+
+@pytest.mark.parametrize(
+    "query_tag,connection_arguments,expected_tag",
+    [
+        (
+            "dedicated",
+            {
+                "session_parameters": {
+                    "QUERY_TAG": "low-level",
+                    "STATEMENT_TIMEOUT_IN_SECONDS": 60,
+                }
+            },
+            "dedicated",
+        ),
+        (None, {"session_parameters": {"QUERY_TAG": "low-level"}}, "low-level"),
+    ],
+)
+@pytest.mark.parametrize("build_client", [_owned_client, get_connection], ids=["owner", "generic-entrypoint"])
+def test_query_tag_is_passed_to_every_driver_connection_without_mutating_config(
+    query_tag,
+    connection_arguments,
+    expected_tag,
+    build_client,
+):
+    config = _config(queryTag=query_tag, connectionArguments=connection_arguments)
+    configured_arguments = config.connectionArguments.model_copy(deep=True)
+    engine = MagicMock()
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.create_generic_db_connection",
+        return_value=engine,
+    ) as build_engine:
+        assert build_client(config) is engine
+
+    connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
+    assert connect_args["session_parameters"]["QUERY_TAG"] == expected_tag
+    if query_tag:
+        assert connect_args["session_parameters"]["STATEMENT_TIMEOUT_IN_SECONDS"] == 60
+    assert connect_args["network_timeout"] == 600
+    assert config.connectionArguments == configured_arguments
+
+
+def test_absent_query_tag_does_not_create_session_parameters():
+    config = _config()
+    engine = MagicMock()
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.create_generic_db_connection",
+        return_value=engine,
+    ) as build_engine:
+        owner = SnowflakeConnection(config)
+        assert owner.client is engine
+
+    connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
+    assert "session_parameters" not in connect_args
+    assert connect_args["network_timeout"] == 600
+    assert config.connectionArguments is None
 
 
 class _SnowflakeError(Exception):

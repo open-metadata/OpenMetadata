@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   descriptionBox,
   getApiContext,

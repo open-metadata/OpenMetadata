@@ -68,6 +68,8 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
+const SERVICE_ICON_CLASS = 'service-icon w-4 h-4';
+
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
 const SERVICE_STYLE_TOP_HITS_SIZE = 1;
 
@@ -312,7 +314,7 @@ const ExploreTree = ({
           let type = null;
           let logo = undefined;
           if (isEntityType) {
-            const iconClass = 'service-icon w-4 h-4';
+            const iconClass = SERVICE_ICON_CLASS;
             logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
               <></>
             );
@@ -329,7 +331,7 @@ const ExploreTree = ({
             type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
-              'service-icon w-4 h-4'
+              SERVICE_ICON_CLASS
             ) ?? <></>;
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
@@ -337,7 +339,7 @@ const ExploreTree = ({
             type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
-              'service-icon w-4 h-4'
+              SERVICE_ICON_CLASS
             ) ?? <></>;
           } else if (bucketToFind === EntityFields.SERVICE) {
             const serviceIcon = getServiceStyleIcon(bucket);

@@ -1370,9 +1370,10 @@ export function useOntologyGraph({
     const checkEdgeProximity = () => {
       const g = graphRef.current;
       const c = containerRef.current;
+      if (!g || !c) {
+        return;
+      }
       if (
-        !g ||
-        !c ||
         !onScrollNearEdgeRef.current ||
         isProgrammaticTransformRef.current ||
         !graphBoundsRef.current

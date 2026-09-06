@@ -1169,15 +1169,20 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Verify asset shows inherited contract', async () => {
-      await tableForRemoveAssetTest.visitEntityPage(page);
-      await openContractTab(page);
-
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify the inherited contract is displayed
-      await expect(page.getByTestId('contract-title')).toContainText(
-        DP_CONTRACT_DETAILS.name
-      );
+      // Contract inheritance propagates asynchronously after the /assets/add
+      // response returns — the search index and the entity's dataProducts field
+      // update on separate event-bus consumers. Reload until the inherited
+      // contract surfaces rather than asserting once and burning 300s on a
+      // stale first paint (which was cascading the whole shard).
+      await expect(async () => {
+        await tableForRemoveAssetTest.visitEntityPage(page);
+        await openContractTab(page);
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('contract-title')).toContainText(
+          DP_CONTRACT_DETAILS.name,
+          { timeout: 5_000 }
+        );
+      }).toPass({ timeout: 30_000, intervals: [2_000, 3_000, 5_000] });
 
       // Verify the inherited icon is shown
       await expect(
