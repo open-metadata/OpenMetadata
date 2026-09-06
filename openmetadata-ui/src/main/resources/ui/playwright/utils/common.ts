@@ -51,10 +51,8 @@ export const descriptionBoxReadOnly =
  * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
  * drawer or modal the editor lives in instead.
  *
- * `page` is accepted as a scope for the pages that really do host a single
- * editor: it buys no narrowing, but it still routes through the count assertion
- * in {@link fillDescriptionBox}, so an editor that appears alongside another one
- * later fails where the ambiguity is rather than somewhere downstream.
+ * A `Page` is accepted too, for the callers that have no narrower container to
+ * hand; {@link resolveDescriptionBox} is what makes that case safe.
  */
 export const getDescriptionBox = (scope: Page | Locator): Locator =>
   scope.locator(descriptionBox);
@@ -107,17 +105,14 @@ export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
 /**
  * Fill the description editor for `scope`.
  *
- * A `Page` scope means the caller has not narrowed anything, so resolve the way
- * a person would — the editor in the dialog the edit just opened, falling back
- * to the page's own. Asserting a single match against the whole page instead
- * would turn the very case this helper exists for (an entity page with its
- * description modal open, so two editors mounted) into a hard failure: a test
- * that was green because `.first()` happened to pick correctly would go red,
- * ejecting PRs exactly like the flakes this is meant to remove.
+ * An explicit `Locator` is a container the author chose — a form, a modal —
+ * where exactly one editor is a real invariant, so the count assertion from
+ * #32599 stands: failing here names the scope that needs narrowing rather than
+ * typing into an arbitrary editor.
  *
- * An explicit `Locator` scope is a container the author chose deliberately, so
- * two editors inside it is a real authoring bug and still fails here, naming
- * the scope that needs narrowing rather than typing into an arbitrary editor.
+ * A `Page` means no container was chosen, and a page may legitimately hold
+ * several editors, so asserting there would fail on ordinary pages. Resolve
+ * instead — the dialog's editor when the edit opened one, first match otherwise.
  */
 export const fillDescriptionBox = async (
   scope: Page | Locator,
@@ -129,7 +124,10 @@ export const fillDescriptionBox = async (
     return;
   }
 
-  await getDescriptionBox(scope).fill(value);
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
 };
 
 export const INVALID_NAMES = {
