@@ -74,6 +74,13 @@ const getJitteredPollInterval = (intervalMs: number) =>
         Math.random() * 2 * CSV_EXPORT_POLL_JITTER_RATIO)
   );
 
+// Waits two animation frames so a synchronous, event-loop-blocking export
+// (image/DOM cloning) paints its disabled/loading state before it starts.
+const waitForDoubleAnimationFrame = (): Promise<void> =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+
 interface CSVExportPollingState {
   abortController: AbortController;
   jobId: string;
@@ -87,6 +94,55 @@ interface CSVExportPollingState {
 type CSVPollAttemptOutcome =
   | { status: 'stop' }
   | { status: 'continue'; failed: boolean };
+
+const waitForNextPoll = (
+  pollingState: CSVExportPollingState,
+  intervalMs: number
+): Promise<void> =>
+  new Promise<void>((resolve) => {
+    if (pollingState.abortController.signal.aborted) {
+      resolve();
+
+      return;
+    }
+
+    pollingState.resolveDelay = resolve;
+    pollingState.timer = setTimeout(() => {
+      pollingState.resolveDelay = undefined;
+      pollingState.timer = undefined;
+      resolve();
+    }, intervalMs);
+  });
+
+const getPolledJob = async (
+  pollingState: CSVExportPollingState,
+  jobId: string
+): Promise<CsvAsyncJob> => {
+  const requestAbortController = new AbortController();
+  pollingState.requestAbortController = requestAbortController;
+
+  const requestTimeout = new Promise<never>((_, reject) => {
+    pollingState.rejectRequest = reject;
+    pollingState.requestTimer = setTimeout(() => {
+      requestAbortController.abort();
+      reject(new Error('CSV export status request timed out'));
+    }, CSV_EXPORT_STATUS_REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      getCsvAsyncJob(jobId, requestAbortController.signal),
+      requestTimeout,
+    ]);
+  } finally {
+    if (pollingState.requestTimer) {
+      clearTimeout(pollingState.requestTimer);
+    }
+    pollingState.rejectRequest = undefined;
+    pollingState.requestAbortController = undefined;
+    pollingState.requestTimer = undefined;
+  }
+};
 
 const runCSVPollAttempt = async (
   pollingState: CSVExportPollingState,
@@ -440,22 +496,6 @@ export const EntityExportModalProvider = ({
       };
       csvExportPollingRef.current = pollingState;
 
-      const waitForNextPoll = (intervalMs: number) =>
-        new Promise<void>((resolve) => {
-          if (pollingState.abortController.signal.aborted) {
-            resolve();
-
-            return;
-          }
-
-          pollingState.resolveDelay = resolve;
-          pollingState.timer = setTimeout(() => {
-            pollingState.resolveDelay = undefined;
-            pollingState.timer = undefined;
-            resolve();
-          }, intervalMs);
-        });
-
       const applyPolledJob = (job: CsvAsyncJob) => {
         const status =
           job.status === 'COMPLETED' ||
@@ -476,32 +516,7 @@ export const EntityExportModalProvider = ({
         return status !== 'IN_PROGRESS';
       };
 
-      const getPolledJob = async () => {
-        const requestAbortController = new AbortController();
-        pollingState.requestAbortController = requestAbortController;
-
-        const requestTimeout = new Promise<never>((_, reject) => {
-          pollingState.rejectRequest = reject;
-          pollingState.requestTimer = setTimeout(() => {
-            requestAbortController.abort();
-            reject(new Error('CSV export status request timed out'));
-          }, CSV_EXPORT_STATUS_REQUEST_TIMEOUT_MS);
-        });
-
-        try {
-          return await Promise.race([
-            getCsvAsyncJob(jobId, requestAbortController.signal),
-            requestTimeout,
-          ]);
-        } finally {
-          if (pollingState.requestTimer) {
-            clearTimeout(pollingState.requestTimer);
-          }
-          pollingState.rejectRequest = undefined;
-          pollingState.requestAbortController = undefined;
-          pollingState.requestTimer = undefined;
-        }
-      };
+      const fetchPolledJob = () => getPolledJob(pollingState, jobId);
 
       void (async () => {
         let consecutiveFailures = 0;
@@ -512,7 +527,10 @@ export const EntityExportModalProvider = ({
               CSV_EXPORT_INITIAL_POLL_INTERVAL_MS * 2 ** (attempt - 1),
               CSV_EXPORT_MAX_POLL_INTERVAL_MS
             );
-            await waitForNextPoll(getJitteredPollInterval(intervalMs));
+            await waitForNextPoll(
+              pollingState,
+              getJitteredPollInterval(intervalMs)
+            );
           }
 
           if (isPollingStale(pollingState, jobId)) {
@@ -522,7 +540,7 @@ export const EntityExportModalProvider = ({
           const outcome = await runCSVPollAttempt(
             pollingState,
             jobId,
-            getPolledJob,
+            fetchPolledJob,
             applyPolledJob,
             isPollingStale
           );
@@ -576,9 +594,7 @@ export const EntityExportModalProvider = ({
       flushSync(() => {
         setDownloading(true);
       });
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-      );
+      await waitForDoubleAnimationFrame();
       if (isExportStale(exportGeneration)) {
         return;
       }

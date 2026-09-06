@@ -473,6 +473,23 @@ const getColumnKeys = <T,>(columns: ColumnsType<T>): string[] =>
 const getColumnIds = (columnKeys: string[]): string[] =>
   disambiguate(columnKeys.map((key) => `${COLUMN_ID_PREFIX}${key}`));
 
+const recordMatchesActiveFilters = <T,>(
+  record: T,
+  activeFilters: [string, React.Key[]][],
+  propsColumns: ColumnsType<T>,
+  columnIds: string[]
+): boolean =>
+  activeFilters.every(([colKey, selectedKeys]) => {
+    const col = propsColumns.find(
+      (_c, idx) => columnIds[idx] === colKey
+    ) as ColumnType<T> | undefined;
+    const onFilter = col?.onFilter;
+
+    return onFilter
+      ? selectedKeys.some((key) => onFilter(key as React.Key | boolean, record))
+      : true;
+  });
+
 interface ColumnCustomizeDropdownProps {
   columnDropdownSelections: string[];
   dropdownColumnList: TableColumnDropdownList[];
@@ -790,6 +807,23 @@ const TableV2 = <T extends object>(
     {}
   );
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
+
+  const setFilterSelectedKeys = useCallback(
+    (colKey: string, keys: React.Key[]) =>
+      setFilterState((prev) => ({ ...prev, [colKey]: keys })),
+    []
+  );
+  const clearFilterKeys = useCallback(
+    (colKey: string) =>
+      setFilterState((prev) => {
+        const next = { ...prev };
+        delete next[colKey];
+
+        return next;
+      }),
+    []
+  );
+
   const {
     preferences: { selectedEntityTableColumns },
     setPreference,
@@ -980,19 +1014,7 @@ const TableV2 = <T extends object>(
     }
 
     return sortedDataSource.filter((record) =>
-      activeFilters.every(([colKey, selectedKeys]) => {
-        const col = propsColumns.find(
-          (_c, idx) => columnIds[idx] === colKey
-        ) as ColumnType<T> | undefined;
-
-        const onFilter = col?.onFilter;
-
-        return onFilter
-          ? selectedKeys.some((key) =>
-              onFilter(key as React.Key | boolean, record)
-            )
-          : true;
-      })
+      recordMatchesActiveFilters(record, activeFilters, propsColumns, columnIds)
     );
   }, [sortedDataSource, filterState, propsColumns, columnIds]);
 
@@ -1645,19 +1667,11 @@ const TableV2 = <T extends object>(
                                     ? colType.filterDropdown({
                                         prefixCls: 'ant-table-filter-dropdown',
                                         setSelectedKeys: (keys) =>
-                                          setFilterState((prev) => ({
-                                            ...prev,
-                                            [colKey]: keys,
-                                          })),
+                                          setFilterSelectedKeys(colKey, keys),
                                         selectedKeys: filterState[colKey] ?? [],
                                         confirm: () => setOpenFilterKey(null),
                                         clearFilters: () =>
-                                          setFilterState((prev) => {
-                                            const next = { ...prev };
-                                            delete next[colKey];
-
-                                            return next;
-                                          }),
+                                          clearFilterKeys(colKey),
                                         filters: colType.filters,
                                         visible: true,
                                         close: () => setOpenFilterKey(null),

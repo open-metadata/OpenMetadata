@@ -71,6 +71,20 @@ const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );
 
+type Table2SearchHit = SearchHitBody<
+  SearchIndex.TABLE,
+  Pick<
+    TableSearchSource,
+    'name' | 'displayName' | 'fullyQualifiedName' | 'columns'
+  >
+>;
+
+const findTableByFqn = (
+  tableList: Table2SearchHit[],
+  fqn?: string
+): Table2SearchHit | undefined =>
+  tableList.find((hit) => hit._source.fullyQualifiedName === fqn);
+
 interface TableDiffFormProps {
   definition: ParameterFormProps['definition'];
   table: ParameterFormProps['table'];
@@ -139,9 +153,7 @@ const TableDiffForm = ({
   useEffect(() => {
     const table2Value = form.getFieldValue(['params', 'table2']);
     if (table2Value && !table2Columns && tableList.length > 0) {
-      const selectedTable = tableList.find(
-        (hit) => hit._source.fullyQualifiedName === table2Value
-      );
+      const selectedTable = findTableByFqn(tableList, table2Value);
       if (selectedTable) {
         setTable2Columns(selectedTable._source.columns);
       }
@@ -173,9 +185,7 @@ const TableDiffForm = ({
 
                     // Update columns or clear them
                     if (value) {
-                      const selectedTable = tableList.find(
-                        (hit) => hit._source.fullyQualifiedName === value
-                      );
+                      const selectedTable = findTableByFqn(tableList, value);
                       setTable2Columns(selectedTable?._source.columns);
                     } else {
                       setTable2Columns(undefined);
