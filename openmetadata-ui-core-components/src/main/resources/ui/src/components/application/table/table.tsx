@@ -408,6 +408,15 @@ interface TableRowProps<T extends object>
       'children' | 'className' | 'onClick' | 'slot' | 'style' | 'id'
     > {
   highlightSelectedRow?: boolean;
+  /**
+   * Hides the per-row selection cell that `selectionBehavior="toggle"`
+   * otherwise injects. Use for full-width synthetic rows (e.g. section
+   * group headers) whose single child cell spans every column — including
+   * the selection column — via `colSpan`. Without this the row would emit
+   * both the selection cell and the spanning cell, and react-aria's
+   * `TableCollection` throws `Cell count must match column count`.
+   */
+  hideSelectionCell?: boolean;
 }
 
 const TableRow = <T extends object>({
@@ -415,6 +424,7 @@ const TableRow = <T extends object>({
   children,
   className,
   highlightSelectedRow = true,
+  hideSelectionCell = false,
   ...props
 }: TableRowProps<T>) => {
   const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
@@ -441,7 +451,7 @@ const TableRow = <T extends object>({
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {selectionBehavior === 'toggle' && (
+      {selectionBehavior === 'toggle' && !hideSelectionCell && (
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
