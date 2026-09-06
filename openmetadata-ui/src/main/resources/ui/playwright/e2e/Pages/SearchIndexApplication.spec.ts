@@ -19,6 +19,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -97,13 +98,7 @@ const installSearchIndexApplication = async (page: Page) => {
 
   await page.getByTestId('submit-btn').waitFor({ state: 'visible' });
   await page.getByTestId('submit-btn').click();
-  await page.getByTestId('schedular-card-container').waitFor();
-  await page
-    .getByTestId('schedular-card-container')
-    .getByText('On Demand')
-    .click();
-
-  await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
+  await selectOnDemandSchedule(page);
 
   const installApplicationResponse = page.waitForResponse('api/v1/apps');
   const getApplications = page.waitForRequest(
@@ -321,11 +316,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('Edit application', async () => {
       await page.click('[data-testid="edit-button"]');
-      await page.getByTestId('schedular-card-container').waitFor();
-      await page
-        .getByTestId('schedular-card-container')
-        .getByText('On Demand')
-        .click();
+      await selectOnDemandSchedule(page);
 
       const deployResponse = page.waitForResponse(
         (response) =>
