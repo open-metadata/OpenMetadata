@@ -38,8 +38,9 @@ const waitForStableBox = async (locator: Locator) => {
 // events do not reliably synthesise native drag in headless Chromium, so a real
 // dragTo is required. force skips the actionability wait that the row hover
 // overlays would otherwise block. Dropping at a row's centre lands "on" it (a
-// move under that row); dropping near the table top (isHeader) lands on the
-// root DropZone surface, which moves the team to the table root.
+// move under that row); for a root move the caller passes the toolbar selector
+// (isHeader) — it sits inside the DropZone but outside the grid, so a drop there
+// routes to onRootDrop and moves the team to the table root.
 export const dragAndDropElement = async (
   page: Page,
   dragElement: string,
@@ -68,7 +69,6 @@ export const dragAndDropElement = async (
   await dragElementLocator.dragTo(dropTargetLocator, {
     force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
     sourcePosition: { x: 10, y: 10 },
-    ...(isHeader ? { targetPosition: { x: 40, y: 8 } } : {}),
   });
 };
 

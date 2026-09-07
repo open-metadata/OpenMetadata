@@ -191,7 +191,7 @@ test.describe(
       await dragAndDropElement(
         page,
         teamNameGroup,
-        '[data-testid="team-hierarchy-table"]',
+        '[data-testid="table-toolbar"]',
         true
       );
       await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
