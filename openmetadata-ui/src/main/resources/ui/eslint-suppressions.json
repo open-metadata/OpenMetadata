@@ -49,11 +49,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/BulkEditEntity.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 6
@@ -101,7 +96,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 13
+      "count": 10
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -155,11 +150,6 @@
   "playwright/e2e/Features/DataProductRename.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
     }
   },
   "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts": {
@@ -229,7 +219,7 @@
   },
   "playwright/e2e/Features/EntityRenameConsolidation.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 4
     }
   },
   "playwright/e2e/Features/EntitySummaryPanel.spec.ts": {
@@ -704,7 +694,7 @@
       "count": 2
     },
     "om-playwright/no-positional-locator": {
-      "count": 16
+      "count": 15
     }
   },
   "playwright/e2e/Pages/ExploreBrowse.spec.ts": {
@@ -1018,7 +1008,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 23
+      "count": 22
     }
   },
   "playwright/utils/entityPanel.ts": {
