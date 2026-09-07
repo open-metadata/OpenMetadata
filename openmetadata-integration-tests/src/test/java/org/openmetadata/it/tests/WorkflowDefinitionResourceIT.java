@@ -21,6 +21,8 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,6 +68,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.services.CreateApiService;
@@ -78,6 +81,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
@@ -99,6 +103,7 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
@@ -10957,5 +10962,171 @@ public class WorkflowDefinitionResourceIT {
         current.getDisplayName(),
         "Excluded term must not be touched by workflow, but displayName changed to "
             + current.getDisplayName());
+  }
+
+  @Test
+  @Order(211)
+  void test_ColumnCustomPropertyChange_TriggersWorkflow(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureTierTagExists();
+    String propName = ns.prefix("wfTriggerCp");
+    String columnTypeName = "tableColumn";
+
+    try {
+      addColumnCustomProperty(client, columnTypeName, propName);
+
+      CreateDatabaseService createService =
+          createDatabaseServiceRequest(ns.prefix("colcp_wf_service"));
+      DatabaseService service = client.databaseServices().create(createService);
+      CreateDatabase createDatabase =
+          new CreateDatabase().withName("colcp_wf_db").withService(service.getFullyQualifiedName());
+      Database database = client.databases().create(createDatabase);
+      CreateDatabaseSchema createSchema =
+          new CreateDatabaseSchema()
+              .withName("colcp_wf_schema")
+              .withDatabase(database.getFullyQualifiedName());
+      DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+      CreateTable createTable =
+          new CreateTable()
+              .withName("colcp_wf_table")
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+      Table table = client.tables().create(createTable);
+
+      String workflowName = ns.prefix("colCpTrigger");
+      String workflowJson =
+          """
+          {
+            "name": "%s",
+            "displayName": "Column CP Trigger",
+            "description": "Fires when a table column custom property changes",
+            "trigger": {
+              "type": "eventBasedEntity",
+              "config": {
+                "entityTypes": ["table"],
+                "events": ["Updated"],
+                "include": ["columns"]
+              },
+              "output": ["relatedEntity", "updatedBy"]
+            },
+            "nodes": [
+              {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
+              {
+                "type": "automatedTask",
+                "subType": "setEntityAttributeTask",
+                "name": "setTier",
+                "displayName": "Set Tier",
+                "config": {"fieldName": "tags", "fieldValue": "Tier.Tier1"},
+                "input": ["relatedEntity", "updatedBy"],
+                "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                "output": []
+              },
+              {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
+            ],
+            "edges": [
+              {"from": "start", "to": "setTier"},
+              {"from": "setTier", "to": "end"}
+            ],
+            "config": {"storeStageStatus": true}
+          }
+          """
+              .formatted(workflowName);
+
+      CreateWorkflowDefinition workflowRequest =
+          MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+      waitForWorkflowDeployment(client, workflowName);
+      waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
+
+      // Setting a column custom property emits a table Updated event carrying
+      // columns."id".extension; the opt-in include:[columns] trigger then runs the workflow, which
+      // sets Tier.Tier1 on the table. Asserting the tier proves the column change fired the
+      // workflow.
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "trigger-me");
+      setColumnExtension(client, columnFQN, extension);
+
+      await()
+          .atMost(Duration.ofSeconds(180))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Table updated = client.tables().get(table.getId().toString(), "tags");
+                boolean hasTier1 =
+                    updated.getTags() != null
+                        && updated.getTags().stream()
+                            .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+                assertTrue(
+                    hasTier1,
+                    "a column custom-property change must trigger the include:[columns] workflow");
+              });
+    } finally {
+      deleteColumnCustomProperty(client, columnTypeName, propName);
+    }
+  }
+
+  private void addColumnCustomProperty(
+      OpenMetadataClient client, String columnTypeName, String propName) throws Exception {
+    Type columnType = getColumnType(client, columnTypeName);
+    Type stringType =
+        MAPPER.readValue(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/metadata/types/name/string", null),
+            Type.class);
+    CustomProperty customProperty =
+        new CustomProperty()
+            .withName(propName)
+            .withDescription("Workflow trigger test property: " + propName)
+            .withPropertyType(stringType.getEntityReference());
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + columnType.getId().toString(),
+            customProperty,
+            Type.class);
+  }
+
+  private Type getColumnType(OpenMetadataClient client, String columnTypeName) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/metadata/types/name/" + columnTypeName + "?fields=customProperties",
+                null);
+    return MAPPER.readValue(response, Type.class);
+  }
+
+  private void setColumnExtension(
+      OpenMetadataClient client, String columnFQN, Map<String, Object> extension) throws Exception {
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setExtension(extension);
+    String encodedFqn = URLEncoder.encode(columnFQN, StandardCharsets.UTF_8).replace("+", "%20");
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/columns/name/" + encodedFqn + "?entityType=table", updateColumn);
+  }
+
+  private void deleteColumnCustomProperty(
+      OpenMetadataClient client, String columnTypeName, String propName) {
+    try {
+      Type columnType = getColumnType(client, columnTypeName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/metadata/types/" + columnType.getId().toString() + "/" + propName,
+              null,
+              Void.class);
+    } catch (Exception e) {
+      LOG.warn("Failed to clean up column custom property {}: {}", propName, e.getMessage());
+    }
   }
 }

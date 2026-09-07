@@ -151,7 +151,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         fields.contains(FIELD_TAGS));
     if (fields.contains("columns") && fields.contains("extension")) {
       if (dashboardDataModel.getColumns() != null) {
-        for (Column column : dashboardDataModel.getColumns()) {
+        for (Column column : EntityUtil.getFlattenedEntityField(dashboardDataModel.getColumns())) {
           column.setExtension(
               getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
         }
@@ -271,6 +271,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       super(original, updated, operation);
     }
 
+    @Override
+    protected boolean supportsColumnExtension() {
+      return true;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -336,7 +341,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      for (Column column : paginatedColumns) {
+      for (Column column : EntityUtil.getFlattenedEntityField(paginatedColumns)) {
         column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
       }
     }
@@ -358,7 +363,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
     }
     if (fieldsParam.contains("extension")) {
-      column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+      for (Column flattened : EntityUtil.getFlattenedEntityField(singleton)) {
+        flattened.setExtension(
+            getColumnExtension(dataModel.getId(), flattened.getFullyQualifiedName()));
+      }
     }
     return column;
   }

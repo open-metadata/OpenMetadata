@@ -7,9 +7,10 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Ev
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -19,11 +20,11 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
-import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -84,7 +85,8 @@ public class FilterEntityImpl implements JavaDelegate {
       passesFilter = true;
     } else {
       passesFilter =
-          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(
+              entityLinkStr, entityType, excludedFilter, includeFields, filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -203,6 +205,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
+      String entityType,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
@@ -222,7 +225,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
+              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
     }
 
     return fieldBasedFilter && !matchesExclusionFilter(filterLogic, entity);
@@ -251,20 +254,34 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesFieldBasedFilter(
-      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludedFilter) {
+    Set<String> effectiveFields = WorkflowTriggerFieldsRegistry.getEffectiveFields(entityType);
+    Set<String> commonFields = new HashSet<>(WorkflowTriggerFieldsRegistry.getCommonFields());
     return changedFields.stream()
         .anyMatch(
             field -> {
               String fieldName = field.getName();
               boolean isTriggerField =
-                  Arrays.stream(WorkflowTriggerFields.values())
-                      .map(WorkflowTriggerFields::value)
-                      .anyMatch(tf -> matchesField(fieldName, tf));
+                  effectiveFields.stream().anyMatch(tf -> matchesField(fieldName, tf));
               if (!isTriggerField) {
                 return false;
               }
 
-              if (includeFields != null && !includeFields.isEmpty()) {
+              boolean hasInclude = includeFields != null && !includeFields.isEmpty();
+
+              // Entity-specific (byEntity) fields are opt-in: they fire only when explicitly listed
+              // in include, so workflows saved before these fields were triggerable are not
+              // retroactively fired on routine edits. Common fields keep the default behaviour.
+              boolean isCommon = commonFields.stream().anyMatch(tf -> matchesField(fieldName, tf));
+              if (!isCommon) {
+                return hasInclude
+                    && includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
+              }
+
+              if (hasInclude) {
                 return includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
               }
 

@@ -218,12 +218,45 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     if ((fields.contains(COLUMN_FIELD)) && (fields.contains("extension"))) {
-      if (table.getColumns() != null) {
-        for (Column column : table.getColumns()) {
-          column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
-        }
+      setColumnExtensions(table.getId(), table.getColumns());
+    }
+  }
+
+  /**
+   * Hydrates {@code extension} on every column and nested child from the entity_extension side
+   * table in a single query. Flattening covers struct/array-of-struct children whose extension is
+   * persisted recursively; batching replaces the previous per-column N+1 lookups.
+   */
+  private void setColumnExtensions(UUID tableId, List<Column> columns) {
+    if (nullOrEmpty(columns)) {
+      return;
+    }
+    Map<String, Object> extensionByColumnHash = fetchColumnExtensionsByHash(tableId);
+    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
+      column.setExtension(
+          extensionByColumnHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
+    }
+  }
+
+  private Map<String, Object> fetchColumnExtensionsByHash(UUID tableId) {
+    Map<String, Object> extensionByColumnHash = new HashMap<>();
+    List<ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByJsonSchema(tableId, COLUMN_EXTENSION_JSON_SCHEMA);
+    for (ExtensionRecord record : records) {
+      try {
+        extensionByColumnHash.put(
+            record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to deserialize column extension for table {} extensionKey {}: {}",
+            tableId,
+            record.extensionName(),
+            e.getMessage());
       }
     }
+    return extensionByColumnHash;
   }
 
   @Override
@@ -2186,19 +2219,6 @@ public class TableRepository extends EntityRepository<Table> {
         CustomMetric.class);
   }
 
-  private Object getColumnExtension(UUID tableId, String columnFQN) {
-    try {
-      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
-      String extensionJson = daoCollection.entityExtensionDAO().getExtension(tableId, extensionKey);
-      if (extensionJson != null) {
-        return JsonUtils.readValue(extensionJson, Object.class);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
-    }
-    return null;
-  }
-
   private Map<String, List<CustomMetric>> batchFetchCustomMetricsByColumn(UUID tableId) {
     List<ExtensionRecord> records =
         daoCollection
@@ -2273,6 +2293,11 @@ public class TableRepository extends EntityRepository<Table> {
     public TableUpdater(
         Table original, Table updated, Operation operation, ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
+    }
+
+    @Override
+    protected boolean supportsColumnExtension() {
+      return true;
     }
 
     @Override
@@ -2929,28 +2954,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      List<ExtensionRecord> allColumnExtensions =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtensionsByJsonSchema(table.getId(), COLUMN_EXTENSION_JSON_SCHEMA);
-      Map<String, Object> extensionByColumnHash = new HashMap<>();
-      for (ExtensionRecord record : allColumnExtensions) {
-        try {
-          extensionByColumnHash.put(
-              record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to deserialize column extension for table {} extensionKey {}: {}",
-              table.getId(),
-              record.extensionName(),
-              e.getMessage());
-        }
-      }
-      for (Column column : paginatedColumns) {
-        column.setExtension(
-            extensionByColumnHash.get(
-                FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
-      }
+      setColumnExtensions(table.getId(), paginatedColumns);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
@@ -2990,7 +2994,7 @@ public class TableRepository extends EntityRepository<Table> {
       column.setCustomMetrics(getCustomMetrics(table, column.getName()));
     }
     if (fieldsParam.contains("extension")) {
-      column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+      setColumnExtensions(table.getId(), singleton);
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);

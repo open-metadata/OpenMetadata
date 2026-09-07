@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -36,10 +37,12 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
@@ -1212,6 +1215,103 @@ public class ColumnCustomPropertiesIT {
     } finally {
       deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
     }
+  }
+
+  // ========================================================================
+  // CHANGE-DESCRIPTION / WORKFLOW-TRIGGER TESTS
+  // ========================================================================
+
+  @Test
+  void test_tableColumn_extensionChange_recordedInTableChangeDescription(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("triggerProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      Table table = createTestTable(ns);
+      Double versionBefore = table.getVersion();
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "trigger-me");
+      updateColumn(client, columnFQN, "table", extension);
+
+      Table afterSet = client.tables().get(table.getId().toString(), "columns,extension");
+      assertTrue(
+          afterSet.getVersion() > versionBefore,
+          "setting a column custom property must bump the table version so workflows can trigger");
+      assertNotNull(
+          findColumnExtensionChange(afterSet.getChangeDescription(), "id"),
+          "table change description must record the column extension change");
+
+      Double versionAfterSet = afterSet.getVersion();
+      updateColumn(client, columnFQN, "table", extension);
+      Table afterNoop = client.tables().get(table.getId().toString(), "columns,extension");
+      assertEquals(
+          versionAfterSet,
+          afterNoop.getVersion(),
+          "re-setting the identical column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_nestedExtensionUnchangedReingest_noVersionBump(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("nestedTriggerProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("nestedReingestTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(createDeeplyNestedColumn(propName)));
+      Table created = client.tables().create(request);
+      Table withExtension = client.tables().get(created.getId().toString(), "columns,extension");
+      Double versionAfterCreate = withExtension.getVersion();
+
+      // Re-ingest the identical table via PUT. The nested leaf column's extension must hydrate as
+      // the baseline (flattened read); an unchanged value must not record a FieldChange or bump the
+      // version. Without the flattened read the nested baseline is null and a spurious change
+      // fires.
+      Table reingested = client.tables().update(created.getId().toString(), withExtension);
+      assertEquals(
+          versionAfterCreate,
+          reingested.getVersion(),
+          "re-ingesting an unchanged nested column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  private static FieldChange findColumnExtensionChange(ChangeDescription cd, String columnName) {
+    if (cd == null) {
+      return null;
+    }
+    List<FieldChange> allChanges = new ArrayList<>();
+    if (cd.getFieldsAdded() != null) {
+      allChanges.addAll(cd.getFieldsAdded());
+    }
+    if (cd.getFieldsUpdated() != null) {
+      allChanges.addAll(cd.getFieldsUpdated());
+    }
+    return allChanges.stream()
+        .filter(
+            fc ->
+                fc.getName() != null
+                    && fc.getName().startsWith("columns")
+                    && fc.getName().endsWith("extension")
+                    && fc.getName().contains(columnName))
+        .findFirst()
+        .orElse(null);
   }
 
   // ========================================================================

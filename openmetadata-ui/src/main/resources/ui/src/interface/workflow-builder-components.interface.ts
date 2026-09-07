@@ -64,6 +64,9 @@ export interface TriggerConfigSectionProps {
   onRemoveEventType: (eventTypeToRemove: string) => void;
   excludeFields?: string[];
   availableExcludeFields?: string[];
+  // Maps an entity-specific trigger field to the entity type it belongs to (e.g. columns -> table),
+  // so the field selector can label per-entity fields and group them below the common fields.
+  fieldGroups?: Record<string, string>;
   onExcludeFieldsChange?: (excludeFields: string[]) => void;
   onRemoveExcludeField?: (fieldToRemove: string) => void;
   include?: string[];

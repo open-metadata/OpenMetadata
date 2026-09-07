@@ -64,6 +64,20 @@ export const getCustomPropertiesByEntityType = async (entityType: string) => {
   return response.data;
 };
 
+export interface WorkflowTriggerFieldsConfig {
+  common: string[];
+  byEntity: Record<string, string[]>;
+}
+
+export const getWorkflowTriggerFields =
+  async (): Promise<WorkflowTriggerFieldsConfig> => {
+    const response = await APIClient.get<WorkflowTriggerFieldsConfig>(
+      '/metadata/types/fields/workflowTriggerFields'
+    );
+
+    return response.data;
+  };
+
 export const addPropertyToEntity = async (
   entityTypeId: string,
   data: CustomProperty
