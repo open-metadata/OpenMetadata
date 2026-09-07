@@ -138,7 +138,20 @@ export const UserTab = ({
       query: text,
       pageNumber: currentPage,
       pageSize,
-      queryFilter: getTermQuery({ 'teams.id': currentTeam?.id }),
+      // Scope the search to this team's whole subtree: the team itself plus every descendant team
+      // (descendantTeams is computed on the team, empty for a Group team). Matching each user's
+      // direct teams.id against that set finds members inherited from sub-groups, mirroring the
+      // Users tab list. minimum_should_match=1 makes it an OR (IN) over the team ids.
+      queryFilter: getTermQuery(
+        {
+          'teams.id': [
+            currentTeam.id,
+            ...(currentTeam.descendantTeams?.map((team) => team.id) ?? []),
+          ],
+        },
+        'should',
+        1
+      ),
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {
@@ -284,7 +297,9 @@ export const UserTab = ({
         key: 'export-button',
       },
     ];
-    if (permission.EditAll) {
+    // Import adds users to the team, which is only allowed for Group teams. Export is offered for
+    // all team types so a non-Group team can export the users rolled up from its sub-groups.
+    if (isGroupType && permission.EditAll) {
       option.push({
         label: (
           <ManageButtonItemLabel
@@ -302,7 +317,7 @@ export const UserTab = ({
     }
 
     return option;
-  }, [handleUserExportClick, handleImportClick, permission, t]);
+  }, [handleUserExportClick, handleImportClick, permission, t, isGroupType]);
 
   const handleRemoveUser = () => {
     if (deletingUser?.id) {
@@ -374,11 +389,10 @@ export const UserTab = ({
     );
 
   const renderExtraTableFilters = () =>
-    !currentTeam.deleted &&
-    isGroupType && (
+    !currentTeam.deleted && (
       <Col>
         <Space>
-          {users.length > 0 && editUserPermission && (
+          {isGroupType && users.length > 0 && editUserPermission && (
             <UserSelectableList
               hasPermission
               includeBot

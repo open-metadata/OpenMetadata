@@ -118,6 +118,7 @@ export enum TabSpecificField {
   CHARTS = 'charts',
   CHILDREN = 'children',
   CHILDREN_COUNT = 'childrenCount',
+  DESCENDANT_TEAMS = 'descendantTeams',
   COLUMNS = 'columns',
   CUSTOM_METRICS = 'customMetrics',
   CUSTOM_PROPERTIES = 'customProperties',
