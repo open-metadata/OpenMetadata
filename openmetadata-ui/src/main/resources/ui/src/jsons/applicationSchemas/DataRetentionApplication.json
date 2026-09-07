@@ -44,6 +44,13 @@
       "default": 90,
       "minimum": 1
     },
+    "workflowRetentionPeriod": {
+      "title": "Automation Workflow Retention Period (days)",
+      "description": "Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 0
+    },
     "extensions": {
       "title": "Extension Retention Periods (days)",
       "description": "Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. Leave a key out to use whatever default that extension defines.",
