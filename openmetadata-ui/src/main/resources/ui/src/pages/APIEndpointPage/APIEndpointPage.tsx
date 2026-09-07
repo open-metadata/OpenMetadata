@@ -83,6 +83,10 @@ const APIEndpointPage = () => {
     }
   }, [permissionsError]);
 
+  // `canViewApiEndpoint` is the derived hasViewAccess flag (ViewBasic || ViewAll), so its
+  // negation is the same condition as the raw `!ViewAll && !ViewBasic` this replaces.
+  const hasNoViewPermission = !canViewApiEndpoint;
+
   const apiEndpointCacheKey = useMemo(
     () => apiEndpointQueryKey(apiEndpointFqn, API_ENDPOINT_DEFAULT_FIELDS),
     [apiEndpointFqn]
@@ -338,7 +342,7 @@ const APIEndpointPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!canViewApiEndpoint) {
+  if (hasNoViewPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"

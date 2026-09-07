@@ -146,32 +146,25 @@ const ColumnProfileTable = () => {
       return data;
     }
 
-    const sorted = [...data].sort((a, b) => {
-      switch (sortDescriptor.column) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'dataType':
-          return a.dataType.localeCompare(b.dataType);
-        case 'nullProportion':
-          return (
-            (a.profile?.nullProportion || 0) - (b.profile?.nullProportion || 0)
-          );
-        case 'uniqueProportion':
-          return (
-            (a.profile?.uniqueProportion || 0) -
-            (b.profile?.uniqueProportion || 0)
-          );
-        case 'distinctProportion':
-          return (
-            (a.profile?.distinctProportion || 0) -
-            (b.profile?.distinctProportion || 0)
-          );
-        case 'valuesCount':
-          return (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0);
-        default:
-          return 0;
-      }
-    });
+    const columnComparators: Record<
+      string,
+      (a: ModifiedColumn, b: ModifiedColumn) => number
+    > = {
+      name: (a, b) => a.name.localeCompare(b.name),
+      dataType: (a, b) => a.dataType.localeCompare(b.dataType),
+      nullProportion: (a, b) =>
+        (a.profile?.nullProportion || 0) - (b.profile?.nullProportion || 0),
+      uniqueProportion: (a, b) =>
+        (a.profile?.uniqueProportion || 0) - (b.profile?.uniqueProportion || 0),
+      distinctProportion: (a, b) =>
+        (a.profile?.distinctProportion || 0) -
+        (b.profile?.distinctProportion || 0),
+      valuesCount: (a, b) =>
+        (a.profile?.valuesCount || 0) - (b.profile?.valuesCount || 0),
+    };
+
+    const comparator = columnComparators[sortDescriptor.column as string];
+    const sorted = comparator ? [...data].sort(comparator) : [...data];
 
     return sortDescriptor?.direction === 'descending'
       ? sorted.reverse()
@@ -274,6 +267,36 @@ const ColumnProfileTable = () => {
     }
   }, [tableFqn, currentPage, searchText, pageSize]);
 
+  const renderProportionCell = (value: number | undefined) => (
+    <Table.Cell className="tw:w-50">
+      {isNil(value) ? '--' : calculatePercentage(value, 1, 2, true)}
+    </Table.Cell>
+  );
+
+  const renderTestCountCell = (
+    count: number | undefined,
+    dataTestId: string,
+    valueClassName: string,
+    widthClass: string
+  ) => (
+    <Table.Cell className={widthClass}>
+      {isUndefined(count) || count === 0 ? (
+        '--'
+      ) : (
+        <Link
+          data-testid={dataTestId}
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            tableFqn,
+            EntityTabs.PROFILER,
+            ProfilerTabPath.DATA_QUALITY
+          )}>
+          <span className={valueClassName}>{count}</span>
+        </Link>
+      )}
+    </Table.Cell>
+  );
+
   const renderRow = (
     id: string,
     record: ModifiedColumn,
@@ -342,23 +365,11 @@ const ColumnProfileTable = () => {
           </Typography>
         </Table.Cell>
 
-        <Table.Cell className="tw:w-50">
-          {record.profile && !isNil(record.profile.nullProportion)
-            ? calculatePercentage(record.profile.nullProportion, 1, 2, true)
-            : '--'}
-        </Table.Cell>
+        {renderProportionCell(record.profile?.nullProportion)}
 
-        <Table.Cell className="tw:w-50">
-          {record.profile && !isNil(record.profile.uniqueProportion)
-            ? calculatePercentage(record.profile.uniqueProportion, 1, 2, true)
-            : '--'}
-        </Table.Cell>
+        {renderProportionCell(record.profile?.uniqueProportion)}
 
-        <Table.Cell className="tw:w-50">
-          {record.profile && !isNil(record.profile.distinctProportion)
-            ? calculatePercentage(record.profile.distinctProportion, 1, 2, true)
-            : '--'}
-        </Table.Cell>
+        {renderProportionCell(record.profile?.distinctProportion)}
 
         <Table.Cell className="tw:w-50">
           {record.profile?.valuesCount !== undefined &&
@@ -367,62 +378,26 @@ const ColumnProfileTable = () => {
             : '--'}
         </Table.Cell>
 
-        <Table.Cell className="tw:w-27.5">
-          {isUndefined(testCounts?.success) || testCounts?.success === 0 ? (
-            '--'
-          ) : (
-            <Link
-              data-testid={`${record.name}-test-success-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-success-primary">
-                {testCounts?.success}
-              </span>
-            </Link>
-          )}
-        </Table.Cell>
+        {renderTestCountCell(
+          testCounts?.success,
+          `${record.name}-test-success-count`,
+          'tw:text-success-primary',
+          'tw:w-27.5'
+        )}
 
-        <Table.Cell className="tw:w-25">
-          {isUndefined(testCounts?.failed) || testCounts?.failed === 0 ? (
-            '--'
-          ) : (
-            <Link
-              data-testid={`${record.name}-test-failed-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-error-primary">
-                {testCounts?.failed}
-              </span>
-            </Link>
-          )}
-        </Table.Cell>
+        {renderTestCountCell(
+          testCounts?.failed,
+          `${record.name}-test-failed-count`,
+          'tw:text-error-primary',
+          'tw:w-25'
+        )}
 
-        <Table.Cell className="tw:w-25">
-          {isUndefined(testCounts?.aborted) || testCounts?.aborted === 0 ? (
-            '--'
-          ) : (
-            <Link
-              data-testid={`${record.name}-test-aborted-count`}
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              <span className="tw:text-warning-primary">
-                {testCounts?.aborted}
-              </span>
-            </Link>
-          )}
-        </Table.Cell>
+        {renderTestCountCell(
+          testCounts?.aborted,
+          `${record.name}-test-aborted-count`,
+          'tw:text-warning-primary',
+          'tw:w-25'
+        )}
       </Table.Row>
     );
   };

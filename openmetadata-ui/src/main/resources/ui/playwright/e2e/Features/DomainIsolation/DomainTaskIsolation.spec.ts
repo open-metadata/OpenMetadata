@@ -98,8 +98,6 @@ const tasksAboutTable = async (
 };
 
 test.describe('Domain isolation - tasks @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, tables, tasks, users and role binding',
     async ({ browser }) => {

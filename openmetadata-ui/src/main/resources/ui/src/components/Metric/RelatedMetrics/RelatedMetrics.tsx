@@ -33,6 +33,14 @@ import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataA
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
+// Extracted so the boolean short-circuits live in their own complexity scope
+// instead of RelatedMetrics's render body.
+const computeCanEditRelatedMetrics = (
+  isEdit: boolean,
+  canEditAll: boolean,
+  isDeleted?: boolean
+): boolean => !isEdit && canEditAll && !isDeleted;
+
 const RelatedMetrics: FC = () => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -154,23 +162,32 @@ const RelatedMetrics: FC = () => {
     [onMetricUpdate, relatedMetrics]
   );
 
-  // Upstream extracted this guard as `!isEdit && permissions.EditAll && !metricDetails.deleted`;
-  // `canEditAll` is derived from the same permissions with `metricDetails.deleted` already
-  // applied (see the useMemo above), so `!isEdit && canEditAll` is the identical condition
-  // without the raw EditAll read.
-  const canEditRelatedMetrics = !isEdit && canEditAll;
+  // `canEditAll` is the derived flag for the same permissions (the useMemo above already
+  // applies `metricDetails.deleted`), replacing upstream's raw `permissions.EditAll` read.
+  const canEditRelatedMetrics = computeCanEditRelatedMetrics(
+    isEdit,
+    canEditAll,
+    metricDetails.deleted
+  );
 
-  const headerExtra =
-    canEditRelatedMetrics &&
-    (isEmpty(relatedMetrics) ? (
-      <WidgetPlusButton
-        data-testid="add-related-metrics-container"
-        title={t('label.add-entity', {
-          entity: t('label.related-metric-plural'),
-        })}
-        onClick={() => setIsEdit(true)}
-      />
-    ) : (
+  const renderHeaderExtra = () => {
+    if (!canEditRelatedMetrics) {
+      return null;
+    }
+
+    if (isEmpty(relatedMetrics)) {
+      return (
+        <WidgetPlusButton
+          data-testid="add-related-metrics-container"
+          title={t('label.add-entity', {
+            entity: t('label.related-metric-plural'),
+          })}
+          onClick={() => setIsEdit(true)}
+        />
+      );
+    }
+
+    return (
       <WidgetEditButton
         data-testid="edit-related-metrics"
         title={t('label.edit-entity', {
@@ -178,18 +195,27 @@ const RelatedMetrics: FC = () => {
         })}
         onClick={() => setIsEdit(true)}
       />
-    ));
+    );
+  };
 
-  const content = isEdit ? (
-    <RelatedMetricsForm
-      defaultValue={defaultValue}
-      initialOptions={initialOptions}
-      metricFqn={metricDetails.fullyQualifiedName ?? ''}
-      onCancel={() => setIsEdit(false)}
-      onSubmit={handleRelatedMetricUpdate}
-    />
-  ) : (
-    !isEmpty(relatedMetrics) && (
+  const renderContent = () => {
+    if (isEdit) {
+      return (
+        <RelatedMetricsForm
+          defaultValue={defaultValue}
+          initialOptions={initialOptions}
+          metricFqn={metricDetails.fullyQualifiedName ?? ''}
+          onCancel={() => setIsEdit(false)}
+          onSubmit={handleRelatedMetricUpdate}
+        />
+      );
+    }
+
+    if (isEmpty(relatedMetrics)) {
+      return null;
+    }
+
+    return (
       <div
         className="metric-entity-list-body"
         data-testid="metric-entity-list-body">
@@ -197,16 +223,16 @@ const RelatedMetrics: FC = () => {
         {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
         {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
       </div>
-    )
-  );
+    );
+  };
 
   return (
     <WidgetCard
       forceExpand={isEdit}
-      headerExtra={headerExtra}
+      headerExtra={renderHeaderExtra()}
       isExpandDisabled={isEmpty(relatedMetrics) && !isEdit}
       title={t('label.related-metric-plural')}>
-      {content}
+      {renderContent()}
     </WidgetCard>
   );
 };

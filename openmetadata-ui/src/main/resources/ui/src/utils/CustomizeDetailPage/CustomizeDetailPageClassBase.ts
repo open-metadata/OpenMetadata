@@ -53,105 +53,71 @@ import {
 import { EntityTabs } from '../../enums/entity.enum';
 import i18n from '../i18next/LocalUtil';
 
+const GLOSSARY_WIDGET_IMAGE_MAP: Record<string, string> = {
+  [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: CustomPropertyImg,
+  [GlossaryTermDetailPageWidgetKeys.DOMAIN]: DomainImg,
+  [GlossaryTermDetailPageWidgetKeys.OWNER]: OwnersImg,
+  [GlossaryTermDetailPageWidgetKeys.REFERENCES]: ReferencesImg,
+  [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: RelatedTermsImg,
+  [GlossaryTermDetailPageWidgetKeys.REVIEWER]: ReviewersImg,
+  [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: SynonymsImg,
+  [GlossaryTermDetailPageWidgetKeys.TERMS_TABLE]: TermsImg,
+  [GlossaryTermDetailPageWidgetKeys.TAGS]: TagsImg,
+};
+
+const DETAIL_PAGE_WIDGET_IMAGE_MAP: Record<string, string> = {
+  [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: CustomPropertyImg,
+  [DetailPageWidgetKeys.OWNERS]: OwnersImg,
+  [DetailPageWidgetKeys.EXPERTS]: ExpertsImg,
+  [DetailPageWidgetKeys.TAGS]: TagsImg,
+  [DetailPageWidgetKeys.DATA_PRODUCTS]: DataProductImg,
+  [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: FrequentlyJoinedTablesImg,
+  [DetailPageWidgetKeys.GLOSSARY_TERMS]: GlossaryTermImg,
+  [DetailPageWidgetKeys.TABLE_SCHEMA]: TablesSchemaImg,
+  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: TableConstraints,
+  [DetailPageWidgetKeys.API_ENDPOINTS]: ApiEndpointsImg,
+  [DetailPageWidgetKeys.API_SCHEMA]: ApiSchemaImg,
+  [DetailPageWidgetKeys.CONTAINER_SCHEMA]: ContainerSchemaImg,
+  [DetailPageWidgetKeys.CONTAINER_CHILDREN]: ContainerChildrenImg,
+  [DetailPageWidgetKeys.CHARTS_TABLE]: ChartsTableImg,
+  [DetailPageWidgetKeys.DATA_MODEL]: DataModelImg,
+  [DetailPageWidgetKeys.DATABASE_SCHEMA]: DatabaseSchemaImg,
+  [DetailPageWidgetKeys.TABLES]: SchemaTablesImg,
+  [DetailPageWidgetKeys.RELATED_METRICS]: RelatedMetricsImg,
+  [DetailPageWidgetKeys.ML_MODEL_FEATURES]: MlModelFeaturesImg,
+  [DetailPageWidgetKeys.PIPELINE_TASKS]: PipelineTasksImg,
+  [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: SearchIndexFieldsImg,
+  [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: StoredProcedureCodeImg,
+  [DetailPageWidgetKeys.TOPIC_SCHEMA]: TopicSchemaImg,
+  [DetailPageWidgetKeys.DOMAIN_TYPE]: DomainTypeImg,
+  [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: KnowledgeArticleImg,
+};
+
+function getDescriptionWidgetImage(size?: number): string {
+  return size === WidgetWidths.large ? DescriptionLargeImg : DescriptionImg;
+}
+
 class CustomizeDetailPageClassBase {
   public getGlossaryWidgetImageFromKey(
     widgetKey: string,
     size?: number
   ): string {
-    switch (widgetKey) {
-      case GlossaryTermDetailPageWidgetKeys.DESCRIPTION:
-        if (size === WidgetWidths.large) {
-          return DescriptionLargeImg;
-        }
-
-        return DescriptionImg;
-      case GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return CustomPropertyImg;
-      case GlossaryTermDetailPageWidgetKeys.DOMAIN:
-        return DomainImg;
-      case GlossaryTermDetailPageWidgetKeys.OWNER:
-        return OwnersImg;
-      case GlossaryTermDetailPageWidgetKeys.REFERENCES:
-        return ReferencesImg;
-      case GlossaryTermDetailPageWidgetKeys.RELATED_TERMS:
-        return RelatedTermsImg;
-      case GlossaryTermDetailPageWidgetKeys.REVIEWER:
-        return ReviewersImg;
-      case GlossaryTermDetailPageWidgetKeys.SYNONYMS:
-        return SynonymsImg;
-      case GlossaryTermDetailPageWidgetKeys.TERMS_TABLE:
-        return TermsImg;
-      case GlossaryTermDetailPageWidgetKeys.TAGS:
-        return TagsImg;
-      default:
-        return '';
+    if (widgetKey === GlossaryTermDetailPageWidgetKeys.DESCRIPTION) {
+      return getDescriptionWidgetImage(size);
     }
+
+    return GLOSSARY_WIDGET_IMAGE_MAP[widgetKey] ?? '';
   }
 
   public getDetailPageWidgetImageFromKey(
     widgetKey: string,
     size?: number
   ): string {
-    switch (widgetKey) {
-      case DetailPageWidgetKeys.DESCRIPTION:
-        if (size === WidgetWidths.large) {
-          return DescriptionLargeImg;
-        }
-
-        return DescriptionImg;
-      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return CustomPropertyImg;
-      case DetailPageWidgetKeys.OWNERS:
-        return OwnersImg;
-      case DetailPageWidgetKeys.EXPERTS:
-        return ExpertsImg;
-      case DetailPageWidgetKeys.TAGS:
-        return TagsImg;
-      case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return DataProductImg;
-      case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
-        return FrequentlyJoinedTablesImg;
-      case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return GlossaryTermImg;
-      case DetailPageWidgetKeys.TABLE_SCHEMA:
-        return TablesSchemaImg;
-      case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
-        return TableConstraints;
-      case DetailPageWidgetKeys.API_ENDPOINTS:
-        return ApiEndpointsImg;
-      case DetailPageWidgetKeys.API_SCHEMA:
-        return ApiSchemaImg;
-      case DetailPageWidgetKeys.CONTAINER_SCHEMA:
-        return ContainerSchemaImg;
-      case DetailPageWidgetKeys.CONTAINER_CHILDREN:
-        return ContainerChildrenImg;
-      case DetailPageWidgetKeys.CHARTS_TABLE:
-        return ChartsTableImg;
-      case DetailPageWidgetKeys.DATA_MODEL:
-        return DataModelImg;
-      case DetailPageWidgetKeys.DATABASE_SCHEMA:
-        return DatabaseSchemaImg;
-      case DetailPageWidgetKeys.TABLES:
-        return SchemaTablesImg;
-      case DetailPageWidgetKeys.RELATED_METRICS:
-        return RelatedMetricsImg;
-      case DetailPageWidgetKeys.ML_MODEL_FEATURES:
-        return MlModelFeaturesImg;
-      case DetailPageWidgetKeys.PIPELINE_TASKS:
-        return PipelineTasksImg;
-      case DetailPageWidgetKeys.SEARCH_INDEX_FIELDS:
-        return SearchIndexFieldsImg;
-      case DetailPageWidgetKeys.STORED_PROCEDURE_CODE:
-        return StoredProcedureCodeImg;
-      case DetailPageWidgetKeys.TOPIC_SCHEMA:
-        return TopicSchemaImg;
-      case DetailPageWidgetKeys.DOMAIN_TYPE:
-        return DomainTypeImg;
-      case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE:
-        return KnowledgeArticleImg;
-      default:
-        return '';
+    if (widgetKey === DetailPageWidgetKeys.DESCRIPTION) {
+      return getDescriptionWidgetImage(size);
     }
+
+    return DETAIL_PAGE_WIDGET_IMAGE_MAP[widgetKey] ?? '';
   }
 
   public getTabLabelFromId(tab: EntityTabs): string {

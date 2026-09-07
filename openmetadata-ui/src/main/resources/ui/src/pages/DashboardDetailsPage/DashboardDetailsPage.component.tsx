@@ -340,26 +340,38 @@ const DashboardDetailsPage = () => {
     [setDashboardDetails]
   );
 
-  if (permissionsLoading || dashboardLoading) {
-    return <PageLoader />;
-  }
-  if (isError) {
-    return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('dashboard', dashboardFQN)}
-      </ErrorPlaceHolder>
-    );
-  }
-  if (!canViewDashboard) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.dashboard-detail-plural-lowercase'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+  // Upstream's extracted guard, minus its `fetchResourcePermission` effect: permissions now
+  // come from useEntityPermissions, and `canViewDashboard` is the derived hasViewAccess flag
+  // (ViewBasic || ViewAll) replacing the raw `!ViewAll && !ViewBasic` pair.
+  const getBlockingStateElement = (): JSX.Element | null => {
+    if (permissionsLoading || dashboardLoading) {
+      return <PageLoader />;
+    }
+    if (isError) {
+      return (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('dashboard', dashboardFQN)}
+        </ErrorPlaceHolder>
+      );
+    }
+    if (!canViewDashboard) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.dashboard-detail-plural-lowercase'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const blockingStateElement = getBlockingStateElement();
+  if (blockingStateElement) {
+    return blockingStateElement;
   }
   if (!dashboardDetails) {
     return <PageLoader />;

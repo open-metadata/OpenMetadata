@@ -96,6 +96,11 @@ const ChartDetailsPage = () => {
     [chartFQN, chartFields]
   );
 
+  const isChartQueryEnabled = useMemo(
+    () => Boolean(chartFQN && canViewChart && !permissionsLoading),
+    [chartFQN, canViewChart, permissionsLoading]
+  );
+
   const {
     data: chartDetails,
     isLoading: chartLoading,
@@ -103,7 +108,7 @@ const ChartDetailsPage = () => {
   } = useQuery({
     queryKey: chartCacheKey,
     queryFn: chartQueryFn(chartFQN, chartFields),
-    enabled: Boolean(chartFQN && canViewChart && !permissionsLoading),
+    enabled: isChartQueryEnabled,
   });
 
   const isError = useMemo(

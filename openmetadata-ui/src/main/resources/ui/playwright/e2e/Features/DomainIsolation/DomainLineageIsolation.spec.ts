@@ -76,8 +76,6 @@ const fqnOf = (table: TableClass) =>
   table.entityResponseData?.fullyQualifiedName ?? '';
 
 test.describe('Domain isolation - lineage graph @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, tables, lineage, users and role binding',
     async ({ browser }) => {

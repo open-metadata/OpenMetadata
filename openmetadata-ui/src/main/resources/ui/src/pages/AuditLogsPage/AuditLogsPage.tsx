@@ -414,6 +414,34 @@ const AuditLogsPage = () => {
   const hasActiveFilters =
     activeFilters.length > 0 || Boolean(searchTerm.trim());
 
+  const renderExportProgress = () =>
+    exportJob?.status === 'IN_PROGRESS' ? (
+      <div className="export-progress-container">
+        <Progress
+          percent={
+            exportJob.total && exportJob.total > 0
+              ? Math.round(((exportJob.progress ?? 0) / exportJob.total) * 100)
+              : 0
+          }
+          size="small"
+          status="active"
+        />
+        <Typography as="p" className="tw:mt-2!" size="text-md">
+          {exportJob.message ?? t('message.exporting')}
+        </Typography>
+      </div>
+    ) : null;
+
+  const renderExportResult = () =>
+    exportJob && exportJob.status !== 'IN_PROGRESS' ? (
+      <Banner
+        className="border-radius"
+        isLoading={isExporting && !exportJob.error}
+        message={exportJob.error ?? exportJob.message ?? ''}
+        type={exportJob.error ? 'error' : 'success'}
+      />
+    ) : null;
+
   return (
     <PageLayoutV1
       fullHeight
@@ -608,32 +636,8 @@ const AuditLogsPage = () => {
               }}
             />
           </div>
-          {exportJob?.status === 'IN_PROGRESS' && (
-            <div className="export-progress-container">
-              <Progress
-                percent={
-                  exportJob.total && exportJob.total > 0
-                    ? Math.round(
-                        ((exportJob.progress ?? 0) / exportJob.total) * 100
-                      )
-                    : 0
-                }
-                size="small"
-                status="active"
-              />
-              <Typography as="p" className="tw:mt-2!" size="text-md">
-                {exportJob.message ?? t('message.exporting')}
-              </Typography>
-            </div>
-          )}
-          {exportJob && exportJob.status !== 'IN_PROGRESS' && (
-            <Banner
-              className="border-radius"
-              isLoading={isExporting && !exportJob.error}
-              message={exportJob.error ?? exportJob.message ?? ''}
-              type={exportJob.error ? 'error' : 'success'}
-            />
-          )}
+          {renderExportProgress()}
+          {renderExportResult()}
         </div>
       </Modal>
     </PageLayoutV1>

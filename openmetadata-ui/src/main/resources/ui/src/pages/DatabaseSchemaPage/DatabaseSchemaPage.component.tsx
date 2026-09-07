@@ -177,6 +177,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [decodedDatabaseSchemaFQN, databaseSchemaFields]
   );
 
+  const isDatabaseSchemaQueryEnabled = useMemo(
+    () =>
+      Boolean(
+        decodedDatabaseSchemaFQN &&
+          viewDatabaseSchemaPermission &&
+          !isPermissionsLoading
+      ),
+    [
+      decodedDatabaseSchemaFQN,
+      viewDatabaseSchemaPermission,
+      isPermissionsLoading,
+    ]
+  );
+
   const {
     data: databaseSchema,
     isLoading: databaseSchemaLoading,
@@ -187,11 +201,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       decodedDatabaseSchemaFQN,
       databaseSchemaFields
     ),
-    enabled: Boolean(
-      decodedDatabaseSchemaFQN &&
-        viewDatabaseSchemaPermission &&
-        !isPermissionsLoading
-    ),
+    enabled: isDatabaseSchemaQueryEnabled,
   });
 
   const isError = useMemo(
@@ -640,6 +650,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [tabs[0], activeTab]
   );
 
+  const isSchemaMissing = useMemo(
+    () => isEmpty(databaseSchema) && !databaseSchemaLoading,
+    [databaseSchema, databaseSchemaLoading]
+  );
+
+  const expandButton = useMemo(
+    () =>
+      isExpandViewSupported && (
+        <AlignRightIconButton
+          className={isTabExpanded ? 'rotate-180' : ''}
+          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+          onClick={toggleTabExpanded}
+        />
+      ),
+    [isExpandViewSupported, isTabExpanded, t, toggleTabExpanded]
+  );
+
   const followMutation = useMutation<
     void,
     AxiosError,
@@ -775,7 +802,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
-      {isEmpty(databaseSchema) && !databaseSchemaLoading ? (
+      {isSchemaMissing ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(
             EntityType.DATABASE_SCHEMA,
@@ -828,17 +855,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
+                tabBarExtraContent={expandButton}
                 onChange={activeTabHandler}
               />
             </Col>

@@ -580,20 +580,30 @@ function SearchIndexDetailsPage() {
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
     [tabs[0], activeTab]
   );
-  if (isLoading || isPermissionsLoading || searchIndexLoading) {
-    return <PageLoader />;
-  }
+  const getLoadingOrPermissionContent = () => {
+    if (isLoading || isPermissionsLoading || searchIndexLoading) {
+      return <PageLoader />;
+    }
 
-  if (!viewPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.search-index'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+    if (!viewPermission) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.search-index'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const loadingOrPermissionContent = getLoadingOrPermissionContent();
+
+  if (loadingOrPermissionContent) {
+    return loadingOrPermissionContent;
   }
 
   if (searchIndexError || !searchIndexDetails) {

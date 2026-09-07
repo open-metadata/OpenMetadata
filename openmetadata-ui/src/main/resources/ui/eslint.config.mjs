@@ -29,6 +29,7 @@ import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
@@ -110,6 +111,7 @@ export default [
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
       'openmetadata-permissions': openMetadataPermissions,
+      'openmetadata-ui-patterns': openMetadataUiPatterns,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -324,6 +326,10 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
+      // Downgraded to warn: rule flags pre-existing inherited title= (incl.
+      // false positives on member-expression components and required iframe
+      // titles); tracked for follow-up rather than blocking.
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -345,13 +351,18 @@ export default [
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
-      'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
+      'sonarjs/cyclomatic-complexity': 'error', // cleared tree-wide; blocks regressions
       // Promoted to error: all 141 over-complex expressions refactored by
       // extracting sub-expressions into named consts (short-circuit preserved);
       // backlog is zero and this ratchets it.
       'sonarjs/expression-complexity': 'error',
-      'sonarjs/no-nested-conditional': 'warn', // 16
-      'sonarjs/no-nested-functions': 'warn', // 18
+      // Promoted to error: all nested-ternary violations refactored to
+      // intermediate variables / if-else; backlog is zero and this ratchets it.
+      'sonarjs/no-nested-conditional': 'error',
+      // Promoted to error: all 75 deeply-nested functions refactored by
+      // hoisting the innermost callback to a shallower named scope; backlog is
+      // zero and this ratchets it.
+      'sonarjs/no-nested-functions': 'error',
 
       // Security. Enforced in production code. Test fixtures, mock data, and
       // the sample-entity constants files legitimately embed http:// self-links,

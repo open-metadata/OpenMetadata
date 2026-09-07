@@ -354,8 +354,8 @@ export const UserTab = ({
       : t('message.no-permission-for-action');
   }, [canEditAll, isTeamDeleted, t]);
 
-  if (isEmpty(users) && !searchText && !isLoading) {
-    return isGroupType ? (
+  const renderEmptyState = () =>
+    isGroupType ? (
       <ErrorPlaceHolder
         button={
           <Space>
@@ -404,6 +404,36 @@ export const UserTab = ({
         })}
       />
     );
+
+  const renderExtraTableFilters = () =>
+    !currentTeam.deleted &&
+    isGroupType && (
+      <Col>
+        <Space>
+          {users.length > 0 && editUserPermission && (
+            <UserSelectableList
+              hasPermission
+              includeBot
+              selectedUsers={currentTeam?.users ?? []}
+              onUpdate={onAddUser}>
+              <Button data-testid="add-new-user" type="primary">
+                {t('label.add-entity', { entity: t('label.user') })}
+              </Button>
+            </UserSelectableList>
+          )}
+          <ManageButton
+            canDelete={false}
+            displayName={getEntityName(currentTeam)}
+            entityName={currentTeam.name}
+            entityType={EntityType.USER}
+            extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+          />
+        </Space>
+      </Col>
+    );
+
+  if (isEmpty(users) && !searchText && !isLoading) {
+    return renderEmptyState();
   }
 
   return (
@@ -422,33 +452,7 @@ export const UserTab = ({
           onShowSizeChange: handlePageSizeChange,
         }}
         dataSource={sortedUser}
-        extraTableFilters={
-          !currentTeam.deleted &&
-          isGroupType && (
-            <Col>
-              <Space>
-                {users.length > 0 && editUserPermission && (
-                  <UserSelectableList
-                    hasPermission
-                    includeBot
-                    selectedUsers={currentTeam?.users ?? []}
-                    onUpdate={onAddUser}>
-                    <Button data-testid="add-new-user" type="primary">
-                      {t('label.add-entity', { entity: t('label.user') })}
-                    </Button>
-                  </UserSelectableList>
-                )}
-                <ManageButton
-                  canDelete={false}
-                  displayName={getEntityName(currentTeam)}
-                  entityName={currentTeam.name}
-                  entityType={EntityType.USER}
-                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-                />
-              </Space>
-            </Col>
-          )
-        }
+        extraTableFilters={renderExtraTableFilters()}
         loading={isLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
