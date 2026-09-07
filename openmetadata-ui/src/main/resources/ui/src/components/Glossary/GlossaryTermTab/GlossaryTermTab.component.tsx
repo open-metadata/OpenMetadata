@@ -110,7 +110,10 @@ import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { NoFilteredResultsPlaceholder } from '../../common/EmptyPlaceholder';
+import {
+  NoFilteredResultsPlaceholder,
+  NoSearchResultsPlaceholder,
+} from '../../common/EmptyPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -1973,9 +1976,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           locale={{
             emptyText: (
               <div className="tw:relative tw:min-h-[220px]">
-                <NoFilteredResultsPlaceholder
-                  description={t('message.filter-no-matching-terms')}
-                />
+                {isSearchActive ? (
+                  <NoSearchResultsPlaceholder />
+                ) : (
+                  <NoFilteredResultsPlaceholder
+                    description={t('message.filter-no-matching-terms')}
+                  />
+                )}
               </div>
             ),
           }}
