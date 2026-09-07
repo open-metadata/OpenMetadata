@@ -619,17 +619,21 @@ public class LineageImpactAnalysisIT {
 
   @Test
   void testColumnView_malformedSingleFilter_noMatch() throws Exception {
-    // Single malformed filter like "bad" should match nothing
-    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "bad");
+    // A bare token (no "type:") is treated as an "any" substring match over the column FQN.
+    // The token must contain non-hex letters so it can never coincide with the random hex
+    // RUN_ID baked into every test FQN (TestNamespace) — "bad" is all hex digits and made
+    // this assertion flaky whenever the hash happened to contain the substring "bad".
+    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "zzznomatchzzz");
     assertNotNull(result);
     assertEquals(0, getColumnCount(result));
   }
 
   @Test
   void testColumnView_malformedMultiFilter_noMatch() throws Exception {
-    // Multiple malformed filters like "bad,worse" should also match nothing
-    // (consistent with single malformed filter)
-    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "bad,worse");
+    // Multiple non-matching tokens should also match nothing (consistent with single token).
+    // See testColumnView_malformedSingleFilter_noMatch for why the tokens avoid hex digits.
+    JsonNode result =
+        getColumnViewResult(stgA, "Downstream", 3, null, "zzznomatchzzz,qqqmissingqqq");
     assertNotNull(result);
     assertEquals(0, getColumnCount(result));
   }
