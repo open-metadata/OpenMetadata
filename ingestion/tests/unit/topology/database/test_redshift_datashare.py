@@ -205,6 +205,19 @@ class RedshiftDatashareTest(unittest.TestCase):
         self.assertEqual(self._database_names({LOCAL_DATABASE}), [SHARED_DATABASE])
         self.assertIsNone(self.redshift_source.datashare_database)
 
+    def test_database_without_a_reported_type_is_treated_as_local(self):
+        """An empty `database_type` must not read as non-local"""
+        global DATABASE_ROWS  # noqa: PLW0603
+        original = DATABASE_ROWS
+        DATABASE_ROWS = [
+            SimpleNamespace(database_name=name, database_type=None) for name in (LOCAL_DATABASE, SHARED_DATABASE)
+        ]
+        try:
+            self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
+            self.assertIsNone(self.redshift_source.datashare_database)
+        finally:
+            DATABASE_ROWS = original
+
     def test_falls_back_to_svv_when_show_databases_is_unavailable(self):
         """Clusters predating SHOW DATABASES still classify through the SVV view"""
         self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')

@@ -135,10 +135,14 @@ class RedshiftDatashareCatalog:
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning("%s unavailable (%s); trying the next source.", source, exc)
                 continue
+            # A missing type reads as local: only a type the cluster positively
+            # reports as something else is worth attempting the catalog views for.
             return {
                 str(row.database_name)
                 for row in rows
-                if row.database_name is not None and str(row.database_type or "").strip().lower() != LOCAL_DATABASE_TYPE
+                if row.database_name is not None
+                and (database_type := str(row.database_type or "").strip().lower())
+                and database_type != LOCAL_DATABASE_TYPE
             }
         logger.warning("Could not classify databases; those that refuse a connection will be skipped.")
         return set()
