@@ -40,7 +40,7 @@ class DomainAccessFilterTest {
   private static final String FOREIGN_DOMAIN = "Finance";
 
   @Test
-  @DisplayName("shouldApply: only non-admin, non-bot subjects holding DomainOnlyAccessRole")
+  @DisplayName("shouldApply: only non-admin subjects holding DomainOnlyAccessRole")
   void testShouldApply() {
     assertFalse(DomainAccessFilter.shouldApply(null), "a null subject narrows nothing");
     assertTrue(DomainAccessFilter.shouldApply(restrictedSubject(OWN_DOMAIN)));
@@ -48,9 +48,23 @@ class DomainAccessFilterTest {
 
     User admin = restrictedUser(OWN_DOMAIN).withIsAdmin(true);
     assertFalse(DomainAccessFilter.shouldApply(new SubjectContext(admin, null)));
+  }
 
-    User bot = restrictedUser(OWN_DOMAIN).withIsBot(true);
-    assertFalse(DomainAccessFilter.shouldApply(new SubjectContext(bot, null)));
+  @Test
+  @DisplayName("shouldApply: a bot holding the role is narrowed like any other subject (#30023)")
+  void testShouldApplyToBots() {
+    User restrictedBot = restrictedUser(OWN_DOMAIN).withIsBot(true);
+    assertTrue(
+        DomainAccessFilter.shouldApply(new SubjectContext(restrictedBot, null)),
+        "a bot assigned DomainOnlyAccessRole must be narrowed, not exempted");
+
+    User plainBot = userWithoutRole().withIsBot(true);
+    assertFalse(
+        DomainAccessFilter.shouldApply(new SubjectContext(plainBot, null)),
+        "a bot without the role is untouched, so stock bots keep their current view");
+
+    User adminBot = restrictedUser(OWN_DOMAIN).withIsBot(true).withIsAdmin(true);
+    assertFalse(DomainAccessFilter.shouldApply(new SubjectContext(adminBot, null)));
   }
 
   @Test
@@ -144,7 +158,11 @@ class DomainAccessFilterTest {
   }
 
   private SubjectContext subjectWithoutRole() {
-    return new SubjectContext(new User().withName("plain").withDomains(List.of()), null);
+    return new SubjectContext(userWithoutRole(), null);
+  }
+
+  private User userWithoutRole() {
+    return new User().withName("plain").withDomains(List.of());
   }
 
   private User restrictedUser(String... domains) {
