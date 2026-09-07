@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.migration.postgres.v202;
 
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v202.SearchAllowedFieldsRepair.repairAllowedFields;
 import static org.openmetadata.service.migration.utils.v202.SearchNameKeywordRepair.repairNameKeywordSearchFields;
 
@@ -32,5 +34,10 @@ public class Migration extends MigrationProcessImpl {
     // Complete allowedFields from the seed so removed search fields stay re-addable on upgraded
     // clusters (SettingsCache refreshes it in memory but never persists it). Idempotent.
     repairAllowedFields();
+    // Repair installs already upgraded to 2.0.0/2.0.1: v200 dropped DataConsumerPolicy's
+    // CreateTask-Rule via a stale L1 cache (#32668), and v200 will not re-run on those installs.
+    // Re-invoke the now cache-safe helpers here. Idempotent — no-op when the rules already exist.
+    addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+    addTaskRuleToDataConsumerPolicy(collectionDAO);
   }
 }
