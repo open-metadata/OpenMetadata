@@ -19,10 +19,7 @@ import {
   register,
 } from '@antv/g6';
 import { ReactNode as AntVReactNode } from '@antv/g6-extension-react';
-import {
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toPng } from 'html-to-image';
@@ -51,9 +48,9 @@ import {
   applyInitialFocus,
   countRelationCategories,
   getFullscreenClassNames,
+  getNodeRenderKey,
   hasActiveGraphFilters,
   isGraphEmpty,
-  getNodeRenderKey,
   resolveFocusNodeId,
   setupGraphEventHandlers,
   transformToG6Format,

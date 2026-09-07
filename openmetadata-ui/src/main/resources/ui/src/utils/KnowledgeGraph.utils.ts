@@ -556,7 +556,9 @@ const elkRadialAngles = async (
 };
 
 /** Evenly spaced angles per ring, used when ELK's layout is unavailable. */
-const uniformRingAngles = (byDepth: Map<number, string[]>): Map<string, number> => {
+const uniformRingAngles = (
+  byDepth: Map<number, string[]>
+): Map<string, number> => {
   const angles = new Map<string, number>();
   byDepth.forEach((nodeIds, depth) => {
     if (depth > 0) {

@@ -46,6 +46,9 @@ import {
   countRelationCategories,
   findHighlightPath,
   getColorSetForType,
+  getFullscreenClassNames,
+  hasActiveGraphFilters,
+  isGraphEmpty,
   resolveFocusNodeId,
   setupGraphEventHandlers,
   stretchRingToViewport,
@@ -635,9 +638,10 @@ describe('KnowledgeGraph.utils', () => {
         layout: 'dagre',
       });
 
-      expect(
-        result.nodes?.find((n) => n.id === 'focus')?.style?.size
-      ).toEqual([MAX_NODE_WIDTH, NODE_HEIGHT]);
+      expect(result.nodes?.find((n) => n.id === 'focus')?.style?.size).toEqual([
+        MAX_NODE_WIDTH,
+        NODE_HEIGHT,
+      ]);
     });
 
     it('gives every node side ports in the layered layout', async () => {
@@ -693,6 +697,94 @@ describe('KnowledgeGraph.utils', () => {
 
       expect(result.nodes).toEqual([]);
       expect(result.edges).toEqual([]);
+    });
+  });
+
+  describe('isGraphEmpty', () => {
+    it('treats a null response as empty', () => {
+      expect(isGraphEmpty(null)).toBe(true);
+    });
+
+    it('treats a response with no nodes as empty', () => {
+      expect(isGraphEmpty({ nodes: [], edges: [] })).toBe(true);
+    });
+
+    it('is not empty once there is a node', () => {
+      expect(
+        isGraphEmpty({
+          nodes: [{ id: 'a', label: 'A', type: 'table' }],
+          edges: [],
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('hasActiveGraphFilters', () => {
+    const defaults = {
+      layout: 'radial' as const,
+      selectedEntityTypes: [],
+      selectedRelationshipTypes: [],
+      selectedDepth: 1,
+      defaultDepth: 1,
+    };
+
+    it('is false at the default control state', () => {
+      expect(hasActiveGraphFilters(defaults)).toBe(false);
+    });
+
+    it('is true once the layout moves off radial', () => {
+      expect(hasActiveGraphFilters({ ...defaults, layout: 'dagre' })).toBe(
+        true
+      );
+    });
+
+    it('is true once an entity type is selected', () => {
+      expect(
+        hasActiveGraphFilters({ ...defaults, selectedEntityTypes: ['table'] })
+      ).toBe(true);
+    });
+
+    it('is true once a relationship type is selected', () => {
+      expect(
+        hasActiveGraphFilters({
+          ...defaults,
+          selectedRelationshipTypes: ['hasColumn'],
+        })
+      ).toBe(true);
+    });
+
+    it('is true once depth differs from the default', () => {
+      expect(hasActiveGraphFilters({ ...defaults, selectedDepth: 3 })).toBe(
+        true
+      );
+    });
+  });
+
+  describe('getFullscreenClassNames', () => {
+    it('applies no fullscreen classes when not fullscreen', () => {
+      expect(getFullscreenClassNames(false, false)).toEqual({
+        'full-screen-knowledge-graph': false,
+        'sidebar-collapsed': false,
+        'sidebar-expanded': false,
+      });
+    });
+
+    it('widens the graph when the sidebar is collapsed', () => {
+      const classes = getFullscreenClassNames(true, true);
+
+      expect(classes['sidebar-collapsed']).toBe(true);
+      expect(classes['sidebar-expanded']).toBe(false);
+    });
+
+    it('leaves room for an expanded sidebar', () => {
+      const classes = getFullscreenClassNames(true, false);
+
+      expect(classes['sidebar-expanded']).toBe(true);
+      expect(classes['sidebar-collapsed']).toBe(false);
+    });
+
+    it('treats an unknown sidebar state as expanded', () => {
+      expect(getFullscreenClassNames(true)['sidebar-expanded']).toBe(true);
     });
   });
 

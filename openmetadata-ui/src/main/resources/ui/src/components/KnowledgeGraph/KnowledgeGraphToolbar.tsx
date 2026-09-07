@@ -89,188 +89,186 @@ const KnowledgeGraphToolbar: FC<KnowledgeGraphToolbarProps> = ({
   const { t } = useTranslation();
 
   return (
-      <Box
-        align="center"
-        className="tw:p-sm tw:w-full"
-        data-testid="knowledge-graph-controls"
-        justify="between">
-        <Box align="center" gap={4}>
-          <Typography className="tw:text-secondary" weight="medium">
-            {t('label.view-entity', { entity: t('label.mode') }) + ':'}
-          </Typography>
-          <Tabs
-            className="tw:w-auto"
-            data-testid="layout-tabs"
-            selectedKey={layout}
-            onSelectionChange={onLayoutChange}>
-            <Tabs.List
-              items={[
-                {
-                  id: 'dagre',
-                  label: t('label.hierarchical'),
-                },
-                {
-                  id: 'radial',
-                  label: t('label.radial'),
-                },
-              ]}
-              size="sm"
-              type="button-minimal">
-              {(tab) => <Tabs.Item {...tab} />}
-            </Tabs.List>
-          </Tabs>
-
-          <Divider orientation="vertical" />
-          <Dropdown.Root
-            isOpen={entityDropdownOpen}
-            onOpenChange={onEntityDropdownChange}>
-            <Button
-              color="secondary"
-              isDisabled={entityTypeOptions.length === 0}
-              size="sm">
-              <Box align="center" gap={4}>
-                {selectedEntityTypes.length > 0
-                  ? `${t('label.entity-type')} (${
-                      selectedEntityTypes.length
-                    })`
-                  : t('label.entity-type')}
-                <ChevronDown
-                  aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
-                />
-              </Box>
-            </Button>
-            <Dropdown.Popover>
-              <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
-                <input
-                  aria-label={t('label.entity-type')}
-                  className={filterInputClassName}
-                  placeholder={t('label.search')}
-                  ref={focusOnMount}
-                  type="text"
-                  value={entityFilterText}
-                  onChange={onEntityFilterChange}
-                  onKeyDown={stopKeydownPropagation}
-                />
-              </div>
-              <Dropdown.Menu
-                disallowEmptySelection={false}
-                items={filteredEntityTypeOptions}
-                selectedKeys={new Set(selectedEntityTypes)}
-                selectionMode="multiple"
-                onSelectionChange={onEntityTypeSelectionChange}>
-                {(item) => (
-                  <Dropdown.Item
-                    showCheckbox
-                    id={item.id}
-                    key={item.id}
-                    label={item.label}
-                  />
-                )}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
-          <Divider orientation="vertical" />
-          <Dropdown.Root
-            isOpen={relationshipDropdownOpen}
-            onOpenChange={onRelationshipDropdownChange}>
-            <Button
-              color="secondary"
-              isDisabled={relationshipTypeOptions.length === 0}
-              size="sm">
-              <Box align="center" gap={4}>
-                {selectedRelationshipTypes.length > 0
-                  ? `${t('label.relationship-type')} (${
-                      selectedRelationshipTypes.length
-                    })`
-                  : t('label.relationship-type')}
-                <ChevronDown
-                  aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
-                />
-              </Box>
-            </Button>
-            <Dropdown.Popover>
-              <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
-                <input
-                  aria-label={t('label.relationship-type')}
-                  className={filterInputClassName}
-                  placeholder={t('label.search')}
-                  ref={focusOnMount}
-                  type="text"
-                  value={relationshipFilterText}
-                  onChange={onRelationshipFilterChange}
-                  onKeyDown={stopKeydownPropagation}
-                />
-              </div>
-              <Dropdown.Menu
-                disallowEmptySelection={false}
-                items={filteredRelationshipTypeOptions}
-                selectedKeys={new Set(selectedRelationshipTypes)}
-                selectionMode="multiple"
-                onSelectionChange={onRelationshipTypeSelectionChange}>
-                {(item) => (
-                  <Dropdown.Item
-                    showCheckbox
-                    id={item.id}
-                    key={item.id}
-                    label={item.label}
-                  />
-                )}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
-          <Divider orientation="vertical" />
-
-          <Box align="center" gap={5}>
-            <Typography className="depth-label">
-              {t('label.node-depth') + ':'}
-            </Typography>
-            <Slider
-              showHoverPreview
-              showRange
-              className="depth-slider"
-              data-testid="depth-slider"
-              labelPosition="top-floating"
-              maxValue={5}
-              minValue={1}
-              rangeCount={5}
-              step={1}
-              style={{
-                width: '150px',
-              }}
-              value={[selectedDepth]}
-              onChange={onDepthChange}
-            />
-          </Box>
-          <Divider orientation="vertical" />
-          <Toggle
-            data-testid="toggle-edge-labels"
-            isSelected={showEdgeLabels}
-            label={t('label.show-relationship-label-plural')}
-            size="sm"
-            onChange={onShowEdgeLabelsChange}
-          />
-          <Divider orientation="vertical" />
-          <ExportGraphPanel
-            data-testid="knowledge-graph-export"
-            supportedExports={[
-              ExportFormat.PNG,
-              ExportFormat.JSONLD,
-              ExportFormat.TURTLE,
+    <Box
+      align="center"
+      className="tw:p-sm tw:w-full"
+      data-testid="knowledge-graph-controls"
+      justify="between">
+      <Box align="center" gap={4}>
+        <Typography className="tw:text-secondary" weight="medium">
+          {t('label.view-entity', { entity: t('label.mode') }) + ':'}
+        </Typography>
+        <Tabs
+          className="tw:w-auto"
+          data-testid="layout-tabs"
+          selectedKey={layout}
+          onSelectionChange={onLayoutChange}>
+          <Tabs.List
+            items={[
+              {
+                id: 'dagre',
+                label: t('label.hierarchical'),
+              },
+              {
+                id: 'radial',
+                label: t('label.radial'),
+              },
             ]}
-            onExportJsonLd={onExportJsonLd}
-            onExportPng={onExportPng}
-            onExportTurtle={onExportTurtle}
+            size="sm"
+            type="button-minimal">
+            {(tab) => <Tabs.Item {...tab} />}
+          </Tabs.List>
+        </Tabs>
+
+        <Divider orientation="vertical" />
+        <Dropdown.Root
+          isOpen={entityDropdownOpen}
+          onOpenChange={onEntityDropdownChange}>
+          <Button
+            color="secondary"
+            isDisabled={entityTypeOptions.length === 0}
+            size="sm">
+            <Box align="center" gap={4}>
+              {selectedEntityTypes.length > 0
+                ? `${t('label.entity-type')} (${selectedEntityTypes.length})`
+                : t('label.entity-type')}
+              <ChevronDown
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
+              />
+            </Box>
+          </Button>
+          <Dropdown.Popover>
+            <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
+              <input
+                aria-label={t('label.entity-type')}
+                className={filterInputClassName}
+                placeholder={t('label.search')}
+                ref={focusOnMount}
+                type="text"
+                value={entityFilterText}
+                onChange={onEntityFilterChange}
+                onKeyDown={stopKeydownPropagation}
+              />
+            </div>
+            <Dropdown.Menu
+              disallowEmptySelection={false}
+              items={filteredEntityTypeOptions}
+              selectedKeys={new Set(selectedEntityTypes)}
+              selectionMode="multiple"
+              onSelectionChange={onEntityTypeSelectionChange}>
+              {(item) => (
+                <Dropdown.Item
+                  showCheckbox
+                  id={item.id}
+                  key={item.id}
+                  label={item.label}
+                />
+              )}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+        <Divider orientation="vertical" />
+        <Dropdown.Root
+          isOpen={relationshipDropdownOpen}
+          onOpenChange={onRelationshipDropdownChange}>
+          <Button
+            color="secondary"
+            isDisabled={relationshipTypeOptions.length === 0}
+            size="sm">
+            <Box align="center" gap={4}>
+              {selectedRelationshipTypes.length > 0
+                ? `${t('label.relationship-type')} (${
+                    selectedRelationshipTypes.length
+                  })`
+                : t('label.relationship-type')}
+              <ChevronDown
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
+              />
+            </Box>
+          </Button>
+          <Dropdown.Popover>
+            <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
+              <input
+                aria-label={t('label.relationship-type')}
+                className={filterInputClassName}
+                placeholder={t('label.search')}
+                ref={focusOnMount}
+                type="text"
+                value={relationshipFilterText}
+                onChange={onRelationshipFilterChange}
+                onKeyDown={stopKeydownPropagation}
+              />
+            </div>
+            <Dropdown.Menu
+              disallowEmptySelection={false}
+              items={filteredRelationshipTypeOptions}
+              selectedKeys={new Set(selectedRelationshipTypes)}
+              selectionMode="multiple"
+              onSelectionChange={onRelationshipTypeSelectionChange}>
+              {(item) => (
+                <Dropdown.Item
+                  showCheckbox
+                  id={item.id}
+                  key={item.id}
+                  label={item.label}
+                />
+              )}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+        <Divider orientation="vertical" />
+
+        <Box align="center" gap={5}>
+          <Typography className="depth-label">
+            {t('label.node-depth') + ':'}
+          </Typography>
+          <Slider
+            showHoverPreview
+            showRange
+            className="depth-slider"
+            data-testid="depth-slider"
+            labelPosition="top-floating"
+            maxValue={5}
+            minValue={1}
+            rangeCount={5}
+            step={1}
+            style={{
+              width: '150px',
+            }}
+            value={[selectedDepth]}
+            onChange={onDepthChange}
           />
         </Box>
-
-        {hasActiveFilters && (
-          <Button color="link-gray" size="sm" onPress={onClearAll}>
-            {t('label.clear-entity', { entity: t('label.all') })}
-          </Button>
-        )}
+        <Divider orientation="vertical" />
+        <Toggle
+          data-testid="toggle-edge-labels"
+          isSelected={showEdgeLabels}
+          label={t('label.show-relationship-label-plural')}
+          size="sm"
+          onChange={onShowEdgeLabelsChange}
+        />
+        <Divider orientation="vertical" />
+        <ExportGraphPanel
+          data-testid="knowledge-graph-export"
+          supportedExports={[
+            ExportFormat.PNG,
+            ExportFormat.JSONLD,
+            ExportFormat.TURTLE,
+          ]}
+          onExportJsonLd={onExportJsonLd}
+          onExportPng={onExportPng}
+          onExportTurtle={onExportTurtle}
+        />
       </Box>
+
+      {hasActiveFilters && (
+        <Button color="link-gray" size="sm" onPress={onClearAll}>
+          {t('label.clear-entity', { entity: t('label.all') })}
+        </Button>
+      )}
+    </Box>
   );
 };
 

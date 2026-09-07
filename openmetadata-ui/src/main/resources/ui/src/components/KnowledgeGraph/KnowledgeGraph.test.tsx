@@ -99,6 +99,31 @@ jest.mock('../../utils/KnowledgeGraph.utils', () => ({
     quality: 0,
   })),
   getNodeRenderKey: jest.fn(() => 'render-key'),
+  // Pure derivations: use the real behaviour so the component's empty state and
+  // "Clear all" visibility stay driven by real logic rather than a stub.
+  isGraphEmpty: jest.fn(
+    (data: { nodes?: unknown[] } | null) => !data || !data.nodes?.length
+  ),
+  hasActiveGraphFilters: jest.fn(
+    (state: {
+      layout: string;
+      selectedEntityTypes: string[];
+      selectedRelationshipTypes: string[];
+      selectedDepth: number;
+      defaultDepth: number;
+    }) =>
+      state.layout !== 'radial' ||
+      state.selectedEntityTypes.length > 0 ||
+      state.selectedRelationshipTypes.length > 0 ||
+      state.selectedDepth !== state.defaultDepth
+  ),
+  getFullscreenClassNames: jest.fn(
+    (isFullscreen: boolean, isSidebarCollapsed?: boolean) => ({
+      'full-screen-knowledge-graph': isFullscreen,
+      'sidebar-collapsed': isFullscreen && Boolean(isSidebarCollapsed),
+      'sidebar-expanded': isFullscreen && !isSidebarCollapsed,
+    })
+  ),
   MAX_NODE_WIDTH: 280,
   NODE_HEIGHT: 36,
 }));
