@@ -3729,8 +3729,97 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         "Glossary term should be removed for an authorized caller");
   }
 
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_columnAsset_authorizedUser_succeeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_ok");
+    Table table = createTableWithColumnTaggedWithTerm(ns, term, "authz_col_ok");
+    // A column is surfaced as a tableColumn asset but is edited through its table, so a user with
+    // EDIT_GLOSSARY_TERMS on the table must be allowed to remove the column's term (not 403 because
+    // the asset type is "tableColumn").
+    String token = dataConsumerToken(ns, "col_ok");
+
+    HttpResponse<String> response =
+        putAssets(term.getId(), "remove", columnAssetBody(table), token);
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "A user with EDIT_GLOSSARY_TERMS on the table may remove its column's term: "
+            + response.body());
+    assertFalse(
+        columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
+        "Glossary term should be removed from the column for an authorized caller");
+  }
+
+  @Test
+  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isForbidden(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_deny");
+    Table table = createTableWithColumnTaggedWithTerm(ns, term, "authz_col_deny");
+    String token = deniedGlossaryEditToken(ns, "col");
+
+    HttpResponse<String> response =
+        putAssets(term.getId(), "remove", columnAssetBody(table), token);
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "A user denied EDIT_GLOSSARY_TERMS must not remove a column's term: " + response.body());
+    assertTrue(
+        columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
+        "Glossary term must remain on the column when the caller is denied");
+  }
+
   private String assetsBody(Table table) {
     return "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}],\"dryRun\":false}";
+  }
+
+  private String columnAssetBody(Table table) {
+    // Columns are referenced by FQN. @Valid requires a non-null id on each asset, but neither the
+    // authorization (which maps a column to its parent table) nor the repository (which resolves
+    // the
+    // column by FQN) uses the id value — mirroring the tableColumn asset the Assets page sends.
+    String columnFqn = table.getFullyQualifiedName() + ".id";
+    return "{\"assets\":[{\"id\":\""
+        + UUID.randomUUID()
+        + "\",\"type\":\"tableColumn\",\"fullyQualifiedName\":\""
+        + columnFqn
+        + "\"}],\"dryRun\":false}";
+  }
+
+  private Table createTableWithColumnTaggedWithTerm(
+      TestNamespace ns, GlossaryTerm term, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
+    TagLabel termLabel =
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    Table fetched = client.tables().get(table.getId().toString(), "columns,tags");
+    fetched.getColumns().get(0).setTags(List.of(termLabel));
+    Table tagged = client.tables().update(table.getId().toString(), fetched);
+    assertTrue(
+        columnHasTag(client, table.getId(), "id", term.getFullyQualifiedName()),
+        "Precondition: the column should carry the glossary term before the bulk remove");
+    return tagged;
+  }
+
+  private boolean columnHasTag(
+      OpenMetadataClient client, UUID tableId, String columnName, String tagFqn) {
+    Table refreshed = client.tables().get(tableId.toString(), "columns,tags");
+    return refreshed.getColumns().stream()
+        .filter(column -> columnName.equals(column.getName()))
+        .findFirst()
+        .map(
+            column ->
+                column.getTags() != null
+                    && column.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN())))
+        .orElse(false);
   }
 
   private HttpResponse<String> putAssets(UUID termId, String action, String body, String token)

@@ -1014,7 +1014,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
     authorizeBulkAssetsPermission(
-        securityContext, request.getAssets(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+        securityContext,
+        permissionAssets(request.getAssets()),
+        MetadataOperation.EDIT_GLOSSARY_TERMS);
     return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
   }
 
@@ -1066,8 +1068,32 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
     authorizeBulkAssetsPermission(
-        securityContext, request.getAssets(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+        securityContext,
+        permissionAssets(request.getAssets()),
+        MetadataOperation.EDIT_GLOSSARY_TERMS);
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
+  /**
+   * Table columns are surfaced as {@code tableColumn} assets (e.g. on a glossary term's Assets page)
+   * but are edited through their parent table — they are not a resource with their own permissions.
+   * Present them as tables for the type-level permission check so a caller who may edit the table's
+   * glossary terms may edit its columns' too. The original references reach the repository unchanged,
+   * so the tag is still applied to / removed from the column itself.
+   */
+  private List<EntityReference> permissionAssets(List<EntityReference> assets) {
+    if (nullOrEmpty(assets)) {
+      return assets;
+    }
+    return assets.stream()
+        .map(
+            asset ->
+                Entity.TABLE_COLUMN.equals(asset.getType())
+                    ? new EntityReference()
+                        .withType(Entity.TABLE)
+                        .withFullyQualifiedName(asset.getFullyQualifiedName())
+                    : asset)
+        .toList();
   }
 
   @GET
