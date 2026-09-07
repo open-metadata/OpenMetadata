@@ -13,6 +13,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TagRenderer } from './TagRenderer';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    title,
+    children,
+  }: {
+    title?: React.ReactNode;
+    children: React.ReactNode;
+  }) => <span aria-label={String(title ?? '')}>{children}</span>,
+}));
+
 describe('TagRenderer', () => {
   const mockOnClose = jest.fn();
   const defaultProps = {
@@ -40,7 +50,7 @@ describe('TagRenderer', () => {
     render(<TagRenderer {...defaultProps} label={longLabel} />);
 
     expect(screen.getByText('test persona...')).toBeInTheDocument();
-    expect(screen.getByTitle(longLabel)).toBeInTheDocument();
+    expect(screen.getByLabelText(longLabel)).toBeInTheDocument();
   });
 
   it('should render close button when closable is true', () => {

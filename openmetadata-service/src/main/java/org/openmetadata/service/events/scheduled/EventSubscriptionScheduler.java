@@ -367,7 +367,14 @@ public class EventSubscriptionScheduler {
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
     // Previously, getEventSubscription was called for each event in the stream
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -378,7 +385,9 @@ public class EventSubscriptionScheduler {
         .map(
             eventJson -> {
               ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .count();
@@ -459,7 +468,14 @@ public class EventSubscriptionScheduler {
   public List<ChangeEvent> getRelevantUnprocessedEvents(
       UUID subscriptionId, int limit, int paginationOffset) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -473,7 +489,9 @@ public class EventSubscriptionScheduler {
         .map(
             eventJson -> {
               ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .toList();
