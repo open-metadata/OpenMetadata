@@ -279,3 +279,10 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt BIGINT NOT NULL,
   PRIMARY KEY (name)
 );
+
+-- Index automations_workflow.updatedat for the DataRetention app's workflow cleanup, which
+-- selects the oldest expired rows with `WHERE updatedAt < ? ORDER BY updatedAt LIMIT ?` once per
+-- batch. Without it that is a full scan plus a top-k sort of a table that grows unbounded with
+-- test connection, query runner and reverse ingestion runs.
+CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
+  ON automations_workflow (updatedat);

@@ -267,3 +267,25 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   updatedAt bigint unsigned NOT NULL,
   PRIMARY KEY (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Index automations_workflow.updatedAt for the DataRetention app's workflow cleanup, which
+-- selects the oldest expired rows with `WHERE updatedAt < ? ORDER BY updatedAt LIMIT ?` once per
+-- batch. Without it that is a full scan plus a top-k sort of a table that grows unbounded with
+-- test connection, query runner and reverse ingestion runs. MySQL has no
+-- `CREATE INDEX IF NOT EXISTS`, so guard via information_schema.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'automations_workflow'
+        AND index_name = 'idx_automations_workflow_updated_at'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_automations_workflow_updated_at ON automations_workflow (updatedAt)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
