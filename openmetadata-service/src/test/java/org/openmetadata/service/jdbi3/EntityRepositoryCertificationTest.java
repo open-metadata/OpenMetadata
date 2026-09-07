@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -27,7 +28,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
@@ -96,6 +99,134 @@ class EntityRepositoryCertificationTest {
     Entity.setJobDAO(null);
     Entity.setSearchRepository(null);
     Entity.setEntityRelationshipRepository(null);
+    Entity.setSystemRepository(null);
+    Entity.cleanup();
+  }
+
+  private static EntityRepository<Pipeline>.EntityUpdater newUpdater(
+      TestPipelineRepo repo, Pipeline original, Pipeline updated, EntityRepository.Operation op) {
+    return repo.new EntityUpdater(original, updated, op);
+  }
+
+  private static void invokeUpdateCertification(EntityRepository<Pipeline>.EntityUpdater updater)
+      throws Exception {
+    Method method = EntityRepository.EntityUpdater.class.getDeclaredMethod("updateCertification");
+    method.setAccessible(true);
+    method.invoke(updater);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void registerBotUser(String botName) {
+    EntityRepository<User> mockUserRepo = mock(EntityRepository.class);
+    User bot = new User().withName(botName).withIsBot(true);
+    when(mockUserRepo.findByNameOrNull(anyString(), any()))
+        .thenAnswer(inv -> botName.equals(inv.getArgument(0)) ? bot : null);
+    Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void registerNoUsersFound() {
+    EntityRepository<User> mockUserRepo = mock(EntityRepository.class);
+    when(mockUserRepo.findByNameOrNull(anyString(), any())).thenReturn(null);
+    Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
+  }
+
+  private static void registerSystemRepository() {
+    SystemRepository systemRepository = mock(SystemRepository.class);
+    when(systemRepository.getAssetCertificationSettingOrDefault())
+        .thenReturn(
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"));
+    Entity.setSystemRepository(systemRepository);
+  }
+
+  private static Pipeline pipelineWithCertification(String botName, AssetCertification cert) {
+    return new Pipeline()
+        .withId(UUID.randomUUID())
+        .withName("my-pipeline")
+        .withFullyQualifiedName("service.my-pipeline")
+        .withUpdatedBy(botName)
+        .withCertification(cert);
+  }
+
+  @Test
+  void updateCertificationBotPutOmittingCertificationPreservesExisting() throws Exception {
+    registerBotUser("ingestion-bot");
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", null);
+
+    EntityRepository<Pipeline>.EntityUpdater updater =
+        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertNotNull(updated.getCertification());
+    assertEquals("Certification.Gold", updated.getCertification().getTagLabel().getTagFQN());
+  }
+
+  @Test
+  void updateCertificationBotPutWithExplicitDifferentCertificationIsApplied() throws Exception {
+    registerBotUser("ingestion-bot");
+    registerSystemRepository();
+
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Bronze");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+    TagLabel newLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification newCert = new AssetCertification().withTagLabel(newLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", newCert);
+
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
+
+    EntityRepository<Pipeline>.EntityUpdater updater =
+        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertNotNull(updated.getCertification());
+    assertEquals("Certification.Gold", updated.getCertification().getTagLabel().getTagFQN());
+  }
+
+  @Test
+  void updateCertificationBotPutOmittingCertificationWithOverrideMetadataClearsIt()
+      throws Exception {
+    registerBotUser("ingestion-bot");
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", null);
+
+    EntityRepository<Pipeline>.EntityUpdater updater =
+        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    updater.setOverrideMetadata(true);
+
+    invokeUpdateCertification(updater);
+
+    assertNull(updated.getCertification());
+  }
+
+  @Test
+  void updateCertificationHumanPutOmittingCertificationClearsIt() throws Exception {
+    registerNoUsersFound();
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+
+    Pipeline original = pipelineWithCertification("a-human", origCert);
+    Pipeline updated = pipelineWithCertification("a-human", null);
+
+    EntityRepository<Pipeline>.EntityUpdater updater =
+        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertNull(updated.getCertification());
   }
 
   @Test

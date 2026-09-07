@@ -10029,10 +10029,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origCertification,
           updatedCertification);
 
-      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
-        // Revert change to non-empty certification if it is being updated by a bot
-        // This is to prevent bots from overwriting the certification. Certification need to be
-        // updated with a PATCH request
+      if (operation.isPut()
+          && !nullOrEmpty(original.getCertification())
+          && updatedByBot()
+          && !overrideMetadata
+          && updatedCertification == null) {
+        // A bot's PUT/create request that omits certification (most connectors never populate
+        // it) must not blank out a certification set through the UI or a prior explicit request.
+        // Certification can still be updated with a PATCH request, an explicit certification
+        // value in the request (e.g. CreateTableRequest.certification), or via the bulk path with
+        // overrideMetadata=true.
         updated.setCertification(original.getCertification());
         return;
       }
