@@ -12,17 +12,27 @@
  */
 
 import {
-  BadgeWithIcon,
   Box,
+  Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Tag01 } from '@untitledui/icons';
+import { Link } from 'react-router-dom';
 import { NO_DATA } from '../../../constants/constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
+import TagChip from '../atoms/TagChip/TagChip';
+
 interface TagBadgeListProps {
   tags: TagLabel[];
   size?: 'sm' | 'lg';
 }
+
+const TAG_CHIP_SIZE_MAP = {
+  sm: 'small',
+  lg: 'medium',
+} as const;
 
 const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
   if (!tags.length) {
@@ -31,12 +41,34 @@ const TagBadgeList = ({ tags, size = 'sm' }: TagBadgeListProps) => {
 
   const firstTag = tags[0];
   const remaining = tags.length - 1;
+  const tagName = getTagName(firstTag, true);
+  const redirectLink = getTagRedirectLink(firstTag);
 
   return (
     <Box align="center" direction="row" gap={1}>
-      <BadgeWithIcon color="gray" iconLeading={Tag01} size={size} type="color">
-        {firstTag.displayName || firstTag.tagFQN}
-      </BadgeWithIcon>
+      <Tooltip
+        arrow
+        delay={500}
+        placement="top"
+        title={getTagTooltip(firstTag.tagFQN, firstTag.description)}>
+        <TooltipTrigger>
+          <Link
+            className="tw:w-max"
+            data-testid="tag-redirect-link"
+            to={redirectLink}
+            onClick={(e) => e.stopPropagation()}>
+            <TagChip
+              data-testid="tags"
+              icon={firstTag.style?.iconURL}
+              label={tagName}
+              labelDataTestId={`tag-${firstTag.tagFQN}`}
+              size={TAG_CHIP_SIZE_MAP[size]}
+              tagColor={firstTag.style?.color}
+              variant="blueGray"
+            />
+          </Link>
+        </TooltipTrigger>
+      </Tooltip>
       {remaining > 0 && (
         <Typography size="text-xs" weight="medium">
           +{remaining}

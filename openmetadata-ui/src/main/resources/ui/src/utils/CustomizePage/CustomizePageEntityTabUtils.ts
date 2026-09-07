@@ -97,100 +97,44 @@ export const getTabLabelMapFromTabs = (
   );
 };
 
+// Maps each page type to the tab whose presence enables the expand view.
+const EXPAND_VIEW_SUPPORTED_TAB: Partial<Record<PageType, EntityTabs>> = {
+  [PageType.Table]: EntityTabs.SCHEMA,
+  [PageType.Topic]: EntityTabs.SCHEMA,
+  [PageType.APIEndpoint]: EntityTabs.SCHEMA,
+  [PageType.Glossary]: EntityTabs.TERMS,
+  [PageType.GlossaryTerm]: EntityTabs.OVERVIEW,
+  [PageType.Metric]: EntityTabs.OVERVIEW,
+  [PageType.File]: EntityTabs.OVERVIEW,
+  [PageType.Worksheet]: EntityTabs.OVERVIEW,
+  [PageType.Dashboard]: EntityTabs.DETAILS,
+  [PageType.DashboardDataModel]: EntityTabs.MODEL,
+  [PageType.Container]: EntityTabs.CHILDREN,
+  [PageType.Directory]: EntityTabs.CHILDREN,
+  [PageType.Database]: EntityTabs.SCHEMAS,
+  [PageType.SearchIndex]: EntityTabs.FIELDS,
+  [PageType.DatabaseSchema]: EntityTabs.TABLE,
+  [PageType.Pipeline]: EntityTabs.TASKS,
+  [PageType.APICollection]: EntityTabs.API_ENDPOINT,
+  [PageType.StoredProcedure]: EntityTabs.CODE,
+  [PageType.MlModel]: EntityTabs.FEATURES,
+  [PageType.Spreadsheet]: EntityTabs.WORKSHEETS,
+  [PageType.Domain]: EntityTabs.DOCUMENTATION,
+  [PageType.DataProduct]: EntityTabs.DOCUMENTATION,
+};
+
 export const checkIfExpandViewSupported = (
   firstTab: NonNullable<TabsProps['items']>[number],
   activeTab: EntityTabs,
   pageType: PageType
 ) => {
-  switch (pageType) {
-    case PageType.Table:
-    case PageType.Topic:
-    case PageType.APIEndpoint:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.SCHEMA) ||
-        activeTab === EntityTabs.SCHEMA
-      );
+  const expandTab = EXPAND_VIEW_SUPPORTED_TAB[pageType];
 
-    case PageType.Glossary:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.TERMS) ||
-        activeTab === EntityTabs.TERMS
-      );
-    case PageType.GlossaryTerm:
-    case PageType.Metric:
-    case PageType.File:
-    case PageType.Worksheet:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
-        activeTab === EntityTabs.OVERVIEW
-      );
-    case PageType.Dashboard:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.DETAILS) ||
-        activeTab === EntityTabs.DETAILS
-      );
-    case PageType.DashboardDataModel:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.MODEL) ||
-        activeTab === EntityTabs.MODEL
-      );
-    case PageType.Container:
-    case PageType.Directory:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
-        activeTab === EntityTabs.CHILDREN
-      );
-    case PageType.Database:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.SCHEMAS) ||
-        activeTab === EntityTabs.SCHEMAS
-      );
-    case PageType.SearchIndex:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.FIELDS) ||
-        activeTab === EntityTabs.FIELDS
-      );
-    case PageType.DatabaseSchema:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.TABLE) ||
-        activeTab === EntityTabs.TABLE
-      );
-    case PageType.Pipeline:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.TASKS) ||
-        activeTab === EntityTabs.TASKS
-      );
-    case PageType.APICollection:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.API_ENDPOINT) ||
-        activeTab === EntityTabs.API_ENDPOINT
-      );
-
-    case PageType.StoredProcedure:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.CODE) ||
-        activeTab === EntityTabs.CODE
-      );
-
-    case PageType.MlModel:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
-        activeTab === EntityTabs.FEATURES
-      );
-    case PageType.Spreadsheet:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.WORKSHEETS) ||
-        activeTab === EntityTabs.WORKSHEETS
-      );
-    case PageType.Domain:
-    case PageType.DataProduct:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.DOCUMENTATION) ||
-        activeTab === EntityTabs.DOCUMENTATION
-      );
-    default:
-      return false;
+  if (!expandTab) {
+    return false;
   }
+
+  return (!activeTab && firstTab.key === expandTab) || activeTab === expandTab;
 };
 
 export const getTabDisplayName = (item: Tab) => {

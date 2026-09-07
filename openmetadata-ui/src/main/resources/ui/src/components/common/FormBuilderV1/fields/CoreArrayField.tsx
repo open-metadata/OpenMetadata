@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { HintText, Label, Tooltip } from '@openmetadata/ui-core-components';
+import { Button, HintText, Label } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Copy01, XClose } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
@@ -161,21 +161,18 @@ const CoreArrayField = (props: FieldProps) => {
             onKeyDown={handleKeyDown}
           />
         )}
-        <Tooltip
-          title={
+        <Button
+          className="tw:ml-auto tw:rounded tw:p-0 tw:hover:bg-transparent"
+          color="tertiary"
+          iconLeading={Copy01}
+          tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
-          }>
-          <button
-            className="tw:ml-auto tw:flex tw:cursor-pointer tw:items-center tw:p-1 tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover"
-            tabIndex={-1}
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onCopyToClipBoard();
-            }}>
-            <Copy01 size={14} />
-          </button>
-        </Tooltip>
+          }
+          onPress={async (e) => {
+            e.stopPropagation();
+            await onCopyToClipBoard();
+          }}
+        />
       </div>
       {isInvalid && rawErrors && <HintText isInvalid>{rawErrors[0]}</HintText>}
     </div>

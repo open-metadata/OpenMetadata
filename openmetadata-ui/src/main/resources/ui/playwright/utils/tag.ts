@@ -202,9 +202,11 @@ export const removeAssetsFromTag = async (
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
+  // After a reload the badge renders only once the assets search returns —
+  // give it the same 30s the domain util allows instead of the default 15s.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString());
+  ).toContainText(count.toString(), { timeout: 30_000 });
 };
 
 export const setupAssetsForTag = async (page: Page) => {
