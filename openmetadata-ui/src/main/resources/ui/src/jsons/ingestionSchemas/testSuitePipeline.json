@@ -10052,6 +10052,72 @@
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "Data360Connection",
+                      "description": "Salesforce Data 360 (formerly DataCloud) Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.database.Data360Connection",
+                      "definitions": {
+                        "data360Type": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Data360"
+                          ],
+                          "default": "Data360"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/56/definitions/data360Type",
+                          "default": "Data360"
+                        },
+                        "consumerKey": {
+                          "title": "Consumer Key",
+                          "description": "Consumer key provided when you setup your Salesforce connected app",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "consumerSecret": {
+                          "title": "Consumer Secret",
+                          "description": "Consumer secret provided when you setup your Salesforce connected app",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "salesforceApiVersion": {
+                          "title": "Salesforce API Version",
+                          "description": "API version of the Salesforce instance",
+                          "type": "string",
+                          "default": "63.0"
+                        },
+                        "salesforceDomain": {
+                          "title": "Salesforce Domain",
+                          "description": "Domain of Salesforce instance",
+                          "type": "string",
+                          "default": "login"
+                        },
+                        "paginationLimit": {
+                          "title": "Pagination Limit",
+                          "description": "Pagination limit used when fetching Data 360 objects. The default value is 10, and the valid range is 1-100",
+                          "type": "integer",
+                          "default": 10,
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "consumerKey",
+                        "consumerSecret"
+                      ]
+                    },
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapBw4HanaConnection",
                       "description": "SAP BW/4HANA Database Connection Config",
                       "type": "object",
@@ -10070,7 +10136,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/56/definitions/sapBw4HanaType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/57/definitions/sapBw4HanaType",
                           "default": "SapBw4Hana"
                         },
                         "hostPort": {
@@ -14088,6 +14154,97 @@
                     },
                     {
                       "$schema": "http://json-schema.org/draft-07/schema#",
+                      "title": "Data360PipelineConnection",
+                      "description": "Salesforce Data 360 Pipeline Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.pipeline.Data360PipelineConnection",
+                      "definitions": {
+                        "data360PipelineType": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Data360Pipeline"
+                          ],
+                          "default": "Data360Pipeline"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/25/definitions/data360PipelineType",
+                          "default": "Data360Pipeline"
+                        },
+                        "consumerKey": {
+                          "title": "Consumer Key",
+                          "description": "Consumer key provided when you setup your Salesforce connected app",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "consumerSecret": {
+                          "title": "Consumer Secret",
+                          "description": "Consumer secret provided when you setup your Salesforce connected app",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "salesforceApiVersion": {
+                          "title": "Salesforce API Version",
+                          "description": "API version of the Salesforce instance",
+                          "type": "string",
+                          "default": "63.0"
+                        },
+                        "salesforceDomain": {
+                          "title": "Salesforce Domain",
+                          "description": "Domain of Salesforce instance",
+                          "type": "string",
+                          "default": "login"
+                        },
+                        "data360DbServiceName": {
+                          "title": "Data 360 Database Service Name",
+                          "description": "Name of the Data 360 database service to use for lineage resolution",
+                          "type": "string"
+                        },
+                        "serviceMapping": {
+                          "title": "Service Mapping",
+                          "description": "JSON object mapping a Data 360 connector or data source name to the OpenMetadata service that holds it, used to resolve the upstream entity of a Data Stream. Example: {\"S3_Connector\": \"my-s3-service\"}",
+                          "type": "string",
+                          "default": "{}"
+                        },
+                        "includeBulkLineage": {
+                          "title": "Include Bulk Lineage",
+                          "description": "Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object lineage for every dataspace. This walks all Data Model Objects in the configured Data 360 database service, so it is off by default.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "paginationLimit": {
+                          "title": "Pagination Limit",
+                          "description": "Pagination limit used when fetching Data 360 objects. The default value is 10, and the valid range is 1-200",
+                          "type": "integer",
+                          "default": 10,
+                          "minimum": 1,
+                          "maximum": 200
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                        },
+                        "supportsLineageExtraction": {
+                          "title": "Supports Lineage Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        },
+                        "supportsUsageExtraction": {
+                          "title": "Supports Operational data Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "consumerKey",
+                        "consumerSecret"
+                      ]
+                    },
+                    {
+                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "title": "SapBw4HanaPipelineConnection",
                       "description": "SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.",
                       "type": "object",
@@ -14106,7 +14263,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/25/definitions/sapBw4HanaPipelineType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/26/definitions/sapBw4HanaPipelineType",
                           "default": "SapBw4HanaPipeline"
                         },
                         "hostPort": {
