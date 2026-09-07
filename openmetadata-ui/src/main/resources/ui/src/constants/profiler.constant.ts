@@ -39,6 +39,8 @@ import {
 import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
 
+const OPERATION_METRICS = 'operation-metrics';
+
 export const PROFILER_METRIC = [
   'valuesCount',
   'valuesPercentage',
@@ -265,19 +267,19 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
       color: BLUE_800,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
       color: BLUE_500,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
       color: YELLOW_3,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
   ],
   data: [],

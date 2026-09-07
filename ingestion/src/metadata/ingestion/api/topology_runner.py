@@ -16,9 +16,10 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
+from collections.abc import Iterable
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import Any, ClassVar, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
+from typing import Any, ClassVar, Generic, TypeVar, cast
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -103,7 +104,7 @@ class TopologyRunnerMixin(Generic[C]):
         renders % and ETA. Called exactly once by the topology runner, just
         before the first non-root node is processed. Default: no totals."""
 
-    def _node_primary_stage(self, node: TopologyNode) -> Optional[NodeStage]:  # noqa: UP045
+    def _node_primary_stage(self, node: TopologyNode) -> NodeStage | None:
         """The node's primary, non-side-output stage — the stage whose entity is
         the node's real entity (Table, Database, ...). Falls back to the first
         typed stage when every stage is a side output. ``None`` only when the
@@ -117,7 +118,7 @@ class TopologyRunnerMixin(Generic[C]):
                     return stage
         return fallback
 
-    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
+    def _get_entity_type_for_node(self, node: TopologyNode) -> str | None:
         """The primary entity type name for a topology node, used as the
         progress-tracking key. Derived from the node's primary stage."""
         stage = self._node_primary_stage(node)
@@ -244,7 +245,7 @@ class TopologyRunnerMixin(Generic[C]):
             with node_progress.enter_scope():
                 yield from self.process_nodes(child_nodes)
 
-    def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
+    def process_nodes(self, nodes: list[TopologyNode]) -> Iterable[Entity]:
         """
         Given a list of nodes, either roots or children,
         yield from its producers and process the children.
@@ -286,8 +287,8 @@ class TopologyRunnerMixin(Generic[C]):
     def _multithread_process_entity(
         self,
         node: TopologyNode,
-        node_entities: List[Any],  # noqa: UP006
-        child_nodes: List[TopologyNode],  # noqa: UP006
+        node_entities: list[Any],
+        child_nodes: list[TopologyNode],
         parent_thread_id: int,
         node_progress,
     ):
@@ -320,7 +321,7 @@ class TopologyRunnerMixin(Generic[C]):
         # Finally we pop the context and finish the thread
         self.context.pop()
 
-    def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:  # noqa: UP006
+    def _get_child_nodes(self, node: TopologyNode) -> list[TopologyNode]:
         """Compute children nodes if any"""
         return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 

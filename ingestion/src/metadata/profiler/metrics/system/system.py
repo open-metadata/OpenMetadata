@@ -15,7 +15,8 @@ System Metric
 
 from abc import ABC
 from collections import defaultdict
-from typing import Callable, Dict, Generic, List, Optional, Protocol, Type, TypeVar  # noqa: UP035
+from collections.abc import Callable
+from typing import Generic, Protocol, TypeVar
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -49,7 +50,7 @@ class CacheProvider(ABC, Generic[T]):
     """Cache provider class to provide cache for system metrics"""
 
     def __init__(self):
-        self.cache = LRUCache[List[T]](LRU_CACHE_SIZE)  # noqa: UP006
+        self.cache = LRUCache[list[T]](LRU_CACHE_SIZE)
 
     def __init_subclass__(cls, **kwargs):
         """Ensure that subclasses properly initialize the cache"""
@@ -70,10 +71,10 @@ class CacheProvider(ABC, Generic[T]):
     def get_or_update_cache(
         self,
         cache_path: str,
-        get_queries_fn: Callable[..., List[T]],  # noqa: UP006
+        get_queries_fn: Callable[..., list[T]],
         *args,
         **kwargs,
-    ) -> List[T]:  # noqa: UP006
+    ) -> list[T]:
         if cache_path in self.cache:
             cached_result = self.cache.get(cache_path)
             return cached_result if cached_result is not None else []
@@ -90,7 +91,7 @@ class SystemMetricsComputer(Protocol):
         session: Session,
         query,
         operation,
-    ) -> List[QueryResult]:  # noqa: UP006
+    ) -> list[QueryResult]:
         """get query results either from cache or from the database
 
         Args:
@@ -118,34 +119,34 @@ class SystemMetricsComputer(Protocol):
 
         return results  # noqa: RET504
 
-    def get_system_metrics(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_system_metrics(self) -> list[SystemProfile]:
         """Return system metrics for a given table. Actual passed object can be a variety of types based
         on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
         and in the case of Mongo, it can be a collection object."""
         return self.get_inserts() + self.get_deletes() + self.get_updates()
 
-    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_inserts(self) -> list[SystemProfile]:
         """Get insert queries"""
         return []
 
-    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_deletes(self) -> list[SystemProfile]:
         """Get delete queries"""
         return []
 
-    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_updates(self) -> list[SystemProfile]:
         """Get update queries"""
         return []
 
 
 class SystemMetricsRegistry:
-    _registry: Dict[str, Type["SystemMetricsComputer"]] = {}  # noqa: RUF012, UP006
+    _registry: dict[str, type["SystemMetricsComputer"]] = {}  # noqa: RUF012
 
     @classmethod
-    def register(cls, dialect: PythonDialects, implementation: Type):  # noqa: UP006
+    def register(cls, dialect: PythonDialects, implementation: type):
         cls._registry[dialect.name.lower()] = implementation
 
     @classmethod
-    def get(cls, dialect: PythonDialects) -> Optional[Type["SystemMetricsComputer"]]:  # noqa: UP006, UP045
+    def get(cls, dialect: PythonDialects) -> type["SystemMetricsComputer"] | None:
         if dialect.name.lower() not in cls._registry:
             cls._discover_implementation(dialect)
         return cls._registry.get(dialect.name.lower())
@@ -163,7 +164,7 @@ class SystemMetricsRegistry:
 
 def register_system_metrics(
     dialect: PythonDialects,
-) -> Callable[[Type["SystemMetricsComputer"]], Type["SystemMetricsComputer"]]:  # noqa: UP006
+) -> Callable[[type["SystemMetricsComputer"]], type["SystemMetricsComputer"]]:
     """Decorator to register a system metric implementation
 
     Args:
@@ -173,7 +174,7 @@ def register_system_metrics(
         Callable: decorator function
     """
 
-    def decorator(cls: Type["SystemMetricsComputer"]):  # noqa: UP006
+    def decorator(cls: type["SystemMetricsComputer"]):
         SystemMetricsRegistry.register(dialect, cls)
         return cls
 
@@ -221,7 +222,7 @@ class System(SystemMetric):
             logger.debug("Clearing system cache")
             SYSTEM_QUERY_RESULT_CACHE.clear()
 
-    def _validate_attrs(self, attr_list: List[str]) -> None:  # noqa: UP006
+    def _validate_attrs(self, attr_list: list[str]) -> None:
         """Validate the necessary attributes given via add_props"""
         for attr in attr_list:
             if not hasattr(self, attr):

@@ -33,7 +33,13 @@ const mockProps = {
   onFieldWeightChange: jest.fn(),
   onDeleteSearchField: jest.fn(),
   onMatchTypeChange: jest.fn(),
-  entityFields: [],
+  entityFields: [
+    {
+      name: 'description',
+      description: 'Field description',
+      highlight: true,
+    },
+  ],
 };
 
 jest.mock('react-i18next', () => ({
@@ -69,6 +75,33 @@ describe('FieldConfiguration', () => {
     expect(mockProps.onHighlightFieldsChange).toHaveBeenCalledWith(
       mockProps.field.fieldName
     );
+  });
+
+  it('Should disable the highlight toggle for a field that cannot be highlighted', () => {
+    // The server marks flattened / non-indexed fields highlight:false and rejects a save that
+    // targets one, so the toggle must not be offered at all.
+    render(
+      <FieldConfiguration
+        {...mockProps}
+        entityFields={[
+          {
+            name: 'description',
+            description: 'Field description',
+            highlight: false,
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('field-container-header'));
+
+    const highlightSwitch = screen.getByTestId('highlight-field-switch');
+
+    expect(highlightSwitch).toBeDisabled();
+
+    fireEvent.click(highlightSwitch);
+
+    expect(mockProps.onHighlightFieldsChange).not.toHaveBeenCalled();
   });
 
   it('Should handle weight slider change', () => {

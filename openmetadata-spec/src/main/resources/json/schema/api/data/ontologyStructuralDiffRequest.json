@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyStructuralDiffRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyStructuralDiffRequest",
+  "description": "Request a bounded three-way structural comparison for an application ontology subset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyStructuralDiffRequest",
+  "properties": {
+    "sourceGlossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "targetGlossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "subsetTermIds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "minItems": 1,
+      "maxItems": 500,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "sourceGlossaryId",
+    "targetGlossaryId",
+    "subsetTermIds"
+  ],
+  "additionalProperties": false
+}

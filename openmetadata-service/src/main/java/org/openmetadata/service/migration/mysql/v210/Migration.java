@@ -14,8 +14,12 @@
 package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
+import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -34,6 +38,13 @@ public class Migration extends MigrationProcessImpl {
     ConversationReferenceMigration.migrate(handle, MYSQL);
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
+    migrateRelationshipTypes(handle, MYSQL);
+    // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
+    // multiple domains they inherit from their associated tables. Fresh installs get this from the
+    // packaged JSON default; existing installs only through this migration.
+    exemptQueryFromMultiDomainRules();
+    backfillSourceConfigTypes(collectionDAO);
   }
 }

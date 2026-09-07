@@ -23,9 +23,12 @@ import WorkflowsTable from './WorkflowsTable';
 
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityNameUtils');
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div data-testid="error-placeholder">No data available</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest.fn(() => (
+    <div data-testid="error-placeholder">No data available</div>
+  )),
+}));
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest.fn(({ markdown }) => (
     <div data-testid="rich-text-preview">{markdown}</div>

@@ -13,8 +13,6 @@ Model required to ingest pipeline status data
 from the sample data
 """
 
-from typing import List  # noqa: UP035
-
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.pipeline import PipelineStatus
@@ -27,4 +25,4 @@ class OMetaPipelineStatus(BaseModel):
 
 class OMetaBulkPipelineStatus(BaseModel):
     pipeline_fqn: str
-    pipeline_statuses: List[PipelineStatus]  # noqa: UP006
+    pipeline_statuses: list[PipelineStatus]

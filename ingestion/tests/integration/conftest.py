@@ -2,7 +2,6 @@ import logging
 import os
 import shutil
 import time
-from typing import List, Tuple, Type  # noqa: UP035
 
 import pytest
 
@@ -208,7 +207,7 @@ def classifier_config(db_service, workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
+    def _run(workflow_type: type[IngestionWorkflow], config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
@@ -364,9 +363,9 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
 
 @pytest.fixture
 def cleanup_fqns(metadata):
-    fqns: List[Tuple[Type[Entity], str]] = []  # noqa: UP006
+    fqns: list[tuple[type[Entity], str]] = []
 
-    def inner(entity_type: Type[Entity], fqn: str):  # noqa: UP006
+    def inner(entity_type: type[Entity], fqn: str):
         fqns.append((entity_type, fqn))
 
     yield inner

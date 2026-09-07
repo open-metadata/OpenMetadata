@@ -11,7 +11,7 @@
 """BurstIQ-specific profiler interface overrides."""
 
 import traceback as _tb
-from typing import Callable, List, Optional  # noqa: UP035
+from collections.abc import Callable
 
 import pandas as _pd  # noqa: ICN001
 
@@ -49,7 +49,7 @@ _DATETIME_TYPES = {
 class BurstIQProfilerInterface(PandasProfilerInterface):
     """BurstIQ-specific profiler interface."""
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
+    def get_columns(self) -> list[SQALikeColumn | None]:
         """Override to fix type misclassification and column name consistency.
 
         The parent infers column types from pandas df dtypes. BurstIQ's timezone-aware

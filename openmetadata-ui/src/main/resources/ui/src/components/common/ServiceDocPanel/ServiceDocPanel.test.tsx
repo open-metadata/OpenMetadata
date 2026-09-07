@@ -62,6 +62,7 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
     ({ markdown, className }: { markdown: string; className?: string }) => (
       <div
         className={className ?? 'service-doc-content'}
+        // eslint-disable-next-line react/no-danger -- test mock rendering controlled markdown fixture
         dangerouslySetInnerHTML={{ __html: markdown }}
       />
     )

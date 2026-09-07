@@ -42,7 +42,6 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useAppRoutesRegistry } from '../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
@@ -56,6 +55,8 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
+
+const CUSTOMIZE_UI_KEY = 'customize-ui';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
@@ -71,9 +72,9 @@ export const PersonaDetailsPage = () => {
   );
   const location = useCustomLocation();
   const { activeKey, activeCategory, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
-      '.'
-    )[0];
+    const activeKey = (
+      location.hash?.replace('#', '') || CUSTOMIZE_UI_KEY
+    ).split('.')[0];
     const activeCategory = (location.hash?.replace('#', '') || '').split(
       '.'
     )[1];
@@ -86,9 +87,9 @@ export const PersonaDetailsPage = () => {
   }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const hasNonDefaultMode = useAppRoutesRegistry(
-    (state) => Object.keys(state.routes).length > 0
-  );
+  // AI is always available in OSS — the shell ships in-tree, no
+  // install-gate.
+  const hasNonDefaultMode = true;
 
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
@@ -104,7 +105,11 @@ export const PersonaDetailsPage = () => {
 
     if (activeCategory) {
       const category = getCustomizePageCategories()
-        .filter((item) => item.key !== 'app-mode' || hasNonDefaultMode)
+        .filter(
+          (item) =>
+            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
+            hasNonDefaultMode
+        )
         .find((category) => category.key === activeCategory);
 
       if (category) {
@@ -148,7 +153,7 @@ export const PersonaDetailsPage = () => {
       return;
     }
 
-    if (!location.hash.includes('customize-ui')) {
+    if (!location.hash.includes(CUSTOMIZE_UI_KEY)) {
       navigate(
         {
           pathname: location.pathname,
@@ -280,7 +285,7 @@ export const PersonaDetailsPage = () => {
     return [
       {
         label: t('label.customize-ui'),
-        key: 'customize-ui',
+        key: CUSTOMIZE_UI_KEY,
         children: <CustomizeUI />,
       },
       {

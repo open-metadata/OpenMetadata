@@ -92,6 +92,26 @@ describe('useEntityRules', () => {
 
       expect(result.current.isLoading).toBe(true);
     });
+
+    it('should report isRulesLoaded false until the entity rules are fetched', () => {
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
+
+      expect(result.current.isRulesLoaded).toBe(false);
+    });
+
+    it('should report isRulesLoaded true once the entity rules are present', () => {
+      (useRuleEnforcementProvider as jest.Mock).mockReturnValue({
+        rules: { [EntityType.TABLE]: mockParsedRules },
+        fetchRulesForEntity: mockFetchRulesForEntity,
+        getRulesForEntity: mockGetRulesForEntity,
+        getEntityRuleValidation: mockGetEntityRuleValidation,
+        isLoading: false,
+      });
+
+      const { result } = renderHook(() => useEntityRules(EntityType.TABLE));
+
+      expect(result.current.isRulesLoaded).toBe(true);
+    });
   });
 
   describe('Entity type changes', () => {

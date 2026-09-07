@@ -17,10 +17,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
-import { ROUTES, VERSION } from '../../../../constants/constants';
+import { VERSION } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+import { isLandingPagePath } from '../../../../utils/RouterUtils';
 import { getVersionedStorageKey } from '../../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import './WhatsNewAlert.less';
@@ -49,7 +50,7 @@ const WhatsNewAlert = () => {
   }, [appVersion]);
 
   const isHomePage = useMemo(
-    () => location.pathname.includes(ROUTES.MY_DATA),
+    () => isLandingPagePath(location.pathname),
     [location.pathname]
   );
 

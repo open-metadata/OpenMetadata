@@ -21,6 +21,10 @@ import {
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+
+const WEBKIT_LINE_CLAMP = '-webkit-line-clamp';
+const WEBKIT_BOX_ORIENT = '-webkit-box-orient';
+
 const BlockEditor = withSuspenseFallback(
   lazy(() => import('../../BlockEditor/BlockEditor'))
 );
@@ -32,6 +36,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   textVariant = 'black',
   isDescriptionExpanded = false,
   maxLineLength = '2',
+  clampByLines = false,
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -40,17 +45,29 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const clampStyle: Record<string, string | number> | undefined = useMemo(
-    () =>
-      readMore
-        ? undefined
-        : {
-            overflow: 'hidden',
-            maxHeight: `${Number(maxLineLength) * 2}em`,
-            transition: 'max-height 0.3s ease',
-          },
-    [readMore, maxLineLength]
-  );
+  const clampStyle: Record<string, string | number> | undefined =
+    useMemo(() => {
+      if (readMore) {
+        return undefined;
+      }
+
+      // clampByLines clamps to an exact number of text lines (clean cut-off,
+      // no partial last line), instead of the height-based approximation.
+      if (clampByLines) {
+        return {
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: Number(maxLineLength),
+          overflow: 'hidden',
+        };
+      }
+
+      return {
+        overflow: 'hidden',
+        maxHeight: `${Number(maxLineLength) * 2}em`,
+        transition: 'max-height 0.3s ease',
+      };
+    }, [readMore, maxLineLength, clampByLines]);
 
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
@@ -75,15 +92,30 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
 
         const originalMaxHeight = el.style.maxHeight;
         const originalOverflow = el.style.overflow;
+        const originalDisplay = el.style.display;
+        const originalLineClamp = el.style.getPropertyValue(WEBKIT_LINE_CLAMP);
+        const originalBoxOrient = el.style.getPropertyValue(WEBKIT_BOX_ORIENT);
 
-        el.style.maxHeight = `${Number(maxLineLength) * 2}em`;
-        el.style.overflow = 'hidden';
+        // Measure overflow with the same clamp the view uses, so the
+        // view-more toggle appears exactly when content exceeds the clamp.
+        if (clampByLines) {
+          el.style.display = '-webkit-box';
+          el.style.setProperty(WEBKIT_BOX_ORIENT, 'vertical');
+          el.style.setProperty(WEBKIT_LINE_CLAMP, `${Number(maxLineLength)}`);
+          el.style.overflow = 'hidden';
+        } else {
+          el.style.maxHeight = `${Number(maxLineLength) * 2}em`;
+          el.style.overflow = 'hidden';
+        }
 
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
 
         el.style.maxHeight = originalMaxHeight;
         el.style.overflow = originalOverflow;
+        el.style.display = originalDisplay;
+        el.style.setProperty(WEBKIT_LINE_CLAMP, originalLineClamp);
+        el.style.setProperty(WEBKIT_BOX_ORIENT, originalBoxOrient);
 
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);
@@ -101,7 +133,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [content, maxLineLength]);
+  }, [content, maxLineLength, clampByLines]);
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
@@ -116,7 +148,8 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       dir={i18n.dir()}>
       <div
         className={classNames('markdown-parser', textVariant, {
-          'is-clamped': !readMore && isOverflowing && enableSeeMoreVariant,
+          'is-clamped':
+            !readMore && isOverflowing && enableSeeMoreVariant && !clampByLines,
         })}
         data-testid="markdown-parser"
         ref={contentRef}

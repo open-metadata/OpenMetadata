@@ -15,16 +15,15 @@ import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
-  EmptyPlaceholder,
+  Input,
   TableCard,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { File02, Plus } from '@untitledui/icons';
 import {
   Button,
   Checkbox,
   Col,
   Dropdown,
-  Input,
   MenuProps,
   Modal,
   Popover,
@@ -35,7 +34,8 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { debounce, isEmpty, isUndefined, unionBy, uniqBy } from 'lodash';
+import { TFunction } from 'i18next';
+import { debounce, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button as AriaButton,
@@ -69,6 +69,7 @@ import {
 } from '../../../constants/Glossary.contant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { CursorType } from '../../../enums/pagination.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   EntityReference,
@@ -76,13 +77,13 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { User } from '../../../generated/entity/teams/user';
-import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
   getGlossaryTerms,
+  GlossaryTermWithChildren,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
@@ -102,7 +103,6 @@ import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
-  findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryPureUtils';
@@ -113,6 +113,8 @@ import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import {
@@ -123,11 +125,20 @@ import Table from '../../common/Table/TableV2';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
+import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
 import {
+  GlossaryTermMoveConfirmationModalProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
+import {
+  computeShowExpandTreeLoadMore,
+  hasActiveSearchTerm,
+  isStaleFetchResponse,
+  resolveTotalTermsCount,
+  shouldShowEmptyPlaceholder,
+} from './GlossaryTermTab.utils';
 const WorkflowHistory = withSuspenseFallback(
   lazy(
     () => import('../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component')
@@ -137,6 +148,253 @@ const WorkflowHistory = withSuspenseFallback(
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
+
+const getTransferTargetName = (
+  movedGlossaryTerm: GlossaryTermMoveConfirmationModalProps['movedGlossaryTerm'],
+  activeGlossary: GlossaryTermMoveConfirmationModalProps['activeGlossary']
+) =>
+  movedGlossaryTerm?.to?.name ??
+  (activeGlossary && getEntityName(activeGlossary));
+
+const GlossaryTermMoveConfirmationModal = ({
+  isModalOpen,
+  isTableLoading,
+  hasReviewers,
+  confirmCheckboxChecked,
+  onConfirmCheckboxChange,
+  movedGlossaryTerm,
+  activeGlossary,
+  onDragConfirmationModalClose,
+  onChangeGlossaryTerm,
+  t,
+}: GlossaryTermMoveConfirmationModalProps) => {
+  return (
+    <Modal
+      centered
+      destroyOnClose
+      closable={false}
+      confirmLoading={isTableLoading}
+      data-testid="confirmation-modal"
+      maskClosable={false}
+      okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
+      okText={t('label.move')}
+      open={isModalOpen}
+      title={
+        <>
+          <WarningOutlined className="m-r-xs warning-icon" />
+          {t('label.move-the-entity', {
+            entity: t('label.glossary-term'),
+          })}
+        </>
+      }
+      onCancel={onDragConfirmationModalClose}
+      onOk={onChangeGlossaryTerm}>
+      <Transi18next
+        i18nKey="message.entity-transfer-message"
+        renderElement={<strong />}
+        values={{
+          from: movedGlossaryTerm?.from.name,
+          to: getTransferTargetName(movedGlossaryTerm, activeGlossary),
+          entity: isUndefined(movedGlossaryTerm?.to)
+            ? ''
+            : t('label.term-lowercase'),
+        }}
+      />
+      {hasReviewers && (
+        <div className="m-t-md">
+          <Checkbox
+            checked={confirmCheckboxChecked}
+            className="text-grey-700"
+            data-testid="confirm-status-checkbox"
+            onChange={(e) => onConfirmCheckboxChange(e.target.checked)}>
+            <span>
+              <Transi18next
+                i18nKey="message.entity-transfer-confirmation-message"
+                renderElement={<strong />}
+                values={{
+                  from: movedGlossaryTerm?.from.name,
+                }}
+              />
+              <span className="d-inline-block m-l-xss">
+                <StatusBadge
+                  className="p-x-xs p-y-xss"
+                  dataTestId=""
+                  label={EntityStatus.InReview}
+                  status={EntityStatusClass[EntityStatus.InReview]}
+                />
+              </span>
+            </span>
+          </Checkbox>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+const renderGlossaryExpandIcon = (
+  {
+    expanded,
+    onExpand,
+    record,
+  }: Parameters<
+    NonNullable<ExpandableConfig<ModifiedGlossaryTerm>['expandIcon']>
+  >[0],
+  loadingChildren: Record<string, boolean>,
+  t: TFunction
+) => {
+  const isLoadMoreRow = record.isLoadMoreButton;
+
+  if (isLoadMoreRow) {
+    return (
+      <>
+        <AriaButton
+          aria-label={t('label.move-the-entity', {
+            entity: t('label.term-lowercase'),
+          })}
+          className="glossary-term-drag-handle-hidden"
+          slot="drag">
+          <span />
+        </AriaButton>
+        <span className="expand-cell-empty-icon-container" />
+      </>
+    );
+  }
+
+  const { children, childrenCount } = record;
+  const isLoading = loadingChildren[record.fullyQualifiedName || ''];
+  const dragHandle = (
+    <AriaButton
+      aria-label={t('label.move-the-entity', {
+        entity: t('label.term-lowercase'),
+      })}
+      className="glossary-term-drag-handle m-r-xs"
+      slot="drag">
+      <IconDrag className="drag-icon" height={12} width={8} />
+    </AriaButton>
+  );
+
+  const totalChildrenCount = childrenCount ?? children?.length ?? 0;
+
+  return totalChildrenCount > 0 ? (
+    <>
+      {dragHandle}
+      {isLoading ? (
+        <span className="m-r-xs expand-loader">
+          <Loader size="x-small" />
+        </span>
+      ) : (
+        <Icon
+          className="m-r-xs vertical-baseline"
+          component={expanded ? IconDown : IconRight}
+          data-testid="expand-icon"
+          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+          onClick={(e) => onExpand(record, e)}
+        />
+      )}
+    </>
+  ) : (
+    <>
+      {dragHandle}
+      <span className="expand-cell-empty-icon-container" />
+    </>
+  );
+};
+
+interface LoadMoreNameCellProps {
+  record: ModifiedGlossaryTerm;
+  loadingChildren: Record<string, boolean>;
+  onLoadMore: (record: ModifiedGlossaryTerm) => void;
+}
+
+const LoadMoreNameCell = ({
+  record,
+  loadingChildren,
+  onLoadMore,
+}: LoadMoreNameCellProps) => {
+  const { t } = useTranslation();
+  const parentRecord = (
+    record as ModifiedGlossaryTerm & {
+      parentRecord?: ModifiedGlossaryTerm;
+    }
+  ).parentRecord;
+  const isLoading = loadingChildren[parentRecord?.fullyQualifiedName || ''];
+  const loadedCount = parentRecord?.children?.length ?? 0;
+  const totalCount = parentRecord?.childrenCount ?? 0;
+  const remainingCount = totalCount - loadedCount;
+
+  return (
+    <Button
+      className="text-primary"
+      data-testid="load-more-children-button"
+      loading={isLoading}
+      size="small"
+      type="link"
+      onClick={() => parentRecord && onLoadMore(parentRecord)}>
+      {t('label.view-more-count', {
+        countValue: remainingCount,
+      })}
+    </Button>
+  );
+};
+
+interface GlossaryTermNameCellProps {
+  record: ModifiedGlossaryTerm;
+  expandedRowKeys: string[];
+  loadedNestedCountByFqn: Map<string, number>;
+}
+
+const GlossaryTermNameCell = ({
+  record,
+  expandedRowKeys,
+  loadedNestedCountByFqn,
+}: GlossaryTermNameCellProps) => {
+  const { t } = useTranslation();
+  const name = getEntityName(record);
+  const totalNested = record.childrenCount ?? 0;
+  const loadedNested =
+    loadedNestedCountByFqn.get(record.fullyQualifiedName ?? '') ?? 0;
+  // Collapsed shows the total ("N terms"); expanded shows load
+  // progress ("x of y loaded", reaching "y of y loaded" once done).
+  const isRowExpanded = expandedRowKeys.includes(
+    record.fullyQualifiedName ?? ''
+  );
+  const termCountKey =
+    totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
+
+  return (
+    <div className="tw:flex tw:min-w-0 tw:items-center">
+      {record.style?.iconURL && (
+        <img
+          alt={record.name}
+          className="m-r-xss"
+          data-testid="tag-icon"
+          height={12}
+          src={record.style.iconURL}
+        />
+      )}
+      <Link
+        className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
+        data-testid={name}
+        style={{ color: record.style?.color }}
+        title={name}
+        to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
+        {name}
+      </Link>
+      {totalNested > 0 && (
+        <span
+          className="tw:ml-2 tw:shrink-0 tw:whitespace-nowrap tw:text-xs tw:text-tertiary"
+          data-testid="nested-term-count">
+          {isRowExpanded
+            ? t('label.count-of-total-loaded', {
+                count: loadedNested,
+                total: totalNested,
+              })
+            : t(termCountKey, { count: totalNested })}
+        </span>
+      )}
+    </div>
+  );
+};
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
@@ -159,23 +417,38 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     Record<string, Task[]>
   >({});
 
-  const { glossaryTerms, expandableKeys } = useMemo(() => {
+  const glossaryTerms = useMemo(() => {
     // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
     // duplicate keys make the underlying collection unrepresentable (it throws
     // "Invalid array length" while building rows). Guard here so no write path
     // can ever hand the table colliding keys.
-    const terms = uniqBy(
+    return uniqBy(
       Array.isArray(glossaryChildTerms)
         ? (glossaryChildTerms as ModifiedGlossaryTerm[])
         : [],
       'fullyQualifiedName'
     );
+  }, [glossaryChildTerms]);
 
-    return {
-      expandableKeys: findExpandableKeysForArray(terms),
-      glossaryTerms: terms,
+  // Precompute each term's loaded-descendant count once per data change (the
+  // API's childrenCount is the whole subtree size, so this must be recursive).
+  // The name column looks it up in O(1) rather than re-walking every subtree
+  // on each render.
+  const loadedNestedCountByFqn = useMemo(() => {
+    const counts = new Map<string, number>();
+    const walk = (term: ModifiedGlossaryTerm): number => {
+      const children = (term.children ?? []) as ModifiedGlossaryTerm[];
+      const count = children.reduce((sum, child) => sum + 1 + walk(child), 0);
+      if (term.fullyQualifiedName) {
+        counts.set(term.fullyQualifiedName, count);
+      }
+
+      return count;
     };
-  }, [glossaryChildTerms, findExpandableKeysForArray]);
+    glossaryTerms.forEach(walk);
+
+    return counts;
+  }, [glossaryTerms]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -195,12 +468,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
-  const { paging, handlePagingChange } = usePaging(PAGE_SIZE_LARGE);
+  const { paging, handlePagingChange, pageSize } = usePaging(PAGE_SIZE_LARGE);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
   >({});
 
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [previousGlossaryFQN, setPreviousGlossaryFQN] = useState<
     string | undefined
   >(undefined);
@@ -208,12 +481,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const searchTermRef = useRef(searchTerm);
   searchTermRef.current = searchTerm;
   const [searchInput, setSearchInput] = useState('');
-  const [searchPaging, setSearchPaging] = useState<{
-    offset: number;
-    total?: number;
-    hasMore: boolean;
-  }>({ offset: 0, total: undefined, hasMore: true });
   const [isExpandingAll, setIsExpandingAll] = useState(false);
+  const [isLoadingMoreTree, setIsLoadingMoreTree] = useState(false);
+  const [expandTree, setExpandTree] = useState<{
+    after?: string;
+    loaded: number;
+    total: number;
+  }>({ loaded: 0, total: 0 });
+  const expandedTreeFlatRef = useRef<GlossaryTerm[]>([]);
   const [isDraggingTerm, setIsDraggingTerm] = useState(false);
   const [isTopLevelDropActive, setIsTopLevelDropActive] = useState(false);
   const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
@@ -261,7 +536,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               ...term,
               children: updateNestedTerms(
                 term.children as ModifiedGlossary[]
-              ) as ModifiedGlossaryTerm[],
+              ) as GlossaryTermWithChildren[],
             };
           }
 
@@ -278,129 +553,111 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   };
 
-  const initializeLoadingStates = (loadMore: boolean) => {
-    if (loadMore) {
-      setIsLoadingMore(true);
-
-      return;
-    }
-
-    setIsTableLoading(true);
+  // Search uses offset-based paging; the first-level listing uses cursor
+  // (before/after) paging. Either way the response replaces the current
+  // page of rows — navigation is now explicit Previous/Next, not appending.
+  const fetchGlossaryTermsPage = async (options?: {
+    after?: string;
+    before?: string;
+    offset?: number;
+  }) => {
+    const isStatusFilterActive = !selectedStatus.includes('all');
+    const entityStatusParam = isStatusFilterActive
+      ? selectedStatus.filter((s) => s !== 'all').join(',')
+      : undefined;
 
     if (searchTerm) {
-      setSearchPaging({ offset: 0, total: undefined, hasMore: true });
-    } else {
-      handlePagingChange((prev) => ({ ...prev, after: undefined }));
+      const response = await searchGlossaryTermsPaginated({
+        q: searchTerm,
+        glossaryFqn: activeGlossary?.fullyQualifiedName,
+        // limit must match the pageSize used to compute the offset, else
+        // Previous/Next would skip or repeat results if pageSize changes.
+        limit: pageSize,
+        offset: options?.offset ?? 0,
+        fields:
+          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+        entityStatus: entityStatusParam,
+      });
+
+      return {
+        data: response.data,
+        pagingResponse: response.paging,
+        isStatusFilterActive,
+      };
     }
+
+    const response = await getFirstLevelGlossaryTermsPaginated(
+      activeGlossary?.fullyQualifiedName || '',
+      pageSize,
+      options?.after,
+      entityStatusParam,
+      options?.before
+    );
+
+    return {
+      data: response.data,
+      pagingResponse: response.paging,
+      isStatusFilterActive,
+    };
   };
 
-  const fetchAllTerms = async (loadMore = false) => {
+  const fetchAllTerms = async (options?: {
+    after?: string;
+    before?: string;
+    offset?: number;
+  }) => {
     // `fetchSearchTerm` / `fetchStatusKey` record the search and status filter
     // this request was issued for so its response can be discarded if either has
     // since changed. `requestSeq` tracks the most recent fetch so only the
-    // latest one clears the loading indicators, avoiding flicker when requests
+    // latest one clears the loading indicator, avoiding flicker when requests
     // overlap.
     const requestSeq = ++fetchRequestSeqRef.current;
     const fetchSearchTerm = searchTerm;
     const fetchStatusKey = selectedStatus.join(',');
-    initializeLoadingStates(loadMore);
+    setIsTableLoading(true);
 
     try {
-      let data;
-      let pagingResponse: Paging | undefined;
-
-      const isStatusFilterActive = !selectedStatus.includes('all');
-      const entityStatusParam = isStatusFilterActive
-        ? selectedStatus.filter((s) => s !== 'all').join(',')
-        : undefined;
-
-      // Use search API if search term is present
-      if (searchTerm) {
-        const currentOffset = loadMore ? searchPaging.offset : 0;
-        const response = await searchGlossaryTermsPaginated({
-          q: searchTerm,
-          glossaryFqn: activeGlossary?.fullyQualifiedName,
-          limit: PAGE_SIZE_LARGE,
-          offset: currentOffset,
-          fields:
-            'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
-          entityStatus: entityStatusParam,
-        });
-        data = response.data;
-        pagingResponse = response.paging;
-
-        // Update search pagination state
-        const newOffset = currentOffset + PAGE_SIZE_LARGE;
-        const hasMore =
-          data.length === PAGE_SIZE_LARGE &&
-          (pagingResponse?.total === undefined ||
-            newOffset < pagingResponse?.total);
-        setSearchPaging({
-          offset: newOffset,
-          total: pagingResponse?.total,
-          hasMore,
-        });
-      } else {
-        // Use regular listing API when no search term
-        const response = await getFirstLevelGlossaryTermsPaginated(
-          activeGlossary?.fullyQualifiedName || '',
-          PAGE_SIZE_LARGE,
-          loadMore ? paging.after : undefined,
-          entityStatusParam
-        );
-        data = response.data;
-        pagingResponse = response.paging;
-
-        // Update regular paging state for next page
-        handlePagingChange((prev) => ({
-          ...prev,
-          after: pagingResponse?.after,
-          total: pagingResponse?.total || prev.total,
-        }));
-      }
+      const { data, pagingResponse, isStatusFilterActive } =
+        await fetchGlossaryTermsPage(options);
 
       // Apply the response only when it still matches the active search context.
-      // A response computed for a different (now-outdated) search term — e.g. a
-      // listing request that was in flight when the user typed a query, or a
-      // stale search-mode fetch after the query changed — is discarded so it
-      // cannot repopulate or clear the table against the user's current intent.
+      // A response computed for a different (now-outdated) search term or status
+      // filter — e.g. a listing request in flight when the user typed a query —
+      // is discarded so it cannot repopulate or clear the table against the
+      // user's current intent.
       if (
-        !data ||
-        !Array.isArray(data) ||
-        fetchSearchTerm !== searchTermRef.current ||
-        fetchStatusKey !== selectedStatusRef.current.join(',')
+        isStaleFetchResponse(
+          data,
+          fetchSearchTerm,
+          searchTermRef.current,
+          fetchStatusKey,
+          selectedStatusRef.current.join(',')
+        )
       ) {
         return;
       }
 
-      if (data.length === 0 && isStatusFilterActive) {
-        const countResponse = await getFirstLevelGlossaryTermsPaginated(
-          activeGlossary?.fullyQualifiedName || '',
-          0
-        );
-        setTotalTermsCount(countResponse.paging?.total ?? 0);
-      } else {
-        setTotalTermsCount(data.length);
-      }
+      setTotalTermsCount(
+        await resolveTotalTermsCount(
+          data,
+          isStatusFilterActive,
+          pagingResponse?.total,
+          activeGlossary?.fullyQualifiedName
+        )
+      );
 
-      const newTerms = data as ModifiedGlossary[];
+      // Search mode has no cursor; clear before/after so the footer falls back
+      // to number-based (offset) paging driven by currentPage + total.
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: searchTerm ? undefined : pagingResponse?.after,
+        before: searchTerm ? undefined : pagingResponse?.before,
+        total: pagingResponse?.total ?? prev.total,
+      }));
 
-      if (loadMore) {
-        // Read the freshest terms from the store rather than the closure so a
-        // superseded fetch (e.g. one that cleared the list for a search) cannot
-        // be re-appended from a stale snapshot. Deduplicate by FQN so an
-        // overlapping page never produces duplicate row keys, which the table
-        // collection cannot represent.
-        const currentTerms = useGlossaryStore.getState().glossaryChildTerms;
-        const baseTerms = Array.isArray(currentTerms) ? currentTerms : [];
-        setGlossaryChildTerms(
-          unionBy(baseTerms, newTerms, 'fullyQualifiedName')
-        );
-      } else {
-        setGlossaryChildTerms(newTerms);
-        // Start with all terms collapsed
-        setExpandedRowKeys([]);
-      }
+      setGlossaryChildTerms(data as ModifiedGlossary[]);
+      // A freshly loaded page starts with every row collapsed.
+      setExpandedRowKeys([]);
     } catch (error) {
       if (requestSeq === fetchRequestSeqRef.current) {
         showErrorToast(error as AxiosError);
@@ -408,36 +665,77 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     } finally {
       if (requestSeq === fetchRequestSeqRef.current) {
         setIsTableLoading(false);
-        setIsLoadingMore(false);
       }
     }
   };
 
-  const fetchExpadedTree = async () => {
-    setIsTableLoading(true);
-    setIsExpandingAll(true);
-    const key = isGlossary ? 'glossary' : 'parent';
-    const { data } = await getGlossaryTerms({
-      [key]: activeGlossary?.id || '',
-      limit: API_RES_MAX_SIZE,
-      fields: [
-        TabSpecificField.OWNERS,
-        TabSpecificField.PARENT,
-        TabSpecificField.CHILDREN,
-      ],
-    });
-    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
-    const keys = data.reduce((prev, curr) => {
-      if (curr.children?.length) {
-        prev.push(curr.fullyQualifiedName ?? '');
-      }
+  const fetchExpadedTree = async (loadMore = false) => {
+    if (loadMore) {
+      setIsLoadingMoreTree(true);
+    } else {
+      setIsTableLoading(true);
+      setIsExpandingAll(true);
+      expandedTreeFlatRef.current = [];
+    }
 
-      return prev;
-    }, [] as string[]);
+    try {
+      const key = isGlossary ? 'glossary' : 'parent';
+      const { data, paging } = await getGlossaryTerms({
+        [key]: activeGlossary?.id || '',
+        limit: PAGE_SIZE_LARGE,
+        after: loadMore ? expandTree.after : undefined,
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.PARENT,
+          TabSpecificField.CHILDREN,
+          TabSpecificField.CHILDREN_COUNT,
+        ],
+      });
 
-    setExpandedRowKeys(keys);
-    setIsTableLoading(false);
-    setIsExpandingAll(false);
+      // Accumulate the flat term list across pages and rebuild the tree from
+      // it; nesting fills in progressively as parents/children load.
+      const mergedFlat = uniqBy(
+        [...expandedTreeFlatRef.current, ...data],
+        'fullyQualifiedName'
+      );
+      expandedTreeFlatRef.current = mergedFlat;
+
+      setGlossaryChildTerms(
+        buildTree(
+          mergedFlat,
+          activeGlossary?.fullyQualifiedName
+        ) as ModifiedGlossary[]
+      );
+
+      const keys = mergedFlat.reduce((prev, curr) => {
+        if (curr.children?.length) {
+          prev.push(curr.fullyQualifiedName ?? '');
+        }
+
+        return prev;
+      }, [] as string[]);
+      setExpandedRowKeys(keys);
+
+      setExpandTree({
+        after: paging?.after,
+        loaded: mergedFlat.length,
+        total: paging?.total ?? mergedFlat.length,
+      });
+      // Keep the pager showing a single, non-navigable page while expanded.
+      setCurrentPage(1);
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: undefined,
+        before: undefined,
+        total: 0,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsTableLoading(false);
+      setIsExpandingAll(false);
+      setIsLoadingMoreTree(false);
+    }
   };
   const fetchAllTasks = useCallback(async () => {
     if (!activeGlossary?.fullyQualifiedName) {
@@ -490,20 +788,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     if (
       currentFQN &&
-      !isLoadingMore &&
       currentFQN !== previousGlossaryFQN &&
       !toggleExpandBtn &&
       !searchTerm // Don't fetch if there's an active search
     ) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
-      handlePagingChange((prev) => ({ ...prev, after: undefined }));
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: undefined,
+        before: undefined,
+      }));
+      setCurrentPage(1);
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
   }, [
     activeGlossary?.fullyQualifiedName,
-    isLoadingMore,
     previousGlossaryFQN,
     toggleExpandBtn,
     searchTerm,
@@ -515,136 +816,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setGlossaryChildTerms([]);
     };
   }, []);
-
-  const findScrollContainer = useCallback(() => {
-    const tableElement = document.querySelector<HTMLElement>(
-      '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
-    );
-    let scrollContainerCandidate = tableElement?.parentElement;
-
-    while (scrollContainerCandidate) {
-      const overflowY = window.getComputedStyle(
-        scrollContainerCandidate
-      ).overflowY;
-
-      if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
-        return scrollContainerCandidate;
-      }
-
-      if (scrollContainerCandidate === scrollContainerRef.current) {
-        break;
-      }
-
-      scrollContainerCandidate = scrollContainerCandidate.parentElement;
-    }
-
-    const scrollContainer = document.querySelector<HTMLElement>(
-      '[data-testid="glossary-terms-scroll-container"]'
-    );
-    if (
-      scrollContainer &&
-      scrollContainer.scrollHeight > scrollContainer.clientHeight
-    ) {
-      return scrollContainer;
-    }
-
-    return tableElement?.parentElement ?? null;
-  }, []);
-
-  // Monitor for DOM changes to detect when the table becomes scrollable
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const scrollContainer = findScrollContainer();
-      // Check if we can load more based on search vs regular mode
-      const canLoadMore = searchTerm
-        ? searchPaging.hasMore
-        : paging.after !== undefined;
-
-      if (
-        scrollContainer &&
-        canLoadMore &&
-        !isLoadingMore &&
-        !toggleExpandBtn &&
-        !isTableLoading // Added check to prevent multiple fetches
-      ) {
-        const { scrollHeight, clientHeight } = scrollContainer;
-        // If content doesn't fill the viewport, load more
-        if (scrollHeight <= clientHeight + 10) {
-          fetchAllTerms(true);
-        }
-      }
-    });
-
-    const scrollContainer = document.querySelector(
-      '[data-testid="glossary-terms-scroll-container"]'
-    );
-    if (scrollContainer) {
-      observer.observe(scrollContainer, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [
-    paging.after,
-    searchPaging.hasMore,
-    searchTerm,
-    isLoadingMore,
-    findScrollContainer,
-    fetchAllTerms,
-    toggleExpandBtn,
-    isTableLoading,
-  ]);
-
-  // Additional scroll handler for parent container
-  useEffect(() => {
-    const handleScroll = (event: Event) => {
-      const scrollContainer = event.target as HTMLElement;
-      // Check if we can load more based on search vs regular mode
-      const canLoadMore = searchTerm
-        ? searchPaging.hasMore
-        : paging.after !== undefined;
-
-      if (
-        scrollContainer &&
-        canLoadMore &&
-        !isLoadingMore &&
-        !isTableLoading &&
-        !toggleExpandBtn
-      ) {
-        const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-        // Load more when user is 200px from the bottom
-        if (scrollHeight - scrollTop - clientHeight < 200) {
-          fetchAllTerms(true);
-        }
-      }
-    };
-
-    const scrollContainer = findScrollContainer();
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll, {
-        passive: true,
-      });
-
-      return () => {
-        scrollContainer.removeEventListener('scroll', handleScroll);
-      };
-    }
-
-    // If container not found initially, no need for timeout -
-    // the component should handle cases where container might appear later
-    return undefined;
-  }, [
-    paging.after,
-    searchPaging.hasMore,
-    searchTerm,
-    isLoadingMore,
-    isTableLoading,
-    findScrollContainer,
-    fetchAllTerms,
-  ]);
 
   const glossaryTermStatus: EntityStatus | null = useMemo(() => {
     if (!isGlossary) {
@@ -701,6 +872,62 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   };
 
+  // `resolveTaskAPI` accepts a resolutionType that mirrors the vote value;
+  // extracted so the ternary lives in its own (already-low) complexity unit.
+  const getTaskResolutionType = (newValue: string) =>
+    newValue === 'approved'
+      ? TaskResolutionType.Approved
+      : TaskResolutionType.Rejected;
+
+  const getTaskResolutionStatus = (newValue: string) =>
+    newValue === 'approved' ? EntityStatus.Approved : EntityStatus.Rejected;
+
+  const notifyPendingApprovalTasks = (
+    entityLink: string,
+    updatedTask: Task
+  ) => {
+    if (termTaskThreads[entityLink]) {
+      setTermTaskThreads(
+        updateGlossaryTermTask(termTaskThreads, entityLink, updatedTask)
+      );
+    }
+  };
+
+  const applyGlossaryTermApprovalOutcome = (
+    glossaryTermFqn: string,
+    newStatus: EntityStatus,
+    entityLink: string,
+    taskId: string | number
+  ) => {
+    const updatedTerms = updateGlossaryTermStatus(
+      glossaryChildTerms,
+      glossaryTermFqn,
+      newStatus
+    );
+
+    if (
+      !selectedStatus.includes('all') &&
+      !selectedStatus.includes(newStatus)
+    ) {
+      setGlossaryChildTerms(
+        updatedTerms.filter(
+          (term) => term.fullyQualifiedName !== glossaryTermFqn
+        )
+      );
+    } else {
+      setGlossaryChildTerms(updatedTerms);
+    }
+
+    if (termTaskThreads[entityLink]) {
+      const updatedThreads = { ...termTaskThreads };
+      updatedThreads[entityLink] = updatedThreads[entityLink].filter(
+        (task) => !(task.id && task.id.toString() === taskId)
+      );
+
+      setTermTaskThreads(updatedThreads);
+    }
+  };
+
   const updateTaskData = useCallback(
     async (
       data: ResolveTask,
@@ -712,13 +939,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return;
         }
 
-        const resolutionType =
-          data.newValue === 'approved'
-            ? TaskResolutionType.Approved
-            : TaskResolutionType.Rejected;
-
         const updatedTask = await resolveTaskAPI(taskId + '', {
-          resolutionType,
+          resolutionType: getTaskResolutionType(data.newValue),
           newValue: data.newValue,
         });
         const isPendingFurtherApproval =
@@ -733,51 +955,24 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const currentExpandedKeys = [...expandedRowKeys];
         setExpandedRowKeys(currentExpandedKeys);
 
-        if (glossaryChildTerms && glossaryTermFqn) {
-          const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
-          if (isPendingFurtherApproval) {
-            if (termTaskThreads[entityLink]) {
-              setTermTaskThreads(
-                updateGlossaryTermTask(termTaskThreads, entityLink, updatedTask)
-              );
-            }
-
-            return;
-          }
-
-          const newStatus =
-            data.newValue === 'approved'
-              ? EntityStatus.Approved
-              : EntityStatus.Rejected;
-
-          const updatedTerms = updateGlossaryTermStatus(
-            glossaryChildTerms,
-            glossaryTermFqn,
-            newStatus
-          );
-
-          if (
-            !selectedStatus.includes('all') &&
-            !selectedStatus.includes(newStatus)
-          ) {
-            setGlossaryChildTerms(
-              updatedTerms.filter(
-                (term) => term.fullyQualifiedName !== glossaryTermFqn
-              )
-            );
-          } else {
-            setGlossaryChildTerms(updatedTerms);
-          }
-
-          if (termTaskThreads[entityLink]) {
-            const updatedThreads = { ...termTaskThreads };
-            updatedThreads[entityLink] = updatedThreads[entityLink].filter(
-              (task) => !(task.id && task.id.toString() === taskId)
-            );
-
-            setTermTaskThreads(updatedThreads);
-          }
+        if (!glossaryChildTerms || !glossaryTermFqn) {
+          return;
         }
+
+        const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
+
+        if (isPendingFurtherApproval) {
+          notifyPendingApprovalTasks(entityLink, updatedTask);
+
+          return;
+        }
+
+        applyGlossaryTermApprovalOutcome(
+          glossaryTermFqn,
+          getTaskResolutionStatus(data.newValue),
+          entityLink,
+          taskId
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -822,68 +1017,25 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         className: 'glossary-name-column',
         ellipsis: true,
         width: tableColumnsWidth.name,
-        render: (_, record) => {
-          const isLoadMoreRow = record.isLoadMoreButton;
-
-          if (isLoadMoreRow) {
-            const parentRecord = (
-              record as ModifiedGlossaryTerm & {
-                parentRecord?: ModifiedGlossaryTerm;
-              }
-            ).parentRecord;
-            const isLoading =
-              loadingChildren[parentRecord?.fullyQualifiedName || ''];
-
-            const loadedCount = parentRecord?.children?.length ?? 0;
-            const totalCount = parentRecord?.childrenCount ?? 0;
-            const remainingCount = totalCount - loadedCount;
-
-            return (
-              <Button
-                className="text-primary"
-                data-testid="load-more-children-button"
-                loading={isLoading}
-                size="small"
-                type="link"
-                onClick={() =>
-                  parentRecord && handleLoadMoreChildren(parentRecord)
-                }>
-                {t('label.view-more-count', {
-                  countValue: remainingCount,
-                })}
-              </Button>
-            );
-          }
-
-          const name = getEntityName(record);
-
-          return (
-            <>
-              {record.style?.iconURL && (
-                <img
-                  alt={record.name}
-                  className="m-r-xss vertical-baseline"
-                  data-testid="tag-icon"
-                  height={12}
-                  src={record.style.iconURL}
-                />
-              )}
-              <Link
-                className="cursor-pointer vertical-baseline"
-                data-testid={name}
-                style={{ color: record.style?.color }}
-                to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
-                {name}
-              </Link>
-            </>
-          );
-        },
+        render: (_, record) =>
+          record.isLoadMoreButton ? (
+            <LoadMoreNameCell
+              loadingChildren={loadingChildren}
+              record={record}
+              onLoadMore={handleLoadMoreChildren}
+            />
+          ) : (
+            <GlossaryTermNameCell
+              expandedRowKeys={expandedRowKeys}
+              loadedNestedCountByFqn={loadedNestedCountByFqn}
+              record={record}
+            />
+          ),
       },
       {
         title: t('label.description'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: tableColumnsWidth.description,
         render: (description: string, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 
@@ -891,14 +1043,24 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             return null;
           }
 
-          return description?.trim() ? (
-            <RichTextEditorPreviewerNew
-              enableSeeMoreVariant
-              markdown={description}
-              maxLength={120}
-            />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+          return (
+            <div
+              style={{
+                maxWidth: tableColumnsWidth.descriptionMax,
+                minWidth: tableColumnsWidth.descriptionMin,
+              }}>
+              {description?.trim() ? (
+                <RichTextEditorPreviewerNew
+                  clampByLines
+                  enableSeeMoreVariant
+                  markdown={description}
+                />
+              ) : (
+                <Typography color="secondary">
+                  {t('label.no-description')}
+                </Typography>
+              )}
+            </div>
           );
         },
       },
@@ -1086,6 +1248,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleRejectGlossaryTerm,
     handleLoadMoreChildren,
     loadingChildren,
+    expandedRowKeys,
+    loadedNestedCountByFqn,
   ]);
 
   const handleCheckboxChange = useCallback(
@@ -1133,30 +1297,31 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const toggleExpandAll = useCallback(async () => {
-    setToggleExpandBtn((prev) => !prev);
-    if (expandedRowKeys.length === expandableKeys.length) {
-      // Collapse all - immediate UI update
+    // Drive the action off the expand-all mode flag, not a row-count equality:
+    // a partially loaded tree (only the first page of nested terms) never has
+    // every expandable row expanded, so a row-count check would wrongly treat
+    // a second click as another expand and reset the accumulated pages.
+    if (toggleExpandBtn) {
+      // Collapse all - reload the first page of top-level terms and clear the
+      // accumulated expand-all tree state so a later expand starts clean.
+      setToggleExpandBtn(false);
       setExpandedRowKeys([]);
+      setCurrentPage(1);
+      setExpandTree({ loaded: 0, total: 0 });
+      expandedTreeFlatRef.current = [];
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: undefined,
+        before: undefined,
+      }));
       fetchAllTerms();
     } else {
+      // Enter expand-all mode explicitly so the "load more" bar stays visible
+      // through subsequent renders (e.g. after a manual row collapse).
+      setToggleExpandBtn(true);
       fetchExpadedTree();
     }
-  }, [
-    glossaryTerms,
-    glossaryChildTerms,
-    setGlossaryChildTerms,
-    loadingChildren,
-    setLoadingChildren,
-    expandedRowKeys,
-    expandableKeys,
-    setExpandedRowKeys,
-    showErrorToast,
-    selectedStatus,
-  ]);
-
-  const isAllExpanded = useMemo(() => {
-    return expandedRowKeys.length === expandableKeys.length;
-  }, [expandedRowKeys, expandableKeys]);
+  }, [toggleExpandBtn, fetchAllTerms, fetchExpadedTree, handlePagingChange]);
 
   const statusDropdownMenu: MenuProps = useMemo(
     () => ({
@@ -1232,8 +1397,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
+    (value: string) => {
       setSearchInput(value);
       debouncedSetSearchTerm(value);
     },
@@ -1245,7 +1409,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     if (isExpandingAll) {
       expandCollapseLabel = t('label.loading');
-    } else if (isAllExpanded) {
+    } else if (toggleExpandBtn) {
       expandCollapseLabel = t('label.collapse-all');
     } else {
       expandCollapseLabel = t('label.expand-all');
@@ -1254,13 +1418,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return (
       <>
         <Input
-          allowClear
-          className="flex-1"
-          data-testid="search-glossary-terms-input"
+          className="tw:mr-auto tw:w-80"
+          inputDataTestId="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
           })}
-          style={{ minWidth: 120 }}
+          size="sm"
           value={searchInput}
           onChange={handleSearchChange}
         />
@@ -1299,7 +1462,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               ) : (
                 <Icon
                   className="text-primary"
-                  component={isAllExpanded ? DownUpArrowIcon : UpDownArrowIcon}
+                  component={
+                    toggleExpandBtn ? DownUpArrowIcon : UpDownArrowIcon
+                  }
                   height="14px"
                 />
               )}
@@ -1310,7 +1475,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       </>
     );
   }, [
-    isAllExpanded,
+    toggleExpandBtn,
     isExpandingAll,
     isStatusDropdownVisible,
     statusDropdownMenu,
@@ -1346,62 +1511,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
-      expandIcon: ({ expanded, onExpand, record }) => {
-        const isLoadMoreRow = record.isLoadMoreButton;
-
-        if (isLoadMoreRow) {
-          return (
-            <>
-              <AriaButton
-                aria-label={t('label.move-the-entity', {
-                  entity: t('label.term-lowercase'),
-                })}
-                className="glossary-term-drag-handle-hidden"
-                slot="drag">
-                <span />
-              </AriaButton>
-              <span className="expand-cell-empty-icon-container" />
-            </>
-          );
-        }
-
-        const { children, childrenCount } = record;
-        const isLoading = loadingChildren[record.fullyQualifiedName || ''];
-        const dragHandle = (
-          <AriaButton
-            aria-label={t('label.move-the-entity', {
-              entity: t('label.term-lowercase'),
-            })}
-            className="glossary-term-drag-handle m-r-xs"
-            slot="drag">
-            <IconDrag className="drag-icon" height={12} width={8} />
-          </AriaButton>
-        );
-
-        return (childrenCount ?? children?.length ?? 0) > 0 ? (
-          <>
-            {dragHandle}
-            {isLoading ? (
-              <span className="m-r-xs expand-loader">
-                <Loader size="x-small" />
-              </span>
-            ) : (
-              <Icon
-                className="m-r-xs vertical-baseline"
-                component={expanded ? IconDown : IconRight}
-                data-testid="expand-icon"
-                style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
-                onClick={(e) => onExpand(record, e)}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {dragHandle}
-            <span className="expand-cell-empty-icon-container" />
-          </>
-        );
-      },
+      expandIcon: (props) =>
+        renderGlossaryExpandIcon(props, loadingChildren, t),
       expandedRowKeys: expandedRowKeys,
       onExpand: async (expanded, record) => {
         if (expanded) {
@@ -1431,11 +1542,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       rowExpandable: (record) => {
         const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
+        const hasChildren =
+          (rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0;
 
-        return (
-          !isLoadMoreRow &&
-          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
-        );
+        return !isLoadMoreRow && hasChildren;
       },
     }),
     [
@@ -1709,23 +1819,61 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
-  // Trigger new fetch when search term or status filter changes
+  // Trigger new fetch when search term or status filter changes. Both reset
+  // pagination back to the first page.
   useEffect(() => {
     if (
       activeGlossary &&
       previousGlossaryFQN === activeGlossary?.fullyQualifiedName
     ) {
-      if (searchTerm) {
-        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
-      }
+      setCurrentPage(1);
+      handlePagingChange((prev) => ({
+        ...prev,
+        after: undefined,
+        before: undefined,
+      }));
       fetchAllTerms();
     }
   }, [searchTerm, selectedStatus]);
 
   // Check if this is due to search or filter returning no results
-  const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
+  const isSearchActive = hasActiveSearchTerm(searchTerm);
   const isStatusFilterActive = !selectedStatus.includes('all');
   const hasNoTerms = isEmpty(glossaryTerms);
+
+  const showPagination = glossaryTerms.length > 0;
+  // In expand-all mode, offer a "load more" affordance instead of page
+  // navigation: the tree is fetched a page of nested terms at a time.
+  const showExpandTreeLoadMore = computeShowExpandTreeLoadMore(
+    toggleExpandBtn,
+    expandTree.after
+  );
+
+  const handleExpandTreeLoadMore = () => {
+    if (expandTree.after) {
+      fetchExpadedTree(true);
+    }
+  };
+
+  const handleGlossaryTermPageChange = ({
+    currentPage: nextPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    setCurrentPage(nextPage);
+
+    // Search results are offset-paged; the listing is cursor-paged.
+    if (isSearchActive) {
+      fetchAllTerms({ offset: (nextPage - 1) * pageSize });
+
+      return;
+    }
+
+    const cursor =
+      cursorType === CursorType.BEFORE ? paging.before : paging.after;
+    fetchAllTerms(
+      cursorType === CursorType.BEFORE ? { before: cursor } : { after: cursor }
+    );
+  };
 
   const glossaryPlaceholderText = useMemo(() => {
     if (isSearchActive && searchTerm) {
@@ -1739,176 +1887,150 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
   if (
-    hasNoTerms &&
-    !isSearchActive &&
-    totalTermsCount === 0 &&
-    !isTableLoading
+    shouldShowEmptyPlaceholder(
+      hasNoTerms,
+      isSearchActive,
+      totalTermsCount,
+      isTableLoading
+    )
   ) {
-    // A top-level glossary always allows adding terms; for a glossary term,
-    // sub-terms can only be added once the parent term is approved.
-    const canCreateTerm =
-      permissions.Create &&
-      (isGlossary || glossaryTermStatus === EntityStatus.Approved);
-
     return (
-      <div
-        className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
-        ref={tableContainerRef}>
-        <EmptyPlaceholder
-          data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
-          description={t('message.glossary-term-empty-description')}
-          footer={
-            canCreateTerm ? (
-              <CoreButton
-                color="primary"
-                data-testid="add-placeholder-button"
-                iconLeading={Plus}
-                size="sm"
-                onPress={handleAddGlossaryTermClick}>
-                {t('label.new-term')}
-              </CoreButton>
-            ) : undefined
-          }
-          icon={<File02 className="tw:text-fg-warning-primary" />}
-          title={t('message.add-the-first-term')}
-          variant="blank"
-        />
-      </div>
+      <GlossaryTermEmptyPlaceholder
+        canCreate={Boolean(permissions.Create)}
+        containerRef={tableContainerRef}
+        glossaryTermStatus={glossaryTermStatus}
+        isGlossary={isGlossary}
+        t={t}
+        onAddGlossaryTermClick={handleAddGlossaryTermClick}
+      />
     );
   }
+
+  // Renders the table (or its empty state) plus the pagination / expand-all
+  // load-more affordance below it — kept as its own closure so the branching
+  // between the two table variants and the two footers stays out of the
+  // component's own cyclomatic complexity.
+  const renderTableSection = () =>
+    glossaryTerms.length > 0 ? (
+      <TableCard.Root
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border tw:border-secondary tw:outline-0"
+        size="sm">
+        <Table
+          cellClassName="tw:p-2 tw:align-middle"
+          columns={columns}
+          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1 tw:!overflow-auto"
+          data-testid="glossary-terms-table"
+          dataSource={filteredGlossaryTerms}
+          defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+          dragAndDropHooks={dragAndDropHooks}
+          expandable={expandableConfig}
+          extraTableFilters={extraTableFilters}
+          loading={isTableLoading || isExpandingAll}
+          pagination={false}
+          rowClassName={getRowClassName}
+          rowKey="fullyQualifiedName"
+          scroll={GLOSSARY_TABLE_SCROLL}
+          size="small"
+          staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+        />
+        {showExpandTreeLoadMore && (
+          <div
+            className="tw:flex tw:shrink-0 tw:items-center tw:gap-4 tw:border-t tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3"
+            data-testid="expand-tree-load-more">
+            <CoreButton
+              color="secondary"
+              data-testid="expand-tree-load-more-button"
+              isDisabled={isLoadingMoreTree}
+              isLoading={isLoadingMoreTree}
+              size="sm"
+              onPress={handleExpandTreeLoadMore}>
+              {t('label.load-more')}
+            </CoreButton>
+            <span className="tw:text-sm tw:text-tertiary">
+              {t('label.showing-count-of-total-nested-terms', {
+                current: expandTree.loaded,
+                total: expandTree.total,
+              })}
+            </span>
+          </div>
+        )}
+        {showPagination && (
+          <div className="tw:shrink-0 tw:border-t tw:border-secondary tw:py-4">
+            <NextPrevious
+              currentPage={currentPage}
+              isLoading={isTableLoading}
+              isNumberBased={isSearchActive}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleGlossaryTermPageChange}
+            />
+          </div>
+        )}
+      </TableCard.Root>
+    ) : (
+      // Show empty state within the table container when search returns no results
+      // This keeps the search bar and filters visible
+      <TableCard.Root
+        className="tw:border tw:border-secondary tw:outline-0"
+        size="sm">
+        <Table
+          columns={columns}
+          containerClassName="glossary-terms-table tw:!border-0 tw:!rounded-none"
+          data-testid="glossary-terms-table"
+          dataSource={[]}
+          defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+          dragAndDropHooks={dragAndDropHooks}
+          expandable={expandableConfig}
+          extraTableFilters={extraTableFilters}
+          loading={isTableLoading}
+          locale={{
+            emptyText: (
+              <ErrorPlaceHolder
+                className="p-md"
+                placeholderText={glossaryPlaceholderText}
+                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+              />
+            ),
+          }}
+          pagination={false}
+          rowClassName={getRowClassName}
+          rowKey="fullyQualifiedName"
+          scroll={GLOSSARY_TABLE_SCROLL}
+          size="small"
+          staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
+        />
+      </TableCard.Root>
+    );
 
   return (
     <Row className={className} gutter={[0, 16]}>
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
       <Col className="w-full" ref={tableContainerRef} span={24}>
         <div
-          className={classNames('glossary-terms-scroll-container', {
-            'glossary-terms-scroll-container-drop-target': isTopLevelDropActive,
-          })}
+          className={classNames(
+            'glossary-terms-scroll-container tw:flex tw:flex-col',
+            {
+              'glossary-terms-scroll-container-drop-target':
+                isTopLevelDropActive,
+            }
+          )}
           data-testid="glossary-terms-scroll-container"
           ref={scrollContainerRef}
           style={{ position: 'relative' }}>
-          {glossaryTerms.length > 0 ? (
-            <>
-              <TableCard.Root size="sm">
-                <Table
-                  columns={columns}
-                  containerClassName="glossary-terms-table drop-over-background"
-                  data-testid="glossary-terms-table"
-                  dataSource={filteredGlossaryTerms}
-                  defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-                  dragAndDropHooks={dragAndDropHooks}
-                  expandable={expandableConfig}
-                  extraTableFilters={extraTableFilters}
-                  loading={isTableLoading || isExpandingAll}
-                  pagination={false}
-                  rowClassName={getRowClassName}
-                  rowKey="fullyQualifiedName"
-                  scroll={GLOSSARY_TABLE_SCROLL}
-                  size="small"
-                  staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-                />
-              </TableCard.Root>
-              {isLoadingMore && (
-                <div className="m-t-md m-b-md text-center p-y-lg">
-                  <Loader size="small" />
-                </div>
-              )}
-            </>
-          ) : (
-            // Show empty state within the table container when search returns no results
-            // This keeps the search bar and filters visible
-            <TableCard.Root size="sm">
-              <Table
-                columns={columns}
-                containerClassName="glossary-terms-table"
-                data-testid="glossary-terms-table"
-                dataSource={[]}
-                defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
-                dragAndDropHooks={dragAndDropHooks}
-                expandable={expandableConfig}
-                extraTableFilters={extraTableFilters}
-                loading={isTableLoading}
-                locale={{
-                  emptyText: (
-                    <ErrorPlaceHolder
-                      className="p-md"
-                      placeholderText={glossaryPlaceholderText}
-                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-                    />
-                  ),
-                }}
-                pagination={false}
-                rowClassName={getRowClassName}
-                rowKey="fullyQualifiedName"
-                scroll={GLOSSARY_TABLE_SCROLL}
-                size="small"
-                staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
-              />
-            </TableCard.Root>
-          )}
+          {renderTableSection()}
         </div>
-        <Modal
-          centered
-          destroyOnClose
-          closable={false}
-          confirmLoading={isTableLoading}
-          data-testid="confirmation-modal"
-          maskClosable={false}
-          okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
-          okText={t('label.move')}
-          open={isModalOpen}
-          title={
-            <>
-              <WarningOutlined className="m-r-xs warning-icon" />
-              {t('label.move-the-entity', {
-                entity: t('label.glossary-term'),
-              })}
-            </>
-          }
-          onCancel={onDragConfirmationModalClose}
-          onOk={handleChangeGlossaryTerm}>
-          <Transi18next
-            i18nKey="message.entity-transfer-message"
-            renderElement={<strong />}
-            values={{
-              from: movedGlossaryTerm?.from.name,
-              to:
-                movedGlossaryTerm?.to?.name ??
-                (activeGlossary && getEntityName(activeGlossary)),
-              entity: isUndefined(movedGlossaryTerm?.to)
-                ? ''
-                : t('label.term-lowercase'),
-            }}
-          />
-          {hasReviewers && (
-            <div className="m-t-md">
-              <Checkbox
-                checked={confirmCheckboxChecked}
-                className="text-grey-700"
-                data-testid="confirm-status-checkbox"
-                onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
-                <span>
-                  <Transi18next
-                    i18nKey="message.entity-transfer-confirmation-message"
-                    renderElement={<strong />}
-                    values={{
-                      from: movedGlossaryTerm?.from.name,
-                    }}
-                  />
-                  <span className="d-inline-block m-l-xss">
-                    <StatusBadge
-                      className="p-x-xs p-y-xss"
-                      dataTestId=""
-                      label={EntityStatus.InReview}
-                      status={EntityStatusClass[EntityStatus.InReview]}
-                    />
-                  </span>
-                </span>
-              </Checkbox>
-            </div>
-          )}
-        </Modal>
+        <GlossaryTermMoveConfirmationModal
+          activeGlossary={activeGlossary}
+          confirmCheckboxChecked={confirmCheckboxChecked}
+          hasReviewers={hasReviewers}
+          isModalOpen={isModalOpen}
+          isTableLoading={isTableLoading}
+          movedGlossaryTerm={movedGlossaryTerm}
+          t={t}
+          onChangeGlossaryTerm={handleChangeGlossaryTerm}
+          onConfirmCheckboxChange={setConfirmCheckboxChecked}
+          onDragConfirmationModalClose={onDragConfirmationModalClose}
+        />
       </Col>
     </Row>
   );

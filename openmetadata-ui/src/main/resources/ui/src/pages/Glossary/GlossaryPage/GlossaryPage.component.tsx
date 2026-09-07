@@ -508,6 +508,23 @@ const GlossaryPage = () => {
     );
   }
 
+  const renderEmptyStateFooter = () => {
+    if (!createGlossaryPermission) {
+      return undefined;
+    }
+
+    return (
+      <CoreButton
+        color="primary"
+        data-testid="add-glossary"
+        iconLeading={Plus}
+        size="sm"
+        onPress={handleAddGlossaryClick}>
+        {t('label.add-entity', { entity: t('label.glossary') })}
+      </CoreButton>
+    );
+  };
+
   if (glossaries.length === 0 && !isLoading) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
@@ -533,18 +550,7 @@ const GlossaryPage = () => {
               description: t('message.link-them-to-data-description'),
             },
           ]}
-          footer={
-            createGlossaryPermission ? (
-              <CoreButton
-                color="primary"
-                data-testid="add-glossary"
-                iconLeading={Plus}
-                size="sm"
-                onPress={handleAddGlossaryClick}>
-                {t('label.add-entity', { entity: t('label.glossary') })}
-              </CoreButton>
-            ) : undefined
-          }
+          footer={renderEmptyStateFooter()}
           title={t('message.build-your-business-dictionary')}
           variant="features"
         />
@@ -552,17 +558,19 @@ const GlossaryPage = () => {
     );
   }
 
-  let glossaryElement;
-  if (isRightPanelLoading) {
-    glossaryElement = <Loader />;
-  } else if (isTermNotFound) {
-    glossaryElement = (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
-      </ErrorPlaceHolder>
-    );
-  } else {
-    glossaryElement = (
+  const renderGlossaryElement = () => {
+    if (isRightPanelLoading) {
+      return <Loader />;
+    }
+    if (isTermNotFound) {
+      return (
+        <ErrorPlaceHolder>
+          {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
+        </ErrorPlaceHolder>
+      );
+    }
+
+    return (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -578,7 +586,9 @@ const GlossaryPage = () => {
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
     );
-  }
+  };
+
+  const glossaryElement = renderGlossaryElement();
 
   const resizableLayout = isGlossaryActive ? (
     <ResizableLeftPanels

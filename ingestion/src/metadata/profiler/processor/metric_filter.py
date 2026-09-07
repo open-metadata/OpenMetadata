@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Metric filter class for profiler"""
 
-from typing import List, Optional, Set, Tuple, Type, Union, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column
 
@@ -49,11 +49,11 @@ class MetricFilter:
     @inject
     def __init__(
         self,
-        metrics: Tuple[Type[TMetric]],  # noqa: UP006
-        global_profiler_config: Optional[ProfilerConfiguration] = None,  # noqa: UP045
-        table_profiler_config: Optional[TableProfilerConfig] = None,  # noqa: UP045
-        column_profiler_config: Optional[List[ColumnProfilerConfig]] = None,  # noqa: UP006, UP045
-        metrics_registry: Inject[Type[MetricRegistry]] = None,  # noqa: UP006
+        metrics: tuple[type[TMetric]],
+        global_profiler_config: ProfilerConfiguration | None = None,
+        table_profiler_config: TableProfilerConfig | None = None,
+        column_profiler_config: list[ColumnProfilerConfig] | None = None,
+        metrics_registry: Inject[type[MetricRegistry]] = None,
     ):
         if metrics_registry is None:
             raise DependencyNotFoundError(
@@ -67,7 +67,7 @@ class MetricFilter:
         self.column_profiler_config = column_profiler_config
 
     @property
-    def static_metrics(self) -> List[Type[StaticMetric]]:  # noqa: UP006
+    def static_metrics(self) -> list[type[StaticMetric]]:
         """Get static metrics.
 
         Returns:
@@ -76,7 +76,7 @@ class MetricFilter:
         return self.filter_by_type(StaticMetric)
 
     @property
-    def composed_metrics(self) -> List[Type[ComposedMetric]]:  # noqa: UP006
+    def composed_metrics(self) -> list[type[ComposedMetric]]:
         """Get composed metrics. Composed metrics are computed from other metrics.
 
         Returns:
@@ -85,7 +85,7 @@ class MetricFilter:
         return self.filter_by_type(ComposedMetric)
 
     @property
-    def custom_metrics(self) -> List[Type[CustomMetric]]:  # noqa: UP006
+    def custom_metrics(self) -> list[type[CustomMetric]]:
         """Get custom metrics. Custom metrics are user-defined metrics.
 
         Returns:
@@ -94,7 +94,7 @@ class MetricFilter:
         return self.filter_by_type(CustomMetric)
 
     @property
-    def query_metrics(self) -> List[Type[QueryMetric]]:  # noqa: UP006
+    def query_metrics(self) -> list[type[QueryMetric]]:
         """Get query metrics. Query metrics are computed from a query.
 
         Returns:
@@ -103,7 +103,7 @@ class MetricFilter:
         return self.filter_by_type(QueryMetric)
 
     @property
-    def system_metrics(self) -> List[Type[SystemMetric]]:  # noqa: UP006
+    def system_metrics(self) -> list[type[SystemMetric]]:
         """Get system metrics. System metrics represent system-level metrics.
 
         Returns:
@@ -112,7 +112,7 @@ class MetricFilter:
         return self.filter_by_type(SystemMetric)
 
     @property
-    def hybrid_metric(self) -> List[Type[HybridMetric]]:  # noqa: UP006
+    def hybrid_metric(self) -> list[type[HybridMetric]]:
         """Get hybrid metrics. Hybrid metrics are a combination of different types of metrics.
 
         Returns:
@@ -122,8 +122,8 @@ class MetricFilter:
 
     @staticmethod
     def filter_empty_metrics(
-        metric_funcs: List[ThreadPoolMetrics],  # noqa: UP006
-    ) -> List[ThreadPoolMetrics]:  # noqa: UP006
+        metric_funcs: list[ThreadPoolMetrics],
+    ) -> list[ThreadPoolMetrics]:
         """filter thread pool object where metrics attribute is empty
 
         Args:
@@ -134,7 +134,7 @@ class MetricFilter:
         """
         return [metric for metric in metric_funcs if metric.metrics]
 
-    def filter_by_type(self, _type: Type[TMetric]) -> List[Type[TMetric]]:  # noqa: UP006
+    def filter_by_type(self, _type: type[TMetric]) -> list[type[TMetric]]:
         """filter a list of metric by type
 
         Args:
@@ -147,10 +147,10 @@ class MetricFilter:
 
     def filter_column_metrics_from_global_config(
         self,
-        metrics: List[Type[TMetric]],  # noqa: UP006
-        column: Union[Column, SQALikeColumn],  # noqa: UP007
+        metrics: list[type[TMetric]],
+        column: Column | SQALikeColumn,
         service_type: databaseService.DatabaseServiceType,
-    ) -> List[Optional[Type[TMetric]]]:  # noqa: UP006, UP045
+    ) -> list[type[TMetric] | None]:
         """Filter metrics based on profiler global configuration. We first check if we have config
         or if the config has metricConfiguration. If not, we return all metrics. If we have config
         we'll get the om Dtype from the SQA type (or directly from the SQALikeColumn for non SQA sources).
@@ -171,7 +171,7 @@ class MetricFilter:
             return [metric for metric in metrics if metric.is_col_metric()]
 
         self.global_profiler_config.metricConfiguration = cast(
-            List[MetricConfigurationDefinition],  # noqa: TC006, UP006
+            list[MetricConfigurationDefinition],  # noqa: TC006
             self.global_profiler_config.metricConfiguration,
         )
 
@@ -180,7 +180,7 @@ class MetricFilter:
         if not isinstance(column, SQALikeColumn):
             mapper = converter_registry[service_type]
             sqa_to_om_types = mapper.map_sqa_to_om_types()
-            om_data_types: Optional[Set] = sqa_to_om_types.get(column.type.__class__, None)  # noqa: UP006, UP045
+            om_data_types: set | None = sqa_to_om_types.get(column.type.__class__, None)
         else:
             om_data_types = {column.type}
 
@@ -212,9 +212,9 @@ class MetricFilter:
 
     def filter_column_metrics_from_table_config(
         self,
-        metrics: List[Type[TMetric]],  # noqa: UP006
-        column: Union[Column, SQALikeColumn],  # noqa: UP007
-    ) -> List[Type[TMetric]]:  # noqa: UP006
+        metrics: list[type[TMetric]],
+        column: Column | SQALikeColumn,
+    ) -> list[type[TMetric]]:
         """Filter column metrics based on table configuration. Table configuration can be source
         either from the column config or the table config (column config takes precedence over table config)
 
@@ -230,7 +230,7 @@ class MetricFilter:
         columns_config = (
             self.column_profiler_config if self.column_profiler_config else self.table_profiler_config.includeColumns
         )
-        columns_config = cast(List[ColumnProfilerConfig], columns_config)  # noqa: TC006, UP006
+        columns_config = cast(list[ColumnProfilerConfig], columns_config)  # noqa: TC006
         metric_names = next(
             (
                 include_columns.metrics
@@ -252,10 +252,10 @@ class MetricFilter:
 
     def get_column_metrics(
         self,
-        metric_type: Type[TMetric],  # noqa: UP006
+        metric_type: type[TMetric],
         column: Column,
-        service_type: Optional[databaseService.DatabaseServiceType],  # noqa: UP045
-    ) -> List[Type[TMetric]]:  # noqa: UP006
+        service_type: databaseService.DatabaseServiceType | None,
+    ) -> list[type[TMetric]]:
         """Get column metrics. Column metrics are metrics computed for columns.
 
         Returns:

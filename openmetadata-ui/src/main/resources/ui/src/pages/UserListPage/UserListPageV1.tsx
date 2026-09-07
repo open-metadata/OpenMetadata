@@ -60,6 +60,9 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
+
+const extractSource = <T,>({ _source }: { _source: T }): T => _source;
+
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();
@@ -159,7 +162,7 @@ const UserListPageV1 = () => {
       })
         .then((res) => {
           if (currentSearchId === latestSearchIdRef.current) {
-            const data = res.hits.hits.map(({ _source }) => _source);
+            const data = res.hits.hits.map(extractSource);
             handlePagingChange({
               total: res.hits.total.value,
             });
@@ -439,7 +442,10 @@ const UserListPageV1 = () => {
   }, [isAdminPage, searchValue]);
 
   const tablePlaceholder = useMemo(() => {
-    return isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue ? (
+    const shouldShowErrorPlaceHolder =
+      isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue;
+
+    return shouldShowErrorPlaceHolder ? (
       errorPlaceHolder
     ) : (
       <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />

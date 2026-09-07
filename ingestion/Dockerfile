@@ -47,12 +47,20 @@ RUN apt-get -qq update \
   # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
+  # linux-libc-dev (source pkg "linux") -> kernel headers that libc6-dev pulls in for
+  # build-essential. A container runs the host kernel, so the headers are a build
+  # artifact and the kernel CVEs scanners report against them are not reachable at
+  # runtime. Tracked here so the image takes bookworm-security's kernel headers
+  # rather than whatever the base image froze. This does NOT clear CVE-2026-68082:
+  # that fix exists only in trixie-security (6.12.105-1, DSA-6466-1), and bookworm
+  # and bookworm-security are both still "vulnerable" on the 6.1 line. The image
+  # that reports it is trixie-based -- see ingestion/operators/docker/Dockerfile.
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
   # docker-ce-cli comes from the airflow base and nothing in this image runs it:
   # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
   # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
