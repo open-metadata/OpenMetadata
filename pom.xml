@@ -161,7 +161,7 @@
     <simplejavamail.version>8.12.6</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
-    <unboundsdk.version>6.0.11</unboundsdk.version>
+    <unboundsdk.version>7.0.5</unboundsdk.version>
     <dropwizard-web.version>3.0.1</dropwizard-web.version>
     <snakeyaml.version>2.3</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
