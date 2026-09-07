@@ -38,7 +38,6 @@ import {
   toastNotification,
   uuid,
   visitOwnProfilePage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -51,6 +50,7 @@ import {
   addTeamOwnerToEntity,
   addUserInTeam,
   addUserTeam,
+  applyEntityTypeFilterValue,
   checkTeamTabCount,
   createTeam,
   executionOnOwnerGroupTeam,
@@ -59,9 +59,11 @@ import {
   hardDeleteTeam,
   openAddTeamModal,
   searchTeam,
+  selectAssetsFilterFromDropdown,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
   verifyTeamListingAssetCount,
+  waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
 
 base.describe.configure({ mode: 'serial' });
@@ -715,64 +717,61 @@ test.describe('Teams Page', () => {
     }
   });
 
-  test('Team assets entity type filter should apply, toggle off and clear', async ({
-    page,
-  }) => {
-    test.slow();
-    const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
-    const topic = new TopicClass();
-    const filterTeam = new TeamClass({
-      name: `pw-asset-filter-${id}`,
-      displayName: `pw team asset filter ${id}`,
-      description: 'playwright team for asset entity type filter',
-      teamType: 'Group',
+  test.describe('Team assets entity type filter', () => {
+    const filterTable = new TableClass();
+    const filterTopic = new TopicClass();
+    const filterTeam = new TeamClass();
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await filterTable.create(apiContext);
+        await filterTopic.create(apiContext);
+        await filterTeam.create(apiContext);
+
+        const ownerPatch: Operation[] = [
+          {
+            op: 'add',
+            path: '/owners/-',
+            value: { id: filterTeam.responseData.id, type: 'team' },
+          },
+        ];
+        await filterTable.patch({ apiContext, patchData: ownerPatch });
+        await filterTopic.patch({ apiContext, patchData: ownerPatch });
+      } finally {
+        await afterAction();
+      }
     });
 
-    await table.create(apiContext);
-    await topic.create(apiContext);
-    await filterTeam.create(apiContext);
-
-    const ownerPatch: Operation[] = [
-      {
-        op: 'add',
-        path: '/owners/-',
-        value: { id: filterTeam.responseData.id, type: 'team' },
-      },
-    ];
-    await table.patch({ apiContext, patchData: ownerPatch });
-    await topic.patch({ apiContext, patchData: ownerPatch });
-
-    const tableFqn = table.entityResponseData?.['fullyQualifiedName'];
-    const topicFqn = topic.entityResponseData?.['fullyQualifiedName'];
-    const tableCard = page.getByTestId(`table-data-card_${tableFqn}`);
-    const topicCard = page.getByTestId(`table-data-card_${topicFqn}`);
-    const entityTypeFilterChip = page.getByRole('button', {
-      name: 'Entity Type',
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await filterTable.delete(apiContext);
+        await filterTopic.delete(apiContext);
+        await filterTeam.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     });
 
-    const selectEntityTypeFromMenu = async () => {
-      await page.getByTestId('asset-filter-button').click();
-      const menuItem = page.getByRole('menuitem', { name: 'Entity Type' });
-      await expect(menuItem).toBeVisible();
-      await waitForAntdPopupToSettle(page);
-      await menuItem.click();
-    };
+    test('should apply, toggle off and clear the entity type filter', async ({
+      page,
+    }) => {
+      const teamId = filterTeam.responseData.id;
+      const tableCard = page.getByTestId(
+        `table-data-card_${filterTable.entityResponseData?.['fullyQualifiedName']}`
+      );
+      const topicCard = page.getByTestId(
+        `table-data-card_${filterTopic.entityResponseData?.['fullyQualifiedName']}`
+      );
+      const entityTypeFilterChip = page.getByRole('button', {
+        name: 'Entity Type',
+      });
 
-    const applyTableEntityTypeFilter = async () => {
-      await entityTypeFilterChip.click();
-      await page.getByTestId('table-checkbox').check();
-      const filterResponse = page.waitForResponse('/api/v1/search/query?q=*');
-      await page.getByTestId('update-btn').click();
-      await filterResponse;
-      await waitForAllLoadersToDisappear(page);
-    };
-
-    try {
       await test.step('Apply entity type filter', async () => {
         await filterTeam.visitTeamPage(page);
 
-        const assetsResponse = page.waitForResponse('/api/v1/search/query?q=*');
+        const assetsResponse = waitForTeamAssetsSearchResponse(page, teamId);
         await page.getByTestId('assets').click();
         await assetsResponse;
         await waitForAllLoadersToDisappear(page);
@@ -780,50 +779,47 @@ test.describe('Teams Page', () => {
         await expect(tableCard).toBeVisible();
         await expect(topicCard).toBeVisible();
 
-        await selectEntityTypeFromMenu();
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
 
         await expect(entityTypeFilterChip).toBeVisible();
 
-        await applyTableEntityTypeFilter();
+        await applyEntityTypeFilterValue(page, teamId, 'table-checkbox');
 
         await expect(tableCard).toBeVisible();
         await expect(topicCard).not.toBeVisible();
       });
 
       await test.step('Toggle the filter off from the dropdown', async () => {
-        const removeFilterResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*'
+        const removeFilterResponse = waitForTeamAssetsSearchResponse(
+          page,
+          teamId
         );
-        await selectEntityTypeFromMenu();
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
         await removeFilterResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await expect(entityTypeFilterChip).not.toBeVisible();
         await expect(tableCard).toBeVisible();
         await expect(topicCard).toBeVisible();
+        await expect(entityTypeFilterChip).not.toBeVisible();
       });
 
       await test.step('Clear removes the selected filter entirely', async () => {
-        await selectEntityTypeFromMenu();
-        await applyTableEntityTypeFilter();
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+        await applyEntityTypeFilterValue(page, teamId, 'table-checkbox');
 
+        await expect(tableCard).toBeVisible();
         await expect(topicCard).not.toBeVisible();
 
-        const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+        const clearResponse = waitForTeamAssetsSearchResponse(page, teamId);
         await page.getByText('Clear').click();
         await clearResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await expect(entityTypeFilterChip).not.toBeVisible();
         await expect(tableCard).toBeVisible();
         await expect(topicCard).toBeVisible();
+        await expect(entityTypeFilterChip).not.toBeVisible();
       });
-    } finally {
-      await table.delete(apiContext);
-      await topic.delete(apiContext);
-      await filterTeam.delete(apiContext);
-      await afterAction();
-    }
+    });
   });
 
   test('Delete a user from the table', async ({ page }) => {
