@@ -196,3 +196,28 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="CALL my#proc(1)") == "my#proc"
 
         assert get_procedure_name_from_call(query_text="CALL emp_mgmt.remove_dept(162)") == "remove_dept"
+
+    def test_get_procedure_name_parses_quoted_identifiers(self):
+        """A delimited identifier may contain any character, so the name span has to consume a
+        quoted segment whole rather than character by character. BigQuery needs this for a
+        hyphenated project id, which its unquoted rules (letters, digits, underscore) forbid,
+        and Snowflake for a double-quoted name. Widening the span to allow a bare hyphen instead
+        is not an option, because `SELECT begin_dt - 1 ... WHERE id IN (` would then parse as a
+        call and resolve to a procedure named after a fragment of the WHERE clause.
+
+        https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+        https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+        """
+        assert get_procedure_name_from_call(query_text="CALL `my-project.my_dataset.my_proc`()") == "my_proc"
+
+        assert get_procedure_name_from_call(query_text="CALL `my-project-123.ds.proc`(1)") == "proc"
+
+        assert get_procedure_name_from_call(query_text="CALL my_dataset.my_proc()") == "my_proc"
+
+        assert get_procedure_name_from_call(query_text='CALL "My-Proc"(1)') == '"my-proc"'
+
+        assert get_procedure_name_from_call(query_text='CALL db."My Schema"."My Proc"(1)') == '"my proc"'
+
+        assert get_procedure_name_from_call(query_text="SELECT begin_dt - 1\nFROM t\nWHERE id IN (1,2)") is None
+
+        assert get_procedure_name_from_call(query_text='SELECT begin_dt, "Some Col"\nFROM t\nWHERE x IN (1)') is None

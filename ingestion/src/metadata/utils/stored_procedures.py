@@ -18,20 +18,16 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-# The span between the keyword and the opening paren (or the statement-terminating `end`) is
-# limited to identifier, qualifier and whitespace characters. `\s` already crosses newlines, so a
-# CALL or BEGIN block split over several lines still matches without re.DOTALL, while the walk
-# stops at the first operator or separator. An unbounded `.*?` under re.DOTALL would instead run
-# to the next paren anywhere in the statement, so ordinary SQL that merely contains the substring
-# `call` or `begin` (`call_center`, `begin_date`) would yield a bogus name, and a statement like
-# `UPDATE call_log SET x = pkg.refresh_stats(1)` would resolve to a real procedure and fabricate
-# lineage. The `\b` before each keyword keeps `recall` and similar from matching at all.
-#
-# The class covers everything Oracle's CALL grammar allows between the keyword and the argument
-# list, which is `[schema.][package|type][@dblink] name`. That means `@` for remote calls over a
-# database link, and `$` and `#` because both are legal in an Oracle identifier. Dropping any of
-# them silently stops those calls resolving, which is the same silent lineage loss as #32673.
-_NAME_SPAN = r"[\s\w.@$#`\"]*?"
+# Bounded so the span cannot run to the next paren anywhere in the statement, which would let
+# `UPDATE call_log SET x = pkg.refresh_stats(1)` resolve to a real procedure. `\s` crosses
+# newlines, so multi-line calls match without re.DOTALL. Unquoted covers Oracle's
+# `[schema.][package|type][@dblink] name` and the `$` / `#` its identifiers allow. A quoted
+# segment is taken whole, since a delimited identifier may hold any character, which is how
+# BigQuery spells a hyphenated project id.
+# https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/CALL.html
+# https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+# https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+_NAME_SPAN = r"(?:[\s\w.@$#]|`[^`]*`|\"[^\"]*\")*?"
 NAME_PATTERN = (
     rf"(?<=\bcall){_NAME_SPAN}(?=\()"
     rf"|(?<=\bbegin){_NAME_SPAN}(?=\()"
