@@ -458,6 +458,32 @@ class TestTagAnalyzer:
 
         assert analysis.score == 1.0
 
+    def test_analyze_content_corroborates_each_spacy_entity_type_independently(self, column: Column):
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.PERSON, PIIEntity.LOCATION],
+            ),
+            target=Target.content,
+        )
+        named_entity_tag = TagFactory.create(
+            tag_name="NamedEntity",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Named entity",
+        )
+        analyzer = TagAnalyzer(
+            tag=named_entity_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+        analysis = analyzer.analyze(str_values=["François", "Paris"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
     def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""
         values = ["john@example.com", "jane@test.org", "bob@company.co.uk"]

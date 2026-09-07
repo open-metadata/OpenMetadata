@@ -76,21 +76,30 @@ def _corroborated_content_results(evidence: Sequence[_RecognitionEvidence]) -> l
     """Drop an isolated, uncontextualized spaCy named-entity guess.
 
     Pattern recognizers, vetted date results and context-enhanced NER results are strong
-    enough to stand on their own. Uncontextualized statistical NER needs one independent
-    corroborating entity so a repeated model mistake does not classify the whole column.
+    enough to stand on their own. Each uncontextualized statistical NER type needs one
+    independent corroborating entity so a repeated model mistake does not classify the
+    whole column.
 
     Distinct matches are a recall-first heuristic, not proof that an entity is PII: two
     different spaCy mistakes can still corroborate each other. spaCy assigns the same
     recognizer score to both real and mistaken entities, so a higher score threshold would
     not distinguish them, while requiring more matches would miss sparse PII again.
     """
-    uncertain_ner_evidence = [item for item in evidence if _is_uncontextualized_spacy_named_entity(item.result)]
-    distinct_matches = {match for item in uncertain_ner_evidence if (match := _normalized_match(item))}
+    distinct_matches_by_entity: dict[str, set[str]] = {}
+    for item in evidence:
+        if _is_uncontextualized_spacy_named_entity(item.result) and (match := _normalized_match(item)):
+            distinct_matches_by_entity.setdefault(item.result.entity_type, set()).add(match)
 
-    if len(distinct_matches) >= _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES:
-        return [item.result for item in evidence]
-
-    return [item.result for item in evidence if not _is_uncontextualized_spacy_named_entity(item.result)]
+    corroborated_entities = {
+        entity_type
+        for entity_type, matches in distinct_matches_by_entity.items()
+        if len(matches) >= _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES
+    }
+    return [
+        item.result
+        for item in evidence
+        if not _is_uncontextualized_spacy_named_entity(item.result) or item.result.entity_type in corroborated_entities
+    ]
 
 
 class TagAnalysis(BaseModel):
