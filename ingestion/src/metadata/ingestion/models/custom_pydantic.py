@@ -20,14 +20,14 @@ import json
 import logging
 import os
 import threading
-from typing import Any, Callable, Dict, Literal, Optional, Union  # noqa: UP035
+from collections.abc import Callable
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, WrapSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from pydantic_core.core_schema import SerializationInfo
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.ingestion.models.custom_basemodel_validation import transform_entity_names
 
@@ -64,7 +64,7 @@ class BaseModel(PydanticBaseModel):
     )
 
     @classmethod
-    def model_rebuild(cls, *, _parent_namespace_depth: int = 2, **kwargs: Any) -> Optional[bool]:  # noqa: UP045
+    def model_rebuild(cls, *, _parent_namespace_depth: int = 2, **kwargs: Any) -> bool | None:
         """Rebuild the pydantic-core schema, serialising concurrent builds of the same class."""
         # Every rebuild funnels through here, including pydantic's own lazy repair from
         # MockValSer.__getattr__ (see _mock_val_ser.set_model_mocks), which is otherwise unguarded
@@ -130,18 +130,18 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
-        mask_secrets: Optional[bool] = None,  # noqa: UP045
-        indent: Optional[int] = None,  # noqa: UP045
+        mask_secrets: bool | None = None,
+        indent: int | None = None,
         include: IncEx = None,
         exclude: IncEx = None,
-        context: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
+        context: dict[str, Any] | None = None,
         by_alias: bool = False,
         exclude_unset: bool = True,
         exclude_defaults: bool = False,
         exclude_none: bool = True,
         round_trip: bool = False,
-        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",  # noqa: UP007
-        fallback: Optional[Callable[[Any], Any]] = None,  # noqa: UP045
+        warnings: bool | Literal["none", "warn", "error"] = "none",
+        fallback: Callable[[Any], Any] | None = None,
         serialize_as_any: bool = False,
     ) -> str:
         """
@@ -184,9 +184,9 @@ class BaseModel(PydanticBaseModel):
         self,
         *,
         mask_secrets: bool = False,
-        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",  # noqa: UP007
+        warnings: bool | Literal["none", "warn", "error"] = "none",
         **kwargs: Any,
-    ) -> Dict[str, Any]:  # noqa: UP006
+    ) -> dict[str, Any]:
         if mask_secrets:
             context = kwargs.pop("context", None) or {}
             context["mask_secrets"] = True

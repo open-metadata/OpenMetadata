@@ -22,7 +22,6 @@ which is a no-op by default. This mixin overrides it to do the actual work.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.generated.schema.entity.data.table import TableData
@@ -40,7 +39,7 @@ class FailedSampleValidatorMixin(ABC):
       - filter() -> filter expression (dict for SQA, string for Pandas)
     """
 
-    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
+    def get_inspection_query(self) -> str | None:
         return getattr(self, "_inspection_query", None)
 
     @abstractmethod

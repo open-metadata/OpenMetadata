@@ -14,9 +14,10 @@ Databricks Unity Catalog Source source methods.
 
 import json
 import traceback
+from collections.abc import Callable, Iterable
 from functools import partial
 from threading import RLock
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -185,7 +186,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
             return self._sql_connection_map[thread_id]
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.catalog
 
     def _iterate_listing(self, list_call: Callable[[], Iterable[Any]], listing_name: str) -> Iterable[Any]:
@@ -216,7 +217,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             yield catalog_name
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
@@ -224,7 +225,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue, reportOptionalMemberAccess]
         return cls(config, metadata, incremental_config)
 
-    def _filtered_database_names_for_totals(self) -> List[str]:  # noqa: UP006
+    def _filtered_database_names_for_totals(self) -> list[str]:
         """Filtered database names for the progress denominator. Single configured
         catalog when one is set on the connection, else the filtered result of the
         catalog enumeration. Emits no status side effects."""
@@ -235,7 +236,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
         return result
 
-    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
         """``{database: [schema_names]}`` for every visible catalog from a single
         cross-catalog ``system.information_schema.schemata`` query — one round-trip,
         no per-catalog reconnect. Returns ``None`` when the view is unavailable
@@ -249,7 +250,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 exc,
             )
             return None
-        by_database: Dict[str, List[str]] = {}  # noqa: UP006
+        by_database: dict[str, list[str]] = {}
         for row in rows:
             database_name = row[0]
             schema_name = row[1]
@@ -460,7 +461,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             )
         return tables_with_constraints
 
-    def get_tables_name_and_type(self) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
         Handle table and views.
 
@@ -502,7 +503,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         self.status.warning(table.name, msg)
                 yield from self._process_table(detailed_table, catalog_name, schema_name)
 
-    def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
+    def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
         """Record deleted tables and yield only the tables changed since the watermark."""
         processor = self.incremental_table_processor
         if processor is None:
@@ -540,7 +541,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 continue
             yield from self._process_table(table, catalog_name, schema_name)
 
-    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
+    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
         """Apply filtering and table-type detection, then yield the table to the topology."""
         try:
             table_name = table.name
@@ -581,7 +582,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 )
             )
 
-    def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> Optional[str]:  # noqa: UP045
+    def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """
@@ -609,7 +610,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             logger.warning(f"Unable to get schema definition for table [{table_name}]: {exc}")
         return None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -667,8 +668,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
     def get_table_constraints(
         self,
-        constraints: List[DBTableConstraint],  # noqa: UP006
-    ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:  # noqa: UP006
+        constraints: list[DBTableConstraint],
+    ) -> tuple[list[TableConstraint], list[ForeignConstrains]]:
         """
         Function to handle table constraint for the current table and add it to context
         """
@@ -693,7 +694,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 )
         return primary_constraints, foreign_constraints
 
-    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:  # noqa: UP006
+    def _get_foreign_constraints(self, foreign_columns) -> list[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -735,7 +736,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         return table_constraints
 
     # pylint: disable=arguments-differ
-    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> List[TableConstraint]:  # noqa: UP006
+    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> list[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
@@ -800,7 +801,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to add description to complex datatypes for column [{column.name}]: {exc}")
 
-    def get_columns(self, table_name: str, column_data: List[ColumnInfo]) -> Iterable[Column]:  # noqa: UP006
+    def get_columns(self, table_name: str, column_data: list[ColumnInfo]) -> Iterable[Column]:
         """
         process table regular columns info
         """
@@ -856,7 +857,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
     def _yield_tags_for_queries(
         self,
-        query_tag_fqn_builder_mapping: Tuple[Tuple[str, Callable[[Any], List[Any]]], ...],  # noqa: UP006
+        query_tag_fqn_builder_mapping: tuple[tuple[str, Callable[[Any], list[Any]]], ...],
         error_context: str,
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Run each tag query independently so one failing query does not abort the rest."""
@@ -937,7 +938,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             self._connection.close()
 
     # pylint: disable=arguments-renamed
-    def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, owner: str | None) -> EntityReferenceList | None:
         """
         Method to process the table owners.
         """

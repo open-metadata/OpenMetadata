@@ -14,8 +14,8 @@ Vertica source implementation.
 
 import re
 import traceback
+from collections.abc import Iterable
 from textwrap import dedent
-from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
@@ -267,14 +267,14 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
             raise InvalidSourceException(f"Expected VerticaConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
@@ -283,7 +283,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
     def set_schema_description_map(self) -> None:
         self.schema_desc_map = get_schema_descriptions(self.engine, VERTICA_SCHEMA_COMMENTS)
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:

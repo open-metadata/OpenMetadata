@@ -16,7 +16,6 @@ Dataset dependency extraction lives in `dlt_parsers.py`.
 """
 
 import re
-from typing import List, Optional  # noqa: UP035
 
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DLTLibrarySource,
@@ -63,20 +62,20 @@ def extract_variables(source_code: str) -> dict:
             var_name = match.group(1)
             var_value = match.group(2)
             variables[var_name] = var_value
-            logger.debug(f"Found variable: {var_name} = {var_value}")
+            logger.debug("Found variable: %s = %s", var_name, var_value)
 
         # Extract boolean variables
         for match in BOOL_ASSIGNMENT_PATTERN.finditer(source_code):
             var_name = match.group(1)
             var_value = match.group(2)
             variables[var_name] = var_value
-            logger.debug(f"Found boolean variable: {var_name} = {var_value}")
+            logger.debug("Found boolean variable: %s = %s", var_name, var_value)
     except Exception as exc:
-        logger.debug(f"Error extracting variables: {exc}")
+        logger.debug("Error extracting variables: %s", exc)
     return variables
 
 
-def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa: UP006
+def extract_kafka_sources(source_code: str) -> list[KafkaSourceConfig]:
     """
     Extract Kafka topic configurations from DLT source code
 
@@ -162,7 +161,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
     return kafka_configs
 
 
-def _extract_option(config_block: str, option_name: str, variables: dict = None) -> Optional[str]:  # noqa: RUF013, UP045
+def _extract_option(config_block: str, option_name: str, variables: dict = None) -> str | None:  # noqa: RUF013
     """
     Extract a single option value from Kafka configuration block
     Supports both string literals and variable references
@@ -202,17 +201,26 @@ def glob_base_directory(include: str) -> str:
     The pipelines API only accepts an exact file, a directory, or a directory
     with a trailing `**`, and rejects every other wildcard form outright, so the
     reduction is just dropping the `**`. Truncating at any other stray wildcard
-    keeps an unexpected include pointed at a real directory rather than at a path
-    that cannot be read at all.
+    keeps an unexpected include pointed at a nested directory rather than at a
+    path that cannot be read at all.
+
+    An include whose wildcard sits in the first path segment is the exception and
+    is returned as it came, because the only directory above it is the workspace
+    root. Reducing `**` or `/tx*` to `/` would list every notebook in the
+    workspace, and since the listing is no longer filtered they would all be
+    collected. Resolving nothing is the cheaper wrong answer.
     """
     wildcard = include.find("*")
     if wildcard == -1:
         return include
     base = include[:wildcard]
-    return base if base.endswith("/") else base.rsplit("/", 1)[0] + "/"
+    if base.endswith("/"):
+        return include if base == "/" else base
+    parent = base.rsplit("/", 1)[0]
+    return f"{parent}/" if parent else include
 
 
-def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # noqa: UP006
+def get_pipeline_libraries(pipeline_config: dict) -> list[DLTLibrarySource]:
     """
     Collect the source paths a DLT pipeline declares in `spec.libraries`.
 
@@ -241,7 +249,7 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                 path = entry.get("path") if isinstance(entry, dict) else entry
                 if path:
                     libraries.append(DLTLibrarySource(path=path))
-                    logger.info(f"   ✓ Found {key}: {path}")
+                    logger.info("   ✓ Found %s: %s", key, path)
                 break
             else:
                 glob_entry = lib.get("glob")
@@ -257,7 +265,7 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                             is_directory=True if base_path.endswith("/") else None,
                         )
                     )
-                    logger.info(f"   ✓ Found glob {include}, listing: {base_path}")
+                    logger.info("   ✓ Found glob %s, listing: %s", include, base_path)
         except Exception as exc:
             logger.debug(f"Failed to process library entry {lib}: {exc}")
             continue

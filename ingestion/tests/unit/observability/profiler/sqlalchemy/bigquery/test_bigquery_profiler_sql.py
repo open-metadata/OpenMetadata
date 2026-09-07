@@ -19,8 +19,12 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.sqltypes import NullType
+from sqlalchemy_bigquery import STRUCT
 from sqlalchemy_bigquery.base import BigQueryDialect
 
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
+    BigQueryProfilerInterface,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -98,6 +102,18 @@ def _grouped_output_label(sql, source):
     match = re.search(r"AS `([^`]+)` FROM `" + re.escape(source) + "`", sql)
     assert match, f"No grouped output alias found in:\n{sql}"
     return match.group(1)
+
+
+def test_struct_columns_are_attached_to_the_profiled_table():
+    struct = STRUCT(email=sa.String)
+    table = sa.Table(TABLE_NAME, sa.MetaData(), sa.Column("customer", struct))
+    profiler = object.__new__(BigQueryProfilerInterface)
+    profiler._table = SimpleNamespace(__table__=table)
+
+    columns = profiler._get_struct_columns(struct._STRUCT_fields, "customer")
+
+    assert [column.name for column in columns] == [NESTED_COLUMN]
+    assert columns[0].table is table
 
 
 def test_nested_struct_countif_references_the_grouped_subquery_alias():
