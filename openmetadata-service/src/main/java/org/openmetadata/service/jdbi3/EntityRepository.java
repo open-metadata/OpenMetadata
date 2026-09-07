@@ -10050,11 +10050,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      // Compare by tagLabel only, not full-object equality: appliedDate/expiryDate are always
-      // recomputed server-side below and stored back, so a request that legitimately doesn't
-      // know the server's current dates (e.g. an ingestion connector re-sending the same
+      // Compare by tagLabel.tagFQN only, not full-object equality: appliedDate/expiryDate are
+      // always recomputed server-side below and stored back, so a request that legitimately
+      // doesn't know the server's current dates (e.g. an ingestion connector re-sending the same
       // certification every run) would otherwise never compare equal, causing a spurious
-      // version bump and re-apply on every non-bulk PUT.
+      // version bump and re-apply on every non-bulk PUT. Other TagLabel fields (labelType,
+      // state, etc.) are ignored - only the certification tag's identity matters here.
       boolean certificationTagUnchanged =
           origCertification != null
               && origCertification.getTagLabel() != null
