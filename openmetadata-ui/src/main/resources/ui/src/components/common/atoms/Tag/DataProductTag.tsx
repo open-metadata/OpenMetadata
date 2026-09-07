@@ -20,17 +20,19 @@ import {
 } from '@openmetadata/ui-core-components';
 import { DataProduct } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
+import { CSSProperties, FC, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../Icon/Icon';
 import { DEFAULT_TAG_COLOR, ICON_PX, SIZE_CLASS } from './Tag.constant';
 import { BaseTagProps } from './Tag.interface';
-import { computeTagColors } from './Tag.utils';
+import './Tag.style.less';
 
 /**
  * Data product tag — shadowed badge with NO background, 1px border on 3 sides,
  * and a prominent 4px left accent at full colour opacity.
- * Default icon: DataProduct. Color defaults to #5D6B98.
+ * Default icon: DataProduct. Color defaults to DEFAULT_TAG_COLOR. Tint colors (border/
+ * left-accent/text/close-icon) are computed in CSS via color-mix() off the
+ * --tag-color custom property — see Tag.style.less.
  */
 const DataProductTag: FC<BaseTagProps> = ({
   label,
@@ -47,34 +49,14 @@ const DataProductTag: FC<BaseTagProps> = ({
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
-  const resolved = useMemo(
-    () => computeTagColors(resolvedColor),
-    [resolvedColor]
-  );
-
-  const inlineStyle: CSSProperties = useMemo(
-    () => ({
-      borderStyle: 'solid',
-      borderWidth: '1px',
-      borderColor: resolved.border,
-      borderLeftWidth: '4px',
-      borderLeftColor: resolvedColor,
-      backgroundColor: 'transparent',
-      outline: 'none',
-    }),
-    [resolved.border, resolvedColor]
-  );
+  const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
   const iconNode = icon ? (
-    <Icon
-      iconValue={icon}
-      imageStyle={{ color: resolvedColor }}
-      size={ICON_PX[size]}
-    />
+    <Icon iconValue={icon} imageClassName="tag-color-text" size={ICON_PX[size]} />
   ) : (
     <DataProduct
+      className="tag-color-text"
       height={ICON_PX[size]}
-      style={{ color: resolvedColor }}
       width={ICON_PX[size]}
     />
   );
@@ -83,8 +65,7 @@ const DataProductTag: FC<BaseTagProps> = ({
     <div style={{ maxWidth }}>
       <Typography
         ellipsis
-        className={classNames(SIZE_CLASS[size])}
-        style={{ color: resolvedColor }}
+        className={classNames(SIZE_CLASS[size], 'tag-color-text')}
         weight="regular">
         {label}
       </Typography>
@@ -127,6 +108,7 @@ const DataProductTag: FC<BaseTagProps> = ({
   const sharedProps = {
     className: classNames(
       SIZE_CLASS[size],
+      'tag-accent',
       { 'tw:cursor-not-allowed tw:opacity-50': disabled },
       className
     ),
@@ -141,17 +123,9 @@ const DataProductTag: FC<BaseTagProps> = ({
       <BadgeWithButton
         {...sharedProps}
         buttonTestId={closeButtonTestId}
-        className={classNames(
-          sharedProps.className,
-          'tw:[&_button]:text-(--tag-close-color)'
-        )}
+        className={classNames(sharedProps.className, 'tag-accent__close-icon')}
         isDisabled={disabled}
-        style={
-          {
-            ...inlineStyle,
-            '--tag-close-color': resolved.closeIcon,
-          } as CSSProperties
-        }
+        style={tagColorStyle}
         onButtonClick={(e: MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           onDelete(e.nativeEvent);
@@ -162,7 +136,7 @@ const DataProductTag: FC<BaseTagProps> = ({
   }
 
   return (
-    <Badge {...sharedProps} style={inlineStyle}>
+    <Badge {...sharedProps} style={tagColorStyle}>
       {content}
     </Badge>
   );

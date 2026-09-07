@@ -13,7 +13,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import DomainTag from './DomainTag';
 import { DEFAULT_TAG_COLOR } from './Tag.constant';
-import { computeTagColors } from './Tag.utils';
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
@@ -107,27 +106,23 @@ describe('DomainTag (atoms)', () => {
     expect(onParentClick).not.toHaveBeenCalled();
   });
 
-  it('should apply the default tag color when no color prop is passed', () => {
+  it('should set --tag-color to the default hex when no color prop is passed', () => {
     const { container } = render(<DomainTag label="Engineering" />);
 
-    const expected = computeTagColors(DEFAULT_TAG_COLOR);
     const badge = container.firstChild as HTMLElement;
 
-    expect(badge.style.borderColor).toBe(expected.border);
-    expect(badge.style.borderLeftColor).toBe(DEFAULT_TAG_COLOR);
+    expect(badge.style.getPropertyValue('--tag-color')).toBe(DEFAULT_TAG_COLOR);
   });
 
-  it('should apply a custom color when the color prop is passed', () => {
+  it('should set --tag-color to a custom color when the color prop is passed', () => {
     const customColor = '#00A86B';
     const { container } = render(
       <DomainTag color={customColor} label="Engineering" />
     );
 
-    const expected = computeTagColors(customColor);
     const badge = container.firstChild as HTMLElement;
 
-    expect(badge.style.borderColor).toBe(expected.border);
-    expect(badge.style.borderLeftColor).toBe(customColor);
+    expect(badge.style.getPropertyValue('--tag-color')).toBe(customColor);
   });
 
   it('should apply the size class for a non-default size', () => {
@@ -136,13 +131,13 @@ describe('DomainTag (atoms)', () => {
     expect(container.firstChild).toHaveClass('tw:h-6', 'tw:text-sm');
   });
 
-  it('should render a transparent-background badge with a left accent at the raw resolved color', () => {
+  it('should render an accent badge with no other inline style property', () => {
     const { container } = render(<DomainTag label="Engineering" />);
 
     const badge = container.firstChild as HTMLElement;
 
-    expect(badge.style.backgroundColor).toBe('transparent');
-    expect(badge.style.borderLeftWidth).toBe('4px');
-    expect(badge.style.borderLeftColor).toBe(DEFAULT_TAG_COLOR);
+    expect(badge).toHaveClass('tag-accent');
+    expect(badge.style).toHaveLength(1);
+    expect(badge.style[0]).toBe('--tag-color');
   });
 });

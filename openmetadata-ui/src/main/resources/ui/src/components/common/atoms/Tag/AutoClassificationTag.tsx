@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
+import { CSSProperties, FC, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../../assets/svg/automated-tag.svg';
 import {
@@ -28,13 +28,15 @@ import {
   SIZE_CLASS,
 } from './Tag.constant';
 import { BaseTagProps } from './Tag.interface';
-import { computeTagColors } from './Tag.utils';
+import './Tag.style.less';
 
 /**
  * Brand-colored chip for auto-classified (LabelType.Generated) tags.
  * Visually distinct from manually applied classification tags — uses
  * the utility-brand palette with an AutomatedTag icon. Sizing/typography
- * matches ClassificationTag and its siblings via SIZE_CLASS/ICON_PX.
+ * matches ClassificationTag and its siblings via SIZE_CLASS/ICON_PX. The
+ * close-icon tint is computed in CSS via color-mix() off the --tag-color
+ * custom property — see Tag.style.less.
  */
 const AutoClassificationTag: FC<BaseTagProps> = ({
   label,
@@ -48,10 +50,9 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
   closeButtonTestId,
   ...otherProps
 }) => {
-  const resolved = useMemo(
-    () => computeTagColors(AUTO_CLASSIFICATION_TAG_COLOR),
-    []
-  );
+  const tagColorStyle = {
+    '--tag-color': AUTO_CLASSIFICATION_TAG_COLOR,
+  } as CSSProperties;
 
   const iconNode = (
     <AutomatedTag
@@ -119,16 +120,9 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
       <BadgeWithButton
         {...sharedProps}
         buttonTestId={closeButtonTestId}
-        className={classNames(
-          sharedProps.className,
-          'tw:[&_button]:text-(--tag-close-color)'
-        )}
+        className={classNames(sharedProps.className, 'tag-tinted__close-icon')}
         isDisabled={disabled}
-        style={
-          {
-            '--tag-close-color': resolved.closeIcon,
-          } as CSSProperties
-        }
+        style={tagColorStyle}
         onButtonClick={(e: MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           onDelete(e.nativeEvent);

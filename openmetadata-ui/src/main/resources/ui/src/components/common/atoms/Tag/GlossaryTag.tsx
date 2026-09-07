@@ -20,16 +20,18 @@ import {
 } from '@openmetadata/ui-core-components';
 import { GlossaryTerm } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { CSSProperties, FC, MouseEvent, useMemo } from 'react';
+import { CSSProperties, FC, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../Icon/Icon';
 import { DEFAULT_TAG_COLOR, ICON_PX, SIZE_CLASS } from './Tag.constant';
 import { BaseTagProps } from './Tag.interface';
-import { computeTagColors } from './Tag.utils';
+import './Tag.style.less';
 
 /**
  * Glossary term tag — fully rounded pill with tinted background and border.
- * Default icon: GlossaryTerm (book). Color defaults to #5D6B98.
+ * Default icon: GlossaryTerm (book). Color defaults to DEFAULT_TAG_COLOR. Tint colors
+ * (border/background/text/close-icon) are computed in CSS via color-mix() off
+ * the --tag-color custom property — see Tag.style.less.
  */
 const GlossaryTag: FC<BaseTagProps> = ({
   label,
@@ -46,32 +48,14 @@ const GlossaryTag: FC<BaseTagProps> = ({
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
-  const resolved = useMemo(
-    () => computeTagColors(resolvedColor),
-    [resolvedColor]
-  );
-
-  const inlineStyle: CSSProperties = useMemo(
-    () => ({
-      borderStyle: 'solid',
-      borderWidth: '1px',
-      borderColor: resolved.border,
-      backgroundColor: resolved.bg,
-      outline: 'none',
-    }),
-    [resolved.border, resolved.bg]
-  );
+  const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
   const iconNode = icon ? (
-    <Icon
-      iconValue={icon}
-      imageStyle={{ color: resolvedColor }}
-      size={ICON_PX[size]}
-    />
+    <Icon iconValue={icon} imageClassName="tag-color-text" size={ICON_PX[size]} />
   ) : (
     <GlossaryTerm
+      className="tag-color-text"
       height={ICON_PX[size]}
-      style={{ color: resolvedColor }}
       width={ICON_PX[size]}
     />
   );
@@ -80,8 +64,7 @@ const GlossaryTag: FC<BaseTagProps> = ({
     <div style={{ maxWidth }}>
       <Typography
         ellipsis
-        className={classNames(SIZE_CLASS[size])}
-        style={{ color: resolvedColor }}
+        className={classNames(SIZE_CLASS[size], 'tag-color-text')}
         weight="regular">
         {label}
       </Typography>
@@ -124,6 +107,7 @@ const GlossaryTag: FC<BaseTagProps> = ({
   const sharedProps = {
     className: classNames(
       SIZE_CLASS[size],
+      'tag-tinted',
       { 'tw:cursor-not-allowed tw:opacity-50': disabled },
       className
     ),
@@ -138,17 +122,9 @@ const GlossaryTag: FC<BaseTagProps> = ({
       <BadgeWithButton
         {...sharedProps}
         buttonTestId={closeButtonTestId}
-        className={classNames(
-          sharedProps.className,
-          'tw:[&_button]:text-(--tag-close-color)'
-        )}
+        className={classNames(sharedProps.className, 'tag-tinted__close-icon')}
         isDisabled={disabled}
-        style={
-          {
-            ...inlineStyle,
-            '--tag-close-color': resolved.closeIcon,
-          } as CSSProperties
-        }
+        style={tagColorStyle}
         onButtonClick={(e: MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           onDelete(e.nativeEvent);
@@ -159,7 +135,7 @@ const GlossaryTag: FC<BaseTagProps> = ({
   }
 
   return (
-    <Badge {...sharedProps} style={inlineStyle}>
+    <Badge {...sharedProps} style={tagColorStyle}>
       {content}
     </Badge>
   );
