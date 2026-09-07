@@ -345,7 +345,7 @@ export default [
       // t() keys and label./message./server. strings and is enforced at error.
       'sonarjs/no-duplicate-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'error',
-      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/cognitive-complexity': ['error', 15], // cleared tree-wide; blocks regressions
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
