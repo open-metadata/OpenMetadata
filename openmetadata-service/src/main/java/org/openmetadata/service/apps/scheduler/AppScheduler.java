@@ -342,6 +342,8 @@ public class AppScheduler {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
+      throw new UnhandledServerException(
+          "Could not queue application " + application.getName(), ex);
     }
   }
 
