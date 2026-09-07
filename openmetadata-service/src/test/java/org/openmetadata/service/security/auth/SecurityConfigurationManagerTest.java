@@ -153,18 +153,14 @@ public class SecurityConfigurationManagerTest {
 
   @Test
   void testConfigGettersReturnNullWhenNotInitialized() {
-    AuthenticationConfiguration auth = SecurityConfigurationManager.getCurrentAuthConfig();
-    AuthorizerConfiguration authz = SecurityConfigurationManager.getCurrentAuthzConfig();
-    MCPConfiguration mcp = SecurityConfigurationManager.getCurrentMcpConfig();
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    manager.setCurrentAuthConfig(null);
+    manager.setCurrentAuthzConfig(null);
+    manager.setCurrentMcpConfig(null);
 
-    if (auth == null && authz == null && mcp == null) {
-      assertNull(auth);
-      assertNull(authz);
-      assertNull(mcp);
-    } else {
-      assertNotNull(auth);
-      assertNotNull(authz);
-    }
+    assertNull(SecurityConfigurationManager.getCurrentAuthConfig());
+    assertNull(SecurityConfigurationManager.getCurrentAuthzConfig());
+    assertNull(SecurityConfigurationManager.getCurrentMcpConfig());
   }
 
   @Test
