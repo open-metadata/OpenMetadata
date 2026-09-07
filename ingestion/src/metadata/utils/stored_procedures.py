@@ -56,7 +56,11 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
             res.group(0)  # Get the first match
             .strip()  # Remove whitespace
             .lower()  # Replace all the lowercase variants of the procedure name prefixes
-            .replace("`", "")  # Clean weird characters from escaping the SQL
+            # Drop the identifier delimiters. StoredProcedure entity names are stored
+            # undelimited, and the caller matches on `procedure.name.root.lower()`, so a name
+            # kept as `"my proc"` would never match the entity it names.
+            .replace("`", "")
+            .replace('"', "")
             .split(".")[-1]
         )
     except Exception as exc:

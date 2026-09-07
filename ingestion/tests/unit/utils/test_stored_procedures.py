@@ -214,9 +214,9 @@ class TestStoredProcedures:
 
         assert get_procedure_name_from_call(query_text="CALL my_dataset.my_proc()") == "my_proc"
 
-        assert get_procedure_name_from_call(query_text='CALL "My-Proc"(1)') == '"my-proc"'
+        assert get_procedure_name_from_call(query_text='CALL "My-Proc"(1)') == "my-proc"
 
-        assert get_procedure_name_from_call(query_text='CALL db."My Schema"."My Proc"(1)') == '"my proc"'
+        assert get_procedure_name_from_call(query_text='CALL db."My Schema"."My Proc"(1)') == "my proc"
 
         assert get_procedure_name_from_call(query_text="SELECT begin_dt - 1\nFROM t\nWHERE id IN (1,2)") is None
 
