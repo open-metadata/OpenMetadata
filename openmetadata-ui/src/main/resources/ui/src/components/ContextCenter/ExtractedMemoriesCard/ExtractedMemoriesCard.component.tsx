@@ -91,6 +91,47 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
     !isLoading && memories.length > 0 ? ` (${memories.length})` : ''
   }`;
 
+  const memoriesBody =
+    memories.length === 0 ? (
+      <Typography className="tw:text-utility-gray-400" size="text-sm">
+        {t('label.no-entity', { entity: t('label.memory-plural') })}
+      </Typography>
+    ) : (
+      <Box direction="col">
+        {memories.map((memory) => (
+          <Box
+            className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-secondary"
+            data-testid={`extracted-memory-${memory.id}`}
+            direction="col"
+            key={memory.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => setMemoryToView(memory)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setMemoryToView(memory);
+              }
+            }}>
+            <Typography
+              ellipsis
+              className="tw:text-primary"
+              size="text-sm"
+              weight="medium">
+              {memory.title ?? getEntityName(memory)}
+            </Typography>
+            {memory.question && (
+              <Typography
+                ellipsis
+                className="tw:text-quaternary"
+                size="text-xs">
+                {memory.question}
+              </Typography>
+            )}
+          </Box>
+        ))}
+      </Box>
+    );
+
   const memoriesContent = (
     <>
       {isLoading ? (
@@ -98,44 +139,8 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
           <Skeleton height="14px" variant="rounded" width="80%" />
           <Skeleton height="14px" variant="rounded" width="60%" />
         </Box>
-      ) : memories.length === 0 ? (
-        <Typography className="tw:text-utility-gray-400" size="text-sm">
-          {t('label.no-entity', { entity: t('label.memory-plural') })}
-        </Typography>
       ) : (
-        <Box direction="col">
-          {memories.map((memory) => (
-            <Box
-              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-secondary"
-              data-testid={`extracted-memory-${memory.id}`}
-              direction="col"
-              key={memory.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setMemoryToView(memory)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  setMemoryToView(memory);
-                }
-              }}>
-              <Typography
-                ellipsis
-                className="tw:text-primary"
-                size="text-sm"
-                weight="medium">
-                {memory.title ?? getEntityName(memory)}
-              </Typography>
-              {memory.question && (
-                <Typography
-                  ellipsis
-                  className="tw:text-quaternary"
-                  size="text-xs">
-                  {memory.question}
-                </Typography>
-              )}
-            </Box>
-          ))}
-        </Box>
+        memoriesBody
       )}
 
       {memoryToView && (
