@@ -135,6 +135,19 @@ const EntitySummaryPanel = withSuspenseFallback(
   )
 );
 
+const getDqFilterKey = (
+  classificationName?: string
+): 'tier' | 'certification' | 'tags' => {
+  if (classificationName === 'Tier') {
+    return 'tier';
+  }
+  if (classificationName === 'Certification') {
+    return 'certification';
+  }
+
+  return 'tags';
+};
+
 const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
@@ -297,11 +310,7 @@ const TagPage = () => {
   // matching filter key — otherwise the dashboard queries `tags.tagFQN`,
   // which never matches assets carrying these system tags.
   const dqFilterKey: 'tier' | 'certification' | 'tags' =
-    classificationName === 'Tier'
-      ? 'tier'
-      : classificationName === 'Certification'
-      ? 'certification'
-      : 'tags';
+    getDqFilterKey(classificationName);
 
   const showDisableOption = useMemo(
     () => tagPermissions.EditAll && !tagItem?.deleted,
@@ -495,7 +504,7 @@ const TagPage = () => {
     }
   }, [assetTabRef, activeTab, activeTabHandler, fetchClassificationTagAssets]);
 
-  const manageButtonContent: ItemType[] = [
+  const getManageButtonContent = (): ItemType[] => [
     ...(editTagsPermission
       ? [
           {
@@ -588,6 +597,8 @@ const TagPage = () => {
         ]
       : []),
   ];
+
+  const manageButtonContent: ItemType[] = getManageButtonContent();
 
   const tabItems = useMemo(() => {
     if (!tagItem) {
@@ -836,7 +847,7 @@ const TagPage = () => {
     <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
   );
 
-  const addAssetsButton =
+  const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
       <Button
         data-testid="data-classification-add-button"
@@ -876,99 +887,63 @@ const TagPage = () => {
       </Dropdown>
     ) : null;
 
-  return (
-    <PageLayoutV1
-      pageTitle={tagItem.name}
-      variant={isAiMode ? 'compact' : 'default'}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          {showAiHeader ? (
-            <div>
-              <EntityDetailHeader
-                activeKey={activeTab}
-                badge={
-                  <>
-                    {badge}
-                    {learningIcon}
-                  </>
-                }
-                breadcrumb={
-                  <HeaderBreadcrumb
-                    items={aiBreadcrumbItems}
-                    showHome={false}
-                  />
-                }
-                data-testid="tag-detail-header"
-                leading={icon}
-                primaryAction={
-                  haveAssetEditPermission ? addAssetsButton : undefined
-                }
-                renderPanels={false}
-                secondaryActions={
-                  haveAssetEditPermission ? manageDropdown : null
-                }
-                tabs={aiHeaderTabs}
-                title={getEntityName(tagItem)}
-                onTabChange={activeTabHandler}
-              />
-            </div>
-          ) : (
-            <Row
-              className="data-classification"
-              data-testid="data-classification"
-              gutter={[0, 12]}>
-              <Col className="p-x-md" flex="1">
-                <EntityHeader
-                  badge={badge}
-                  breadcrumb={breadcrumb}
-                  entityData={tagItem}
-                  entityType={EntityType.TAG}
-                  icon={icon}
-                  serviceName={tagItem.name}
-                  suffix={learningIcon}
-                  titleColor={tagItem.style?.color ?? BLACK_COLOR}
-                />
-              </Col>
-              {haveAssetEditPermission && (
-                <Col className="p-x-md">
-                  <div className="d-flex self-end">
-                    {addAssetsButton}
-                    {manageDropdown}
-                  </div>
-                </Col>
-              )}
-            </Row>
-          )}
+  const renderAiHeader = () => (
+    <div>
+      <EntityDetailHeader
+        activeKey={activeTab}
+        badge={
+          <>
+            {badge}
+            {learningIcon}
+          </>
+        }
+        breadcrumb={
+          <HeaderBreadcrumb items={aiBreadcrumbItems} showHome={false} />
+        }
+        data-testid="tag-detail-header"
+        leading={icon}
+        primaryAction={
+          haveAssetEditPermission ? renderAddAssetsButton() : undefined
+        }
+        renderPanels={false}
+        secondaryActions={haveAssetEditPermission ? manageDropdown : null}
+        tabs={aiHeaderTabs}
+        title={getEntityName(tagItem)}
+        onTabChange={activeTabHandler}
+      />
+    </div>
+  );
+
+  const renderClassicHeader = () => (
+    <Row
+      className="data-classification"
+      data-testid="data-classification"
+      gutter={[0, 12]}>
+      <Col className="p-x-md" flex="1">
+        <EntityHeader
+          badge={badge}
+          breadcrumb={breadcrumb}
+          entityData={tagItem}
+          entityType={EntityType.TAG}
+          icon={icon}
+          serviceName={tagItem.name}
+          suffix={learningIcon}
+          titleColor={tagItem.style?.color ?? BLACK_COLOR}
+        />
+      </Col>
+      {haveAssetEditPermission && (
+        <Col className="p-x-md">
+          <div className="d-flex self-end">
+            {renderAddAssetsButton()}
+            {manageDropdown}
+          </div>
         </Col>
+      )}
+    </Row>
+  );
 
-        <GenericProvider<Tag>
-          customizedPage={customizedPage}
-          data={tagItem}
-          isVersionView={false}
-          permissions={disabledAwarePermissions}
-          type={EntityType.TAG as CustomizeEntityType}
-          onUpdate={(updatedData: Tag) =>
-            Promise.resolve(updateTag(updatedData))
-          }>
-          <Col
-            span={24}
-            style={{
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              height: 'calc(100vh - 170px)',
-            }}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new tag-page-tabs"
-              items={tabItems}
-              renderTabBar={showAiHeader ? () => <></> : undefined}
-              onChange={activeTabHandler}
-            />
-          </Col>
-        </GenericProvider>
-      </Row>
-
+  const renderModals = () => (
+    <>
       <DeleteModal
         entityTitle={tagItem.name}
         message={t('message.delete-entity-message', { entity: tagItem.name })}
@@ -1017,6 +992,47 @@ const TagPage = () => {
           onSave={handleAssetSave}
         />
       )}
+    </>
+  );
+
+  return (
+    <PageLayoutV1
+      pageTitle={tagItem.name}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <Row gutter={[0, 12]}>
+        <Col span={24}>
+          {showAiHeader ? renderAiHeader() : renderClassicHeader()}
+        </Col>
+
+        <GenericProvider<Tag>
+          customizedPage={customizedPage}
+          data={tagItem}
+          isVersionView={false}
+          permissions={disabledAwarePermissions}
+          type={EntityType.TAG as CustomizeEntityType}
+          onUpdate={(updatedData: Tag) =>
+            Promise.resolve(updateTag(updatedData))
+          }>
+          <Col
+            span={24}
+            style={{
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              height: 'calc(100vh - 170px)',
+            }}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab}
+              className="tabs-new tag-page-tabs"
+              items={tabItems}
+              renderTabBar={showAiHeader ? () => <></> : undefined}
+              onChange={activeTabHandler}
+            />
+          </Col>
+        </GenericProvider>
+      </Row>
+
+      {renderModals()}
     </PageLayoutV1>
   );
 };
