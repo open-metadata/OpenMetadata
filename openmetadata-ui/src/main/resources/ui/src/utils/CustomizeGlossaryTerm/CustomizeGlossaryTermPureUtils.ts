@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+const BUSINESS_DEPARTMENT_GLOSSARY_ID = 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e';
+const BUSINESS_DEPARTMENT_NAME = 'Business Department';
+const BUSINESS_DEPARTMENT_DESCRIPTION =
+  'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.';
+
 export const getGlossaryChildTermsForCustomization = () => [
   {
     id: 'ea7c8380-34a9-4ea9-93ea-a812c0e838d6',
@@ -20,13 +25,12 @@ export const getGlossaryChildTermsForCustomization = () => [
       'A finance department is the unit of a business responsible for obtaining and handling any monies on behalf of the organization',
     fullyQualifiedName: 'Business Department.Finance',
     glossary: {
-      id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+      id: BUSINESS_DEPARTMENT_GLOSSARY_ID,
       type: 'glossary',
-      name: 'Business Department',
-      fullyQualifiedName: 'Business Department',
-      description:
-        'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-      displayName: 'Business Department',
+      name: BUSINESS_DEPARTMENT_NAME,
+      fullyQualifiedName: BUSINESS_DEPARTMENT_NAME,
+      description: BUSINESS_DEPARTMENT_DESCRIPTION,
+      displayName: BUSINESS_DEPARTMENT_NAME,
       deleted: false,
     },
     references: [],
@@ -46,13 +50,12 @@ export const getGlossaryChildTermsForCustomization = () => [
     fullyQualifiedName: 'Business Department.FOO',
     synonyms: [],
     glossary: {
-      id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+      id: BUSINESS_DEPARTMENT_GLOSSARY_ID,
       type: 'glossary',
-      name: 'Business Department',
-      fullyQualifiedName: 'Business Department',
-      description:
-        'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-      displayName: 'Business Department',
+      name: BUSINESS_DEPARTMENT_NAME,
+      fullyQualifiedName: BUSINESS_DEPARTMENT_NAME,
+      description: BUSINESS_DEPARTMENT_DESCRIPTION,
+      displayName: BUSINESS_DEPARTMENT_NAME,
       deleted: false,
     },
     references: [],
@@ -74,13 +77,12 @@ export const getGlossaryChildTermsForCustomization = () => [
     fullyQualifiedName: 'Business Department.Human resources',
     synonyms: ['Manpower', 'Human capital'],
     glossary: {
-      id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+      id: BUSINESS_DEPARTMENT_GLOSSARY_ID,
       type: 'glossary',
-      name: 'Business Department',
-      fullyQualifiedName: 'Business Department',
-      description:
-        'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-      displayName: 'Business Department',
+      name: BUSINESS_DEPARTMENT_NAME,
+      fullyQualifiedName: BUSINESS_DEPARTMENT_NAME,
+      description: BUSINESS_DEPARTMENT_DESCRIPTION,
+      displayName: BUSINESS_DEPARTMENT_NAME,
       deleted: false,
     },
     references: [],
@@ -102,13 +104,12 @@ export const getGlossaryChildTermsForCustomization = () => [
     fullyQualifiedName: 'Business Department.Marketing',
     synonyms: ['Sell', 'Retails'],
     glossary: {
-      id: 'dae534b6-f5d1-4fc7-9ddf-0d1ec9df5c7e',
+      id: BUSINESS_DEPARTMENT_GLOSSARY_ID,
       type: 'glossary',
-      name: 'Business Department',
-      fullyQualifiedName: 'Business Department',
-      description:
-        'Businesses often have several departments that perform unique functions, allowing them to operate efficiently and successfully.',
-      displayName: 'Business Department',
+      name: BUSINESS_DEPARTMENT_NAME,
+      fullyQualifiedName: BUSINESS_DEPARTMENT_NAME,
+      description: BUSINESS_DEPARTMENT_DESCRIPTION,
+      displayName: BUSINESS_DEPARTMENT_NAME,
       deleted: false,
     },
     references: [],

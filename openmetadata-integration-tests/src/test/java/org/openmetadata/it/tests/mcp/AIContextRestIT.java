@@ -16,17 +16,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TableData;
 
 /**
  * End-to-end test for the per-entity AI Context REST endpoint added to the {@code EntityResource}
@@ -39,7 +51,10 @@ import org.openmetadata.schema.entity.teams.Team;
 class AIContextRestIT extends McpTestBase {
 
   private static Table table;
+  private static Table ownedTable;
   private static String glossaryTermFqn;
+  private static String sampleRestrictedToken;
+  private static String ownerToken;
   private static String teamName;
 
   @BeforeAll
@@ -47,8 +62,103 @@ class AIContextRestIT extends McpTestBase {
     initAuth();
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     table = createServiceDatabaseSchemaTable("aicontext_rest_" + suffix);
+    addSampleData(table);
+    sampleRestrictedToken = createSampleRestrictedToken(suffix);
+    ownedTable = createServiceDatabaseSchemaTable("aicontext_owned_" + suffix);
+    addSampleData(ownedTable);
+    ownerToken = createOwnerDeniedSamplesToken(suffix, ownedTable);
     glossaryTermFqn = createGlossaryTerm(suffix);
     teamName = createTeam(suffix);
+  }
+
+  private static void addSampleData(Table target) throws Exception {
+    List<List<Object>> rows = new ArrayList<>();
+    for (int index = 0; index < 12; index++) {
+      rows.add(List.of(index, "name-" + index, "2026-09-04T00:00:00Z"));
+    }
+    TableData sampleData =
+        new TableData().withColumns(List.of("id", "name", "created_at")).withRows(rows);
+    put("tables/" + target.getId() + "/sampleData", sampleData, Table.class);
+  }
+
+  private static String createSampleRestrictedToken(String suffix) throws Exception {
+    Rule denySamples =
+        new Rule()
+            .withName("DenyViewSampleData")
+            .withResources(List.of("table"))
+            .withOperations(List.of(MetadataOperation.VIEW_SAMPLE_DATA))
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        post(
+            "policies",
+            new CreatePolicy()
+                .withName("aicontext_no_samples_policy_" + suffix)
+                .withRules(List.of(denySamples)),
+            Policy.class);
+    Role role =
+        post(
+            "roles",
+            new CreateRole()
+                .withName("aicontext_no_samples_role_" + suffix)
+                .withPolicies(List.of(policy.getFullyQualifiedName())),
+            Role.class);
+    String name = "aicontext_no_samples_" + suffix;
+    User user =
+        post(
+            "users",
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@test.openmetadata.org")
+                .withRoles(List.of(role.getId())),
+            User.class);
+    return "Bearer "
+        + JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
+  }
+
+  /**
+   * An owner-conditioned DENY of VIEW_SAMPLE_DATA, which only fires when the decision can actually
+   * see the table's owners. A ResourceContext wrapping the already-loaded table (fetched without
+   * owners) reads isOwner() as false, so the rule stays silent and the samples are handed out.
+   */
+  private static String createOwnerDeniedSamplesToken(String suffix, Table target)
+      throws Exception {
+    Rule denySamplesForOwner =
+        new Rule()
+            .withName("DenyViewSampleDataForOwner")
+            .withResources(List.of("table"))
+            .withOperations(List.of(MetadataOperation.VIEW_SAMPLE_DATA))
+            .withCondition("isOwner()")
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        post(
+            "policies",
+            new CreatePolicy()
+                .withName("aicontext_owner_no_samples_policy_" + suffix)
+                .withRules(List.of(denySamplesForOwner)),
+            Policy.class);
+    Role role =
+        post(
+            "roles",
+            new CreateRole()
+                .withName("aicontext_owner_no_samples_role_" + suffix)
+                .withPolicies(List.of(policy.getFullyQualifiedName())),
+            Role.class);
+    String name = "aicontext_owner_no_samples_" + suffix;
+    User user =
+        post(
+            "users",
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@test.openmetadata.org")
+                .withRoles(List.of(role.getId())),
+            User.class);
+    patch(
+        "tables/" + target.getId(),
+        "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":[{\"id\":\""
+            + user.getId()
+            + "\",\"type\":\"user\"}]}]");
+    return "Bearer "
+        + JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
   }
 
   private static String createGlossaryTerm(String suffix) throws Exception {
@@ -103,6 +213,39 @@ class AIContextRestIT extends McpTestBase {
     assertThat(context.get("entityType").asText()).isEqualTo("table");
     assertThat(context.get("fullyQualifiedName").asText()).isEqualTo(table.getFullyQualifiedName());
     assertThat(context.has("assetContext")).isTrue();
+    JsonNode sampleData = context.at("/assetContext/table/sampleData");
+    assertThat(sampleData.get("columns").size()).isEqualTo(3);
+    assertThat(sampleData.get("rows").size()).isEqualTo(10);
+    assertThat(sampleData.get("rows").get(9).get(1).asText()).isEqualTo("name-9");
+  }
+
+  @Test
+  void tableContext_omitsSamplesWithoutViewSampleDataPermission() throws Exception {
+    HttpResponse<String> response =
+        getResponse(
+            "tables/name/" + table.getFullyQualifiedName() + "/context?format=json",
+            sampleRestrictedToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    JsonNode context = OBJECT_MAPPER.readTree(response.body());
+    JsonNode sampleData = context.at("/assetContext/table/sampleData");
+    assertThat(sampleData.isMissingNode() || sampleData.isNull()).isTrue();
+  }
+
+  @Test
+  void tableContext_omitsSamplesForOwnerConditionedDeny() throws Exception {
+    assertThat(getResponse("tables/" + ownedTable.getId() + "/sampleData", ownerToken).statusCode())
+        .isEqualTo(403);
+
+    HttpResponse<String> response =
+        getResponse(
+            "tables/name/" + ownedTable.getFullyQualifiedName() + "/context?format=json",
+            ownerToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    JsonNode context = OBJECT_MAPPER.readTree(response.body());
+    JsonNode sampleData = context.at("/assetContext/table/sampleData");
+    assertThat(sampleData.isMissingNode() || sampleData.isNull()).isTrue();
   }
 
   @Test

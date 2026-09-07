@@ -27,6 +27,7 @@ import {
   syntaxHighlighting,
 } from '@codemirror/language';
 import { java } from '@codemirror/legacy-modes/mode/clike';
+import { sparql } from '@codemirror/legacy-modes/mode/sparql';
 import { EditorState, Extension } from '@codemirror/state';
 import {
   drawSelection,
@@ -46,8 +47,8 @@ import { CodeMirrorOptions, Mode } from '../interface/codemirror.interface';
  * Translate the `mode` prop (CodeMirror 5 shape) to a CodeMirror 6 language
  * extension.
  *
- * `CSMode.CLIKE` exists only to render Java (`Language.Java`), which has no
- * Lezer grammar in core; the legacy stream parser covers it.
+ * `CSMode.CLIKE` exists only to render Java (`Language.Java`), and neither Java
+ * nor SPARQL has a Lezer grammar in core; the legacy stream parsers cover both.
  *
  * An unknown mode name yields no language extension — the same plain-text
  * rendering CodeMirror 5 gave for a mode whose script was never loaded.
@@ -65,6 +66,8 @@ export const getCodeMirrorLanguage = (mode?: Mode): Extension[] => {
       return [yaml()];
     case CSMode.CLIKE:
       return [StreamLanguage.define(java)];
+    case CSMode.SPARQL:
+      return [StreamLanguage.define(sparql)];
     default:
       return [];
   }

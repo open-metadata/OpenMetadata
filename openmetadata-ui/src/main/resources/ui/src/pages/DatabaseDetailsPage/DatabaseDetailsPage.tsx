@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import type { TFunction } from 'i18next';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import {
   FunctionComponent,
@@ -108,6 +109,97 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+const renderDatabasePageGuard = ({
+  permissionsLoading,
+  databaseLoading,
+  loading,
+  isError,
+  hasViewBasicPermission,
+  decodedDatabaseFQN,
+  t,
+}: {
+  permissionsLoading: boolean;
+  databaseLoading: boolean;
+  loading: boolean;
+  isError: boolean;
+  hasViewBasicPermission: boolean;
+  decodedDatabaseFQN: string;
+  t: TFunction;
+}): JSX.Element | null => {
+  if (permissionsLoading || databaseLoading || loading) {
+    return <PageLoader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!hasViewBasicPermission) {
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.database'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
+
+  return null;
+};
+
+const TabExpandToggle = ({
+  isExpandViewSupported,
+  isTabExpanded,
+  onToggle,
+}: {
+  isExpandViewSupported: boolean;
+  isTabExpanded: boolean;
+  onToggle: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (!isExpandViewSupported) {
+    return null;
+  }
+
+  return (
+    <AlignRightIconButton
+      className={isTabExpanded ? 'rotate-180' : ''}
+      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      onClick={onToggle}
+    />
+  );
+};
+
+const ProfilerSettingsModal = ({
+  updateProfilerSetting,
+  entityId,
+  onVisibilityChange,
+}: {
+  updateProfilerSetting: boolean;
+  entityId?: string;
+  onVisibilityChange: (value: boolean) => void;
+}) => {
+  if (!updateProfilerSetting) {
+    return null;
+  }
+
+  return (
+    <ProfilerSettings
+      entityId={entityId ?? ''}
+      entityType={EntityType.DATABASE}
+      visible={updateProfilerSetting}
+      onVisibilityChange={onVisibilityChange}
+    />
+  );
+};
+
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 
@@ -653,28 +745,18 @@ const DatabaseDetails: FunctionComponent = () => {
     [tabs[0], activeTab]
   );
 
-  if (permissionsLoading || databaseLoading || loading) {
-    return <PageLoader />;
-  }
+  const guardElement = renderDatabasePageGuard({
+    permissionsLoading,
+    databaseLoading,
+    loading,
+    isError,
+    hasViewBasicPermission,
+    decodedDatabaseFQN,
+    t,
+  });
 
-  if (isError) {
-    return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
-      </ErrorPlaceHolder>
-    );
-  }
-
-  if (!hasViewBasicPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.database'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+  if (guardElement) {
+    return guardElement;
   }
 
   if (!database) {
@@ -724,29 +806,22 @@ const DatabaseDetails: FunctionComponent = () => {
                 data-testid="tabs"
                 items={tabs}
                 tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
+                  <TabExpandToggle
+                    isExpandViewSupported={isExpandViewSupported}
+                    isTabExpanded={isTabExpanded}
+                    onToggle={toggleTabExpanded}
+                  />
                 }
                 onChange={activeTabHandler}
               />
             </Col>
           </GenericProvider>
 
-          {updateProfilerSetting && (
-            <ProfilerSettings
-              entityId={database.id ?? ''}
-              entityType={EntityType.DATABASE}
-              visible={updateProfilerSetting}
-              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
-            />
-          )}
+          <ProfilerSettingsModal
+            entityId={database.id}
+            updateProfilerSetting={updateProfilerSetting}
+            onVisibilityChange={setUpdateProfilerSetting}
+          />
         </Row>
       )}
     </PageLayoutV1>

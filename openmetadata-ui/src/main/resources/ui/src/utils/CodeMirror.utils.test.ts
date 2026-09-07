@@ -47,8 +47,11 @@ describe('getCodeMirrorLanguage', () => {
     );
   });
 
-  it('should resolve clike to the java stream parser', () => {
-    expect(getLanguageName({ name: CSMode.CLIKE })).toBe('java');
+  it.each([
+    [CSMode.CLIKE, 'java'],
+    [CSMode.SPARQL, 'sparql'],
+  ])('should resolve %s to the %s stream parser', (mode, expected) => {
+    expect(getLanguageName({ name: mode })).toBe(expected);
   });
 
   it('should return no language extension for an undefined or unknown mode', () => {

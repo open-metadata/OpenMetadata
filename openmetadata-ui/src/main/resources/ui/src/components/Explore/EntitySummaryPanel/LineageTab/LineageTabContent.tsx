@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -235,16 +235,18 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <Tooltip placement="top" title={t('label.upstream')}>
-                        <TooltipTrigger>
-                          <UpstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.upstream')}
+                        triggerClassName="tw:inline-flex">
+                        <UpstreamIcon height={18} width={18} />
                       </Tooltip>
                     ) : (
-                      <Tooltip placement="top" title={t('label.downstream')}>
-                        <TooltipTrigger>
-                          <DownstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.downstream')}
+                        triggerClassName="tw:inline-flex">
+                        <DownstreamIcon height={18} width={18} />
                       </Tooltip>
                     )}
                   </div>

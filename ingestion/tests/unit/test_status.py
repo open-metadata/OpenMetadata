@@ -12,6 +12,7 @@
 Tests for metadata.ingestion.api.status.Status
 """
 
+from ast import literal_eval
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -20,6 +21,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.ingestion.api.status import (
     MAX_STACK_TRACE_LENGTH,
     MAX_STATUS_DISPLAY_ITEMS,
+    UNKNOWN_FILTER_KEY,
     Status,
     TruncatedStackTraceError,
 )
@@ -133,6 +135,20 @@ class TestStatus(TestCase):
     def test_filter_appends_dict(self):
         self.status.filter("entity_name", "filtered out")
         self.assertEqual(self.status.filtered, [{"entity_name": "filtered out"}])
+
+    def test_filter_replaces_none_key_with_placeholder(self):
+        """A nameless filtered entity must not poison the dict[str, str] key."""
+        self.status.filter(None, "filtered out")
+        self.assertEqual(self.status.filtered, [{UNKNOWN_FILTER_KEY: "filtered out"}])
+
+    def test_status_with_none_filter_key_round_trips(self):
+        """as_string() output of a nameless filter must revalidate as a Status."""
+        self.status.filter(None, "Project / Workspace Filtered Out")
+        revalidated = Status.model_validate(literal_eval(self.status.as_string()))
+        self.assertEqual(
+            revalidated.filtered,
+            [{UNKNOWN_FILTER_KEY: "Project / Workspace Filtered Out"}],
+        )
 
     # ── truncation of stack traces ───────────────────────────────────
 

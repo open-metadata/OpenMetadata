@@ -556,6 +556,37 @@ const AddCustomProperty = ({
     }
   };
 
+  // Fields shown conditionally based on the selected property type; computed
+  // once here so the render body doesn't carry each type-specific branch.
+  const conditionalTypeFields: FieldProp[] = useMemo(() => {
+    const fields: FieldProp[] = [];
+
+    if (hasEnumConfig) {
+      fields.push(enumConfigField, multiSelectField);
+    }
+    if (hasFormatConfig) {
+      fields.push(formatConfigField);
+    }
+    if (hasEntityReferenceConfig) {
+      fields.push(entityReferenceConfigField);
+    }
+    if (hasTableTypeConfig) {
+      fields.push(...tableTypePropertyConfig);
+    }
+
+    return fields;
+  }, [
+    hasEnumConfig,
+    hasFormatConfig,
+    hasEntityReferenceConfig,
+    hasTableTypeConfig,
+    enumConfigField,
+    multiSelectField,
+    formatConfigField,
+    entityReferenceConfigField,
+    tableTypePropertyConfig,
+  ]);
+
   const formContent = (
     <Form
       className="m-t-md"
@@ -566,23 +597,7 @@ const AddCustomProperty = ({
       onFinish={handleFormSubmit}
       onFocus={handleFieldFocus}>
       {generateFormFields(formFields)}
-      {
-        // Only show enum value field if the property type has enum config
-        hasEnumConfig && generateFormFields([enumConfigField, multiSelectField])
-      }
-      {
-        // Only show format field if the property type has format config
-        hasFormatConfig && generateFormFields([formatConfigField])
-      }
-
-      {
-        // Only show entity reference field if the property type has entity reference config
-        hasEntityReferenceConfig &&
-          generateFormFields([entityReferenceConfigField])
-      }
-
-      {hasTableTypeConfig && generateFormFields(tableTypePropertyConfig)}
-
+      {generateFormFields(conditionalTypeFields)}
       {generateFormFields([descriptionField])}
       {isUndefined(open) && (
         <Row justify="end">
