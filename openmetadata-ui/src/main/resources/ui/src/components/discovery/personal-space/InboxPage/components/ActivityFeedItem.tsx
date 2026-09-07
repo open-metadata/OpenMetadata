@@ -95,11 +95,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
       ? activity?.actor?.displayName
       : feed?.createdBy?.displayName) ||
     actorName;
-  const actionLabel = activity
-    ? getActivityEventLabel(activity, t)
-    : feed
-    ? t('label.posted-on')
-    : '';
+  let actionLabel = '';
+  if (activity) {
+    actionLabel = getActivityEventLabel(activity, t);
+  } else if (feed) {
+    actionLabel = t('label.posted-on');
+  }
   const entity = isActivity ? activity?.entity : feed?.entityRef;
   const entityName = entity?.displayName || entity?.name || entity?.type;
   const timestamp = isActivity

@@ -131,11 +131,12 @@ function highlightRdf(text: string): ReactNode[] {
     if (match.index > lastIndex) {
       nodes.push(text.slice(lastIndex, match.index));
     }
-    const color = match[1]
-      ? SYNTAX_COLOR.string
-      : match[2] || match[4]
-      ? SYNTAX_COLOR.keyword
-      : SYNTAX_COLOR.term;
+    let color = SYNTAX_COLOR.term;
+    if (match[1]) {
+      color = SYNTAX_COLOR.string;
+    } else if (match[2] || match[4]) {
+      color = SYNTAX_COLOR.keyword;
+    }
     nodes.push(
       <span key={key++} style={{ color }}>
         {match[0]}
@@ -234,6 +235,7 @@ const OntologyImportExportModal = ({
   );
   const previewGlossary = activeGlossary ?? glossaries[0];
   const isRdfFormat = format !== 'csv';
+  const isPreviewReady = isRdfFormat && preview && !isPreviewLoading;
   const importTermTotal = importValidation
     ? importValidation.termsCreated + importValidation.termsUpdated
     : 0;
@@ -438,6 +440,45 @@ const OntologyImportExportModal = ({
     }
   }, [importTarget, importFileContent, importFormat, onClose, t]);
 
+  let previewContent: ReactNode = '—';
+  if (isPreviewLoading) {
+    previewContent = t('label.loading');
+  } else if (isRdfFormat && preview) {
+    previewContent = highlightRdf(preview);
+  }
+
+  let shaclStatusContent: ReactNode = null;
+  if (shaclResult) {
+    shaclStatusContent = (
+      <div
+        className={classNames(
+          'tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium',
+          shaclResult.conforms
+            ? 'tw:text-success-primary'
+            : 'tw:text-error-primary'
+        )}
+        data-testid="ontology-shacl-status">
+        {shaclResult.conforms ? (
+          <CheckCircle className="tw:size-3.5" />
+        ) : (
+          <AlertCircle className="tw:size-3.5" />
+        )}
+        {t(
+          shaclResult.conforms
+            ? 'message.shacl-no-violations'
+            : 'message.shacl-violations-found'
+        )}
+      </div>
+    );
+  } else if (isPreviewReady) {
+    shaclStatusContent = (
+      <div className="tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium tw:text-success-primary">
+        <CheckCircle className="tw:size-3.5" />
+        {t('message.ontology-preview-ready')}
+      </div>
+    );
+  }
+
   return (
     <ModalOverlay
       isDismissable
@@ -585,39 +626,10 @@ const OntologyImportExportModal = ({
                       className="tw:max-h-[360px] tw:overflow-auto tw:font-mono tw:text-[11px] tw:leading-[1.7] tw:whitespace-pre-wrap"
                       data-testid="ontology-export-preview"
                       style={{ color: SYNTAX_COLOR.default }}>
-                      {isPreviewLoading
-                        ? t('label.loading')
-                        : isRdfFormat && preview
-                        ? highlightRdf(preview)
-                        : '—'}
+                      {previewContent}
                     </pre>
                   </div>
-                  {shaclResult ? (
-                    <div
-                      className={classNames(
-                        'tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium',
-                        shaclResult.conforms
-                          ? 'tw:text-success-primary'
-                          : 'tw:text-error-primary'
-                      )}
-                      data-testid="ontology-shacl-status">
-                      {shaclResult.conforms ? (
-                        <CheckCircle className="tw:size-3.5" />
-                      ) : (
-                        <AlertCircle className="tw:size-3.5" />
-                      )}
-                      {t(
-                        shaclResult.conforms
-                          ? 'message.shacl-no-violations'
-                          : 'message.shacl-violations-found'
-                      )}
-                    </div>
-                  ) : isRdfFormat && preview && !isPreviewLoading ? (
-                    <div className="tw:mt-3 tw:flex tw:items-center tw:gap-1.5 tw:text-[11px] tw:font-medium tw:text-success-primary">
-                      <CheckCircle className="tw:size-3.5" />
-                      {t('message.ontology-preview-ready')}
-                    </div>
-                  ) : null}
+                  {shaclStatusContent}
                 </div>
               </div>
             ) : (

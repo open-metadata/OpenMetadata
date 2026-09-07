@@ -386,11 +386,15 @@ export const findPasswordFieldsWithoutPrefix = (
     const propertySchema = properties[key];
     const value = (formData as Record<string, unknown> | undefined)?.[key];
 
-    if (
+    const isMaskablePasswordValue =
       propertySchema?.format === PASSWORD_FORMAT &&
       typeof value === 'string' &&
       value.trim() !== '' &&
-      value !== MASKED_PASSWORD_VALUE &&
+      value !== MASKED_PASSWORD_VALUE;
+
+    if (
+      isMaskablePasswordValue &&
+      typeof value === 'string' &&
       (!value.startsWith(prefix) || value.slice(prefix.length).trim() === '')
     ) {
       acc.push({ path: [key], key });
@@ -398,15 +402,17 @@ export const findPasswordFieldsWithoutPrefix = (
       return acc;
     }
 
+    const isObjectPropertySchema =
+      propertySchema && typeof propertySchema === 'object';
+
     if (
-      propertySchema &&
-      typeof propertySchema === 'object' &&
+      isObjectPropertySchema &&
       value &&
       typeof value === 'object' &&
       !Array.isArray(value)
     ) {
       findPasswordFieldsWithoutPrefix(
-        propertySchema,
+        propertySchema as Record<string, unknown>,
         value as Record<string, unknown>,
         prefix
       ).forEach((hit) => acc.push({ path: [key, ...hit.path], key: hit.key }));
@@ -564,10 +570,11 @@ export const getMissingSchemaRequiredFieldsCountForSelectedBranch = (
     const value = (formData as Record<string, unknown>)[key];
     const propertySchema = properties[key];
 
+    const isNonNullObjectValue =
+      value !== null && value !== undefined && typeof value === 'object';
+
     if (
-      value !== null &&
-      value !== undefined &&
-      typeof value === 'object' &&
+      isNonNullObjectValue &&
       !Array.isArray(value) &&
       propertySchema &&
       typeof propertySchema === 'object'

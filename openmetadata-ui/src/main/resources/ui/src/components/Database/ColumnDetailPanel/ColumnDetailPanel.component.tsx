@@ -775,6 +775,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     );
   };
 
+  const isTableOrDashboardDataModel =
+    entityType === EntityType.TABLE ||
+    entityType === EntityType.DASHBOARD_DATA_MODEL;
+
   const columnTitle = activeColumn ? (
     <div className="title-section">
       <div className="tw:ml-4 tw:flex tw:flex-wrap tw:items-center tw:overflow-hidden">
@@ -866,8 +870,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               </div>
               {activeColumn.displayName &&
                 activeColumn.displayName !== activeColumn.name &&
-                (entityType === EntityType.TABLE ||
-                  entityType === EntityType.DASHBOARD_DATA_MODEL) && (
+                isTableOrDashboardDataModel && (
                   <Typography.Text
                     className="tw:text-gray-400 tw:text-xs"
                     data-testid="entity-name"

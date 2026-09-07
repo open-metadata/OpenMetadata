@@ -30,12 +30,14 @@ type SerializedEntityReference = Record<string, unknown> & { type: string };
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isEmptyExtensionValue = (value: unknown): boolean =>
-  value === undefined ||
-  value === null ||
-  value === '' ||
-  (Array.isArray(value) && value.length === 0) ||
-  (isRecord(value) && Object.keys(value).length === 0);
+const isEmptyExtensionValue = (value: unknown): boolean => {
+  const isBlank = value === undefined || value === null || value === '';
+  const isEmptyCollection =
+    (Array.isArray(value) && value.length === 0) ||
+    (isRecord(value) && Object.keys(value).length === 0);
+
+  return isBlank || isEmptyCollection;
+};
 
 const unwrapPickerValue = (value: unknown): unknown =>
   isRecord(value) && 'value' in value ? value.value : value;

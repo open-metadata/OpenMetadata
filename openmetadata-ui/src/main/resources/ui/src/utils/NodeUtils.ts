@@ -246,6 +246,16 @@ export const getInitialNodeConfig = (
       );
     }
 
+    let scheduleType = '';
+    if (config.schedule?.scheduleTimeline === ScheduleTimeline.None) {
+      scheduleType = 'OnDemand';
+    } else if (
+      config.schedule?.scheduleTimeline === ScheduleTimeline.Custom &&
+      config.schedule?.cronExpression
+    ) {
+      scheduleType = 'Scheduled';
+    }
+
     return {
       name:
         workflowMetadata?.displayName || workflowDefinition.displayName || '',
@@ -262,13 +272,7 @@ export const getInitialNodeConfig = (
       excludeFields:
         config.exclude && Array.isArray(config.exclude) ? config.exclude : [],
       include: Array.isArray(config.include) ? config.include : [],
-      scheduleType:
-        config.schedule?.scheduleTimeline === ScheduleTimeline.None
-          ? 'OnDemand'
-          : config.schedule?.scheduleTimeline === ScheduleTimeline.Custom &&
-            config.schedule?.cronExpression
-          ? 'Scheduled'
-          : '',
+      scheduleType,
       cronExpression: config.schedule?.cronExpression || '',
       batchSize: config.batchSize || 500,
       dataAssetFilters,

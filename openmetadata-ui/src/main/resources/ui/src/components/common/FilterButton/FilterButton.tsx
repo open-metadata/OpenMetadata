@@ -102,12 +102,12 @@ export const FilterButton: React.FC<FilterButtonProps> = (props) => {
   // trigger carries a tooltip naming them — otherwise "3 selected" is unreadable without
   // reopening the menu.
   const selectedLabels = selectedValues.map((value) => labelOf(value) ?? value);
-  const triggerLabel =
-    selectedValues.length === 1
-      ? selectedLabels[0]
-      : selectedValues.length === 0
+  const multiSelectionLabel =
+    selectedValues.length === 0
       ? label
       : t('label.n-selected', { count: selectedValues.length });
+  const triggerLabel =
+    selectedValues.length === 1 ? selectedLabels[0] : multiSelectionLabel;
   const triggerTitle =
     selectedLabels.length > 1 ? selectedLabels.join(', ') : undefined;
 
@@ -223,37 +223,41 @@ export const FilterButton: React.FC<FilterButtonProps> = (props) => {
                 }
                 id={opt.value}
                 key={opt.value}>
-                {(state) => (
-                  <div className="tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2">
-                    <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2">
-                      {renderItemIcon?.(opt.value)}
-                      <span
-                        className={[
-                          'tw:grow tw:truncate tw:text-sm',
-                          state.isDisabled
-                            ? 'tw:text-disabled'
-                            : state.isSelected
-                            ? 'tw:text-brand-700'
-                            : 'tw:text-secondary',
-                        ].join(' ')}>
-                        {opt.label}
-                      </span>
-                      {opt.supportingText && (
-                        <span className="tw:shrink-0 tw:text-xs tw:text-tertiary">
-                          {opt.supportingText}
+                {(state) => {
+                  const optionTextClass = state.isSelected
+                    ? 'tw:text-brand-700'
+                    : 'tw:text-secondary';
+
+                  return (
+                    <div className="tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2">
+                      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2">
+                        {renderItemIcon?.(opt.value)}
+                        <span
+                          className={[
+                            'tw:grow tw:truncate tw:text-sm',
+                            state.isDisabled
+                              ? 'tw:text-disabled'
+                              : optionTextClass,
+                          ].join(' ')}>
+                          {opt.label}
                         </span>
+                        {opt.supportingText && (
+                          <span className="tw:shrink-0 tw:text-xs tw:text-tertiary">
+                            {opt.supportingText}
+                          </span>
+                        )}
+                      </div>
+                      {state.isSelected && (
+                        <Check
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-brand-700"
+                          height={16}
+                          width={16}
+                        />
                       )}
                     </div>
-                    {state.isSelected && (
-                      <Check
-                        aria-hidden="true"
-                        className="tw:size-4 tw:shrink-0 tw:text-brand-700"
-                        height={16}
-                        width={16}
-                      />
-                    )}
-                  </div>
-                )}
+                  );
+                }}
               </Dropdown.Item>
             ))
           )}

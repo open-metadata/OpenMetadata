@@ -426,6 +426,49 @@ const getColumnKeys = <T,>(columns: ColumnsType<T>): string[] =>
 const getColumnIds = (columnKeys: string[]): string[] =>
   disambiguate(columnKeys.map((key) => `${COLUMN_ID_PREFIX}${key}`));
 
+const matchesFilterEntry = <T extends object>(
+  record: T,
+  colKey: string,
+  selectedKeys: React.Key[],
+  columns: ColumnsType<T>,
+  columnIds: string[]
+): boolean => {
+  const col = columns.find((_c, idx) => columnIds[idx] === colKey) as
+    | ColumnType<T>
+    | undefined;
+
+  const onFilter = col?.onFilter;
+
+  return onFilter
+    ? selectedKeys.some((key) => onFilter(key as React.Key | boolean, record))
+    : true;
+};
+
+const setColumnFilterKeys =
+  (
+    setFilterState: React.Dispatch<
+      React.SetStateAction<Record<string, React.Key[]>>
+    >,
+    colKey: string
+  ) =>
+  (keys: React.Key[]): void =>
+    setFilterState((prev) => ({ ...prev, [colKey]: keys }));
+
+const clearColumnFilter =
+  (
+    setFilterState: React.Dispatch<
+      React.SetStateAction<Record<string, React.Key[]>>
+    >,
+    colKey: string
+  ) =>
+  (): void =>
+    setFilterState((prev) => {
+      const next = { ...prev };
+      delete next[colKey];
+
+      return next;
+    });
+
 const TableV2 = <T extends object>(
   {
     loading,
@@ -658,19 +701,15 @@ const TableV2 = <T extends object>(
     }
 
     return sortedDataSource.filter((record) =>
-      activeFilters.every(([colKey, selectedKeys]) => {
-        const col = propsColumns.find(
-          (_c, idx) => columnIds[idx] === colKey
-        ) as ColumnType<T> | undefined;
-
-        const onFilter = col?.onFilter;
-
-        return onFilter
-          ? selectedKeys.some((key) =>
-              onFilter(key as React.Key | boolean, record)
-            )
-          : true;
-      })
+      activeFilters.every(([colKey, selectedKeys]) =>
+        matchesFilterEntry(
+          record,
+          colKey,
+          selectedKeys,
+          propsColumns,
+          columnIds
+        )
+      )
     );
   }, [sortedDataSource, filterState, propsColumns, columnIds]);
 
@@ -988,6 +1027,13 @@ const TableV2 = <T extends object>(
         return;
       }
 
+      let sortOrder: SorterResult<T>['order'] = null;
+      if (newDirection === 'ascending') {
+        sortOrder = 'ascend';
+      } else if (newDirection === 'descending') {
+        sortOrder = 'descend';
+      }
+
       rest.onChange(
         {
           current: internalCurrentPage,
@@ -999,12 +1045,7 @@ const TableV2 = <T extends object>(
           column: clickedColumn,
           columnKey: reportedKey,
           field: reportedKey,
-          order:
-            newDirection === 'ascending'
-              ? 'ascend'
-              : newDirection === 'descending'
-              ? 'descend'
-              : null,
+          order: sortOrder,
         } as SorterResult<T>,
         {
           currentDataSource: (rest.dataSource ?? []) as T[],
@@ -1115,7 +1156,212 @@ const TableV2 = <T extends object>(
     [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
   );
 
+  const renderRowCells = (flatRow: FlatRow<T>) => {
+    const { record, actualIndex, depth, hasChildren, rowKey } = flatRow;
+    const isExpanded = expandedKeys.has(rowKey);
+
+    return propsColumns.map((col, colIdx) => {
+      const colType = col as ColumnType<T>;
+      const cellKey = columnIds[colIdx];
+      const stickyStyle = getColumnStickyStyle(colType.fixed, 1);
+
+      const isFirstColumn = colIdx === 0;
+      const showExpandInCell = rest.expandable && isFirstColumn;
+      const ExpandIcon = rest.expandable?.expandIcon;
+      const cellHandlerProps =
+        (colType.onCell?.(
+          record,
+          actualIndex
+        ) as React.TdHTMLAttributes<HTMLTableCellElement>) ?? {};
+
+      let expandIndicator: React.ReactNode = null;
+      if (showExpandInCell) {
+        if (hasChildren && ExpandIcon) {
+          expandIndicator = (
+            <ExpandIcon
+              expandable={hasChildren}
+              expanded={isExpanded}
+              prefixCls=""
+              record={record}
+              onExpand={(rec, e) => {
+                e.stopPropagation();
+                handleExpandToggle(rec as T, rowKey);
+              }}
+            />
+          );
+        } else if (hasChildren) {
+          expandIndicator = (
+            <button
+              aria-expanded={isExpanded}
+              className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+              data-testid="expand-icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleExpandToggle(record, rowKey);
+              }}>
+              {isExpanded ? (
+                <ChevronDown className="tw:size-4" />
+              ) : (
+                <ChevronRight className="tw:size-4" />
+              )}
+            </button>
+          );
+        } else if (ExpandIcon) {
+          expandIndicator = (
+            <ExpandIcon
+              expandable={false}
+              expanded={false}
+              prefixCls=""
+              record={record}
+              onExpand={(_rec, _e) => {}}
+            />
+          );
+        } else {
+          expandIndicator = <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+        }
+      }
+
+      let cellContent: React.ReactNode = resolveCellValue(
+        colType,
+        record,
+        actualIndex
+      );
+      if (colType.ellipsis) {
+        // `flex-1 min-w-0` only mean anything inside the flex row an expander
+        // creates; without one the wrapper is `display: contents` and this div
+        // is a block child of the cell, which already fills it. `truncate` is
+        // what does the work either way.
+        cellContent = (
+          <div
+            className={classNames('tw:truncate', {
+              'tw:flex-1 tw:min-w-0': showExpandInCell,
+            })}>
+            {cellContent}
+          </div>
+        );
+      } else if (showExpandInCell) {
+        // Same shrink permission without imposing `truncate`: a flex item's
+        // min-width is `auto`, so a nowrap value the call site ellipsizes
+        // itself (an AntD Typography link, say) could never shrink to the cell
+        // and painted across the neighbouring columns instead.
+        cellContent = <div className="tw:min-w-0 tw:flex-1">{cellContent}</div>;
+      }
+
+      return (
+        <UntitledTable.Cell
+          {...cellHandlerProps}
+          className={classNames(
+            colType.ellipsis && 'tw:overflow-hidden',
+            // A cell must never spill into its neighbour. An
+            // unbreakable string — a long name with no spaces,
+            // an FQN — otherwise overflows a width-constrained
+            // cell and lands on the column beside it, covering
+            // whatever is there and swallowing clicks on it.
+            'tw:break-words',
+            rest.cellClassName ??
+              // `.ant-table-cell { vertical-align: top }` in
+              // the app's own stylesheet, so every legacy
+              // table tops its cells — stock AntD sets none,
+              // which is what made this look like the browser
+              // default. A row whose tallest cell wraps has
+              // the rest of its values sitting on the first
+              // line, not floating in the middle.
+              classNames(toCellPaddingClass(rest.size), 'tw:align-top'),
+            getAlignClass(colType.align),
+            'tw:group-data-[dragging]:opacity-40',
+            'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
+            'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
+          )}
+          key={cellKey}
+          style={{
+            ...(columnWidths[cellKey] !== undefined ||
+            colType.width !== undefined
+              ? {
+                  width: toColumnWidth(
+                    columnWidths[cellKey] ?? (colType.width as number)
+                  ),
+                  // Scrollable pixel columns only — see the
+                  // header cell.
+                  ...(scrollWidth !== undefined &&
+                  typeof colType.width === 'number'
+                    ? { minWidth: colType.width }
+                    : {}),
+                }
+              : {}),
+            ...stickyStyle,
+            ...getIndentStyle(
+              Boolean(showExpandInCell),
+              depth,
+              rest.indentSize
+            ),
+            ...cellHandlerProps.style,
+          }}>
+          <div
+            // Only a laid-out box when it has an expander to
+            // place beside the value. AntD puts cell content
+            // straight into the <td>, and a flex parent with
+            // `max-w-full` collapsed anything a cell rendered
+            // inline — a Glossary Terms dropdown came out a
+            // few pixels wide.
+            className={classNames({
+              'tw:flex tw:gap-1 tw:max-w-full': showExpandInCell,
+              'tw:contents': !showExpandInCell,
+            })}>
+            {showExpandInCell && (
+              <div className="tw:flex tw:items-center tw:shrink-0">
+                {expandIndicator}
+              </div>
+            )}
+            {cellContent}
+          </div>
+        </UntitledTable.Cell>
+      );
+    });
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  const showCustomPagination =
+    customPaginationProps && customPaginationProps.showPagination;
+  const showClientPagination =
+    clientPagination &&
+    !(
+      clientPagination.hideOnSinglePage &&
+      // Server-paged: the rows in hand are one page by definition, so only
+      // the reported total says whether there is anything to page to.
+      (clientPagination.serverTotal ?? filteredDataSource.length) <=
+        clientPagination.pageSize
+    );
+
+  let paginationFooter: React.ReactNode = null;
+  if (showCustomPagination) {
+    paginationFooter = (
+      <div>
+        <NextPrevious {...customPaginationProps} />
+      </div>
+    );
+  } else if (showClientPagination) {
+    paginationFooter = (
+      <div>
+        {/*
+          The core pager rather than NextPrevious: it navigates by page
+          number instead of one step at a time, and it is react-aria rather
+          than AntD, which is the point of the migration. `total` here is a
+          page count, not a row count.
+        */}
+        <PaginationCardWithControls
+          page={currentPage}
+          pageSize={clientPagination.pageSize}
+          total={computeTotalPages(
+            clientPagination.pageSize,
+            clientPagination.serverTotal ?? filteredDataSource.length
+          )}
+          onPageChange={handlePageChange}
+          {...sizeChangerProps}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1404,20 +1650,16 @@ const TableV2 = <T extends object>(
                                   {typeof colType.filterDropdown === 'function'
                                     ? colType.filterDropdown({
                                         prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) =>
-                                          setFilterState((prev) => ({
-                                            ...prev,
-                                            [colKey]: keys,
-                                          })),
+                                        setSelectedKeys: setColumnFilterKeys(
+                                          setFilterState,
+                                          colKey
+                                        ),
                                         selectedKeys: filterState[colKey] ?? [],
                                         confirm: () => setOpenFilterKey(null),
-                                        clearFilters: () =>
-                                          setFilterState((prev) => {
-                                            const next = { ...prev };
-                                            delete next[colKey];
-
-                                            return next;
-                                          }),
+                                        clearFilters: clearColumnFilter(
+                                          setFilterState,
+                                          colKey
+                                        ),
                                         filters: colType.filters,
                                         visible: true,
                                         close: () => setOpenFilterKey(null),
@@ -1469,8 +1711,7 @@ const TableV2 = <T extends object>(
                   )
                 }>
                 {flatRows.flatMap((flatRow, flatIndex) => {
-                  const { record, actualIndex, depth, hasChildren, rowKey } =
-                    flatRow;
+                  const { record, actualIndex, depth, rowKey } = flatRow;
                   // AntD types `onRow`'s return as HTMLAttributes<any>, while
                   // React Aria's Row types several of the same handlers itself.
                   // This is the boundary between the two, narrowed once.
@@ -1497,170 +1738,7 @@ const TableV2 = <T extends object>(
                       id={rowIds[flatIndex]}
                       key={rowIds[flatIndex]}
                       {...getRowInteractionProps(rowHandlers)}>
-                      {propsColumns.map((col, colIdx) => {
-                        const colType = col as ColumnType<T>;
-                        const cellKey = columnIds[colIdx];
-                        const stickyStyle = getColumnStickyStyle(
-                          colType.fixed,
-                          1
-                        );
-
-                        const isFirstColumn = colIdx === 0;
-                        const showExpandInCell =
-                          rest.expandable && isFirstColumn;
-                        const ExpandIcon = rest.expandable?.expandIcon;
-                        const cellHandlerProps =
-                          (colType.onCell?.(
-                            record,
-                            actualIndex
-                          ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
-                          {};
-
-                        return (
-                          <UntitledTable.Cell
-                            {...cellHandlerProps}
-                            className={classNames(
-                              colType.ellipsis && 'tw:overflow-hidden',
-                              // A cell must never spill into its neighbour. An
-                              // unbreakable string — a long name with no spaces,
-                              // an FQN — otherwise overflows a width-constrained
-                              // cell and lands on the column beside it, covering
-                              // whatever is there and swallowing clicks on it.
-                              'tw:break-words',
-                              rest.cellClassName ??
-                                // `.ant-table-cell { vertical-align: top }` in
-                                // the app's own stylesheet, so every legacy
-                                // table tops its cells — stock AntD sets none,
-                                // which is what made this look like the browser
-                                // default. A row whose tallest cell wraps has
-                                // the rest of its values sitting on the first
-                                // line, not floating in the middle.
-                                classNames(
-                                  toCellPaddingClass(rest.size),
-                                  'tw:align-top'
-                                ),
-                              getAlignClass(colType.align),
-                              'tw:group-data-[dragging]:opacity-40',
-                              'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
-                              'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
-                            )}
-                            key={cellKey}
-                            style={{
-                              ...(columnWidths[cellKey] !== undefined ||
-                              colType.width !== undefined
-                                ? {
-                                    width: toColumnWidth(
-                                      columnWidths[cellKey] ??
-                                        (colType.width as number)
-                                    ),
-                                    // Scrollable pixel columns only — see the
-                                    // header cell.
-                                    ...(scrollWidth !== undefined &&
-                                    typeof colType.width === 'number'
-                                      ? { minWidth: colType.width }
-                                      : {}),
-                                  }
-                                : {}),
-                              ...stickyStyle,
-                              ...getIndentStyle(
-                                Boolean(showExpandInCell),
-                                depth,
-                                rest.indentSize
-                              ),
-                              ...cellHandlerProps.style,
-                            }}>
-                            <div
-                              // Only a laid-out box when it has an expander to
-                              // place beside the value. AntD puts cell content
-                              // straight into the <td>, and a flex parent with
-                              // `max-w-full` collapsed anything a cell rendered
-                              // inline — a Glossary Terms dropdown came out a
-                              // few pixels wide.
-                              className={classNames({
-                                'tw:flex tw:gap-1 tw:max-w-full':
-                                  showExpandInCell,
-                                'tw:contents': !showExpandInCell,
-                              })}>
-                              {showExpandInCell && (
-                                <div className="tw:flex tw:items-center tw:shrink-0">
-                                  {hasChildren ? (
-                                    ExpandIcon ? (
-                                      <ExpandIcon
-                                        expandable={hasChildren}
-                                        expanded={isExpanded}
-                                        prefixCls=""
-                                        record={record}
-                                        onExpand={(rec, e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(rec as T, rowKey);
-                                        }}
-                                      />
-                                    ) : (
-                                      <button
-                                        aria-expanded={isExpanded}
-                                        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
-                                        data-testid="expand-icon"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleExpandToggle(record, rowKey);
-                                        }}>
-                                        {isExpanded ? (
-                                          <ChevronDown className="tw:size-4" />
-                                        ) : (
-                                          <ChevronRight className="tw:size-4" />
-                                        )}
-                                      </button>
-                                    )
-                                  ) : ExpandIcon ? (
-                                    <ExpandIcon
-                                      expandable={false}
-                                      expanded={false}
-                                      prefixCls=""
-                                      record={record}
-                                      onExpand={(_rec, _e) => {}}
-                                    />
-                                  ) : (
-                                    <span className="tw:inline-block tw:w-4 tw:mr-1" />
-                                  )}
-                                </div>
-                              )}
-                              {colType.ellipsis ? (
-                                // `flex-1 min-w-0` only mean anything inside the
-                                // flex row an expander creates; without one the
-                                // wrapper is `display: contents` and this div is
-                                // a block child of the cell, which already fills
-                                // it. `truncate` is what does the work either way.
-                                <div
-                                  className={classNames('tw:truncate', {
-                                    'tw:flex-1 tw:min-w-0': showExpandInCell,
-                                  })}>
-                                  {resolveCellValue(
-                                    colType,
-                                    record,
-                                    actualIndex
-                                  )}
-                                </div>
-                              ) : showExpandInCell ? (
-                                // Same shrink permission without imposing
-                                // `truncate`: a flex item's min-width is `auto`,
-                                // so a nowrap value the call site ellipsizes
-                                // itself (an AntD Typography link, say) could
-                                // never shrink to the cell and painted across
-                                // the neighbouring columns instead.
-                                <div className="tw:min-w-0 tw:flex-1">
-                                  {resolveCellValue(
-                                    colType,
-                                    record,
-                                    actualIndex
-                                  )}
-                                </div>
-                              ) : (
-                                resolveCellValue(colType, record, actualIndex)
-                              )}
-                            </div>
-                          </UntitledTable.Cell>
-                        );
-                      })}
+                      {renderRowCells(flatRow)}
                     </UntitledTable.Row>,
                     detailRow,
                   ].filter(Boolean);
@@ -1687,37 +1765,7 @@ const TableV2 = <T extends object>(
         </div>
       )}
 
-      {customPaginationProps && customPaginationProps.showPagination ? (
-        <div>
-          <NextPrevious {...customPaginationProps} />
-        </div>
-      ) : clientPagination &&
-        !(
-          clientPagination.hideOnSinglePage &&
-          // Server-paged: the rows in hand are one page by definition, so only
-          // the reported total says whether there is anything to page to.
-          (clientPagination.serverTotal ?? filteredDataSource.length) <=
-            clientPagination.pageSize
-        ) ? (
-        <div>
-          {/*
-            The core pager rather than NextPrevious: it navigates by page
-            number instead of one step at a time, and it is react-aria rather
-            than AntD, which is the point of the migration. `total` here is a
-            page count, not a row count.
-          */}
-          <PaginationCardWithControls
-            page={currentPage}
-            pageSize={clientPagination.pageSize}
-            total={computeTotalPages(
-              clientPagination.pageSize,
-              clientPagination.serverTotal ?? filteredDataSource.length
-            )}
-            onPageChange={handlePageChange}
-            {...sizeChangerProps}
-          />
-        </div>
-      ) : null}
+      {paginationFooter}
     </div>
   );
 };

@@ -1088,10 +1088,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     t,
   ]);
 
+  const hasBlockingValidationState =
+    !yamlContent || Boolean(parseError) || isValidating;
+
   const isImportDisabled =
-    !yamlContent ||
-    Boolean(parseError) ||
-    isValidating ||
+    hasBlockingValidationState ||
     hasValidationErrors ||
     (hasMultipleObjects && !selectedObjectName);
 

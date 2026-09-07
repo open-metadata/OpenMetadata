@@ -14,7 +14,7 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
@@ -134,7 +134,7 @@ export const OwnerLabel = ({
       {ownerElementsNonCompactView}
       <div className="tw:flex tw:items-center tw:justify-center tw:max-w-full">
         {!isCompactView ? (
-          <>
+          <Fragment>
             <OwnerAvatarStack
               avatarSize={avatarSize}
               className={className}
@@ -155,9 +155,9 @@ export const OwnerLabel = ({
                 <EditIcon height={14} width={14} />
               </button>
             )}
-          </>
+          </Fragment>
         ) : (
-          <>
+          <Fragment>
             {isMultipleUserAndTeam && (
               <OwnerUserTeamList
                 avatarSize={avatarSize}
@@ -191,7 +191,7 @@ export const OwnerLabel = ({
                 owners={owners}
               />
             )}
-          </>
+          </Fragment>
         )}
       </div>
       {isCompactView && onUpdate && (
