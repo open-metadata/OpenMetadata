@@ -12,23 +12,23 @@
  */
 import { Typography } from '@openmetadata/ui-core-components';
 import {
+  Typography as AntTypography,
   Button,
   Col,
   Row,
   Segmented,
   Table,
-  Typography as AntTypography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
-import { ClassificationTag, GlossaryTag } from '../components/common/atoms/Tag';
 import { FieldCard } from '../components/common/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
@@ -45,7 +45,7 @@ import { EntityReference } from '../generated/entity/type';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
-import { TagLabel, TagSource } from '../generated/type/tagLabel';
+import { TagLabel } from '../generated/type/tagLabel';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
@@ -1062,31 +1062,14 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'tags',
       key: 'tags',
       width: 200,
-      render: (tags: TagLabel[]) => (
-        <div className="d-flex flex-wrap gap-2">
-          {tags?.map((tag) => {
-            const isGlossaryTerm = tag.source === TagSource.Glossary;
-            const TagComponent = isGlossaryTerm
-              ? GlossaryTag
-              : ClassificationTag;
-
-            return (
-              <TagComponent
-                color={tag.style?.color}
-                icon={tag.style?.iconURL}
-                key={tag.tagFQN ?? ''}
-                label={getEntityName(tag)}
-                maxWidth={120}
-                tooltip={getEntityName(tag)}
-              />
-            );
-          }) || (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.tag-plural') })}
-            </span>
-          )}
-        </div>
-      ),
+      render: (tags: TagLabel[]) =>
+        isEmpty(tags) ? (
+          <Typography className="tw:text-secondary">
+            {t('label.no-entity', { entity: t('label.tag-plural') })}
+          </Typography>
+        ) : (
+          <TagsViewer maxWidth={120} tags={tags} />
+        ),
     },
   ];
 

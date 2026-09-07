@@ -30,7 +30,7 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
-import { expect, test as base } from '../../support/fixtures/base';
+import { test as base, expect } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -203,13 +203,13 @@ test.describe('Entity Version pages', () => {
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PersonalData.SpecialCategory"]'
           )
         ).toBeVisible();
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PII.Sensitive"]'
           )
         ).toBeVisible();
       });

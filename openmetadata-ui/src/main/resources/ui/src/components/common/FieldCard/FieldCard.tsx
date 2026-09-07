@@ -138,18 +138,16 @@ const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
               : ClassificationTag;
 
             return (
-              <span
+              <TagComponent
                 className={itemClassName}
+                color={item?.style?.color}
                 data-testid={`${testIdPrefix}-${item.tagFQN}`}
-                key={item.tagFQN}>
-                <TagComponent
-                  color={item?.style?.color}
-                  icon={item?.style?.iconURL}
-                  label={getEntityName(item)}
-                  maxWidth={120}
-                  tooltip={getEntityName(item)}
-                />
-              </span>
+                icon={item?.style?.iconURL}
+                key={item.tagFQN}
+                label={getEntityName(item)}
+                maxWidth={120}
+                tooltip={getEntityName(item)}
+              />
             );
           })}
           {showMoreButton && (

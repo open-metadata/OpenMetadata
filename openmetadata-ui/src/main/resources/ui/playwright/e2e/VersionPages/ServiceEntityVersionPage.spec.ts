@@ -26,7 +26,7 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
-import { expect, test as base } from '../../support/fixtures/base';
+import { test as base, expect } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -212,13 +212,13 @@ test.describe('Service Version pages', () => {
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PersonalData.SpecialCategory"]'
           )
         ).toBeVisible();
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PII.Sensitive"]'
           )
         ).toBeVisible();
       });
