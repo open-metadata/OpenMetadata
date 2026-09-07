@@ -51,6 +51,7 @@ import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
 
@@ -367,6 +368,7 @@ function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
   const { currentUser } = useApplicationStore();
@@ -822,8 +824,12 @@ const OntologyExplorerPage: React.FC = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className="tw:p-0!"
-      mainContainerClassName="ontology-studio-page-layout"
+      className={classNames('tw:p-0!', {
+        'tw:h-full!': isAiMode,
+      })}
+      mainContainerClassName={classNames('ontology-studio-page-layout', {
+        'tw:h-full!': isAiMode,
+      })}
       pageTitle={t('label.ontology-studio')}>
       <main
         className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-tertiary tw:font-body tw:antialiased"
