@@ -24,6 +24,8 @@
 [] rdf:type fuseki:Server ;
    fuseki:services (
      <#openmetadata>
+     <#openmetadata_a>
+     <#openmetadata_b>
    ) .
 
 <#openmetadata> rdf:type fuseki:Service ;
@@ -47,9 +49,35 @@
     # Bound abandoned reads and writes inside Fuseki itself. These fire before the
     # shipped 60-second client deadline because releasing an OpenMetadata thread does
     # not cancel server work holding TDB2's writer or consuming read resources.
-    ja:context [ ja:cxtName "arq:queryTimeout" ; ja:cxtValue "50000" ] ;
-    ja:context [ ja:cxtName "arq:updateTimeout" ; ja:cxtValue "50000" ] ;
+    ja:context <#queryDeadline>, <#updateDeadline> ;
     .
+
+<#queryDeadline> ja:cxtName "arq:queryTimeout" ; ja:cxtValue "50000" .
+<#updateDeadline> ja:cxtName "arq:updateTimeout" ; ja:cxtValue "50000" .
+
+<#openmetadata_a> rdf:type fuseki:Service ;
+    fuseki:name "openmetadata_a" ;
+    fuseki:serviceQuery "sparql", "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:dataset <#dataset_a> .
+
+<#openmetadata_b> rdf:type fuseki:Service ;
+    fuseki:name "openmetadata_b" ;
+    fuseki:serviceQuery "sparql", "query" ;
+    fuseki:serviceUpdate "update" ;
+    fuseki:serviceReadWriteGraphStore "data" ;
+    fuseki:dataset <#dataset_b> .
+
+<#dataset_a> rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki-data/openmetadata_a" ;
+    tdb2:unionDefaultGraph true ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#dataset_b> rdf:type tdb2:DatasetTDB2 ;
+    tdb2:location "/fuseki-data/openmetadata_b" ;
+    tdb2:unionDefaultGraph true ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
 
 # Enable full-text search
 <#dataset> ja:textIndex (<#index>) .

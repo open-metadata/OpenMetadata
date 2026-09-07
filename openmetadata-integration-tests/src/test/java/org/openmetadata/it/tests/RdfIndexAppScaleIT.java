@@ -12,11 +12,14 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,12 +30,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
+import org.apache.jena.query.ParameterizedSparqlString;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -43,12 +49,15 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.rdf.RdfRepository;
 
 /**
  * Runs the real RdfIndexApp end to end over a seeded catalog and reports the throughput the app
@@ -66,8 +75,10 @@ public class RdfIndexAppScaleIT {
 
   private static final String APP_NAME = "RdfIndexApp";
 
-  @Test
-  void reindexSeededCatalogAndReportThroughput(TestNamespace namespace) throws Exception {
+  @ParameterizedTest(name = "distributed={0}")
+  @MethodSource("executionModes")
+  void reindexSeededCatalogAndReportThroughput(boolean distributed, TestNamespace namespace)
+      throws Exception {
     assumeTrue(RdfTestUtils.isRdfEnabled(), "RDF is disabled; run with -DenableRdf=true");
     assumeTrue(Boolean.getBoolean("rdfScale"), "Scale run is opt-in; enable with -DrdfScale=true");
     assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger is not compatible with K8s");
@@ -87,9 +98,10 @@ public class RdfIndexAppScaleIT {
 
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
     Long previousStart = latestRunStart(httpClient);
+    String previousDataset = RdfRepository.getInstance().activeDatasetName();
 
     long runStart = System.nanoTime();
-    trigger(httpClient);
+    trigger(httpClient, distributed);
     AppRunRecord run = awaitCompletion(httpClient, previousStart);
     double runSeconds = (System.nanoTime() - runStart) / 1e9;
 
@@ -118,9 +130,13 @@ public class RdfIndexAppScaleIT {
         asLong(jobStats.get("processTimeMs")),
         asLong(jobStats.get("sinkTimeMs")));
 
-    assertTrue(success > 0, "the run must index something");
+    assertTrue(List.of("completed", "success").contains(run.getStatus().value()), run.toString());
+    assertTrue(success >= created, "the run must index every seeded table");
     assertTrue(
         failed == 0, () -> "no record should fail a healthy run, saw " + failed + ": " + run);
+    assertNotEquals(previousDataset, RdfRepository.getInstance().activeDatasetName());
+    assertEquals(created, countSeededTables(httpClient, schema.getFullyQualifiedName()));
+    verifyLiveWritesAfterPromotion(httpClient, namespace, schema);
   }
 
   private int seedTables(
@@ -168,15 +184,23 @@ public class RdfIndexAppScaleIT {
     return columns;
   }
 
-  private static void trigger(HttpClient httpClient) {
+  private static Stream<Boolean> executionModes() {
+    String configured = System.getProperty("rdfScaleDistributed");
+    return configured == null
+        ? Stream.of(false, true)
+        : Stream.of(Boolean.parseBoolean(configured));
+  }
+
+  private static void trigger(HttpClient httpClient, boolean distributed) {
     Map<String, Object> config = new HashMap<>();
     config.put("entities", List.of("table"));
     config.put("recreateIndex", true);
+    config.put("blueGreenRebuild", true);
     config.put("batchSize", 100);
     config.put("producerThreads", Integer.getInteger("rdfScaleProducerThreads", 2));
     config.put("consumerThreads", 3);
     config.put("queueSize", 5000);
-    config.put("useDistributedIndexing", Boolean.getBoolean("rdfScaleDistributed"));
+    config.put("useDistributedIndexing", distributed);
     config.put("partitionSize", Integer.getInteger("rdfScalePartitionSize", 10000));
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(3))
@@ -237,15 +261,73 @@ public class RdfIndexAppScaleIT {
     }
   }
 
+  private static long countSeededTables(HttpClient httpClient, String schemaFqn) {
+    ParameterizedSparqlString query =
+        new ParameterizedSparqlString(
+            "SELECT (COUNT(DISTINCT ?table) AS ?count) WHERE { "
+                + "?table a <https://open-metadata.org/ontology/Table> . "
+                + "?table <https://open-metadata.org/ontology/fullyQualifiedName> ?fqn . "
+                + "FILTER(STRSTARTS(STR(?fqn), ?schemaPrefix)) }");
+    query.setLiteral("schemaPrefix", schemaFqn + ".scale_");
+    JsonNode result =
+        httpClient.execute(
+            HttpMethod.POST,
+            "/v1/rdf/sparql",
+            Map.of("query", query.toString(), "format", "json", "inference", "none"),
+            JsonNode.class);
+    return result.path("results").path("bindings").get(0).path("count").path("value").asLong();
+  }
+
+  private static void verifyLiveWritesAfterPromotion(
+      HttpClient httpClient, TestNamespace namespace, DatabaseSchema schema) {
+    CreateTable request =
+        new CreateTable()
+            .withName(namespace.prefix("live"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("created after cutover")
+            .withColumns(columns(7));
+    Table table = Tables.create(request);
+    awaitDescription(httpClient, table, "created after cutover");
+    httpClient.execute(
+        HttpMethod.PUT,
+        "/v1/tables",
+        request.withDescription("updated after cutover"),
+        Table.class);
+    awaitDescription(httpClient, table, "updated after cutover");
+    httpClient.execute(
+        HttpMethod.DELETE, "/v1/tables/" + table.getId() + "?hardDelete=true", null, Void.class);
+    Awaitility.await("live delete after cutover")
+        .atMost(Duration.ofSeconds(30))
+        .until(() -> !hasDescription(httpClient, table, "updated after cutover"));
+  }
+
+  private static void awaitDescription(HttpClient httpClient, Table table, String description) {
+    Awaitility.await("live RDF projection after cutover")
+        .atMost(Duration.ofSeconds(30))
+        .until(() -> hasDescription(httpClient, table, description));
+  }
+
+  private static boolean hasDescription(HttpClient httpClient, Table table, String description) {
+    ParameterizedSparqlString query =
+        new ParameterizedSparqlString(
+            "ASK { ?table <http://purl.org/dc/terms/description> ?description }");
+    query.setIri("table", "https://open-metadata.org/entity/table/" + table.getId());
+    query.setLiteral("description", description);
+    JsonNode result =
+        httpClient.execute(
+            HttpMethod.POST,
+            "/v1/rdf/sparql",
+            Map.of("query", query.toString(), "format", "json", "inference", "none"),
+            JsonNode.class);
+    return result.path("boolean").asBoolean();
+  }
+
   /** stats is a declared field on the context, not an additional property, so read the JSON. */
   private static Map<String, Object> jobStats(AppRunRecord run) {
     try {
-      com.fasterxml.jackson.databind.JsonNode root =
-          org.openmetadata.schema.utils.JsonUtils.readTree(
-              org.openmetadata.schema.utils.JsonUtils.pojoToJson(run));
+      JsonNode root = JsonUtils.readTree(JsonUtils.pojoToJson(run));
       for (String context : List.of("successContext", "failureContext")) {
-        com.fasterxml.jackson.databind.JsonNode job =
-            root.path(context).path("stats").path("jobStats");
+        JsonNode job = root.path(context).path("stats").path("jobStats");
         if (!job.isMissingNode() && job.has("totalRecords")) {
           Map<String, Object> stats = new HashMap<>();
           job.fields()

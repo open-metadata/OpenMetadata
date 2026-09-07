@@ -20,6 +20,37 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.rdf.RdfWriteMode;
 
 class RdfIndexingRunContextTest {
+  @Test
+  void distributedTargetAndBudgetSurviveSerializationWithoutFollowingLaterConfigChanges() {
+    final EventPublisherJob job =
+        new EventPublisherJob()
+            .withRecreateIndex(true)
+            .withBlueGreenRebuild(true)
+            .withRdfBuildDataset("catalog_a")
+            .withRdfRebuildId("run-1")
+            .withPayLoadSize(2048L);
+    final EventPublisherJob restored =
+        org.openmetadata.schema.utils.JsonUtils.readValue(
+            org.openmetadata.schema.utils.JsonUtils.pojoToJson(job), EventPublisherJob.class);
+    final RdfIndexingRunContext context = RdfIndexingRunContext.forJob(restored);
+    restored.setRdfBuildDataset("catalog_b");
+    restored.setPayLoadSize(8192L);
+    assertEquals(
+        new RdfIndexingRunContext.StorageTarget("catalog_a", "run-1", 2048),
+        context.storageTarget());
+    assertEquals(
+        context.storageTarget(),
+        context.withJobIdentity(java.util.UUID.randomUUID(), "pod-2").storageTarget());
+  }
+
+  @Test
+  void aWorkerCannotDeriveAnUnrecordedBuildTarget() {
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalStateException.class,
+        () ->
+            RdfIndexingRunContext.forJob(
+                new EventPublisherJob().withRecreateIndex(true).withBlueGreenRebuild(true)));
+  }
 
   @Test
   void recreateJobUsesInsertOnly() {

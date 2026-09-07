@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.rdf.RdfReindexFailuresResponse;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -76,13 +77,13 @@ class RdfReindexResourceTest {
     when(fixture.failureDAO().findAll(50, 0))
         .thenReturn(List.of(failure("a", "table"), failure("b", "topic")));
 
-    RdfReindexResource.RdfReindexFailuresResponse response =
+    RdfReindexFailuresResponse response =
         fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, null);
 
-    assertEquals(2, response.total());
-    assertEquals(2, response.data().size());
-    assertEquals(0, response.offset());
-    assertEquals(50, response.limit());
+    assertEquals(2, response.getTotal());
+    assertEquals(2, response.getData().size());
+    assertEquals(0, response.getOffset());
+    assertEquals(50, response.getLimit());
     verify(fixture.failureDAO(), never()).countByEntityType(any());
   }
 
@@ -94,13 +95,13 @@ class RdfReindexResourceTest {
     when(fixture.failureDAO().findByEntityType("table", 20, 40))
         .thenReturn(List.of(failure("a", "table")));
 
-    RdfReindexResource.RdfReindexFailuresResponse response =
+    RdfReindexFailuresResponse response =
         fixture.resource().getFailures(SECURITY_CONTEXT, 40, 20, "table");
 
-    assertEquals(1, response.total());
-    assertEquals("table", response.data().getFirst().getEntityType());
-    assertEquals(40, response.offset());
-    assertEquals(20, response.limit());
+    assertEquals(1, response.getTotal());
+    assertEquals("table", response.getData().getFirst().getEntityType());
+    assertEquals(40, response.getOffset());
+    assertEquals(20, response.getLimit());
     // The unfiltered count would report every entity type's failures against a filtered page.
     verify(fixture.failureDAO(), never()).countAll();
   }
@@ -112,10 +113,10 @@ class RdfReindexResourceTest {
     when(fixture.failureDAO().countAll()).thenReturn(0);
     when(fixture.failureDAO().findAll(50, 0)).thenReturn(List.of());
 
-    RdfReindexResource.RdfReindexFailuresResponse response =
+    RdfReindexFailuresResponse response =
         fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "");
 
-    assertEquals(0, response.total());
+    assertEquals(0, response.getTotal());
     verify(fixture.failureDAO()).countAll();
     verify(fixture.failureDAO(), never()).countByEntityType(any());
   }
@@ -128,10 +129,10 @@ class RdfReindexResourceTest {
     when(fixture.failureDAO().findAll(50, 0)).thenReturn(List.of(failure("a", "table")));
 
     // A whitespace-only value used to reach the DAO and return a confusingly empty page.
-    RdfReindexResource.RdfReindexFailuresResponse response =
+    RdfReindexFailuresResponse response =
         fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "   ");
 
-    assertEquals(3, response.total());
+    assertEquals(3, response.getTotal());
     verify(fixture.failureDAO(), never()).countByEntityType(any());
   }
 
@@ -143,10 +144,10 @@ class RdfReindexResourceTest {
     when(fixture.failureDAO().findByEntityType("table", 50, 0))
         .thenReturn(List.of(failure("a", "table")));
 
-    RdfReindexResource.RdfReindexFailuresResponse response =
+    RdfReindexFailuresResponse response =
         fixture.resource().getFailures(SECURITY_CONTEXT, 0, 50, "  table  ");
 
-    assertEquals(1, response.total());
+    assertEquals(1, response.getTotal());
     verify(fixture.failureDAO()).countByEntityType("table");
     verify(fixture.failureDAO()).findByEntityType("table", 50, 0);
   }

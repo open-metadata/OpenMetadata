@@ -17,11 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.net.ConnectException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,7 +29,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.Query;
@@ -161,134 +159,48 @@ class JenaFusekiStorageTest {
   }
 
   @Nested
-  @DisplayName("write retry policy")
-  class WriteRetryPolicyTests {
-
-    @Test
-    @DisplayName("non-transient write failures are not retried or delayed")
-    void nonTransientWriteFailuresAreNotRetriedOrDelayed() {
-      AtomicInteger attempts = new AtomicInteger();
-      AtomicInteger failureRecords = new AtomicInteger();
-      AtomicLong delayMs = new AtomicLong();
-      IllegalArgumentException failure = new IllegalArgumentException("bad RDF payload");
-
-      IllegalArgumentException thrown =
-          assertThrows(
-              IllegalArgumentException.class,
-              () ->
-                  JenaFusekiStorage.runWriteWithRetry(
-                      () -> {
-                        attempts.incrementAndGet();
-                        throw failure;
-                      },
-                      "testWrite",
-                      2,
-                      250,
-                      2_000,
-                      delayMs::addAndGet,
-                      () -> {},
-                      () -> {},
-                      failureRecords::incrementAndGet,
-                      () -> false,
-                      () -> false));
-
-      assertSame(failure, thrown);
-      assertEquals(1, attempts.get());
-      assertEquals(0, failureRecords.get());
-      assertEquals(0, delayMs.get());
-    }
-
-    @Test
-    @DisplayName("transient write failures are retried with injected delay")
-    void transientWriteFailuresAreRetriedWithInjectedDelay() {
-      AtomicInteger attempts = new AtomicInteger();
-      AtomicInteger successes = new AtomicInteger();
-      AtomicInteger failureRecords = new AtomicInteger();
-      AtomicLong delayMs = new AtomicLong();
-
-      JenaFusekiStorage.runWriteWithRetry(
-          () -> {
-            if (attempts.incrementAndGet() <= 2) {
-              throw new RuntimeException("timed out", new TimeoutException());
-            }
-          },
-          "testWrite",
-          2,
-          250,
-          2_000,
-          delayMs::addAndGet,
-          () -> {},
-          successes::incrementAndGet,
-          failureRecords::incrementAndGet,
-          () -> false,
-          () -> false);
-
-      assertEquals(3, attempts.get());
-      assertEquals(1, successes.get());
-      assertEquals(2, failureRecords.get());
-      assertEquals(750, delayMs.get());
-    }
-
-    @Test
-    @DisplayName("timeouts on large payloads abort retries with RdfPayloadTooLargeException")
-    void largePayloadTimeoutAbortsRetries() {
-      AtomicInteger attempts = new AtomicInteger();
-      AtomicInteger failureRecords = new AtomicInteger();
-
-      RdfPayloadTooLargeException thrown =
-          assertThrows(
-              RdfPayloadTooLargeException.class,
-              () ->
-                  JenaFusekiStorage.runWriteWithRetry(
-                      () -> {
-                        attempts.incrementAndGet();
-                        throw new RuntimeException("timed out", new TimeoutException());
-                      },
-                      "testWrite",
-                      2,
-                      250,
-                      2_000,
-                      delay -> {},
-                      () -> {},
-                      () -> {},
-                      failureRecords::incrementAndGet,
-                      () -> false,
-                      () -> true));
-
-      assertTrue(thrown.getMessage().contains("split the batch"));
-      assertEquals(1, attempts.get(), "an oversized timeout must never retry at the same size");
-      assertEquals(1, failureRecords.get(), "the timeout still counts toward the breaker");
-    }
-
-    @Test
-    @DisplayName("non-timeout transient failures still retry even when the payload is large")
-    void largePayloadConnectFailureStillRetries() {
-      AtomicInteger attempts = new AtomicInteger();
-
-      JenaFusekiStorage.runWriteWithRetry(
-          () -> {
-            if (attempts.incrementAndGet() <= 1) {
-              throw new RuntimeException("connect", new ConnectException("refused"));
-            }
-          },
-          "testWrite",
-          2,
-          250,
-          2_000,
-          delay -> {},
-          () -> {},
-          () -> {},
-          () -> {},
-          () -> false,
-          () -> true);
-
-      assertEquals(2, attempts.get(), "connect failures are transient regardless of payload size");
-    }
-  }
-
-  @Nested
   @DisplayName("payload guard")
   class PayloadGuardTests {
+
+    @Test
+    void multibyteLiteralsAreBoundedByUtf8Bytes() {
+      final String base = "https://open-metadata.org/";
+      final List<RdfStorageInterface.EntityWriteRequest> requests = List.of(request(), request());
+      final Dataset dataset = DatasetFactory.createTxnMem();
+      try {
+        requests.forEach(
+            request ->
+                request
+                    .model()
+                    .createResource(base + "entity/table/" + request.entityId())
+                    .addProperty(
+                        request.model().createProperty(base + "ontology/name"), "漢".repeat(256)));
+        final int limit =
+            JenaFusekiStorage.buildBulkReconcileUpdate(base, requests)
+                    .getBytes(StandardCharsets.UTF_8)
+                    .length
+                - 1;
+        final List<Integer> sizes = new ArrayList<>();
+        JenaFusekiStorage.writeWithPayloadGuard(
+            requests,
+            chunk -> JenaFusekiStorage.buildBulkReconcileUpdate(base, chunk),
+            limit,
+            (update, chunk) -> {
+              assertTrue(update.getBytes(StandardCharsets.UTF_8).length <= limit);
+              UpdateAction.parseExecute(update, dataset);
+              sizes.add(chunk.size());
+            },
+            oversized -> {});
+        assertEquals(List.of(1, 1), sizes);
+        requests.forEach(
+            request ->
+                assertTrue(
+                    dataset.getNamedModel(base + "graph/knowledge").containsAll(request.model())));
+      } finally {
+        requests.forEach(request -> request.model().close());
+        dataset.close();
+      }
+    }
 
     @Test
     @DisplayName("oversized batches bisect until each part fits under the cap")
@@ -569,6 +481,17 @@ class JenaFusekiStorageTest {
   @Nested
   @DisplayName("parseDatasetEndpoint")
   class ParseDatasetEndpointTests {
+    @Test
+    void reverseProxyPrefixSurvivesDatasetRedirection() {
+      assertEquals(
+          "https://example.com/fuseki/catalog_b",
+          JenaFusekiStorage.redirectToDataset(
+              "https://example.com/fuseki/catalog/sparql", "catalog_b"));
+      assertEquals(
+          "catalog",
+          JenaFusekiStorage.parseDatasetEndpoint("https://example.com/fuseki/catalog/sparql")
+              .datasetName());
+    }
 
     @Test
     @DisplayName("standard host:port/dataset shape")

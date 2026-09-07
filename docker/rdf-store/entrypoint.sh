@@ -35,8 +35,8 @@ set -eu
 : "${FUSEKI_BASE:=/fuseki-data/fuseki-base}"
 export FUSEKI_ADMIN_PASSWORD FUSEKI_OPENMETADATA_PASSWORD FUSEKI_BASE
 
-# FUSEKI_BASE lives on the data volume so admin-created datasets (blue/green
-# rebuild targets) and their registrations survive container recreation. The
+# FUSEKI_BASE lives on the data volume so operator-managed dataset registrations
+# survive container recreation. The
 # volume may be empty on first boot, or root-owned if it predates the non-root
 # image — fail with a clear remediation rather than letting Fuseki boot into
 # opaque permission errors.
@@ -88,5 +88,8 @@ if [ "$FUSEKI_RENDER_SHIRO" = "true" ] && [ -f /fuseki/shiro.ini.template ]; the
         </fuseki/shiro.ini.template \
         >"$FUSEKI_BASE/shiro.ini"
 fi
+
+mkdir -p "$FUSEKI_BASE/extra"
+cp /fuseki/extensions/openmetadata-fuseki-extensions.jar "$FUSEKI_BASE/extra/"
 
 exec "$@"

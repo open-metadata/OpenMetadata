@@ -83,6 +83,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -121,19 +122,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
-  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
-  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
-  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
-  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
-  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
-  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
-  // Override with -DrdfContainerImage=openmetadata-fuseki:6.2.0 to run the suite
-  // against the image we ship (docker/rdf-store), e.g. to verify Jena server upgrades.
-  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
   private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
-  private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "256m";
+  // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
+  private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -485,15 +477,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void startFuseki() {
-    String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY, DEFAULT_FUSEKI_IMAGE);
-    LOG.info("Starting Fuseki SPARQL container...");
-    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
-    // pre-create a dataset at container start. The maintained image we use
-    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
-    // the dataset via the /$/datasets admin endpoint on first connection
-    // instead, so the test path is fine without it.
+    LOG.info("Starting the configured OpenMetadata Fuseki image...");
     FUSEKI_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(image))
+        fusekiContainer()
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
             .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
@@ -525,6 +511,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
             FUSEKI_DATASET);
     LOG.info("Fuseki started: {}", fusekiEndpoint);
+  }
+
+  private GenericContainer<?> fusekiContainer() {
+    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
+    if (image != null && !image.isBlank()) {
+      return new GenericContainer<>(DockerImageName.parse(image));
+    }
+    return new GenericContainer<>(
+        new ImageFromDockerfile()
+            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -850,6 +846,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     try {
       if (FUSEKI_CONTAINER != null) {
+        if (!FUSEKI_CONTAINER.isRunning()) {
+          LOG.error("Fuseki exited during the test run:\n{}", FUSEKI_CONTAINER.getLogs());
+        }
         FUSEKI_CONTAINER.stop();
       }
     } catch (Exception e) {

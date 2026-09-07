@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import type {
+  RDFIndexFailure as RdfIndexFailure,
+  RDFReindexFailuresResponse as RdfReindexFailuresResponse,
+} from '../generated/api/rdf/rdfReindexFailuresResponse';
 import { RDFStatus } from '../generated/api/rdf/rdfStatus';
 import {
   SavedSparqlQueries as SavedSparqlQueriesResponse,
@@ -413,25 +417,8 @@ export const exportGlossaryAsOntology = async (
   return response.data;
 };
 
-export interface RdfIndexFailureRecord {
-  id: string;
-  jobId: string;
-  serverId?: string;
-  entityType: string;
-  entityId?: string;
-  entityFqn?: string;
-  failureStage: string;
-  errorMessage?: string;
-  stackTrace?: string;
-  timestamp: number;
-}
-
-export interface RdfReindexFailuresResponse {
-  data: RdfIndexFailureRecord[];
-  total: number;
-  offset: number;
-  limit: number;
-}
+export type RdfIndexFailureRecord = RdfIndexFailure;
+export type { RdfReindexFailuresResponse };
 
 export interface GetRdfReindexFailuresParams {
   offset?: number;

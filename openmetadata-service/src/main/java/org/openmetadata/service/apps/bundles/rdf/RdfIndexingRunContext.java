@@ -28,7 +28,8 @@ public record RdfIndexingRunContext(
     Set<String> entityTypesInRun,
     UUID jobId,
     String serverId,
-    int maxRetries) {
+    int maxRetries,
+    StorageTarget storageTarget) {
 
   /**
    * How many individual write attempts a failure-isolation pass may spend before it gives up and
@@ -42,6 +43,12 @@ public record RdfIndexingRunContext(
     writeMode = writeMode != null ? writeMode : RdfWriteMode.RECONCILE;
     entityTypesInRun = entityTypesInRun != null ? Set.copyOf(entityTypesInRun) : Set.of();
     maxRetries = Math.max(0, maxRetries);
+    storageTarget = storageTarget != null ? storageTarget : new StorageTarget(null, null, 0);
+  }
+
+  public RdfIndexingRunContext(
+      RdfWriteMode mode, Set<String> types, UUID jobId, String serverId, int maxRetries) {
+    this(mode, types, jobId, serverId, maxRetries, null);
   }
 
   public RdfIndexingRunContext(RdfWriteMode writeMode, Set<String> entityTypesInRun) {
@@ -49,7 +56,8 @@ public record RdfIndexingRunContext(
   }
 
   public RdfIndexingRunContext withJobIdentity(UUID jobId, String serverId) {
-    return new RdfIndexingRunContext(writeMode, entityTypesInRun, jobId, serverId, maxRetries);
+    return new RdfIndexingRunContext(
+        writeMode, entityTypesInRun, jobId, serverId, maxRetries, storageTarget);
   }
 
   public static RdfIndexingRunContext reconcileDefaults() {
@@ -65,7 +73,28 @@ public record RdfIndexingRunContext(
             ? RdfWriteMode.INSERT_ONLY
             : RdfWriteMode.RECONCILE;
     return new RdfIndexingRunContext(
-        writeMode, job.getEntities(), null, null, resolveMaxRetries(job.getMaxRetries()));
+        writeMode,
+        job.getEntities(),
+        null,
+        null,
+        resolveMaxRetries(job.getMaxRetries()),
+        StorageTarget.forJob(job));
+  }
+
+  public record StorageTarget(String dataset, String rebuildId, long appendBudgetBytes) {
+    private static StorageTarget forJob(final EventPublisherJob job) {
+      final boolean rebuilding =
+          Boolean.TRUE.equals(job.getRecreateIndex())
+              && Boolean.TRUE.equals(job.getBlueGreenRebuild());
+      if (rebuilding && (job.getRdfBuildDataset() == null || job.getRdfRebuildId() == null)) {
+        throw new IllegalStateException(
+            "Blue/green RDF job is missing its persisted target and generation");
+      }
+      return new StorageTarget(
+          rebuilding ? job.getRdfBuildDataset() : null,
+          rebuilding ? job.getRdfRebuildId() : null,
+          job.getPayLoadSize() != null ? job.getPayLoadSize() : 0);
+    }
   }
 
   static int resolveMaxRetries(Integer configured) {

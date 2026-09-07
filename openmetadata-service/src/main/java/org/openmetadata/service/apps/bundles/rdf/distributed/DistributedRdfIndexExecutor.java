@@ -205,20 +205,14 @@ public class DistributedRdfIndexExecutor {
                     : Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors() * 2));
     int batchSize = jobConfiguration.getBatchSize() != null ? jobConfiguration.getBatchSize() : 100;
-    // Every participating server derives the same build target from the (stable during a run)
-    // serving pointer, so writes from all pods land in the dataset the coordinator will promote.
-    RdfRepository rdfRepository = RdfRepository.getInstance();
-    if (Boolean.TRUE.equals(jobConfiguration.getRecreateIndex())
-        && Boolean.TRUE.equals(jobConfiguration.getBlueGreenRebuild())
-        && rdfRepository.supportsBlueGreenRebuild()) {
-      rdfRepository = rdfRepository.forDataset(rdfRepository.resolveBuildDatasetName());
-    }
-    RdfBatchProcessor batchProcessor =
-        new RdfBatchProcessor(
-            collectionDAO,
-            rdfRepository,
-            RdfIndexingRunContext.forJob(jobConfiguration)
-                .withJobIdentity(currentJob != null ? currentJob.getId() : null, serverId));
+    final RdfIndexingRunContext run =
+        RdfIndexingRunContext.forJob(jobConfiguration)
+            .withJobIdentity(currentJob != null ? currentJob.getId() : null, serverId);
+    final RdfIndexingRunContext.StorageTarget target = run.storageTarget();
+    final RdfRepository rdfRepository =
+        RdfRepository.getInstance()
+            .forRun(target.dataset(), target.rebuildId(), target.appendBudgetBytes());
+    RdfBatchProcessor batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository, run);
 
     workerExecutor =
         Executors.newFixedThreadPool(

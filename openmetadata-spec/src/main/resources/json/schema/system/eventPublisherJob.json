@@ -237,6 +237,16 @@
       "type": "boolean",
       "default": false
     },
+    "rdfBuildDataset": {
+      "description": "Server-selected target dataset shared by all participants in an RDF rebuild.",
+      "type": "string",
+      "readOnly": true
+    },
+    "rdfRebuildId": {
+      "description": "Server-generated generation identifier that fences writes from an older RDF rebuild.",
+      "type": "string",
+      "readOnly": true
+    },
     "recreateIndex": {
       "description": "This schema publisher run modes.",
       "type": "boolean"

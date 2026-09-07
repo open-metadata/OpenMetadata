@@ -1,12 +1,5 @@
-# Apache Jena Fuseki Docker Image for OpenMetadata RDF Store
-# eclipse-temurin replaces the deprecated `openjdk` Docker Hub images
-# (`openjdk:17-jdk-slim` was removed from the registry — CI builds against it
-# fail with "manifest unknown"). JRE is enough since this image only runs the
-# Fuseki shell launcher; no compilation happens inside the container. The JRE is
-# 21 because Fuseki 6.x is compiled with --release 21; on a 17 JRE the server
-# dies at startup with UnsupportedClassVersionError, so the base image major
-# version is load-bearing, not a preference.
-FROM eclipse-temurin:21-jre-jammy
+# Apache Jena Fuseki with bounded Graph Store uploads for OpenMetadata.
+FROM eclipse-temurin:21-jre-jammy AS fuseki-runtime
 
 # 6.2.0 fixes CVE-2026-61372: the SPARQL Update engine accepted LOAD source
 # URLs pointing at local resources, so an authenticated update could read data
@@ -17,13 +10,7 @@ ENV FUSEKI_VERSION=6.2.0
 # artifact can never become the production triple store.
 ENV FUSEKI_SHA512=ba65f5867d2d4741b2ed9e2af5a0d4fbb447909894ab2a0c6bc4dac8997f4fe339c87b13c48d45d054977769f0f8bf763ea346b1f7792d5cdc458041bd43a132
 ENV FUSEKI_HOME=/fuseki
-# FUSEKI_BASE lives ON THE DATA VOLUME. Fuseki materializes admin-created datasets
-# (our blue/green rebuild targets) plus their registrations under
-# {FUSEKI_BASE}/databases and {FUSEKI_BASE}/configuration; with the previous
-# FUSEKI_BASE=/fuseki those landed in the container layer and every image upgrade
-# or container recreate silently destroyed them (verified empirically against a
-# live container). shiro.ini is also loaded from FUSEKI_BASE — the entrypoint
-# renders it there on every start.
+# Authentication and operator-managed registrations survive container replacement.
 ENV FUSEKI_BASE=/fuseki-data/fuseki-base
 
 # gettext-base provides `envsubst`, used by the entrypoint to inject
@@ -83,8 +70,7 @@ USER fuseki
 # Expose Fuseki port
 EXPOSE 3030
 
-# Volume for persistent data (main dataset at /fuseki-data, admin-created
-# datasets + shiro.ini under /fuseki-data/fuseki-base)
+# The base and two alternate TDB2 datasets share this persistent volume.
 VOLUME ["/fuseki-data"]
 
 # Health check
@@ -101,10 +87,18 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 # docs/rdf-production-setup.md - pointing at the wrong location starts an EMPTY
 # store silently rather than failing.
 ENTRYPOINT ["/entrypoint.sh"]
-# Boot from config.ttl, not --loc. With --loc Fuseki builds an ad-hoc dataset and never reads
-# /fuseki/config.ttl, so `tdb2:unionDefaultGraph true` and the Lucene text index silently do not
-# apply. OpenMetadata writes every entity into named graphs, so without the union default graph a
-# plain `?s ?p ?o` query against the dataset returns zero rows while the data sits in
-# <https://open-metadata.org/graph/knowledge> - a silent wrong answer rather than an error, and
-# exactly the shape of query the MCP knowledge-graph tools generate.
+# The assembler applies identical union graph and SPARQL deadlines to all three datasets.
 CMD ["./fuseki-server", "--config=/fuseki/config.ttl"]
+
+FROM eclipse-temurin:21-jdk-jammy AS extension-builder
+WORKDIR /extension
+COPY --from=fuseki-runtime /fuseki/fuseki-server.jar /extension/fuseki-server.jar
+COPY src/main/java /extension/src
+COPY src/main/resources /extension/resources
+RUN mkdir classes \
+    && javac --release 21 -cp fuseki-server.jar -d classes src/org/openmetadata/fuseki/*.java \
+    && jar --create --file openmetadata-fuseki-extensions.jar -C classes . -C resources .
+
+FROM fuseki-runtime
+COPY --from=extension-builder --chown=fuseki:fuseki \
+    /extension/openmetadata-fuseki-extensions.jar /fuseki/extensions/openmetadata-fuseki-extensions.jar

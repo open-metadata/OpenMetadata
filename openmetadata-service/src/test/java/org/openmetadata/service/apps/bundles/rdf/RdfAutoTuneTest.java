@@ -57,12 +57,12 @@ class RdfAutoTuneTest {
   void disabledAutoTuneIsNoOp() {
     RdfRepository repository = mock(RdfRepository.class);
     EventPublisherJob jobData = new EventPublisherJob().withAutoTune(false);
-    Long schemaDefaultPayloadSize = jobData.getPayLoadSize();
+    when(repository.configuredAppendPayloadBytes()).thenReturn(CONFIGURED_16_MB);
 
     RdfAutoTune.applyTo(jobData, repository);
 
     verify(repository, never()).fetchStorageMaxHeapBytes();
-    assertEquals(schemaDefaultPayloadSize, jobData.getPayLoadSize());
+    assertEquals(CONFIGURED_16_MB, jobData.getPayLoadSize());
   }
 
   @Test
@@ -71,12 +71,12 @@ class RdfAutoTuneTest {
     RdfRepository repository = mock(RdfRepository.class);
     when(repository.fetchStorageMaxHeapBytes()).thenReturn(OptionalLong.empty());
     EventPublisherJob jobData = new EventPublisherJob().withAutoTune(true);
-    Long schemaDefaultPayloadSize = jobData.getPayLoadSize();
+    when(repository.configuredAppendPayloadBytes()).thenReturn(CONFIGURED_16_MB);
 
     RdfAutoTune.applyTo(jobData, repository);
 
     verify(repository, never()).setAppendPayloadBudgetOverride(anyLong());
-    assertEquals(schemaDefaultPayloadSize, jobData.getPayLoadSize());
+    assertEquals(CONFIGURED_16_MB, jobData.getPayLoadSize());
   }
 
   @Test

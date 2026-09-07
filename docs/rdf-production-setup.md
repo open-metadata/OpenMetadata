@@ -43,10 +43,7 @@ memory starves the page cache and usually reduces throughput.
   `/fuseki-data/openmetadata`, whereas the old `--loc=/fuseki-data` launch wrote TDB2 files directly
   into `/fuseki-data`. Upgrading from that layout requires moving the files (below) — the locations
   are deliberately not the same.
-- **`FUSEKI_BASE` lives on the data volume** (`/fuseki-data/fuseki-base`). Datasets created through
-  the admin API — including the `_a`/`_b` datasets used by blue/green rebuilds — are registered
-  under `FUSEKI_BASE`; with the old in-image default they silently vanished on container
-  replacement.
+- **The assembler provisions `openmetadata`, `openmetadata_a`, and `openmetadata_b`** on the data volume with the same union-default-graph and timeout settings. `FUSEKI_BASE` retains authentication and any operator-managed registrations. The OpenMetadata Graph Store extension is refreshed from the image at startup.
 - **Explicit equal heap** (`-Xms4g -Xmx4g` in the image; the development compose files override to
   1500 MB) plus GC logging to `/fuseki-data/gc.log`.
 
@@ -74,8 +71,15 @@ mv /fuseki-data/Data-* /fuseki-data/*.lock /fuseki-data/openmetadata/
 Then start the new image and run the count again; the two must match. If they do not, stop and
 restore rather than letting a rebuild repopulate — an empty store that looks healthy is the failure
 mode this check exists to catch.
-Blue/green `_a`/`_b` datasets created under the old in-image `FUSEKI_BASE` are lost by the upgrade;
-this is expected — the next rebuild recreates them on the volume.
+For deployments that previously created alternates through the admin API, stop Fuseki and back up
+both the TDB2 directories and the `rdf_active_dataset` SQL row before upgrading. Move each existing
+alternate's data to the matching `/fuseki-data/openmetadata_a` or `_b` assembler location and remove
+its duplicate registration from `FUSEKI_BASE/configuration`. Preserve the active dataset's contents;
+starting an empty alternate with an existing active pointer would expose an empty graph. Verify
+counts against the active dataset after restart.
+
+Apply the native 2.0.3 SQL migrations and upgrade every OpenMetadata pod before enabling online
+rebuilds. Older pods do not participate in the mutation journal or routing fence.
 
 ## Capacity planning
 
@@ -88,7 +92,7 @@ TDB2 storage varies with URI and literal width. A useful planning range for Open
 | 10 million | 1.5-2.5 GB | 4 GB | 8-16 GB | 16 GB minimum |
 | 50 million | 7.5-12.5 GB | 8 GB | 24-48 GB | 80 GB minimum |
 
-Size the persistent volume as **at least `2 datasets × live size × 2.5`** when blue/green rebuilds
+Size the persistent volume as **at least `3 datasets × live size × 2.5`** when blue/green rebuilds
 are enabled: two full datasets alternate on disk, and TDB2 compaction builds a replacement dataset
 next to the old one before deleting it. Without blue/green, `live × 2.5` covers compaction and
 journal headroom. The 10 GiB PVC in `docker/rdf-store/kubernetes/fuseki-deployment.yaml` is a
@@ -125,16 +129,27 @@ Other storage engines retain their configured concurrency.
 Throughput therefore depends on the number and size of write transactions:
 
 - A `recreateIndex: true` run clears the graph (or builds into an idle blue/green dataset) and then
-  uses **insert-only appends**: no reconciliation, no DELETE statements. Appends are streamed to
-  the Graph Store Protocol endpoint as RDF Thrift (`RDF_STREAMING_APPEND_ENABLED`, default on), so
-  indexer memory stays flat regardless of chunk size and Fuseki parses a binary stream rather than
-  SPARQL text.
+  uses **insert-only appends**. RDF Thrift is serialized to a bounded temporary file before HTTP,
+  without a combined model or body string. This detects byte-limit and serialization failures
+  before Fuseki can commit a valid prefix. Memory still includes the queued per-entity models;
+  temporary disk must accommodate concurrent bounded uploads.
 - Incremental runs reconcile existing values with SPARQL UPDATE and are budgeted much more
   conservatively (`RDF_MAX_UPDATE_PAYLOAD_BYTES`).
-- On network-constrained links, `RDF_GZIP_REQUESTS=true` compresses streamed append bodies.
-  Because the body is read inside the writer lock, compression directly shortens lock hold time.
-  Only gzip is supported — **never configure deflate anywhere in the path**: Fuseki maps `deflate`
-  to a compressing (not decompressing) stream and corrupts the request.
+- `RDF_GZIP_REQUESTS=true` compresses append bodies. The server stages and bounds the decompressed
+  upload before acquiring TDB2's writer, then checks the operation deadline during parsing and
+  before commit. Only gzip is supported.
+
+The supplied image includes a Graph Store extension. Its defaults are 50 seconds per upload,
+64 MiB decompressed per request, and 16 simultaneous receivers. Override the first two through
+`JVM_ARGS` properties `openmetadata.fuseki.writeTimeoutMs` and `openmetadata.fuseki.maxUploadBytes`.
+Indexing preflights the dataset's OPTIONS capabilities and fails before clearing data if these
+protections or the assembler settings are missing. Stock Fuseki requires this extension and an
+equivalent assembler. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
+
+These are cooperative deadlines: checks abort expired parsing and roll back the transaction;
+blocked storage I/O or a TDB2 commit itself cannot be forcibly interrupted safely. Client timeout,
+connection loss after submission, and server/gateway failures have uncertain write outcomes and
+are never automatically retried or bisected. Only failures known to precede a connection are retried.
 
 Start with the defaults and tune one setting at a time:
 
@@ -259,19 +274,31 @@ every query returns partial results until the run finishes — on a large catalo
 measured in hours. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
 (alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
-previous graph keeps serving throughout and remains available for rollback until the next rebuild
+previous graph keeps serving until cutover, and its dataset is retained until the next rebuild
 reuses it.
 
-Two datasets alternate — for a configured dataset named `openmetadata`, the builds land in
-`openmetadata_a` and `openmetadata_b` — which bounds disk at two copies rather than leaking a new
-dataset per run. Size the volume per the capacity-planning formula above.
+Builds alternate between the fixed `openmetadata_a` and `openmetadata_b` names derived from the
+configured endpoint. The original `openmetadata` directory remains present too: allow space for
+up to three dataset copies plus compaction headroom until an operator retires the unused original.
+Custom endpoint names need matching base, `_a`, and `_b` assembler declarations.
 
-It is a per-run application setting rather than server configuration because it changes the shape of
-one rebuild, not the capability of the deployment: an administrator can enable it, watch one weekend
-run, and turn it back off without a redeploy. Servers always follow the dataset pointer, so every
-pod converges on a promoted dataset without restarting. If the volume cannot hold two datasets the
-build fails before promotion and the previous dataset keeps serving — the same failure mode
-blue/green exists to provide.
+The coordinator persists the selected dataset, rebuild generation, and payload budget on the job.
+Workers use those immutable values. Live writes commit a mutation journal entry before contacting
+Fuseki and route under the shared SQL fence. Promotion replays the journal into the completed
+snapshot, then atomically checks the final watermark and changes the pointer. Each pod consults
+that pointer when routing; there is no polling delay after cutover. Promotion also marks
+materialized inference rules dirty in the same transaction so their output can be rebuilt.
+
+The journal is bounded to 256 MiB or 100,000 mutations. Exhaustion or inability to capture a
+mutation fails the rebuild while allowing the live mutation to proceed against the serving graph.
+A 120-second lease, renewed every 30 seconds, fences abandoned workers. A new run can reclaim an
+expired target; stale generation handles cannot write to it. Catch-up has a five-minute budget.
+An uncertain **build** write quarantines its generation to prevent a delayed request corrupting
+an immediately reused target. After restarting Fuseki to terminate outstanding requests, an
+administrator may remove that specific failed row from `rdf_rebuild_state` by its `rebuildId`;
+the next rebuild clears the target. The serving pointer is unaffected by this recovery.
+These limits bound resource use; sufficiently busy catalogs may require a quieter rebuild window.
+An explicitly requested blue/green run never falls back to clearing the serving graph.
 
 Promotion is gated twice:
 
@@ -383,31 +410,36 @@ lineage graph operators can request. Semantic search is not an exhaustive traver
 expands at most 100 related graph candidates before reranking to the caller's requested result
 limit. Use the complete-lineage endpoint or direct SPARQL for exhaustive graph traversal.
 
-## Measured write throughput
+## Historical transport benchmark
 
-Numbers from `scripts/rdf-reindex-benchmark.sh`'s write-path harness against Fuseki 6.2.0 in
-Docker (2 CPUs, `-Xms4g -Xmx4g`, persistent volume) co-located with the client. Synthetic catalog:
-every 100th table 500 columns, the rest 7, so wide tables are represented.
+The original `RdfWritePathScaleHarness` measurements used Fuseki 6.2.0 in Docker (2 CPUs,
+`-Xms4g -Xmx4g`) and a synthetic catalog with every 100th table having 500 columns:
 
-| Scale | Transport | Wall clock | Entities/s | Triples/s |
-| ---: | --- | ---: | ---: | ---: |
-| 20k entities (1.79M triples) | streaming (default) | 21.8 s | 918 | 82,000 |
-| 20k entities | `connection.load` fallback | 25.6 s | 782 | 70,000 |
-| 20k entities | streaming + gzip | 20.8 s | 963 | 86,000 |
-| 100k entities (8.96M triples) | streaming (default) | 158 s | 632 | 57,000 |
+| Scale | Original transport | Wall clock | Entities/s |
+| ---: | --- | ---: | ---: |
+| 20k entities | piped RDF Thrift | 21.8 s | 918 |
+| 20k entities | `connection.load` | 25.6 s | 782 |
+| 20k entities | piped RDF Thrift + gzip | 20.8 s | 963 |
+| 100k entities | piped RDF Thrift | 158 s | 632 |
 
-Three things this measures that matter for planning:
+These are historical results from before complete-payload staging and durable rebuild coordination.
+They compare transports on this branch, not this branch against `origin/main`, and do not establish
+current indexing-app or live-event throughput. The harness exercises translation and storage;
+`scripts/rdf-reindex-benchmark.sh` instead triggers the complete indexing app.
 
-- **Streaming is ~17% faster than the fallback** and holds indexer memory flat, which is why it is
-  the default. Gzip measured ~5% on loopback — inside noise there, and expected to matter only when
-  the network, not the writer lock, is the constraint.
-- **Throughput decays as the store grows.** Instantaneous rate fell from ~1,050 entities/s at 20k to
-  ~400/s by 90k as TDB2's indexes deepen. Size a rebuild against the *end* of that curve, not the
-  start; the 100k average above already includes the decay.
-- **The client is not the bottleneck.** Translation was 5–16% of wall clock and Fuseki writes
-  84–95%, and Fuseki showed no heap pressure (Old Gen 150 MB of a 4 GB heap, 1.9 s of GC across the
-  100k run). That is the single-writer store being the limit, exactly as the pipeline assumes — so
-  spend on Fuseki CPU and disk before touching client-side knobs.
+Run `scripts/rdf-write-path-benchmark.sh` for the current storage path. For an app/live comparison,
+use the same seeded catalog and fresh dataset state on `origin/main` and this branch. Record total
+app duration including relationships, OM/Fuseki peak memory, retry counts, exact final graph state,
+and live-event queue lag plus p95/p99 visibility latency. Include wide tables, long literals, two
+pods, interruption, and restart. Raising the append count limit alone does not combine the app's
+100-entity reader submissions; measure batch settings at the actual app boundary.
+
+A local validation run of the revised code (10,000 entities, 100-entity submissions, every 100th
+table with 500 columns, 1 GiB Fuseki heap) took 37.7 seconds with staged Thrift and 43.0 seconds with
+the library fallback. Both added exactly 855,803 stored triples. Storage time was 33.3 versus
+34.5 seconds; translation time differed substantially, so the total-time difference is not a
+reliable speedup estimate. This was one local trial on a shared host, not a production comparison
+against `origin/main` or a live-event latency benchmark.
 
 Note on disk: TDB2 stores named-graph data as **quads across six indexes** plus a node table, and
 `CLEAR ALL` does not reclaim anything until a compaction runs. An uncompacted store carrying the

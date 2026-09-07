@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -53,6 +55,7 @@ import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
  * Unit tests for {@link RdfBatchProcessor#processEntities}. Pins the three
@@ -95,6 +98,81 @@ class RdfBatchProcessorTest {
         .when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
         .thenReturn(List.of());
     processor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+  }
+
+  @Test
+  void preTranslatedAttemptConsumesTheOriginalBudget() {
+    final AtomicLong now = new AtomicLong();
+    final List<EntityInterface> entities =
+        List.of(new Table().withId(UUID.randomUUID()), new Table().withId(UUID.randomUUID()));
+    final var requests =
+        entities.stream()
+            .map(
+                entity -> new RdfStorageInterface.EntityWriteRequest("table", entity.getId(), null))
+            .toList();
+    when(rdfRepository.batchWriteBudgetMs()).thenReturn(1L);
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              now.set(TimeUnit.MILLISECONDS.toNanos(2));
+              throw new IllegalStateException("initial attempt exhausted budget");
+            })
+        .when(rdfRepository)
+        .bulkStorePreTranslated(requests, RdfWriteMode.RECONCILE);
+    final RdfBatchProcessor timed =
+        new RdfBatchProcessor(
+            collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults(), now::get);
+
+    final var result = timed.processEntitiesPreTranslated("table", entities, requests, null);
+
+    assertEquals(2, result.failedCount());
+    assertEquals(0, result.successCount());
+    assertTrue(result.lastError().contains("write budget exhausted"));
+    verify(rdfRepository, never()).bulkCreateOrUpdate(anyList(), any());
+  }
+
+  @Test
+  void successfulLeftHalfCannotStartARightHalfAfterTheDeadline() {
+    final AtomicLong now = new AtomicLong();
+    final List<EntityInterface> entities =
+        List.of(new Table().withId(UUID.randomUUID()), new Table().withId(UUID.randomUUID()));
+    when(rdfRepository.batchWriteBudgetMs()).thenReturn(1L);
+    doThrow(new IllegalArgumentException("split"))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              now.set(TimeUnit.MILLISECONDS.toNanos(2));
+              return null;
+            })
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities.subList(0, 1), RdfWriteMode.RECONCILE);
+    final RdfBatchProcessor timed =
+        new RdfBatchProcessor(
+            collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults(), now::get);
+
+    final var result = timed.processEntities("table", entities, null);
+
+    assertEquals(1, result.successCount());
+    assertEquals(1, result.failedCount());
+    verify(rdfRepository, never())
+        .bulkCreateOrUpdate(entities.subList(1, 2), RdfWriteMode.RECONCILE);
+  }
+
+  @Test
+  void uncertainWriteOutcomeStopsBisection() {
+    final List<EntityInterface> entities =
+        List.of(new Table().withId(UUID.randomUUID()), new Table().withId(UUID.randomUUID()));
+    doThrow(
+            new RdfWriteOutcomeUnknownException(
+                "append", new java.util.concurrent.TimeoutException()))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+
+    final var result = processor.processEntities("table", entities, null);
+
+    assertEquals(2, result.failedCount());
+    assertEquals(0, result.successCount());
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(anyList(), any());
   }
 
   private EntityInterface mockEntity() {

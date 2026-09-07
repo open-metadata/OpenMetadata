@@ -56,6 +56,7 @@ public final class RdfWritePathScaleHarness {
     boolean gzip = "true".equals(System.getProperty("gzip"));
     int appendBytes = Integer.getInteger("appendBytes", 16 * 1024 * 1024);
     int appendBatch = Integer.getInteger("appendBatch", 1000);
+    int submissionBatch = Integer.getInteger("submissionBatch", 100);
 
     RdfConfiguration config =
         new RdfConfiguration()
@@ -96,7 +97,7 @@ public final class RdfWritePathScaleHarness {
 
     for (int i = 0; i < entityCount; i++) {
       batch.add(table(i, wideEvery > 0 && i % wideEvery == 0 ? wideColumns : 7));
-      if (batch.size() == appendBatch || i == entityCount - 1) {
+      if (batch.size() == submissionBatch || i == entityCount - 1) {
         long t0 = System.nanoTime();
         List<RdfStorageInterface.EntityWriteRequest> requests = repository.translateEntities(batch);
         long t1 = System.nanoTime();

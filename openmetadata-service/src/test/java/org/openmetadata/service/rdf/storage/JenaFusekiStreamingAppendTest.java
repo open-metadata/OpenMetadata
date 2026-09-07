@@ -81,7 +81,18 @@ class JenaFusekiStreamingAppendTest {
     server.createContext(
         "/",
         exchange -> {
+          if (exchange.getRequestMethod().equals("OPTIONS")) {
+            exchange.getResponseHeaders().set(FusekiWriteCapabilities.DEADLINE, "50000");
+            exchange.getResponseHeaders().set(FusekiWriteCapabilities.LIMIT, "67108864");
+            exchange.getResponseHeaders().set(FusekiWriteCapabilities.UNION, "true");
+            exchange.getResponseHeaders().set(FusekiWriteCapabilities.QUERY, "50000");
+            exchange.getResponseHeaders().set(FusekiWriteCapabilities.UPDATE, "50000");
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+            return;
+          }
           String query = exchange.getRequestURI().getQuery();
+
           boolean knowledgeGraphAppend =
               exchange.getRequestURI().getPath().equals(DATASET_PATH + "/data")
                   && query != null

@@ -13,7 +13,7 @@ import org.openmetadata.service.rdf.RdfWriteMode;
  * Interface for remote RDF storage implementations.
  * OpenMetadata maintains a stateless architecture, so all RDF storage must be remote.
  */
-public interface RdfStorageInterface {
+public interface RdfStorageInterface extends AutoCloseable {
 
   /**
    * Store an entity model in the RDF store
@@ -58,6 +58,12 @@ public interface RdfStorageInterface {
    */
   default void bulkStoreEntities(List<EntityWriteRequest> requests, RdfWriteMode writeMode) {
     bulkStoreEntities(requests);
+  }
+
+  /** Apply a run's append ceiling without changing a shared storage handle. */
+  default void bulkStoreEntities(
+      List<EntityWriteRequest> requests, RdfWriteMode writeMode, long appendBudgetBytes) {
+    bulkStoreEntities(requests, writeMode);
   }
 
   /** Payload for {@link #bulkStoreEntities}. */
@@ -230,14 +236,14 @@ public interface RdfStorageInterface {
   default void ensureStorageReady() {}
 
   /**
-   * Whether this backend can create and delete datasets on demand. Blue/green rebuilds require it;
-   * backends that return false fall back to clearing the served dataset in place.
+   * Whether this backend supports named rebuild datasets. Blue/green rebuilds require it;
+   * backends that return false cannot honor an explicitly requested blue/green rebuild.
    */
   default boolean supportsDatasetManagement() {
     return false;
   }
 
-  /** Create a dataset on the configured server. No-op if it already exists. */
+  /** Ensure a named dataset is ready, or fail if it cannot be provisioned with the required settings. */
   default void createDatasetIfMissing(String datasetName) {
     throw new UnsupportedOperationException(
         "Dataset management is not supported by " + getStorageType());

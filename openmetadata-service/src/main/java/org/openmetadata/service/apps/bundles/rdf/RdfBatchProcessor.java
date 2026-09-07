@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -61,6 +62,7 @@ public class RdfBatchProcessor {
   private final CollectionDAO collectionDAO;
   private final RdfRepository rdfRepository;
   private final RdfIndexingRunContext runContext;
+  private final LongSupplier nanoTime;
 
   public RdfBatchProcessor(CollectionDAO collectionDAO, RdfRepository rdfRepository) {
     this(collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults());
@@ -68,9 +70,18 @@ public class RdfBatchProcessor {
 
   public RdfBatchProcessor(
       CollectionDAO collectionDAO, RdfRepository rdfRepository, RdfIndexingRunContext runContext) {
+    this(collectionDAO, rdfRepository, runContext, System::nanoTime);
+  }
+
+  RdfBatchProcessor(
+      CollectionDAO collectionDAO,
+      RdfRepository rdfRepository,
+      RdfIndexingRunContext runContext,
+      LongSupplier nanoTime) {
     this.collectionDAO = collectionDAO;
     this.rdfRepository = rdfRepository;
     this.runContext = runContext != null ? runContext : RdfIndexingRunContext.reconcileDefaults();
+    this.nanoTime = nanoTime;
   }
 
   public BatchProcessingResult processEntities(
@@ -231,7 +242,7 @@ public class RdfBatchProcessor {
   private long bisectDeadlineNanos() {
     long budgetMs = rdfRepository.batchWriteBudgetMs();
     return budgetMs > 0
-        ? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budgetMs)
+        ? nanoTime.getAsLong() + TimeUnit.MILLISECONDS.toNanos(budgetMs)
         : Long.MAX_VALUE;
   }
 
@@ -247,6 +258,7 @@ public class RdfBatchProcessor {
       List<RdfStorageInterface.EntityWriteRequest> preTranslated,
       BooleanSupplier stopRequested,
       List<EntityInterface> indexedEntities) {
+    final long deadlineNanos = bisectDeadlineNanos();
     BisectResult result;
     if (stopRequested.getAsBoolean()) {
       result = BisectResult.EMPTY;
@@ -258,7 +270,7 @@ public class RdfBatchProcessor {
       } catch (Exception e) {
         result =
             handleBisectFailure(
-                entityType, entities, stopRequested, bisectDeadlineNanos(), indexedEntities, e);
+                entityType, entities, stopRequested, deadlineNanos, indexedEntities, e);
       }
     }
     return result;
@@ -273,6 +285,10 @@ public class RdfBatchProcessor {
     BisectResult result;
     if (stopRequested.getAsBoolean()) {
       result = BisectResult.EMPTY;
+    } else if (nanoTime.getAsLong() >= deadlineNanos) {
+      final String reason = entityType + " batch write budget exhausted";
+      recordEntityWriteFailures(entityType, entities, reason);
+      result = BisectResult.allFailed(entities.size(), reason, true);
     } else {
       try {
         rdfRepository.bulkCreateOrUpdate(entities, runContext.writeMode());
@@ -306,7 +322,7 @@ public class RdfBatchProcessor {
       result =
           BisectResult.allFailed(
               entities.size(), describeError(entityType + " batch", cause), true);
-    } else if (System.nanoTime() >= deadlineNanos) {
+    } else if (nanoTime.getAsLong() >= deadlineNanos) {
       LOG.warn(
           "Write budget exhausted while bisecting {} {} entities; marking the remainder failed. "
               + "Last reason: {}",
@@ -400,7 +416,7 @@ public class RdfBatchProcessor {
     int failedAttempts = 0;
     int firstUnattempted = pending.size();
     for (int index = 0; index < pending.size(); index++) {
-      if (failedAttempts >= runContext.maxRetries() || System.nanoTime() >= deadlineNanos) {
+      if (failedAttempts >= runContext.maxRetries() || nanoTime.getAsLong() >= deadlineNanos) {
         firstUnattempted = index;
         break;
       }
@@ -632,7 +648,9 @@ public class RdfBatchProcessor {
         java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
     Throwable cause = error;
     while (cause != null && visited.add(cause)) {
-      if (cause instanceof org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException) {
+      if (cause instanceof org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException
+          || cause
+              instanceof org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException) {
         return true;
       }
       cause = cause.getCause();

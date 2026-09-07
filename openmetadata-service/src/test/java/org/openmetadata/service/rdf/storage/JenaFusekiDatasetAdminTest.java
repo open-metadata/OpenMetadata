@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
 /**
  * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, creation,
@@ -64,6 +65,13 @@ class JenaFusekiDatasetAdminTest {
     int status =
         statusByPath.getOrDefault(method + " " + path, statusByPath.getOrDefault(path, 200));
     byte[] body = bodyForPath.apply(method, path).getBytes(StandardCharsets.UTF_8);
+    if (method.equals("OPTIONS")) {
+      exchange.getResponseHeaders().set(FusekiWriteCapabilities.DEADLINE, "50000");
+      exchange.getResponseHeaders().set(FusekiWriteCapabilities.LIMIT, "67108864");
+      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UNION, "true");
+      exchange.getResponseHeaders().set(FusekiWriteCapabilities.QUERY, "50000");
+      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UPDATE, "50000");
+    }
     exchange.sendResponseHeaders(status, body.length == 0 ? -1 : body.length);
     if (body.length > 0) {
       exchange.getResponseBody().write(body);
@@ -88,6 +96,44 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
+  void productionDecoratorPreservesDatasetCapabilities() {
+    JenaFusekiStorage storage = storage();
+    try {
+      RdfStorageInterface wrapped =
+          new InferenceInvalidatingRdfStorage(storage, InferenceDirtyMarker.NO_OP);
+
+      assertTrue(wrapped.supportsDatasetManagement());
+      assertEquals("openmetadata", wrapped.currentDatasetName());
+      wrapped.repointToDataset("openmetadata_a");
+      assertEquals("openmetadata_a", wrapped.currentDatasetName());
+      assertTrue(wrapped.datasetExists("openmetadata_a"));
+      wrapped.createDatasetIfMissing("openmetadata_a");
+      wrapped.deleteDataset("openmetadata_b");
+      assertTrue(requests.contains("DELETE /$/datasets/openmetadata_b"));
+    } finally {
+      storage.close();
+    }
+  }
+
+  @Test
+  void productionDecoratorExposesServerHeap() {
+    bodyForPath =
+        (method, path) ->
+            path.equals("/$/metrics")
+                ? "jvm_memory_max_bytes{area=\"heap\",id=\"G1 Old Gen\",} 4.294967296E9\n"
+                : "";
+    JenaFusekiStorage storage = storage();
+    try {
+      RdfStorageInterface wrapped =
+          new InferenceInvalidatingRdfStorage(storage, InferenceDirtyMarker.NO_OP);
+
+      assertEquals(OptionalLong.of(4L << 30), wrapped.fetchServerMaxHeapBytes());
+    } finally {
+      storage.close();
+    }
+  }
+
+  @Test
   @DisplayName("dataset existence maps 200 to present and 404 to absent")
   void datasetExistenceFollowsStatusCode() {
     JenaFusekiStorage storage = storage();
@@ -100,33 +146,13 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
-  @DisplayName("creating a missing dataset posts once and re-checks the result")
-  void createDatasetIfMissingCreatesThenVerifies() {
-    JenaFusekiStorage storage = storage();
-    // Absent on the first probe, present after the create call.
-    statusByPath.put("GET /$/datasets/build_b", 404);
-    requests.clear();
-    statusByPath.put("POST /$/datasets", 200);
-    server.removeContext("/");
-    server.createContext(
-        "/",
-        exchange -> {
-          String key = exchange.getRequestMethod() + " " + exchange.getRequestURI().getPath();
-          requests.add(key);
-          boolean created = requests.contains("POST /$/datasets");
-          int status = key.startsWith("GET /$/datasets/build_b") ? (created ? 200 : 404) : 200;
-          exchange.getRequestBody().readAllBytes();
-          exchange.sendResponseHeaders(status, -1);
-          exchange.close();
-        });
-
-    storage.createDatasetIfMissing("build_b");
-
-    assertTrue(requests.contains("POST /$/datasets"), "must create when absent");
-    assertEquals(
-        2,
-        requests.stream().filter(r -> r.startsWith("GET /$/datasets/build_b")).count(),
-        "probe before creating and verify afterwards");
+  void missingDatasetRequiresEquivalentAssemblerConfiguration() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("OPTIONS /build_b/data", 404);
+      requests.clear();
+      assertThrows(IllegalStateException.class, () -> storage.createDatasetIfMissing("build_b"));
+      assertFalse(requests.contains("POST /$/datasets"));
+    }
   }
 
   @Test

@@ -36,6 +36,7 @@ public final class RdfAutoTune {
   private RdfAutoTune() {}
 
   public static void applyTo(EventPublisherJob jobData, RdfRepository repository) {
+    jobData.setPayLoadSize(repository.configuredAppendPayloadBytes());
     if (Boolean.TRUE.equals(jobData.getAutoTune())) {
       OptionalLong serverHeap = repository.fetchStorageMaxHeapBytes();
       if (serverHeap.isPresent()) {
@@ -63,6 +64,6 @@ public final class RdfAutoTune {
 
   static long deriveAppendBudgetBytes(long serverHeapBytes, long configuredBytes) {
     long heapDerived = serverHeapBytes / FUSEKI_HEAP_BUDGET_DIVISOR;
-    return Math.max(MIN_APPEND_BUDGET_BYTES, Math.min(configuredBytes, heapDerived));
+    return Math.min(configuredBytes, Math.max(MIN_APPEND_BUDGET_BYTES, heapDerived));
   }
 }

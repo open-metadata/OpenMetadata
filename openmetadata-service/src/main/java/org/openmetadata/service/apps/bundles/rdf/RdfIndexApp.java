@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -56,10 +57,12 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.monitoring.OntologyMetrics;
+import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfIndexingFields;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.RestUtil;
@@ -105,6 +108,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
   // Non-null only while a blue/green rebuild is populating an idle dataset; cleared once the
   // rebuild is promoted or abandoned.
   private volatile String buildDataset;
+  private volatile ScheduledFuture<?> rebuildHeartbeat;
+  private volatile RuntimeException rebuildLeaseFailure;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
 
@@ -219,21 +224,19 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
+      jobData.setRdfBuildDataset(null);
+      jobData.setRdfRebuildId(null);
+      rebuildLeaseFailure = null;
       jobData.setEntities(resolveEntityTypes(jobData.getEntities()));
       if (jobData.getEntities().isEmpty()) {
         throw new IllegalStateException(
             "No repository-backed entity types configured for RDF indexing");
       }
-      // recreateIndex clears the graph before any indexing work starts, so its
-      // batches can use pure INSERT DATA updates. A concurrent live RdfUpdater
-      // write can leave duplicate literal values until the next recreate run;
-      // that accepted race is no worse than the reverse lost-update race in the
-      // previous clear-and-reconcile implementation.
       buildDataset = resolveBlueGreenBuildDataset();
-      RdfRepository indexingRepository =
-          buildDataset != null ? rdf().forDataset(buildDataset) : rdf();
+      RdfRepository indexingRepository = rdf().forRun(buildDataset, jobData.getRdfRebuildId(), 0);
       runRepository = indexingRepository;
       RdfAutoTune.applyTo(jobData, indexingRepository);
+      startRebuildHeartbeat();
       batchProcessor =
           new RdfBatchProcessor(
               collectionDAO, indexingRepository, RdfIndexingRunContext.forJob(jobData));
@@ -290,6 +293,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
+      stopRebuildHeartbeat();
       clearAutoTuneOverride();
       closeLegacySink();
       sendUpdates(jobExecutionContext, true);
@@ -454,57 +458,66 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
-  /**
-   * The dataset a blue/green rebuild should populate, or null to index the serving dataset in
-   * place. Only full rebuilds qualify: an incremental run reconciles against existing triples, so
-   * it must write where the data already is.
-   *
-   * <p>The name is derived (whichever alternate is not currently serving) rather than stored, so
-   * every server participating in the job computes the same target without extra coordination. The
-   * pointer only moves at the end of a successful run, so it is stable for the run's duration.
-   */
+  /** The coordinator persists one target and generation for every worker in this run. */
   private String resolveBlueGreenBuildDataset() {
-    String target = null;
-    if (Boolean.TRUE.equals(jobData.getRecreateIndex())
-        && Boolean.TRUE.equals(jobData.getBlueGreenRebuild())
-        && rdf().supportsBlueGreenRebuild()) {
-      try {
-        target = rdf().resolveBuildDatasetName();
-      } catch (Exception e) {
-        LOG.warn(
-            "Could not resolve a blue/green build dataset; falling back to rebuilding the "
-                + "serving dataset in place. Reason: {}",
-            e.getMessage());
-      }
+    if (!Boolean.TRUE.equals(jobData.getRecreateIndex())
+        || !Boolean.TRUE.equals(jobData.getBlueGreenRebuild())) {
+      return null;
     }
-    return target;
+    if (!rdf().supportsBlueGreenRebuild()) {
+      throw new IllegalStateException(
+          "Blue/green RDF rebuilds are unsupported by this storage backend");
+    }
+    final BuildTarget target = rdf().beginBlueGreenRebuild();
+    jobData.setRdfBuildDataset(target.dataset());
+    jobData.setRdfRebuildId(target.id());
+    return target.dataset();
   }
 
-  /**
-   * Bring the build dataset to an empty, ontology-seeded state. The clear and compaction here are
-   * the same operations that make an in-place rebuild disruptive — but this dataset is not serving
-   * traffic, so their cost is invisible to users, and clearing on reuse is what lets the rebuild
-   * alternate between two fixed names instead of leaking a dataset directory per run.
-   */
+  private void startRebuildHeartbeat() {
+    if (buildDataset == null) {
+      return;
+    }
+    final BuildTarget target = new BuildTarget(jobData.getRdfRebuildId(), buildDataset);
+    rebuildHeartbeat =
+        RdfBackgroundScheduler.getInstance()
+            .scheduleWithFixedDelay(
+                () -> {
+                  try {
+                    rdf().renewBuild(target);
+                  } catch (RuntimeException exception) {
+                    rebuildLeaseFailure = exception;
+                    LOG.error("RDF rebuild lost its dataset lease", exception);
+                  }
+                },
+                30,
+                30,
+                TimeUnit.SECONDS);
+  }
+
+  private void stopRebuildHeartbeat() {
+    if (rebuildHeartbeat != null) {
+      rebuildHeartbeat.cancel(false);
+      rebuildHeartbeat = null;
+    }
+  }
+
+  /** Reuse the idle alternate only after the shared generation fence has been acquired. */
   private void prepareBuildDataset(RdfRepository indexingRepository, String targetDataset) {
     LOG.info("Preparing blue/green build dataset '{}'", targetDataset);
-    rdf().createBuildDataset(targetDataset);
     indexingRepository.clearAll();
     indexingRepository.compactStorage();
     indexingRepository.reloadOntologies();
     LOG.info("Build dataset '{}' is empty and ontology-seeded", targetDataset);
   }
 
-  /**
-   * Switch serving to the freshly built dataset. The sanity check exists because promoting a
-   * silently-empty build would take the knowledge graph down more thoroughly than the in-place
-   * rebuild it replaces; on failure the pointer is left alone and the previous graph keeps serving.
-   * The old dataset is deliberately NOT deleted here — leaving it in place until the next rebuild
-   * clears it provides a rollback window.
-   */
+  /** Validate the rebuild before replaying live changes and atomically switching serving. */
   private void promoteBuildDataset(RdfRepository indexingRepository) {
     if (buildDataset == null) {
       return;
+    }
+    if (rebuildLeaseFailure != null) {
+      throw new IllegalStateException("RDF rebuild lost its dataset lease", rebuildLeaseFailure);
     }
     long triples = indexingRepository.getTripleCount();
     long successRecords = successRecordsSoFar();
@@ -516,10 +529,13 @@ public class RdfIndexApp extends AbstractNativeApplication {
               buildDataset, successRecords, triples));
     }
     requirePromotionSuccessRatio(successRecords);
-    rdf().activateDataset(buildDataset, getApp() != null ? getApp().getName() : "system");
+    rdf()
+        .activateDataset(
+            buildDataset,
+            jobData.getRdfRebuildId(),
+            getApp() != null ? getApp().getName() : "system");
     LOG.info(
-        "Activated RDF dataset '{}' ({} triples). Previous dataset retained for rollback until "
-            + "the next rebuild.",
+        "Activated RDF dataset '{}' ({} triples before live mutation replay).",
         buildDataset,
         triples);
     buildDataset = null;
@@ -575,6 +591,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
    */
   private void abandonBuildDataset() {
     if (buildDataset != null) {
+      try {
+        rdf().abandonBuild(new BuildTarget(jobData.getRdfRebuildId(), buildDataset));
+      } catch (RuntimeException exception) {
+        LOG.error("Could not release the failed RDF rebuild; its lease will expire", exception);
+      }
       LOG.warn(
           "RDF rebuild did not complete; serving dataset unchanged and build dataset '{}' left "
               + "in place for inspection",

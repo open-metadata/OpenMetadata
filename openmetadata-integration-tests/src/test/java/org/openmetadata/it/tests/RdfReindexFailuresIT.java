@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +31,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.rdf.RdfReindexFailuresResponse;
 import org.openmetadata.service.Entity;
 
 /**
@@ -116,6 +118,43 @@ public class RdfReindexFailuresIT {
     assertTrue(body.get("data").size() <= 10);
     if (body.get("total").asInt() <= 10) {
       assertEquals(body.get("total").asInt(), body.get("data").size());
+    }
+  }
+
+  @Test
+  void listFailures_preservesTheGeneratedFailureContract() throws Exception {
+    String id = UUID.randomUUID().toString();
+    String jobId = UUID.randomUUID().toString();
+    String entityId = UUID.randomUUID().toString();
+    long timestamp = 1_788_796_800_123L;
+    var dao = Entity.getCollectionDAO().rdfIndexFailureDAO();
+    dao.insert(
+        id,
+        jobId,
+        "test-server",
+        Entity.TABLE,
+        entityId,
+        "service.schema.failed_table",
+        "ENTITY_WRITE",
+        "upload rejected",
+        "test stack",
+        timestamp);
+    try {
+      HttpResponse<String> response = get("?entityType=table&limit=1000", adminJwt());
+      assertEquals(200, response.statusCode(), response.body());
+      RdfReindexFailuresResponse body =
+          MAPPER.readValue(response.body(), RdfReindexFailuresResponse.class);
+      var failure =
+          body.getData().stream().filter(row -> id.equals(row.getId())).findFirst().orElseThrow();
+      assertEquals(jobId, failure.getJobId());
+      assertEquals(entityId, failure.getEntityId());
+      assertEquals("service.schema.failed_table", failure.getEntityFqn());
+      assertEquals("ENTITY_WRITE", failure.getFailureStage());
+      assertEquals("upload rejected", failure.getErrorMessage());
+      assertEquals("test stack", failure.getStackTrace());
+      assertEquals(timestamp, failure.getTimestamp());
+    } finally {
+      dao.deleteById(id);
     }
   }
 

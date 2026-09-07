@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.rdf.RdfReindexFailuresResponse;
+import org.openmetadata.schema.type.RdfIndexFailure;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -130,7 +132,11 @@ public class RdfReindexResource {
       failures = collectionDAO.rdfIndexFailureDAO().findAll(limit, offset);
     }
 
-    return new RdfReindexFailuresResponse(failures, totalCount, offset, limit);
+    return new RdfReindexFailuresResponse()
+        .withData(failures.stream().map(RdfReindexResource::toResponse).toList())
+        .withTotal(totalCount)
+        .withOffset(offset)
+        .withLimit(limit);
   }
 
   private String validateEntityType(String requestedEntityType) {
@@ -153,10 +159,17 @@ public class RdfReindexResource {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  @Schema(description = "Response containing paginated RDF reindex failures")
-  public record RdfReindexFailuresResponse(
-      @Schema(description = "List of failure records") List<RdfIndexFailureRecord> data,
-      @Schema(description = "Total number of failures") int total,
-      @Schema(description = "Current offset") int offset,
-      @Schema(description = "Page size limit") int limit) {}
+  private static RdfIndexFailure toResponse(final RdfIndexFailureRecord failure) {
+    return new RdfIndexFailure()
+        .withId(failure.getId())
+        .withJobId(failure.getJobId())
+        .withServerId(failure.getServerId())
+        .withEntityType(failure.getEntityType())
+        .withEntityId(failure.getEntityId())
+        .withEntityFqn(failure.getEntityFqn())
+        .withFailureStage(failure.getFailureStage())
+        .withErrorMessage(failure.getErrorMessage())
+        .withStackTrace(failure.getStackTrace())
+        .withTimestamp(failure.getTimestamp());
+  }
 }

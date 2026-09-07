@@ -43,6 +43,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
+import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -119,6 +120,8 @@ class RdfIndexAppTest {
   void setUp() {
     lenient().when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     lenient().when(mockRdfRepository.isEnabled()).thenReturn(true);
+    lenient().when(mockRdfRepository.forRun(null, null, 0)).thenReturn(mockRdfRepository);
+    lenient().when(mockRdfRepository.configuredAppendPayloadBytes()).thenReturn(16L << 20);
     clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
   }
@@ -242,7 +245,9 @@ class RdfIndexAppTest {
     @DisplayName("blue/green is chosen only when recreate, the app flag, and support all agree")
     void buildDatasetRequiresRecreateFlagAndSupport() throws Exception {
       doReturn(true).when(mockRdfRepository).supportsBlueGreenRebuild();
-      doReturn("openmetadata_a").when(mockRdfRepository).resolveBuildDatasetName();
+      doReturn(new BuildTarget("run-1", "openmetadata_a"))
+          .when(mockRdfRepository)
+          .beginBlueGreenRebuild();
 
       assertEquals("openmetadata_a", invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
       assertNull(
@@ -254,23 +259,27 @@ class RdfIndexAppTest {
     }
 
     @Test
-    @DisplayName("an unsupported backend falls back to rebuilding in place")
-    void unsupportedBackendFallsBackInPlace() throws Exception {
+    @DisplayName("an unsupported backend fails before clearing serving data")
+    void unsupportedBackendFailsBeforeClearing() throws Exception {
       doReturn(false).when(mockRdfRepository).supportsBlueGreenRebuild();
 
-      assertNull(invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
-      verify(mockRdfRepository, never()).resolveBuildDatasetName();
+      assertThrows(
+          java.lang.reflect.InvocationTargetException.class,
+          () -> invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+      verify(mockRdfRepository, never()).beginBlueGreenRebuild();
     }
 
     @Test
-    @DisplayName("a failure resolving the target degrades to an in-place rebuild, not a crash")
-    void resolutionFailureDegradesToInPlace() throws Exception {
+    @DisplayName("a target resolution failure aborts the requested rebuild")
+    void resolutionFailureAbortsRebuild() throws Exception {
       doReturn(true).when(mockRdfRepository).supportsBlueGreenRebuild();
       doThrow(new IllegalStateException("pointer table unreadable"))
           .when(mockRdfRepository)
-          .resolveBuildDatasetName();
+          .beginBlueGreenRebuild();
 
-      assertNull(invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
+      assertThrows(
+          java.lang.reflect.InvocationTargetException.class,
+          () -> invoke(appWith(true, true), "resolveBlueGreenBuildDataset"));
     }
 
     @Test
@@ -287,7 +296,6 @@ class RdfIndexAppTest {
 
       // Order matters: an un-cleared reuse would merge the previous rebuild's triples.
       InOrder order = inOrder(mockRdfRepository, buildRepository);
-      order.verify(mockRdfRepository).createBuildDataset("openmetadata_a");
       order.verify(buildRepository).clearAll();
       order.verify(buildRepository).compactStorage();
       order.verify(buildRepository).reloadOntologies();
@@ -304,7 +312,7 @@ class RdfIndexAppTest {
       invoke(testApp, "abandonBuildDataset");
 
       assertNull(buildField.get(testApp));
-      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString());
+      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString(), anyString());
     }
   }
 
@@ -319,6 +327,7 @@ class RdfIndexAppTest {
       EventPublisherJob jobConfig = new EventPublisherJob();
       jobConfig.setEntities(Set.of("table"));
       jobConfig.setMinSuccessRatio(minSuccessRatio);
+      jobConfig.setRdfRebuildId("run-1");
       var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
       jobDataField.setAccessible(true);
       jobDataField.set(testApp, jobConfig);
@@ -367,7 +376,7 @@ class RdfIndexAppTest {
           assertThrows(IllegalStateException.class, () -> promote(testApp));
 
       assertTrue(refusal.getMessage().contains("minSuccessRatio"));
-      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString());
+      verify(mockRdfRepository, never()).activateDataset(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -378,7 +387,7 @@ class RdfIndexAppTest {
 
       promote(testApp);
 
-      verify(mockRdfRepository).activateDataset(eq("openmetadata_a"), anyString());
+      verify(mockRdfRepository).activateDataset(eq("openmetadata_a"), eq("run-1"), anyString());
     }
 
     @Test
@@ -389,7 +398,7 @@ class RdfIndexAppTest {
 
       promote(testApp);
 
-      verify(mockRdfRepository).activateDataset(eq("openmetadata_a"), anyString());
+      verify(mockRdfRepository).activateDataset(eq("openmetadata_a"), eq("run-1"), anyString());
     }
   }
 

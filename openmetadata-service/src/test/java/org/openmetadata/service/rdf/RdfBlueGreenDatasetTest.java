@@ -15,13 +15,13 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,6 +32,22 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 class RdfBlueGreenDatasetTest {
 
   private static final String BASE_URI = "https://open-metadata.org/";
+
+  @Test
+  void repeatedPromotionsKeepTheConfiguredBaseAndReuseTwoAlternates() {
+    AtomicReference<String> active = new AtomicReference<>("openmetadata");
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    when(storage.currentDatasetName()).thenAnswer(invocation -> active.get());
+    RdfRepository repository = new RdfRepository(config(), storage, null);
+
+    for (String expected : new String[] {"openmetadata_a", "openmetadata_b", "openmetadata_a"}) {
+      assertEquals(expected, repository.resolveBuildDatasetName());
+      active.set(expected);
+      assertEquals("openmetadata", repository.configuredDatasetName());
+    }
+    assertEquals(
+        "openmetadata", new RdfRepository(config(), storage, null).configuredDatasetName());
+  }
 
   @Nested
   @DisplayName("build target alternation")
@@ -91,15 +107,14 @@ class RdfBlueGreenDatasetTest {
     }
 
     @Test
-    @DisplayName("routing to the serving dataset returns the same repository, not a copy")
-    void routingToServingDatasetReturnsSelf() {
-      RdfStorageInterface storage = mock(RdfStorageInterface.class);
-      when(storage.currentDatasetName()).thenReturn("openmetadata");
-      RdfRepository repository = new RdfRepository(config(), storage, null);
-
-      assertSame(repository, repository.forDataset("openmetadata"));
-      assertSame(repository, repository.forDataset(null));
-      assertSame(repository, repository.forDataset("  "));
+    void runPayloadBudgetDoesNotMutateTheServingRepository() {
+      final RdfRepository serving =
+          new RdfRepository(config(), mock(RdfStorageInterface.class), null);
+      final long configured = serving.configuredAppendPayloadBytes();
+      final RdfRepository run = serving.forRun(null, null, 1024);
+      assertNotSame(serving, run);
+      assertEquals(1024, run.payloadBudgetBytes(RdfWriteMode.INSERT_ONLY));
+      assertEquals(configured, serving.payloadBudgetBytes(RdfWriteMode.INSERT_ONLY));
     }
 
     @Test
@@ -116,6 +131,24 @@ class RdfBlueGreenDatasetTest {
       assertEquals("openmetadata_a", target);
       assertNotSame("openmetadata", target);
     }
+  }
+
+  @Test
+  void stableNamesHonorCustomEndpointsAndRejectForeignTargets() {
+    for (String endpoint :
+        java.util.List.of("http://host/prefix/catalog", "http://host/prefix/catalog/sparql/")) {
+      final RdfDatasetNames names =
+          RdfDatasetNames.from(config().withRemoteEndpoint(URI.create(endpoint)));
+      assertEquals("catalog", names.base());
+      org.junit.jupiter.api.Assertions.assertThrows(
+          IllegalArgumentException.class, () -> names.requireKnown("catalog_a_a"));
+      org.junit.jupiter.api.Assertions.assertThrows(
+          IllegalArgumentException.class, () -> names.requireKnown(null));
+    }
+    assertEquals("openmetadata", RdfDatasetNames.from(new RdfConfiguration()).base());
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalArgumentException.class,
+        () -> RdfDatasetNames.from(config().withRemoteEndpoint(URI.create("http://host/"))));
   }
 
   private static RdfConfiguration config() {

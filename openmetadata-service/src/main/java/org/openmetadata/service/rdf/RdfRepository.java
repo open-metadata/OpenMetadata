@@ -26,9 +26,6 @@ import java.util.Map;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -66,6 +63,9 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.reasoning.InferenceEngine;
 import org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel;
+import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
+import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -156,6 +156,8 @@ public class RdfRepository {
           "http://www.w3.org/2004/02/skos/core#related");
 
   private final RdfConfiguration config;
+  private final RdfDatasetNames datasetNames;
+  private final RdfDatasetManager datasetManager;
   private final RdfStorageInterface storageService;
   private final AtomicLong appendBudgetOverrideBytes = new AtomicLong(0);
   private final RdfStorageInterface materializationStorageService;
@@ -192,9 +194,19 @@ public class RdfRepository {
 
   private RdfRepository(RdfConfiguration config) {
     this.config = config;
+    this.datasetNames = RdfDatasetNames.from(config);
     this.relationshipTypeResolverSupplier = RdfRepository::configuredRelationshipTypeResolver;
     if (config.getEnabled() != null && config.getEnabled()) {
-      this.materializationStorageService = RdfStorageFactory.createStorage(config);
+      final RdfStorageInterface configuredStorage = RdfStorageFactory.createStorage(config);
+      this.datasetManager =
+          new RdfDatasetManager(
+              datasetNames,
+              new RdfRebuildStore(
+                  Entity.getJdbi(), Clock.systemUTC(), RdfRebuildStore.DEFAULT_LIMITS),
+              Clock.systemUTC(),
+              name -> RdfStorageFactory.createStorage(config, name));
+      datasetManager.registerConfiguredStorage(configuredStorage);
+      this.materializationStorageService = datasetManager.routedStorage();
       final InferenceRuleRepository inferenceRuleRepository =
           new InferenceRuleRepository(
               Entity.getCollectionDAO().rdfInferenceRuleDAO(),
@@ -208,15 +220,8 @@ public class RdfRepository {
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
 
       loadOntologies();
-      // Unconditional: a pod that never runs the indexing app still has to follow a
-      // dataset flip performed by the pod that did. Gating this on a server flag meant
-      // enabling blue/green required restarting every pod. The watcher is a 15s read of
-      // a single-row table and is a no-op until a rebuild actually writes the pointer.
-      if (supportsBlueGreenRebuild()) {
-        refreshActiveDataset();
-        startActiveDatasetWatcher();
-      }
     } else {
+      this.datasetManager = null;
       this.storageService = null;
       this.materializationStorageService = null;
       this.translator = null;
@@ -235,6 +240,8 @@ public class RdfRepository {
       final JsonLdTranslator translator,
       final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier) {
     this.config = config;
+    this.datasetNames = RdfDatasetNames.from(config);
+    this.datasetManager = null;
     this.storageService = storageService;
     this.materializationStorageService = storageService;
     this.translator = translator;
@@ -259,16 +266,6 @@ public class RdfRepository {
     return positiveInt(config.getBulkLineageEdgeBatchSize(), DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE);
   }
 
-  // Blue/green rebuild support. The pointer row names the dataset that serves reads and live
-  // writes; a rebuild populates the *other* dataset and flips the pointer on success, so the
-  // served graph is never cleared out from under queries.
-  private static final String BUILD_DATASET_SUFFIX_A = "_a";
-  private static final String BUILD_DATASET_SUFFIX_B = "_b";
-  private static final long ACTIVE_DATASET_REFRESH_SECONDS = 15L;
-
-  private final Map<String, RdfStorageInterface> buildStorages = new ConcurrentHashMap<>();
-  private ScheduledFuture<?> activeDatasetWatcher;
-
   /**
    * Whether this deployment *can* run blue/green rebuilds. Whether a given rebuild *should* is a
    * per-run choice on the app configuration ({@code blueGreenRebuild}), because it changes the
@@ -280,14 +277,14 @@ public class RdfRepository {
 
   /** Dataset named in the configured endpoint — what serving used before blue/green existed. */
   public String configuredDatasetName() {
-    return storageService != null ? storageService.currentDatasetName() : null;
+    return datasetNames.base();
   }
 
-  /**
-   * Name of the dataset currently serving. Falls back to the configured endpoint's dataset when no
-   * pointer row exists, so an install that never enabled blue/green behaves exactly as before.
-   */
+  /** Read the durable serving pointer; writes acquire its database fence before routing. */
   public String activeDatasetName() {
+    if (datasetManager != null) {
+      return datasetManager.activeDataset();
+    }
     String pointer = null;
     try {
       CollectionDAO dao = Entity.getCollectionDAO();
@@ -295,106 +292,53 @@ public class RdfRepository {
     } catch (Exception e) {
       LOG.debug("Could not read active RDF dataset pointer; using configured dataset", e);
     }
-    return pointer != null && !pointer.isBlank() ? pointer : configuredDatasetName();
+    return pointer != null && !pointer.isBlank() ? pointer : storageService.currentDatasetName();
   }
 
-  /**
-   * The dataset a rebuild should populate: whichever of the two alternates is not currently
-   * serving. Alternating between exactly two names bounds disk at two copies — Fuseki does not
-   * guarantee that deleting a dataset reclaims its files, so minting a fresh name per run would
-   * leak a directory every time.
-   */
+  /** Fixed alternates keep the number of dataset directories bounded across runs. */
   public String resolveBuildDatasetName() {
-    String base = configuredDatasetName();
-    if (base == null) {
-      throw new IllegalStateException("Cannot resolve RDF build dataset: no configured dataset");
-    }
-    return alternateDatasetName(base, activeDatasetName());
+    return datasetNames.alternate(activeDatasetName());
   }
 
   static String alternateDatasetName(String base, String activeDataset) {
-    String candidateA = base + BUILD_DATASET_SUFFIX_A;
-    return candidateA.equals(activeDataset) ? base + BUILD_DATASET_SUFFIX_B : candidateA;
+    return new RdfDatasetNames(base).alternate(activeDataset);
   }
 
-  /**
-   * A repository view whose writes land in {@code datasetName} instead of the serving dataset.
-   * Blue/green rebuilds hand this to the indexer so every existing write path targets the build
-   * dataset without threading a dataset argument through each call. Config and translator are
-   * shared; only the storage handle differs.
-   */
-  public RdfRepository forDataset(String datasetName) {
-    if (datasetName == null
-        || datasetName.isBlank()
-        || datasetName.equals(storageService.currentDatasetName())) {
-      return this;
+  public RdfRepository forRun(
+      final String dataset, final String rebuildId, final long appendBudget) {
+    final RdfStorageInterface storage =
+        dataset == null
+            ? storageService
+            : requireDatasetManager().buildStorage(new BuildTarget(rebuildId, dataset));
+    final RdfRepository view =
+        new RdfRepository(config, storage, translator, relationshipTypeResolverSupplier);
+    view.setAppendPayloadBudgetOverride(appendBudget);
+    return view;
+  }
+
+  public BuildTarget beginBlueGreenRebuild() {
+    return requireDatasetManager().begin();
+  }
+
+  public void renewBuild(final BuildTarget target) {
+    requireDatasetManager().heartbeat(target);
+  }
+
+  public void abandonBuild(final BuildTarget target) {
+    requireDatasetManager().abort(target, "RDF indexing run failed or was stopped");
+  }
+
+  private RdfDatasetManager requireDatasetManager() {
+    if (datasetManager == null) {
+      throw new IllegalStateException("Coordinated RDF dataset routing is unavailable");
     }
-    return new RdfRepository(config, storageForDataset(datasetName), translator);
+    return datasetManager;
   }
 
-  /** Create the rebuild target on the server if it is not already present. */
-  public void createBuildDataset(String datasetName) {
-    storageService.createDatasetIfMissing(datasetName);
-  }
-
-  /** Storage handle bound to a specific dataset, for writing into a rebuild target. */
-  public RdfStorageInterface storageForDataset(String datasetName) {
-    if (datasetName == null
-        || datasetName.isBlank()
-        || datasetName.equals(storageService.currentDatasetName())) {
-      return storageService;
-    }
-    return buildStorages.computeIfAbsent(
-        datasetName, name -> RdfStorageFactory.createStorage(config, name));
-  }
-
-  /**
-   * Point serving at {@code datasetName} and persist the choice. Other servers converge when their
-   * own refresh picks up the new pointer, which is why the caller waits before retiring the old
-   * dataset.
-   */
-  public void activateDataset(String datasetName, String updatedBy) {
-    Entity.getCollectionDAO()
-        .rdfActiveDatasetDAO()
-        .setActiveDataset(datasetName, System.currentTimeMillis(), updatedBy);
-    refreshActiveDataset();
+  /** Replay live mutations and atomically publish the completed rebuild generation. */
+  public void activateDataset(String datasetName, String rebuildId, String updatedBy) {
+    requireDatasetManager().promote(new BuildTarget(rebuildId, datasetName), updatedBy);
     LOG.info("RDF serving dataset switched to '{}'", datasetName);
-  }
-
-  /** Re-point the serving storage if another server has flipped the pointer. */
-  public void refreshActiveDataset() {
-    if (!supportsBlueGreenRebuild()) {
-      return;
-    }
-    try {
-      String active = activeDatasetName();
-      if (active != null && !active.equals(storageService.currentDatasetName())) {
-        storageService.repointToDataset(active);
-        buildStorages.remove(active);
-      }
-    } catch (Exception e) {
-      LOG.warn("Could not refresh active RDF dataset pointer", e);
-    }
-  }
-
-  public long activeDatasetRefreshSeconds() {
-    return ACTIVE_DATASET_REFRESH_SECONDS;
-  }
-
-  /**
-   * Poll the serving pointer so a flip performed by whichever server ran the rebuild reaches every
-   * other server. Without this, other servers would keep answering from the previous dataset until
-   * they restarted. Only started when blue/green is enabled, so the default deployment gains no
-   * background work.
-   */
-  private void startActiveDatasetWatcher() {
-    activeDatasetWatcher =
-        RdfBackgroundScheduler.getInstance()
-            .scheduleWithFixedDelay(
-                this::refreshActiveDataset,
-                ACTIVE_DATASET_REFRESH_SECONDS,
-                ACTIVE_DATASET_REFRESH_SECONDS,
-                TimeUnit.SECONDS);
   }
 
   long payloadBudgetBytes(RdfWriteMode writeMode) {
@@ -654,7 +598,11 @@ public class RdfRepository {
     }
     for (List<RdfStorageInterface.EntityWriteRequest> chunk :
         chunkByPayloadBudget(requests, writeMode)) {
-      storageService.bulkStoreEntities(chunk, writeMode);
+      if (appendBudgetOverrideBytes.get() > 0 && writeMode == RdfWriteMode.INSERT_ONLY) {
+        storageService.bulkStoreEntities(chunk, writeMode, payloadBudgetBytes(writeMode));
+      } else {
+        storageService.bulkStoreEntities(chunk, writeMode);
+      }
     }
   }
 
@@ -4289,16 +4237,13 @@ public class RdfRepository {
   }
 
   public void close() {
-    if (activeDatasetWatcher != null) {
-      activeDatasetWatcher.cancel(false);
-      activeDatasetWatcher = null;
-    }
-    buildStorages.values().forEach(RdfStorageInterface::close);
-    buildStorages.clear();
     new HashSet<>(inferenceModelCache.asMap().values()).forEach(InfModel::close);
     inferenceModelCache.invalidateAll();
     if (storageService != null) {
       storageService.close();
+    }
+    if (datasetManager != null) {
+      datasetManager.close();
     }
   }
 

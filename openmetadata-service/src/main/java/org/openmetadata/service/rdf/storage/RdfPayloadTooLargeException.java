@@ -12,23 +12,9 @@
  */
 package org.openmetadata.service.rdf.storage;
 
-/**
- * Thrown when a write times out and its payload is large enough that retrying at the same size is
- * counterproductive: the client-side deadline does not cancel the server-side update, so each
- * same-size retry re-submits the full body and multiplies backend load while almost certainly
- * timing out again. Callers should split the batch (see {@code RdfBatchProcessor}'s bisect
- * fallback) instead of retrying. Small-payload timeouts stay retryable — they signal a transient
- * backend stall, not an oversized request.
- */
-public class RdfPayloadTooLargeException extends RuntimeException {
-
-  private static final long serialVersionUID = 1L;
-
-  public RdfPayloadTooLargeException(String operation, Throwable cause) {
-    super(
-        "RDF write "
-            + operation
-            + " timed out with a large payload; not retrying at the same size — split the batch",
-        cause);
+/** Rejected before HTTP because the serialized payload exceeds its byte budget. */
+public final class RdfPayloadTooLargeException extends RuntimeException {
+  public RdfPayloadTooLargeException(final String message) {
+    super(message);
   }
 }
