@@ -151,7 +151,11 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude pipelines that matches the pattern.
      */
-    pipelineFilterPattern?:      FilterPattern;
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
