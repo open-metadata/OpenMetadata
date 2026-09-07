@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.migration.mysql.v202;
 
-import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
-import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v202.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v202.MigrationUtil.addTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v202.SearchAllowedFieldsRepair.repairAllowedFields;
 import static org.openmetadata.service.migration.utils.v202.SearchNameKeywordRepair.repairNameKeywordSearchFields;
 
