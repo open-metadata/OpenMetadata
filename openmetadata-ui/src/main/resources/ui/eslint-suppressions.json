@@ -1169,5 +1169,6520 @@
     "om-playwright/no-positional-locator": {
       "count": 1
     }
+  },
+  "src/AppRoot.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/APIEndpoint/APIEndpointDetails/APIEndpointDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/APIEndpoint/APIEndpointSchema/APIEndpointSchema.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/APIEndpoint/APIEndpointVersion/APIEndpointVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyNew.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedCardNew/ActivityFeedcardNew.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 10
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedCardNew/CommentCard.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/components/ActivityFeed/FeedEditor/FeedEditor.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Alerts/AlertFormSourceItem/AlertFormSourceItem.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Alerts/DestinationFormItem/DestinationFormItem.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Alerts/DestinationFormItem/DestinationFormItemFormBridge.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Alerts/DestinationFormItem/DestinationSelectItem/DestinationConfigField/DestinationConfigField.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Alerts/DestinationFormItem/DestinationSelectItem/DestinationSelectItem.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Announcement/AnnouncementFeedCard.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Announcement/AnnouncementFeedCardBody.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    }
+  },
+  "src/components/Announcement/AnnouncementThreadBody.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Announcement/AnnouncementThreads.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/AppBar/SearchOptions.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/AppBar/Suggestions.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/AppContainer/AppContainer.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/AppRouter/EntityImportRouter.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/AppRouter/UnAuthenticatedAppRouter.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/AuditLog/AuditLogFilters.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Auth/AppAuthenticators/BasicAuthAuthenticator.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Auth/AppAuthenticators/MsalAuthenticator.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Auth/AppAuthenticators/OidcAuthenticator.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Auth/AuthProviders/AuthProvider.test.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Auth/AuthProviders/AuthProvider.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 8
+    }
+  },
+  "src/components/BlockEditor/BlockEditor.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/BlockMenu/BlockMenu.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/BlockEditor/BubbleMenu/BubbleMenu.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/BlockAndDragDrop/BlockAndDragDrop.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/BlockAndDragDrop/BlockAndDragHandle.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/File/AttachmentComponents/AttachmentPlaceholder.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/File/FileNode.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/File/FileNodeView.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/components/BlockEditor/Extensions/hashtag/HashList.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/BlockEditor/Extensions/hashtag/hashtagSuggestion.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/components/BlockEditor/Extensions/image/EmbedLinkElement/EmbedLinkElement.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/image/ImageClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/Extensions/image/UploadFile/UploadFileTab.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/BlockEditor/Extensions/mention/MentionList.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/BlockEditor/Extensions/mention/mentionSuggestions.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/BlockEditor/Extensions/slash-command/SlashCommandList.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/BlockEditor/Extensions/slash-command/renderItems.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/TableMenu/TableMenu.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/BlockEditor/hooks/useCustomEditor.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/BulkEditEntity/BulkEditEntity.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/BulkEditEntity/BulkEditEntity.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Certification/Certification.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Chart/ChartDetails/ChartDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/Chart/ChartVersion/ChartVersion.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Classifications/ClassificationDetails/ClassificationDetails.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Classifications/ClassificationDetails/ClassificationDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Container/ContainerDataModel/ContainerDataModel.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Container/ContainerVersion/ContainerVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Container/ContainerWidget/ContainerWidget.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/ContextCenter/DocumentsView/DocumentFolderView.component.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/CustomizeTabWidget/CustomizeTabWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Customization/GenericProvider/GenericProvider.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/GenericProvider/GenericProvider.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/GenericTab/DynamicHeightWidget.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/GenericTab/DynamicHeightWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/GenericTab/GenericTab.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/GenericTab/LeftPanelContainer.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Customization/GenericWidget/GenericWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Dashboard/DashboardChartTable/DashboardChartTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/Dashboard/DashboardDetails/DashboardDetails.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 6
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 8
+    }
+  },
+  "src/components/Dashboard/DashboardVersion/DashboardVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Dashboard/DataModel/DataModels/DataModelDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Dashboard/DataModel/DataModels/DataModelsTable.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/DataAssetRules/DataAssetRules.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DataAssets/AssetsSelectionModal/AssetSelectionDrawer.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataAssets/AssetsSelectionModal/useAssetSelectionState.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DataAssets/CommonWidgets/CommonWidgets.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataAssets/DataAssetSelectList/DataAssetSelectList.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataAssets/DataAssetSelectList/useAsyncDataAssetOptions.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 15
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataAssets/DomainLabelV2/DomainLabelV2.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/DataAssets/OwnerLabelV2/OwnerLabelV2.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataAssets/ReviewerLabelV2/ReviewerLabelV2.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/AddDataContract/AddDataContract.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DataContract/ContractDetailFormTab/ContractDetailFormTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractDetailTab/ContractDetail.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/DataContract/ContractExecutionChart/ContractExecutionChart.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractQualityCard/ContractQualityCard.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractQualityFormTab/ContractQualityFormTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/DataContract/ContractSLACard/ContractSLA.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractSLAFormTab/ContractSLAFormTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractSchemaFormTab/ContractScehmaFormTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/DataContract/ContractSchemaTable/ContractSchemaTable.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractSecurity/ContractSecurityCard.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataContract/ContractSecurityFormTab/ContractSecurityFormTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataContract/ContractSemanticFormTab/ContractSemanticFormTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DataContract/ContractTab/ContractTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataContract/ODCSImportModal/ODCSImportModal.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/DailyActiveUsersChart.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/DataAssetsTab/DataAssetsTab.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/DataInsightChartCard.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataInsight/DataInsightSummary.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DataInsight/KPIChart.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/KPIChart.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/PageViewsByEntitiesChart.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataInsight/TopActiveUsers.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataInsight/TopViewEntities.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataMarketplace/AnnouncementsWidgetV2/AnnouncementsWidgetV2.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataProduct/DataProductListPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataProduct/hooks/useDataProductCreateDrawer.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataProduct/hooks/useDataProductListingData.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataProducts/DataProductDomainWidget/DataProductDomainWidget.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataProducts/DataProductsContainer/DataProductsContainer.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DataProducts/DataProductsDetailsPage/DataProductsDetailsPage.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DataProducts/InputOutputPortsTab/InputOutputPortsTab.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    }
+  },
+  "src/components/DataProducts/InputOutputPortsTab/PortsListView/PortsListView.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/AddDataQualityTest/TestSuiteIngestion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/AddDataQualityTest/components/TestCaseFormBody.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/AddDataQualityTest/components/TestCaseFormBody.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/AddDataQualityTest/components/transformTestCaseFormData.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/AddTestCaseList/AddTestCaseList.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/DataQuality/BundleSuiteForm/BundleSuiteFormBody.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/IncidentTypeAreaChartWidget/IncidentTypeAreaChartWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/StatusByDimensionCardWidget/StatusByDimensionCardWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/StatusByDimensionCardWidget/StatusByDimensionCardWidget.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/TestCaseStatusAreaChartWidget/TestCaseStatusAreaChartWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/ChartWidgets/TestCaseStatusPieChartWidget/TestCaseStatusPieChartWidget.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/CustomMetricForm/CustomMetricForm.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/DataQuality.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    }
+  },
+  "src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/DataQualityDashboard/DqDashboardSectionContent.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 10
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/DataQualityDashboard/useDataQualityDashboardFilters.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityHeatmap/useScrollIndicator.hook.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/FailedTestCaseSampleData/FailedTestCaseSampleData.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/FailedTestCaseSampleData/FailedTestCaseSampleData.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/Severity/Severity.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/SqlQueryTab/AddSqlQueryFormModal/AddSqlQueryFormModal.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/TestCaseResultTab/useTestCaseResultTab.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DataQuality/TestCases/TestCases.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/TestCases/TestCases.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestCases/useTestCaseFilterOptions.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/DataQuality/TestCases/useTestCaseFilters.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestCases/useTestCaseList.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestCases/useTestCaseList.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestCases/useTestCaseListPage.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 3
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuites.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuites.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuitesTable.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/TestSuitesTable.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/useTestSuiteFilters.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/useTestSuiteFilters.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/useTestSuitesData.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/useTestSuitesData.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/useTestSuitesListPage.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuiteList/useTestSuitesListPage.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/Database/ColumnDetailPanel/ColumnDetailPanel.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Database/Profiler/DataObservability/DataObservabilityTab.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/DataObservability/TabFilters/TabFilters.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Database/Profiler/DataQualityTab/DataQualityTab.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/ProfilerSettings/ProfilerSettings.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/ColumnProfileTable/ColumnProfileTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/CustomMetricGraphs/CustomMetricGraphs.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/ProfilerSettingsModal/ProfilerSettingsModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 9
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/QualityTab/QualityTab.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/SingleColumnProfile.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Database/Profiler/TableProfiler/TableProfilerProvider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/Database/Profiler/TestSummary/TestSummary.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/Profiler/TestSummary/TestSummaryGraph.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Database/RetentionPeriod/RetentionPeriod.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/SampleDataTable/SampleDataTable.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/SampleDataWithMessages/MessageCard.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/SampleDataWithMessages/SampleDataWithMessages.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/SchemaEditor/SchemaEditor.test.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/SchemaTable/SchemaTable.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Database/StoredProcedureVersion/StoredProcedureVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/TableDataCardBody/TableDataCardBody.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    }
+  },
+  "src/components/Database/TableDescription/TableDescription.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Database/TableQueries/QueryCard.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Database/TableQueries/QueryCardExtraOption/QueryCardExtraOption.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Database/TableQueries/QueryUsedByOtherTable/QueryUsedByOtherTable.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Database/TableQueries/TableQueries.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Database/TableQueries/TableQueries.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Database/TableTags/TableTags.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Database/TableTags/TableTags.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Database/TableVersion/TableVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Domain/AddDomainForm/AddDomainForm.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Domain/AddDomainForm/AddDomainFormExtensionFields.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Domain/DomainDetails/DomainDetails.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 9
+    }
+  },
+  "src/components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Domain/DomainVersion/DomainVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Domain/SubDomainsTable/SubDomainsTable.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Domain/SubDomainsTable/hooks/useSubdomainListingData.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DomainListing/DomainListPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DomainListing/components/DomainTreeView.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/DomainListing/hooks/useDomainCreateDrawer.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DomainListing/hooks/useDomainListingData.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DriveService/Directory/DirectoryDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DriveService/Directory/DirectoryVersion/DirectoryVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/DriveService/File/FileColumnsTable/FileColumnsTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DriveService/File/FileDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DriveService/File/FileVersion/FileVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/DriveService/File/FilesTable/FilesTable.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DriveService/Spreadsheet/SpreadsheetDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DriveService/Spreadsheet/SpreadsheetVersion/SpreadsheetVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/DriveService/Spreadsheet/WorkflowsTable/WorkflowsTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DriveService/Worksheet/WorksheetColumnsTable/WorksheetColumnsTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/DriveService/Worksheet/WorksheetDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/DriveService/Worksheet/WorksheetVersion/WorksheetVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Entity/EntityExportModalProvider/EntityExportModalProvider.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Entity/EntityHeaderTitle/EntityHeaderTitle.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Entity/EntityLineage/CanvasButtonPopover.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityLineage/CanvasEdgeRenderer.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityLineage/CustomControls.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Entity/EntityLineage/CustomNodeV1.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Entity/EntityLineage/LineageControlButtons/LineageControlButtons.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityLineage/LineageNodeLabelV1.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Entity/EntityLineage/NodeChildren/NodeChildren.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Entity/EntityLineage/NodeChildren/NodeChildren.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityLineage/NodeChildren/VirtualColumnList.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityLineage/NodeSuggestions.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Entity/EntityRightPanel/EntityRightPanel.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/EntityVersionTimeLine/EntityVersionTimeLine.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Entity/EntityVersionTimeLine/VersionButton.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Entity/Task/TaskTab/TaskTabNew.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 10
+    }
+  },
+  "src/components/Entity/VersionTable/VersionTable.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Entity/Voting/voting.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/EntitySummaryPanel.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/EntitySummaryPanel.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/ExplorePage.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/ExploreQuickFilters.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/ExploreTree/ExploreTree.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Explore/ExploreTree/ExploreTree.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/ExploreV1/ExploreSearchCard/ExploreSearchCard.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 8
+    }
+  },
+  "src/components/ExploreV1/ExploreV1.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/GlobalSearchBar/GlobalSearchBar.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Glossary/GlossaryDetails/GlossaryDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Glossary/GlossaryHeader/GlossaryHeader.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Glossary/GlossaryTermModal/GlossaryTermModal.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Glossary/GlossaryTermTab/GlossaryTermTab.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 13
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/GlossaryTermReferencesModal.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/GlossaryTermsV1.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/tabs/AssetsTabs.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 10
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/tabs/RelatedTerms.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Glossary/GlossaryV1.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Glossary/GlossaryVersion/GlossaryVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/IncidentManager/IncidentManager.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/IncidentManager.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/IncidentManagerTable.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/useIncidentActions.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/useIncidentActions.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/useIncidentFilterOptions.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/useIncidentFilters.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/IncidentManager/useIncidentList.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/IncidentManager/useIncidentRowPermissions.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/IncidentManager/useIncidentRowPermissions.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/KnowledgeCenter/AttachmentWidget/AttachmentWidget.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/KnowledgeCenter/BookMarkWidget/BookMarkWidget.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgeCard/KnowledgeCard.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 11
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgePageListRightPanel/KnowledgePageListRightPanel.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgePages/KnowledgePages.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/KnowledgeCenter/RelatedDataAssets/RelatedDataAssets.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/KnowledgeCenter/TitleComponent/TitleComponent.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Learning/LearningIcon/LearningIcon.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Lineage/Lineage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Lineage/Lineage.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/LineageTable/LineageTable.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 8
+    }
+  },
+  "src/components/Metric/MetricDetails/MetricDetails.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/Metric/MetricExpression/MetricExpression.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Metric/MetricHeaderInfo/MetricHeaderInfo.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Metric/MetricHeaderInfo/UnitOfMeasurementInfoItem.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Metric/MetricVersion/MetricVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Metric/RelatedMetrics/RelatedMetrics.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MlModel/MlModelDetail/MlModelDetail.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 13
+    }
+  },
+  "src/components/MlModel/MlModelVersion/MlModelVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Modals/AnnouncementModal/AddAnnouncementModal.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/AnnouncementModal/EditAnnouncementModal.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/IconColorModal/IconColorModal.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/IngestionRunDetailsModal/IngestionRunDetailsModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/ModalWithFunctionEditor/ModalWithFunctionEditor.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/ModalWithQueryEditor/ModalWithQueryEditor.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/ProfileEditModal/ProfileEditModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/AddWidgetModal/AddWidgetModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MyData/CustomizableComponents/AddWidgetModal/AddWidgetTabContent.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomiseHomeModal/CustomiseHomeModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseSearchBar.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseSearchBar.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/CustomizableComponents/WidgetCard/WidgetCard.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/FeedWidget/FeedWidget.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/MyData/GithubStarCard/GithubStarCard.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/MyDataWidget/MyDataWidget.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/MyData/Persona/AddEditPersona/AddEditPersona.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/RightSidebar/AnnouncementsWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/RightSidebar/FollowingWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/MyData/Widgets/Common/WidgetHeader/WidgetHeader.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/CuratedAssetsWidget/AdvancedAssetsFilterField/AdvancedAssetsFilterField.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/MyData/Widgets/CuratedAssetsWidget/SelectAssetTypeField/SelectAssetTypeField.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/DomainsWidget/DomainsWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/MyData/Widgets/KPIWidget/KPIWidget.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/KPIWidget/KPIWidget.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/MyTaskWidget/MyTaskWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/NavBar/NavBar.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/NotificationBox/NotificationBox.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/OntologyExplorer/OntologyAuthoringInspector.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyBulkAuthoring.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyEntityPanel.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyGraphG6.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyImportExportModal.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyInferenceExplanationPanel.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyLibrary.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyNodeRelationsContent.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologyStructurePanel.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/OntologySubsetPanel.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/hooks/useGraphData.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/hooks/useOntologyEditLease.ts": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/hooks/useOntologyExplorer.ts": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/OntologyExplorer/hooks/useOntologyGraph.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Pipeline/Execution/Execution.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Pipeline/Execution/ListView/ListViewTab.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Pipeline/PipelineDetails/PipelineDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 9
+    }
+  },
+  "src/components/Pipeline/PipelineTaskTab/PipelineTaskTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Pipeline/PipelineVersion/PipelineVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Pipeline/TasksDAGView/TasksDAGView.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/SearchDropdown/SearchDropdown.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/SearchDropdown/SearchDropdown.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/SearchIndexVersion/SearchIndexVersion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/SearchSettings/EntitySeachSettings/EntitySearchSettings.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/SearchSettings/FieldConfiguration/fieldConfiguration.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/SearchSettings/SearchPreview/SearchPreview.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/SearchedData/SearchedData.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/ServiceAgents/hooks/useAgentPermissions.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/ServiceInsights/ServiceInsightsTab.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/ServiceInsights/ServiceInsightsTab.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Settings/Applications/AppDetails/AppDetails.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Applications/AppLiveIndexing/AppLiveIndexing.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Applications/AppLogo/AppLogo.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Applications/AppLogsViewer/AppLogsViewer.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Settings/Applications/AppLogsViewer/ReindexFailures.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Applications/AppRunsHistory/AppRunsHistory.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Settings/Applications/AppSchedule/AppSchedule.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Applications/plugins/AppPlugin.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Bot/BotDetails/BotDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Bot/BotListV1/BotListV1.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Persona/CustomizeUI/CustomizeUI.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Persona/PersonaAIContext/ContextPreviewModal/ContextPreviewModal.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Persona/PersonaAIContext/ContextRuleEditor/ContextRuleEditor.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Persona/PersonaAIContext/VersionHistoryDrawer/VersionHistoryDrawer.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/AddIngestion/AddIngestion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Ingestion/AddIngestionButton.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Ingestion/Ingestion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionListTable/IngestionListTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActionsDropdown.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Services/Ingestion/IngestionWorkflowForm/IngestionWorkflowForm.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Services/ServiceConfig/FiltersConfigForm.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Services/Services.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/RolesAndPoliciesList.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/TeamDetailsV1.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 15
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/TeamHierarchy.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsHeadingLabel.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsInfo.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsSubscription.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Settings/Team/TeamDetails/UserTab/UserTab.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/Settings/Team/TeamImportResult/TeamImportResult.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Team/TeamsSelectable/TeamsSelectable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Team/TeamsSelectable/TeamsSelectableNew.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Team/UserImportResult/UserImportResult.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Users/AccessTokenCard/AccessTokenCard.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/components/Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Settings/Users/CreateUser/CreateUser.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Users/Users.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/Settings/Users/UsersProfile/UserPermissions/UserPermissions.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Users/UsersProfile/UserProfileRoles/UserProfileRoles.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Settings/Users/UsersProfile/UserProfileTeams/UserProfileTeams.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Users/UsersTab/UsersTabs.component.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/SettingsSso/SSOConfigurationForm/SSOConfigurationForm.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/SettingsSso/SSOConfigurationForm/SsoConfigurationFormArrayFieldTemplate.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/SettingsSso/SSOConfigurationForm/SsoRolesSelectField.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/Suggestions/SuggestionsAlert/SuggestionsAlert.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    }
+  },
+  "src/components/Suggestions/SuggestionsProvider/SuggestionsProvider.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Suggestions/SuggestionsProvider/SuggestionsProvider.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Suggestions/SuggestionsSlider/SuggestionsSlider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Tag/TagsContainerV2/TagsContainerV2.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 13
+    }
+  },
+  "src/components/Tag/TagsV1/TagsV1.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    }
+  },
+  "src/components/Tag/TagsViewer/TagsViewer.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/TestLibrary/TestDefinitionList/useTestDefinitionData.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/TestLibrary/TestDefinitionList/useTestDefinitionListPage.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Topic/TopicDetails/TopicDetails.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/Topic/TopicSchema/TopicSchema.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/Topic/TopicVersion/TopicVersion.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/Visualisations/Chart/Chart.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Visualisations/Chart/CustomAreaChart.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Visualisations/Chart/CustomPieChart.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/ConnectionConditionModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/NodeConfigSidebar.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/NodeFormSidebar.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/CheckChangeDescriptionForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/CheckConditionForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/ConditionBuilder/ConditionBuilder.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/DataAssetFormSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/DataCompletenessForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/EndNodeForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/RevertBackForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/SchemaBasedNodeForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/SetActionForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/SinkTaskForm.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/TaskNodeFormRenderer.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 8
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/TriggerConfigSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/WorkflowConfigFormV1.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/WorkflowDefinitions/WorkflowBuilder/forms/index.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 10
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/AnnouncementsWidget/AnnouncementItemV3.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/AsyncSelect/AsyncSelect.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/AsyncSelect/AsyncSelectList.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/AsyncSelectList/AsyncSelectList.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/AsyncSelectList/TreeAsyncSelectList.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/AvatarCarousel/AvatarCarousel.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/CertificationTag/CertificationTag.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/CustomPropertyTable/CustomPropertyTable.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/common/CustomPropertyTable/PropertyValue.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/CustomPropertyTable/TableTypeProperty/TableTypePropertyEditTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/CustomUnitSelect/CustomUnitSelect.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/DataProductsSection/DataProductsSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/DatePickerMenu/DatePickerMenu.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/DeleteWidget/DeleteEntityModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/DescriptionSection/DescriptionSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/DisplayName/DisplayName.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/DomainLabel/DomainLabel.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/common/DomainLabel/DomainLabelNew.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/common/DomainSelectableList/DomainSelectableList.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/DomainSelectableTree/DomainSelectableTree.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/components/common/DomainSelectableTree/DomainSelectableTreeNew.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/common/DomainsSection/DomainsSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/Draggable/DraggableBodyRow.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntityDescription/Description.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntityImport/CsvCellPreview/CsvCellPreview.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntityImport/EntityImport.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntityImport/EntityImport.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntityPageInfos/ManageButton/ManageButton.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntitySelectableList/EntitySelectableList.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/EntitySummaryDetails/EntitySummaryDetails.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/ErrorWithPlaceholder/ErrorPlaceHolderES.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/FeedsFilterPopover/FeedsFilterPopover.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/FilterButton/FilterButton.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/FocusTrap/FocusTrapWithContainer.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/common/Form/JSONSchema/JsonSchemaWidgets/PasswordWidget.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/common/GlossaryTermTreeSelect/GlossaryTermTreeSelect.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    }
+  },
+  "src/components/common/GlossaryTermsSection/GlossaryTermsSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/common/InlineAlert/InlineAlert.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/NoOwner/NoOwnerFound.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/OverviewSection/CommonEntitySummaryInfoV1.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/OwnerAvtar/OwnerAvatar.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/OwnerItem/OwnerItem.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/common/OwnerLabel/OwnerAvatarStack.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/components/common/OwnerLabel/OwnerLabel.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 6
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/OwnerLabel/OwnerStackOverflow.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/OwnerTeamList/OwnerTeamList.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/OwnerUserList/OwnerUserList.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/OwnerUserTeamList/OwnerUserTeamList.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/common/OwnersSection/OwnersSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/PopOverCard/EntityPopOverCard.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/PopOverCard/PopoverContent.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/PopOverCard/PopoverTitle.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/PopOverCard/TeamPopoverContent.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/common/PopOverCard/TeamPopoverTitle.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/PopOverCard/UserPopOverCard.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    }
+  },
+  "src/components/common/ProfilePicture/ProfilePicture.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/QueryBuilderWidgetV1/QueryBuilderWidgetV1.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/common/QueryCount/QueryCount.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/QueryViewer/QueryViewer.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/RemainingOwner/OwnerReveal.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/components/common/RichTextEditor/RichTextEditorPreviewNew.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/RichTextEditor/RichTextEditorPreviewerV1.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/SearchBarComponent/SearchBar.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/SelectableList/SelectableList.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/common/ServiceDocPanel/ServiceDocPanel.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/SuccessScreen/SuccessScreen.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/Table/Table.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/components/common/Table/TableV2.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/components/common/TagSuggestion/TagSuggestion.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/components/common/TagsSection/TagsSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/TestConnection/TestConnection.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/TierCard/TierCard.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/TierSection/TierSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/TitleBreadcrumb/TitleBreadcrumb.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/UserSelectableList/UserSelectableList.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/UserTag/UserTag.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/UserTeamSelectableList/UserTeamSelectableList.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/TagChip/TagChip.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/actions/useDelete.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/compositions/useActionHandlers.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/compositions/useListingData.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/atoms/data/useSelectionState.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/data/useUrlState.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/domain/compositions/useDomainListing.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/domain/ui/useDomainColumns.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/domain/ui/useDomainRenderers.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/drawer/useCompositeDrawer.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/atoms/drawer/useDrawer.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/common/atoms/filters/useFilterSelection.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/filters/useQuickFiltersWithComponent.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/pagination/usePaginationState.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/atoms/shared/utils/hasActiveSearchOrFilter.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/discovery/personal-space/AIUserMenu/AIUserMenu.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/components/discovery/personal-space/InboxPage/components/TaskDetailPanel.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/discovery/personal-space/MyData/MyData.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/components/discovery/personal-space/Profile/components/AccessTokenRow.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/components/governance/marketplace/MarketplaceOverviewPage/MarketplaceOverviewPage.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiDestinationSection.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiForm.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFields.component.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFields.constants.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFields.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFieldsPureUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFieldsPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFieldsSearchUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFieldsSearchUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFieldsValidationUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiFormFieldsValidationUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiNotificationSection.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiNotificationTemplateUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertAiRuleSection.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertDetailsPage.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertDetailsPage.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/observability/Alerts/AlertEditModal.component.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/AlertEditModal.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/observability/Alerts/AlertsPage.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/ObservabilityAlertAiActions.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/Alerts/ObservabilityAlertsAiTable.component.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/observability/Alerts/ObservabilityAlertsAiTable.component.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 3
+    }
+  },
+  "src/components/observability/DataQuality/Dashboard/DqDateRangeFilter.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/observability/DataQuality/DataQualityPage.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/observability/DataQuality/TestCases/TestCases.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/components/observability/DataQuality/TestSuites/TestSuites.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/TestCaseDetail/TestCaseDetail.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/components/observability/TestSuiteDetail/TestSuiteDetail.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 3
+    }
+  },
+  "src/components/platform/ai-shell/AppModule.types.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/components/platform/ai-shell/KeepAliveRoutes/KeepAliveRoutes.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/components/platform/ai-shell/Sidebar/ContextCenterSubNavSections.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/constants/Chart.constants.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/CustomizeMyDataPage.constants.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/DataInsight.constants.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/SearchSettings.constant.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/Teams.constants.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/TestSuite.constant.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/profiler.constant.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/context/AsyncDeleteProvider/AsyncDeleteProvider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/context/LimitsProvider/useLimitsStore.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/context/LineageProvider/LineageProvider.test.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/context/LineageProvider/LineageProvider.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 33
+    }
+  },
+  "src/context/PermissionProvider/PermissionProvider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/context/UntitledUIThemeProvider/theme-provider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/context/WebSocketProvider/WebSocketProvider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hoc/LimitWrapper.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hoc/withDomainFilter.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/popover/useEntityPopoverData.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useApplicationStore.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/hooks/useAuthenticatedImage.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useAutosizeTextArea.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useCanvasEdgeRenderer.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/hooks/useChangeSummary.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useElementInView.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useEntityFields.ts": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/hooks/useEntityLogs.test.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useEntityLogs.ts": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/hooks/useEntityRules.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useFqn.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useGridEditController.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 12
+    }
+  },
+  "src/hooks/useIngestionLogSource.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/hooks/useLineageStore.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/hooks/usePaginatedLiveLog.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/usePersonalSpaceStore.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/usePubSub.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/hooks/useQuickFilterLabels.test.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useQuickFilterLabels.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useRovingFocus.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/hooks/useSidebarItems.test.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 3
+    }
+  },
+  "src/hooks/useSidebarItems.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useTableFilters.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useTreeTagFilter.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useUnreadInboxActivity.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/hooks/useWorkflowActions.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/hooks/useWorkflowLogic.ts": {
+    "openmetadata-imports/no-hook-ui-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/hooks/useWorkflowState.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/index.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/interface/data-insight.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/interface/knowledge-center.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/interface/search.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/mocks/CustomizablePage.mock.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/mocks/MyDataPage.mock.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/mocks/dashboardVersion.mock.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/APICollectionPage/APICollectionPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 8
+    }
+  },
+  "src/pages/APICollectionPage/APICollectionVersionPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/pages/APICollectionPage/APIEndpointsTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/APIEndpointPage/APIEndpointPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/AddCustomMetricPage/AddCustomMetricPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/AddGlossary/AddGlossaryPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/AddIngestionPage/AddIngestionPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/AddNotificationPage/AddNotificationPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/pages/AddObservabilityPage/AddObservabilityPage.interface.ts": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/AddObservabilityPage/hooks/useObservabilityAlertForm.ts": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/AddObservabilityPage/hooks/useObservabilityAlertResources.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/AddQueryPage/AddQueryPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/AddServicePage/AddServicePage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/AppInstall/AppInstall.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/Application/ApplicationPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/AuditLogsPage/AuditLogsPage.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/BotDetailsPage/BotDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/ChartDetailsPage/ChartDetailsPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/ClassificationVersionPage/ClassificationVersionPage.test.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/ClassificationVersionPage/ClassificationVersionPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/pages/ColumnBulkOperations/ColumnGrid/ColumnGrid.component.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 12
+    }
+  },
+  "src/pages/ColumnBulkOperations/ColumnGrid/hooks/useColumnGridListingData.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/Configuration/DataAssetRules/DataAssetRulesPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/Configuration/UrlConfiguration/UrlConfigurationPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/ContainerPage/ContainerPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 8
+    }
+  },
+  "src/pages/ContextCenterPage/ContextCenterArticlesPage/ContextCenterArticlesPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/ContextCenterPage/ContextCenterDashboardPage/ContextCenterDashboardPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/CreateUserPage/CreateUserPage.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/CustomPropertiesPageV1/CustomPropertiesPageV1.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/CustomizableDataMarketplacePage/CustomizableDataMarketplacePage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 3
+    }
+  },
+  "src/pages/CustomizableDataProductPage/CustomizableDataProductPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 2
+    }
+  },
+  "src/pages/CustomizableDomainPage/CustomizableDomainPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 2
+    }
+  },
+  "src/pages/CustomizablePage/CustomizablePage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 5
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/CustomizeAppModeSidebarPage/CustomizeAppModeSidebarPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/pages/CustomizeDetailsPage/CustomizeDetailsPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/DashboardDetailsPage/DashboardDetailsPage.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/DataInsightPage/DataInsightClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/DataInsightPage/DataInsightLeftPanel/DataInsightLeftPanel.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/DataInsightPage/DataInsightProvider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/DataInsightPage/KPIList.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/DataMarketplacePage/DataMarketplacePage.component.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/DataModelPage/DataModelPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/DataQuality/DataQualityClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/DataQuality/DataQualityPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/DataQuality/DataQualityProvider.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/DatabaseDetailsPage/DatabaseDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 11
+    }
+  },
+  "src/pages/DatabaseSchemaPage/DatabaseSchemaPage.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 14
+    }
+  },
+  "src/pages/DatabaseSchemaPage/SchemaTablesTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 9
+    }
+  },
+  "src/pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 10
+    }
+  },
+  "src/pages/DatabaseVersionPage/DatabaseVersionPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/pages/DirectoryDetailsPage/DirectoryDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/EditConnectionFormPage/EditConnectionFormPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/EditEmailConfigPage/EditEmailConfigPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/pages/EditIngestionPage/EditIngestionPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/EmbeddedAddServicePage/EmbeddedAddServicePage.component.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.utils.ts": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/EntityVersionPage/EntityVersionPage.component.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 13
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/pages/ExplorePage/ExplorePageV1.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/pages/FileDetailsPage/FileDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/ForgotPassword/ForgotPassword.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/GlobalSettingPage/GlobalSettingPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/Glossary/GlossaryLeftPanel/GlossaryLeftPanel.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/Glossary/GlossaryPage/GlossaryPage.component.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/pages/GlossaryTermRelationSettings/GlossaryTermRelationSettings.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils.ts": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/pages/KPIPage/AddKPIPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/KPIPage/EditKPIPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/KnowledgePageVersionPage/KnowledgePageVersionPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/pages/LearningResourcesPage/hooks/useLearningResourceFilters.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/LineageConfigPage/LineageConfigPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/LoginPage/SignInPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/LogoutPage/LogoutPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/MarketPlacePage/MarketPlacePage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/MetricsPage/AddMetricPage/AddMetricPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/MetricsPage/MetricDetailsPage/MetricDetailsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/MetricsPage/MetricListPage/MetricListPage.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/MlModelPage/MlModelPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/MyDataPage/MyDataPage.component.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/NotificationListPage/NotificationListPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/pages/ObservabilityAlertsPage/hooks/useObservabilityAlerts.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/OmHealth/OmHealthPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/OnlineUsersPage/OnlineUsersPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/OntologyExplorerPage/OntologyExplorerPage.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/Persona/PersonaDetailsPage/PersonaDetailsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/pages/Persona/PersonaListPage/PersonaPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/PipelineDetails/PipelineDetailsPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/PlatformLineage/PlatformLineage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/PoliciesPage/AddPolicyPage/AddPolicyPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/PoliciesPage/PoliciesDetailPage/AddRulePage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/PoliciesPage/PoliciesDetailPage/EditRulePage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailsList.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/PoliciesPage/PoliciesListPage/PoliciesListPage.test.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/PoliciesPage/PoliciesListPage/PoliciesListPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/PoliciesPage/RuleForm/RuleForm.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/ProfilerConfigurationPage/ProfilerConfigurationPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/QueryPage/QueryPage.component.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/RolesPage/AddAttributeModal/AddAttributeModal.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/RolesPage/AddRolePage/AddRolePage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/RolesPage/RolesDetailPage/RolesDetailPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/pages/RolesPage/RolesDetailPage/RolesDetailPageList.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/RolesPage/RolesListPage/RolesListPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/SamlCallback/index.test.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/SearchIndexDetailsPage/SearchIndexDetailsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 13
+    }
+  },
+  "src/pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/SearchIndexDetailsPage/SearchIndexFieldsTable/SearchIndexFieldsTable.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 5
+    }
+  },
+  "src/pages/SearchSettingsPage/SearchSettingsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/ServiceDetailsPage/ServiceDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 44
+    }
+  },
+  "src/pages/ServiceDetailsPage/ServiceMainTabContent.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/pages/ServiceVersionPage/ServiceVersionMainTabContent.interface.ts": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/ServiceVersionPage/ServiceVersionMainTabContent.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/ServiceVersionPage/ServiceVersionPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 11
+    }
+  },
+  "src/pages/ServicesPage/ServicesPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/SettingsAppModePage/SettingsAppModePage.test.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/SettingsAppModePage/SettingsAppModePage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/SettingsNavigationPage/SettingsNavigationPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/SignUp/BasicSignup.component.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/SignUp/account-activation-confirmation.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/StoredProcedure/StoredProcedurePage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 9
+    }
+  },
+  "src/pages/StoredProcedure/StoredProcedureTab.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    }
+  },
+  "src/pages/SwaggerPage/index.test.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TableDetailsPageV1/TableConstraints/ConstraintIcon.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TableDetailsPageV1/TableConstraints/TableConstraintsModal/TableConstraintsModal.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/TableDetailsPageV1/TableDetailsPageV1.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 16
+    }
+  },
+  "src/pages/TagPage/TagPage.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/pages/TagsPage/TagsForm.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TagsPage/TagsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 12
+    }
+  },
+  "src/pages/TagsPage/tagFormFields.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TaskFormSettingsPage/TaskFormSettingsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TaskFormSettingsPage/components/TaskFormBuilderSection.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TasksPage/EntityTasks/EntityTasks.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TasksPage/RequestTagPage/RequestTagPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TasksPage/UpdateTagPage/UpdateTagPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TasksPage/shared/DescriptionTabs.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TasksPage/shared/TagSuggestion.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    }
+  },
+  "src/pages/TasksPage/shared/TagsTaskFromTask.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TeamsPage/AddTeamForm.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/TeamsPage/TeamsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/pages/TestCaseVersionPage/TestCaseVersionPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TestSuiteDetailsPage/TestSuiteDetailsPage.test.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TestSuiteDetailsPage/hooks/useTestSuiteDetailsPage.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 1
+    }
+  },
+  "src/pages/TestSuiteIngestionPage/TestSuiteIngestionPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TopicDetails/TopicDetailsPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/TourPage/TourPage.component.tsx": {
+    "openmetadata-imports/no-cross-page-imports": {
+      "count": 3
+    }
+  },
+  "src/pages/UserListPage/UserListPageV1.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    }
+  },
+  "src/pages/UserPage/UserPage.component.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/pages/WorksheetDetailsPage/WorksheetDetailsPage.tsx": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/rest/DataInsightAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/DocStoreAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/KpiAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/LoginAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/PersonaAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/PersonaAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/SearchIndexAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/WebAnalyticsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/activityAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 3
+    }
+  },
+  "src/rest/activityAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/alertsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/announcementsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/apiCollectionsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/apiEndpointsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/applicationAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/applicationMarketPlaceAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/assetAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/auditLogAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/auth-API.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/botsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/changeSummaryAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/changeSummaryAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/chartAPI.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/chartsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/columnAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/contextMemoryAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/contractAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/conversationsAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 3
+    }
+  },
+  "src/rest/conversationsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/csvAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/customMetricAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/dashboardAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/dataModelsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/dataProductAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/dataQualityDashboardAPI.test.ts": {
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/dataQualityDashboardAPI.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/dataQualityReportBatcher.test.ts": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/rest/dataQualityReportBatcher.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/databaseAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/domainAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/driveAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/glossaryAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 2
+    }
+  },
+  "src/rest/glossaryAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 3
+    }
+  },
+  "src/rest/glossaryRelationTypesAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/importExportAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/incidentManagerAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/ingestionPipelineAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/intakeFormsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/knowledgeCenterAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/learningResourceAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/limitsAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/limitsAPI.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/lineageAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/lineageAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 4
+    }
+  },
+  "src/rest/mcpConfigAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/metadataTypeAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/metricsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/miscAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 3
+    }
+  },
+  "src/rest/mlModelAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/notificationtemplateAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/notificationtemplateAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/observabilityAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/ontologyAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/rest/ontologyAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/permissionAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/pipelineAPI.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/queries/pipelineQuery.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/queryAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/rdfAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/rdfAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/rolesAPIV1.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/ruleEnforcementAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/searchAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/securityConfigAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/serviceAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/settingConfigAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/storageAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/storedProceduresAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/suggestionsAPI.test.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/suggestionsAPI.ts": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/tableAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/tagAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/taskFormSchemasAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/tasksAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/teamsAPI.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/testAPI.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/topicsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-rest-ui-imports": {
+      "count": 2
+    }
+  },
+  "src/rest/userAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/workflowAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/rest/workflowDefinitionsAPI.ts": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/APICollection/APICollectionClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/APICollection/APICollectionUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/APIEndpoints/APIEndpointClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/APIEndpoints/APIEndpointUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/AdvancedSearchClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/AdvancedSearchPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 3
+    }
+  },
+  "src/utils/AdvancedSearchUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    }
+  },
+  "src/utils/AgentsProgressPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/AgentsStatusWidgetPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/Alerts/AlertsUtil.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/Alerts/AlertsUtilPure.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/AlertsClassBase.interface.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/AlertsClassBase.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/AlertsClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ApplicationRoutesClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/Assets/AssetsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/BlockEditorExtensionsClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/BlockEditorPureUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/BlockEditorUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/CSV/CSV.utils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/CSV/CSVPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 2
+    }
+  },
+  "src/utils/CSV/CSVUtilsClassBase.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 8
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CSV/MetricBulkEditListing.ts": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    }
+  },
+  "src/utils/ChartDetailsClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ChartDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ClassificationPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/ClassificationUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ColorUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ColumnUpdateUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CommonWidget/CommonWidgetClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ContainerDetailUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ContainerDetailsClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ContextCenterPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 3
+    }
+  },
+  "src/utils/CuratedAssetsPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CuratedAssetsUtils.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizableLandingPagePureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizableLandingPageUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizeGlossaryPage/CustomizeGlossaryPage.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizeMyDataPageClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizeMyDataPageWidgetUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizePage/CustomizePageDispatchUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 18
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizePage/CustomizePageUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/CustomizePage/CustomizePageWidgetUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DashboardDataModelClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DashboardDataModelUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DashboardDetailsClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DashboardDetailsUtils.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 1
+    },
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataAssetsHeader.utils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataContract/DataContractUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataInsightPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/DataMarketplace/DataMarketplaceClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataMarketplace/DataMarketplaceUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataProduct/DataProductClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataProductPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataProductUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 5
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataQuality/DataQualityPureUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 6
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataQuality/IncidentManagerUtils.ts": {
+    "openmetadata-imports/review-sequential-api-calls": {
+      "count": 1
+    }
+  },
+  "src/utils/Database/DatabaseClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/Database/DatabaseDropdownOptions.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/Database/DatabaseTabsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DatabaseSchemaClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DatabaseSchemaDropdownOptions.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DatabaseSchemaTabsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DatabaseServiceUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DirectoryClassBase.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DirectoryClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DirectoryDetailsUtils.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DirectoryDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/Domain/DomainClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DomainFilterUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DomainUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityBreadcrumbPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 2
+    }
+  },
+  "src/utils/EntityBulkEdit/EntityBulkEditUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityByFqnUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/EntityDisplayPureUtils.tsx": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 15
+    }
+  },
+  "src/utils/EntityGovernanceBreadcrumbUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityLineagePureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 4
+    }
+  },
+  "src/utils/EntityLink.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityPureUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntitySearchUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntitySummaryPanelPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 4
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntitySummaryPanelUtilsV1.tsx": {
+    "openmetadata-imports/no-internal-barrel-imports": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 11
+    }
+  },
+  "src/utils/EntityUtilClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 8
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityVersionClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityVersionUtils.interface.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntityVersionUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/EntityVersionUtilsPure.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExplorePage/ExplorePageUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExplorePage/ExplorePageUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExplorePage/mocks/ExplorePageUtils.mock.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExplorePureUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExplorePureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 5
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExploreUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ExploreUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/FeedUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/FeedUtilsPure.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/FileClassBase.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/FileClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/FileDetailsUtils.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/FileDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/GlobalSettingsClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/GlobalSettingsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/GlossaryPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 3
+    }
+  },
+  "src/utils/GlossaryTerm/GlossaryTermWidgetUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/GlossaryUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/IngestionWorkflowUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/JSONLogicSearchClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/KnowledgePagePureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/LazyTagComponents.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/Lineage/LineagePureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/MetricEntityUtils/MetricDetailsClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/MetricEntityUtils/MetricUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/MlModel/MlModelClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/MlModelDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/MlModelVersionUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ObservabilityRouterClassBase.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/ObservabilityRouterClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/PersonaAIContextUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/PipelineClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/PipelineDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/PipelineVersionUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/QueryBuilderElasticsearchFormatUtils.js": {
+    "sonarjs/cognitive-complexity": {
+      "count": 5
+    },
+    "sonarjs/cyclomatic-complexity": {
+      "count": 6
+    }
+  },
+  "src/utils/QueryBuilderPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/QueryBuilderUtils.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/RouterUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/SearchClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SearchIndexDetailsClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SearchIndexUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SearchIndexVersionUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SearchSettingsUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ServiceInsightsTabPureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 2
+    }
+  },
+  "src/utils/ServiceMainTabContentUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ServicePureUtils.ts": {
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/SpreadsheetClassBase.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SpreadsheetClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SpreadsheetDetailsUtils.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/SpreadsheetDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/StoredProcedureClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/StoredProceduresUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 3
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TableClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TableDropdownOptions.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TablePureUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 4
+    }
+  },
+  "src/utils/TableTabsUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TableUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TagClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TagsPureUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-impure-pure-utils": {
+      "count": 1
+    }
+  },
+  "src/utils/TagsUtils.tsx": {
+    "openmetadata-imports/no-api-calls-in-iteration": {
+      "count": 2
+    },
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/TaskActionUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TaskAssigneeUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TaskEntityFetchUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TaskFieldUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TaskNavigationUtils.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TestSuiteUtils.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TopicClassBase.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TopicDetailsUtils.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/WorksheetClassBase.test.ts": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/WorksheetClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/WorksheetDetailsUtils.test.tsx": {
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/WorksheetDetailsUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 2
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/formUtils.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 8
+    },
+    "openmetadata-imports/no-lower-layer-page-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/i18next/LocalUtil.tsx": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/i18next/LocalUtilClassBase.ts": {
+    "openmetadata-imports/no-circular-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/queryBuilderWidgets/OMFieldSelect.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/utils/queryBuilderWidgets/OMMultiSelectWidget.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 8
+    }
+  },
+  "src/utils/queryBuilderWidgets/OMSelectWidget.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
   }
 }

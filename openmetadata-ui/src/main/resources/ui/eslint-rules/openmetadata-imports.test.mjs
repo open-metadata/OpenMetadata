@@ -49,12 +49,15 @@ test('exports every warning-tier import rule', async () => {
   );
 });
 
-test('configures every import rule as a warning', async () => {
+test('configures every import rule as an error', async () => {
   const eslint = new ESLint();
   const config = await eslint.calculateConfigForFile('src/App.tsx');
 
+  // These rules block the build. The legacy backlog they were introduced
+  // against is recorded in `eslint-suppressions.json`, so promoting them
+  // cannot fail existing code while a NEW violation still stops it.
   for (const rule of EXPECTED_RULES) {
-    assert.equal(config.rules[`openmetadata-imports/${rule}`]?.[0], 1, rule);
+    assert.equal(config.rules[`openmetadata-imports/${rule}`]?.[0], 2, rule);
   }
 });
 

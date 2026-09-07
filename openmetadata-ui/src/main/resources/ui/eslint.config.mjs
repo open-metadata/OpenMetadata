@@ -339,13 +339,20 @@ export default [
       // --- warn tier: on, visible, not yet blocking. Counts are the measured
       // backlog at the time of writing; they only go down. Each is promoted to
       // error by its own cleanup PR once its violations reach zero.
-      'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
+      //
+      // The import-architecture and exhaustive-deps rules below now sit at
+      // `error`. Their pre-existing violations are recorded in
+      // `eslint-suppressions.json` rather than as inline disables, so the
+      // backlog stays greppable and `--prune-suppressions` ratchets it down as
+      // each site is genuinely fixed. A NEW violation is not suppressed and
+      // fails the build.
+      'react-hooks/exhaustive-deps': 'error',
       // Stock sonarjs flags i18n translation keys (t('label.…')), which must
       // stay inline. Replaced by the i18n-aware variant below, which ignores
       // t() keys and label./message./server. strings and is enforced at error.
       'sonarjs/no-duplicate-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'error',
-      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/cognitive-complexity': ['error', 15],
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
@@ -387,19 +394,19 @@ export default [
       // (that would change throw-on-null to silent undefined). Promoted to error.
       '@typescript-eslint/no-non-null-assertion': 'error',
 
-      // Import architecture and request fan-out. These are warnings while the
-      // measured legacy backlog is worked down; they are reporting-only and do
-      // not rewrite source under --fix.
-      'openmetadata-imports/no-api-calls-in-iteration': 'warn',
-      'openmetadata-imports/no-circular-imports': 'warn',
-      'openmetadata-imports/no-cross-page-imports': 'warn',
-      'openmetadata-imports/no-hook-ui-imports': 'warn',
-      'openmetadata-imports/no-impure-pure-utils': 'warn',
-      'openmetadata-imports/no-internal-barrel-imports': 'warn',
-      'openmetadata-imports/no-lodash-default-import': 'warn',
-      'openmetadata-imports/no-lower-layer-page-imports': 'warn',
-      'openmetadata-imports/no-rest-ui-imports': 'warn',
-      'openmetadata-imports/review-sequential-api-calls': 'warn',
+      // Import architecture and request fan-out. Reporting-only (they never
+      // rewrite source under --fix), so they can block at error; the legacy
+      // backlog lives in eslint-suppressions.json.
+      'openmetadata-imports/no-api-calls-in-iteration': 'error',
+      'openmetadata-imports/no-circular-imports': 'error',
+      'openmetadata-imports/no-cross-page-imports': 'error',
+      'openmetadata-imports/no-hook-ui-imports': 'error',
+      'openmetadata-imports/no-impure-pure-utils': 'error',
+      'openmetadata-imports/no-internal-barrel-imports': 'error',
+      'openmetadata-imports/no-lodash-default-import': 'error',
+      'openmetadata-imports/no-lower-layer-page-imports': 'error',
+      'openmetadata-imports/no-rest-ui-imports': 'error',
+      'openmetadata-imports/review-sequential-api-calls': 'error',
 
       // Repository-specific performance invariants. These rules have no
       // existing backlog and are reporting-only, so they can block without
