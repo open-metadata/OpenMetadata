@@ -52,7 +52,11 @@ const DomainTag: FC<BaseTagProps> = ({
   const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
   const iconNode = icon ? (
-    <Icon iconValue={icon} imageClassName="tag-color-text" size={ICON_PX[size]} />
+    <Icon
+      iconValue={icon}
+      imageClassName="tag-color-text"
+      size={ICON_PX[size]}
+    />
   ) : (
     <Domain
       className="tag-color-text"

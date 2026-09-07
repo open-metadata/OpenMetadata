@@ -12,12 +12,12 @@
  */
 import { Typography } from '@openmetadata/ui-core-components';
 import {
-  Typography as AntTypography,
   Button,
   Col,
   Row,
   Segmented,
   Table,
+  Typography as AntTypography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
