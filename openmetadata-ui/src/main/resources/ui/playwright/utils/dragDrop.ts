@@ -48,10 +48,8 @@ export const dragAndDropElement = async (
   isHeader?: boolean
 ) => {
   const dragRowLocator = page.locator(`[data-row-key="${dragElement}"]`);
-  // Grab the row's own drag handle rather than a point on the <tr>: rows are
-  // native draggable, and dragging a deep row up to the top toolbar with a
-  // point locator can fire dragstart on whatever <tr> slid under the stale
-  // coordinate. The handle is unique to this row, so dragstart binds this team.
+  // Grab the row's own drag handle so dragstart binds this row, not a neighbour
+  // that slid under a stale pointer coordinate.
   const dragElementLocator = dragRowLocator.locator('.drag-icon');
   const dropTargetLocator = isHeader
     ? page.locator(dropTarget)
@@ -70,6 +68,21 @@ export const dragAndDropElement = async (
   await dragRowLocator.scrollIntoViewIfNeeded();
   await waitForStableBox(dragRowLocator);
   await waitForStableBox(dropTargetLocator);
+
+  if (isHeader) {
+    // Root move: pointer dragTo can't reliably bind the dragged item over the
+    // long drag to the top toolbar for native HTML5 DnD. Dispatch the drag
+    // events on the exact elements with one shared DataTransfer so dragstart
+    // binds this row and the drop reaches the root DropZone.
+    const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+    await dragRowLocator.dispatchEvent('dragstart', { dataTransfer });
+    await dropTargetLocator.dispatchEvent('dragenter', { dataTransfer });
+    await dropTargetLocator.dispatchEvent('dragover', { dataTransfer });
+    await dropTargetLocator.dispatchEvent('drop', { dataTransfer });
+    await dragRowLocator.dispatchEvent('dragend', { dataTransfer });
+
+    return;
+  }
 
   await dragElementLocator.dragTo(dropTargetLocator, {
     force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
