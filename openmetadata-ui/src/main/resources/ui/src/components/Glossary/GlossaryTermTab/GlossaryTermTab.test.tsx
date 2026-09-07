@@ -172,6 +172,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
+jest.mock('../../common/EmptyPlaceholder', () => ({
+  NoFilteredResultsPlaceholder: jest
+    .fn()
+    .mockImplementation(({ description }: { description?: ReactNode }) => (
+      <div data-testid="no-filtered-results-placeholder">{description}</div>
+    )),
+  NoSearchResultsPlaceholder: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="no-search-results-placeholder" />
+    )),
+}));
+
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -576,6 +589,70 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(statusDropdown).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Filter/Search Empty State', () => {
+    beforeEach(() => {
+      // Unlike the sibling blocks above, this one needs the table's own
+      // zero-rows branch (`glossaryTerms.length > 0` in renderTableSection),
+      // which reads the store's glossaryChildTerms directly — not the
+      // mocked API response, since setGlossaryChildTerms is a no-op mock
+      // here. A prior describe block's beforeEach leaves this non-empty, so
+      // it's reset here rather than copying the sibling pattern verbatim.
+      mockUseGlossaryStore.glossaryChildTerms = [];
+    });
+
+    it('should render NoSearchResultsPlaceholder when a search matches zero terms', async () => {
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 0, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        const searchInput = screen.getByPlaceholderText('label.search-entity');
+        fireEvent.change(searchInput, { target: { value: 'doesnotexist' } });
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('no-search-results-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('no-filtered-results-placeholder')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render NoFilteredResultsPlaceholder with the translated description when the current page has no terms and no search is active', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 5, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        const placeholder = screen.getByTestId(
+          'no-filtered-results-placeholder'
+        );
+
+        expect(placeholder).toBeInTheDocument();
+        expect(placeholder).toHaveTextContent(
+          'message.filter-no-matching-terms'
+        );
+      });
+
+      expect(
+        screen.queryByTestId('no-search-results-placeholder')
+      ).not.toBeInTheDocument();
     });
   });
 
