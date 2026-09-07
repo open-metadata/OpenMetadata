@@ -47,6 +47,7 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
 
   return (
     <div className=" m-b-sm text-center">
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- drag source; no keyboard equivalent */}
       <div
         className={classNames('sidebar-icon-container', {
           'cursor-not-allowed opacity-50': !draggable,
@@ -55,6 +56,7 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
         draggable={draggable}
         style={{ ...(draggable && { cursor: 'grab' }) }}
         onDragStart={(event) => onDragStart(event, type)}>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- nested drag source */}
         <span
           className="d-flex"
           onDragStart={(e) => {

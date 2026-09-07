@@ -13,7 +13,7 @@ IP endpoint
 """
 
 import traceback
-from typing import Callable, Optional  # noqa: UP035
+from collections.abc import Callable
 
 import requests
 from flask import Blueprint
@@ -29,7 +29,7 @@ logger = routes_logger()
 IP_SERVICES = ["https://api.ipify.org", "https://api.my-ip.io/ip"]
 
 
-def _get_ip_safely(url: str) -> Optional[str]:  # noqa: UP045
+def _get_ip_safely(url: str) -> str | None:
     """
     Safely retrieve the public IP
     :param url: Service giving us the IP

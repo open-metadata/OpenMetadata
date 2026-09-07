@@ -217,7 +217,10 @@ class SemanticSearchToolTest {
     assertEquals("Users", cleaned.get("displayName"));
     assertEquals("BigQuery", cleaned.get("serviceType"));
     assertEquals("A short description", cleaned.get("description"));
-    assertNotNull(cleaned.get("columns"));
+    // Column *names* replace full column objects: on a live 10-hit response full `columns` was
+    // 68.6% of the payload, and per-column descriptions do not help pick the right asset.
+    assertNull(cleaned.get("columns"), "full column objects must not ship in a search hit");
+    assertNotNull(cleaned.get("columnNames"), "column names are kept so the hit stays selectable");
     assertEquals(0.95, cleaned.get("similarityScore"));
     assertTrue(!cleaned.containsKey("_score"));
     assertTrue(!cleaned.containsKey("embedding"));

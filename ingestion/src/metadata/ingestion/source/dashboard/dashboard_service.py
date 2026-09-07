@@ -14,10 +14,10 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -218,11 +218,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = DashboardServiceTopology()
     context = TopologyContextManager(topology)
-    dashboard_source_state: Set = set()  # noqa: RUF012, UP006
-    datamodel_source_state: Set = set()  # noqa: RUF012, UP006
-    chart_source_state: Set = set()  # noqa: RUF012, UP006
+    dashboard_source_state: set = set()  # noqa: RUF012
+    datamodel_source_state: set = set()  # noqa: RUF012
+    chart_source_state: set = set()  # noqa: RUF012
 
-    def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+    def _declare_progress_groups(self, label: str, total: int | None) -> None:
         """Declare the grouping axis (e.g. workspaces) as a global counter.
 
         These group helpers drive ``self.progress_tracking.manual`` and therefore require
@@ -231,7 +231,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         and would double-count against the runner's own tracking."""
         self.progress_tracking.manual.declare_groups(label, total)
 
-    def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
+    def _open_group_progress(self, group: str, expected_by_type: dict[str, int | None]) -> None:
         """Open one child node per asset type under ``group`` so each type renders
         as its own line; ``expected`` may be None for lazy (running) counts."""
         self.progress_tracking.manual.open_group(group, expected_by_type)
@@ -275,7 +275,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Any,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -288,7 +288,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboards_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[Any] | None:
         """
         Get List of all dashboards
         """
@@ -354,7 +354,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 
-    def get_db_service_prefixes(self) -> List[str]:  # noqa: UP006
+    def get_db_service_prefixes(self) -> list[str]:
         """
         Get the list of db service prefixes
         """
@@ -380,8 +380,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def parse_db_service_prefix(
         self,
-        db_service_prefix: Optional[str],  # noqa: UP045
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
+        db_service_prefix: str | None,
+    ) -> tuple[str | None, str | None, str | None, str | None]:
         """
         Parse the db service prefix
         Returns:
@@ -413,7 +413,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_lineage_request(
         self,
-        lineage: Optional[Either[AddLineageRequest]] = None,  # noqa: UP045
+        lineage: Either[AddLineageRequest] | None = None,
     ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Method to yield lineage request
@@ -503,7 +503,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+    ) -> EntityReferenceList | None:
         """
         Method to process the dashboard owners
         """
@@ -551,11 +551,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Union[Dashboard, DashboardDataModel, Chart],  # noqa: UP007
-        from_entity: Union[Table, DashboardDataModel, Dashboard],  # noqa: UP007
-        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
-        sql: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        to_entity: Dashboard | DashboardDataModel | Chart,
+        from_entity: Table | DashboardDataModel | Dashboard,
+        column_lineage: list[ColumnLineage] = None,  # noqa: RUF013
+        sql: str | None = None,
+    ) -> Either[AddLineageRequest] | None:
         if from_entity and to_entity:
             return Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
@@ -588,7 +588,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return None
 
     @staticmethod
-    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[str]:  # noqa: UP045
+    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> str | None:
         """
         Get fqn of column if exist in table entity
         """
@@ -673,7 +673,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_name(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
@@ -682,7 +682,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_project_names(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details: Any
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the project / workspace / folder / collection names of the dashboard
         """
@@ -731,8 +731,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self,
         om_table: Table,
         data_model_entity: DashboardDataModel,
-        columns_list: List[str],  # noqa: UP006
-    ) -> List[ColumnLineage]:  # noqa: UP006
+        columns_list: list[str],
+    ) -> list[ColumnLineage]:
         """
         Get the column lineage from the fields
         """

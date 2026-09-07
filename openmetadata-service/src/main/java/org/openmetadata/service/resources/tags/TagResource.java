@@ -76,6 +76,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -123,6 +124,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     super.initialize(config);
     // Find tag definitions and load classifications from the json file, if necessary
     ClassificationRepository classificationRepository =

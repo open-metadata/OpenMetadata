@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
@@ -37,6 +38,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   onEdgeHover,
   hoverEdge,
 }) => {
+  const { t } = useTranslation();
   const edgeColors = useLineageEdgeColors();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -212,12 +214,14 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       ref={containerRef}
       style={{ pointerEvents: 'none' }}>
       <canvas
+        aria-hidden
         ref={canvasRef}
         style={{ position: 'absolute', top: 0, left: 0 }}
       />
       {edgeMidpoints.map((midpoint) =>
         midpoint?.dataTestId ? (
           <button
+            aria-label={t('label.edge')}
             data-edge-state={midpoint.visualState}
             data-testid={midpoint.dataTestId}
             key={midpoint.id}

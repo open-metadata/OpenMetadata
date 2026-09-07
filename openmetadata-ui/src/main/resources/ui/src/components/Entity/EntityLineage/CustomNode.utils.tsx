@@ -108,7 +108,10 @@ const ExpandHandle = ({
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      role="presentation"
+      onBlur={handleLineageNodeHandleMouseOut}
       onClick={handleLineageNodeHandleClick}
+      onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
@@ -276,6 +279,7 @@ const ColumnContentInner = ({
         'custom-node-header-column-tracing': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
+      role="presentation"
       style={{
         paddingLeft: depth * DEPTH_INDENT_PX + 8, // 8px is base padding
       }}
@@ -313,17 +317,20 @@ const ColumnContentInner = ({
   );
 };
 
-export const ColumnContent = memo(
-  ColumnContentInner,
-  (prev, next) =>
+export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
+  const coreColumnPropsEqual =
     prev.column === next.column &&
     prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
-    prev.showDataObservabilitySummary === next.showDataObservabilitySummary &&
+    prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
+
+  return (
+    coreColumnPropsEqual &&
     prev.summary === next.summary &&
     prev.depth === next.depth &&
     prev.className === next.className
-);
+  );
+});
 
 export function getNodeClassNames({
   isSelected,

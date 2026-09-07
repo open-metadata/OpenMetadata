@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+    xml:base="https://schema.org/creative-work-subset/"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xmlns:ont="https://schema.org/creative-work-subset/">
+
+    <owl:Ontology rdf:about="https://schema.org/creative-work-subset/">
+        <rdfs:label>Schema.org — CreativeWork</rdfs:label>
+        <rdfs:comment>Books, articles, movies and other creative works with authorship, publication, and ratings — a Schema.org subset.</rdfs:comment>
+    </owl:Ontology>
+
+    <!-- ===================== -->
+    <!-- Entity Types (Classes) -->
+    <!-- ===================== -->
+
+    <owl:Class rdf:about="https://schema.org/creative-work-subset/CreativeWork">
+        <rdfs:label>CreativeWork</rdfs:label>
+        <rdfs:comment>A book, article, movie, or other creative output</rdfs:comment>
+        <ont:icon>📖</ont:icon>
+        <ont:color>#0078D4</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/creative-work-subset/Person">
+        <rdfs:label>Person</rdfs:label>
+        <rdfs:comment>An author or contributor of a creative work</rdfs:comment>
+        <ont:icon>👤</ont:icon>
+        <ont:color>#5C2D91</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/creative-work-subset/Organization">
+        <rdfs:label>Organization</rdfs:label>
+        <rdfs:comment>A publisher or production company</rdfs:comment>
+        <ont:icon>🏢</ont:icon>
+        <ont:color>#107C10</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/creative-work-subset/Rating">
+        <rdfs:label>Rating</rdfs:label>
+        <rdfs:comment>An aggregate or individual rating for a creative work</rdfs:comment>
+        <ont:icon>⭐</ont:icon>
+        <ont:color>#FFB900</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/creative-work-subset/Comment">
+        <rdfs:label>Comment</rdfs:label>
+        <rdfs:comment>A reader or viewer comment on a creative work</rdfs:comment>
+        <ont:icon>💬</ont:icon>
+        <ont:color>#E74C3C</ont:color>
+    </owl:Class>
+
+    <!-- ===================== -->
+    <!-- Properties            -->
+    <!-- ===================== -->
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/title">
+        <rdfs:label>title</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/genre">
+        <rdfs:label>genre</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/datePublished">
+        <rdfs:label>datePublished</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/personName">
+        <rdfs:label>personName</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/Person"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/orgName">
+        <rdfs:label>orgName</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/Organization"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/ratingValue">
+        <rdfs:label>ratingValue</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/Rating"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/ratingCount">
+        <rdfs:label>ratingCount</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/Rating"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/commentText">
+        <rdfs:label>commentText</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/Comment"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/creative-work-subset/dateCreated">
+        <rdfs:label>dateCreated</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/Comment"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    </owl:DatatypeProperty>
+
+    <!-- ===================== -->
+    <!-- Relationships         -->
+    <!-- ===================== -->
+
+    <owl:ObjectProperty rdf:about="https://schema.org/creative-work-subset/author">
+        <rdfs:label>author</rdfs:label>
+        <rdfs:comment>The author of the creative work</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="https://schema.org/creative-work-subset/Person"/>
+        <ont:cardinality>many-to-one</ont:cardinality>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="https://schema.org/creative-work-subset/publisher">
+        <rdfs:label>publisher</rdfs:label>
+        <rdfs:comment>The organization that published the work</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="https://schema.org/creative-work-subset/Organization"/>
+        <ont:cardinality>many-to-one</ont:cardinality>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="https://schema.org/creative-work-subset/aggregateRating">
+        <rdfs:label>aggregateRating</rdfs:label>
+        <rdfs:comment>The aggregate audience rating of the work</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="https://schema.org/creative-work-subset/Rating"/>
+        <ont:cardinality>one-to-one</ont:cardinality>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="https://schema.org/creative-work-subset/hasComment">
+        <rdfs:label>hasComment</rdfs:label>
+        <rdfs:comment>A reader or viewer comment on the work</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/creative-work-subset/CreativeWork"/>
+        <rdfs:range rdf:resource="https://schema.org/creative-work-subset/Comment"/>
+        <ont:cardinality>one-to-many</ont:cardinality>
+    </owl:ObjectProperty>
+
+</rdf:RDF>

@@ -75,7 +75,10 @@ jobs:
 
       - name: Trigger Collate Playwright run & wait
         uses: benc-uk/workflow-dispatch@v1.3.2
-        timeout-minutes: 60
+        # Must stay above wait-timeout-seconds below. The step timeout kills the action
+        # outright, so when it is the smaller of the two the action can never reach its own
+        # wait budget and reports a bare "has timed out" with no downstream conclusion.
+        timeout-minutes: 100
         env:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         with:
@@ -85,6 +88,9 @@ jobs:
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
           sync-status: true
-          wait-timeout-seconds: 3660
+          # The Collate job caps itself at timeout-minutes: 90, so waiting past that point is
+          # what guarantees we report its real conclusion instead of giving up first. Successful
+          # runs are 48-60 min today, already at the edge of the previous 61-min budget.
+          wait-timeout-seconds: 5700
           wait-interval-seconds: 60
           inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'

@@ -26,6 +26,9 @@ from pydantic_core import Url
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
+from metadata.generated.schema.api.data.createAPIEndpoint import (
+    CreateAPIEndpointRequest,
+)
 from metadata.generated.schema.entity.services.apiService import (
     ApiConnection,
     ApiService,
@@ -45,6 +48,12 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.sink.metadata_rest import (
+    MetadataRestSink,
+    MetadataRestSinkConfig,
+)
 from metadata.ingestion.source.api.rest.metadata import RestSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.ingestion.source.api.rest.parser import (
@@ -408,6 +417,45 @@ MOCK_RESPONSE_NESTED_DATA_REF = {
 
 MOCK_RESPONSE_NO_SCHEMA = {"responses": {"200": {"description": "successful operation"}}}
 
+MOCK_RESPONSE_INLINE_OBJECT_ARRAY = {
+    "responses": {
+        "200": {
+            "description": "successful operation",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "order_list": {
+                                "type": "array",
+                                "description": "List of orders",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "order_id": {
+                                            "type": "integer",
+                                            "description": "Order ID",
+                                        },
+                                        "order_amount": {
+                                            "type": "number",
+                                            "format": "double",
+                                            "description": "Order amount in USD",
+                                        },
+                                        "order_status": {
+                                            "type": "string",
+                                            "description": "Order status",
+                                        },
+                                    },
+                                },
+                            }
+                        },
+                    }
+                }
+            },
+        }
+    }
+}
+
 # Canned OpenAPI document fed to the source instead of fetching the live
 # petstore URL declared in mock_rest_config, so the collection tests stay
 # hermetic and deterministic (no network).
@@ -423,6 +471,28 @@ MOCK_OPENAPI_SCHEMA = {
         "/user/login": {"get": {"tags": ["user"], "operationId": "loginUser"}},
     },
 }
+
+# Enough tags x paths to overflow MetadataRestSinkConfig.bulk_sink_batch_size (100)
+# several times, which is what separates the reporter's full document from the
+# reduced one that never reproduced the bug.
+LARGE_SCHEMA_COLLECTIONS = 8
+LARGE_SCHEMA_PATHS_PER_COLLECTION = 30
+
+
+def build_large_openapi_schema() -> dict:
+    return {
+        "tags": [{"name": f"collection_{index}"} for index in range(LARGE_SCHEMA_COLLECTIONS)],
+        "paths": {
+            f"/collection_{collection}/resource_{path}": {
+                "get": {
+                    "tags": [f"collection_{collection}"],
+                    "operationId": f"getCollection{collection}Resource{path}",
+                }
+            }
+            for collection in range(LARGE_SCHEMA_COLLECTIONS)
+            for path in range(LARGE_SCHEMA_PATHS_PER_COLLECTION)
+        },
+    }
 
 
 class TestRest:
@@ -466,12 +536,221 @@ class TestRest:
         ]
         assert collections == expected_collections
 
+    def test_get_api_collections_parses_schema_variants(self):
+        self.rest_source.connection = object()
+        schema = {
+            "tags": [{}, {"name": "known"}],
+            "paths": {"/new": {"get": {"tags": ["new"]}}},
+        }
+
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.parse_openapi_schema",
+            return_value=schema,
+        ):
+            collections = list(self.rest_source.get_api_collections())
+
+        assert {collection.name.root for collection in collections} == {
+            "known",
+            "default",
+            "new",
+        }
+
+    def test_get_api_collections_on_unparseable_schema(self):
+        """An unparseable document yields nothing instead of raising.
+
+        Uses its own source: get_api_collections is memoized, so a source that has
+        already derived its collections replays them rather than re-parsing.
+        """
+        source = RestSource.create(
+            mock_rest_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        source.connection = object()
+
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.parse_openapi_schema",
+            side_effect=RuntimeError("invalid schema"),
+        ):
+            assert list(source.get_api_collections()) == []
+
     def test_yield_api_collection(self):
         """test yield api collections"""
         # deepcopy: yield_api_collection sets collection.url in place, which would
         # otherwise mutate the shared module-level MOCK_COLLECTIONS fixture.
         collection_request = list(self.rest_source.yield_api_collection(deepcopy(MOCK_COLLECTIONS[0])))
         assert collection_request == EXPECTED_COLLECTION_REQUEST
+
+    def test_yield_api_collection_returns_error(self):
+        with patch.object(
+            self.rest_source,
+            "_generate_collection_url",
+            side_effect=RuntimeError("invalid collection"),
+        ):
+            result = list(self.rest_source.yield_api_collection(deepcopy(MOCK_COLLECTIONS[0])))
+
+        assert len(result) == 1
+        assert result[0].left is not None
+        assert "invalid collection" in result[0].left.error
+
+    def test_api_collections_flush_before_api_endpoints(self):
+        """Every collection, then a Barrier, then the endpoints (issue #30598)."""
+        records = list(
+            self.rest_source.process_nodes(
+                [
+                    self.rest_source.topology.api_collection,
+                    self.rest_source.topology.api_endpoint,
+                ]
+            )
+        )
+
+        right_types = [type(record.right) for record in records if record.right]
+        barrier_index = right_types.index(Barrier)
+        collection_count = len([entry for entry in right_types if entry is CreateAPICollectionRequest])
+
+        assert all(record.left is None for record in records)
+        assert collection_count == len(MOCK_COLLECTIONS) + 1  # + the "default" collection
+        assert right_types[:barrier_index] == [CreateAPICollectionRequest] * collection_count
+        assert set(right_types[barrier_index + 1 :]) == {CreateAPIEndpointRequest}
+
+    def test_large_document_never_sends_an_endpoint_before_its_collection(self):
+        """Drive the topology through the real bulk sink and replay the PUTs.
+
+        A document large enough to flush the sink's bulk buffer several times must
+        still have every apiCollection committed before any apiEndpoint that
+        references it, otherwise the server rejects the endpoint with
+        ``apiCollection instance for <fqn> not found`` (issue #30598).
+        """
+        put_calls = []
+
+        def capture_put(url, json=None, **kwargs):
+            put_calls.append((url, json or []))
+            return {
+                "status": "success",
+                "numberOfRowsProcessed": len(json or []),
+                "numberOfRowsFailed": 0,
+                "successRequest": [],
+                "failedRequest": [],
+            }
+
+        with (
+            patch(
+                "metadata.ingestion.source.api.api_service.create_connection",
+                side_effect=lambda *args, **kwargs: SimpleNamespace(
+                    client=build_large_openapi_schema(), close=lambda: None
+                ),
+            ),
+            patch.object(OpenMetadata, "validate_versions", return_value=None),
+        ):
+            metadata = OpenMetadata(self.config.workflowConfig.openMetadataServerConfig)
+            source = RestSource.create(
+                mock_rest_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            source.context.get().__dict__["api_service"] = MOCK_API_SERVICE.fullyQualifiedName.root
+            sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+            with patch.object(metadata.client, "put", side_effect=capture_put):
+                for record in source.process_nodes([source.topology.api_collection, source.topology.api_endpoint]):
+                    if record.right is not None:
+                        sink._run(record.right)
+                sink.close()
+
+        created_collections = set()
+        orphan_endpoints = []
+        for url, payloads in put_calls:
+            if "/apiCollections/bulk" in url:
+                created_collections.update(f"{payload['service']}.{payload['name']}" for payload in payloads)
+            elif "/apiEndpoints/bulk" in url:
+                orphan_endpoints.extend(
+                    payload["name"] for payload in payloads if payload["apiCollection"] not in created_collections
+                )
+
+        put_sequence = ["C" if "/apiCollections/bulk" in url else "E" for url, _ in put_calls]
+        assert orphan_endpoints == []
+        # Collections are fully persisted first, then endpoints - not interleaved
+        # ("C E C E ..."), which is what leaves an endpoint depending on a collection
+        # that shares its bulk batch.
+        assert put_sequence == ["C"] + ["E"] * (len(put_sequence) - 1)
+        # More than one endpoint flush: the buffer really did drain mid-run, which is
+        # the condition the reporter's large document hit and a small one never does.
+        assert put_sequence.count("E") > 1
+
+    def test_endpoint_urls_survive_the_second_producer_pass(self):
+        """The endpoint node replays the collections the collection node enriched.
+
+        ``yield_api_collection`` resolves ``collection.url`` in place; if the endpoint
+        node re-derived fresh RESTCollection objects it would see ``url=None`` and
+        silently fall back to the raw openAPISchemaURL for every endpointURL.
+        """
+        records = list(
+            self.rest_source.process_nodes(
+                [
+                    self.rest_source.topology.api_collection,
+                    self.rest_source.topology.api_endpoint,
+                ]
+            )
+        )
+
+        endpoint_urls = {
+            record.right.name.root: str(record.right.endpointURL)
+            for record in records
+            if isinstance(record.right, CreateAPIEndpointRequest)
+        }
+
+        assert endpoint_urls == {
+            "/pet/findByStatus/get": "https://petstore3.swagger.io/#/pet/findPetsByStatus",
+            "/store/order/post": "https://petstore3.swagger.io/#/store/placeOrder",
+            "/user/login/get": "https://petstore3.swagger.io/#/user/loginUser",
+        }
+
+    def test_get_api_collections_derives_once(self):
+        """Both nodes produce from get_api_collections; the document is parsed once
+        and a filtered collection is reported once, not per node."""
+        exclude_config = deepcopy(mock_rest_config)
+        exclude_config["source"]["sourceConfig"]["config"]["apiCollectionFilterPattern"] = {"excludes": ["store"]}
+        source = RestSource.create(
+            exclude_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+        with patch.object(RestSource, "_derive_collections", wraps=source._derive_collections) as derive:
+            first_pass = list(source.get_api_collections())
+            second_pass = list(source.get_api_collections())
+
+        assert derive.call_count == 1
+        assert first_pass == second_pass
+        assert [collection.name.root for collection in first_pass] == ["pet", "user", "default"]
+        assert source.status.filtered == [{"store": "Collection filtered out"}]
+
+    @pytest.mark.parametrize(
+        ("bad_tag", "expected_failures"),
+        [
+            pytest.param({"name": "x" * 300}, 1, id="name-over-entity-name-max-length"),
+            pytest.param({"name": "bad", "description": {"nested": "object"}}, 1, id="non-string-description"),
+            pytest.param("bad", 0, id="tag-entry-is-a-string-not-an-object"),
+        ],
+    )
+    def test_one_malformed_tag_does_not_drop_the_document(self, bad_tag, expected_failures):
+        """A tag the connector cannot turn into a collection is reported and skipped.
+
+        Regression for issue #30598: the whole derivation used to sit inside a single
+        try/except, so the first unparseable tag stopped the generator and the service
+        was left with few or no collections.
+        """
+        schema = deepcopy(MOCK_OPENAPI_SCHEMA)
+        schema["tags"].insert(1, bad_tag)
+
+        with patch(
+            "metadata.ingestion.source.api.api_service.create_connection",
+            side_effect=lambda *args, **kwargs: SimpleNamespace(client=schema, close=lambda: None),
+        ):
+            source = RestSource.create(
+                mock_rest_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            collection_names = [collection.name.root for collection in source.get_api_collections()]
+
+        assert {"pet", "store", "user"}.issubset(set(collection_names))
+        assert len(source.status.failures) == expected_failures
 
     def test_all_collections(self):
         collections = list(self.rest_source.get_api_collections())
@@ -491,10 +770,44 @@ class TestRest:
         collection_url = self.rest_source._generate_collection_url("store")
         assert collection_url == MOCK_STORE_URL
 
+    def test_url_helpers_use_fallbacks(self):
+        connection_config = self.rest_source.config.serviceConnection.root.config
+        assert self.rest_source._get_fallback_url() is None
+
+        connection_config.docURL = AnyUrl("https://example.com/#")
+        assert str(self.rest_source._generate_collection_url("store")) == "https://example.com/#/store"
+
+        connection_config.docURL = None
+        assert self.rest_source._generate_collection_url("store") is None
+
+        collection = deepcopy(MOCK_SINGLE_COLLECTION)
+        collection.url = None
+        assert self.rest_source._generate_endpoint_url(collection, MOCK_SINGLE_ENDPOINT) is None
+
+    def test_url_helpers_recover_from_errors(self):
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.clean_uri",
+            side_effect=RuntimeError("invalid URL"),
+        ):
+            assert self.rest_source._generate_collection_url("store") is None
+
+        with patch(
+            "metadata.ingestion.source.api.rest.metadata.AnyUrl",
+            side_effect=RuntimeError("invalid URL"),
+        ):
+            assert self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT) is None
+
     def test_generate_endpoint_url(self):
         """test generate endpoint url"""
         endpoint_url = self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT)
         assert endpoint_url == MOCK_STORE_ORDER_URL
+
+    def test_endpoint_helpers_handle_invalid_input(self):
+        self.rest_source.json_response = {"paths": None}
+
+        assert self.rest_source._filter_collection_endpoints(MOCK_SINGLE_COLLECTION) is None
+        assert self.rest_source._prepare_endpoint_data("/store", "get", None, MOCK_SINGLE_COLLECTION) is None
+        assert self.rest_source._get_api_request_method("unsupported") is None
 
     def test_collection_filter_pattern(self):
         """test collection filter pattern"""
@@ -684,6 +997,21 @@ class TestRest:
         assert result.description.root == "Page number"
         assert result.children is None
 
+    @pytest.mark.parametrize("schema", [None, "invalid"])
+    def test_convert_parameter_to_field_uses_top_level_type_with_non_object_schema(self, schema):
+        param = {
+            "in": "query",
+            "name": "page",
+            "type": "integer",
+            "schema": schema,
+        }
+
+        result = self.rest_source._convert_parameter_to_field(param)
+
+        assert result is not None
+        assert result.name.root == "page"
+        assert result.dataType == DataTypeTopic.INT
+
     def test_convert_parameter_to_field_openapi_3(self):
         """Test converting OpenAPI 3.0 parameter to FieldModel"""
         param = {
@@ -800,6 +1128,40 @@ class TestRest:
         page_field = next(f for f in result.schemaFields if f.name.root == "page")
         assert page_field.dataType == DataTypeTopic.INT
         assert page_field.description.root == "Page number"
+
+    def test_get_request_schema_resolves_parameter_references(self):
+        parameter = {
+            "in": "query",
+            "name": "limit",
+            "type": "integer",
+        }
+        self.rest_source.json_response = {"parameters": {"Limit": parameter}}
+        info = {
+            "parameters": [
+                {"$ref": "#/parameters/Limit"},
+                {"$ref": "#/parameters/Missing"},
+            ]
+        }
+
+        result = self.rest_source._get_request_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert [field.name.root for field in result.schemaFields] == ["limit"]
+
+    def test_resolve_parameter_ref_variants(self):
+        parameter = {"in": "query", "name": "limit", "type": "integer"}
+
+        self.rest_source.json_response = {"parameters": {"Limit": parameter}}
+        assert self.rest_source._resolve_parameter_ref("#/parameters/Limit") == parameter
+
+        self.rest_source.json_response = {"components": {"parameters": {"Limit": parameter}}}
+        assert self.rest_source._resolve_parameter_ref("#/parameters/Limit") == parameter
+
+        self.rest_source.json_response = {}
+        assert self.rest_source._resolve_parameter_ref("#/parameters/Limit") is None
+        assert self.rest_source._resolve_parameter_ref("invalid") is None
+        assert self.rest_source._resolve_parameter_ref(1) is None
 
     def test_get_request_schema_openapi_3_query_parameters(self):
         """Test extracting request schema from OpenAPI 3.0 query parameters"""
@@ -980,6 +1342,10 @@ class TestRest:
         result = self.rest_source._parse_openapi_type("BOOLEAN")
         assert result == DataTypeTopic.BOOLEAN
 
+    @pytest.mark.parametrize("openapi_type", [[], ""])
+    def test_parse_openapi_type_empty_values(self, openapi_type):
+        assert self.rest_source._parse_openapi_type(openapi_type) == DataTypeTopic.UNKNOWN
+
     def test_process_schema_fields_with_nullable_type(self):
         self.rest_source.json_response = {
             "components": {
@@ -1075,6 +1441,44 @@ class TestRest:
         assert len(result.schemaFields) == 1
         assert result.schemaFields[0].dataType == DataTypeTopic.UNKNOWN
 
+    def test_process_inline_schema_expands_untyped_object_properties(self):
+        properties = {
+            "metadata": {
+                "description": "Nested metadata",
+                "properties": {
+                    "identifier": {
+                        "type": "integer",
+                        "description": "Metadata identifier",
+                    }
+                },
+            }
+        }
+
+        result = self.rest_source._process_inline_schema(properties)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        metadata_field = result.schemaFields[0]
+        assert metadata_field.dataType == DataTypeTopic.UNKNOWN
+        assert metadata_field.dataTypeDisplay == "OBJECT"
+        assert metadata_field.description == Markdown(root="Nested metadata")
+        assert metadata_field.children is not None
+        assert len(metadata_field.children) == 1
+        assert metadata_field.children[0].name.root == "identifier"
+        assert metadata_field.children[0].dataType == DataTypeTopic.INT
+        assert metadata_field.children[0].description == Markdown(root="Metadata identifier")
+
+    def test_schema_helpers_handle_invalid_input(self):
+        assert self.rest_source._process_array_items({}, []) is None
+        assert self.rest_source._process_inline_schema({"field": None}) is None
+        assert self.rest_source._convert_parameter_to_field({"name": "field", "schema": None}) is None
+        assert self.rest_source._get_response_schema(None) is None
+
+        self.rest_source.json_response = {}
+        schema_ref = "#/components/schemas/Missing"
+        assert self.rest_source._resolve_schema_ref(schema_ref) is None
+        assert self.rest_source.process_schema_fields(schema_ref) is None
+
     def test_get_response_schema_inline_properties(self):
         """Test _get_response_schema handles inline schemas without $ref"""
         self.rest_source.json_response = {}
@@ -1099,6 +1503,84 @@ class TestRest:
 
         assert result is not None
         assert len(result.schemaFields) == 2
+
+    def test_get_response_schema_inline_object_array_properties(self):
+        self.rest_source.json_response = {}
+
+        result = self.rest_source._get_response_schema(MOCK_RESPONSE_INLINE_OBJECT_ARRAY)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert len(result.schemaFields) == 1
+
+        order_list = result.schemaFields[0]
+        assert order_list.name.root == "order_list"
+        assert order_list.dataType == DataTypeTopic.ARRAY
+        assert order_list.description == Markdown(root="List of orders")
+        assert order_list.children is not None
+        assert [child.name.root for child in order_list.children] == [
+            "order_id",
+            "order_amount",
+            "order_status",
+        ]
+        assert [child.dataType for child in order_list.children] == [
+            DataTypeTopic.INT,
+            DataTypeTopic.DOUBLE,
+            DataTypeTopic.STRING,
+        ]
+        assert [child.description.root for child in order_list.children] == [
+            "Order ID",
+            "Order amount in USD",
+            "Order status",
+        ]
+
+    def test_get_response_schema_referenced_inline_object_array_properties(self):
+        schema = deepcopy(
+            MOCK_RESPONSE_INLINE_OBJECT_ARRAY["responses"]["200"]["content"]["application/json"]["schema"]
+        )
+        self.rest_source.json_response = {"components": {"schemas": {"Orders": schema}}}
+        info = {
+            "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Orders"}}}}}
+        }
+
+        result = self.rest_source._get_response_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        order_list = result.schemaFields[0]
+        assert order_list.dataType == DataTypeTopic.ARRAY
+        assert order_list.description == Markdown(root="List of orders")
+        assert order_list.children is not None
+        assert [child.name.root for child in order_list.children] == [
+            "order_id",
+            "order_amount",
+            "order_status",
+        ]
+        assert [child.dataType for child in order_list.children] == [
+            DataTypeTopic.INT,
+            DataTypeTopic.DOUBLE,
+            DataTypeTopic.STRING,
+        ]
+        assert [child.description.root for child in order_list.children] == [
+            "Order ID",
+            "Order amount in USD",
+            "Order status",
+        ]
+
+    def test_process_inline_schema_number_formats(self):
+        properties = {
+            "float_amount": {"type": "number", "format": "float"},
+            "double_amount": {"type": "number", "format": "double"},
+        }
+
+        result = self.rest_source._process_inline_schema(properties)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert [field.dataType for field in result.schemaFields] == [
+            DataTypeTopic.FLOAT,
+            DataTypeTopic.DOUBLE,
+        ]
 
     def test_get_response_schema_201_fallback(self):
         """Test _get_response_schema falls back to 201 when 200 not found"""

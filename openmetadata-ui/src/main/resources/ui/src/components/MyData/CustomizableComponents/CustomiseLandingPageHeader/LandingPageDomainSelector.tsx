@@ -80,6 +80,11 @@ const LandingPageDomainSelector = ({
         tabIndex={0}
         onClick={() => {
           setIsDomainDropdownOpen(!isDomainDropdownOpen);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            setIsDomainDropdownOpen(!isDomainDropdownOpen);
+          }
         }}>
         <DomainIcon
           className="domain-icon"

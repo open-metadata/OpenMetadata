@@ -333,6 +333,7 @@ describe('DataQualityProvider', () => {
   it('should handle dashboard tab correctly', async () => {
     mockUseParam.tab = DataQualityPageTabs.DASHBOARD;
 
+    // eslint-disable-next-line sonarjs/no-identical-functions -- test harness component
     const MockTabComponent = () => {
       const { activeTab } = useDataQualityProvider();
 

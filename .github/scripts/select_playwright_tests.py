@@ -59,6 +59,14 @@ def is_mapped_file(path: str, impact_map: dict[str, Any]) -> bool:
     )
 
 
+def remove_delegated_specs(
+    selected: dict[str, set[str]], delegated_patterns: list[str]
+) -> None:
+    for spec in list(selected):
+        if matches(spec, delegated_patterns):
+            del selected[spec]
+
+
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
     direct_changed_specs = plan.get("directChangedSpecs", [])
     lineage_representative_only = (
@@ -81,7 +89,11 @@ def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
     impact_map = json.loads(args.impact_map.read_text(encoding="utf-8"))
-    full_event = args.event_name in {"merge_group", "schedule"}
+    # `push` is the main-scoped cache warmer (populate-playwright-caches.yml).
+    # It carries no PR diff to narrow against, and the fixture it warms has to be
+    # the one a full merge-queue run restores — a targeted plan would leave
+    # requires_airflow false and skip warming the ingestion image entirely.
+    full_event = args.event_name in {"merge_group", "schedule", "push"}
     full_requested = (
         args.event_name == "workflow_dispatch" and args.full_suite == "true"
     )
@@ -144,12 +156,7 @@ def main() -> None:
             for entry in impact_map["canary"]:
                 add_selection(selected, entry, repo_root)
 
-        delegated_patterns = impact_map.get("delegatedSpecs", [])
-        selected = {
-            spec: projects
-            for spec, projects in selected.items()
-            if not matches(spec, delegated_patterns)
-        }
+        remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
 
         plan = {
             "version": 1,
@@ -166,7 +173,7 @@ def main() -> None:
             # @knowledge-graph, Auth, nightly, VisualRegression, …). A directly
             # changed delegated spec already routes to delegatedChangedSpecs
             # above; this also drops ones pulled in by a source->spec mapping
-            # glob (e.g. `OntologyExplorer*.spec.ts` matching the RDF spec), which
+            # glob (e.g. `OntologyStudio*.spec.ts` matching the RDF spec), which
             # otherwise plan a postgres shard with zero runnable tests.
             "selectors": [
                 {"spec": spec, "projects": sorted(projects)}

@@ -16,107 +16,18 @@ import {
   DataType,
 } from '../generated/entity/data/container';
 import {
-  CardStyle,
   FeedbackType,
-  FieldOperation,
-  GeneratedBy,
-  Post,
   RecognizerFeedback,
-  TaskType,
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../generated/entity/feed/thread';
+} from '../generated/type/recognizerFeedback';
+import {
+  Task,
+  TaskCategory,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskPriority,
+} from '../rest/tasksAPI';
 
 /* eslint-disable max-len */
-export const TASK_FEED: Thread = {
-  id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
-  type: ThreadType.Task,
-  href: 'http://localhost:8585/api/v1/feed/8b5076bb-8284-46b0-b00d-5e43a184ba9b',
-  threadTs: 1701686127533,
-  about:
-    '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::shop_id::tags>',
-  createdBy: 'admin',
-  updatedAt: 1701686127534,
-  updatedBy: 'admin',
-  resolved: false,
-  message: 'Request tags for table dim.shop columns/shop_id',
-  postsCount: 0,
-  posts: [],
-  reactions: [],
-  task: {
-    id: 2,
-    type: TaskType.RequestTag,
-    assignees: [
-      {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
-        type: 'team',
-        name: 'Sales',
-        fullyQualifiedName: 'Sales',
-        deleted: false,
-      },
-    ],
-    status: ThreadTaskStatus.Open,
-    oldValue: '[]',
-    suggestion:
-      '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory","description":"GDPR special category data is personal information of data subjects that is especially sensitive, the exposure of which could significantly impact the rights and freedoms of data subjects and potentially be used against them for unlawful discrimination."}]',
-  },
-};
-
-export const APPROVAL_TASK_FEED: Thread = {
-  id: '4569705b-78b9-448f-8d1a-060401f03d9d',
-  type: ThreadType.Task,
-  href: 'https://nbndatacatalogue-np.getcollate.io//v1/feed/4569705b-78b9-448f-8d1a-060401f03d9d',
-  threadTs: 1773708257515,
-  about:
-    '<#E::table::starburst.cdl.sharp_incnet.v_incnet_location::columns::location_id>',
-  entityRef: {
-    id: '1bf67076-346e-46a6-b7ad-4914d89f7a3a',
-    type: 'table',
-    name: 'v_incnet_location',
-    fullyQualifiedName: 'starburst.cdl.sharp_incnet.v_incnet_location',
-    displayName: 'v_incnet_location',
-    deleted: false,
-  },
-  domains: ['19cf92da-baa0-4000-84a1-3b8b25da8d01'],
-  generatedBy: GeneratedBy.User,
-  cardStyle: CardStyle.Default,
-  fieldOperation: FieldOperation.Updated,
-  createdBy: 'calebknight',
-  updatedAt: 1773708257515,
-  updatedBy: 'calebknight',
-  resolved: false,
-  message: 'this is a test, I am a very good programmer',
-  postsCount: 0,
-  posts: [],
-  reactions: [],
-  task: {
-    id: 1803,
-    type: TaskType.RequestApproval,
-    assignees: [
-      {
-        id: 'ce782180-36f6-4d4a-9fbe-ee6103d4146f',
-        type: 'user',
-        name: 'calebknight',
-        fullyQualifiedName: 'calebknight',
-        displayName: 'Caleb Knight',
-        deleted: false,
-      },
-    ],
-    status: ThreadTaskStatus.Open,
-    oldValue: 'this is a test suggestion',
-    suggestion: 'this is a different test suggestion2',
-  },
-};
-
-export const TASK_POST: Post = {
-  message: 'Request tags for table dim.shop columns/shop_id',
-  postTs: 1701686127533,
-  from: 'admin',
-  id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
-  reactions: [],
-};
-
 export const TASK_COLUMNS: Column[] = [
   {
     name: 'shop_id',
@@ -331,56 +242,6 @@ export const MOCK_TASK_ASSIGNEE = [
   },
 ];
 
-export const MOCK_TASK = {
-  id: 1,
-  type: TaskType.RequestTag,
-  assignees: [
-    {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
-      type: 'User',
-      name: 'xyz',
-      fullyQualifiedName: 'xyz',
-      deleted: false,
-    },
-  ],
-  status: ThreadTaskStatus.Open,
-  oldValue: '[]',
-  suggestion:
-    '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory","description":"GDPR special category data is personal information of data subjects that is especially sensitive, the exposure of which could significantly impact the rights and freedoms of data subjects and potentially be used against them for unlawful discrimination."}]',
-};
-
-export const MOCK_TASK_2 = {
-  id: 1,
-  type: TaskType.RequestTag,
-  assignees: [
-    {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
-      type: 'User',
-      name: 'xyz',
-      fullyQualifiedName: 'xyz',
-      deleted: false,
-    },
-  ],
-  status: ThreadTaskStatus.Open,
-  oldValue: '[]',
-};
-
-export const MOCK_TASK_3 = {
-  id: 1,
-  type: TaskType.RequestApproval,
-  assignees: [
-    {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
-      type: 'User',
-      name: 'xyz',
-      fullyQualifiedName: 'xyz',
-      deleted: false,
-    },
-  ],
-  status: ThreadTaskStatus.Open,
-  oldValue: '[]',
-};
-
 export const MOCK_RECOGNIZER_FEEDBACK: RecognizerFeedback = {
   entityLink:
     '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::email>',
@@ -397,9 +258,26 @@ export const MOCK_RECOGNIZER_FEEDBACK: RecognizerFeedback = {
   createdAt: 1701686127533,
 };
 
-export const MOCK_TASK_RECOGNIZER_FEEDBACK = {
-  id: 4,
-  type: TaskType.RecognizerFeedbackApproval,
+export const MOCK_TASK_RECOGNIZER_FEEDBACK: Task = {
+  id: 'feedback-8b5076bb-8284-46b0-b00d-5e43a184ba9b',
+  taskId: 'TASK-00004',
+  name: 'RecognizerFeedbackApproval-dim.shop-email',
+  category: TaskCategory.Review,
+  type: TaskEntityType.RecognizerFeedbackApproval,
+  status: TaskEntityStatus.Open,
+  priority: TaskPriority.Medium,
+  about: {
+    id: 'table-id-2',
+    type: 'table',
+    name: 'dim.shop',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop"',
+  },
+  createdBy: {
+    id: 'admin-user-id',
+    type: 'user',
+    name: 'admin',
+    displayName: 'Admin User',
+  },
   assignees: [
     {
       id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
@@ -409,24 +287,18 @@ export const MOCK_TASK_RECOGNIZER_FEEDBACK = {
       deleted: false,
     },
   ],
-  status: ThreadTaskStatus.Open,
-  feedback: MOCK_RECOGNIZER_FEEDBACK,
-};
-
-export const TASK_FEED_RECOGNIZER_FEEDBACK: Thread = {
-  id: 'feedback-8b5076bb-8284-46b0-b00d-5e43a184ba9b',
-  type: ThreadType.Task,
-  href: 'http://localhost:8585/api/v1/feed/feedback-8b5076bb-8284-46b0-b00d-5e43a184ba9b',
-  threadTs: 1701686127533,
-  about:
-    '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::email>',
-  createdBy: 'admin',
-  updatedAt: 1701686127534,
-  updatedBy: 'admin',
-  resolved: false,
-  message: 'Review feedback for tag PII.Sensitive',
-  postsCount: 0,
-  posts: [],
-  reactions: [],
-  task: MOCK_TASK_RECOGNIZER_FEEDBACK,
+  payload: {
+    field: 'tags',
+    fieldPath: 'columns::email',
+    currentValue: '[]',
+    suggestedValue:
+      '[{"tagFQN":"PII.Sensitive","source":"Classification","name":"Sensitive"}]',
+    feedback: MOCK_RECOGNIZER_FEEDBACK,
+    recognizer: {
+      recognizerName: 'PII Recognizer',
+    },
+  } as Task['payload'],
+  comments: [],
+  commentCount: 0,
+  createdAt: 1701686127533,
 };

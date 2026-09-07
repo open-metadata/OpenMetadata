@@ -70,7 +70,7 @@ describe('GlossaryUpdateConfirmationModal component', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it.skip('should call validation api on clicking on yes, confirm button', async () => {
+  it('should call validation api on clicking on yes, confirm button', async () => {
     const { findByText } = render(
       <GlossaryUpdateConfirmationModal
         glossaryTerm={{} as GlossaryTerm}

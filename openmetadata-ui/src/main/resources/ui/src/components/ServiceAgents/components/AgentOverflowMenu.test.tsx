@@ -37,6 +37,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       return (
         <div data-open={String(Boolean(isOpen))} data-testid="dropdown-root">
           <button
+            aria-label="open-dropdown"
             data-testid="open-dropdown"
             onClick={() => onOpenChange?.(true)}
           />

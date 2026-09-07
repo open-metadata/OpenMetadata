@@ -16,7 +16,6 @@ Extracts header metadata (small data) with streaming where possible.
 
 import tempfile
 from functools import singledispatchmethod
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -47,7 +46,7 @@ class MF4DataFrameReader(DataFrameReader):
     """
 
     @staticmethod
-    def _extract_header_from_mdf(mdf) -> Optional[DatalakeColumnWrapper]:  # noqa: UP045
+    def _extract_header_from_mdf(mdf) -> DatalakeColumnWrapper | None:
         """Extract header properties from an opened MDF object."""
         import pandas as pd
 
@@ -82,7 +81,7 @@ class MF4DataFrameReader(DataFrameReader):
             for chunk in response["Body"].iter_chunks():
                 tmp.write(chunk)
             tmp.flush()
-            mdf = MDF(tmp.name, load_measured_data=False)
+            mdf = MDF(tmp.name)
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
@@ -96,7 +95,7 @@ class MF4DataFrameReader(DataFrameReader):
 
         with tempfile.NamedTemporaryFile(suffix=".mf4", delete=True) as tmp:
             gcs.get(file_path, tmp.name)
-            mdf = MDF(tmp.name, load_measured_data=False)
+            mdf = MDF(tmp.name)
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
@@ -114,7 +113,7 @@ class MF4DataFrameReader(DataFrameReader):
 
         with tempfile.NamedTemporaryFile(suffix=".mf4", delete=True) as tmp:
             adlfs_fs.get(file_path, tmp.name)
-            mdf = MDF(tmp.name, load_measured_data=False)
+            mdf = MDF(tmp.name)
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
@@ -127,7 +126,7 @@ class MF4DataFrameReader(DataFrameReader):
         """Read MF4 header from local file - most efficient as no temp file needed."""
         from asammdf import MDF
 
-        mdf = MDF(key, load_measured_data=False)
+        mdf = MDF(key)
         return self._extract_header_from_mdf(mdf)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:

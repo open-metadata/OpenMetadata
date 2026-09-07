@@ -1,5 +1,5 @@
 import datetime
-from typing import Generator  # noqa: UP035
+from collections.abc import Generator
 from unittest.mock import MagicMock, Mock, patch
 
 import dsnparse

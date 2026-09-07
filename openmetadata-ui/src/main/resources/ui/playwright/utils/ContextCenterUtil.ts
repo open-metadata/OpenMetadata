@@ -182,7 +182,7 @@ export const expectCapturedDownload = async (page: Page, fileName: string) => {
   expect(download.href.startsWith('blob:')).toBe(true);
 };
 
-export const DASHBOARD_URL = '/context-center/dashboard';
+export const DASHBOARD_URL = '/context-center/overview';
 export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
@@ -197,6 +197,79 @@ export const navigateToDashboard = async (page: Page) => {
   // Wait for article section to finish loading (either cards or empty state)
   const section = page.getByTestId('dashboard-detail-card');
   await section.waitFor({ state: 'visible' });
+};
+
+/**
+ * Recently-viewed is client-only state: the article detail page pushes it into
+ * the zustand `user-preferences-store` slice in localStorage, and that write
+ * lands after the render that triggered it. Navigating away before it flushes
+ * means the Recently Viewed panel renders from a store that never saw the
+ * article, so the panel assertion has nothing to auto-wait for and only passes
+ * once a retry warms the cache. Waiting on the persisted entry is the real
+ * signal, so no fixed delay is needed.
+ *
+ * The Knowledge Center panel reads `recentlyViewedQuickLinks`, which is a
+ * different slice from the landing page's generic `recentlyViewed` — see
+ * `addToKnowledgeCenterRecentViewed` in `src/utils/KnowledgePageUtils.tsx`.
+ * The match mirrors `getLink` in that file, which builds the panel's test id
+ * from `displayName || fullyQualifiedName`.
+ */
+export const readRecentlyViewed = async (
+  page: Page
+): Promise<{ displayName?: string; fullyQualifiedName?: string }[]> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'user-preferences-store'
+  );
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: {
+        preferences?: Record<
+          string,
+          {
+            recentlyViewedQuickLinks?: {
+              displayName?: string;
+              fullyQualifiedName?: string;
+            }[];
+          }
+        >;
+      };
+    };
+
+    return Object.values(parsed?.state?.preferences ?? {}).flatMap(
+      (slice) => slice?.recentlyViewedQuickLinks ?? []
+    );
+  } catch {
+    return [];
+  }
+};
+
+export const waitForRecentlyViewed = async (
+  page: Page,
+  displayName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const entries = await readRecentlyViewed(page);
+
+        return entries.some(
+          (entry) =>
+            (entry?.displayName || entry?.fullyQualifiedName) === displayName
+        );
+      },
+      {
+        message: `Wait for "${displayName}" to be persisted into recentlyViewed`,
+        timeout: 15_000,
+        intervals: [50, 100, 200, 500],
+      }
+    )
+    .toBe(true);
 };
 
 export const navigateToArticles = async (page: Page) => {
@@ -544,6 +617,7 @@ export async function waitForDocumentAbsentFromSearch(
         q: documentName,
         index: 'contextFile',
         deleted: false,
+        size: 100,
       },
     });
 
@@ -555,8 +629,17 @@ export async function waitForDocumentAbsentFromSearch(
     }
 
     const body = await response.json();
-    const hits = body.hits?.hits ?? [];
-    if (hits.length === 0) {
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
       return;
     }
 
@@ -790,6 +873,7 @@ export const scrollHierarchyToNode = async (
 
       if (lastNode === previousLastNode) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;
@@ -898,6 +982,7 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
       if (lastCard === previousLastCard) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;

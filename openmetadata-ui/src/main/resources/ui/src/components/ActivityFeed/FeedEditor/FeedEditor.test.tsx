@@ -81,7 +81,11 @@ jest.mock('react-quill-new', () => ({
     mockCaptureQuillProps(props);
 
     return (
-      <div data-testid="react-quill" onKeyDown={props.onKeyDown}>
+      <div
+        data-testid="react-quill"
+        role="textbox"
+        tabIndex={0}
+        onKeyDown={props.onKeyDown}>
         editor
       </div>
     );

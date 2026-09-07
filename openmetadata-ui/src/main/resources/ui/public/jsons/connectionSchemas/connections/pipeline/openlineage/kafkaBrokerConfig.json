@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Kafka",
+  "description": "Kafka broker configuration for OpenLineage events.",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "brokersUrl": {
+      "title": "Kafka Brokers List",
+      "description": "Kafka bootstrap servers URL.",
+      "type": "string"
+    },
+    "topicName": {
+      "title": "Topic Name",
+      "description": "Topic from where OpenLineage events will be pulled.",
+      "type": "string"
+    },
+    "consumerGroupName": {
+      "title": "Consumer Group",
+      "description": "Kafka consumer group name.",
+      "type": "string"
+    },
+    "consumerOffsets": {
+      "title": "Initial Consumer Offsets",
+      "description": "Initial Kafka consumer offset.",
+      "default": "earliest",
+      "type": "string",
+      "enum": [
+        "earliest",
+        "latest"
+      ],
+      "javaEnums": [
+        {
+          "name": "earliest"
+        },
+        {
+          "name": "latest"
+        }
+      ]
+    },
+    "poolTimeout": {
+      "title": "Single Pool Call Timeout",
+      "description": "Max allowed wait time.",
+      "type": "number",
+      "default": 1
+    },
+    "sessionTimeout": {
+      "title": "Broker Inactive Session Timeout",
+      "description": "Max allowed inactivity time.",
+      "type": "integer",
+      "default": 30
+    },
+    "securityProtocol": {
+      "title": "Kafka Security Protocol",
+      "description": "Kafka security protocol config.",
+      "default": "PLAINTEXT",
+      "type": "string",
+      "enum": [
+        "PLAINTEXT",
+        "SASL_PLAINTEXT",
+        "SSL",
+        "SASL_SSL"
+      ],
+      "javaEnums": [
+        {
+          "name": "PLAINTEXT"
+        },
+        {
+          "name": "SASL_PLAINTEXT"
+        },
+        {
+          "name": "SSL"
+        },
+        {
+          "name": "SASL_SSL"
+        }
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "saslConfig": {
+      "title": "SASL",
+      "description": "SASL Configuration details.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.security.sasl.SASLClientConfig",
+      "additionalProperties": false,
+      "properties": {
+        "saslMechanism": {
+          "title": "SASL Mechanism",
+          "description": "SASL security mechanism",
+          "default": "PLAIN",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
+          "type": "string",
+          "enum": [
+            "PLAIN",
+            "GSSAPI",
+            "SCRAM-SHA-256",
+            "SCRAM-SHA-512",
+            "OAUTHBEARER"
+          ]
+        },
+        "saslUsername": {
+          "title": "SASL Username",
+          "description": "The SASL authentication username.",
+          "type": "string"
+        },
+        "saslPassword": {
+          "title": "SASL Password",
+          "description": "The SASL authentication password.",
+          "type": "string",
+          "format": "password"
+        }
+      }
+    }
+  },
+  "required": [
+    "brokersUrl",
+    "topicName"
+  ]
+}

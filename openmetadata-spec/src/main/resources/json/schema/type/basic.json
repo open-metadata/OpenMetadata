@@ -159,6 +159,12 @@
       "description": "Text in Markdown format.",
       "type": "string"
     },
+    "nonBlankMarkdown": {
+      "description": "Nonblank text in Markdown format.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
+    },
     "expression": {
       "description": "Expression in SpEL.",
       "type": "string"

@@ -263,7 +263,7 @@ describe('useTestCaseListPage', () => {
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({ q: '*orders*' })
+        expect.objectContaining({ q: 'orders' })
       )
     );
   });

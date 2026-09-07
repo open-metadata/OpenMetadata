@@ -31,6 +31,7 @@ jest.mock('./i18next/LocalUtil', () => ({
 import { AxiosError } from 'axios';
 import {
   decodeHtmlEntities,
+  escapeESReservedCharacters,
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
@@ -450,6 +451,58 @@ describe('StringUtils', () => {
       const result = getTrimmedContent(content, 1000);
 
       expect(result).not.toContain('line-four');
+    });
+  });
+
+  describe('escapeESReservedCharacters', () => {
+    it('should return an empty string for undefined and empty input', () => {
+      expect(escapeESReservedCharacters()).toBe('');
+      expect(escapeESReservedCharacters('')).toBe('');
+    });
+
+    it('should leave text without reserved characters untouched', () => {
+      expect(escapeESReservedCharacters('sample_data orders')).toBe(
+        'sample_data orders'
+      );
+    });
+
+    it('should escape every reserved character of a pasted URL', () => {
+      expect(escapeESReservedCharacters('https://example.com/path?x=1')).toBe(
+        String.raw`https\:\/\/example.com\/path\?x\=1`
+      );
+    });
+
+    it.each([
+      ['+', String.raw`\+`],
+      ['-', String.raw`\-`],
+      ['=', String.raw`\=`],
+      ['&', String.raw`\&`],
+      ['|', String.raw`\|`],
+      ['>', String.raw`\>`],
+      ['<', String.raw`\<`],
+      ['!', String.raw`\!`],
+      ['(', String.raw`\(`],
+      [')', String.raw`\)`],
+      ['{', String.raw`\{`],
+      ['}', String.raw`\}`],
+      ['[', String.raw`\[`],
+      [']', String.raw`\]`],
+      ['^', String.raw`\^`],
+      ['"', String.raw`\"`],
+      ['~', String.raw`\~`],
+      ['*', String.raw`\*`],
+      ['?', String.raw`\?`],
+      [':', String.raw`\:`],
+      ['\\', '\\\\'],
+      ['/', String.raw`\/`],
+    ])('should escape the reserved character %s', (input, expected) => {
+      expect(escapeESReservedCharacters(input)).toBe(expected);
+    });
+
+    it('should escape a Lucene field query so it is searched as literal text', () => {
+      expect(escapeESReservedCharacters('name:value')).toBe(
+        String.raw`name\:value`
+      );
     });
   });
 });

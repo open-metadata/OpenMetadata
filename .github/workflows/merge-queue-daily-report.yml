@@ -1,0 +1,95 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Daily merge-queue digest — trailing 24h against the trailing 7d and a pinned
+# healthy reference window.
+#
+# Stateless: every window is recomputed from PR timeline history, which survives the
+# merge, so there is nothing to store, backfill, or corrupt.
+#
+# WHY A PINNED HEALTHY WINDOW. A trailing-7d baseline normalises a sustained
+# regression away. Over one measured week the daily p50 for a single clean pass rose
+# 0.97h -> 17.49h, strictly increasing on all seven days; a rolling mean chasing that
+# drift reports "flat" while the queue is 18x worse than it was. MQ_HEALTHY_SINCE /
+# MQ_HEALTHY_UNTIL pin a known-good period to compare against. Clear those repo vars
+# once the queue has recovered and the trailing 7d is trustworthy again.
+#
+# The digest always posts. There is no fire/don't-fire decision here and therefore no
+# threshold to miscalibrate — deltas are shown and the reader judges. The alerting
+# lives in merge-queue-health-alert.yml.
+name: Merge Queue Daily Report
+
+on:
+  schedule:
+    - cron: "20 7 * * *" 
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print to the job summary instead of posting to Slack.
+        type: boolean
+        default: true
+
+permissions:
+  # Naming any permission sets every other one to none, so each read this workflow
+  # performs has to be declared explicitly:
+  #   checks        — the failing-check join reads check runs on dequeued merge-group
+  #                   commits, same as merge-queue-dequeue-report.yml
+  #   pull-requests — the digest is rebuilt from PR search and timelineItems
+  #   contents      — checkout
+  checks: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: merge-queue-daily-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Summarise merge queue health
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # GITHUB_REPOSITORY is set for every event; github.event.repository is not
+      # populated on `schedule`, which is the only trigger that matters here.
+      BRANCH: ${{ vars.MQ_BRANCH || 'main' }}
+      SLACK_FILE: daily.json
+      SLACK_CHANNEL: ${{ vars.MQ_SLACK_CHANNEL }}
+      DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DAILY_DRY_RUN == 'true' }}
+      HEALTHY_SINCE: ${{ vars.MQ_HEALTHY_SINCE }}
+      HEALTHY_UNTIL: ${{ vars.MQ_HEALTHY_UNTIL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build the digest
+        id: report
+        run: |
+          python3 .github/scripts/merge_queue_daily_report.py \
+            --owner "${GITHUB_REPOSITORY%%/*}" \
+            --repo "${GITHUB_REPOSITORY#*/}" \
+            --branch "$BRANCH" \
+            --slack-file "$SLACK_FILE" \
+            --channel "$SLACK_CHANNEL" \
+            --healthy-since "$HEALTHY_SINCE" \
+            --healthy-until "$HEALTHY_UNTIL"
+
+      - name: "Post to Slack"
+        if: ${{ steps.report.outcome == 'success' && env.DRY_RUN != 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload-file-path: ${{ env.SLACK_FILE }}

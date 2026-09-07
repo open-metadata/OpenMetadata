@@ -37,6 +37,7 @@ public interface SearchClient
   String GLOBAL_SEARCH_ALIAS = "all";
   String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+  String RELATIONSHIP_TYPE_SEARCH_INDEX = "relationship_type_search_index";
   String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT =
@@ -52,7 +53,8 @@ public interface SearchClient
         }
       }
       """;
-  String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String REMOVE_DOMAINS_CHILDREN_SCRIPT =
+      "ctx._source.domains.removeIf(domain -> domain.id == params.id)";
 
   // Updates field if null or if inherited is true and the parent is the same (matched by previous
   // ID), setting inherited=true on the new object.

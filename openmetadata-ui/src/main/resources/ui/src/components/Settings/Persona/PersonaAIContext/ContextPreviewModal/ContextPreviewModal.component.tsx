@@ -99,6 +99,7 @@ const renderStatWithBoldNumbers = (stat: string): ReactNode =>
     STAT_NUMBER_TEST.test(part) ? (
       <strong
         className="tw:font-semibold tw:text-primary"
+        // eslint-disable-next-line react/no-array-index-key -- tokenized string parts, fixed order, may repeat
         key={`${part}-${index}`}>
         {part}
       </strong>
@@ -116,6 +117,48 @@ const hashString = (value: string): string => {
   }
 
   return (hash >>> 0).toString(36);
+};
+
+const foldPreambleIntoFirstSection = (sections: string[]): string[] => {
+  const startsWithHeading = /^#{1,2}\s+/.test(
+    sections[0]?.split('\n')[0] ?? ''
+  );
+  if (!startsWithHeading && sections.length > 1) {
+    const [preamble, ...rest] = sections;
+    rest[0] = `${preamble}\n${rest[0]}`;
+
+    return rest;
+  }
+
+  return sections;
+};
+
+// Split the body at each h1/h2 boundary so every heading section can be rendered
+// lazily and independently. Any pre-heading preamble is folded into the first
+// section to keep indices aligned 1:1 with `headings`.
+const splitMarkdownIntoSections = (bodyMarkdown: string): string[] => {
+  if (!bodyMarkdown) {
+    return [];
+  }
+  const result: string[] = [];
+  let current: string[] = [];
+  let insideFence = false;
+  for (const line of bodyMarkdown.split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      insideFence = !insideFence;
+    }
+    const isHeading = !insideFence && /^#{1,2}\s+/.test(line);
+    if (isHeading && current.length > 0) {
+      result.push(current.join('\n'));
+      current = [];
+    }
+    current.push(line);
+  }
+  if (current.length > 0) {
+    result.push(current.join('\n'));
+  }
+
+  return foldPreambleIntoFirstSection(result);
 };
 
 // Render each heading section only once it nears the viewport; a 400KB+ document
@@ -313,38 +356,9 @@ export const ContextPreviewModal = ({
     return result;
   }, [bodyMarkdown]);
 
-  // Split the body at each h1/h2 boundary so every heading section can be
-  // rendered lazily and independently. Any pre-heading preamble is folded into
-  // the first section to keep indices aligned 1:1 with `headings`.
+  // Derive a stable, unique id per section so React keeps section identity.
   const sections = useMemo(() => {
-    if (!bodyMarkdown) {
-      return [];
-    }
-    const result: string[] = [];
-    let current: string[] = [];
-    let insideFence = false;
-    for (const line of bodyMarkdown.split('\n')) {
-      if (/^\s*(```|~~~)/.test(line)) {
-        insideFence = !insideFence;
-      }
-      const isHeading = !insideFence && /^#{1,2}\s+/.test(line);
-      if (isHeading && current.length > 0) {
-        result.push(current.join('\n'));
-        current = [];
-      }
-      current.push(line);
-    }
-    if (current.length > 0) {
-      result.push(current.join('\n'));
-    }
-    const startsWithHeading = /^#{1,2}\s+/.test(
-      result[0]?.split('\n')[0] ?? ''
-    );
-    if (!startsWithHeading && result.length > 1) {
-      const [preamble, ...rest] = result;
-      rest[0] = `${preamble}\n${rest[0]}`;
-      result.splice(0, result.length, ...rest);
-    }
+    const result = splitMarkdownIntoSections(bodyMarkdown);
 
     const seen = new Map<string, number>();
 
@@ -457,6 +471,7 @@ export const ContextPreviewModal = ({
                 activeHeading === index,
                 heading.level > 1
               )}
+              // eslint-disable-next-line react/no-array-index-key -- heading position is the navigation identity
               key={`${heading.label}-${index}`}
               onClick={() => scrollToHeading(index)}>
               {heading.label}

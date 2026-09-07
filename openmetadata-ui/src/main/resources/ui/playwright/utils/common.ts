@@ -25,6 +25,7 @@ import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
@@ -39,6 +40,95 @@ let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
+
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ *
+ * A `Page` is accepted too, for the callers that have no narrower container to
+ * hand; {@link resolveDescriptionBox} is what makes that case safe.
+ */
+export const getDescriptionBox = (scope: Page | Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Resolve the description editor that an `edit-description` click just opened.
+ *
+ * Editing a description can mount the editor inline on the page or inside a
+ * modal, and on an entity page both can be present at once. `.first()` picks
+ * whichever comes first in the DOM — the inline editor *behind* the overlay. It
+ * is visible, so `toBeVisible()` passes, and the click then fails on
+ * "ant-modal-wrap ... intercepts pointer events" and retries until the test
+ * times out; the trace shows a 45s click on an editor nothing could reach.
+ *
+ * Prefers the editor inside the dialog whenever the edit opened one. Retrying
+ * covers the modal's enter animation, during which the dialog is not yet
+ * attached.
+ */
+export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: getDescriptionBox(page) });
+
+  let editor = getDescriptionBox(page);
+
+  await expect(async () => {
+    if (await descriptionDialog.count()) {
+      editor = getDescriptionBox(descriptionDialog);
+
+      // The one place a single-editor invariant actually holds. Two editors in
+      // one open dialog means the dialog selector matched something it should
+      // not have, which is worth failing on.
+      await expect(editor).toHaveCount(1);
+    } else {
+      // No dialog: a page legitimately hosts several editors at once — an entity
+      // description alongside per-column ones — so there is nothing to assert
+      // and nothing better to discriminate on. This is the long-standing
+      // behaviour, and it was never the bug: the bug was taking the first match
+      // *while a modal was open*, which the branch above now handles.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- a page may hold several description editors; with no dialog to scope to there is no better discriminator
+      editor = getDescriptionBox(page).first();
+    }
+
+    await expect(editor).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
+  return editor;
+};
+
+/**
+ * Fill the description editor for `scope`.
+ *
+ * An explicit `Locator` is a container the author chose — a form, a modal —
+ * where exactly one editor is a real invariant, so the count assertion from
+ * #32599 stands: failing here names the scope that needs narrowing rather than
+ * typing into an arbitrary editor.
+ *
+ * A `Page` means no container was chosen, and a page may legitimately hold
+ * several editors, so asserting there would fail on ordinary pages. Resolve
+ * instead — the dialog's editor when the edit opened one, first match otherwise.
+ */
+export const fillDescriptionBox = async (
+  scope: Page | Locator,
+  value: string
+) => {
+  if ('goto' in scope) {
+    await (await resolveDescriptionBox(scope)).fill(value);
+
+    return;
+  }
+
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
+};
 
 export const INVALID_NAMES = {
   MAX_LENGTH:
@@ -105,10 +195,46 @@ export const disableEtagConditionalReads = async (page: Page) => {
   }
 };
 
+const LOGGED_IN_USERS_KEY = 'loggedInUsers';
+
+/**
+ * Suppress the landing-page welcome banner at the source.
+ *
+ * MyDataPage renders the welcome banner only when the logged-in user's `name`
+ * is absent from the `loggedInUsers` localStorage list (see
+ * MyDataPage.component.tsx). Seeding that list with the user's name before the
+ * first navigation means the banner never renders for the session, so no test
+ * has to dismiss it. `userName` must equal the app's `currentUser.name` — for a
+ * created UserClass that is `responseData.name`; the email local-part is the
+ * server-assigned fallback for a pure login (e.g. admin).
+ */
+export const suppressWelcomeScreen = async (page: Page, userName: string) => {
+  const name = userName.includes('@') ? userName.split('@')[0] : userName;
+  const seed = ({ key, value }: { key: string; value: string }) => {
+    const existing = (localStorage.getItem(key) ?? '')
+      .split(',')
+      .filter(Boolean);
+    if (!existing.includes(value)) {
+      localStorage.setItem(key, [...existing, value].join(','));
+    }
+  };
+  const arg = { key: LOGGED_IN_USERS_KEY, value: name };
+
+  await page.addInitScript(seed, arg);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate(seed, arg);
+  }
+};
+
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  // Every spec funnels through here, including the ones that build their own
+  // page with browser.newPage() and so never touch the `context` fixture. This
+  // is the only hook that reaches all of them; the call is idempotent.
+  await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
@@ -126,29 +252,6 @@ export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
   await page.waitForURL('**/explore');
   await waitForAllLoadersToDisappear(page);
-};
-
-export const removeLandingBanner = async (page: Page) => {
-  try {
-    const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
-    await welcomePageCloseButton
-      .waitFor({
-        state: 'visible',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Do nothing if the welcome banner does not exist
-        return;
-      });
-
-    // Close the welcome banner if it exists
-    if (await welcomePageCloseButton.isVisible()) {
-      await welcomePageCloseButton.click();
-    }
-  } catch {
-    // Do nothing if the welcome banner does not exist
-    return;
-  }
 };
 
 type CreateNewPageResult = {
@@ -229,6 +332,7 @@ export async function createNewPage(
         ? adminStorageStateFile
         : undefined,
     });
+    await installServerLoadReducers(page.context());
     await redirectToHomePage(page);
   }
 
@@ -720,10 +824,13 @@ export const assignDataProduct = async (
     );
 
     await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
+      // Match any Data Product search response. The dropdown filters by the
+      // asset's domain only when the "Data Product Domain Validation" rule is
+      // enabled; when it is disabled the query carries no domain, so we cannot
+      // key the wait on the domain name. The tag visibility check below is the
+      // real synchronization guard.
+      const searchDataProduct = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
       await page.locator('[data-testid="data-product-selector"] input').clear();
       await page
@@ -1025,6 +1132,63 @@ export const verifyDomainPropagation = async (
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   await expect(entityCard).toBeVisible({ timeout: 30_000 });
   await expect(entityCard).toContainText(domain.displayName);
+};
+
+/**
+ * Wait for a hard-deleted entity to disappear from the search index.
+ *
+ * Search-index deletion is eventually consistent: a selection dropdown
+ * queried immediately after `DELETE /api/v1/...?hardDelete=true` can still
+ * return the deleted entity and fail a `not.toBeVisible()` assertion (the
+ * ExplorePageRightPanel deleted-entity flake family — run 32500973433).
+ * Gate on the search API no longer returning the entity before asserting
+ * its absence in the UI, mirroring how verifyDomainPropagation gates on
+ * presence.
+ */
+export const waitForDeletionFromSearchIndex = async (
+  apiContext: APIRequestContext,
+  searchTerm: string,
+  searchIndex: string,
+  matchNames: string[]
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            searchTerm
+          )}&index=${searchIndex}&from=0&size=10`
+        );
+
+        // This poll resolves on `false` ("entity gone"), the OPPOSITE
+        // polarity of verifyDomainPropagation — so a transient search error
+        // must read as "still present" (keep polling), never as an empty
+        // result set, or a single flaky 5xx would pass the gate against a
+        // stale index.
+        if (!response.ok()) {
+          return true;
+        }
+
+        const hits: {
+          _source?: {
+            name?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+          };
+        }[] = (await response.json())?.hits?.hits ?? [];
+
+        return hits.some((hit) =>
+          matchNames.some(
+            (name) =>
+              hit._source?.name === name ||
+              hit._source?.displayName === name ||
+              hit._source?.fullyQualifiedName === name
+          )
+        );
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000, 5_000] }
+    )
+    .toBe(false);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
@@ -1357,7 +1521,7 @@ export const waitForMetricsSearchResponse = (page: Page) =>
 export const testMetricsPaginationNavigation = async (page: Page) => {
   const page1ResponsePromise = waitForMetricsSearchResponse(page);
 
-  await page.goto('/metrics?pageSize=15');
+  await page.goto('/metrics?pageSize=15', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
@@ -1705,4 +1869,17 @@ export const testTableSearch = async (
       timeout: 5_000,
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+};
+
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 };

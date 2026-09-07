@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
@@ -18,15 +18,12 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  getApiContext,
-  redirectToHomePage,
-  removeLandingBanner,
-} from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAndVerifyWidget,
   removeAndVerifyWidget,
@@ -238,7 +235,6 @@ test.afterAll(
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 });
@@ -732,9 +728,8 @@ test('My Tasks Widget', async ({ page, persona, testUser }) => {
       entitySelector:
         '[data-testid="task-feed-card"] [data-testid="redirect-task-button-link"]',
       urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
-      apiResponseUrl: '/api/v1/feed',
-      searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
-      altApiResponseUrl: '/api/v1/tasks', // New Task API endpoint
+      apiResponseUrl: '/api/v1/tasks',
+      searchQuery: 'view=visible',
       emptyStateTestId: 'my-task-empty-state', // Custom empty state test ID for MyTaskWidget
     });
   });

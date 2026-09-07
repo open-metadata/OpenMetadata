@@ -17,7 +17,6 @@ from the LineageRunner to avoid duplicate parsing and improve performance.
 
 import time
 import traceback
-from typing import Optional
 
 from cachetools import LRUCache
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
@@ -40,7 +39,7 @@ SEQUENCE_FUNCTIONS = frozenset({"NEXTVAL", "CURRVAL", "SETVAL", "LASTVAL"})
 masked_query_cache = LRUCache(maxsize=128)
 
 
-def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: Optional[str] = None):  # noqa: C901, UP045
+def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: str | None = None):  # noqa: C901
     """
     Mask literals in a query using SqlParse.
     """
@@ -129,7 +128,7 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: O
     return query
 
 
-def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: Optional[str] = None) -> str:  # noqa: C901, UP045
+def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: str | None = None) -> str:  # noqa: C901
     """
     Mask literals in a query using SqlFluff.
     """
@@ -213,10 +212,10 @@ def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
 def mask_query(
     query: str,
     dialect: str = Dialect.ANSI.value,
-    parser: Optional[LineageRunner] = None,  # noqa: UP045
+    parser: LineageRunner | None = None,
     parser_required: bool = False,
-    query_hash: Optional[str] = None,  # noqa: UP045
-) -> Optional[str]:  # noqa: UP045
+    query_hash: str | None = None,
+) -> str | None:
     """Evaluate and return the best available parser for the query."""
     hash_prefix = f"[{query_hash}] " if query_hash else ""
 
@@ -233,10 +232,10 @@ def mask_query(
 def mask_query_impl(
     query: str,
     dialect: str = Dialect.ANSI.value,
-    parser: Optional[LineageRunner] = None,  # noqa: UP045
+    parser: LineageRunner | None = None,
     parser_required: bool = False,
-    query_hash: Optional[str] = None,  # noqa: UP045
-) -> Optional[str]:  # noqa: UP045
+    query_hash: str | None = None,
+) -> str | None:
     """
     Mask a query using SqlParse or SqlFluff.
     Only these two analyzers support literal masking (SqlGlot is excluded).

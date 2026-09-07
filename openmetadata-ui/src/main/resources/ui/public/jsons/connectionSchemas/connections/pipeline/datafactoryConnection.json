@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataFactoryConnection",
+  "description": "Azure Data Factory Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.DataFactoryConnection",
+  "definitions": {
+    "DataFactoryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "DataFactory"
+      ],
+      "default": "DataFactory"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "DataFactory",
+      "type": "string",
+      "enum": [
+        "DataFactory"
+      ]
+    },
+    "subscription_id": {
+      "title": "Subscription ID",
+      "description": "The azure subscription identifier.",
+      "type": "string"
+    },
+    "resource_group_name": {
+      "title": "Resource Group name",
+      "description": "The name of your resource group the data factory is associated with.",
+      "type": "string"
+    },
+    "factory_name": {
+      "title": "Azure Data Factory name",
+      "description": "The name of your azure data factory.",
+      "type": "string"
+    },
+    "run_filter_days": {
+      "title": "Azure Data Factory pipeline runs day filter",
+      "description": "Number of days in the past to filter pipeline runs.",
+      "type": "integer",
+      "default": 7
+    },
+    "configSource": {
+      "title": "Azure Data Factory Configuration",
+      "description": "Available sources to fetch metadata.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+      "properties": {
+        "clientId": {
+          "title": "Client ID",
+          "description": "Your Service Principal App ID (Client ID)",
+          "type": "string"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "Your Service Principal Password (Client Secret)",
+          "type": "string",
+          "format": "password"
+        },
+        "tenantId": {
+          "title": "Tenant ID",
+          "description": "Tenant ID of your Azure Subscription",
+          "type": "string"
+        },
+        "accountName": {
+          "title": "Storage Account Name",
+          "description": "Account Name of your storage account",
+          "type": "string"
+        },
+        "vaultName": {
+          "title": "Key Vault Name",
+          "description": "Key Vault Name",
+          "type": "string"
+        },
+        "scopes": {
+          "title": "Scopes",
+          "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "subscription_id",
+    "resource_group_name",
+    "factory_name"
+  ]
+}

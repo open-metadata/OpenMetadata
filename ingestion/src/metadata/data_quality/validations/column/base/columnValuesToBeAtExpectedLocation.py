@@ -16,8 +16,9 @@ import json
 import traceback
 from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Callable
 from importlib import resources
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union  # noqa: UP035
+from typing import Any, NamedTuple
 
 from shapely.geometry import MultiPolygon, Point, Polygon
 
@@ -55,7 +56,7 @@ class CountResult(NamedTuple):
 
 
 DimensionCountResult = defaultdict[str, CountResult]
-DimensionsCountResult = Dict[str, DimensionCountResult]  # noqa: UP006
+DimensionsCountResult = dict[str, DimensionCountResult]
 
 
 class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
@@ -66,7 +67,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
     LATITUDE_COL_NAME = "latitudeColumnName"
     LOCATION_REF_TYPE = "locationReferenceType"
 
-    def _calculate_counts(self, dimension_columns: Optional[List[str]] = None) -> DimensionsCountResult:  # noqa: UP006, UP045
+    def _calculate_counts(self, dimension_columns: list[str] | None = None) -> DimensionsCountResult:
         """Calculate location validation counts for dimensions.
 
         Treats non-dimensional as a special case with synthetic dimension.
@@ -162,8 +163,8 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
     def _format_result_message(
         self,
         counts: CountResult,
-        dimension_col: Optional[str] = None,  # noqa: UP045
-        dimension_value: Optional[str] = None,  # noqa: UP045
+        dimension_col: str | None = None,
+        dimension_value: str | None = None,
     ) -> str:
         """Format the result message for location validation.
 
@@ -186,7 +187,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             f"unknownLocation={counts.unknown_count} vs. expected 0 invalidLocation."
         )
 
-    def _get_test_result_values(self, counts: CountResult) -> List[TestResultValue]:  # noqa: UP006
+    def _get_test_result_values(self, counts: CountResult) -> list[TestResultValue]:
         """Get test result values from location counts.
 
         Args:
@@ -265,10 +266,10 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _fetch_data(self, columns: List[str]):  # noqa: UP006
+    def _fetch_data(self, columns: list[str]):
         raise NotImplementedError
 
-    def _get_shapes(self, radius: float, ref_type: str) -> List[Dict]:  # noqa: UP006
+    def _get_shapes(self, radius: float, ref_type: str) -> list[dict]:
         """Transform the json file into a list of shapes
 
         Args:
@@ -299,7 +300,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
 
         return sorted(shapes, key=lambda x: x["properties"][geojson_property])
 
-    def _search_location(self, shapes: List[Dict], ref: Any, ref_type: str) -> Optional[List]:  # noqa: UP006, UP045
+    def _search_location(self, shapes: list[dict], ref: Any, ref_type: str) -> list | None:
         """Search for the location in the shapes list
 
         Args:
@@ -348,7 +349,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             return self._search_location(shapes[:n], ref, ref_type)
         return self._search_location(shapes[n:], ref, ref_type)
 
-    def _get_geojson_value(self, shape: Dict, geojson_property: str):  # noqa: UP006
+    def _get_geojson_value(self, shape: dict, geojson_property: str):
         """Given a shape, return the geojson property value
 
         Args:
@@ -374,9 +375,9 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         ref: Any,
         ref_type: str,
         lat: float,
-        lon: Union[float, str],  # noqa: UP007
-        shapes: List[Dict],  # noqa: UP006
-    ) -> Optional[bool]:  # noqa: UP045
+        lon: float | str,
+        shapes: list[dict],
+    ) -> bool | None:
         """Validate the point is within the shapes
 
         Args:
@@ -410,7 +411,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
 
         return False
 
-    def _run_dimensional_validation(self) -> List[DimensionResult]:  # noqa: UP006
+    def _run_dimensional_validation(self) -> list[DimensionResult]:
         """Execute dimensional validation - all processing in Python
 
         Both SQLAlchemy and Pandas implementations just provide rows via _fetch_data().
@@ -457,7 +458,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         dimension_counts: dict,
         dimension_col_name: str,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Apply top N + Others aggregation and create DimensionResults
 
         Args:
@@ -505,7 +506,7 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         # Convert to DimensionResult objects
         return [self._create_dimension_result_from_data(data, dimension_col_name) for data in final_data]
 
-    def _aggregate_others_dimensions(self, others_dimensions: List[dict]) -> dict:  # noqa: UP006
+    def _aggregate_others_dimensions(self, others_dimensions: list[dict]) -> dict:
         """Aggregate multiple dimensions into "Others" bucket.
 
         Args:

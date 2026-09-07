@@ -24,6 +24,7 @@ from _openmetadata_testutils.factories.metadata.generated.schema.entity.classifi
 from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
     PatternFactory,
     PatternRecognizerFactory,
+    PredefinedRecognizerFactory,
     RecognizerFactory,
 )
 from metadata.generated.schema.entity.classification.classification import (
@@ -35,7 +36,10 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.piiEntity import PIIEntity
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import TagScorer
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
@@ -318,6 +322,40 @@ class TestTagAnalyzer:
         """Create a TagAnalyzer instance"""
         return TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
 
+    @pytest.fixture
+    def date_tag_analyzer(self, column: Column) -> TagAnalyzer:
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.DATE_TIME],
+            ),
+            target=Target.content,
+        )
+        date_tag = TagFactory.create(
+            tag_name="Date",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Date field",
+        )
+        return TagAnalyzer(
+            tag=date_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+    def test_analyze_content_rejects_epoch_timestamp_as_date(self, date_tag_analyzer: TagAnalyzer):
+        analysis = date_tag_analyzer.analyze(str_values=["1760000000123"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_preserves_textual_date(self, date_tag_analyzer: TagAnalyzer):
+        analysis = date_tag_analyzer.analyze(str_values=["2025-01-15"])
+
+        assert analysis.score > 0.0
+        assert [result.entity_type for result in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
     def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""
         values = ["john@example.com", "jane@test.org", "bob@company.co.uk"]
@@ -341,6 +379,21 @@ class TestTagAnalyzer:
             tag=email_tag,
             explanation=None,
         )
+
+    def test_analyze_content_minority_pii_not_diluted(self, tag_analyzer, email_tag: Tag):
+        """A single PII value among many non-PII rows must not be diluted below threshold.
+
+        Regression test for #32070: the old average-based aggregation divided the recogniser
+        score by the total number of sampled values (e.g. 0.9 / 50 = 0.018), silently
+        discarding minority PII.  The max-based approach returns the highest individual
+        recogniser score regardless of batch size.
+        """
+        non_pii = ["random text"] * 49
+        values = non_pii + ["john@example.com"]  # 1 PII hit in 50 values
+        analysis = tag_analyzer.analyze(str_values=values)
+        # Old average: 0.9 / 50 = 0.018 — below minimumConfidence → column silently untagged.
+        # Max-based: 0.9 — correctly flags the column.
+        assert analysis.score >= 0.8
 
     def test_analyze_column_name(self, email_tag, nlp_engine):
         """Test column name analysis fires independently via the unified analyze() method."""

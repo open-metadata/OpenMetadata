@@ -81,7 +81,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Input: jest
     .fn()
     .mockImplementation(({ placeholder, value, onChange }) => (
-      <input placeholder={placeholder} value={value} onChange={onChange} />
+      <input
+        aria-label="Search"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+      />
     )),
   Typography: jest
     .fn()
@@ -118,6 +123,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
+
+jest.mock('../../../utils/ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
+jest.mock('../../../components/common/atoms/TagChip/TagChip', () =>
+  jest.fn().mockImplementation(({ label, tagColor, icon, ...props }) => (
+    <span
+      data-color={tagColor}
+      data-icon={icon}
+      data-testid={props['data-testid'] ?? 'tag-chip'}>
+      {label}
+    </span>
+  ))
+);
 
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({

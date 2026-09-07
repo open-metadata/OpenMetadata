@@ -12,7 +12,7 @@
 """Class that allows running data quality checks by code"""
 # pyright: reportCallIssue=false, reportRedeclaration=false
 
-from typing import Any, List, Optional, cast  # noqa: UP035
+from typing import Any, cast
 
 import yaml
 from typing_extensions import Self
@@ -65,7 +65,7 @@ class TestRunner:
     def __init__(
         self,
         table_fqn: str,
-        client: Optional[OMeta[Any, Any]] = None,  # noqa: UP045
+        client: OMeta[Any, Any] | None = None,
     ) -> None:
         """Initialize TestRunner with table FQN and optional OpenMetadata client.
 
@@ -111,14 +111,14 @@ class TestRunner:
         )
 
     @property
-    def test_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
+    def test_definitions(self) -> list[TestCaseDefinition]:
         return self.config_builder.test_definitions
 
     @classmethod
     def for_table(
         cls,
         table_fqn: str,
-        client: Optional[OMeta[Any, Any]] = None,  # noqa: UP045
+        client: OMeta[Any, Any] | None = None,
     ) -> Self:
         """Initialize runner for a specific table FQN.
 
@@ -143,10 +143,10 @@ class TestRunner:
     def from_yaml(
         cls,
         *,
-        yaml_string: Optional[str] = None,  # noqa: UP045
-        file_path: Optional[str] = None,  # noqa: UP045
+        yaml_string: str | None = None,
+        file_path: str | None = None,
         use_connection_from_yaml: bool = False,
-        client: Optional[OMeta[Any, Any]] = None,  # noqa: UP045
+        client: OMeta[Any, Any] | None = None,
     ) -> Self:
         """Build TestRunner from a YAML workflow string."""
 
@@ -180,7 +180,7 @@ class TestRunner:
 
         runner = cls.for_table(source_config.entityFullyQualifiedName.root, client=client)
 
-        processor: Optional[TestSuiteProcessorConfig] = None  # noqa: UP045
+        processor: TestSuiteProcessorConfig | None = None
         if config.processor and config.processor.config:
             processor = TestSuiteProcessorConfig(**config.processor.config.model_dump())
 
@@ -233,7 +233,7 @@ class TestRunner:
         for test_definition in test_definitions:
             self.add_test(test_definition)
 
-    def run(self) -> List[TestCaseResultResponse]:  # noqa: UP006
+    def run(self) -> list[TestCaseResultResponse]:
         """Execute all added tests and return results.
 
         Returns:

@@ -159,11 +159,41 @@ public final class AIContextMarkdown {
     }
   }
 
+  /**
+   * Says which of three states an all-zero test line means. They are identical in the counts above
+   * and are opposite trust verdicts.
+   *
+   * <p>{@code total} is the discriminator and was ignored: gating only on passed+failed+aborted told
+   * an asset with a suite but no test cases - a normal state, since the suite is created first -
+   * that "no test has ever executed … treat quality here as unverified". This markdown is served
+   * over REST and read by an LLM, so a wrong verdict propagates into answers.
+   */
+  private static void appendCoverageVerdict(
+      StringBuilder markdown, DataQuality dataQuality, int executed) {
+    int total = orZero(dataQuality.getTotal());
+    if (total == 0) {
+      markdown.append(
+          "\n> No data-quality test is defined on this asset. Quality here is unmeasured - which is"
+              + " neither good nor bad, and is not the same as tests passing.\n");
+    } else if (executed == 0) {
+      markdown
+          .append("\n> None of the ")
+          .append(total)
+          .append(
+              " data-quality tests defined on this asset has ever executed. This is NOT the same as"
+                  + " passing: treat quality here as unverified.\n");
+    }
+  }
+
   private static void appendDataQuality(
       StringBuilder markdown, DataQuality dataQuality, String headingPrefix) {
     if (dataQuality != null) {
       appendHeading(markdown, headingPrefix, "Data Quality");
       markdown.append('\n');
+      int executed =
+          orZero(dataQuality.getPassed())
+              + orZero(dataQuality.getFailed())
+              + orZero(dataQuality.getAborted());
       markdown
           .append("Tests — passed: ")
           .append(orZero(dataQuality.getPassed()))
@@ -172,6 +202,7 @@ public final class AIContextMarkdown {
           .append(", aborted: ")
           .append(orZero(dataQuality.getAborted()))
           .append('\n');
+      appendCoverageVerdict(markdown, dataQuality, executed);
       if (dataQuality.getFailed() != null && dataQuality.getFailed() > 0) {
         markdown
             .append("\n> ")
