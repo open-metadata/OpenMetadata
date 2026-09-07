@@ -41,6 +41,16 @@ import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCel
 
 const TEAM_DRAG_TYPE = 'team-hierarchy-row';
 
+// A team may be dropped onto the root, or onto another team row ('on') to nest
+// under it. Extracted so getDropOperation's expression stays under the operator
+// cap.
+const isTeamDropTarget = (target: {
+  type: string;
+  dropPosition?: string;
+}): boolean =>
+  target.type === 'root' ||
+  (target.type === 'item' && target.dropPosition === 'on');
+
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
   currentTeam,
   data,
@@ -263,11 +273,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       handleTableHover(false);
     },
     getDropOperation: (target, types) =>
-      types.has(TEAM_DRAG_TYPE) &&
-      (target.type === 'root' ||
-        (target.type === 'item' && target.dropPosition === 'on'))
-        ? 'move'
-        : 'cancel',
+      types.has(TEAM_DRAG_TYPE) && isTeamDropTarget(target) ? 'move' : 'cancel',
     onItemDrop: (event) => {
       const dragRecord = draggedTeamRef.current;
       const targetRecord = teamByName.get(String(event.target.key));
