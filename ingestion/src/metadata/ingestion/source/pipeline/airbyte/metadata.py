@@ -333,17 +333,7 @@ class AirbyteSource(PipelineServiceSource):
         source_name = source_connection.sourceName
         destination_name = destination_connection.destinationName
 
-        streams = (
-            pipeline_details.connection.syncCatalog.streams
-            if pipeline_details.connection.syncCatalog and pipeline_details.connection.syncCatalog.streams
-            else []
-        )
-
-        for entry in streams:
-            stream = entry.stream
-            if not stream:
-                continue
-
+        for stream in pipeline_details.connection.resolved_streams:
             source_table_details = get_source_table_details(stream, source_connection)
             destination_table_details = get_destination_table_details(stream, destination_connection)
 

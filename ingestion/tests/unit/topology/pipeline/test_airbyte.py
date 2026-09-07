@@ -473,6 +473,45 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
     @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    def test_yield_pipeline_lineage_details_public_api_configurations_streams(self):
+        """End-to-end: a public-API connection carries streams under `configurations.streams`
+        (no `syncCatalog`). `resolved_streams` must surface them so the lineage loop runs and
+        emits an edge — the exact path that produced 0 lineage before #26993 (verified live).
+        """
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceType="postgres",
+            configuration={"database": "mock_source_db", "schema": "mock_source_schema"},
+        )
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="postgres",
+            configuration={"database": "mock_destination_db", "schema": "mock_destination_schema"},
+        )
+
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-connection-id",
+            sourceId="test-source-id",
+            destinationId="test-destination-id",
+            name="Test Connection",
+            configurations={"streams": [{"name": "mock_table_name", "namespace": "mock_source_schema"}]},
+        )
+        assert test_connection.syncCatalog is None  # public-API shape: streams live under configurations
+
+        test_pipeline_details = AirbytePipelineDetails(
+            workspace=AirbyteWorkspace(workspaceId="test-workspace-id"),
+            connection=test_connection,
+        )
+
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = mock_get_by_name
+            lineage_results = list(self.airbyte.yield_pipeline_lineage_details(test_pipeline_details))
+
+        assert len(lineage_results) == 1
+        lineage = lineage_results[0].right
+        assert lineage.edge.fromEntity.id == MOCK_POSTGRES_SOURCE_TABLE.id
+        assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
+        assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
     def test_yield_pipeline_lineage_details_snowflake_destination(self):
         """Snowflake destination lineage (issue #26993).
 
@@ -877,3 +916,62 @@ def test_get_destination_table_details_snowflake():
         ),
     )
     assert (td.schema, td.database) == ("SNOW_SCHEMA", "SNOW_DB")
+
+
+def test_resolved_streams_public_api_with_namespace():
+    """Public API delivers streams under `configurations.streams`, not `syncCatalog`.
+
+    Regression for #26993: `resolved_streams` must surface them (a database source's
+    public-API entries carry `namespace`, which must be preserved so source tables
+    resolve), otherwise the connector reads zero streams and produces no lineage.
+    """
+    conn = AirbyteConnectionModel.model_validate(
+        {
+            "connectionId": "cid",
+            "name": "sf-to-sf",
+            "sourceId": "s",
+            "destinationId": "d",
+            "configurations": {
+                "streams": [
+                    {"name": "CUSTOMERS", "namespace": "SRC", "syncMode": "full_refresh_overwrite"},
+                    {"name": "ORDERS", "namespace": "SRC"},
+                ]
+            },
+        }
+    )
+    assert conn.syncCatalog is None  # public API never populates syncCatalog
+    assert [(s.name, s.namespace) for s in conn.resolved_streams] == [("CUSTOMERS", "SRC"), ("ORDERS", "SRC")]
+
+
+def test_resolved_streams_public_api_without_namespace():
+    """Schemaless sources (e.g. pokeapi) omit `namespace` -> resolves to None, no error."""
+    conn = AirbyteConnectionModel.model_validate(
+        {"connectionId": "cid", "configurations": {"streams": [{"name": "pokemon"}]}}
+    )
+    assert [(s.name, s.namespace) for s in conn.resolved_streams] == [("pokemon", None)]
+
+
+def test_resolved_streams_prefers_internal_sync_catalog():
+    """Internal-API shape has `syncCatalog` (with namespace) -> used as-is over configurations."""
+    conn = AirbyteConnectionModel.model_validate(
+        {"connectionId": "cid", "syncCatalog": {"streams": [{"stream": {"name": "T", "namespace": "S"}}]}}
+    )
+    assert [(s.name, s.namespace) for s in conn.resolved_streams] == [("T", "S")]
+
+
+def test_resolved_streams_empty_when_no_streams():
+    """Every empty/None shape -> [] with no crash.
+
+    Preserves the old two-part guard (`syncCatalog and syncCatalog.streams`): a
+    present-but-empty `syncCatalog` must still yield [], not raise.
+    """
+    for data in (
+        {"connectionId": "cid"},
+        {"connectionId": "cid", "syncCatalog": None},
+        {"connectionId": "cid", "syncCatalog": {"streams": None}},
+        {"connectionId": "cid", "syncCatalog": {"streams": []}},
+        {"connectionId": "cid", "configurations": None},
+        {"connectionId": "cid", "configurations": {"streams": []}},
+        {"connectionId": "cid", "configurations": {"streams": [{"namespace": "X"}]}},  # entry w/o name
+    ):
+        assert AirbyteConnectionModel.model_validate(data).resolved_streams == [], data
