@@ -1222,6 +1222,53 @@ class TableauUnitTest(TestCase):
         assert columns[0].dataTypeDisplay == "DATE"
         assert columns[0].dataType == DataType.DATE
 
+    def test_non_ascii_column_collapses(self):
+        """
+        Stripping to `[0-9a-z]` normalized an all-CJK name to an empty string, which the mirror
+        guard reads as "no name" and never collapses. Unicode letters have to survive
+        normalization so a Japanese column collapses like an ASCII one.
+        """
+        data_source = DataSource(
+            id="ds-cjk-001",
+            name="売上データ",
+            fields=[
+                DatasourceField(
+                    id="fld-uriage",
+                    name="売上",
+                    upstreamColumns=[UpstreamColumn(id="col-uriage", name="売上", remoteType="NUMERIC")],
+                ),
+                DatasourceField(
+                    id="fld-kokyaku",
+                    name="顧客 名",
+                    upstreamColumns=[UpstreamColumn(id="col-kokyaku", name="顧客_名", remoteType="STRING")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert [column.children for column in columns] == [[], []]
+        assert [column.dataTypeDisplay for column in columns] == ["NUMERIC", "STRING"]
+
+    def test_non_ascii_differently_named_field_keeps_child(self):
+        """Unicode-aware normalization must still tell genuinely different CJK names apart."""
+        data_source = DataSource(
+            id="ds-cjk-002",
+            name="売上データ",
+            fields=[
+                DatasourceField(
+                    id="fld-uriage-daka",
+                    name="売上",
+                    upstreamColumns=[UpstreamColumn(id="col-uriage-daka", name="売上高", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns[0].children) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+
     def test_calculated_field_keeps_children(self):
         """A field fanning out to several columns keeps them all: they are not duplicates."""
         data_source = DataSource(

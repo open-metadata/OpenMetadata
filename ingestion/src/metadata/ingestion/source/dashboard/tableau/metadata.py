@@ -112,7 +112,10 @@ TABLEAU_TAG_CATEGORY = "TableauTags"
 TABLEAU_FIELD_TYPE_DISPLAY = "Tableau Field"
 # Tableau titles database column names when it builds fields (`order_date` becomes
 # `Order Date`), so separators and casing carry no meaning when comparing the two.
-NON_ALPHANUMERIC = re.compile(r"[^0-9a-z]")
+# `\w` is Unicode-aware, and `_` is listed explicitly because `\w` matches it: a name made
+# only of non-ASCII letters must normalize to itself rather than to an empty string, or a
+# CJK column would never collapse onto the field mirroring it.
+NON_ALPHANUMERIC = re.compile(r"[\W_]")
 
 
 def normalize_column_name(name: str) -> str:
