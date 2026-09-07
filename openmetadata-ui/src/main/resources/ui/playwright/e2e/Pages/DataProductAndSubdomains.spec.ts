@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -19,6 +18,7 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   runDrawerQuickFilterMatrix,
@@ -45,8 +45,6 @@ import { sidebarClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Product Comprehensive Tests', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -352,6 +350,7 @@ test.describe('Data Product Comprehensive Tests', () => {
   });
 
   test('Add assets to data product and verify count', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -481,8 +480,6 @@ test.describe('Data Product Comprehensive Tests', () => {
 });
 
 test.describe('Multiple Subdomains Tests', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -833,8 +830,6 @@ test.describe('Multiple Subdomains Tests', () => {
 });
 
 test.describe('Data Product Search and Filter', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -937,8 +932,6 @@ test.describe('Data Product Search and Filter', () => {
 });
 
 test.describe('Data Product Name in Entity Name Cell', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

@@ -36,6 +36,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.source.models import TableView
 from metadata.utils.db_utils import get_host_from_host_port, get_view_lineage
 
@@ -672,3 +673,72 @@ class TestDbUtils(TestCase):
                 lineage_request.to_entity_fqn,
                 self.table_entity.fullyQualifiedName.root,
             )
+
+
+class TestViewLineageExtension(TestCase):
+    """
+    A connector can contribute the edges its dialect expresses outside of the query the
+    parsers see, through `LineageSource.get_view_lineage_extension`.
+    """
+
+    def setUp(self):
+        """Set up test fixtures"""
+        search_cache.clear()
+
+        self.metadata = MagicMock()
+        self.view_entity = Table(
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root="test_view"),
+            fullyQualifiedName=FullyQualifiedEntityName(root="test_service.test_db.test_schema.test_view"),
+            serviceType=DatabaseServiceType.Mysql,
+            columns=[],
+        )
+        self.metadata.get_by_name = lambda *_, **__: self.view_entity
+        self.metadata.es_search_from_fqn = lambda *_, **__: []
+        self.view = TableView(
+            table_name="test_view",
+            schema_name="test_schema",
+            db_name="test_db",
+            view_definition="CREATE VIEW test_view AS SELECT * FROM source_table",
+        )
+        self.extra_edge = Either(
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn="test_service.test_db.test_schema.test_view",
+                from_entity_type="table",
+                to_entity_fqn="test_service.test_db.test_schema.target",
+                to_entity_type="table",
+            )
+        )
+
+    def _run(self, extension):
+        return list(
+            get_view_lineage(
+                view=self.view,
+                metadata=self.metadata,
+                service_names="test_service",
+                connection_type="mysql",
+                timeout_seconds=30,
+                parser_type=QueryParserType.Auto,
+                extension=extension,
+            )
+        )
+
+    def test_extension_edges_are_yielded(self):
+        """The extension is called with the view and its entity, and its edges come through"""
+        calls = []
+
+        def extension(**kwargs):
+            calls.append(kwargs)
+            yield self.extra_edge
+
+        results = self._run(extension)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["view"], self.view)
+        self.assertEqual(calls[0]["view_entity"], self.view_entity)
+        self.assertEqual(calls[0]["service_names"], ["test_service"])
+        self.assertIn(self.extra_edge, results)
+
+    def test_no_extension_yields_nothing_extra(self):
+        """Sources without an extension are unaffected"""
+        self.assertNotIn(self.extra_edge, self._run(None))
