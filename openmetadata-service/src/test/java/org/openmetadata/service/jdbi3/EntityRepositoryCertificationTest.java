@@ -257,7 +257,8 @@ class EntityRepositoryCertificationTest {
 
     invokeUpdateCertification(updater);
 
-    assertEquals(4000000000000L, updated.getCertification().getAppliedDate());
+    assertEquals(1700000000000L, updated.getCertification().getAppliedDate());
+    assertEquals(1731536000000L, updated.getCertification().getExpiryDate());
     verify(tagUsageDAO, never())
         .applyTag(
             anyInt(),

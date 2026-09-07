@@ -10064,6 +10064,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   updatedCertification.getTagLabel().getTagFQN());
       if (certificationTagUnchanged) {
         LOG.debug("Certification unchanged");
+        // Restore the stored (server-authoritative) certification, including its real
+        // appliedDate/expiryDate, so the request's arbitrary date fields are never persisted -
+        // this method only skips the re-apply/recordChange, not the eventual entity write.
+        updated.setCertification(origCertification);
         return;
       }
 
