@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   DOMAIN_TAGS,
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
 } from '../../constant/config';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -128,8 +129,6 @@ test.describe(
     test('should show the custom unit on the version that carries it', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Open the initial version', async () => {
         await openMetricVersion(page, initialVersion);
       });
@@ -154,8 +153,6 @@ test.describe(
     test('should show both sides of the diff on the version that changes the unit', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Open the version that changed the unit', async () => {
         await openMetricVersion(page, unitChangedVersion);
       });
