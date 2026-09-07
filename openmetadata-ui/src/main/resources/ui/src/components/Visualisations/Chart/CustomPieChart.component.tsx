@@ -25,6 +25,7 @@ const CustomPieChart = ({
   name,
   data,
   label,
+  minAngle = 3,
   showLegends = false,
   onSegmentClick,
 }: CustomPieChartProps) => {
@@ -75,6 +76,7 @@ const CustomPieChart = ({
           dataKey="value"
           endAngle={-270}
           innerRadius={60}
+          minAngle={minAngle}
           outerRadius={80}
           startAngle={90}
           onClick={

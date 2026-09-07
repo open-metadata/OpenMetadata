@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import fs from 'fs';
+import i18next from 'i18next';
+import path from 'path';
 import enUs from '../../../locale/languages/en-us.json';
 import { TEST_DEFINITION_FIELD_DOCS } from './testDefinitionFormDocs';
 
@@ -66,4 +69,135 @@ describe('TEST_DEFINITION_FIELD_DOCS', () => {
       expect(TEST_DEFINITION_FIELD_DOCS[field]).toBe(key);
     });
   });
+});
+
+// The sqlExpression help text is the only place a user learns the template
+// syntax, and `compile_sql_expression` on the ingestion side renders it with
+// Jinja2 under StrictUndefined. Jinja2 leaves single-brace `{table}` untouched
+// rather than erroring, so wrong copy here yields silently-unsubstituted SQL and
+// an opaque engine-side syntax error. See issue #30659.
+const SQL_HELP_KEY = 'test-definition-sql-query-help';
+const REQUIRED_PLACEHOLDERS = ['{{ table_name }}', '{{ column_name }}'];
+const FORBIDDEN_PLACEHOLDERS = ['{table}', '{column}'];
+const LOCALE_DIR = path.resolve(__dirname, '../../../locale/languages');
+
+const countOccurrences = (haystack: string, needle: string): number =>
+  haystack.split(needle).length - 1;
+
+const readSqlExpressionMarkdownSection = (): string => {
+  const markdown = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '../../../../public/locales/en-US/OpenMetadata/TestDefinitionForm.md'
+    ),
+    'utf-8'
+  );
+  const section = markdown
+    .split('$$section')
+    .find((block) => block.includes('$(id="sqlExpression")'));
+
+  return section ?? '';
+};
+
+describe('Test Definition SQL expression help copy', () => {
+  // Resolve through the real production i18next config rather than reading the
+  // raw JSON: i18next also owns `{{ }}`, so this proves the Jinja2 placeholders
+  // survive interpolation instead of being eaten as i18next variables.
+  const resolveSqlHelp = async (): Promise<string> => {
+    const instance = i18next.createInstance();
+    await instance.init({
+      lng: 'en-US',
+      resources: { 'en-US': { translation: enUs } },
+      interpolation: {
+        escapeValue: false,
+        defaultVariables: { brandName: 'OpenMetadata' },
+      },
+    });
+
+    return instance.t(`message.${SQL_HELP_KEY}`);
+  };
+
+  it('documents the Jinja2 placeholders the ingestion renderer actually substitutes', async () => {
+    const helpText = await resolveSqlHelp();
+
+    REQUIRED_PLACEHOLDERS.forEach((placeholder) => {
+      expect(helpText).toContain(placeholder);
+    });
+  });
+
+  it('does not document the single-brace placeholders, which are never substituted', async () => {
+    const helpText = await resolveSqlHelp();
+
+    FORBIDDEN_PLACEHOLDERS.forEach((placeholder) => {
+      expect(helpText).not.toContain(placeholder);
+    });
+  });
+
+  it('keeps the brand name interpolated so the copy is not literally "{{brandName}}"', async () => {
+    const helpText = await resolveSqlHelp();
+
+    expect(helpText).toContain('OpenMetadata');
+    expect(helpText).not.toContain('{{brandName}}');
+  });
+
+  it('documents the same Jinja2 placeholders in the form-hint markdown', () => {
+    const section = readSqlExpressionMarkdownSection();
+
+    expect(section).not.toHaveLength(0);
+
+    REQUIRED_PLACEHOLDERS.forEach((placeholder) => {
+      expect(section).toContain(placeholder);
+    });
+  });
+
+  it('mentions each single-brace placeholder only in the warning that it does not work', () => {
+    const section = readSqlExpressionMarkdownSection();
+
+    FORBIDDEN_PLACEHOLDERS.forEach((placeholder) => {
+      // Pinned by count rather than by stripping backticks: this file's own
+      // style puts every placeholder in backticks, so a backtick-stripping
+      // check would pass vacuously while a regression that re-documents
+      // `{table}` as a working placeholder sailed through.
+      expect(countOccurrences(section, placeholder)).toBe(1);
+
+      const mention = section
+        .split('\n')
+        .find((line) => line.includes(placeholder));
+
+      expect(mention).toMatch(/\*\*not\*\* substituted/);
+    });
+  });
+});
+
+// The corrected copy exists in 20 locale files. `yarn i18n` syncs keys, not
+// values, so nothing downstream will ever re-check these strings — a translator
+// "improving" a locale back to {table} would ship silently.
+describe('sqlExpression help copy across every locale', () => {
+  const localeFiles = fs
+    .readdirSync(LOCALE_DIR)
+    .filter((file) => file.endsWith('.json'));
+
+  it('discovers the locale catalogue so the per-locale checks are not vacuous', () => {
+    expect(localeFiles.length).toBeGreaterThan(1);
+  });
+
+  it.each(localeFiles)(
+    '%s documents the Jinja2 placeholders and no single-brace form',
+    (file) => {
+      const catalogue = JSON.parse(
+        fs.readFileSync(path.join(LOCALE_DIR, file), 'utf-8')
+      ) as { message?: Record<string, string> };
+      const helpText = catalogue.message?.[SQL_HELP_KEY];
+
+      expect(helpText).toBeDefined();
+
+      REQUIRED_PLACEHOLDERS.forEach((placeholder) => {
+        expect(helpText).toContain(placeholder);
+      });
+
+      FORBIDDEN_PLACEHOLDERS.forEach((placeholder) => {
+        expect(helpText).not.toContain(placeholder);
+      });
+    }
+  );
 });

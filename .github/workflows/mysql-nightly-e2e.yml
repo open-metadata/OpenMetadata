@@ -118,6 +118,9 @@ jobs:
           fi
 
         env:
+          # Release branches accumulate flakes faster than main; give each test
+          # two retries instead of the config default of one.
+          PLAYWRIGHT_RETRIES: "2"
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}

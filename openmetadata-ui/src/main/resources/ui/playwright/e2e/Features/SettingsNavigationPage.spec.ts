@@ -441,7 +441,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(treeItems.first()).toBeVisible();
 
     const testLibraryItem = treeItems.getByTitle('label.test-library');
-    const overviewItem = treeItems.getByTitle('label.overview');
+    const overviewItem = treeItems.getByTitle('label.overview').first();
     const dataMarketplaceItem = treeItems.getByTitle(
       'label.data-marketplace-section'
     );

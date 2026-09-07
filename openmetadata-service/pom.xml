@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>2.0.0</version>
+    <version>2.0.2</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -20,7 +20,7 @@
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.5.0-rc2</quartz.version>
-    <pac4j.version>5.7.10</pac4j.version>
+    <pac4j.version>6.5.6</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
@@ -29,7 +29,6 @@
     <logback-core.version>1.5.36</logback-core.version>
     <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
   </properties>
 
@@ -1356,6 +1355,14 @@
             <include>**/*Tests.java</include>
             <include>**/*TestCase.java</include>
           </includes>
+          <!--
+            Entity schema used only by SchemaFieldExtractorTest to prove that schema lookup follows
+            the directory layout. Kept out of src/test/resources so that it stays out of the
+            published test-jar and never registers as an entity type in dependent modules.
+          -->
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.basedir}/src/test/schema-probe</additionalClasspathElement>
+          </additionalClasspathElements>
         </configuration>
       </plugin>
     </plugins>

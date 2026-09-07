@@ -30,7 +30,7 @@ import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
@@ -151,6 +151,7 @@ export const DataAssetsHeader = ({
   onCertificationUpdate,
   onStyleUpdate,
   disableRunAgentsButtonMessage,
+  breadcrumbData,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -287,9 +288,10 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger>
-          <Link
-            to={{
+        <TooltipTrigger
+          aria-label={t('label.check-upstream-failure')}
+          onPress={() =>
+            navigate({
               pathname: getEntityDetailsPath(
                 entityType,
                 dataAsset?.fullyQualifiedName ?? '',
@@ -298,17 +300,17 @@ export const DataAssetsHeader = ({
               search: QueryString.stringify({
                 layers: [LineageLayer.DataObservability],
               }),
-            }}>
-            <RedAlertIcon
-              className="tw:text-fg-error-primary"
-              height={24}
-              width={24}
-            />
-          </Link>
+            })
+          }>
+          <RedAlertIcon
+            className="tw:text-fg-error-primary"
+            height={24}
+            width={24}
+          />
         </TooltipTrigger>
       </Tooltip>
     );
-  }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, t]);
+  }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
   const fetchActiveAnnouncement = async () => {
     try {
@@ -357,6 +359,34 @@ export const DataAssetsHeader = ({
       ),
     [entityType, dataAsset, entityName, parentContainers]
   );
+
+  const breadcrumbItems = useMemo(() => {
+    if (breadcrumbData?.length) {
+      return breadcrumbData.map((link, index) => ({
+        label: link.name,
+        href:
+          index < breadcrumbData.length - 1 && link.url
+            ? String(link.url)
+            : undefined,
+      }));
+    }
+
+    return [
+      ...(entityType === EntityType.METRIC ? [getGlossaryHomeCrumb(t)] : []),
+      ...breadcrumbs.map((link) => ({
+        label: link.name,
+        href: !isCustomizedView && link.url ? String(link.url) : undefined,
+      })),
+      { label: entityName },
+    ];
+  }, [
+    breadcrumbData,
+    breadcrumbs,
+    entityName,
+    entityType,
+    isCustomizedView,
+    t,
+  ]);
 
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
@@ -689,19 +719,7 @@ export const DataAssetsHeader = ({
               <HeaderBreadcrumb
                 autoCollapse
                 className="tw:mb-0"
-                items={[
-                  ...(entityType === EntityType.METRIC
-                    ? [getGlossaryHomeCrumb(t)]
-                    : []),
-                  ...breadcrumbs.map((link) => ({
-                    label: link.name,
-                    href:
-                      !isCustomizedView && link.url
-                        ? String(link.url)
-                        : undefined,
-                  })),
-                  { label: entityName },
-                ]}
+                items={breadcrumbItems}
                 showHome={false}
                 size="xs"
               />
@@ -881,6 +899,7 @@ export const DataAssetsHeader = ({
               allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
               buttonClassName="data-assets-header-manage-button"
               canDelete={permissions.Delete}
+              canRestore={permissions.EditAll}
               deleted={dataAsset.deleted}
               displayName={getEntityName(dataAsset)}
               editDisplayNamePermission={

@@ -252,11 +252,11 @@ class Histogram(HybridMetric):
         for df in dfs:
             if not frequencies.any():
                 frequencies = (
-                    pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                    pd.cut(df[self.col.name], bins, right=False).value_counts().to_numpy()
                 )  # right boundary is exclusive
                 continue
             frequencies += (
-                pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                pd.cut(df[self.col.name], bins, right=False).value_counts().to_numpy()
             )  # right boundary is exclusive
 
         if frequencies.size > 0:  # pyright: ignore[reportAttributeAccessIssue]

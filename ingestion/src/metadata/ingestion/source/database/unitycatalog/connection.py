@@ -64,6 +64,7 @@ from metadata.ingestion.connections.test_connections import SourceConnectionExce
 from metadata.ingestion.source.database.databricks.auth import (
     catalog_url,
     get_auth_config,
+    get_data_diff_connection_dict,
     normalize_host_port,
     probe_target,
 )
@@ -474,6 +475,10 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
 
     def _get_client(self) -> WorkspaceClient:
         return get_connection(self.service_connection)
+
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff."""
+        return get_data_diff_connection_dict(self.service_connection)
 
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner

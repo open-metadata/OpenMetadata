@@ -37,7 +37,8 @@
         "Foreign",
         "Transient",
         "Stream",
-        "Stage"
+        "Stage",
+        "SemanticView"
       ],
       "javaEnums": [
         {
@@ -78,6 +79,9 @@
         },
         {
           "name": "Stage"
+        },
+        {
+          "name": "SemanticView"
         }
       ]
     },

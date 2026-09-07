@@ -1003,8 +1003,40 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     domain1 = new Domain();
     domain2 = new Domain();
-    await domain1.create(apiContext);
-    await domain2.create(apiContext);
+
+    // When a test is retried on a new worker the beforeAll re-runs with the
+    // same domain objects (same UUID in data.name). If the first run already
+    // created them the POST returns 409; in that case fetch the existing entity
+    // so responseData is populated and the tests can proceed normally.
+    for (const domain of [domain1, domain2]) {
+      try {
+        await domain.create(apiContext);
+      } catch (err) {
+        if ((err as Error).message?.includes('409')) {
+          const encodedName = encodeURIComponent(
+            domain.data.fullyQualifiedName ?? domain.data.name
+          );
+          const res = await apiContext.get(
+            `/api/v1/domains/name/${encodedName}`
+          );
+          if (res.ok()) {
+            domain.responseData = await res.json();
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup domains', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain1.delete(apiContext).catch(() => {});
+    await domain2.delete(apiContext).catch(() => {});
     await afterAction();
   });
 

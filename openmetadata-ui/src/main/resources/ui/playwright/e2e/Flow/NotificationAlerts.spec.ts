@@ -434,12 +434,6 @@ test('Alert operations for a user with and without permissions', async ({
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
-  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
-  test.fixme(
-    process.env.PLAYWRIGHT_IS_OSS !== 'true',
-    'Skipping in AUT environment'
-  );
-
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
@@ -566,6 +560,9 @@ test('destination should work properly', async ({ page }) => {
 
     for (const testResult of testResults) {
       const isGChat = testResult.type === 'GChat';
+
+      // Destination configs carry credentials and must not be echoed back
+      expect(testResult.config).toBeUndefined();
 
       await test
         .expect(

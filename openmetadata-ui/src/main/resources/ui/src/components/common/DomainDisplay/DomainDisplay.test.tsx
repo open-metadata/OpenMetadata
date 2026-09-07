@@ -12,6 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
+import { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainDisplay } from './DomainDisplay.component';
@@ -53,7 +54,7 @@ const mockDomain3: EntityReference = {
   type: 'domain',
 };
 
-const renderDomainDisplay = (props: any) =>
+const renderDomainDisplay = (props: ComponentProps<typeof DomainDisplay>) =>
   render(
     <MemoryRouter>
       <DomainDisplay {...props} />
@@ -112,8 +113,11 @@ describe('DomainDisplay Component', () => {
     });
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
-    expect(screen.getByText('+2')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-count-button')).toHaveClass(
+      'flex-shrink-0'
+    );
+    expect(screen.getByText('+2')).toHaveClass('domain-count-label');
+    expect(screen.getByText('+2')).not.toHaveClass('ant-typography');
     expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
     expect(screen.queryByText('Domain Three')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('domain-icon')).toHaveLength(1);

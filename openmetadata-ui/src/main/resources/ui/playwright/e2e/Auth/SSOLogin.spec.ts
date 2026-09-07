@@ -12,16 +12,13 @@
  */
 import { BrowserContext, expect, Page, test } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
-import { performAdminLogin } from '../../utils/admin';
-import { getAuthContext, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
-  SecurityConfigSnapshot,
+  swapSecurityConfig,
   verifyLoggedInUserMatches,
 } from '../../utils/ssoAuth';
+import { SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -38,8 +35,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   test.describe.configure({ mode: 'serial' });
 
   let helper: ProviderHelper;
-  let adminJwt: string | undefined;
-  let originalSecurityConfig: SecurityConfigSnapshot | undefined;
+  let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
@@ -47,30 +43,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     'Swap OpenMetadata server to target SSO provider',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
-      const { apiContext, afterAction, token } = await performAdminLogin(
-        browser
+      restoreSecurity = await swapSecurityConfig(
+        browser,
+        await helper.buildConfigPayload()
       );
-
-      try {
-        adminJwt = token;
-
-        if (!adminJwt) {
-          throw new Error(
-            'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
-          );
-        }
-
-        originalSecurityConfig = await fetchSecurityConfig(apiContext);
-        const providerConfig = await helper.buildConfigPayload();
-
-        await applyProviderConfig(
-          apiContext,
-          originalSecurityConfig,
-          providerConfig
-        );
-      } finally {
-        await afterAction();
-      }
 
       userContext = await browser.newContext();
       userPage = await userContext.newPage();
@@ -78,20 +54,12 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   );
 
   test.afterAll('Restore original security configuration', async () => {
+    test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
     await userPage?.close();
     await userContext?.close();
 
-    if (!adminJwt || !originalSecurityConfig) {
-      return;
-    }
-
-    const adminContext = await getAuthContext(adminJwt);
-
-    try {
-      await restoreSecurityConfig(adminContext, originalSecurityConfig);
-    } finally {
-      await adminContext.dispose();
-    }
+    await restoreSecurity?.();
   });
 
   test('should display SSO sign-in button on /signin', async ({ page }) => {
@@ -117,6 +85,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
       await expect(signInButton).toBeVisible();
       await signInButton.click();
       await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+
+      // #29597 regression guard: the front-channel authorize request must carry
+      // the server-configured response_type, not oidc-client's 'id_token' default.
+      if (helper.expectedResponseType) {
+        const responseType = new URL(page.url()).searchParams.get(
+          'response_type'
+        );
+
+        expect(responseType).toBe(helper.expectedResponseType);
+      }
     });
 
     await test.step('Authenticate at the identity provider', async () => {
@@ -126,7 +104,9 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await test.step('Return to OpenMetadata and complete self-signup if needed', async () => {
       await page.waitForURL(
         (url) =>
-          url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
+          url.pathname.endsWith('/signup') ||
+          url.pathname.endsWith('/my-data') ||
+          url.pathname === '/',
         { timeout: 60_000 }
       );
 
@@ -135,7 +115,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
         await expect(createButton).toBeEnabled();
         await createButton.click();
-        await page.waitForURL('**/my-data', { timeout: 60_000 });
+        await page.waitForURL(
+          (url) => url.pathname === '/' || url.pathname === '/my-data',
+          { timeout: 60_000 }
+        );
       }
 
       await redirectToHomePage(page);
@@ -150,7 +133,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     const page = userPage!;
 
     await page.reload();
-    await page.waitForURL('**/my-data', { timeout: 30_000 });
+    await page.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { timeout: 30_000 }
+    );
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     await verifyLoggedInUserMatches(page, username);
   });
@@ -160,7 +146,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
     try {
       await extraPage.goto('/');
-      await extraPage.waitForURL('**/my-data', { timeout: 30_000 });
+      await extraPage.waitForURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data',
+        { timeout: 30_000 }
+      );
       await expect(extraPage.getByTestId('dropdown-profile')).toBeVisible();
       await verifyLoggedInUserMatches(extraPage, username);
     } finally {

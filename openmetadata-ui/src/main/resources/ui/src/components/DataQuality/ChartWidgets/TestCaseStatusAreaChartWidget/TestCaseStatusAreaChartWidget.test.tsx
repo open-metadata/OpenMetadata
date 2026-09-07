@@ -132,6 +132,27 @@ describe('TestCaseStatusAreaChartWidget', () => {
     expect(screen.getByTestId('custom-area-chart')).toBeInTheDocument();
   });
 
+  it('should sort metrics by timestamp before selecting the latest value', async () => {
+    mockFetchTestCaseStatusMetricsByDays.mockResolvedValue({
+      ...mockChartData,
+      data: [...mockChartData.data].reverse(),
+    });
+
+    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('total-value')).toHaveTextContent('15');
+    });
+
+    expect(screen.getByTestId('chart-data')).toHaveTextContent(
+      JSON.stringify([
+        { timestamp: 1625097600000, count: 5 },
+        { timestamp: 1625184000000, count: 10 },
+        { timestamp: 1625270400000, count: 15 },
+      ])
+    );
+  });
+
   it('should show loading state initially', () => {
     render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 

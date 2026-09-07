@@ -574,6 +574,83 @@ class TestAirflow(TestCase):
         mock_session_instance.query.assert_called()
         self.assertEqual(result, mock_query_result)
 
+    @staticmethod
+    def _configure_paginated_session(mock_session, all_side_effect):
+        """
+        Configure a create_and_bind_session mock as a self-returning query
+        chain whose paginated .all() is driven by all_side_effect (a list of
+        per-page results, or an Exception to raise on fetch).
+        """
+        session_instance = mock_session.return_value
+        query = session_instance.query.return_value
+        for method in (
+            "join",
+            "select_from",
+            "filter",
+            "group_by",
+            "subquery",
+            "order_by",
+            "limit",
+            "offset",
+        ):
+            getattr(query, method).return_value = query
+        query.scalar.return_value = False
+        query.all.side_effect = all_side_effect
+        return session_instance
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
+    def test_get_pipelines_list_records_page_fetch_failure(
+        self,
+        mock_session,
+        mock_dag_model,  # pylint: disable=unused-argument
+        mock_serialized_dag_model,  # pylint: disable=unused-argument
+    ):
+        """
+        A DB error while fetching a DAG page is recorded in the run summary
+        and stops production without crashing (P1-3).
+        """
+        self.airflow._session = None
+        self.airflow.source_config.includeUnDeployedPipelines = True
+        self.airflow.status.failures.clear()
+        self._configure_paginated_session(mock_session, Exception("db down"))
+
+        result = list(self.airflow.get_pipelines_list())
+
+        self.assertEqual(result, [])
+        self.assertEqual(len(self.airflow.status.failures), 1)
+        self.assertEqual(self.airflow.status.failures[0].name, "Airflow DAG Pagination")
+        self.assertIn("offset 0", self.airflow.status.failures[0].error)
+        self.assertFalse(self.airflow._dag_listing_complete)
+        self.assertEqual(list(self.airflow.mark_pipelines_as_deleted()), [])
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
+    def test_get_pipelines_list_records_malformed_dag(
+        self,
+        mock_session,
+        mock_dag_model,  # pylint: disable=unused-argument
+        mock_serialized_dag_model,  # pylint: disable=unused-argument
+    ):
+        """
+        A malformed DAG is recorded as a failure while valid DAGs are still
+        yielded (P1-1).
+        """
+        good_row = ("good_dag", SERIALIZED_DAG, "loc", None)
+        bad_row = ("bad_dag", "not-a-dict", "loc", None)
+        self.airflow._session = None
+        self.airflow.source_config.includeUnDeployedPipelines = True
+        self.airflow.status.failures.clear()
+        self._configure_paginated_session(mock_session, [[good_row, bad_row], []])
+
+        result = list(self.airflow.get_pipelines_list())
+
+        self.assertEqual([dag.dag_id for dag in result], ["good_dag"])
+        self.assertEqual(len(self.airflow.status.failures), 1)
+        self.assertEqual(self.airflow.status.failures[0].name, "bad_dag")
+
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
@@ -848,6 +925,33 @@ class TestAirflow(TestCase):
             assert "_flt_3_dag_id=" in url
             assert "_flt_3_task_id=" in url
             assert "flt1_dag_id_equals" not in url
+
+    def test_task_description_uses_doc_fallback(self):
+        """Tasks documented via doc/doc_yaml (not doc_md) still get a description (P1-14)."""
+        self.airflow._is_remote_airflow_3 = False
+        dag = AirflowDagDetails(
+            dag_id="d",
+            fileloc="/d.py",
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
+            tasks=[
+                AirflowTask(task_id="plain", doc="PLAIN DOC"),
+                AirflowTask(task_id="yml", doc_yaml="k: v"),
+                AirflowTask(task_id="md", doc_md="# MD"),
+                AirflowTask(task_id="empty"),
+            ],
+            schedule_interval=None,
+            owner=None,
+        )
+
+        def description_of(task):
+            return task.description.root if task.description else None
+
+        by_name = {str(task.name): task for task in self.airflow.get_tasks_from_dag(dag, "http://localhost:8080")}
+
+        assert description_of(by_name["plain"]) == "PLAIN DOC"
+        assert description_of(by_name["yml"]) == "k: v"
+        assert description_of(by_name["md"]) == "# MD"
+        assert by_name["empty"].description is None
 
     def test_task_source_url_with_special_characters(self):
         """Test URL encoding for DAG and task IDs with special characters (Airflow 2.x)"""

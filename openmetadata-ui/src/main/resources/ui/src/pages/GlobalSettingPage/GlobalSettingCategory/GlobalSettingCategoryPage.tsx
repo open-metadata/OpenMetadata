@@ -27,11 +27,10 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
-import { ServiceCategory } from '../../../enums/service.enum';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TeamType } from '../../../generated/entity/teams/team';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useAuth } from '../../../hooks/authHooks';
@@ -41,13 +40,12 @@ import {
   getSettingPageEntityBreadCrumb,
   SettingMenuItem,
 } from '../../../utils/GlobalSettingsUtils';
-import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingPath,
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
-import { getResourceEntityFromServiceCategory } from '../../../utils/ServicePureUtils';
+import { canCreateAnyServiceCategory } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import '../global-setting-page.style.less';
 
@@ -63,11 +61,11 @@ const GlobalSettingCategoryPage = () => {
 
   const { pathname } = useLocation();
   const isEmbedded = pathname.startsWith('/askCollate');
+  // This landing page spans every service category, so the wizard opens on the `all` sentinel:
+  // every category's connectors in one grid, none pre-selected.
   const handleAddServiceClick = () => {
     navigate(
-      connectionsRouterClassBase.getAddServicePath(
-        ServiceCategory.DATABASE_SERVICES
-      )
+      connectionsRouterClassBase.getAddServicePath(ALL_SERVICES_CATEGORY)
     );
   };
 
@@ -111,14 +109,10 @@ const GlobalSettingCategoryPage = () => {
     return categoryItem;
   }, [settingCategory, permissions, isAdminUser]);
 
+  // Being able to create any one category is enough for this page's button — checking a single
+  // hardcoded category would hide it from a user who can only create, say, API services.
   const addServicePermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(
-        Operation.Create,
-        getResourceEntityFromServiceCategory(ServiceCategory.DATABASE_SERVICES),
-        permissions
-      ),
+    () => !isEmpty(permissions) && canCreateAnyServiceCategory(permissions),
     [permissions]
   );
 

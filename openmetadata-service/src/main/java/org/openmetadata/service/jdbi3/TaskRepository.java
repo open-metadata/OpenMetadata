@@ -43,6 +43,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -365,10 +366,15 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
+    // Duplicate check re-runs on PATCH/PUT so an existing task can't be repointed at an entity
+    // that already has an active DAR (H6). Expiry future-check stays create-only: a task that
+    // sat in Open past its own deadline (H7 gray-zone) must still be editable by its filer up
+    // until close; the JSON-schema bound on expirationDate plus the "payload frozen after Open"
+    // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
     if (!update) {
       TaskFieldValidator.validateDataAccessRequestExpiry(task);
-      validateNoDuplicateActiveDataAccessRequest(task);
     }
+    validateNoDuplicateActiveDataAccessRequest(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -404,7 +410,11 @@ public class TaskRepository extends EntityRepository<Task> {
     if (isDuplicateDataAccessRequestCheckable(task)) {
       String entityFqn = task.getAbout().getFullyQualifiedName();
       Task existing = findActiveDataAccessRequestByCreator(entityFqn, task.getCreatedBy().getId());
-      if (existing != null) {
+      // Exclude the task's own row so re-running the check on PATCH/PUT (needed to catch H6:
+      // repointing task B's `about` at task A's entity) doesn't fire on the task's own record.
+      boolean collides =
+          existing != null && (task.getId() == null || !existing.getId().equals(task.getId()));
+      if (collides) {
         throw new IllegalArgumentException(
             String.format(
                 "An active data access request (%s) already exists for '%s'. "
@@ -1766,8 +1776,39 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     private void updatePayload() {
+      // Report M7 (past date on PATCH) + Copilot follow-up (10-year horizon cap on PATCH):
+      // create-time validation rejects both a past expirationDate and one beyond the ten-year
+      // horizon, but the update path used to accept either. If the field actually changes,
+      // re-run the same create-time check so the same 400 fires whether the caller lands the
+      // bad value on POST or on PATCH. Skip when expirationDate is untouched so unrelated
+      // payload edits (columns, reason) on an already-expired-but-still-Open task remain
+      // possible.
+      if (updated.getType() == TaskEntityType.DataAccessRequest) {
+        Long previousExpiry = readExpirationDate(original.getPayload());
+        Long nextExpiry = readExpirationDate(updated.getPayload());
+        if (!Objects.equals(previousExpiry, nextExpiry)) {
+          TaskFieldValidator.validateDataAccessRequestExpiry(updated);
+        }
+      }
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
+    }
+
+    private Long readExpirationDate(Object payload) {
+      Long expirationDate = null;
+      if (payload != null) {
+        try {
+          DataAccessRequestPayload typed =
+              JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+          expirationDate = typed == null ? null : typed.getExpirationDate();
+        } catch (IllegalArgumentException malformed) {
+          // Malformed payload is separately caught at the API boundary by
+          // TaskFieldValidator.readDataAccessPayload; here we just refuse to compare instead
+          // of surfacing the parse failure twice.
+          expirationDate = null;
+        }
+      }
+      return expirationDate;
     }
 
     private void updateResolution() {

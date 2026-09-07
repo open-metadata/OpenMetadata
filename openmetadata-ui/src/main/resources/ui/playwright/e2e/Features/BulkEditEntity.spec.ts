@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -31,7 +31,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
   createColumnRowDetails,
-  createCustomPropertiesForEntity,
+  createCustomPropertiesForEntityViaApi,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
   createGlossaryTermRowDetails,
@@ -63,6 +63,17 @@ let glossary: Glossary;
 let glossaryTerm: GlossaryTerm;
 let domain1: Domain;
 let domain2: Domain;
+
+let databaseCustomProperties: Record<string, string> = {};
+let databaseSchemaCustomProperties: Record<string, string> = {};
+let tableCustomProperties: Record<string, string> = {};
+let glossaryTermCustomProperties: Record<string, string> = {};
+
+type CustomPropertyCleanupFn = (apiContext: APIRequestContext) => Promise<void>;
+let databaseCustomPropertiesCleanup: CustomPropertyCleanupFn;
+let databaseSchemaCustomPropertiesCleanup: CustomPropertyCleanupFn;
+let tableCustomPropertiesCleanup: CustomPropertyCleanupFn;
+let glossaryTermCustomPropertiesCleanup: CustomPropertyCleanupFn;
 
 let glossaryDetails: GlossaryDetails;
 let databaseSchemaDetails1: ReturnType<
@@ -111,6 +122,39 @@ test.describe('Bulk Edit Entity', () => {
     await domain1.create(apiContext);
     await domain2.create(apiContext);
 
+    const [
+      databaseResult,
+      databaseSchemaResult,
+      tableResult,
+      glossaryTermResult,
+    ] = await Promise.all([
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.Database
+      ),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.DatabaseSchema
+      ),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.Table
+      ),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.GlossaryTerm
+      ),
+    ]);
+
+    databaseCustomProperties = databaseResult.propertyListName;
+    databaseCustomPropertiesCleanup = databaseResult.cleanup;
+    databaseSchemaCustomProperties = databaseSchemaResult.propertyListName;
+    databaseSchemaCustomPropertiesCleanup = databaseSchemaResult.cleanup;
+    tableCustomProperties = tableResult.propertyListName;
+    tableCustomPropertiesCleanup = tableResult.cleanup;
+    glossaryTermCustomProperties = glossaryTermResult.propertyListName;
+    glossaryTermCustomPropertiesCleanup = glossaryTermResult.cleanup;
+
     await afterAction();
   });
 
@@ -118,21 +162,24 @@ test.describe('Bulk Edit Entity', () => {
     await redirectToHomePage(page);
   });
 
+  test.afterAll('cleanup custom properties', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await Promise.all([
+      databaseCustomPropertiesCleanup?.(apiContext),
+      databaseSchemaCustomPropertiesCleanup?.(apiContext),
+      tableCustomPropertiesCleanup?.(apiContext),
+      glossaryTermCustomPropertiesCleanup?.(apiContext),
+    ]);
+    await afterAction();
+  });
+
   test('Database service', async ({ page }) => {
     test.slow(true);
 
     const table = new TableClass();
-    let customPropertyRecord: Record<string, string> = {};
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASES
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       const databaseDetails = {
@@ -183,7 +230,7 @@ test.describe('Bulk Edit Entity', () => {
           sourceUrl: undefined,
         },
         page,
-        customPropertyRecord,
+        databaseCustomProperties,
         true,
         true
       );
@@ -266,18 +313,10 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-    let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity Page
@@ -328,7 +367,7 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord,
+        databaseSchemaCustomProperties,
         undefined,
         true
       );
@@ -423,18 +462,10 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-    let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.TABLES
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity page
@@ -489,7 +520,7 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord,
+        tableCustomProperties,
         true,
         true
       );
@@ -684,8 +715,6 @@ test.describe('Bulk Edit Entity', () => {
   test('Glossary', async ({ page }) => {
     test.slow();
 
-    let customPropertyRecord: Record<string, string> = {};
-
     const additionalGlossaryTerm = createGlossaryTermRowDetails();
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
@@ -705,13 +734,6 @@ test.describe('Bulk Edit Entity', () => {
       glossaryTerm.responseData.fullyQualifiedName,
       'glossary_term_search_index'
     );
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.GLOSSARY_TERM
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       await glossary.visitEntityPage(page);
@@ -743,7 +765,7 @@ test.describe('Bulk Edit Entity', () => {
           },
         },
         page,
-        customPropertyRecord,
+        glossaryTermCustomProperties,
         true
       );
 
@@ -810,7 +832,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="custom_properties"]');
       await waitForAllLoadersToDisappear(page);
 
-      for (const propertyName of Object.values(customPropertyRecord)) {
+      for (const propertyName of Object.values(glossaryTermCustomProperties)) {
         await expect(page.getByText(propertyName)).toBeVisible();
       }
     });
@@ -821,8 +843,6 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Glossary Term (Nested)', async ({ page }) => {
     test.slow();
-
-    let customPropertyRecord: Record<string, string> = {};
 
     const additionalNestedGlossaryTerm = createGlossaryTermRowDetails();
     const glossary = new Glossary();
@@ -847,13 +867,6 @@ test.describe('Bulk Edit Entity', () => {
       nestedGlossaryTerm.responseData.fullyQualifiedName,
       'glossary_term_search_index'
     );
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.GLOSSARY_TERM
-      );
-    });
 
     await test.step('Perform bulk edit action on nested glossary term', async () => {
       // Navigate to the parent glossary term page
@@ -906,7 +919,7 @@ test.describe('Bulk Edit Entity', () => {
           },
         },
         page,
-        customPropertyRecord,
+        glossaryTermCustomProperties,
         true
       );
 
@@ -962,7 +975,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="custom_properties"]');
       await waitForAllLoadersToDisappear(page);
 
-      for (const propertyName of Object.values(customPropertyRecord)) {
+      for (const propertyName of Object.values(glossaryTermCustomProperties)) {
         await expect(page.getByText(propertyName)).toBeVisible();
       }
     });

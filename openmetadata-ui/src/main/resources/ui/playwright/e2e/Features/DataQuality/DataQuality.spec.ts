@@ -26,26 +26,34 @@ import { performAdminLogin } from '../../../utils/admin';
 import {
   assignSingleSelectDomain,
   clickOutside,
+  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../../utils/common';
 import {
   dismissTagSuggestions,
   ObservabilityFeature,
   selectAddObservabilityFeature,
   selectTestType,
+  waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
-import { getCurrentMillis } from '../../../utils/dateTime';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+} from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
   submitTestCaseForm,
   verifyIncidentBreadcrumbsFromTablePageRedirect,
+  verifyTestCaseLastRunBanner,
   visitDataQualityTab,
+  waitForTestCaseDetailsResponse,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -312,10 +320,9 @@ test.describe(
 
         await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
-        await toastNotification(page, 'Test case updated successfully.');
-        await page.getByTestId('alert-bar').waitFor({
-          state: 'detached',
-        });
+        const updateSuccessMessage = 'Test case updated successfully.';
+        await toastNotification(page, updateSuccessMessage);
+        await waitForToastToDisappear(page, updateSuccessMessage);
 
         await page
           .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
@@ -740,6 +747,222 @@ test.describe(
       });
     });
 
+    test('shows exactly one banner for the latest test case run', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const lastRunTable = new TableClass();
+
+      try {
+        await lastRunTable.create(apiContext);
+        const testCase = await lastRunTable.createTestCase(apiContext, {
+          name: `last_run_banner_${uuid()}`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 1 },
+            { name: 'maxValue', value: 100 },
+          ],
+        });
+        const testCaseFqn = testCase['fullyQualifiedName'];
+        const testCaseDetailsPath = `/test-case/${encodeURIComponent(
+          testCaseFqn
+        )}/test-case-results`;
+        const banners = page.locator(
+          '[data-testid^="test-case-last-run-banner-"][role="status"]'
+        );
+        const waitForTestCaseDetails = () =>
+          page.waitForResponse((response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/name/')
+          );
+
+        await test.step('Show the no-run state before the first result', async () => {
+          const testCaseDetailsResponse = waitForTestCaseDetails();
+          await page.goto(testCaseDetailsPath);
+          await testCaseDetailsResponse;
+
+          const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
+
+          await expect(banners).toHaveCount(1);
+          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText(
+            'This test has not run yet. Add it to a pipeline to start collecting results.'
+          );
+          await expect(banner.getByTestId('test-case-next-run')).toHaveText(
+            /^Next · Not scheduled$/i
+          );
+        });
+
+        const runResults = [
+          {
+            bannerStatus: 'failed' as const,
+            result: 'Latest banner failed result',
+            testCaseStatus: 'Failed',
+            testResultValue: [],
+            timestamp: getCurrentMillis(),
+          },
+          {
+            bannerStatus: 'success' as const,
+            result: 'Latest banner success result',
+            testCaseStatus: 'Success',
+            testResultValue: [],
+            timestamp: getCurrentMillis() + 1_000,
+          },
+        ];
+
+        for (const [index, runResult] of runResults.entries()) {
+          await test.step(`Replace the banner with ${runResult.testCaseStatus}`, async () => {
+            const { bannerStatus, ...resultPayload } = runResult;
+            const resultResponse = await apiContext.post(
+              `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+                testCaseFqn
+              )}`,
+              { data: resultPayload }
+            );
+
+            expect(resultResponse.ok()).toBeTruthy();
+
+            const testCaseDetailsResponse = waitForTestCaseDetails();
+            await page.reload();
+            await testCaseDetailsResponse;
+
+            const banner = await verifyTestCaseLastRunBanner(
+              page,
+              bannerStatus
+            );
+
+            await expect(banners).toHaveCount(1);
+            await expect(banner).toContainText(
+              `Last Run ${runResult.testCaseStatus}`
+            );
+            await expect(banner).toContainText(runResult.result);
+
+            if (index === 0) {
+              await expect(banner).not.toContainText('Not run yet');
+            } else {
+              await expect(banner).not.toContainText(
+                runResults[index - 1].result
+              );
+            }
+          });
+        }
+      } finally {
+        await lastRunTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('shows every section for a scheduled failed test case run', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const failedRunTable = new TableClass();
+      const failureResult =
+        'Found 0 rows, but the scheduled test expected at least 1 row.';
+
+      try {
+        await failedRunTable.create(apiContext);
+        await failedRunTable.createTestSuiteAndPipelines(apiContext);
+
+        const testCase = await failedRunTable.createTestCase(apiContext, {
+          name: `complete_failed_run_banner_${uuid()}`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 1 },
+            { name: 'maxValue', value: 100 },
+          ],
+        });
+        const testCaseFqn = testCase['fullyQualifiedName'];
+        const failedTimestamp = getCurrentMillis();
+
+        await failedRunTable.addTestCaseResult(apiContext, testCaseFqn, {
+          result: failureResult,
+          testCaseStatus: 'Failed',
+          testResultValue: [
+            { name: 'minValue', predictedValue: '1', value: '0' },
+          ],
+          timestamp: failedTimestamp,
+        });
+        await waitForIncidentToBeIndexed(
+          apiContext,
+          testCaseFqn,
+          failedTimestamp
+        );
+
+        const testCaseDetailsResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/name/')
+        );
+        await page.goto(
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+        );
+        await testCaseDetailsResponse;
+
+        const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+
+        await expect(
+          page.locator(
+            '[data-testid^="test-case-last-run-banner-"][role="status"]'
+          )
+        ).toHaveCount(1);
+        await expect(
+          banner.getByTestId('test-case-last-run-icon')
+        ).toBeVisible();
+        await expect(
+          banner.getByTestId('test-case-last-run-prefix')
+        ).toHaveText('Last Run');
+        await expect(
+          banner.getByTestId('test-case-last-run-status')
+        ).toHaveText('Failed');
+        await expect(
+          banner.getByTestId('test-case-run-description')
+        ).toHaveText(failureResult);
+        await expect(
+          banner.getByTestId('test-case-result-expected')
+        ).toContainText('Result / Expected');
+        await expect(banner.getByTestId('test-case-result-value')).toHaveText(
+          '0 / 1'
+        );
+        await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
+          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+        );
+        await expect(banner.getByTestId('test-case-next-run')).toContainText(
+          'Next · in '
+        );
+        await expect(
+          banner.getByTestId('test-case-next-run')
+        ).not.toContainText('Not scheduled');
+
+        const incident = banner.getByTestId('test-case-last-run-incident');
+
+        await expect(incident).toBeVisible();
+        await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
+          /INC.*\d,/
+        );
+        await expect(
+          incident.getByTestId('test-case-incident-description')
+        ).toContainText('Request TestCase Failure Resolution for');
+        await expect(
+          incident.getByTestId('test-case-incident-description')
+        ).toContainText(testCase.name);
+        await expect(
+          incident.getByTestId('test-case-incident-status')
+        ).toHaveText('New');
+
+        const viewIncidentButton = incident.getByTestId('view-incident-button');
+
+        await expect(viewIncidentButton).toHaveText('View Incident');
+        await viewIncidentButton.click();
+        await expect(page).toHaveURL(/\/issues$/);
+        await expect(page.getByTestId('issue-tab-container')).toBeVisible();
+      } finally {
+        await failedRunTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
     test('TestCase filters', async ({ page }) => {
       test.setTimeout(360000);
 
@@ -1032,24 +1255,43 @@ test.describe(
         await testCaseTypeByAll;
 
         // Test case filter by status
-        const testCaseStatusBySuccess = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*`
-        );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Success').click();
+        const testCaseStatusBySuccess = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+            url.searchParams.get('testCaseStatus') === 'Success'
+          );
+        });
+        const statusFilter = page.getByTestId('status-select-filter');
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Success', { exact: true })
+          .click();
         await testCaseStatusBySuccess;
 
         await expect(
           page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
-        // Test case filter by status
-        const testCaseStatusByFailed = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*`
+        // Adding Failed must retain Success because selected statuses are combined with OR.
+        const testCaseStatusesBySuccessAndFailed = page.waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+              url.searchParams.get('testCaseStatus') === 'Success,Failed'
+            );
+          }
         );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Failed').click();
-        await testCaseStatusByFailed;
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Failed', { exact: true })
+          .click();
+        await testCaseStatusesBySuccessAndFailed;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 
@@ -1235,20 +1477,19 @@ test.describe(
         });
 
         await test.step('Test page size dropdown', async () => {
-          await expect(
-            page.locator('[data-testid="page-size-selection-dropdown"]')
-          ).toBeVisible();
+          const pageSizeDropdown = page.getByTestId(
+            'page-size-selection-dropdown'
+          );
+          const pageSizeMenu = page.locator(
+            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
+          );
 
-          await page.click('[data-testid="page-size-selection-dropdown"]');
-
-          // Wait for dropdown menu to be visible
-          await page.locator('.ant-dropdown-menu').waitFor({
-            state: 'visible',
-            timeout: 5000,
-          });
-
-          // Verify dropdown options are visible
-          await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
+          await expect(pageSizeDropdown).toBeVisible();
+          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
+          // button only runs its preventDefault handler and may not open the menu.
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
         await paginationTable.delete(apiContext);
@@ -1332,6 +1573,96 @@ test.describe(
         });
       } finally {
         await phantomTagsTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Test result tooltip stays fixed while the pointer enters its incident link', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const tooltipTable = new TableClass();
+
+      try {
+        await tooltipTable.create(apiContext);
+        const testCase = await tooltipTable.createTestCase(apiContext);
+        const testCaseFqn = testCase.fullyQualifiedName as string;
+        const failedAt = Date.now();
+
+        await tooltipTable.addTestCaseResult(apiContext, testCaseFqn, {
+          result: 'Row count was outside the expected range.',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '10' }],
+          timestamp: failedAt,
+        });
+        await waitForIncidentToBeIndexed(apiContext, testCaseFqn, failedAt);
+
+        const detailsResponse = waitForTestCaseDetailsResponse(page);
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/testCaseResults/') &&
+            response.status() === 200
+        );
+
+        await page.goto(
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+        );
+        await Promise.all([detailsResponse, resultsResponse]);
+        await waitForAllLoadersToDisappear(page);
+
+        const point = page
+          .locator('[data-testid^="test-summary-point-"]')
+          .first();
+        const tooltip = page.getByTestId('test-summary-tooltip');
+
+        await expect(point).toBeVisible();
+        await point.scrollIntoViewIfNeeded();
+        const pointBox = await point.boundingBox();
+
+        if (!pointBox) {
+          throw new Error(
+            'Expected the test result point to have a bounding box'
+          );
+        }
+
+        // A nearby chart position must not inherit the dot's tooltip activation.
+        await page.mouse.move(
+          pointBox.x + pointBox.width + 3,
+          pointBox.y + pointBox.height / 2
+        );
+        await expect(tooltip).toBeHidden();
+
+        await point.hover();
+        await expect(tooltip).toBeVisible();
+
+        const incidentLink = tooltip.locator('a.tooltip-incident-link');
+
+        await expect(incidentLink).toBeVisible();
+        // Recharts used to move the tooltip during this browser-level pointer
+        // transition, preventing Playwright (and users) from reaching the link.
+        await incidentLink.hover();
+        await expect(incidentLink).toBeVisible();
+        await expect
+          .poll(() =>
+            incidentLink.evaluate((element) => element.matches(':hover'))
+          )
+          .toBe(true);
+
+        const incidentHref = await incidentLink.getAttribute('href');
+
+        if (!incidentHref) {
+          throw new Error('Expected the incident link to have a destination');
+        }
+
+        await Promise.all([
+          page.waitForURL((url) => url.pathname === incidentHref),
+          incidentLink.click(),
+        ]);
+      } finally {
+        await tooltipTable.delete(apiContext);
         await afterAction();
       }
     });

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -60,6 +62,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -5186,6 +5189,138 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     "Table-level test should not appear when filtering by columnName");
               }
             });
+  }
+
+  // ===================================================================
+  // TEST CASE STATUS FILTER TESTS (search/list endpoint)
+  // ===================================================================
+
+  @Test
+  void test_searchListByMultipleTestCaseStatuses_matchesAnyOfThem(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase failedTestCase =
+        createTestCaseWithStatus(client, ns, table, "status_failed", TestCaseStatus.Failed);
+    TestCase abortedTestCase =
+        createTestCaseWithStatus(client, ns, table, "status_aborted", TestCaseStatus.Aborted);
+    TestCase successTestCase =
+        createTestCaseWithStatus(client, ns, table, "status_success", TestCaseStatus.Success);
+
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    Awaitility.await("search/list returns test cases matching any of the requested statuses")
+        .atMost(120, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              List<String> names =
+                  searchListTestCaseNames(
+                      client, entityLink, "testCaseStatus=Failed&testCaseStatus=Aborted");
+              assertTrue(
+                  names.contains(failedTestCase.getName()),
+                  "Failed test case must match testCaseStatus=Failed&testCaseStatus=Aborted");
+              assertTrue(
+                  names.contains(abortedTestCase.getName()),
+                  "Aborted test case must match testCaseStatus=Failed&testCaseStatus=Aborted");
+              assertFalse(
+                  names.contains(successTestCase.getName()),
+                  "Success test case must not match testCaseStatus=Failed&testCaseStatus=Aborted");
+            });
+
+    List<String> commaSeparated =
+        searchListTestCaseNames(client, entityLink, "testCaseStatus=Failed,Aborted");
+    assertTrue(
+        commaSeparated.contains(failedTestCase.getName()),
+        "Failed test case must match the comma separated form of the filter");
+    assertTrue(
+        commaSeparated.contains(abortedTestCase.getName()),
+        "Aborted test case must match the comma separated form of the filter");
+    assertFalse(
+        commaSeparated.contains(successTestCase.getName()),
+        "Success test case must not match the comma separated form of the filter");
+
+    List<String> lowerCase =
+        searchListTestCaseNames(client, entityLink, "testCaseStatus=failed&testCaseStatus=aborted");
+    assertTrue(
+        lowerCase.contains(failedTestCase.getName()),
+        "Statuses must be matched case insensitively");
+    assertTrue(
+        lowerCase.contains(abortedTestCase.getName()),
+        "Statuses must be matched case insensitively");
+    assertFalse(
+        lowerCase.contains(successTestCase.getName()),
+        "Case insensitive matching must not widen the filter");
+
+    List<String> singleStatus =
+        searchListTestCaseNames(client, entityLink, "testCaseStatus=Success");
+    assertTrue(
+        singleStatus.contains(successTestCase.getName()),
+        "A single status must keep filtering on that status only");
+    assertFalse(
+        singleStatus.contains(failedTestCase.getName()),
+        "A single status must keep filtering on that status only");
+  }
+
+  @Test
+  void test_searchListByUnknownTestCaseStatus_returnsBadRequest(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                searchListTestCaseNames(
+                    client, entityLink, "testCaseStatus=Failed&testCaseStatus=NotAStatus"));
+    assertTrue(
+        exception.getMessage().contains("NotAStatus"),
+        "The error must name the invalid status but was: " + exception.getMessage());
+  }
+
+  private TestCase createTestCaseWithStatus(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      Table table,
+      String name,
+      TestCaseStatus status) {
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix(name))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(status)
+                .withResult("Result for " + status.value()));
+    return testCase;
+  }
+
+  private List<String> searchListTestCaseNames(
+      OpenMetadataClient client, String entityLink, String statusQuery) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/search/list?" + statusQuery,
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityLink", entityLink)
+                    .queryParam("includeAllTests", "true")
+                    .queryParam("limit", "100")
+                    .build());
+    ResultList<TestCase> results =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCase>>() {});
+    return results.getData().stream().map(TestCase::getName).toList();
   }
 
   /**

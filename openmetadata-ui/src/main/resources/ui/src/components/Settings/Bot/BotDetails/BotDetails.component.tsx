@@ -269,7 +269,7 @@ const BotDetails: FC<BotsDetailProps> = ({
   return (
     <PageLayoutV1
       leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.bot-detail')}
+      pageTitle={getEntityName(botData) || t('label.bot-detail')}
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">

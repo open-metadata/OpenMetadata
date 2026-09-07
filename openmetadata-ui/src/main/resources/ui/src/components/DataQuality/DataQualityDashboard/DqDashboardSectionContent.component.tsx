@@ -23,6 +23,7 @@ import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.co
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { getTestCaseTabPath } from '../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
@@ -132,10 +133,8 @@ export const DqDashboardSectionContent = ({
               chartFilter={defaultFilters}
               name="success"
               redirectPath={{
+                ...getTestCaseTabPath(TestCaseStatus.Success, defaultFilters),
                 pathname: testCasesPath,
-                search: QueryString.stringify({
-                  testCaseStatus: TestCaseStatus.Success,
-                }),
               }}
               testCaseStatus={TestCaseStatus.Success}
               title={t('label.success')}
@@ -147,10 +146,8 @@ export const DqDashboardSectionContent = ({
               chartFilter={defaultFilters}
               name="aborted"
               redirectPath={{
+                ...getTestCaseTabPath(TestCaseStatus.Aborted, defaultFilters),
                 pathname: testCasesPath,
-                search: QueryString.stringify({
-                  testCaseStatus: TestCaseStatus.Aborted,
-                }),
               }}
               testCaseStatus={TestCaseStatus.Aborted}
               title={t('label.aborted')}
@@ -162,10 +159,8 @@ export const DqDashboardSectionContent = ({
               chartFilter={defaultFilters}
               name="failed"
               redirectPath={{
+                ...getTestCaseTabPath(TestCaseStatus.Failed, defaultFilters),
                 pathname: testCasesPath,
-                search: QueryString.stringify({
-                  testCaseStatus: TestCaseStatus.Failed,
-                }),
               }}
               testCaseStatus={TestCaseStatus.Failed}
               title={t('label.failed')}

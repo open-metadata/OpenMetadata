@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.vector;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +19,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Database;
@@ -32,6 +35,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
@@ -49,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 1;
+  public static final int CHUNK_DOC_VERSION = 3;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -58,6 +62,17 @@ public class VectorDocBuilder {
    * chunk docs, so a hard cap keeps chunk {@code _source} growth bounded on pathological bodies.
    */
   static final int MAX_CHUNK_DESCRIPTION_CHARS = 5000;
+
+  /**
+   * Upper bound on the metric expression code copied onto a metric's chunk docs. A metric summary
+   * without its definition tells a caller almost nothing, so semantic_search returns the expression
+   * directly rather than forcing a per-result detail fetch; the cap keeps a pathological query body
+   * from crowding results out of the response budget.
+   */
+  static final int MAX_CHUNK_METRIC_CODE_CHARS = 1000;
+
+  /** Sentinel unit meaning "see customUnitOfMeasurement" rather than a unit in its own right. */
+  private static final String UNIT_OF_MEASUREMENT_OTHER = "OTHER";
 
   /**
    * Source of the per-chunk embedding vector. The normal write path calls the embedding client;
@@ -296,6 +311,10 @@ public class VectorDocBuilder {
    *   <li>Filter parity: {@code owners}, {@code serviceType}, {@code service}/{@code database}/
    *       {@code databaseSchema} and {@code certification} so NLQ filters on those facets no longer
    *       exclude every chunk doc.
+   *   <li>Display parity for metrics: {@code metricExpression} (capped), {@code metricType},
+   *       {@code granularity} and {@code unitOfMeasurement}, the fields that tell two similarly
+   *       named metrics apart. All four already feed {@code textToEmbed}, so they were searchable
+   *       but invisible in results until a caller made a second per-result detail fetch.
    * </ul>
    *
    * <p>Every field here is already covered by the fingerprint (via {@code metaLight}/{@code body}),
@@ -357,7 +376,64 @@ public class VectorDocBuilder {
         fields.put("columns", columns);
       }
     }
+    if (entity instanceof Metric metric) {
+      addMetricFields(fields, metric);
+    }
+    if (entity instanceof ContextMemory memory) {
+      // Reuses the entity-doc definition so both documents stamp identical values; see
+      // ContextMemoryIndex#shareConfigFields.
+      fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
+    }
     return fields;
+  }
+
+  /**
+   * The metric facts a caller needs to tell "Daily Active Users" from "Monthly Active Users"
+   * without fetching either in full: the expression, and the three enums that qualify it.
+   */
+  private static void addMetricFields(Map<String, Object> fields, Metric metric) {
+    Map<String, Object> expression = metricExpressionObject(metric.getMetricExpression());
+    if (!expression.isEmpty()) {
+      fields.put("metricExpression", expression);
+    }
+    putIfPresent(fields, "metricType", enumValue(metric.getMetricType()));
+    putIfPresent(fields, "granularity", enumValue(metric.getGranularity()));
+    // Store the raw enum, not the resolved custom text: this field is a filterable keyword and the
+    // entity indices (also members of the dataAssetEmbeddings alias) hold the enum under the same
+    // name. Diverging would make a facet filter match one index and silently miss the other. The
+    // read side resolves OTHER -> customUnitOfMeasurement for display.
+    putIfPresent(fields, "unitOfMeasurement", enumValue(metric.getUnitOfMeasurement()));
+    putIfPresent(fields, "customUnitOfMeasurement", metric.getCustomUnitOfMeasurement());
+  }
+
+  /**
+   * The metric's expression as a {@code {language, code}} object, mirroring the shape the metric
+   * entity index stores so a chunk hit and an entity-doc hit look the same to the read side.
+   */
+  private static Map<String, Object> metricExpressionObject(MetricExpression expression) {
+    Map<String, Object> fields = new HashMap<>();
+    if (expression != null && !nullOrEmpty(expression.getCode())) {
+      fields.put("code", capText(expression.getCode(), MAX_CHUNK_METRIC_CODE_CHARS));
+      putIfPresent(fields, "language", enumValue(expression.getLanguage()));
+    }
+    return fields;
+  }
+
+  /**
+   * The unit as it should read in the embedded text: {@code OTHER} means the real unit lives in
+   * {@code customUnitOfMeasurement}, and embedding the literal "OTHER" would teach the model
+   * nothing. The denormalized keyword field keeps the raw enum instead — see
+   * {@link #addMetricFields}.
+   */
+  private static String unitOfMeasurement(Metric metric) {
+    String unit = enumValue(metric.getUnitOfMeasurement());
+    return UNIT_OF_MEASUREMENT_OTHER.equals(unit) && metric.getCustomUnitOfMeasurement() != null
+        ? metric.getCustomUnitOfMeasurement()
+        : unit;
+  }
+
+  private static String enumValue(Object value) {
+    return value == null ? null : value.toString();
   }
 
   private static String capText(String text, int maxChars) {
@@ -384,13 +460,23 @@ public class VectorDocBuilder {
     return result;
   }
 
+  /**
+   * Owners as {@code {name, id}}. The id is required because the context memory visibility filter
+   * matches an owner on nested {@code owners.id}, the same field the entity indices carry; name
+   * alone would make an owner unable to find their own restricted memory.
+   */
   private static List<Map<String, Object>> ownerNameObjects(EntityInterface entity) {
     List<Map<String, Object>> owners = new ArrayList<>();
     List<EntityReference> ownerRefs =
         entity.getOwners() != null ? entity.getOwners() : Collections.emptyList();
     for (EntityReference owner : ownerRefs) {
-      if (owner.getName() != null) {
-        owners.add(Map.of("name", owner.getName()));
+      Map<String, Object> ownerFields = new HashMap<>();
+      putIfPresent(ownerFields, "name", owner.getName());
+      if (owner.getId() != null) {
+        ownerFields.put("id", owner.getId().toString());
+      }
+      if (!ownerFields.isEmpty()) {
+        owners.add(ownerFields);
       }
     }
     return owners;
@@ -514,7 +600,24 @@ public class VectorDocBuilder {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
-    return TextChunkManager.computeFingerprint(metaLight + "|" + body);
+    return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
+  }
+
+  /**
+   * Share config folded into the content fingerprint, so a visibility change restamps the chunk docs
+   * that the search-time privacy filter reads {@code visibility} from. Sorted, so reordering {@code
+   * sharedWith} is not mistaken for a change. Empty for types without a share config.
+   */
+  @SuppressWarnings("unchecked")
+  private static String shareConfigPart(EntityInterface entity) {
+    String part = "";
+    if (entity instanceof ContextMemory memory) {
+      Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
+      List<String> sharedWithIds = new ArrayList<>((List<String>) shareConfig.get("sharedWithIds"));
+      Collections.sort(sharedWithIds);
+      part = "|" + shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds);
+    }
+    return part;
   }
 
   static String buildMetaLightText(EntityInterface entity, String entityType) {
@@ -588,12 +691,7 @@ public class VectorDocBuilder {
         parts.add("metricType: " + metric.getMetricType().value());
       }
       if (metric.getUnitOfMeasurement() != null) {
-        String unit = metric.getUnitOfMeasurement().value();
-        if ("OTHER".equals(unit) && metric.getCustomUnitOfMeasurement() != null) {
-          parts.add("unitOfMeasurement: " + metric.getCustomUnitOfMeasurement());
-        } else {
-          parts.add("unitOfMeasurement: " + unit);
-        }
+        parts.add("unitOfMeasurement: " + unitOfMeasurement(metric));
       }
       if (metric.getGranularity() != null) {
         parts.add("granularity: " + metric.getGranularity().toString());
@@ -751,12 +849,7 @@ public class VectorDocBuilder {
       parts.add(metric.getMetricType().value() + " metric");
     }
     if (metric.getUnitOfMeasurement() != null) {
-      String unit = metric.getUnitOfMeasurement().value();
-      String value =
-          "OTHER".equals(unit) && metric.getCustomUnitOfMeasurement() != null
-              ? metric.getCustomUnitOfMeasurement()
-              : unit;
-      parts.add("measured in " + value);
+      parts.add("measured in " + unitOfMeasurement(metric));
     }
     if (metric.getGranularity() != null) {
       parts.add("granularity " + metric.getGranularity());

@@ -57,7 +57,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
 
       <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         {isLoading ? (
-          <Box direction="col" gap={2}>
+          <Box className="tw:px-4" direction="col" gap={2}>
             <Skeleton height="14px" variant="rounded" width="80%" />
             <Skeleton height="14px" variant="rounded" width="60%" />
             <Skeleton height="14px" variant="rounded" width="70%" />

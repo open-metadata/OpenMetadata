@@ -206,6 +206,7 @@ export class ApiEndpointClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.ApiService;
     this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
+    this.exploreTabName = 'API Endpoints';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].fullyQualifiedName ?? '';
   }

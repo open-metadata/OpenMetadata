@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page, Response, test } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
 
 // Maps entityType keys from the API aggregation to the explore left-panel tab testid labels.
@@ -35,36 +35,61 @@ const ENTITY_TYPE_TO_TAB_TESTID: Record<string, string> = {
 };
 
 const SEARCH_URL_FRAGMENT = '/api/v1/search/query';
+const SEARCH_QUERY = 'customers';
+const SEARCH_RESULT_SIZE = '15';
+
+const getSearchParams = (response: Response) =>
+  new URL(response.url()).searchParams;
+
+const isSearchQueryResponse = (response: Response, index: string) => {
+  const searchParams = getSearchParams(response);
+
+  return (
+    response.url().includes(SEARCH_URL_FRAGMENT) &&
+    response.request().method() === 'GET' &&
+    searchParams.get('q') === SEARCH_QUERY &&
+    searchParams.get('index') === index
+  );
+};
+
+const isTabSearchQueryResponse = (response: Response) => {
+  const searchParams = getSearchParams(response);
+  const index = searchParams.get('index') ?? '';
+
+  return (
+    isSearchQueryResponse(response, index) &&
+    searchParams.get('size') === SEARCH_RESULT_SIZE &&
+    searchParams.get('from') === '0'
+  );
+};
 
 async function runSearchValidation(page: Page): Promise<void> {
-  const apiCountResPromise = page.waitForResponse(
-    'api/v1/search/query?q=customers&index=dataAsset&*'
+  const apiCountResPromise = page.waitForResponse((response) =>
+    isSearchQueryResponse(response, 'dataAsset')
   );
 
-  // Capture the initial table tab search response which fires automatically on load
   const initialTabSearchResPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes(SEARCH_URL_FRAGMENT) &&
-      response.url().includes('size=15') &&
-      response.url().includes('from=0') &&
-      response.request().method() === 'GET'
+    isTabSearchQueryResponse
   );
 
-  await page.getByTestId('searchBox').fill('customers');
+  await page.getByTestId('searchBox').fill(SEARCH_QUERY);
   await page.getByTestId('searchBox').press('Enter');
 
   const [apiCountRes, initialTabSearchRes] = await Promise.all([
     apiCountResPromise,
     initialTabSearchResPromise,
   ]);
+
+  expect(apiCountRes.status()).toBe(200);
+  expect(initialTabSearchRes.status()).toBe(200);
+
   const countResponseBody = await apiCountRes.json();
   const initialTabSearchBody = await initialTabSearchRes.json();
   const initialTabSearchIndex = new URL(
     initialTabSearchRes.url()
   ).searchParams.get('index');
 
-  // Wait for the explore left panel to appear after search
-  await page.getByTestId('explore-left-panel').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('explore-left-panel')).toBeVisible();
 
   const aggregations = countResponseBody?.aggregations ?? {};
   const entityTypeBuckets: Array<{ key: string; doc_count: number }> =
@@ -87,13 +112,11 @@ async function runSearchValidation(page: Page): Promise<void> {
       }
 
       const countLocator = tabLocator.getByTestId('filter-count');
-      const countText = await countLocator.textContent();
-      const displayedCount = parseInt(countText?.trim() ?? '0', 10);
 
-      expect(
-        displayedCount,
+      await expect(
+        countLocator,
         `Left panel count for "${bucket.key}" should match API count`
-      ).toBe(bucket.doc_count);
+      ).toHaveText(`${bucket.doc_count}`);
     }
   });
 
@@ -124,16 +147,16 @@ async function runSearchValidation(page: Page): Promise<void> {
       } else {
         const tabSearchResPromise = page.waitForResponse(
           (response) =>
-            response.url().includes(SEARCH_URL_FRAGMENT) &&
-            response.url().includes('size=15') &&
-            response.url().includes('from=0') &&
-            response.request().method() === 'GET' &&
-            response.url().includes(`index=${bucket.key}`)
+            isSearchQueryResponse(response, bucket.key) &&
+            getSearchParams(response).get('size') === SEARCH_RESULT_SIZE &&
+            getSearchParams(response).get('from') === '0'
         );
 
         await tabLocator.click();
 
         const tabSearchRes = await tabSearchResPromise;
+        expect(tabSearchRes.status()).toBe(200);
+
         tabSearchBody = await tabSearchRes.json();
       }
 

@@ -61,9 +61,13 @@ class SSLManagerTest(TestCase):
 
 
 class KafkaSourceSSLTest(TestCase):
+    # Building a KafkaSource runs get_connection for real; without these the test
+    # spins up librdkafka clients that background-dial localhost:9092.
+    @patch("metadata.ingestion.source.messaging.kafka.connection.Consumer")
+    @patch("metadata.ingestion.source.messaging.kafka.connection.AdminClient")
     @patch("metadata.ingestion.source.messaging.messaging_service.MessagingServiceSource.test_connection")
     @patch("metadata.ingestion.source.messaging.kafka.metadata.SSLManager")
-    def test_init(self, mock_ssl_manager, test_connection):
+    def test_init(self, mock_ssl_manager, test_connection, _admin_client, _consumer):
         test_connection.return_value = True
         config = WorkflowSource(
             **{  # noqa: PIE804

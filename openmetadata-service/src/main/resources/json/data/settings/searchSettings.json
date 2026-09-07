@@ -121,6 +121,71 @@
         "field": "entityStatus",
         "value": "unprocessed",
         "boost": 0.05
+      },
+      {
+        "field": "entityType",
+        "value": "table",
+        "boost": 0.3
+      },
+      {
+        "field": "entityType",
+        "value": "dashboard",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "topic",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "pipeline",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "mlmodel",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "container",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "searchIndex",
+        "boost": 0.28
+      },
+      {
+        "field": "entityType",
+        "value": "storedProcedure",
+        "boost": 0.24
+      },
+      {
+        "field": "entityType",
+        "value": "dashboardDataModel",
+        "boost": 0.24
+      },
+      {
+        "field": "entityType",
+        "value": "glossaryTerm",
+        "boost": 0.2
+      },
+      {
+        "field": "entityType",
+        "value": "database",
+        "boost": 0.18
+      },
+      {
+        "field": "entityType",
+        "value": "databaseSchema",
+        "boost": 0.18
+      },
+      {
+        "field": "entityType",
+        "value": "tableColumn",
+        "boost": 0.05
       }
     ],
     "fieldValueBoosts": [
@@ -150,6 +215,11 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name.keyword",
           "boost": 20.0,
           "matchType": "exact"
         },
@@ -510,6 +580,11 @@
           "matchType": "exact"
         },
         {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
           "field": "name",
           "boost": 10.0,
           "matchType": "phrase"
@@ -585,6 +660,11 @@
       "searchFields": [
         {
           "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name.keyword",
           "boost": 20.0,
           "matchType": "exact"
         },
@@ -938,7 +1018,7 @@
         },
         {
           "field": "columns.name.keyword",
-          "boost": 20.0,
+          "boost": 2.0,
           "matchType": "exact"
         },
         {
@@ -1204,21 +1284,26 @@
           "matchType": "standard"
         },
         {
-          "field": "mlFeatures.name",
+          "field": "fields.name",
           "boost": 8.0,
           "matchType": "standard"
         },
         {
-          "field": "mlFeatures.description",
+          "field": "fields.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "fields.description",
           "boost": 1.0,
           "matchType": "standard"
         }
       ],
       "aggregations": [
         {
-          "name": "mlFeatures.name.keyword",
+          "name": "fields.name.keyword",
           "type": "terms",
-          "field": "mlFeatures.name.keyword"
+          "field": "fields.name.keyword"
         }
       ],
       "scoreMode": "sum",
@@ -1227,8 +1312,8 @@
         "name",
         "displayName",
         "description",
-        "mlFeatures.name",
-        "mlFeatures.description"
+        "fields.name",
+        "fields.description"
       ],
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
@@ -1296,7 +1381,7 @@
         },
         {
           "field": "dataModel.columns.name.keyword",
-          "boost": 20.0,
+          "boost": 2.0,
           "matchType": "exact"
         },
         {
@@ -2287,6 +2372,11 @@
           "matchType": "exact"
         },
         {
+          "field": "name.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
           "field": "name",
           "boost": 10.0,
           "matchType": "phrase"
@@ -2420,6 +2510,17 @@
           ],
           "matchType": "phrase",
           "weight": 70.0
+        },
+        {
+          "name": "prefixName",
+          "purpose": "Prefix match on the analyzed name fields, so a partially typed name ranks above an incidental substring hit and queries shorter than the n-gram minimum still match.",
+          "fields": [
+            "displayName",
+            "name"
+          ],
+          "matchType": "prefix",
+          "weight": 55.0,
+          "minimumShouldMatch": "2<70%"
         },
         {
           "name": "closeName",
@@ -2625,11 +2726,12 @@
       },
       "disMaxTieBreaker": 0.05,
       "signals": {
-        "purpose": "Use Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
+        "purpose": "Use entity type, Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
         "boostMode": "sum",
         "scoreMode": "sum",
         "maxBoost": 2.0,
         "fields": [
+          "entityType",
           "tier.tagFQN",
           "entityStatus",
           "usageSummary.weeklyStats.count",
@@ -2650,6 +2752,18 @@
     {
       "entityType": "database",
       "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on the name for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "displayName.keyword",
           "description": "Exact match on the database display name. Use this for precise name searches where the entire name must match exactly."
@@ -2696,6 +2810,18 @@
       "entityType": "databaseSchema",
       "fields": [
         {
+          "name": "name.keyword",
+          "description": "Exact match on the name for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "displayName.keyword",
           "description": "Exact match on the schema display name for precise name lookups."
         },
@@ -2740,6 +2866,22 @@
     {
       "entityType": "table",
       "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on the name for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "columnNamesFuzzy",
+          "description": "Fuzzy match across the names of columns contained in the asset."
+        },
         {
           "name": "displayName.keyword",
           "description": "Exact match on the table display name for precise lookups."
@@ -2810,6 +2952,30 @@
       "entityType": "tableColumn",
       "fields": [
         {
+          "name": "displayName.keyword",
+          "description": "Exact match on the display name for precise name lookups."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on displayName using n-grams, enabling searches with incomplete display name information."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name to find specific entities within the hierarchy."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchical components."
+        },
+        {
           "name": "name",
           "description": "Column name - primary search field for finding columns by their database name."
         },
@@ -2854,6 +3020,18 @@
     {
       "entityType": "storedProcedure",
       "fields": [
+        {
+          "name": "name.keyword",
+          "description": "Exact match on the name for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "displayName.keyword",
           "description": "Exact match on stored procedure display name for precise lookups."
@@ -2912,6 +3090,18 @@
       "entityType": "query",
       "fields": [
         {
+          "name": "name.keyword",
+          "description": "Exact match on the name for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "displayName.keyword",
           "description": "Exact match on the query display name for precise lookups."
         },
@@ -2964,6 +3154,18 @@
     {
       "entityType": "topic",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "fieldNamesFuzzy",
+          "description": "Fuzzy match across the names of fields contained in the topic schema."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on topic name for precise lookups."
@@ -3050,6 +3252,14 @@
       "entityType": "dashboard",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on dashboard name for precise lookups."
         },
@@ -3135,6 +3345,18 @@
       "entityType": "dashboardDataModel",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "columnNamesFuzzy",
+          "description": "Fuzzy match across the names of columns contained in the asset."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on data model name for precise lookups."
         },
@@ -3208,6 +3430,14 @@
       "entityType": "pipeline",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on pipeline name for precise lookups."
         },
@@ -3272,6 +3502,14 @@
     {
       "entityType": "mlmodel",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on ML model name for precise lookups."
@@ -3338,6 +3576,14 @@
       "entityType": "searchIndex",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on search index name for precise lookups."
         },
@@ -3370,11 +3616,15 @@
           "description": "Search on parts of the hierarchical name for flexible matching."
         },
         {
-          "name": "searchIndex.responseSchema.name",
+          "name": "fields.name",
           "description": "Search on the names of fields indexed in the search index."
         },
         {
-          "name": "searchIndex.responseSchema.description",
+          "name": "fields.name.keyword",
+          "description": "Exact match on a search index field name for precise lookups."
+        },
+        {
+          "name": "fields.description",
           "description": "Search on field descriptions to find search indexes with fields serving specific purposes."
         },
         {
@@ -3402,6 +3652,18 @@
     {
       "entityType": "container",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "columnNamesFuzzy",
+          "description": "Fuzzy match across the names of columns contained in the asset."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on container name for precise lookups."
@@ -3475,6 +3737,22 @@
     {
       "entityType": "apiEndpoint",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "response_field_namesFuzzy",
+          "description": "Fuzzy match across the API endpoint response schema field names."
+        },
+        {
+          "name": "request_field_namesFuzzy",
+          "description": "Fuzzy match across the API endpoint request schema field names."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on API endpoint name for precise lookups."
@@ -3553,6 +3831,14 @@
       "entityType": "domain",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on domain name for precise lookups."
         },
@@ -3593,6 +3879,18 @@
     {
       "entityType": "dataProduct",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on the display name for precise name lookups."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on data product name for precise lookups."
@@ -3635,6 +3933,18 @@
       "entityType": "tag",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "classification.displayName",
+          "description": "Match on the display name of the classification the tag belongs to."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on tag name for precise lookups."
         },
@@ -3675,6 +3985,14 @@
     {
       "entityType": "glossaryTerm",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on glossary term name for precise lookups."
@@ -3737,6 +4055,18 @@
       "entityType": "metric",
       "fields": [
         {
+          "name": "name.keyword",
+          "description": "Exact match on the name for precise name searches where the entire name must match exactly."
+        },
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "displayName.keyword",
           "description": "Exact match on metric display name for precise lookups."
         },
@@ -3773,6 +4103,14 @@
     {
       "entityType": "driveService",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on drive service name for precise lookups."
@@ -3822,6 +4160,14 @@
     {
       "entityType": "directory",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on directory name for precise lookups."
@@ -3887,6 +4233,14 @@
     {
       "entityType": "file",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on file name for precise lookups."
@@ -3965,6 +4319,14 @@
       "entityType": "spreadsheet",
       "fields": [
         {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
           "name": "name.keyword",
           "description": "Exact match on spreadsheet name for precise lookups."
         },
@@ -4033,6 +4395,18 @@
     {
       "entityType": "worksheet",
       "fields": [
+        {
+          "name": "name.compound",
+          "description": "Compound-word analysis on name, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "displayName.compound",
+          "description": "Compound-word analysis on displayName, splitting camelCase and underscore/dot tokens for flexible matching."
+        },
+        {
+          "name": "columnNamesFuzzy",
+          "description": "Fuzzy match across the names of columns contained in the asset."
+        },
         {
           "name": "name.keyword",
           "description": "Exact match on worksheet name for precise lookups."

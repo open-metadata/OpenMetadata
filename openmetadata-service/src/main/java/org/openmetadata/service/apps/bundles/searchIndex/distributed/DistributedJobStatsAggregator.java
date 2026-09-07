@@ -627,7 +627,7 @@ public class DistributedJobStatsAggregator {
   private AppRunRecord.Status convertStatus(IndexJobStatus status) {
     return switch (status) {
       case INITIALIZING, READY -> AppRunRecord.Status.PENDING;
-      case RUNNING -> AppRunRecord.Status.RUNNING;
+      case RUNNING, PROMOTING -> AppRunRecord.Status.RUNNING;
       case COMPLETED -> AppRunRecord.Status.SUCCESS;
       case COMPLETED_WITH_ERRORS -> AppRunRecord.Status.ACTIVE_ERROR;
       case FAILED -> AppRunRecord.Status.FAILED;

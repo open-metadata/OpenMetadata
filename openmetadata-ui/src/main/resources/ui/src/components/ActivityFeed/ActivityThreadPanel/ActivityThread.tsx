@@ -60,7 +60,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: t('label.message-lowercase-plural'),
           })
         );

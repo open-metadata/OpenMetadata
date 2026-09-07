@@ -362,7 +362,7 @@ test.describe('Glossary Advanced Operations', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       await assignDomainWidget(page, domain1.responseData);
-      await assignDomainWidget(page, domain2.responseData);
+      await assignDomainWidget(page, domain2.responseData, false, true);
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);

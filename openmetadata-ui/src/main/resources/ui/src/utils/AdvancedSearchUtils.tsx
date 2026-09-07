@@ -21,6 +21,8 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
+import DOMPurify from 'dompurify';
+import parse from 'html-react-parser';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
@@ -112,7 +114,11 @@ export const generateSearchDropdownLabel = (
 
   return (
     <div className="d-flex justify-between">
-      <Space align="start" className="m-x-sm" data-testid={option.key} size={8}>
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
         <InputComponent
           checked={checked}
           data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
@@ -125,16 +131,21 @@ export const generateSearchDropdownLabel = (
             width="18"
           />
         )}
+        {option.icon && (
+          <div className="tw:flex tw:items-center tw:flex-none">
+            {option.icon}
+          </div>
+        )}
         <div>
           <Typography.Text
             ellipsis
             className="dropdown-option-label"
             title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
+            <span>
+              {parse(
+                DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
+              )}
+            </span>
           </Typography.Text>
           {option.description && (
             <Typography.Text

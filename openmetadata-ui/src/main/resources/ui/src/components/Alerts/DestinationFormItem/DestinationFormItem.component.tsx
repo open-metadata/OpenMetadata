@@ -29,6 +29,7 @@ import {
   getReadTimeoutField,
 } from '../../../utils/Alerts/AlertsUtil';
 import {
+  getDestinationsWithTestStatus,
   getFormattedDestinations,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtilPure';
@@ -70,7 +71,9 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
           destinations: externalDestinations,
         });
 
-        setDestinationsWithStatus(results);
+        setDestinationsWithStatus(
+          getDestinationsWithTestStatus(externalDestinations, results)
+        );
       }
     } catch (e) {
       showErrorToast(e as AxiosError);

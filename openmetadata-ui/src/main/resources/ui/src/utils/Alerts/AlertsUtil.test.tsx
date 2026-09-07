@@ -514,6 +514,51 @@ describe('getFieldByArgumentType tests', () => {
     expect(selectDiv).toBeInTheDocument();
   });
 
+  it('should offer only the event types the resource declares', async () => {
+    const field = getFieldByArgumentType(
+      0,
+      'eventTypeList',
+      0,
+      'glossaryTerm',
+      [],
+      [EventType.EntityCreated, EventType.ThreadCreated]
+    );
+
+    render(field);
+    const select = screen.getByTestId('event-type-select');
+    fireEvent.mouseDown(
+      select.querySelector('.ant-select-selector') as HTMLElement
+    );
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Thread' },
+    });
+
+    expect(await screen.findByTitle('Thread Created')).toBeInTheDocument();
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Suggestion' },
+    });
+
+    expect(screen.queryByTitle('Suggestion Created')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to every event type when the resource declares none', async () => {
+    const field = getFieldByArgumentType(0, 'eventTypeList', 0, 'glossaryTerm');
+
+    render(field);
+    const select = screen.getByTestId('event-type-select');
+    fireEvent.mouseDown(
+      select.querySelector('.ant-select-selector') as HTMLElement
+    );
+
+    fireEvent.change(select.querySelector('input') as HTMLElement, {
+      target: { value: 'Suggestion' },
+    });
+
+    expect(await screen.findByTitle('Suggestion Created')).toBeInTheDocument();
+  });
+
   it('should return correct fields for argumentType entityIdList', async () => {
     const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
       '../../components/common/AsyncSelect/AsyncSelect'

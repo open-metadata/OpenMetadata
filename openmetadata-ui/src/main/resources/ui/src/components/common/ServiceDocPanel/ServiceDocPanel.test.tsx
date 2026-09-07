@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/core';
 import React from 'react';
+import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
@@ -1131,6 +1132,95 @@ describe('ServiceDocPanel Component', () => {
         );
         expect(mockQuerySelector).toHaveBeenCalledWith(
           `[data-id="${CSS.escape('application.config')}"]`
+        );
+      });
+    });
+  });
+
+  describe('Connector Docs URL', () => {
+    const getDocsLink = (container: HTMLElement) =>
+      container.querySelector('.focused-service-docs-link');
+
+    it('should link to the connector own docs page', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Oracle',
+          '## Requirements',
+          '### Profiler & Data Quality',
+          'More information on data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.',
+          'You can find further information on the Oracle connector in the <a href="https://docs.open-metadata.org/connectors/database/oracle" target="_blank">docs</a>.',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel {...defaultProps} focusedMode serviceName="oracle" />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/database/oracle`
+        );
+      });
+    });
+
+    it('should fall back to the connectors overview page when the markdown has no docs.open-metadata.org link', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        ['# Exasol', '## Requirements', '* Exasol >= 7.1'].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel {...defaultProps} focusedMode serviceName="exasol" />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute('href', CONNECTORS_DOCS);
+      });
+    });
+
+    it('should match the canonical link even when its slug is hyphenated but the service name is not', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# SapHana',
+          '## Requirements',
+          'More information on data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.',
+          'You can find further information on the SAP Hana connector in the <a href="https://docs.open-metadata.org/connectors/database/sap-hana" target="_blank">docs</a>.',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel {...defaultProps} focusedMode serviceName="SapHana" />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/database/sap-hana`
+        );
+      });
+    });
+
+    it('should fall back to the first connectors link when no link matches the service name', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MockConnector',
+          '## Requirements',
+          'See <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a>.',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          serviceName="mock-connector"
+        />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/ingestion/workflows/usage`
         );
       });
     });

@@ -14,33 +14,27 @@
 import { startCase } from 'lodash';
 import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import type { Database } from '../generated/entity/data/database';
 import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getBreadcrumbForEntitiesWithServiceOnly } from './EntityDataBreadcrumbUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
-import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-  getSettingPath,
-} from './RouterUtils';
-import {
-  getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
-} from './ServicePureUtils';
+import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
 
 export const getServiceCategoryBreadcrumb = (
   serviceCategory: ServiceCategory
 ): TitleLink[] => [
   {
     name: startCase(serviceCategory),
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.SERVICES,
-      getServiceRouteFromServiceType(serviceCategory)
-    ),
+    // Delegated rather than built here so the destination follows whatever surface owns the
+    // service listing. The base implementation returns this same settings path; an embedded
+    // experience that lists services elsewhere overrides it, and every entity breadcrumb that
+    // reaches a service — API collection, database, topic, dashboard, container — follows.
+    url: connectionsRouterClassBase.getSettingsServicesPath(serviceCategory),
     iconType: getEntityTypeFromServiceCategory(serviceCategory),
   },
 ];

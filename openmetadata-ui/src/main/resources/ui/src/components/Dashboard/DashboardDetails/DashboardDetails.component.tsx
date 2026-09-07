@@ -223,6 +223,8 @@ const DashboardDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -230,6 +232,8 @@ const DashboardDetails = ({
           entity: t('label.dashboard'),
         })
       );
+
+      return false;
     }
   };
 
@@ -337,9 +341,7 @@ const DashboardDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={getEntityName(dashboardDetails)}
-      title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(dashboardDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

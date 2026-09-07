@@ -260,12 +260,16 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
 };
 
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
-  const response = await APIClient.get<Blob>(
-    `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: true }, responseType: 'blob' }
-  );
+  try {
+    const response = await APIClient.get<Blob>(
+      `/contextCenter/drive/files/${id}/download`,
+      { params: { redirect: false }, responseType: 'blob' }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 };
 
 export const downloadDriveFiles = async (ids: string[]): Promise<Blob> => {

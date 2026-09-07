@@ -1124,7 +1124,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             </Typography>
           </Dialog.Header>
 
-          <Dialog.Content className="tw:max-h-[70vh] tw:overflow-y-auto">
+          <Dialog.Content>
             <Box
               gap={5}
               style={{

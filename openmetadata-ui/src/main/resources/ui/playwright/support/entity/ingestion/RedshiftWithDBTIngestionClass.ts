@@ -31,10 +31,12 @@ import {
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
 import { visitServiceDetailsPage } from '../../../utils/service';
+import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
   checkServiceFieldSectionHighlighting,
   getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -142,10 +144,12 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         .locator('.ant-dropdown:visible [data-menu-id*="dbt"]')
         .waitFor();
       await page.click('[data-menu-id*="dbt"]');
+      await waitForIngestionWorkflowForm(page);
 
-      await page.locator('#root\\/dbtConfigSource__oneof_select').waitFor();
-      await page.selectOption(
-        '#root\\/dbtConfigSource__oneof_select',
+      await selectOneOfOption(
+        page,
+        'root/dbtConfigSource',
+        'select-widget-root/dbtConfigSource__oneof_select',
         'DBT S3 Config'
       );
       await page.fill(
@@ -169,7 +173,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         DBT.s3Prefix
       );
 
-      await page.click('[data-testid="submit-btn"]');
+      await page.click('[data-testid="next-button"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);
 

@@ -662,6 +662,7 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
+              onRowAction={rest.onRowAction}
               onSelectionChange={handleSelectionChange}
               onSortChange={handleSortChange}>
               <UntitledTable.Header className="tw:px-2">

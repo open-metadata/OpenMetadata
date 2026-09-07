@@ -37,7 +37,10 @@ import {
 } from '../../../constants/Alerts.constants';
 import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
-import { getFormattedDestinations } from '../../../utils/Alerts/AlertsUtilPure';
+import {
+  getDestinationsWithTestStatus,
+  getFormattedDestinations,
+} from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DestinationFormItemV2Props } from './DestinationFormItemV2.interface';
 import DestinationSelectItemV2 from './DestinationSelectItemV2/DestinationSelectItemV2';
@@ -115,7 +118,12 @@ function DestinationFormItemV2({
         const results = await testAlertDestination({
           destinations: externalDestinations,
         });
-        setDestinationsWithStatus(results as ModifiedDestination[]);
+        setDestinationsWithStatus(
+          getDestinationsWithTestStatus(
+            externalDestinations,
+            results
+          ) as ModifiedDestination[]
+        );
       }
     } catch (e) {
       showErrorToast(e as AxiosError);

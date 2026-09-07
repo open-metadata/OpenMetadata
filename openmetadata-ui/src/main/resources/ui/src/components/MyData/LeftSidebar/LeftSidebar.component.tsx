@@ -15,6 +15,7 @@ import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -27,6 +28,10 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
+import {
+  getSidebarActiveKeys,
+  getSidebarPathname,
+} from '../../../utils/LeftSidebarUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
@@ -49,14 +54,14 @@ const LeftSidebar = () => {
 
   const sideBarItems = useSidebarItems();
 
-  const selectedKeys = useMemo(() => {
-    const pathArray = location.pathname.split('/');
-    const deepPath = [...pathArray].splice(0, 3).join('/');
-
-    return leftSidebarClassBase.getSidebarNestedKeys()[deepPath]
-      ? [deepPath]
-      : [pathArray.splice(0, 2).join('/')];
-  }, [location.pathname]);
+  const selectedKeys = useMemo(
+    () =>
+      getSidebarActiveKeys(
+        getSidebarPathname(location.pathname, location.state),
+        leftSidebarClassBase.getSidebarNestedKeys()
+      ),
+    [location.pathname, location.state]
+  );
 
   const handleLogoutClick = useCallback(() => {
     setIsConfirmLogoutModalOpen(true);
@@ -92,9 +97,14 @@ const LeftSidebar = () => {
     }));
   }, [sideBarItems]);
 
-  const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
-    setOpenKeys([]);
-  }, []);
+  const handleMenuClick: MenuProps['onClick'] = useCallback(
+    (info: MenuInfo) => {
+      // keyPath is [childKey, ...ancestorKeys]; keep the active item's submenu
+      // open (empty for a top-level item, which collapses any open submenu).
+      setOpenKeys(info.keyPath.slice(1));
+    },
+    []
+  );
 
   return (
     <Sider

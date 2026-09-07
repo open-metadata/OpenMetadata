@@ -98,6 +98,48 @@ WHERE u.oracle_maintained = 'N'
 )
 
 
+# Fallback for the bulk view-definition fetch. DBA_VIEWS.TEXT / DBA_MVIEWS.QUERY
+# are LONG columns, and in Oracle thick mode a value larger than OCI's fetch
+# buffer aborts the whole array fetch (ORA-01406), leaving every view definition
+# empty. This lists view and materialized-view names only, with no LONG column,
+# so it always succeeds. Each definition is then read one at a time below.
+# https://github.com/open-metadata/OpenMetadata/issues/30319
+ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES = textwrap.dedent(
+    """
+SELECT v.owner AS "owner", v.view_name AS "name", 'VIEW' AS "object_type"
+FROM {prefix}_VIEWS v
+JOIN {prefix}_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
+UNION ALL
+SELECT m.owner AS "owner", m.mview_name AS "name", 'MATERIALIZED_VIEW' AS "object_type"
+FROM {prefix}_MVIEWS m
+JOIN {prefix}_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
+"""
+)
+
+# Per-view read of the LONG text. Fetching a single row is not an array fetch,
+# so it does not hit the ORA-01406 truncation, and it needs no privileges beyond
+# the bulk read. This is the same source column SQLAlchemy's Oracle dialect uses.
+ORACLE_GET_VIEW_TEXT_BY_NAME = textwrap.dedent(
+    """
+SELECT text FROM {prefix}_VIEWS WHERE owner = :owner AND view_name = :name
+"""
+)
+
+ORACLE_GET_MVIEW_QUERY_BY_NAME = textwrap.dedent(
+    """
+SELECT query FROM {prefix}_MVIEWS WHERE owner = :owner AND mview_name = :name
+"""
+)
+
+# Last resort when the raw text is NULL or still cannot be read. GET_DDL returns
+# a CLOB (read through a locator, immune to the LONG truncation) but needs
+# SELECT_CATALOG_ROLE for objects in other schemas.
+ORACLE_GET_VIEW_DEFINITION_BY_NAME = "SELECT DBMS_METADATA.GET_DDL(:object_type, :name, :owner) AS view_ddl FROM dual"
+
 GET_VIEW_NAMES = textwrap.dedent(
     """
 SELECT view_name FROM {prefix}_VIEWS WHERE owner = :owner
@@ -289,6 +331,7 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
             col.data_default,
             com.comments,
             col.virtual_column,
+            col.char_used,
             {identity_cols}
         FROM {prefix}_TAB_COLS{dblink} col
         LEFT JOIN {prefix}_COL_COMMENTS{dblink} com
@@ -312,7 +355,8 @@ ORACLE_CONSTRAINTS = textwrap.dedent(
             loc.position as loc_pos,
             rem.position as rem_pos,
             ac.search_condition,
-            ac.delete_rule
+            ac.delete_rule,
+            ac.index_name
         FROM {prefix}_CONSTRAINTS{dblink} ac,
             {prefix}_CONS_COLUMNS{dblink} loc,
             {prefix}_CONS_COLUMNS{dblink} rem
@@ -328,26 +372,37 @@ ORACLE_CONSTRAINTS = textwrap.dedent(
     """
 )
 
+# The row-limiting clause (OFFSET ... FETCH NEXT ... ROWS ONLY) is only valid
+# from Oracle 12.1 onwards. On 11g and earlier the whole statement is rejected
+# with ORA-00933 "SQL command not properly ended", so usage and lineage ingest
+# nothing at all while metadata ingestion keeps working -- the test-connection
+# probe (TEST_QUERY_HISTORY) uses ROWNUM and therefore still passes.
+# Ordering in an inline view and capping with ROWNUM is the top-N form every
+# Oracle version understands, and the optimizer resolves it to the same
+# COUNT STOPKEY plan.
+# https://github.com/open-metadata/OpenMetadata/issues/21054
 ORACLE_QUERY_HISTORY_STATEMENT = textwrap.dedent(
     """
-SELECT
-    NULL AS user_name,
-    NULL AS database_name,
-    NULL AS schema_name,
-    NULL AS aborted,
-    SQL_FULLTEXT AS query_text,
-    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
-    ELAPSED_TIME / 1000 AS duration,
-    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
-FROM gv$sql
-WHERE OBJECT_STATUS = 'VALID'
-    {filters}
-    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
-    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND')
-    < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
-ORDER BY FIRST_LOAD_TIME DESC
-OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY
+SELECT * FROM (
+    SELECT
+        NULL AS user_name,
+        NULL AS database_name,
+        NULL AS schema_name,
+        NULL AS aborted,
+        SQL_FULLTEXT AS query_text,
+        TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
+        ELAPSED_TIME / 1000 AS duration,
+        TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
+    FROM gv$sql
+    WHERE OBJECT_STATUS = 'VALID'
+        {filters}
+        AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
+        AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND')
+        < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
+    ORDER BY FIRST_LOAD_TIME DESC
+)
+WHERE ROWNUM <= {result_limit}
 """
 )

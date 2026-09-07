@@ -29,7 +29,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.database.snowflake.queries import (
-    SNOWFLAKE_SESSION_TAG_QUERY,
+    set_session_tag_query,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -98,7 +98,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             @event.listens_for(self.engine, "connect")
             def _set_query_tag(dbapi_connection, connection_record):
                 cursor = dbapi_connection.cursor()
-                cursor.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag))
+                cursor.execute(set_session_tag_query(query_tag))
                 cursor.close()
 
     def get_table_query(self) -> Iterable[TableQuery]:

@@ -28,11 +28,13 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
+  ALL_SERVICES_CATEGORY,
   BETA_SERVICES,
   excludedService,
   SERVICE_CATEGORY_OPTIONS,
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
+import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
@@ -45,10 +47,6 @@ import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SelectServiceTypeProps } from './Steps.interface';
 
-const categorySelectItems: SelectItemType[] = SERVICE_CATEGORY_OPTIONS.map(
-  ({ label, value }) => ({ id: value, label })
-);
-
 const SelectServiceType = ({
   serviceCategory,
   showError,
@@ -58,41 +56,64 @@ const SelectServiceType = ({
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
-  const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
   const serviceTypes = ServiceUtilClassBase.getSupportedServiceFromList();
 
-  const handleConnectorSearchTerm = (value: string) => {
-    setConnectorSearchTerm(value);
-    setSelectedConnectors(
-      serviceTypes[serviceCategory].filter((c) =>
-        c.toLowerCase().includes(value.toLowerCase())
-      )
-    );
-  };
+  // "All Services" leads the list so a category-agnostic entry point has something truthful to
+  // show as selected instead of silently defaulting to the first category.
+  const categorySelectItems: SelectItemType[] = useMemo(
+    () => [
+      { id: ALL_SERVICES_CATEGORY, label: t('label.all-services') },
+      ...SERVICE_CATEGORY_OPTIONS.map(({ label, value }) => ({
+        id: value,
+        label,
+      })),
+    ],
+    [t]
+  );
 
   useEffect(() => {
     const allCategory = Object.values(ServiceCategory);
-    const selectedCategory = allCategory.includes(serviceCategory)
-      ? serviceCategory
-      : allCategory[0];
-    setCategory(selectedCategory);
-    setSelectedConnectors(
-      serviceTypes[selectedCategory].filter(
-        (service) => !excludedService.find((e) => e === service)
-      )
-    );
+    // The `all` sentinel is a legitimate selection, not an unrecognized category — only genuinely
+    // unknown values fall back to the first category.
+    const isKnownCategory =
+      serviceCategory === ALL_SERVICES_CATEGORY ||
+      allCategory.includes(serviceCategory as ServiceCategory);
+    setCategory(isKnownCategory ? serviceCategory : allCategory[0]);
+    setConnectorSearchTerm('');
   }, [serviceCategory]);
 
-  const filteredConnectors = useMemo(
-    () =>
-      selectedConnectors.filter(
-        (connectorType) =>
-          !excludedService.includes(
-            connectorType as MlModelServiceType | MetadataServiceType
-          )
-      ),
-    [selectedConnectors]
-  );
+  // Each connector is paired with the category it came from, so clicking a card in the flattened
+  // grid can tell the page which category's wizard to continue in.
+  const categoryConnectors = useMemo(() => {
+    const categories =
+      category === ALL_SERVICES_CATEGORY
+        ? Object.values(ServiceCategory)
+        : ([category] as ServiceCategory[]);
+
+    return categories.flatMap((serviceCategoryKey) =>
+      (serviceTypes[serviceCategoryKey] ?? [])
+        .filter(
+          (connectorType) =>
+            !excludedService.includes(
+              connectorType as MlModelServiceType | MetadataServiceType
+            )
+        )
+        .map((connectorType) => ({
+          category: serviceCategoryKey,
+          type: connectorType,
+        }))
+    );
+  }, [category, serviceTypes]);
+
+  const filteredConnectors = useMemo(() => {
+    const searchTerm = connectorSearchTerm.trim().toLowerCase();
+
+    return searchTerm
+      ? categoryConnectors.filter(({ type }) =>
+          type.toLowerCase().includes(searchTerm)
+        )
+      : categoryConnectors;
+  }, [categoryConnectors, connectorSearchTerm]);
 
   const getServiceName = (type: string) => {
     if (type.includes('Custom')) {
@@ -117,7 +138,8 @@ const SelectServiceType = ({
               return;
             }
             setConnectorSearchTerm('');
-            serviceCategoryHandler(key as ServiceCategory);
+            // Includes the `all` sentinel — the handler's parameter is widened to match.
+            serviceCategoryHandler(key as ServiceCategoryParam);
           }}>
           {(item) => <SelectItem id={item.id} label={item.label} />}
         </Select>
@@ -129,7 +151,7 @@ const SelectServiceType = ({
           placeholder={t('label.search-for-a-connector')}
           size="md"
           value={connectorSearchTerm}
-          onChange={(value: string) => handleConnectorSearchTerm(value)}
+          onChange={setConnectorSearchTerm}
         />
 
         {isEmpty(filteredConnectors) && (
@@ -147,7 +169,7 @@ const SelectServiceType = ({
         <div
           className="tw:mt-4 tw:grid tw:grid-cols-5 tw:gap-3"
           data-testid="select-service">
-          {filteredConnectors.map((type) => (
+          {filteredConnectors.map(({ category: connectorCategory, type }) => (
             <Card
               isClickable
               className={classNames(
@@ -155,9 +177,11 @@ const SelectServiceType = ({
                 'tw:hover:bg-utility-brand-50 tw:hover:border-utility-brand-300'
               )}
               data-testid={type}
-              key={type}
+              // Composite key: connector types are unique across categories today, but the grid
+              // spans every category in the `all` view so the category has to be part of the key.
+              key={`${connectorCategory}-${type}`}
               size="sm"
-              onClick={() => handleServiceTypeClick(type)}>
+              onClick={() => handleServiceTypeClick(type, connectorCategory)}>
               <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:w-full">
                 <div
                   className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-secondary"

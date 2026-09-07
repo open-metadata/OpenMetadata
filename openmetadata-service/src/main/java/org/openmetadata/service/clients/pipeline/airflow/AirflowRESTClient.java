@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -654,7 +655,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Map<String, String> getLastIngestionLogs(
       IngestionPipeline ingestionPipeline, String after) {
     HttpResponse<String> response;
-    String taskId = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString());
+    String taskId =
+        PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().toString());
     // Init empty after query param
 
     URIBuilder uri = buildURI("last_dag_logs");

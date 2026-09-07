@@ -545,21 +545,21 @@
     "indexName": "ai_application_search_index",
     "indexMappingFile": "/elasticsearch/%s/ai_application_index_mapping.json",
     "alias": "aiApplication",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "llmModel": {
     "indexName": "llm_model_search_index",
     "indexMappingFile": "/elasticsearch/%s/llm_model_index_mapping.json",
     "alias": "llmModel",
-    "parentAliases": ["llmService", "all"],
+    "parentAliases": ["llmService", "all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "promptTemplate": {
     "indexName": "prompt_template_search_index",
     "indexMappingFile": "/elasticsearch/%s/prompt_template_index_mapping.json",
     "alias": "promptTemplate",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "aiGovernancePolicy": {
@@ -567,7 +567,8 @@
     "indexMappingFile": "/elasticsearch/%s/ai_governance_policy_index_mapping.json",
     "alias": "aiGovernancePolicy",
     "parentAliases": [
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -576,7 +577,8 @@
     "indexMappingFile": "/elasticsearch/%s/ai_governance_framework_index_mapping.json",
     "alias": "aiGovernanceFramework",
     "parentAliases": [
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": ["aiFrameworkControl"]
   },
@@ -605,7 +607,8 @@
     "alias": "mcpServer",
     "parentAliases": [
       "mcpService",
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "mcpExecution"

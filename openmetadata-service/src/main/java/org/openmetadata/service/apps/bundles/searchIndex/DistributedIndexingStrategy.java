@@ -20,7 +20,6 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
-import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -167,6 +166,10 @@ public class DistributedIndexingStrategy {
             stagedIndexContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
+    // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
+    // non-terminal until now, so the pod was not torn down mid-promotion.
+    distributedExecutor.markPromotionComplete(distributedJob.getId(), allPromoted);
+
     ExecutionResult.Status resultStatus = determineStatus(stats);
     if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
       LOG.error(
@@ -241,12 +244,11 @@ public class DistributedIndexingStrategy {
                 return;
               }
 
-              IndexJobStatus status = job.getStatus();
-              if (status == IndexJobStatus.COMPLETED
-                  || status == IndexJobStatus.COMPLETED_WITH_ERRORS
-                  || status == IndexJobStatus.FAILED
-                  || status == IndexJobStatus.STOPPED) {
-                LOG.info("Distributed job {} completed with status: {}", jobId, status);
+              // PROMOTING counts as processing-complete: stop monitoring and let the strategy run
+              // the
+              // promotion sweep, then flip the job terminal via markPromotionComplete().
+              if (job.isProcessingComplete()) {
+                LOG.info("Distributed job {} reached status: {}", jobId, job.getStatus());
                 completionLatch.countDown();
                 return;
               }

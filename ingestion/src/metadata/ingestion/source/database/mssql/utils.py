@@ -147,7 +147,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             Column("object_id", Integer, primary_key=True),
             Column("name", String, primary_key=True),
             Column("column_id", Integer, primary_key=True),
-            Column("generated_always_type", Integer),
             schema="sys",
         )
     )
@@ -216,7 +215,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
             sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
-            sys_columns.c.generated_always_type,
         )
         .where(whereclause)
         .select_from(join)
@@ -228,9 +226,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
     cols = []
     for row in cursr.mappings():
         name = row[columns.c.column_name]
-        generated_always_type = row[sys_columns.c.generated_always_type]
-        if generated_always_type in (1, 2):
-            continue
         type_ = row[columns.c.data_type]
         nullable = row[columns.c.is_nullable] == "YES"
         charlen = row[columns.c.character_maximum_length]
@@ -379,6 +374,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             referred_table_schema=sqltypes.Unicode(),
             referred_table_name=sqltypes.Unicode(),
             referred_column=sqltypes.Unicode(),
+            referred_database=sqltypes.Unicode(),
         )
     )
 
@@ -389,6 +385,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
         return {
             "name": None,
             "constrained_columns": [],
+            "referred_database": None,
             "referred_schema": None,
             "referred_table": None,
             "referred_columns": [],
@@ -412,10 +409,12 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             _,  # match rule
             fkuprule,
             fkdelrule,
+            rdbname,
         ) = row_
 
         rec = fkeys[rfknm]
         rec["name"] = rfknm
+        rec["referred_database"] = rdbname
 
         if fkuprule != "NO ACTION":
             rec["options"]["onupdate"] = fkuprule

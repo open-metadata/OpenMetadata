@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_FOREIGN_KEY,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -546,6 +547,113 @@ class MssqlIdentityColumnTest(TestCase):
     def test_missing_seed_returns_empty_dict(self):
         assert mssql_dialet.get_identity_values(BigInteger(), None, Decimal("1")) == {}
         assert mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), None) == {}
+
+
+class TestMssqlForeignKeyReferredDatabase:
+    """``get_foreign_keys`` must report the database holding the referred table.
+
+    Without it the caller builds the referred FQN with a ``None`` database and the
+    constraint is dropped.
+    """
+
+    @staticmethod
+    def _fk_row(constraint_name, constrained_column, referred_column):
+        return (
+            "sales",  # constraint schema
+            constraint_name,
+            1,  # ordinal position
+            constrained_column,
+            "sales",  # referred schema
+            "customers",
+            referred_column,
+            None,  # match rule
+            "NO ACTION",
+            "NO ACTION",
+            "my_catalog",  # DB_NAME()
+        )
+
+    def _foreign_keys(self, rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execute.return_value.fetchall.return_value = rows
+
+        return mssql_dialet.get_foreign_keys(MSDialect(), connection, "orders", schema="sales")
+
+    def test_referred_database_comes_from_the_query(self):
+        keys = self._foreign_keys([self._fk_row("fk_orders_customer", "customer_id", "id")])
+
+        assert [key["referred_database"] for key in keys] == ["my_catalog"]
+
+    def test_query_selects_the_database_name(self):
+        assert "DB_NAME() AS referred_database" in MSSQL_GET_FOREIGN_KEY
+
+    def test_multi_column_key_is_still_grouped(self):
+        (key,) = self._foreign_keys(
+            [
+                self._fk_row("fk_orders_customer", "customer_id", "id"),
+                self._fk_row("fk_orders_customer", "customer_region", "region"),
+            ]
+        )
+
+        assert key["name"] == "fk_orders_customer"
+        assert key["referred_table"] == "customers"
+        assert key["constrained_columns"] == ["customer_id", "customer_region"]
+        assert key["referred_columns"] == ["id", "region"]
+
+
+class TestMssqlTemporalPeriodColumns:
+    """``get_columns`` must reflect SYSTEM_TIME period columns.
+
+    Skipping them left system-versioned tables missing their SysStartTime/SysEndTime
+    pair from the catalogue entirely.
+    """
+
+    @staticmethod
+    def _row(name, data_type="datetime2", generated_always_type=0):
+        values = {
+            "column_name": name,
+            "data_type": data_type,
+            "is_nullable": "NO",
+            "character_maximum_length": None,
+            "numeric_precision": None,
+            "numeric_scale": None,
+            "column_default": None,
+            "collation_name": None,
+            "generated_always_type": generated_always_type,
+        }
+
+        class _Mapping:
+            """Rows come back keyed by the column expression, as cursor.mappings() gives them."""
+
+            def __getitem__(self, key):
+                return values.get(getattr(key, "key", key))
+
+        return _Mapping()
+
+    def _get_columns(self, rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_columns(MSDialect(), connection, "orders", schema="sales")
+
+    def test_period_columns_are_reflected(self):
+        cols = self._get_columns(
+            [
+                self._row("id", data_type="int"),
+                self._row("SysStartTime", generated_always_type=1),
+                self._row("SysEndTime", generated_always_type=2),
+            ]
+        )
+
+        assert [col["name"] for col in cols] == ["id", "SysStartTime", "SysEndTime"]
+
+    def test_a_table_without_period_columns_is_unaffected(self):
+        cols = self._get_columns([self._row("id", data_type="int"), self._row("name", data_type="varchar")])
+
+        assert [col["name"] for col in cols] == ["id", "name"]
 
 
 class TestMssqlQueryStoreSelection:

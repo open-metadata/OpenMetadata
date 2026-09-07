@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -281,6 +283,68 @@ class MigrationUtilTest {
         entityRelationshipInserts >= 2,
         "Expected at least 2 entity_relationship inserts (CREATED + MENTIONED_IN), got "
             + entityRelationshipInserts);
+  }
+
+  @Test
+  void migrateColumnTagSuggestionKeepsColumnInFieldPath() {
+    JsonNode payload =
+        migrateTagSuggestionAndCapturePayload(
+            "dead-beef-0000-0004", "<#E::table::sample.shop.orders::columns::customer_id::tags>");
+    assertEquals("Tag", payload.get("suggestionType").asText());
+    assertEquals("columns.customer_id.tags", payload.get("fieldPath").asText());
+  }
+
+  @Test
+  void migrateTableLevelTagSuggestionUsesEntityLevelFieldPath() {
+    JsonNode payload =
+        migrateTagSuggestionAndCapturePayload(
+            "dead-beef-0000-0005", "<#E::table::sample.shop.orders::tags>");
+    assertEquals("tags", payload.get("fieldPath").asText());
+  }
+
+  private JsonNode migrateTagSuggestionAndCapturePayload(String suggestionId, String entityLink) {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenReturn(List.of(Map.of("1", 1)));
+    String suggestionJson =
+        """
+        {
+          "id": "%s",
+          "type": "SuggestTagLabel",
+          "status": "Open",
+          "entityLink": "%s",
+          "tagLabels": [{"tagFQN": "PII.Sensitive", "source": "Classification", "labelType": "Manual", "state": "Suggested"}],
+          "createdBy": { "id": "cccc-dddd-eeee-ffff", "type": "user" },
+          "createdAt": 1700000000000,
+          "updatedAt": 1700000000000,
+          "updatedBy": "system"
+        }
+        """
+            .formatted(suggestionId, entityLink);
+    when(handle
+            .createQuery("SELECT json FROM suggestions ORDER BY updatedAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of(Map.of("json", suggestionJson)));
+    when(handle
+            .createQuery("SELECT COUNT(*) FROM task_entity WHERE id = :id")
+            .bind("id", suggestionId)
+            .mapTo(Long.class)
+            .one())
+        .thenReturn(0L);
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
+        .thenReturn(java.util.Optional.of(0L));
+    when(handle.createQuery(contains("entity_relationship")).mapToMap().list())
+        .thenReturn(Collections.emptyList());
+
+    Update taskInsert = mock(Update.class);
+    when(taskInsert.bind(anyString(), anyString())).thenReturn(taskInsert);
+    when(handle.createUpdate(contains("INSERT INTO task_entity"))).thenReturn(taskInsert);
+
+    MigrationUtil.migrateSuggestionsToTaskEntity(handle, MYSQL);
+
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    verify(taskInsert).bind(eq("json"), jsonCaptor.capture());
+    return JsonUtilsHolder.readTree(jsonCaptor.getValue()).get("payload");
   }
 
   @Test

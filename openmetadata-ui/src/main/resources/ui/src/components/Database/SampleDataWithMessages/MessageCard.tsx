@@ -58,6 +58,7 @@ const MessageCard = ({ message }: { message: string }) => {
       <Panel data-testid="message-card" header={header} key="1">
         <SchemaEditor
           className="m-t-xs"
+          copyButtonClassName="tw:![top:-4px] tw:!right-1"
           editorClass="topic-sample-data"
           options={{
             styleActiveLine: false,

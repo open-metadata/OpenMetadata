@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -20,7 +20,7 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage, removeLandingBanner } from '../../../utils/common';
+import { redirectToHomePage } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -91,11 +91,10 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe.fixme('Domain and Data Product Asset Counts', () => {
+test.describe.serial('Domain and Data Product Asset Counts', () => {
   test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     if (testInfo.title !== 'Assign Widgets') {
@@ -112,7 +111,6 @@ test.describe.fixme('Domain and Data Product Asset Counts', () => {
         dataProduct.responseData.id ?? ''
       );
       await redirectToHomePage(page, false);
-      await removeLandingBanner(page);
       await waitForAllLoadersToDisappear(page).catch(() => undefined);
     }
   });
@@ -134,7 +132,6 @@ test.describe.fixme('Domain and Data Product Asset Counts', () => {
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
     await redirectToHomePage(page, false);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     await verifyWidgetCountOnCurrentPage(
@@ -265,46 +262,25 @@ test.describe.fixme('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('assets').click();
     await dataProductAssetsResponse;
 
-    let hasAssets = true;
-    while (hasAssets) {
-      const checkboxes = page.locator(
-        '[data-testid^="table-data-card_"] input[type="checkbox"]'
-      );
-      const count = await checkboxes.count();
+    // Remove every asset currently attached to the data product. The card
+    // list paints asynchronously after the assets response resolves, and
+    // count() does not auto-wait — so wait for the first card to render
+    // before counting, otherwise the loop reads 0 and removes nothing.
+    await waitForAllLoadersToDisappear(page);
+    const assetCard = page.locator('[data-testid^="table-data-card_"]');
+    await assetCard.first().waitFor({ state: 'visible' });
 
-      if (count === 0) {
-        hasAssets = false;
-        break;
-      }
-
-      const selectAll = page.getByRole('checkbox', { name: 'Select All' });
-      if (await selectAll.isVisible()) {
-        await selectAll.check();
-      } else {
-        for (let i = 0; i < count; i++) {
-          await checkboxes.nth(i).check();
-        }
-      }
-
-      const previousCount = count;
-      const removeRes = page.waitForResponse('**/assets/remove');
-      await page.getByTestId('delete-all-button').click();
-      await removeRes;
-
-      await expect
-        .poll(
-          async () =>
-            page
-              .locator(
-                '[data-testid^="table-data-card_"] input[type="checkbox"]'
-              )
-              .count(),
-          { timeout: 10_000 }
-        )
-        .toBeLessThan(previousCount);
+    const attachedCount = await assetCard.count();
+    for (let i = 0; i < attachedCount; i++) {
+      await assetCard.nth(i).locator('input[type="checkbox"]').check();
     }
 
+    const removeRes = page.waitForResponse('**/assets/remove');
+    await page.getByTestId('delete-all-button').click();
+    await removeRes;
+
     await page.reload();
+    await waitForAllLoadersToDisappear(page);
     await checkAssetsCount(page, 0);
 
     await redirectToHomePage(page);

@@ -404,10 +404,23 @@ const getFocusedMarkdown = (
   return fieldMarkdown || markdownContent;
 };
 
-const getConnectorDocsUrl = (markdownContent: string) => {
-  const docsPath = markdownContent.match(
-    /https:\/\/docs\.open-metadata\.org\/(?:latest\/|v[\d.x]+\/)?connectors\/([^"'\s)]+)/
-  )?.[1];
+const normalizeConnectorSlug = (value: string) =>
+  value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+const getConnectorDocsUrl = (markdownContent: string, serviceName: string) => {
+  const paths = [
+    ...markdownContent.matchAll(
+      /https:\/\/docs\.open-metadata\.org\/(?:latest\/|v[\d.x]+\/)?connectors\/([^"'\s)]+)/g
+    ),
+  ].map((match) => match[1]);
+
+  const normalizedServiceName = normalizeConnectorSlug(serviceName);
+  const docsPath =
+    paths.find(
+      (path) =>
+        normalizeConnectorSlug(path.split('/').pop() ?? '') ===
+        normalizedServiceName
+    ) ?? paths[0];
 
   return docsPath ? `${CONNECTORS_DOCS}/${docsPath}` : CONNECTORS_DOCS;
 };
@@ -753,8 +766,8 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   const connectorDocsUrl = useMemo(
-    () => getConnectorDocsUrl(markdownContent),
-    [markdownContent]
+    () => getConnectorDocsUrl(markdownContent, serviceName),
+    [markdownContent, serviceName]
   );
 
   const docsPanel = useMemo(() => {

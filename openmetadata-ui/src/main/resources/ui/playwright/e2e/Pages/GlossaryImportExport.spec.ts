@@ -44,14 +44,16 @@ import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
   startCsvPreviewAndWaitForGrid,
+  suppressCsvJobsTray,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
-// use the admin user to login
-test.use({
-  storageState: 'playwright/.auth/admin.json',
-});
+// Dedicated admin user for glossary import/export tests. Using a fresh user
+// instead of the shared admin.json session prevents completed export/import
+// jobs from accumulating in the admin background-jobs tray and blocking other
+// admin tests that run in the same CI worker.
+const glossaryExportUser = new UserClass(undefined, true);
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -108,6 +110,7 @@ test.describe('Glossary Bulk Import Export', () => {
   test.beforeAll('setup pre-test', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
 
+    await glossaryExportUser.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
     await user3.create(apiContext);
@@ -122,6 +125,7 @@ test.describe('Glossary Bulk Import Export', () => {
   test.afterAll('Cleanup', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
 
+    await glossaryExportUser.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
     await user3.delete(apiContext);
@@ -132,7 +136,19 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await glossaryExportUser.login(page);
     await redirectToHomePage(page);
+
+    // Tests in this file run in parallel as the same admin user, so their CSV
+    // jobs arrive on this page's socket and auto-open the background jobs tray
+    // — a fixed-position panel at bottom-right, directly over the glossary
+    // right panel where the reviewer "Add" button sits. Playwright then retries
+    // the click against the overlay until the test timeout.
+    // startCsvPreviewAndWaitForGrid already neutralises the tray, but only once
+    // the import preview begins, which is after the reviewer edit.
+    // redirectToHomePage is the only hard navigation here, so injecting once at
+    // this point covers the whole test.
+    await suppressCsvJobsTray(page);
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {

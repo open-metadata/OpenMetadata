@@ -14,13 +14,17 @@
 package org.openmetadata.service.util;
 
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SystemSettingsException;
 
 public final class GlossaryTermRelationSettingsUtil {
@@ -87,32 +91,112 @@ public final class GlossaryTermRelationSettingsUtil {
     }
   }
 
+  /**
+   * Enforces the immutability contract for seeded (system-defined) relation types on the generic
+   * settings-update path. System-defined types cannot be removed or downgraded, no new type may be
+   * flagged as system-defined (create/promote), and an existing system-defined type's fields cannot
+   * be edited. Custom relation types are unaffected. The dedicated relationTypes endpoint and the UI
+   * already enforce this; this covers the remaining generic {@code PUT /system/settings} path.
+   */
   public static void validateSystemDefinedRelationTypesPreserved(
       GlossaryTermRelationSettings current, GlossaryTermRelationSettings updated) {
     if (current == null || current.getRelationTypes() == null) {
       return;
     }
 
-    Set<String> updatedSystemDefinedNames = new HashSet<>();
-    if (updated != null && updated.getRelationTypes() != null) {
-      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
-        if (relationType != null && Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
-          updatedSystemDefinedNames.add(relationType.getName());
-        }
+    Map<String, GlossaryTermRelationType> updatedByName = indexByName(updated);
+    validateNoSystemDefinedRemoved(current, updatedByName);
+    validateNoUnsanctionedSystemDefined(current, updated);
+    validateSystemDefinedUnmodified(current, updatedByName);
+  }
+
+  private static Map<String, GlossaryTermRelationType> indexByName(
+      GlossaryTermRelationSettings settings) {
+    Map<String, GlossaryTermRelationType> byName = new HashMap<>();
+    if (settings == null || settings.getRelationTypes() == null) {
+      return byName;
+    }
+    for (GlossaryTermRelationType relationType : settings.getRelationTypes()) {
+      if (relationType != null && relationType.getName() != null) {
+        byName.put(relationType.getName(), relationType);
       }
     }
+    return byName;
+  }
 
-    List<String> missingSystemDefinedNames =
-        current.getRelationTypes().stream()
-            .filter(relationType -> Boolean.TRUE.equals(relationType.getIsSystemDefined()))
-            .map(GlossaryTermRelationType::getName)
-            .filter(name -> !updatedSystemDefinedNames.contains(name))
-            .toList();
-    if (!missingSystemDefinedNames.isEmpty()) {
-      throw new SystemSettingsException(
-          "Cannot delete system-defined relation types: "
-              + String.join(", ", missingSystemDefinedNames));
+  private static void validateNoSystemDefinedRemoved(
+      GlossaryTermRelationSettings current, Map<String, GlossaryTermRelationType> updatedByName) {
+    List<String> removed = new ArrayList<>();
+    for (GlossaryTermRelationType currentType : current.getRelationTypes()) {
+      if (!Boolean.TRUE.equals(currentType.getIsSystemDefined())) {
+        continue;
+      }
+      GlossaryTermRelationType updatedType = updatedByName.get(currentType.getName());
+      if (updatedType == null || !Boolean.TRUE.equals(updatedType.getIsSystemDefined())) {
+        removed.add(currentType.getName());
+      }
     }
+    if (!removed.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot delete system-defined relation types: " + String.join(", ", removed));
+    }
+  }
+
+  private static void validateNoUnsanctionedSystemDefined(
+      GlossaryTermRelationSettings current, GlossaryTermRelationSettings updated) {
+    if (updated == null || updated.getRelationTypes() == null) {
+      return;
+    }
+    Set<String> currentSystemDefinedNames = new HashSet<>();
+    for (GlossaryTermRelationType relationType : current.getRelationTypes()) {
+      if (Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
+        currentSystemDefinedNames.add(relationType.getName());
+      }
+    }
+    List<String> unsanctioned = new ArrayList<>();
+    for (GlossaryTermRelationType updatedType : updated.getRelationTypes()) {
+      if (updatedType != null
+          && Boolean.TRUE.equals(updatedType.getIsSystemDefined())
+          && !currentSystemDefinedNames.contains(updatedType.getName())) {
+        unsanctioned.add(updatedType.getName());
+      }
+    }
+    if (!unsanctioned.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot create or promote system-defined relation types: "
+              + String.join(", ", unsanctioned));
+    }
+  }
+
+  private static void validateSystemDefinedUnmodified(
+      GlossaryTermRelationSettings current, Map<String, GlossaryTermRelationType> updatedByName) {
+    List<String> modified = new ArrayList<>();
+    for (GlossaryTermRelationType currentType : current.getRelationTypes()) {
+      if (!Boolean.TRUE.equals(currentType.getIsSystemDefined())) {
+        continue;
+      }
+      GlossaryTermRelationType updatedType = updatedByName.get(currentType.getName());
+      if (updatedType != null && isRelationTypeModified(currentType, updatedType)) {
+        modified.add(currentType.getName());
+      }
+    }
+    if (!modified.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot modify system-defined relation types: " + String.join(", ", modified));
+    }
+  }
+
+  private static boolean isRelationTypeModified(
+      GlossaryTermRelationType current, GlossaryTermRelationType updated) {
+    // Compare normalized copies so derived cardinality fields (sourceMax/targetMax) don't
+    // register as spurious edits when the stored value predates normalization.
+    GlossaryTermRelationType currentCopy =
+        JsonUtils.deepCopy(current, GlossaryTermRelationType.class);
+    GlossaryTermRelationType updatedCopy =
+        JsonUtils.deepCopy(updated, GlossaryTermRelationType.class);
+    normalize(currentCopy);
+    normalize(updatedCopy);
+    return !JsonUtils.valueToTree(currentCopy).equals(JsonUtils.valueToTree(updatedCopy));
   }
 
   private static RelationCardinality deriveCardinality(Integer sourceMax, Integer targetMax) {

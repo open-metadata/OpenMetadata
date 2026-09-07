@@ -338,20 +338,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermVisible(page, basicChild.data.displayName);
     });
 
-    // Skip: Requires backend to return nested terms as flat results when filtered
-    // eslint-disable-next-line playwright/no-skipped-test -- requires backend flat result support
-    test.skip('filter by child status shows child as flat result even if parent does not match', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['Draft']);
-
-      // Parent has Approved status, should NOT be visible
-      await verifyTermNotVisible(page, basicParent.data.displayName);
-
-      // Child is Draft - it should appear as a flat result in the filtered view
-      await verifyTermVisible(page, basicChild.data.displayName);
-    });
-
     test('filter shows parent when status matches and all children on expand', async ({
       page,
     }) => {
@@ -405,40 +391,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
       // Parent should be visible even though it's Draft (children loaded without filter)
       await verifyTermVisible(page, multiParent.data.displayName);
-    });
-
-    // Skip: Requires backend to return nested terms as flat results when filtered
-    // eslint-disable-next-line playwright/no-skipped-test -- requires backend flat result support
-    test.skip('filter by middle level status shows nested term as flat result', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['Draft']);
-
-      // Parent has Draft status - should appear as flat result
-      await verifyTermVisible(page, multiParent.data.displayName);
-
-      // Grandparent is Approved, should NOT be visible with Draft filter
-      await verifyTermNotVisible(page, multiGrandparent.data.displayName);
-
-      // Child is In Review, should NOT be visible with Draft filter
-      await verifyTermNotVisible(page, multiChild.data.displayName);
-    });
-
-    // Skip: Requires backend to return nested terms as flat results when filtered
-    // eslint-disable-next-line playwright/no-skipped-test -- requires backend flat result support
-    test.skip('filter by leaf level status shows nested term as flat result', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['In Review']);
-
-      // Child has In Review status - should appear as flat result
-      await verifyTermVisible(page, multiChild.data.displayName);
-
-      // Grandparent is Approved, should NOT be visible
-      await verifyTermNotVisible(page, multiGrandparent.data.displayName);
-
-      // Parent is Draft, should NOT be visible
-      await verifyTermNotVisible(page, multiParent.data.displayName);
     });
   });
 
@@ -520,9 +472,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermVisible(page, basicChild.data.displayName);
     });
 
-    // Skip: Requires re-filtering expanded state which isn't fully implemented
-    // eslint-disable-next-line playwright/no-skipped-test -- requires re-filtering expanded state support
-    test.skip('change filter while expanded updates visible root terms', async ({
+    test('change filter while expanded updates visible root terms', async ({
       page,
     }) => {
       // Expand parent first with All filter
@@ -558,24 +508,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
   // ==================== EDGE CASES ====================
 
   test.describe('Edge Cases', () => {
-    // Skip: Requires backend to return nested terms as flat results when filtered
-    // eslint-disable-next-line playwright/no-skipped-test -- requires backend flat result support
-    test.skip('deeply nested term (5 levels) - filter shows matching terms as flat results', async ({
-      page,
-    }) => {
-      // Filter by Draft status
-      await applyStatusFilter(page, ['Draft']);
-
-      // Level 1 (Draft) should appear as flat result regardless of nesting
-      await verifyTermVisible(page, deepTerms[1].data.displayName);
-
-      // Other levels should NOT be visible (different statuses)
-      await verifyTermNotVisible(page, deepTerms[0].data.displayName); // Approved
-      await verifyTermNotVisible(page, deepTerms[2].data.displayName); // In Review
-      await verifyTermNotVisible(page, deepTerms[3].data.displayName); // Rejected
-      await verifyTermNotVisible(page, deepTerms[4].data.displayName); // Deprecated
-    });
-
     test('all children have same status different from parent', async ({
       page,
     }) => {

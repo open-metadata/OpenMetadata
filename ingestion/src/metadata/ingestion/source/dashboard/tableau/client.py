@@ -46,6 +46,13 @@ from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
 
+# GetSourceTables samples a few workbooks rather than reading the whole site. Every test
+# connection step shares one timeout, so the sample is capped. Breadth matters more than
+# depth here: the first workbook is often a sample one over a spreadsheet, whose names are
+# readable even when every database asset is withheld.
+SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
+MAX_SAMPLED_WORKBOOKS = 3
+
 
 class TableauWorkBookException(Exception):  # noqa: N818
     """
@@ -68,6 +75,16 @@ class TableauOwnersNotFound(Exception):  # noqa: N818
 class TableauDataModelsException(Exception):  # noqa: N818
     """
     Raise when Data Source information is not retrieved from the Tableau Graphql Query
+    """
+
+
+class TableauUpstreamTablesRedacted(Exception):  # noqa: N818
+    """
+    Raise when the Metadata API returns a source table with its name withheld.
+
+    Tableau does not omit assets the account may not read. It returns them with the table
+    and database names nulled and only the identifiers left, so the table cannot be
+    resolved and its lineage is silently dropped for the whole run.
     """
 
 
@@ -301,6 +318,65 @@ class TableauClient:
             "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
             "#enable-the-tableau-metadata-api-for-tableau-server\n"
         )
+
+    def _withheld_source_tables(self, workbook_id: str) -> List[str]:  # noqa: UP006
+        """
+        Names of the data sources on a workbook whose upstream tables cannot be resolved.
+
+        Mirrors _get_database_tables: a table with no name is still resolved through its
+        referencedByQueries, so only a table with neither is lineage that cannot be built.
+        """
+        datasources = self._query_datasources(
+            dashboard_id=workbook_id,
+            entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+            offset=0,
+        )
+        withheld = []
+        for datasource in (datasources.nodes if datasources else None) or []:
+            withheld.extend(
+                datasource.name or datasource.id
+                for table in datasource.upstreamTables or []
+                if not table.name and not table.referencedByQueries
+            )
+        return withheld
+
+    def test_get_source_tables(self):
+        """
+        Check that the Metadata API returns usable source tables.
+
+        Tableau withholds table and database names from accounts without Catalog
+        permissions on external assets, returning the table objects with only their
+        identifiers. Lineage to those tables cannot be built, so this is worth catching at
+        connection time instead of after a run that looks successful.
+
+        View is granted per external asset, so one withheld table is already lost lineage
+        even when others are readable. Reports the first sampled workbook that has one.
+
+        Passes when there is nothing to judge, meaning no sampled workbook declares a
+        source table at all, which is normal for file backed data sources.
+        """
+        sampled = 0
+
+        for workbook in Pager(self.tableau_server.workbooks):
+            if sampled >= MAX_SAMPLED_WORKBOOKS:
+                break
+            if workbook.id is None:
+                continue
+            sampled += 1
+
+            withheld = self._withheld_source_tables(workbook.id)
+            if withheld:
+                raise TableauUpstreamTablesRedacted(
+                    f"Tableau returned {len(withheld)} source table(s) with no name in workbook "
+                    f"[{workbook.name}], for data source(s): {', '.join(sorted(set(withheld))[:5])}"
+                )
+
+        if not sampled:
+            raise TableauWorkBookException(
+                "Unable to fetch Dashboards from tableau\n"
+                "Please check if the user has permissions to access the Dashboards information"
+            )
+        return True
 
     def _query_datasources(
         self, dashboard_id: str, entities_per_page: int, offset: int

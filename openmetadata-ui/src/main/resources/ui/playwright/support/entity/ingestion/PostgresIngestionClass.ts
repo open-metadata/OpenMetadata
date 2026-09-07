@@ -32,6 +32,7 @@ import {
   checkServiceFieldSectionHighlighting,
   getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
@@ -136,9 +137,10 @@ class PostgresIngestionClass extends ServiceBaseClass {
           .locator('.ant-dropdown:visible [data-menu-id*="usage"]')
           .waitFor();
         await page.click('[data-menu-id*="usage"]');
+        await waitForIngestionWorkflowForm(page);
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
-        await page.click('[data-testid="submit-btn"]');
+        await page.click('[data-testid="next-button"]');
         // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
         await this.scheduleIngestion(page);
 

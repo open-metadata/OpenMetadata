@@ -52,7 +52,7 @@ export const VISIBILITY_OPTIONS = [
   {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
-    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    descriptionKey: 'message.visible-to-specific-people',
     badgeColor: 'brand' as const,
     iconName: 'Share07' as const,
   },

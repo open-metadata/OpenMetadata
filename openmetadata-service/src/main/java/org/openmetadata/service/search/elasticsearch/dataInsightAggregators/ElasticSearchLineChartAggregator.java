@@ -49,6 +49,7 @@ public class ElasticSearchLineChartAggregator
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
     int i = 0;
+    int groupByAggIndex = 0;
     long startTime = start;
 
     for (LineChartMetric metric : lineChart.getMetrics()) {
@@ -192,7 +193,7 @@ public class ElasticSearchLineChartAggregator
                   return termsBuilder.aggregations(finalMetricAggregations);
                 });
 
-        aggregationsMap.put("term_" + i, groupByAgg);
+        aggregationsMap.put("term_" + groupByAggIndex++, groupByAgg);
       } else {
         aggregationsMap.putAll(metricAggregations);
       }

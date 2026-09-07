@@ -56,6 +56,8 @@ const toMentionNotification = (thread: Thread): MentionNotification => ({
   about: thread.about,
   createdBy: thread.createdBy,
   entityRef: thread.entityRef,
+  entityUrlLink: thread.entityUrlLink,
+  feedInfo: thread.feedInfo,
   message: thread.message,
   posts: thread.posts,
   reactions: thread.reactions,

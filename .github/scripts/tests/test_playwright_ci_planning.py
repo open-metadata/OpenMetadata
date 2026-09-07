@@ -611,6 +611,47 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
     assert selection["directChangedSpecs"] == ["playwright/e2e/Pages/Entity.spec.ts"]
 
 
+def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
+    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
+    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
+    ``SearchRBAC`` project runs. Without that project in the mapping the selector
+    resolves to zero units and build_playwright_shards.py aborts the whole plan.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
+        "QuickFilterDropdown.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    search_rbac = next(
+        entry
+        for entry in selection["selectors"]
+        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
+    )
+    assert "SearchRBAC" in search_rbac["projects"]
+
+
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     existing_spec = tmp_path / selector.UI_ROOT / "playwright/e2e/Smoke.spec.ts"
@@ -1400,6 +1441,43 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     )
 
 
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "playwright/e2e/Pages/DataInsight.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+    ],
+)
+def test_changed_data_insight_specs_are_selected_for_pr(spec, tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(f"{selector.UI_ROOT}{spec}\n")
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+    assert spec in selected_specs
+    assert spec not in selection["delegatedChangedSpecs"]
+
+
 def test_summary_reconciles_results_and_evaluates_performance_independently():
     workflow = (
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
@@ -1573,3 +1651,123 @@ def test_normal_vite_build_keeps_hashed_entry_assets():
     assert "sessionStorage.getItem(scenarioKey)" in app_entry
     assert "'playwright-app-boot': '1'" in app_entry
     assert "diagnostics.set('playwright-ui-scenario', '1')" in app_entry
+
+
+def test_spec_file_exists_distinguishes_real_and_missing_specs(tmp_path, monkeypatch):
+    planner = load_script("build_playwright_shards")
+    spec = "playwright/e2e/Features/Fake.spec.ts"
+    spec_dir = tmp_path / planner.SPEC_ROOT_CANDIDATES[1] / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "Fake.spec.ts").write_text("// fake", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert planner.spec_file_exists(spec) is True
+    # A glob that resolves to the created file also counts as present.
+    assert planner.spec_file_exists("playwright/e2e/Features/*.spec.ts") is True
+    # A path with no file behind it does not.
+    assert planner.spec_file_exists("playwright/e2e/Features/Missing.spec.ts") is False
+
+
+def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
+    # A selected spec whose file exists but has zero runnable tests in this lane
+    # (e.g. an @ontology-rdf spec, tag-filtered out of the postgres projects) is
+    # warned and skipped. A selected spec whose file does not exist anywhere is a
+    # stale/typo'd path and must still fail the plan.
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    selection = tmp_path / "selection.json"
+    output_dir = tmp_path / "plans"
+
+    # The test-list resolves against the current lane only; neither selected spec
+    # is runnable here, so both are unmatched. The existing one is created on disk
+    # under the UI root the planner probes.
+    existing_spec = "playwright/e2e/Features/GatedElsewhere.spec.ts"
+    existing_path = (
+        tmp_path
+        / "openmetadata-ui/src/main/resources/ui"
+        / existing_spec
+    )
+    existing_path.parent.mkdir(parents=True)
+    existing_path.write_text("// runs only in another lane", encoding="utf-8")
+
+    test_list = tmp_path / "test-list.json"
+    test_list.write_text(json.dumps({"suites": []}))
+    selection.write_text(
+        json.dumps(
+            {
+                "mode": "targeted",
+                "selectors": [
+                    {"spec": existing_spec, "projects": ["auto"]},
+                    {
+                        "spec": "playwright/e2e/Features/DoesNotExist.spec.ts",
+                        "projects": ["auto"],
+                    },
+                ],
+            }
+        )
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+
+    combined = result.stdout + result.stderr
+    assert result.returncode != 0, combined
+    # The missing spec is named as the reason for failure...
+    assert "do not exist" in combined
+    assert "DoesNotExist.spec.ts" in combined
+    # ...while the tag-filtered-but-present spec is warned and skipped, not failed.
+    assert (
+        f"::warning file={existing_spec}::" in combined
+    )
+
+
+def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(
+    tmp_path, monkeypatch
+):
+    # Editing an OntologyExplorer source file fans out via the source->spec
+    # mapping glob (OntologyExplorer*.spec.ts), which matches both the regular
+    # postgres specs and the delegated @ontology-rdf spec. The regular ones must
+    # be selected; the delegated RDF spec must be dropped so the postgres plan
+    # does not get a shard with zero runnable tests.
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        f"{selector.UI_ROOT}"
+        "src/components/OntologyExplorer/OntologyExplorer.constants.ts\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+    # The delegated RDF spec is excluded from the postgres selection...
+    assert "playwright/e2e/Features/OntologyExplorerRdf.spec.ts" not in selected_specs
+    # ...while the non-delegated OntologyExplorer specs from the same glob remain,
+    # proving the mapping fired and only the delegated spec was dropped.
+    assert "playwright/e2e/Features/OntologyExplorer.spec.ts" in selected_specs

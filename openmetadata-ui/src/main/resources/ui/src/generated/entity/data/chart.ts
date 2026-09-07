@@ -577,6 +577,7 @@ export enum DashboardServiceType {
     Metabase = "Metabase",
     MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Omni = "Omni",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",

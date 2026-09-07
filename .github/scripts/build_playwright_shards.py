@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import math
 import re
 import statistics
@@ -17,6 +18,7 @@ from typing import Any, Iterable
 FULL_PROJECTS = {
     "chromium",
     "Basic",
+    "Data Insight",
     "Ingestion",
     "DataAssetRulesEnabled",
     "DataAssetRulesDisabled",
@@ -31,6 +33,7 @@ FULL_PROJECTS = {
 PROJECT_LANES = {
     "chromium": "chromium",
     "Basic": "chromium",
+    "Data Insight": "chromium",
     "Ingestion": "ingestion",
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
@@ -309,6 +312,32 @@ def normalize_spec(path: str) -> str:
     return path.removeprefix(prefix)
 
 
+# Selector spec paths carry the "playwright/e2e/" prefix and live under the UI
+# module. The planner runs from the repo root in CI, but tolerate a UI-dir CWD
+# (e.g. a local run) by trying both roots.
+SPEC_ROOT_CANDIDATES = (
+    Path("."),
+    Path("openmetadata-ui/src/main/resources/ui"),
+)
+
+
+def spec_file_exists(spec: str) -> bool:
+    """True if the selector's spec resolves to a real file on disk.
+
+    A spec may be an exact path or a glob pattern. Used to tell a spec that
+    exists but has all of its tests tag-filtered out of this lane (safe to skip)
+    from a stale/typo'd path that matches nothing anywhere (a real error).
+    """
+    is_glob = any(ch in spec for ch in "*?[")
+    for root in SPEC_ROOT_CANDIDATES:
+        if is_glob:
+            if any(root.glob(spec)):
+                return True
+        elif (root / spec).is_file():
+            return True
+    return False
+
+
 def selector_matches_unit(selector: dict[str, Any], unit: Unit) -> bool:
     pattern = normalize_spec(selector["spec"])
     if not Path(unit.file).match(pattern):
@@ -467,10 +496,25 @@ def main() -> None:
         for selector in selection.get("selectors", [])
         if not any(selector_matches_unit(selector, unit) for unit in discovered_units)
     ]
-    if unmatched_selectors:
+    # An unmatched selector whose spec file exists on disk has simply had all of
+    # its tests filtered out of this lane by the tag grep (e.g. an @ontology-rdf
+    # spec picked up by change-detection but only runnable in the dedicated RDF
+    # lane). Warn and skip it. A selector whose spec file does NOT exist is a
+    # stale/typo'd path that matches nothing anywhere — keep failing on that.
+    missing_selectors = []
+    for spec in unmatched_selectors:
+        if spec_file_exists(spec):
+            print(
+                f"::warning file={spec}::Playwright selector matched no runnable "
+                "tests in this lane; skipping (it may run in a different lane).",
+                file=sys.stderr,
+            )
+        else:
+            missing_selectors.append(spec)
+    if missing_selectors:
         raise SystemExit(
-            "Playwright selectors matched no runnable tests: "
-            + ", ".join(unmatched_selectors)
+            "Playwright selectors reference specs that do not exist: "
+            + ", ".join(missing_selectors)
         )
     units = [unit for unit in discovered_units if selected_projects(unit, selection)]
     units = include_project_dependencies(units, discovered_units)

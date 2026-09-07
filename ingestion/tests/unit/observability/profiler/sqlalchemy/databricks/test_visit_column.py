@@ -1,69 +1,73 @@
-import unittest
-from unittest.mock import MagicMock, patch
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Validate profiler column SQL against the Databricks dialect."""
 
-from sqlalchemy.sql.compiler import SQLCompiler
+from collections.abc import Generator
+
+import pytest
+import sqlalchemy as sa
+from databricks.sqlalchemy.base import DatabricksDialect
+from sqlalchemy import quoted_name
 
 from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
     DatabricksProfilerInterface,
 )
 
 
-class FakeCompiler(
-    DatabricksProfilerInterface,
-    SQLCompiler,
-):
-    def __init__(self, service_connection_config):
-        self.service_connection_config = service_connection_config
+@pytest.fixture(scope="module")
+def dialect() -> Generator[DatabricksDialect, None, None]:
+    statement_compiler = DatabricksDialect.statement_compiler
+    original = (statement_compiler.visit_column, statement_compiler.visit_table)
+    DatabricksProfilerInterface._patch_databricks_statement_compiler()
+    yield DatabricksDialect()
+    statement_compiler.visit_column, statement_compiler.visit_table = original
 
 
-class TestDatabricksProfilerInterface(unittest.TestCase):
-    @patch(
-        "metadata.profiler.interface.sqlalchemy.databricks.profiler_interface.DatabricksProfilerInterface.set_catalog",
-        return_value=None,
+def compile_select(
+    dialect: DatabricksDialect,
+    schema: str,
+    table_name: str,
+    column_name: str,
+) -> str:
+    table = sa.Table(
+        table_name,
+        sa.MetaData(),
+        sa.Column(column_name, sa.String),
+        schema=schema,
     )
-    @patch(
-        "metadata.profiler.interface.sqlalchemy.databricks.profiler_interface.DatabricksProfilerInterface.__init__",
-        return_value=None,
-    )
-    @patch("sqlalchemy.sql.compiler.SQLCompiler.visit_column")
-    def setUp(
-        self,
-        mock_visit_column,
-        mock_init,
-        mock_set_catalog,
-    ) -> None:
-        self.profiler = FakeCompiler(service_connection_config={})
+    return str(sa.select(table.c[column_name]).compile(dialect=dialect))
 
-    @patch("sqlalchemy.sql.compiler.SQLCompiler.visit_column")
-    def test_visit_column_no_nesting(self, mock_visit_column_super):
-        # Mock the response of the super class method
-        mock_visit_column_super.return_value = "`db`.`schema`.`table`"
-        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`"
 
-        mock_visit_column_super.return_value = "`db`"
-        assert self.profiler.visit_column(MagicMock()) == "`db`"
+@pytest.mark.parametrize(
+    "schema,table_name,column_name,expected",
+    [
+        ("my_schema", "my_table", "my_col", "my_schema.my_table.my_col"),
+        ("my_schema", "my_table", "CamelCase", "my_schema.my_table.`CamelCase`"),
+        ("default", "my_table", "my_col", "`default`.my_table.my_col"),
+        ("MySchema", "MyTable", "MyCol", "`MySchema`.`MyTable`.`MyCol`"),
+        (
+            "MySchema",
+            "MyTable",
+            quoted_name("`address`.`city`", False),
+            "`MySchema`.`MyTable`.`address`.`city`",
+        ),
+    ],
+)
+def test_column_identifiers_compile_to_valid_sql(
+    dialect: DatabricksDialect,
+    schema: str,
+    table_name: str,
+    column_name: str,
+    expected: str,
+) -> None:
+    query = compile_select(dialect, schema, table_name, column_name)
 
-        mock_visit_column_super.return_value = "`schema`"
-        assert self.profiler.visit_column(MagicMock()) == "`schema`"
-
-        mock_visit_column_super.return_value = "`table`"
-        assert self.profiler.visit_column(MagicMock()) == "`table`"
-
-        mock_visit_column_super.return_value = "table"
-        assert self.profiler.visit_column(MagicMock()) == "table"
-
-    @patch("sqlalchemy.sql.compiler.SQLCompiler.visit_column")
-    def test_visit_column_nesting(self, mock_visit_column_super):
-        # Mock the response of the super class method
-        mock_visit_column_super.return_value = "`db`.`schema`.`table`.`col.u.m.n`"
-        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`u`.`m`.`n`"
-
-        mock_visit_column_super.return_value = "`db`.`schema`.`table`.`col.1`"
-        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`1`"
-
-        mock_visit_column_super.return_value = "`table`.`1.2`"
-        assert self.profiler.visit_column(MagicMock()) == "`table`.`1`.`2`"
-
-        # single dot in column name should not be split
-        mock_visit_column_super.return_value = "`col.1`"
-        assert self.profiler.visit_column(MagicMock()) == "`col.1`"
+    assert f"SELECT {expected}" in query

@@ -1,0 +1,22 @@
+{
+    "name": "Prefect",
+    "displayName": "Prefect Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description": "Validate that the API key can reach the Prefect API and read the configured workspace.",
+            "errorMessage": "Failed to reach the Prefect API, please validate the Host, Account Id, Workspace Id and API Key",
+            "shortCircuit": true,
+            "mandatory": true,
+            "category": "ConnectionGate"
+        },
+        {
+            "name": "GetPipelines",
+            "description": "Validate that we can fetch the flows of the workspace.",
+            "errorMessage": "Failed to fetch flows, please validate the credentials and the workspace access",
+            "shortCircuit": false,
+            "mandatory": true
+        }
+    ]
+}

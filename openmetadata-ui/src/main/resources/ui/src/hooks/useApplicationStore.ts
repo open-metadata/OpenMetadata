@@ -21,9 +21,47 @@ import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
+import {
+  clearPersonaSession,
+  readPersonaSession,
+  writePersonaSession,
+} from '../utils/PersonaSessionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 import { useDomainStore } from './useDomainStore';
+
+const resolvePersonaFromSession = (user: User): EntityReference | undefined => {
+  const storedId = readPersonaSession();
+  if (!storedId) {
+    return undefined;
+  }
+
+  const { defaultPersona, personas, inheritedPersonas } = user;
+
+  // Partial API responses (e.g. a team-join PATCH) omit all persona fields.
+  // Skip validation — and the stale-key clear — when none were returned so
+  // we don't discard a still-valid selection.
+  if (
+    defaultPersona === undefined &&
+    personas === undefined &&
+    inheritedPersonas === undefined
+  ) {
+    return undefined;
+  }
+
+  const allPersonas = [
+    ...(personas ?? []),
+    ...(inheritedPersonas ?? []),
+    ...(defaultPersona ? [defaultPersona] : []),
+  ];
+
+  const match = allPersonas.find((p) => p.id === storedId);
+  if (!match) {
+    clearPersonaSession();
+  }
+
+  return match;
+};
 
 const syncDomainStoreForUser = (user?: User) => {
   const domainStore = useDomainStore.getState();
@@ -108,6 +146,11 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
 
   setSelectedPersona: (persona: EntityReference | undefined) => {
+    if (persona?.id) {
+      writePersonaSession(persona.id);
+    } else {
+      clearPersonaSession();
+    }
     set({ selectedPersona: persona });
   },
 
@@ -115,14 +158,10 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ applicationConfig: config, theme: config.customTheme });
   },
   setCurrentUser: (user) => {
-    const { defaultPersona } = user;
-
-    // Update the current user
     set({
       currentUser: user,
-      selectedPersona: defaultPersona,
+      selectedPersona: resolvePersonaFromSession(user) ?? user.defaultPersona,
     });
-
     syncDomainStoreForUser(user);
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
@@ -153,21 +192,36 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
 
   updateCurrentUser: (user) => {
-    const { personas, defaultPersona } = user;
-    const { selectedPersona } = get();
-    // Update selected Persona to fetch the customized pages
-    if (defaultPersona) {
-      set({ selectedPersona: defaultPersona });
-    }
-    // Update selected Persona if Persona is not in the list of personas
+    const { defaultPersona, personas, inheritedPersonas } = user;
+
+    // Partial API responses (join-team PATCH etc.) omit all persona fields.
+    // Don't touch the active selection — just record the updated user object.
     if (
-      selectedPersona &&
-      !personas?.find((p) => p.id === selectedPersona.id)
+      defaultPersona === undefined &&
+      personas === undefined &&
+      inheritedPersonas === undefined
     ) {
-      set({ selectedPersona: undefined });
+      set({ currentUser: user });
+      syncDomainStoreForUser(user);
+
+      return;
     }
 
-    set({ currentUser: user });
+    const { selectedPersona } = get();
+    const allPersonas = [
+      ...(personas ?? []),
+      ...(inheritedPersonas ?? []),
+      ...(defaultPersona ? [defaultPersona] : []),
+    ];
+    const isSelectedStillValid =
+      selectedPersona && allPersonas.some((p) => p.id === selectedPersona.id);
+
+    set({
+      currentUser: user,
+      selectedPersona:
+        resolvePersonaFromSession(user) ??
+        (isSelectedStillValid ? selectedPersona : defaultPersona),
+    });
 
     syncDomainStoreForUser(user);
   },

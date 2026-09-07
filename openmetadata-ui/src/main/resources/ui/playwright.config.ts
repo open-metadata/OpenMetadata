@@ -122,8 +122,10 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry on CI only; PLAYWRIGHT_RETRIES (set by the release-branch nightly
+   * workflows) overrides the CI default of 1. The parens are semantic:
+   * without them `?? CI ? 1 : 0` collapses every override to 1. */
+  retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
@@ -218,10 +220,12 @@ export default defineConfig({
       name: 'sso-auth',
       testMatch: [
         '**/OktaSelfSignupClaims.spec.ts',
+        '**/OktaSessionRenewalPublic.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/SSORenewal.spec.ts',
+        '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
     },
@@ -248,7 +252,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      grep: /data-insight/,
+      grep: combineGrep(/@data-insight/),
       teardown: 'entity-data-teardown',
     },
     {

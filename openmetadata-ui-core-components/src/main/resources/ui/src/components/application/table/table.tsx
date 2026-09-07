@@ -150,6 +150,7 @@ interface TableRootProps
   size?: 'sm' | 'md';
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
+  containerClassName?: string;
 }
 
 const TableRoot = ({
@@ -157,6 +158,7 @@ const TableRoot = ({
   size = 'md',
   stickyHeader = false,
   containerStyle,
+  containerClassName,
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
@@ -164,7 +166,9 @@ const TableRoot = ({
   return (
     <TableContext.Provider
       value={{ size: context?.size ?? size, stickyHeader }}>
-      <div className="tw:overflow-x-auto" style={containerStyle}>
+      <div
+        className={cx('tw:overflow-x-auto', containerClassName)}
+        style={containerStyle}>
         <AriaTable
           className={(state) =>
             cx(

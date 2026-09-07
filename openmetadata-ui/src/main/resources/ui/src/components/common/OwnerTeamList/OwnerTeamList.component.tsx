@@ -16,11 +16,13 @@ import classNames from 'classnames';
 import React, { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
 import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
+import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 
 export interface OwnerTeamListProps {
   owners: EntityReference[];
@@ -44,34 +46,36 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
 
   return (
     <div className="tw:flex tw:items-center tw:relative">
-      <Link
-        className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:no-underline"
-        data-testid="owner-link"
-        to={getOwnerPath(visibleTeam)}>
-        <IconTeamsGrey
-          className={classNames(
-            'tw:text-secondary',
-            AVATAR_SIZE_CLASS_MAP[avatarSize]
-          )}
-        />
+      <UserPopOverCard type={OwnerType.TEAM} userName={visibleTeam.name ?? ''}>
+        <Link
+          className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:no-underline"
+          data-testid="owner-link"
+          to={getOwnerPath(visibleTeam)}>
+          <IconTeamsGrey
+            className={classNames(
+              'tw:text-secondary',
+              AVATAR_SIZE_CLASS_MAP[avatarSize]
+            )}
+          />
 
-        <div
-          className={classNames('owner-team-name-wrapper', {
-            'tw:max-w-30': placement === 'vertical' || owners.length < 2,
-            'tw:max-w-16': placement !== 'vertical' && owners.length >= 2,
-          })}>
-          <Typography
-            ellipsis
-            as="p"
-            className="owner-team-name"
-            data-testid={getEntityName(visibleTeam)}
-            size="text-xs"
-            weight="medium">
-            {ownerDisplayName?.get(visibleTeam.name ?? '') ??
-              getEntityName(visibleTeam)}
-          </Typography>
-        </div>
-      </Link>
+          <div
+            className={classNames('owner-team-name-wrapper', {
+              'tw:max-w-30': placement === 'vertical' || owners.length < 2,
+              'tw:max-w-16': placement !== 'vertical' && owners.length >= 2,
+            })}>
+            <Typography
+              ellipsis
+              as="p"
+              className="owner-team-name"
+              data-testid={getEntityName(visibleTeam)}
+              size="text-xs"
+              weight="medium">
+              {ownerDisplayName?.get(visibleTeam.name ?? '') ??
+                getEntityName(visibleTeam)}
+            </Typography>
+          </div>
+        </Link>
+      </UserPopOverCard>
 
       {owners.length > 1 && (
         <Dropdown.Root>

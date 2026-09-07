@@ -15,7 +15,7 @@ Helpers module for db sources
 
 import time
 import traceback
-from typing import Iterable, List, Union  # noqa: UP035
+from typing import Callable, Iterable, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -42,6 +42,10 @@ logger = utils_logger()
 
 PUBLIC_SCHEMA = "public"
 
+# Extra view lineage a connector contributes on top of what the parsers report, called
+# with (metadata, view, view_entity, service_names, masked_query) as keyword arguments.
+ViewLineageExtension = Callable[..., Iterable[Either[LineageRequest]]]
+
 
 def get_host_from_host_port(uri: str) -> str:
     """
@@ -59,10 +63,14 @@ def get_view_lineage(
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,
+    extension: Optional[ViewLineageExtension] = None,  # noqa: UP045
 ) -> Iterable[Either[LineageRequest]]:
     """
     Method to generate view lineage
     Now supports cross-database lineage by accepting a list of service names.
+
+    `extension` lets a connector contribute the edges its dialect expresses outside of
+    the query the parsers see -- see `LineageSource.get_view_lineage_extension`.
     """
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -106,6 +114,14 @@ def get_view_lineage(
             schema_name = PUBLIC_SCHEMA
             schema_fallback = True
 
+        if table_entity.serviceType == DatabaseServiceType.Dremio:
+            # Dremio folders nest arbitrarily deep and are flattened into a single dotted
+            # schema name (`folder.subfolder`), but a Dremio query spells every folder out
+            # as its own path segment. The SQL parser keeps only the first two segments as
+            # the qualifier, so for anything nested two or more folders deep the parsed
+            # schema can never match the ingested one. Fall back to a schema wildcard.
+            schema_fallback = True
+
         end_time = time.time()
         logger.debug(
             f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
@@ -143,6 +159,15 @@ def get_view_lineage(
                     schema_fallback=schema_fallback,
                 )
                 or []
+            )
+
+        if extension:
+            yield from extension(
+                metadata=metadata,
+                view=view,
+                view_entity=table_entity,
+                service_names=service_names,
+                masked_query=lineage_parser.masked_query,
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())

@@ -164,7 +164,7 @@ const PoliciesDetailPage = () => {
     const patch = compare(policy, { ...policy, description });
     try {
       const data = await patchPolicy(patch, policy.id);
-      setPolicy({ ...policy, description: data.description });
+      setPolicy((prev) => ({ ...prev, description: data.description }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -524,9 +524,12 @@ const PoliciesDetailPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.policy'),
-      })}>
+      pageTitle={
+        policyName ||
+        t('label.entity-detail-plural', {
+          entity: t('label.policy'),
+        })
+      }>
       <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 

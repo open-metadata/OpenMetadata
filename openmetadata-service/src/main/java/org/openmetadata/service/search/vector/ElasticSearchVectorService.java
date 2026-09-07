@@ -24,6 +24,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class ElasticSearchVectorService implements VectorIndexService {
@@ -105,7 +106,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
       int from,
       int k,
       double threshold,
-      String preference) {
+      String preference,
+      SubjectContext subjectContext) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embed(query);
@@ -124,7 +126,13 @@ public class ElasticSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
-                queryVector, overFetchSize, rawOffset, k, filters, knnNumCandidatesMultiplier);
+                queryVector,
+                overFetchSize,
+                rawOffset,
+                k,
+                filters,
+                knnNumCandidatesMultiplier,
+                subjectContext);
         String endpoint =
             SearchUtils.appendPreferenceParam("/" + indexName + "/_search", preference);
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
@@ -474,6 +482,30 @@ public class ElasticSearchVectorService implements VectorIndexService {
     } catch (Exception e) {
       LOG.error(
           "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void clearEntityEmbedding(String entityIndexName, String entityId) {
+    // A doc merge cannot delete keys, so removal has to go through a script.
+    try {
+      String fieldsJson = MAPPER.writeValueAsString(EMBEDDING_SOURCE_FIELDS);
+      String updateBody =
+          "{\"script\":{\"source\":\"for (field in params.fields) { ctx._source.remove(field) }\","
+              + "\"params\":{\"fields\":"
+              + fieldsJson
+              + "}}}";
+      executeGenericRequest(
+          "POST",
+          "/" + entityIndexName + "/_update/" + entityId + "?retry_on_conflict=3",
+          updateBody);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to clear embedding for entity {} in {}: {}",
+          entityId,
+          entityIndexName,
+          e.getMessage(),
+          e);
     }
   }
 

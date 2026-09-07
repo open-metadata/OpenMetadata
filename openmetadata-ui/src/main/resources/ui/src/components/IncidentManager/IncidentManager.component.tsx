@@ -13,12 +13,14 @@
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
 import { isString } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,6 +34,15 @@ const IncidentManager = ({
   isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
   const { t } = useTranslation();
+  const breadcrumbData = useMemo(
+    () => [
+      {
+        name: t('label.incident-manager'),
+        url: observabilityRouterClassBase.getIncidentManagerPath(),
+      },
+    ],
+    [t]
+  );
   const {
     commonTestCasePermission,
     filters,
@@ -76,20 +87,24 @@ const IncidentManager = ({
 
   return (
     <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-primary">
-      <div className="new-form-style tw:flex tw:justify-between tw:items-center tw:p-4 tw:gap-5.5 tw:w-full">
+      <div
+        className="new-form-style tw:flex tw:w-full tw:flex-wrap tw:items-end tw:justify-between tw:gap-x-5.5 tw:gap-y-4 tw:p-4"
+        data-testid="incident-filter-bar">
         <AsyncSelect
           allowClear
           showArrow
           showSearch
           api={searchTestCases}
-          className="w-min-20"
+          className="w-min-15"
           data-testid="test-case-select"
           placeholder={t('label.test-case')}
           suffixIcon={undefined}
           value={filters.testCaseFQN}
           onChange={(value) => updateFilters({ testCaseFQN: value })}
         />
-        <div className="tw:flex tw:gap-5.5">
+        <div
+          className="tw:flex tw:flex-wrap tw:items-end tw:gap-x-5.5 tw:gap-y-4"
+          data-testid="incident-filter-controls">
           <Form.Item className="m-b-0" label={t('label.assignee')}>
             <Assignees
               allowClear
@@ -179,6 +194,7 @@ const IncidentManager = ({
       </div>
 
       <IncidentManagerTable
+        breadcrumbData={breadcrumbData}
         handleAssigneeUpdate={handleAssigneeUpdate}
         handleSeveritySubmit={handleSeveritySubmit}
         handleStatusSubmit={handleStatusSubmit}
