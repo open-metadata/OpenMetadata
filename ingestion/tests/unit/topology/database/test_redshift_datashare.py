@@ -63,6 +63,11 @@ mock_redshift_config = {
     },
 }
 
+DATABASE_ROWS = [
+    SimpleNamespace(database_name=LOCAL_DATABASE, database_type="local"),
+    SimpleNamespace(database_name=SHARED_DATABASE, database_type="auto mounted catalog"),
+]
+
 SCHEMA_ROWS = [("public",), ("sales",)]
 
 TABLE_ROWS = [
@@ -114,18 +119,24 @@ class RedshiftDatashareTest(unittest.TestCase):
         self.connection.execute.side_effect = self._execute
         thread_id = self.redshift_source.context.get_current_thread_id()
         self.redshift_source._connection_map[thread_id] = self.connection
-        self.shared_databases_error = None
+        self.show_databases_error = None
+        self.svv_databases_error = None
+        self.schema_rows = SCHEMA_ROWS
 
     def _execute(self, statement, params=None):
         """Answer each catalog view with the rows a consumer cluster would return"""
         query = str(statement).upper()
+        if "SHOW DATABASES" in query:
+            if self.show_databases_error:
+                raise self.show_databases_error
+            return MagicMock(fetchall=lambda: DATABASE_ROWS)
         if "SVV_REDSHIFT_DATABASES" in query:
-            if self.shared_databases_error:
-                raise self.shared_databases_error
-            return MagicMock(fetchall=lambda: [(SHARED_DATABASE,)])
+            if self.svv_databases_error:
+                raise self.svv_databases_error
+            return MagicMock(fetchall=lambda: DATABASE_ROWS)
         if "SVV_ALL_SCHEMAS" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
-            return SCHEMA_ROWS
+            return self.schema_rows
         if "SVV_ALL_TABLES" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
             return TABLE_ROWS
@@ -164,7 +175,7 @@ class RedshiftDatashareTest(unittest.TestCase):
         """Nothing changes for a cluster whose databases all accept connections"""
         self.assertEqual(self._database_names(set()), [LOCAL_DATABASE, SHARED_DATABASE])
         self.assertIsNone(self.redshift_source.datashare_database)
-        # Only the one probe that classifies the databases reached the connection
+        # Only the probe that classifies the databases reached the connection
         self.assertEqual(self.connection.execute.call_count, 1)
 
     def test_shared_database_that_connects_is_never_downgraded(self):
@@ -194,14 +205,31 @@ class RedshiftDatashareTest(unittest.TestCase):
         self.assertEqual(self._database_names({LOCAL_DATABASE}), [SHARED_DATABASE])
         self.assertIsNone(self.redshift_source.datashare_database)
 
-    def test_catalog_view_unavailable_keeps_current_behaviour(self):
-        """Without SVV_REDSHIFT_DATABASES no database can be classified as shared"""
-        self.shared_databases_error = RuntimeError("permission denied for view svv_redshift_databases")
+    def test_falls_back_to_svv_when_show_databases_is_unavailable(self):
+        """Clusters predating SHOW DATABASES still classify through the SVV view"""
+        self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
+        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
+        self.assertEqual(self.redshift_source.datashare_database, SHARED_DATABASE)
+
+    def test_shared_database_with_no_readable_schemas_is_skipped(self):
+        """A database the catalog cannot see into is skipped, not registered empty.
+
+        A catalog database mounted from Glue needs an IAM-authenticated session;
+        under password auth the catalog views report nothing for it.
+        """
+        self.schema_rows = []
+        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
+        self.assertIsNone(self.redshift_source.datashare_database)
+
+    def test_no_classification_source_keeps_current_behaviour(self):
+        """With neither source readable, no database is classified as shared"""
+        self.show_databases_error = RuntimeError("permission denied")
+        self.svv_databases_error = RuntimeError("permission denied for view svv_redshift_databases")
         self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
         self.assertIsNone(self.redshift_source.datashare_database)
 
     def test_schema_names_come_from_the_catalog(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
         self.assertEqual(list(self.redshift_source.get_raw_database_schema_names()), ["public", "sales"])
 
     def test_table_names_and_types_come_from_the_catalog(self):

@@ -28,10 +28,11 @@ from sqlalchemy.sql import sqltypes, text
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.redshift.models import RedshiftDatashareTable
 from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_GET_DATABASE_TYPES,
     REDSHIFT_GET_DATASHARE_COLUMNS,
     REDSHIFT_GET_DATASHARE_SCHEMAS,
     REDSHIFT_GET_DATASHARE_TABLES,
-    REDSHIFT_GET_SHARED_DATABASE_NAMES,
+    REDSHIFT_SHOW_DATABASES,
 )
 from metadata.ingestion.source.database.redshift.utils import ischema_names
 from metadata.utils.logger import ingestion_logger
@@ -42,6 +43,10 @@ logger = ingestion_logger()
 # a precision in SVV_ALL_COLUMNS - `integer` comes back as precision 32, scale 0 -
 # so rendering it for anything else would produce `integer(32,0)`.
 SCALED_NUMERIC_TYPES = {"numeric", "decimal"}
+
+# Every other `database_type` - `shared`, `auto mounted catalog` - is a database
+# the cluster does not hold locally and therefore may refuse a connection to.
+LOCAL_DATABASE_TYPE = "local"
 
 
 def _table_type(raw_table_type: str | None) -> TableType:
@@ -110,17 +115,33 @@ class RedshiftDatashareCatalog:
 
     @property
     def shared_database_names(self) -> set[str]:
-        """Databases the cluster reports as coming from a datashare. Empty when
-        ``SVV_REDSHIFT_DATABASES`` is not readable, which leaves the caller with
-        the plain connection error it would have raised anyway."""
+        """Databases the cluster does not hold locally, and so may refuse a
+        connection to. Empty when neither source can be read, which leaves the
+        caller with the plain connection error it would have raised anyway."""
         if self._shared_database_names is None:
-            try:
-                rows = self._connection_provider().execute(text(REDSHIFT_GET_SHARED_DATABASE_NAMES)).fetchall()
-                self._shared_database_names = {str(row[0]) for row in rows if row[0] is not None}
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.warning("SVV_REDSHIFT_DATABASES unavailable (%s); datashare databases will be skipped.", exc)
-                self._shared_database_names = set()
+            self._shared_database_names = self._fetch_non_local_databases()
         return self._shared_database_names
+
+    def _fetch_non_local_databases(self) -> set[str]:
+        """``SHOW DATABASES`` first: it is the only source that reports a catalog
+        database mounted from Glue. ``SVV_REDSHIFT_DATABASES`` is the fallback for
+        clusters that predate it, and sees datashares from remote clusters."""
+        for query, source in (
+            (REDSHIFT_SHOW_DATABASES, "SHOW DATABASES"),
+            (REDSHIFT_GET_DATABASE_TYPES, "SVV_REDSHIFT_DATABASES"),
+        ):
+            try:
+                rows = self._connection_provider().execute(text(query)).fetchall()
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning("%s unavailable (%s); trying the next source.", source, exc)
+                continue
+            return {
+                str(row.database_name)
+                for row in rows
+                if row.database_name is not None and str(row.database_type or "").strip().lower() != LOCAL_DATABASE_TYPE
+            }
+        logger.warning("Could not classify databases; those that refuse a connection will be skipped.")
+        return set()
 
     def get_schema_names(self, database_name: str) -> list[str]:
         rows = self._connection_provider().execute(text(REDSHIFT_GET_DATASHARE_SCHEMAS), {"database": database_name})

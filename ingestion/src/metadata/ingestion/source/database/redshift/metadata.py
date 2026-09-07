@@ -165,6 +165,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         # Set while walking a datashare database, which is read from the catalog
         # views instead of from a connection of its own.
         self.datashare_database: str | None = None
+        self.datashare_schema_names: list[str] = []
         self.datashare_table_remarks: dict[tuple[str, str], str | None] = {}
 
         if self.incremental.enabled:
@@ -391,7 +392,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.set_external_location_map(new_database)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    logger.error("Error preparing database %s: %s", new_database, exc)
                     continue
 
                 yield new_database
@@ -412,13 +413,27 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         # The error is logged rather than matched on: the refusal is worded
         # differently for a datashare and for a Data Catalog ARN database, and it
         # keeps a genuine failure - a network blip, a missing grant - diagnosable.
+        # Claim the database only when the catalog views can actually see inside
+        # it, so a database we cannot read is skipped with an explanation instead
+        # of being registered with no schemas.
+        schema_names = self.datashare.get_schema_names(database_name)
+        if not schema_names:
+            logger.warning(
+                "Database [%s] did not accept a connection (%s) and the catalog views report no "
+                "schemas for it. A catalog database mounted from Glue needs an IAM-authenticated "
+                "session to be readable.",
+                database_name,
+                connection_error,
+            )
+            return False
         logger.info(
-            "Database [%s] is shared through a datashare and did not accept a connection (%s). "
+            "Database [%s] is shared and did not accept a connection (%s). "
             "Reading its metadata from the cross-database catalog views.",
             database_name,
             connection_error,
         )
         self.datashare_database = database_name
+        self.datashare_schema_names = schema_names
         # Populated from the database we just left; nothing repopulates it while
         # reading from the catalog views.
         self.external_location_map.clear()
@@ -441,7 +456,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.datashare_database:
-            yield from self.datashare.get_schema_names(self.datashare_database)
+            yield from self.datashare_schema_names
         else:
             yield from super().get_raw_database_schema_names()
 

@@ -297,11 +297,18 @@ REDSHIFT_GET_ALL_SCHEMAS = """
 SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
 """
 
-# Databases created from a datashare are reported as `shared`. They show up in
-# `pg_database` but the server refuses a connection to them, so their metadata
-# has to be read through the cross-database SVV_ALL_* catalog views below.
-REDSHIFT_GET_SHARED_DATABASE_NAMES = """
-SELECT database_name FROM SVV_REDSHIFT_DATABASES WHERE database_type <> 'local'
+# Databases the cluster does not hold locally show up in `pg_database`, but the
+# server refuses a connection to them, so their metadata has to be read through
+# the cross-database SVV_ALL_* catalog views below.
+#
+# SHOW DATABASES is the only one of the two that reports a catalog database
+# mounted from Glue (`auto mounted catalog`, or one created from a Data Catalog
+# ARN) - SVV_REDSHIFT_DATABASES covers only datashares from remote clusters and
+# omits those entirely, so it is the fallback for clusters that predate SHOW.
+REDSHIFT_SHOW_DATABASES = "SHOW DATABASES"
+
+REDSHIFT_GET_DATABASE_TYPES = """
+SELECT database_name, database_type FROM SVV_REDSHIFT_DATABASES
 """
 
 REDSHIFT_GET_DATASHARE_SCHEMAS = """
