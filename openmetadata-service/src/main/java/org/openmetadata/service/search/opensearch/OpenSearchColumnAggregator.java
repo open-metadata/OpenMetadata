@@ -98,7 +98,20 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
             .removeIf(e -> !e.getKey().toLowerCase(Locale.ROOT).contains(pattern));
       }
 
+      // Row-level filter (metadataStatus / hasConflicts / hasMissingMetadata) acts on the
+      // aggregate status, so group everything then filter + paginate the items.
+      if (ColumnAggregator.hasRowLevelFilter(request)) {
+        List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(taggedColumns);
+        return ColumnAggregator.paginateFilteredItems(gridItems, request);
+      }
+
       return aggregateColumnsWithKnownNames(request, taggedColumns);
+    }
+
+    // Row-level filter (no tag filter): materialize all candidate columns, then filter the
+    // aggregate items and paginate in memory so counts and per-page size stay correct (#26824).
+    if (ColumnAggregator.hasRowLevelFilter(request)) {
+      return aggregateColumnsWithRowFilters(request);
     }
 
     // Pattern-only path (no tag filter): use terms agg with include regex
@@ -178,6 +191,47 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       String cursor = hasMore ? ColumnAggregator.encodeSearchOffset(toIndex) : null;
 
       return buildResponse(gridItems, cursor, hasMore, totalUniqueColumns, totalOccurrences);
+    } catch (OpenSearchException e) {
+      if (isIndexNotFoundException(e)) {
+        LOG.warn("Search index not found, returning empty results");
+        return buildResponse(new ArrayList<>(), null, false, 0, 0);
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Row-level-filter path (metadataStatus / hasConflicts / hasMissingMetadata, no tag filter). The
+   * filter acts on the aggregate status of a grouped column, which is only known after grouping all
+   * of its occurrences — so we enumerate every candidate name (respecting any column-name pattern
+   * and scope filters), fetch their occurrences, group them, then filter + paginate the items in
+   * memory. This keeps the page count and per-page size consistent with the filtered result set.
+   */
+  private ColumnGridResponse aggregateColumnsWithRowFilters(ColumnAggregationRequest request)
+      throws IOException {
+
+    Query query = buildFilters(request, null);
+    String regex =
+        !nullOrEmpty(request.getColumnNamePattern())
+            ? ColumnAggregator.toCaseInsensitiveRegex(request.getColumnNamePattern())
+            : ColumnAggregator.MATCH_ALL_NAMES_REGEX;
+
+    try {
+      List<String> names = executeNamesQuery(query, regex).names();
+      Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
+      for (int i = 0; i < names.size(); i += ColumnAggregator.ROW_FILTER_DATA_BATCH) {
+        List<String> batch =
+            names.subList(i, Math.min(i + ColumnAggregator.ROW_FILTER_DATA_BATCH, names.size()));
+        Map<String, List<ColumnWithContext>> columnsByName = executePageDataQuery(query, batch);
+        for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
+          allColumnsByName
+              .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
+              .addAll(colEntry.getValue());
+        }
+      }
+
+      List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
+      return ColumnAggregator.paginateFilteredItems(gridItems, request);
     } catch (OpenSearchException e) {
       if (isIndexNotFoundException(e)) {
         LOG.warn("Search index not found, returning empty results");
@@ -376,7 +430,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     addSchemaFilter(boolBuilder, request);
     addDomainFilter(boolBuilder, request);
     addColumnNamePatternFilter(boolBuilder, request);
-    addMetadataStatusFilter(boolBuilder, request);
 
     List<String> allTags = new ArrayList<>();
     if (!nullOrEmpty(request.getTags())) {
@@ -427,7 +480,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     addDomainFilter(boolBuilder, request);
     addColumnNamePatternFilter(boolBuilder, request);
     addTagFilters(boolBuilder, request, columnNamesFromTagFilter);
-    addMetadataStatusFilter(boolBuilder, request);
 
     return Query.of(q -> q.bool(boolBuilder.build()));
   }
@@ -548,61 +600,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
           Query.of(
               q -> q.terms(t -> t.field("columns.tags.tagFQN").terms(tv -> tv.value(values)))));
     }
-  }
-
-  private void addMetadataStatusFilter(
-      BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
-    if (!nullOrEmpty(request.getMetadataStatus())) {
-      Query metadataStatusQuery = buildMetadataStatusFilter(request.getMetadataStatus());
-      if (metadataStatusQuery != null) {
-        boolBuilder.filter(metadataStatusQuery);
-      }
-    }
-  }
-
-  private Query buildMetadataStatusFilter(String status) {
-    String descField = "columns.description";
-    String tagsField = "columns.tags";
-
-    Query hasDesc = hasNonEmptyField(descField);
-    Query hasTags = existsQuery(tagsField);
-    Query noDesc = hasEmptyOrMissingField(descField);
-    Query noTags = notExistsQuery(tagsField);
-
-    return switch (status.toUpperCase()) {
-      case "MISSING" -> Query.of(q -> q.bool(b -> b.must(noDesc).must(noTags)));
-      case "INCOMPLETE" -> Query.of(
-          q ->
-              q.bool(
-                  b ->
-                      b.should(Query.of(qs -> qs.bool(bs -> bs.must(hasDesc).must(noTags))))
-                          .should(Query.of(qs -> qs.bool(bs -> bs.must(noDesc).must(hasTags))))
-                          .minimumShouldMatch("1")));
-      case "COMPLETE" -> Query.of(q -> q.bool(b -> b.must(hasDesc).must(hasTags)));
-      default -> null;
-    };
-  }
-
-  private Query existsQuery(String field) {
-    return Query.of(q -> q.exists(e -> e.field(field)));
-  }
-
-  private Query notExistsQuery(String field) {
-    return Query.of(q -> q.bool(b -> b.mustNot(existsQuery(field))));
-  }
-
-  // `wildcard(field, "?*")` matches any doc whose indexed terms include at least one token of
-  // at least one character — the analyzer-friendly equivalent of "field has non-empty value".
-  // We can't use `term(field, "")` against analyzed text fields like `columns.description`: the
-  // field's analyzer produces no tokens for the empty string and OS rejects the term query with
-  // `search_phase_execution_exception ... all shards failed`. Caught by
-  // ColumnGridResourceIT#test_getColumnGrid_withMetadataStatusIncomplete.
-  private Query hasNonEmptyField(String field) {
-    return Query.of(q -> q.wildcard(w -> w.field(field).value("?*")));
-  }
-
-  private Query hasEmptyOrMissingField(String field) {
-    return Query.of(q -> q.bool(b -> b.mustNot(hasNonEmptyField(field))));
   }
 
   /** Phase 1: Get all matching column names using terms agg with include regex (no top_hits). */
