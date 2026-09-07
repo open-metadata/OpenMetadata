@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -89,6 +90,7 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -106,6 +108,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -793,6 +796,37 @@ public class TeamRepository extends EntityRepository<Team> {
   private Integer getUserCount(UUID teamId) {
     List<EntityRelationshipRecord> records = getUsersRelationshipRecords(teamId);
     return countDistinct(records, resolveActiveUserIds(records));
+  }
+
+  /**
+   * Name hashes to match when listing/exporting the users under {@code teamName}'s umbrella. Group
+   * and Organization teams keep direct membership (empty result &rarr; callers fall back to the
+   * plain {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree
+   * (self + all descendants) so their Users tab and export show the rollup of users inherited from
+   * sub-groups, matching what {@link #getUserCount} already counts.
+   */
+  public List<String> getUserRollupTeamHashes(String teamName) {
+    Team team;
+    try {
+      team = getByName(null, teamName, Fields.EMPTY_FIELDS);
+    } catch (EntityNotFoundException e) {
+      // Unknown team name: leave the plain team filter to return an empty page (existing behavior).
+      return Collections.emptyList();
+    }
+    TeamType teamType = team.getTeamType();
+    if (teamType != DEPARTMENT && teamType != DIVISION && teamType != BUSINESS_UNIT) {
+      return Collections.emptyList();
+    }
+    List<String> hashes = new ArrayList<>();
+    collectSubtreeTeamHashes(team.getId(), team.getName(), hashes);
+    return hashes;
+  }
+
+  private void collectSubtreeTeamHashes(UUID teamId, String teamName, List<String> hashes) {
+    hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(teamName)));
+    for (EntityReference child : getChildren(teamId)) {
+      collectSubtreeTeamHashes(child.getId(), child.getName(), hashes);
+    }
   }
 
   /**
