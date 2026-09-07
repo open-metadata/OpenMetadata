@@ -1,0 +1,283 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Guardrail for `.github/playwright/impact-map.generated.json`.
+#
+# The Playwright PR planner reads this file alongside the hand-authored
+# `impact-map.json` to route "if source X changes, run these specs". The
+# generated half is a deterministic function of the current tree (spec
+# imports + testId cross-reference), so drift means the committed file
+# no longer matches what the generator would produce — usually because
+# a spec, a shared helper, or a `data-testid` string changed and the
+# author did not regenerate.
+#
+# Behaviour:
+#
+#   * Same-repo PR (pull_request via a same-repo branch, or
+#     pull_request_target whose head_repo == base_repo): the workflow
+#     regenerates, commits the refreshed file to the PR branch, posts
+#     a comment explaining what happened, and passes. Push retriggers
+#     PR CI so subsequent checks run against the fresh map.
+#
+#   * Fork PR (pull_request_target with head_repo != base_repo):
+#     workflow cannot push into the fork. It posts a comment with the
+#     exact command to run locally and fails so the PR cannot merge
+#     with a stale map.
+#
+#   * merge_group: read-only check. If the queue's tentative merge
+#     somehow drifts (unlikely — same-repo PRs auto-refresh before
+#     landing) the check fails and the tentative merge is rejected.
+#     Never commits, never comments, never pushes.
+#
+# Trigger paths are the code the map is a function of: specs, UI src,
+# and the generator itself. Anything else cannot change the output.
+
+name: Playwright impact-map drift
+
+on:
+  merge_group:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+    paths:
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/**/*.spec.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/**/*.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/**/*.tsx'
+      - '.github/scripts/generate_playwright_impact_map.py'
+      - '.github/playwright/impact-map.generated.json'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to refresh the impact map for (optional)'
+        required: false
+        type: string
+
+concurrency:
+  group: playwright-impact-map-drift-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+
+jobs:
+  impact-map-drift:
+    name: Playwright impact-map drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Gate on the same `safe to test` label as typescript-type-generation
+    # for fork PRs, so an untrusted fork cannot execute the generator
+    # against base-repo secrets before a maintainer has looked at the diff.
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Get PR details for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
+        id: pr-details
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          BASE_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
+          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
+          echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
+          echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
+
+      - name: Classify fork vs same-repo
+        id: check-fork
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
+          HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
+            if [ "$FULL_REPO" != "$BASE_REPO" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
+          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ]; then
+              echo "is_fork=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_fork=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine checkout ref
+        id: checkout-ref
+        env:
+          IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
+          PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
+          GITHUB_SHA_VAL: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" == "merge_group" ]; then
+            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
+          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
+          elif [ "$EVENT_NAME" == "pull_request_target" ]; then
+            echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
+          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
+            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
+          elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
+            echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
+          else
+            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
+          ref: ${{ steps.checkout-ref.outputs.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate impact map
+        run: python3 .github/scripts/generate_playwright_impact_map.py
+
+      - name: Check for drift
+        id: git-check
+        continue-on-error: true
+        run: |
+          git add .github/playwright/impact-map.generated.json
+          git diff --cached --quiet
+
+      - name: Summarise the diff
+        id: summarise
+        if: steps.git-check.outcome != 'success'
+        run: |
+          # Cap the summary at what fits comfortably in a PR comment. The full
+          # file is a single JSON line — a raw diff would be unreadable — so
+          # count the affected entries semantically instead.
+          python3 - <<'PY' > "$RUNNER_TEMP/summary.txt"
+          import json, subprocess, os
+          path = ".github/playwright/impact-map.generated.json"
+          # HEAD is the committed version; working tree is the regenerated one.
+          old = json.loads(subprocess.check_output(["git", "show", f"HEAD:{path}"]))
+          new = json.loads(open(path).read())
+          old_by_src = {s: set(e["specs"]) for e in old["mappings"] for s in e["sources"]}
+          new_by_src = {s: set(e["specs"]) for e in new["mappings"] for s in e["sources"]}
+          added   = sorted(new_by_src.keys() - old_by_src.keys())
+          removed = sorted(old_by_src.keys() - new_by_src.keys())
+          changed = sorted(
+              s for s in old_by_src.keys() & new_by_src.keys()
+              if old_by_src[s] != new_by_src[s]
+          )
+          print(f"- source entries: {len(old_by_src)} → {len(new_by_src)}")
+          print(f"- {len(added)} added, {len(removed)} removed, {len(changed)} changed spec-list")
+          def sample(rows, label, max_lines=10):
+              if not rows:
+                  return
+              print(f"\n{label}:")
+              for r in rows[:max_lines]:
+                  print(f"  {r}")
+              if len(rows) > max_lines:
+                  print(f"  … and {len(rows) - max_lines} more")
+          sample(added, "New source→spec entries")
+          sample(removed, "Removed source→spec entries")
+          sample(changed, "Entries whose spec list changed")
+          PY
+          {
+            echo 'summary<<SUMMARY_EOF'
+            cat "$RUNNER_TEMP/summary.txt"
+            echo 'SUMMARY_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure git
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Auto-commit + push (same-repo PRs only)
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref }}
+        run: |
+          # `[skip ci]` prevents the push from re-triggering this same workflow
+          # (which would find a clean tree and pass anyway, wasting a run).
+          # PR CI's other checks still re-fire because they gate on push events,
+          # not on this workflow.
+          git commit -m "chore(playwright): auto-refresh impact-map.generated.json [skip ci]"
+          # persist-credentials: false above, so re-attach the token to origin.
+          # Bare URL would break --force-with-lease (no remote-tracking ref to
+          # lease against).
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push --force-with-lease origin "HEAD:${HEAD_REF}"
+
+      - name: Comment on same-repo PR after auto-commit
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          body: |
+            ## 🔄 Playwright impact map auto-refreshed
+
+            This PR touched specs or UI source that changed the source→spec routing map. I regenerated `.github/playwright/impact-map.generated.json` and pushed the diff to this branch.
+
+            ```
+            ${{ steps.summarise.outputs.summary }}
+            ```
+
+            **What is this file?** It is the auto-generated half of Playwright's PR planner. It routes "if source X changes, run specs Y" by walking spec imports and cross-referencing `getByTestId` strings. Hand-authored routing in `impact-map.json` always wins on conflict.
+
+            **What if I want to regenerate locally instead?** Run this before pushing your next change to skip the bot commit:
+
+            ```bash
+            python3 .github/scripts/generate_playwright_impact_map.py
+            git add .github/playwright/impact-map.generated.json
+            git commit --amend --no-edit  # or a separate commit
+            ```
+
+      - name: Comment on fork PR
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          body: |
+            ## ⚠️ Playwright impact map is out of date
+
+            This PR touched specs or UI source that changed the source→spec routing map, but `.github/playwright/impact-map.generated.json` was not regenerated. Because this PR is from a fork, the bot cannot push the refresh — please run it locally and commit the result:
+
+            ```bash
+            python3 .github/scripts/generate_playwright_impact_map.py
+            git add .github/playwright/impact-map.generated.json
+            git commit -m "chore(playwright): refresh impact-map.generated.json"
+            git push
+            ```
+
+            Diff summary from the current tree:
+
+            ```
+            ${{ steps.summarise.outputs.summary }}
+            ```
+
+            **What is this file?** It is the auto-generated half of Playwright's PR planner — it routes "if source X changes, run specs Y" by walking spec imports and cross-referencing `getByTestId` strings against `data-testid="…"` occurrences in `src/**`. When it drifts, the PR planner may skip specs that actually exercise your change, and merge_group is the first place they run.
+
+            This check will re-run and pass once you push the refreshed file.
+
+      - name: Fail check on drift that could not be auto-committed
+        if: steps.git-check.outcome != 'success' && (steps.check-fork.outputs.is_fork == 'true' || github.event_name == 'merge_group')
+        run: exit 1
