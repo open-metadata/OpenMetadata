@@ -86,12 +86,12 @@ export const getMappedTimeFormat = (
   timeFormat: '12h' | '24h'
 ): string =>
   timeFormat === '24h'
-    ? format.replace(/(h{1,2}):mm a/g, (, h: string) =>
-        h.length === 2 ? 'HH:mm' : 'H:mm'
-      )
-    : format.replace(/(H{1,2}):mm/g, (, H: string) =>
-        H.length === 2 ? 'hh:mm a' : 'h:mm a'
-      );
+  ? format.replace(/(h{1,2}):mm a/g, (_, h: string) =>
+      h.length === 2 ? 'HH:mm' : 'H:mm'
+    )
+  : format.replace(/(H{1,2}):mm/g, (_, H: string) =>
+      H.length === 2 ? 'hh:mm a' : 'h:mm a'
+    );
 
 /**
  * @param date EPOCH millis
