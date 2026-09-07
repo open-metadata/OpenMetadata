@@ -216,6 +216,16 @@ const SettingsSso = () => {
       setCurrentProvider('');
     }
 
+    const applyNoConfigState = () => {
+      setHasExistingConfig(false);
+      setActiveTab('configure');
+      // Only show provider selector if no specific provider in URL
+      if (!providerParam) {
+        setShowProviderSelector(true);
+        setCurrentProvider('');
+      }
+    };
+
     // Check for existing SSO configuration
     const checkExistingConfig = async () => {
       // Prevent duplicate API calls
@@ -260,32 +270,14 @@ const SettingsSso = () => {
             }
             setShowProviderSelector(false);
           } else {
-            setHasExistingConfig(false);
-            setActiveTab('configure');
-            // Only show provider selector if no specific provider in URL
-            if (!providerParam) {
-              setShowProviderSelector(true);
-              setCurrentProvider('');
-            }
+            applyNoConfigState();
           }
         } else {
-          setHasExistingConfig(false);
-          setActiveTab('configure');
-          // Only show provider selector if no specific provider in URL
-          if (!providerParam) {
-            setShowProviderSelector(true);
-            setCurrentProvider('');
-          }
+          applyNoConfigState();
         }
       } catch (error) {
         configFetched.current = false; // Reset on error to allow retry
-        setHasExistingConfig(false);
-        setActiveTab('configure');
-        // Only show provider selector if no specific provider in URL
-        if (!providerParam) {
-          setShowProviderSelector(true);
-          setCurrentProvider('');
-        }
+        applyNoConfigState();
       } finally {
         setIsLoading(false);
       }

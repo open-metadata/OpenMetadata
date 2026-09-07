@@ -203,6 +203,380 @@ function useClipboardHandlers(
   return { handleCopy, handlePaste };
 }
 
+// --- Keyboard Handler Helpers ---
+const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+const DELETE_KEYS = ['Delete', 'Backspace'];
+
+function isEventTargetGridCell(
+  target: EventTarget | null
+): target is HTMLElement {
+  return (
+    target instanceof HTMLElement &&
+    (target.classList.contains('rdg-cell') || !!target.closest('.rdg-cell'))
+  );
+}
+
+// handleCopy & handlePaste on header cell focused as react-data-grid only trigger on body cells
+function handleHeaderClipboardShortcuts(
+  e: KeyboardEvent,
+  target: HTMLElement,
+  handleCopy: () => void,
+  handlePaste: () => void
+): void {
+  const isColumnHeader = target.getAttribute('role') === 'columnheader';
+  const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+  if (isColumnHeader && isCtrlOrMeta && e.key.toLowerCase() === 'c') {
+    handleCopy();
+  } else if (isColumnHeader && isCtrlOrMeta && e.key.toLowerCase() === 'v') {
+    handlePaste();
+  }
+}
+
+function resolveUndoRedoAction(e: KeyboardEvent): 'undo' | 'redo' | null {
+  const isCtrlOrMetaPressed = e.ctrlKey || e.metaKey;
+  const isUndo =
+    isCtrlOrMetaPressed && e.key.toLowerCase() === 'z' && !e.shiftKey;
+  const isRedoKey =
+    e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z');
+  const isRedo = isCtrlOrMetaPressed && isRedoKey;
+
+  if (isUndo) {
+    return 'undo';
+  }
+  if (isRedo) {
+    return 'redo';
+  }
+
+  return null;
+}
+
+function handleSelectAllShortcut(
+  e: KeyboardEvent,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setSelectedRange: React.Dispatch<React.SetStateAction<Range | null>>
+): boolean {
+  if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a')) {
+    return false;
+  }
+  e.preventDefault();
+  if (dataSource.length > 0) {
+    setSelectedRange({
+      startRow: 0,
+      startCol: 0,
+      endRow: dataSource.length - 1,
+      endCol: columns.length - 1,
+    });
+  }
+
+  return true;
+}
+
+function deleteColumn(
+  target: HTMLElement,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
+): void {
+  const colAttr = target.getAttribute(ARIA_COLINDEX_ATTR);
+  if (!colAttr) {
+    return;
+  }
+  const colIndex = parseInt(colAttr, 10) - 1;
+  const column = columns[colIndex];
+  if (!column || !column.editable) {
+    return;
+  }
+
+  const newRows = [...dataSource];
+  for (let row = 0; row < newRows.length; row++) {
+    newRows[row] = { ...newRows[row], [column.key]: '' };
+  }
+  setDataSource(newRows);
+  pushToUndoStack(dataSource);
+}
+
+function deleteRow(
+  target: HTMLElement,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
+): void {
+  const rowAttr = target.getAttribute(ARIA_ROWINDEX_ATTR);
+  if (!rowAttr) {
+    return;
+  }
+  const rowIndex = parseInt(rowAttr, 10) - 2; // -2 for header row offset
+  if (rowIndex < 0 || rowIndex >= dataSource.length) {
+    return;
+  }
+
+  const newRows = [...dataSource];
+  const row = { ...newRows[rowIndex] };
+  columns.forEach((column) => {
+    if (column.editable) {
+      row[column.key] = '';
+    }
+  });
+  newRows[rowIndex] = row;
+
+  setDataSource(newRows);
+  pushToUndoStack(dataSource);
+}
+
+function deleteRangeSelection(
+  selectedRange: Range,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
+): void {
+  const { startRow, endRow, startCol, endCol } = selectedRange;
+  const newRows = [...dataSource];
+
+  for (let row = startRow; row <= endRow; row++) {
+    if (row < newRows.length) {
+      for (let col = startCol; col <= endCol; col++) {
+        const column = columns[col];
+        if (column && column.editable) {
+          newRows[row] = { ...newRows[row], [column.key]: '' };
+        }
+      }
+    }
+  }
+
+  setDataSource(newRows);
+  pushToUndoStack(dataSource);
+}
+
+function deleteSingleCellFromElement(
+  element: Element | null,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void,
+  getCellIndices: (
+    target: EventTarget | null
+  ) => { row: number; col: number } | null
+): void {
+  const cellIndices = getCellIndices(element);
+  if (!cellIndices) {
+    return;
+  }
+  const { row, col } = cellIndices;
+  const column = columns[col];
+
+  if (column && column.editable && row < dataSource.length) {
+    const newRows = [...dataSource];
+    newRows[row] = { ...newRows[row], [column.key]: '' };
+    setDataSource(newRows);
+    pushToUndoStack(dataSource);
+  }
+}
+
+function applyDeleteAction(
+  target: HTMLElement,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void,
+  getCellIndices: (
+    target: EventTarget | null
+  ) => { row: number; col: number } | null,
+  selectedRange: Range | null
+): void {
+  // Check if we're in a column header (whole column selection)
+  const isInColumnHeader = !!(
+    target.closest('.rdg-header-row') ||
+    target.getAttribute('role') === 'columnheader'
+  );
+
+  // Check if we're in a row header (whole row selection)
+  const isInRowHeader = !!(
+    target.closest('.rdg-row-header') ||
+    target.getAttribute('role') === 'rowheader'
+  );
+
+  if (isInColumnHeader) {
+    deleteColumn(target, dataSource, columns, setDataSource, pushToUndoStack);
+  } else if (isInRowHeader) {
+    deleteRow(target, dataSource, columns, setDataSource, pushToUndoStack);
+  } else if (selectedRange) {
+    deleteRangeSelection(
+      selectedRange,
+      dataSource,
+      columns,
+      setDataSource,
+      pushToUndoStack
+    );
+  } else {
+    deleteSingleCellFromElement(
+      target,
+      dataSource,
+      columns,
+      setDataSource,
+      pushToUndoStack,
+      getCellIndices
+    );
+  }
+}
+
+function handleDeleteOrBackspace(
+  e: KeyboardEvent,
+  target: HTMLElement,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void,
+  getCellIndices: (
+    target: EventTarget | null
+  ) => { row: number; col: number } | null,
+  selectedRange: Range | null
+): boolean {
+  // Only handle if we're in a cell and not in a text input
+  const isInInput =
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.contentEditable === 'true';
+
+  // Check if we're in a custom editor (like tag selector, dropdown, etc.)
+  const isInCustomEditor = !!(
+    target.closest('.async-select-list') ||
+    target.closest('.react-grid-select-dropdown') ||
+    target.closest('.ant-select') ||
+    target.closest('.ant-select-dropdown')
+  );
+
+  if (!isInInput && !isInCustomEditor) {
+    e.preventDefault();
+    e.stopPropagation();
+    applyDeleteAction(
+      target,
+      dataSource,
+      columns,
+      setDataSource,
+      pushToUndoStack,
+      getCellIndices,
+      selectedRange
+    );
+
+    return true;
+  }
+
+  // For custom editors, we need to handle the case where the event is stopped
+  // but we still want to clear the cell content
+  if (isInCustomEditor) {
+    deleteSingleCellFromElement(
+      target.closest('.rdg-cell'),
+      dataSource,
+      columns,
+      setDataSource,
+      pushToUndoStack,
+      getCellIndices
+    );
+  }
+
+  return false;
+}
+
+function extendSelectionWithShiftArrow(
+  e: KeyboardEvent,
+  selectedRange: Range,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  selectionAnchor: React.MutableRefObject<{ row: number; col: number } | null>,
+  selectionFocus: React.MutableRefObject<{ row: number; col: number } | null>,
+  setSelectedRange: React.Dispatch<React.SetStateAction<Range | null>>,
+  getCellIndices: (
+    target: EventTarget | null
+  ) => { row: number; col: number } | null
+): void {
+  const clamp = (val: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, val));
+
+  // Use getCellIndices(document.activeElement) as the anchor if not set
+  if (!selectionAnchor.current || !selectionFocus.current) {
+    const anchorIndices = getCellIndices(document.activeElement);
+    if (anchorIndices) {
+      selectionAnchor.current = anchorIndices;
+      selectionFocus.current = anchorIndices;
+    } else {
+      // fallback: use start of current selection
+      selectionAnchor.current = {
+        row: selectedRange.startRow,
+        col: selectedRange.startCol,
+      };
+      selectionFocus.current = {
+        row: selectedRange.startRow,
+        col: selectedRange.startCol,
+      };
+    }
+  }
+  // Get anchor (fixed)
+  const anchor = selectionAnchor.current;
+  const focus = { ...selectionFocus.current };
+
+  // Move focus in the arrow direction
+  if (e.key === 'ArrowUp') {
+    focus.row = clamp(focus.row - 1, 0, dataSource.length - 1);
+  } else if (e.key === 'ArrowDown') {
+    focus.row = clamp(focus.row + 1, 0, dataSource.length - 1);
+  } else if (e.key === 'ArrowLeft') {
+    focus.col = clamp(focus.col - 1, 0, columns.length - 1);
+  } else if (e.key === 'ArrowRight') {
+    focus.col = clamp(focus.col + 1, 0, columns.length - 1);
+  }
+  selectionFocus.current = focus;
+
+  // Update selection from anchor to new focus
+  setSelectedRange({
+    startRow: Math.min(anchor.row, focus.row),
+    endRow: Math.max(anchor.row, focus.row),
+    startCol: Math.min(anchor.col, focus.col),
+    endCol: Math.max(anchor.col, focus.col),
+  });
+
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}
+
+function handleArrowKeyNavigation(
+  e: KeyboardEvent,
+  selectedRange: Range | null,
+  dataSource: Record<string, string>[],
+  columns: Column<Record<string, string>>[],
+  selectionAnchor: React.MutableRefObject<{ row: number; col: number } | null>,
+  selectionFocus: React.MutableRefObject<{ row: number; col: number } | null>,
+  setSelectedRange: React.Dispatch<React.SetStateAction<Range | null>>,
+  getCellIndices: (
+    target: EventTarget | null
+  ) => { row: number; col: number } | null
+): void {
+  if (!ARROW_KEYS.includes(e.key)) {
+    return;
+  }
+
+  if (selectedRange && e.shiftKey) {
+    extendSelectionWithShiftArrow(
+      e,
+      selectedRange,
+      dataSource,
+      columns,
+      selectionAnchor,
+      selectionFocus,
+      setSelectedRange,
+      getCellIndices
+    );
+  } else if (!e.shiftKey) {
+    setSelectedRange(null);
+    selectionAnchor.current = null;
+    selectionFocus.current = null;
+  }
+}
+
 // --- Main Hook ---
 export function useGridEditController({
   dataSource,
@@ -311,6 +685,8 @@ export function useGridEditController({
           ?.removeEventListener('scroll', highlightSelectedRange);
       };
     }
+
+    return undefined;
   }, [highlightSelectedRange]);
 
   // Helper to get cell indices from event target
@@ -438,261 +814,61 @@ export function useGridEditController({
       // Let the grid handle navigation and focus.
 
       // Only respond if the event target is a cell
-      if (
-        !(
-          e.target instanceof HTMLElement &&
-          (e.target.classList.contains('rdg-cell') ||
-            e.target.closest('.rdg-cell'))
-        )
-      ) {
+      if (!isEventTargetGridCell(e.target)) {
         return;
       }
+      const target = e.target;
 
-      // handleCopy & handlePaste on header cell focused as react-data-grid only trigger on body cells
-      if (
-        e.target.getAttribute('role') === 'columnheader' &&
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === 'c'
-      ) {
-        handleCopy();
-      } else if (
-        e.target.getAttribute('role') === 'columnheader' &&
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === 'v'
-      ) {
-        handlePaste();
-      }
+      handleHeaderClipboardShortcuts(e, target, handleCopy, handlePaste);
 
       // Undo/Redo
-      const isCtrlOrMetaPressed = e.ctrlKey || e.metaKey;
-      const isUndo =
-        isCtrlOrMetaPressed && e.key.toLowerCase() === 'z' && !e.shiftKey;
-      const isRedoKey =
-        e.key.toLowerCase() === 'y' ||
-        (e.shiftKey && e.key.toLowerCase() === 'z');
-      const isRedo = isCtrlOrMetaPressed && isRedoKey;
-
-      if (isUndo) {
+      const undoRedoAction = resolveUndoRedoAction(e);
+      if (undoRedoAction) {
         e.stopPropagation();
         e.preventDefault();
-        undo();
-
-        return;
-      }
-      if (isRedo) {
-        e.stopPropagation();
-        e.preventDefault();
-        redo();
+        if (undoRedoAction === 'undo') {
+          undo();
+        } else {
+          redo();
+        }
 
         return;
       }
 
       // Select all (Ctrl+A)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        if (dataSource.length > 0) {
-          setSelectedRange({
-            startRow: 0,
-            startCol: 0,
-            endRow: dataSource.length - 1,
-            endCol: columns.length - 1,
-          });
-        }
-
+      if (handleSelectAllShortcut(e, dataSource, columns, setSelectedRange)) {
         return;
       }
 
       // Handle Delete and Backspace keys to clear cell content
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Only handle if we're in a cell and not in a text input
-        const target = e.target as HTMLElement;
-        const isInInput =
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.contentEditable === 'true';
-
-        // Check if we're in a custom editor (like tag selector, dropdown, etc.)
-        const isInCustomEditor =
-          target.closest('.async-select-list') ||
-          target.closest('.react-grid-select-dropdown') ||
-          target.closest('.ant-select') ||
-          target.closest('.ant-select-dropdown');
-
-        if (!isInInput && !isInCustomEditor) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          // Check if we're in a column header (whole column selection)
-          const isInColumnHeader =
-            target.closest('.rdg-header-row') ||
-            target.getAttribute('role') === 'columnheader';
-
-          // Check if we're in a row header (whole row selection)
-          const isInRowHeader =
-            target.closest('.rdg-row-header') ||
-            target.getAttribute('role') === 'rowheader';
-
-          if (isInColumnHeader) {
-            // Handle whole column deletion
-            const colAttr = target.getAttribute(ARIA_COLINDEX_ATTR);
-            if (colAttr) {
-              const colIndex = parseInt(colAttr, 10) - 1;
-              const column = columns[colIndex];
-
-              if (column && column.editable) {
-                // Clear all cells in the column
-                const newRows = [...dataSource];
-                for (let row = 0; row < newRows.length; row++) {
-                  newRows[row] = { ...newRows[row], [column.key]: '' };
-                }
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
-              }
-            }
-          } else if (isInRowHeader) {
-            // Handle whole row deletion
-            const rowAttr = target.getAttribute(ARIA_ROWINDEX_ATTR);
-            if (rowAttr) {
-              const rowIndex = parseInt(rowAttr, 10) - 2; // -2 for header row offset
-
-              if (rowIndex >= 0 && rowIndex < dataSource.length) {
-                // Clear all cells in the row
-                const newRows = [...dataSource];
-                const row = newRows[rowIndex];
-
-                // Clear all editable columns in the row
-                columns.forEach((column) => {
-                  if (column.editable) {
-                    row[column.key] = '';
-                  }
-                });
-
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
-              }
-            }
-          } else if (selectedRange) {
-            // Handle range selection deletion
-            const { startRow, endRow, startCol, endCol } = selectedRange;
-            const newRows = [...dataSource];
-
-            for (let row = startRow; row <= endRow; row++) {
-              if (row < newRows.length) {
-                for (let col = startCol; col <= endCol; col++) {
-                  const column = columns[col];
-                  if (column && column.editable) {
-                    newRows[row] = { ...newRows[row], [column.key]: '' };
-                  }
-                }
-              }
-            }
-
-            setDataSource(newRows);
-            pushToUndoStack(dataSource);
-          } else {
-            // Handle single cell deletion
-            const cellIndices = getCellIndices(target);
-            if (cellIndices) {
-              const { row, col } = cellIndices;
-              const column = columns[col];
-
-              if (column && column.editable && row < dataSource.length) {
-                // Clear the cell content
-                const newRows = [...dataSource];
-                newRows[row] = { ...newRows[row], [column.key]: '' };
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
-              }
-            }
-          }
-
+      if (DELETE_KEYS.includes(e.key)) {
+        const shouldReturn = handleDeleteOrBackspace(
+          e,
+          target,
+          dataSource,
+          columns,
+          setDataSource,
+          pushToUndoStack,
+          getCellIndices,
+          selectedRange
+        );
+        if (shouldReturn) {
           return;
         }
-
-        // For custom editors, we need to handle the case where the event is stopped
-        // but we still want to clear the cell content
-        if (isInCustomEditor) {
-          // Get the cell that contains this custom editor
-          const cellElement = target.closest('.rdg-cell');
-          if (cellElement) {
-            const cellIndices = getCellIndices(cellElement);
-            if (cellIndices) {
-              const { row, col } = cellIndices;
-              const column = columns[col];
-
-              if (column && column.editable && row < dataSource.length) {
-                // Clear the cell content for custom editors
-                const newRows = [...dataSource];
-                newRows[row] = { ...newRows[row], [column.key]: '' };
-                setDataSource(newRows);
-                pushToUndoStack(dataSource);
-              }
-            }
-          }
-        }
       }
 
-      // Shift+Arrow for range selection (Excel-like)
-      if (
-        selectedRange &&
-        e.shiftKey &&
-        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
-      ) {
-        const clamp = (val: number, min: number, max: number) =>
-          Math.max(min, Math.min(max, val));
-
-        // Use getCellIndices(document.activeElement) as the anchor if not set
-        if (!selectionAnchor.current || !selectionFocus.current) {
-          const anchorIndices = getCellIndices(document.activeElement);
-          if (anchorIndices) {
-            selectionAnchor.current = anchorIndices;
-            selectionFocus.current = anchorIndices;
-          } else {
-            // fallback: use start of current selection
-            selectionAnchor.current = {
-              row: selectedRange.startRow,
-              col: selectedRange.startCol,
-            };
-            selectionFocus.current = {
-              row: selectedRange.startRow,
-              col: selectedRange.startCol,
-            };
-          }
-        }
-        // Get anchor (fixed)
-        const anchor = selectionAnchor.current;
-        const focus = { ...selectionFocus.current };
-
-        // Move focus in the arrow direction
-        if (e.key === 'ArrowUp') {
-          focus.row = clamp(focus.row - 1, 0, dataSource.length - 1);
-        } else if (e.key === 'ArrowDown') {
-          focus.row = clamp(focus.row + 1, 0, dataSource.length - 1);
-        } else if (e.key === 'ArrowLeft') {
-          focus.col = clamp(focus.col - 1, 0, columns.length - 1);
-        } else if (e.key === 'ArrowRight') {
-          focus.col = clamp(focus.col + 1, 0, columns.length - 1);
-        }
-        selectionFocus.current = focus;
-
-        // Update selection from anchor to new focus
-        setSelectedRange({
-          startRow: Math.min(anchor.row, focus.row),
-          endRow: Math.max(anchor.row, focus.row),
-          startCol: Math.min(anchor.col, focus.col),
-          endCol: Math.max(anchor.col, focus.col),
-        });
-
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      } else if (
-        !e.shiftKey &&
-        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
-      ) {
-        setSelectedRange(null);
-        selectionAnchor.current = null;
-        selectionFocus.current = null;
-      }
+      // Shift+Arrow for range selection (Excel-like), or clear selection on
+      // plain arrow keys
+      handleArrowKeyNavigation(
+        e,
+        selectedRange,
+        dataSource,
+        columns,
+        selectionAnchor,
+        selectionFocus,
+        setSelectedRange,
+        getCellIndices
+      );
     }
 
     function keyUpHandler(e: KeyboardEvent) {
