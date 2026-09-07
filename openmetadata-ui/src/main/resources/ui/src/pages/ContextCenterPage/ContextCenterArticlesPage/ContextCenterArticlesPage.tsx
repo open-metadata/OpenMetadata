@@ -81,6 +81,17 @@ import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePa
 
 const ARTICLE_PLURAL_LABEL = 'label.article-plural';
 
+// Pure helper (module scope): the listing is "unfiltered" only when the user isn't
+// viewing/searching a specific article and permission loading hasn't already failed.
+function getIsArticleListingUnfiltered(
+  fqn: string,
+  version: string | undefined,
+  articleSearchQuery: string,
+  permissionFetchFailed: boolean
+): boolean {
+  return !fqn && !version && !articleSearchQuery && !permissionFetchFailed;
+}
+
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -385,10 +396,149 @@ const ContextCenterArticlesPage = () => {
     handleToggleRightPanel,
   ]);
 
-  const isArticleListingUnfiltered =
-    !fqn && !version && !articleSearchQuery && !permissionFetchFailed;
+  const isArticleListingUnfiltered = getIsArticleListingUnfiltered(
+    fqn,
+    version,
+    articleSearchQuery,
+    permissionFetchFailed
+  );
   const showArticlesEmptyState =
     isArticlesListEmpty && isArticleListingUnfiltered;
+
+  const renderArticlesEmptyState = () => (
+    <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
+      <EmptyPlaceholder
+        actions={
+          permissions?.Create
+            ? [
+                {
+                  color: 'primary',
+                  iconLeading: Plus,
+                  key: 'new-article',
+                  label: t('label.new-article'),
+                  onClick: addArticleKnowledgePage,
+                },
+              ]
+            : []
+        }
+        description={t('message.context-center-articles-empty-subtitle')}
+        features={[
+          {
+            key: 'create',
+            icon: <FileIcon className="tw:text-fg-brand-primary" />,
+            title: t('label.create-an-article'),
+            description: t(
+              'message.context-center-articles-empty-feature-create'
+            ),
+          },
+          {
+            key: 'publish',
+            icon: (
+              <ArrowCircleBrokenUp className="tw:text-fg-warning-primary" />
+            ),
+            title: t('label.publish-and-version'),
+            description: t(
+              'message.context-center-articles-empty-feature-publish'
+            ),
+          },
+          {
+            key: 'ai',
+            icon: <Stars01 className="tw:text-fg-success-primary" />,
+            title: t('label.ai-takes-it-from-there'),
+            description: t('message.context-center-articles-empty-feature-ai'),
+          },
+        ]}
+        title={t('label.write-it-once-let-ai-answer-it-forever')}
+        variant="features"
+      />
+    </div>
+  );
+
+  const renderCenterPanel = () => (
+    <ReflexElement
+      propagateDimensions
+      className={classNames('center-panel', {
+        'has-sidebar': leftSidebar,
+      })}
+      data-testid="center-panel"
+      flex={rightSidebar ? 0.6 : 1}
+      minSize={700}>
+      {fqn || version ? (
+        <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
+          <Card.Content
+            className={classNames(
+              'tw:flex-1 tw:min-h-0 tw:overflow-auto',
+              isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+            )}>
+            {centerContent}
+          </Card.Content>
+        </Card>
+      ) : (
+        <Box
+          className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
+          direction="col">
+          {centerContent}
+        </Box>
+      )}
+    </ReflexElement>
+  );
+
+  const renderReflexLayout = () => (
+    <ReflexContainer
+      className={classNames('knowledge-center-layout tw:h-full', {
+        'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
+      })}
+      orientation="vertical"
+      style={showArticlesEmptyState ? { display: 'none' } : undefined}>
+      {/* left */}
+      <ReflexElement
+        className={classNames('left-panel', {
+          'left-panel-collapsed': !leftSidebar,
+        })}
+        data-testid="left-panel"
+        flex={0.25}
+        minSize={280}>
+        {leftSidebar}
+      </ReflexElement>
+
+      <ReflexSplitter
+        className={classNames('splitter left-panel-splitter', {
+          hidden: !leftSidebar,
+        })}>
+        {leftSidebar && (
+          <div className="panel-grabber-vertical">
+            <div className="handle-icon handle-icon-vertical" />
+          </div>
+        )}
+      </ReflexSplitter>
+
+      {/* middle */}
+      {renderCenterPanel()}
+
+      <ReflexSplitter
+        className={classNames('splitter right-panel-splitter', {
+          hidden: !rightSidebar,
+        })}>
+        {!!rightSidebar && (
+          <div className="panel-grabber-vertical">
+            <div className="handle-icon handle-icon-vertical" />
+          </div>
+        )}
+      </ReflexSplitter>
+
+      <ReflexElement
+        propagateDimensions
+        className={classNames('right-panel', {
+          'right-panel-collapsed': !rightSidebar,
+        })}
+        data-testid="right-panel"
+        flex={rightSidebar ? 0.2 : 0}
+        minSize={280}
+        style={rightSidebar ? {} : { display: 'none' }}>
+        {rightSidebar}
+      </ReflexElement>
+    </ReflexContainer>
+  );
 
   return (
     <div
@@ -404,135 +554,8 @@ const ContextCenterArticlesPage = () => {
         direction="col"
         id="knowledge-center-layout-container">
         <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
-        {showArticlesEmptyState && (
-          <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-            <EmptyPlaceholder
-              actions={
-                permissions?.Create
-                  ? [
-                      {
-                        color: 'primary',
-                        iconLeading: Plus,
-                        key: 'new-article',
-                        label: t('label.new-article'),
-                        onClick: addArticleKnowledgePage,
-                      },
-                    ]
-                  : []
-              }
-              description={t('message.context-center-articles-empty-subtitle')}
-              features={[
-                {
-                  key: 'create',
-                  icon: <FileIcon className="tw:text-fg-brand-primary" />,
-                  title: t('label.create-an-article'),
-                  description: t(
-                    'message.context-center-articles-empty-feature-create'
-                  ),
-                },
-                {
-                  key: 'publish',
-                  icon: (
-                    <ArrowCircleBrokenUp className="tw:text-fg-warning-primary" />
-                  ),
-                  title: t('label.publish-and-version'),
-                  description: t(
-                    'message.context-center-articles-empty-feature-publish'
-                  ),
-                },
-                {
-                  key: 'ai',
-                  icon: <Stars01 className="tw:text-fg-success-primary" />,
-                  title: t('label.ai-takes-it-from-there'),
-                  description: t(
-                    'message.context-center-articles-empty-feature-ai'
-                  ),
-                },
-              ]}
-              title={t('label.write-it-once-let-ai-answer-it-forever')}
-              variant="features"
-            />
-          </div>
-        )}
-        <ReflexContainer
-          className={classNames('knowledge-center-layout tw:h-full', {
-            'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
-          })}
-          orientation="vertical"
-          style={showArticlesEmptyState ? { display: 'none' } : undefined}>
-          {/* left */}
-          <ReflexElement
-            className={classNames('left-panel', {
-              'left-panel-collapsed': !leftSidebar,
-            })}
-            data-testid="left-panel"
-            flex={0.25}
-            minSize={280}>
-            {leftSidebar}
-          </ReflexElement>
-
-          <ReflexSplitter
-            className={classNames('splitter left-panel-splitter', {
-              hidden: !leftSidebar,
-            })}>
-            {leftSidebar && (
-              <div className="panel-grabber-vertical">
-                <div className="handle-icon handle-icon-vertical" />
-              </div>
-            )}
-          </ReflexSplitter>
-
-          {/* middle */}
-          <ReflexElement
-            propagateDimensions
-            className={classNames('center-panel', {
-              'has-sidebar': leftSidebar,
-            })}
-            data-testid="center-panel"
-            flex={rightSidebar ? 0.6 : 1}
-            minSize={700}>
-            {fqn || version ? (
-              <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
-                <Card.Content
-                  className={classNames(
-                    'tw:flex-1 tw:min-h-0 tw:overflow-auto',
-                    isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
-                  )}>
-                  {centerContent}
-                </Card.Content>
-              </Card>
-            ) : (
-              <Box
-                className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
-                direction="col">
-                {centerContent}
-              </Box>
-            )}
-          </ReflexElement>
-
-          <ReflexSplitter
-            className={classNames('splitter right-panel-splitter', {
-              hidden: !rightSidebar,
-            })}>
-            {!!rightSidebar && (
-              <div className="panel-grabber-vertical">
-                <div className="handle-icon handle-icon-vertical" />
-              </div>
-            )}
-          </ReflexSplitter>
-
-          <ReflexElement
-            propagateDimensions
-            className={classNames('right-panel', {
-              'right-panel-collapsed': !rightSidebar,
-            })}
-            data-testid="right-panel"
-            flex={rightSidebar ? 0.2 : 0}
-            minSize={280}
-            style={rightSidebar ? {} : { display: 'none' }}>
-            {rightSidebar}
-          </ReflexElement>
-        </ReflexContainer>
+        {showArticlesEmptyState && renderArticlesEmptyState()}
+        {renderReflexLayout()}
       </Box>
 
       <QuickLinkFormModal

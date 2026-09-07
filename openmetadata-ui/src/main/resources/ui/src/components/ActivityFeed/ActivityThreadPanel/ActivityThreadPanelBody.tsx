@@ -19,7 +19,6 @@ import {
   FC,
   Fragment,
   lazy,
-  ReactNode,
   RefObject,
   useCallback,
   useEffect,
@@ -210,17 +209,55 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     paging,
   ]);
 
-  const isPanelLoading = isTaskType ? loading : isConversationLoading;
   const hasNoConversations =
     conversations.length === 0 && !isConversationLoading;
 
-  const backButton = (
-    <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
-      {t('label.back')}
-    </Button>
+  const newConversationHandler =
+    conversations.length > 0 && isUndefined(selectedConversation)
+      ? setShowNewConversation
+      : undefined;
+
+  const renderActiveTaskView = () => {
+    if (isUndefined(selectedTask)) {
+      return null;
+    }
+
+    return (
+      <Fragment>
+        <Button
+          className="m-b-sm p-0"
+          size="small"
+          type="link"
+          onClick={onBack}>
+          {t('label.back')}
+        </Button>
+        <TaskTabNew
+          entityType={
+            (selectedTask.about?.type as EntityType) ?? EntityType.TABLE
+          }
+          hasGlossaryReviewer={false}
+          owners={[]}
+          task={selectedTask}
+        />
+      </Fragment>
+    );
+  };
+
+  const renderActiveConversationView = () => (
+    <Fragment>
+      <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
+        {t('label.back')}
+      </Button>
+      <ActivityFeedCardNew
+        isForFeedTab
+        isOpenInDrawer
+        showThread
+        feed={selectedConversation}
+      />
+    </Fragment>
   );
 
-  const taskListContent =
+  const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
       <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph>
@@ -244,77 +281,61 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       </div>
     );
 
-  const listView = (
-    <Fragment>
-      {(showNewConversation || hasNoConversations) && isConversationType && (
-        <Space className="w-full" direction="vertical">
-          <Typography.Paragraph>
-            {t('message.new-conversation')}
-          </Typography.Paragraph>
-          <ActivityFeedEditor
-            placeHolder={t('message.enter-a-field', {
-              field: t('label.message-lowercase'),
-            })}
-            onSave={onPostConversation}
-          />
-        </Space>
-      )}
-
-      {isTaskType ? (
-        taskListContent
-      ) : (
-        <div className={classNames(className, 'd-flex flex-col gap-3')}>
-          {conversations.map((conversation) => (
-            <FeedPanelBodyV1New
-              isForFeedTab
-              feed={conversation}
-              isActive={false}
-              key={conversation.id}
-              onFeedClick={setActiveConversation}
-            />
-          ))}
-        </div>
-      )}
-
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}>
-        {isPanelLoading ? <Loader /> : null}
-      </div>
-    </Fragment>
+  const renderConversationList = () => (
+    <div className={classNames(className, 'd-flex flex-col gap-3')}>
+      {conversations.map((conversation) => (
+        <FeedPanelBodyV1New
+          isForFeedTab
+          feed={conversation}
+          isActive={false}
+          key={conversation.id}
+          onFeedClick={setActiveConversation}
+        />
+      ))}
+    </div>
   );
 
-  let panelContent: ReactNode;
-  if (isTaskType && !isUndefined(selectedTask)) {
-    panelContent = (
+  const renderListView = () => {
+    const isListLoading = isTaskType ? loading : isConversationLoading;
+
+    return (
       <Fragment>
-        {backButton}
-        <TaskTabNew
-          entityType={
-            (selectedTask.about?.type as EntityType) ?? EntityType.TABLE
-          }
-          hasGlossaryReviewer={false}
-          owners={[]}
-          task={selectedTask}
-        />
+        {(showNewConversation || hasNoConversations) && isConversationType && (
+          <Space className="w-full" direction="vertical">
+            <Typography.Paragraph>
+              {t('message.new-conversation')}
+            </Typography.Paragraph>
+            <ActivityFeedEditor
+              placeHolder={t('message.enter-a-field', {
+                field: t('label.message-lowercase'),
+              })}
+              onSave={onPostConversation}
+            />
+          </Space>
+        )}
+
+        {isTaskType ? renderTaskList() : renderConversationList()}
+
+        <div
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}>
+          {isListLoading ? <Loader /> : null}
+        </div>
       </Fragment>
     );
-  } else if (!isUndefined(selectedConversation)) {
-    panelContent = (
-      <Fragment>
-        {backButton}
-        <ActivityFeedCardNew
-          isForFeedTab
-          isOpenInDrawer
-          showThread
-          feed={selectedConversation}
-        />
-      </Fragment>
-    );
-  } else {
-    panelContent = listView;
-  }
+  };
+
+  const renderMainContent = () => {
+    if (isTaskType && !isUndefined(selectedTask)) {
+      return renderActiveTaskView();
+    }
+    if (!isUndefined(selectedConversation)) {
+      return renderActiveConversationView();
+    }
+
+    return renderListView();
+  };
 
   return (
     <Fragment>
@@ -324,11 +345,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             entityLink={selectedConversation?.about ?? threadLink}
             noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}
-            onShowNewConversation={
-              conversations.length > 0 && isUndefined(selectedConversation)
-                ? setShowNewConversation
-                : undefined
-            }
+            onShowNewConversation={newConversationHandler}
           />
         )}
         {isTaskType && (
@@ -348,7 +365,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Space>
         )}
 
-        {panelContent}
+        {renderMainContent()}
       </div>
     </Fragment>
   );
