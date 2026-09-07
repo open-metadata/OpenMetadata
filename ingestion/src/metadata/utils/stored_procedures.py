@@ -18,24 +18,41 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-# Bounded so the span cannot run to the next paren anywhere in the statement, which would let
-# `UPDATE call_log SET x = pkg.refresh_stats(1)` resolve to a real procedure. `\s` crosses
-# newlines, so multi-line calls match without re.DOTALL. Unquoted covers Oracle's
-# `[schema.][package|type][@dblink] name` and the `$` / `#` its identifiers allow. A quoted
-# segment is taken whole, since a delimited identifier may hold any character, which is how
-# BigQuery spells a hyphenated project id.
+# The optionally qualified procedure name, plus the whitespace before it. Bounded on purpose:
+# an unbounded `.*?` runs to the next paren anywhere in the statement, which would let
+# `UPDATE call_log SET x = pkg.refresh_stats(1)` resolve to a real procedure. `\s` matches
+# newlines, so a multi-line call parses without re.DOTALL.
+#
+# Unquoted covers Oracle's `[schema.][package|type][@dblink] name` and the `$` / `#` its
+# identifiers allow. A quoted segment is taken whole, since a delimited identifier may hold any
+# character, which is how BigQuery spells a hyphenated project id.
 # https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/CALL.html
 # https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
 # https://docs.snowflake.com/en/sql-reference/identifiers-syntax
-_NAME_SPAN = r"(?:[\s\w.@$#]|`[^`]*`|\"[^\"]*\")*?"
-# The keyword needs a boundary on both sides. `\b` before it rejects `recall`, and `(?!\w)` after
-# it rejects an identifier that merely starts with the keyword, so `SELECT call_center(1)` and
-# `SELECT begin_date(1)` are not read as invocations of `_center` and `_date`.
-_KEYWORD = r"(?<=\b{keyword})(?!\w)"
-NAME_PATTERN = (
-    rf"{_KEYWORD.format(keyword='call')}{_NAME_SPAN}(?=\()"
-    rf"|{_KEYWORD.format(keyword='begin')}{_NAME_SPAN}(?=\()"
-    rf"|{_KEYWORD.format(keyword='begin')}{_NAME_SPAN}(?=;\s*end)"
+_QUALIFIED_NAME = r"(?:[\s\w.@$#]|`[^`]*`|\"[^\"]*\")*?"
+
+# Where the name ends. A `CALL` runs up to the argument list. A parameterless PL/SQL call inside
+# a block has no argument list, so it runs up to the statement terminator instead.
+_BEFORE_ARG_LIST = r"(?=\()"
+_BEFORE_BLOCK_END = r"(?=;\s*end)"
+
+
+def _invocation(keyword: str, ends_at: str) -> str:
+    """Build one `<keyword> <qualified name>` alternation.
+
+    The keyword needs a boundary on both sides. `\\b` before it rejects `recall`, and `(?!\\w)`
+    after it rejects an identifier that merely starts with the keyword, so `SELECT call_center(1)`
+    is not read as an invocation of a procedure named `_center`.
+    """
+    return rf"(?<=\b{keyword})(?!\w){_QUALIFIED_NAME}{ends_at}"
+
+
+NAME_PATTERN = "|".join(
+    (
+        _invocation("call", _BEFORE_ARG_LIST),
+        _invocation("begin", _BEFORE_ARG_LIST),
+        _invocation("begin", _BEFORE_BLOCK_END),
+    )
 )
 
 
