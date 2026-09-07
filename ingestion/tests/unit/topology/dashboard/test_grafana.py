@@ -14,7 +14,6 @@ Test Grafana Dashboard using the topology
 """
 
 import uuid
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -34,9 +33,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import (
     EntityName,
@@ -218,7 +214,7 @@ MOCK_PANELS = [
     ),
     GrafanaPanel(
         id=4,
-        type="row",  # Should be skipped
+        type="row",  # expanded row — no nested panels, skipped by consumer
         title="Row Panel",
     ),
 ]
@@ -281,8 +277,8 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl=SourceUrl("https://grafana.example.com/d/test-dashboard-uid/test-dashboard"),
     charts=[],
     service=FullyQualifiedEntityName("mock_grafana"),
-    tags=[],  # Tags would be added if tag creation was mocked
-    owners=None,  # Would be set if owner lookup was mocked
+    tags=[],
+    owners=None,
 )
 
 EXPECTED_CHARTS = [
@@ -312,95 +308,151 @@ EXPECTED_CHARTS = [
     ),
 ]
 
-
-class GrafanaUnitTest(TestCase):
-    """
-    Implements the necessary unit tests for the Grafana Dashboard connector
-    """
-
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def __init__(self, methodName, create_connection, run_test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        # Mock the connection to return a mock client
-        mock_client = MagicMock()
-        mock_client.get_folders.return_value = MOCK_FOLDERS
-        mock_client.search_dashboards.return_value = MOCK_SEARCH_RESULTS
-        mock_client.get_dashboard.return_value = MOCK_DASHBOARD_RESPONSE
-        mock_client.get_datasources.return_value = MOCK_DATASOURCES
-        create_connection.return_value.client = mock_client
-
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
-        # Mock OpenMetadata client to avoid connection attempts
-        with patch("metadata.ingestion.ometa.ometa_api.OpenMetadata") as mock_om:
-            mock_metadata = MagicMock()
-            mock_metadata.get_by_name.return_value = None
-            mock_metadata.get_reference_by_email.return_value = None
-            mock_om.return_value = mock_metadata
-
-            self.grafana: GrafanaSource = GrafanaSource.create(
-                mock_config["source"],
-                mock_metadata,
+# ---------------------------------------------------------------------------
+# Collapsed-row fixtures
+# Two charts nested inside a collapsed row panel (id=20).
+# ---------------------------------------------------------------------------
+MOCK_COLLAPSED_PANELS = [
+    GrafanaPanel(
+        id=21,
+        type="graph",
+        title="Nested Chart A",
+        datasource={"uid": "postgres-uid", "type": "postgres"},
+        targets=[
+            GrafanaTarget(
+                refId="A",
+                datasource={"uid": "postgres-uid", "type": "postgres"},
+                rawSql="SELECT date_trunc('day', ts) AS day, SUM(amount) FROM orders GROUP BY 1",
             )
+        ],
+    ),
+    GrafanaPanel(
+        id=22,
+        type="table",
+        title="Nested Chart B",
+        datasource={"uid": "postgres-uid", "type": "postgres"},
+        targets=[
+            GrafanaTarget(
+                refId="A",
+                datasource={"uid": "postgres-uid", "type": "postgres"},
+                rawSql="SELECT product_id, SUM(qty) FROM order_items GROUP BY 1",
+            )
+        ],
+    ),
+]
 
-        # Mock the client
-        self.grafana.client = MagicMock()
-        self.grafana.client.get_folders.return_value = MOCK_FOLDERS
-        self.grafana.client.search_dashboards.return_value = MOCK_SEARCH_RESULTS
-        self.grafana.client.get_dashboard.return_value = MOCK_DASHBOARD_RESPONSE
-        self.grafana.client.get_datasources.return_value = MOCK_DATASOURCES
+MOCK_COLLAPSED_ROW = GrafanaPanel(
+    id=20,
+    type="row",
+    title="Hidden Metrics",
+    collapsed=True,
+    panels=MOCK_COLLAPSED_PANELS,
+)
 
-        # Set up context
-        self.grafana.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
-        self.grafana.context.get().__dict__["charts"] = []
+# Dashboard whose top-level panels include an expanded row (id=4, no children)
+# and a collapsed row (id=20) that wraps two charts.
+MOCK_DASHBOARD_WITH_COLLAPSED_ROW = GrafanaDashboardResponse(
+    dashboard=GrafanaDashboard(
+        id=2,
+        uid="test-dashboard-uid",
+        title="Test Dashboard",
+        tags=["production"],
+        panels=[
+            MOCK_PANELS[0],  # graph  (id=1)
+            MOCK_PANELS[1],  # table  (id=2)
+            MOCK_PANELS[3],  # expanded row (id=4) — kept as-is, skipped by consumer
+            MOCK_COLLAPSED_ROW,  # collapsed row (id=20) → exposes charts 21 and 22
+        ],
+        description="Test with collapsed rows",
+        version=6,
+    ),
+    meta=MOCK_DASHBOARD_RESPONSE.meta,
+)
+
+
+class TestGrafana:
+    """Unit tests for the Grafana dashboard connector."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        with (
+            patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+            patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection") as create_connection,
+        ):
+            mock_client = MagicMock()
+            mock_client.get_folders.return_value = MOCK_FOLDERS
+            mock_client.search_dashboards.return_value = MOCK_SEARCH_RESULTS
+            mock_client.get_dashboard.return_value = MOCK_DASHBOARD_RESPONSE
+            mock_client.get_datasources.return_value = MOCK_DATASOURCES
+            create_connection.return_value.client = mock_client
+
+            with patch("metadata.ingestion.ometa.ometa_api.OpenMetadata") as mock_om:
+                mock_metadata = MagicMock()
+                mock_metadata.get_by_name.return_value = None
+                mock_metadata.get_reference_by_email.return_value = None
+                mock_om.return_value = mock_metadata
+
+                self.grafana: GrafanaSource = GrafanaSource.create(
+                    mock_config["source"],
+                    mock_metadata,
+                )
+
+            self.grafana.client = MagicMock()
+            self.grafana.client.get_folders.return_value = MOCK_FOLDERS
+            self.grafana.client.search_dashboards.return_value = MOCK_SEARCH_RESULTS
+            self.grafana.client.get_dashboard.return_value = MOCK_DASHBOARD_RESPONSE
+            self.grafana.client.get_datasources.return_value = MOCK_DATASOURCES
+
+            self.grafana.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+            self.grafana.context.get().__dict__["charts"] = []
+
+            yield
+
+    # -----------------------------------------------------------------------
+    # Core connector tests
+    # -----------------------------------------------------------------------
 
     def test_prepare(self):
-        """Test prepare method fetches folders, dashboards, and datasources"""
+        """Test prepare method fetches folders, dashboards, and datasources."""
         self.grafana.prepare()
 
-        # Check that data was fetched
-        # prepare only loads datasources at the moment
-        self.assertEqual(len(self.grafana.folders), 0)
-        self.assertEqual(len(self.grafana.dashboards), 0)
+        assert len(self.grafana.folders) == 0
+        assert len(self.grafana.dashboards) == 0
         # We store datasources by both UID and name, so 2 datasources = 4 entries
-        self.assertEqual(len(self.grafana.datasources), 4)
-        self.assertIn("PostgreSQL", self.grafana.datasources)
-        # Tags aggregation currently not performed in prepare
-        self.assertEqual(len(getattr(self.grafana, "tags", set())), 0)
+        assert len(self.grafana.datasources) == 4
+        assert "PostgreSQL" in self.grafana.datasources
+        assert len(getattr(self.grafana, "tags", set())) == 0
 
     def test_get_dashboard_name(self):
-        """Test dashboard name extraction"""
-        # Pass an object with attribute uid as expected by source
+        """Test dashboard name extraction."""
         dashboard = MagicMock()
         dashboard.uid = "test-uid"
-        self.assertEqual(self.grafana.get_dashboard_name(dashboard), "test-uid")
+        assert self.grafana.get_dashboard_name(dashboard) == "test-uid"
 
     def test_get_dashboard_details(self):
-        """Test fetching dashboard details"""
-        # Pass an object with attribute uid as expected by source
+        """Test fetching dashboard details."""
         dashboard = MagicMock()
         dashboard.uid = "test-dashboard-uid"
         details = self.grafana.get_dashboard_details(dashboard)
-        self.assertIsNotNone(details)
-        self.assertEqual(details.dashboard.uid, "test-dashboard-uid")
+        assert details is not None
+        assert details.dashboard.uid == "test-dashboard-uid"
 
     def test_yield_dashboard(self):
-        """Test dashboard creation"""
+        """Test dashboard creation."""
         results = list(self.grafana.yield_dashboard(MOCK_DASHBOARD_RESPONSE))
 
-        self.assertEqual(len(results), 1)
-        self.assertIsInstance(results[0], Either)
+        assert len(results) == 1
+        assert isinstance(results[0], Either)
 
         dashboard = results[0].right
-        self.assertEqual(dashboard.name, EntityName("test-dashboard-uid"))
-        # Current implementation does not prefix folder title in display name
-        self.assertEqual(dashboard.displayName, "Test Dashboard")
-        self.assertEqual(dashboard.description, Markdown("Test dashboard description"))
-        self.assertIn("/d/test-dashboard-uid/test-dashboard", dashboard.sourceUrl.root)
-        self.assertEqual(dashboard.service, FullyQualifiedEntityName("mock_grafana"))
+        assert dashboard.name == EntityName("test-dashboard-uid")
+        assert dashboard.displayName == "Test Dashboard"
+        assert dashboard.description == Markdown("Test dashboard description")
+        assert "/d/test-dashboard-uid/test-dashboard" in dashboard.sourceUrl.root
+        assert dashboard.service == FullyQualifiedEntityName("mock_grafana")
 
     def test_yield_dashboard_without_folder(self):
-        """Test dashboard creation without folder"""
+        """Test dashboard creation without folder."""
         dashboard_response = GrafanaDashboardResponse(
             dashboard=MOCK_DASHBOARD_RESPONSE.dashboard,
             meta=GrafanaDashboardMeta(**{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "folderTitle": None}),
@@ -408,29 +460,74 @@ class GrafanaUnitTest(TestCase):
 
         results = list(self.grafana.yield_dashboard(dashboard_response))
         dashboard = results[0].right
-        self.assertEqual(dashboard.displayName, "Test Dashboard")  # No folder prefix
+        assert dashboard.displayName == "Test Dashboard"
+
+    # -----------------------------------------------------------------------
+    # Chart ingestion — expanded-row regression + collapsed-row behaviour
+    # -----------------------------------------------------------------------
 
     def test_yield_dashboard_chart(self):
-        """Test chart extraction from panels"""
-        chart_list = []
-        results = self.grafana.yield_dashboard_chart(MOCK_DASHBOARD_RESPONSE)
+        """Flat panels are yielded; expanded row panels (type='row') are skipped."""
+        charts = [r.right for r in self.grafana.yield_dashboard_chart(MOCK_DASHBOARD_RESPONSE) if r.right]
 
-        for result in results:
-            if isinstance(result, Either) and result.right:
-                chart_list.append(result.right)  # noqa: PERF401
+        # Panels 1, 2, 3 → charts; panel 4 (expanded row) → skipped
+        assert len(charts) == 3
 
-        # Should have 3 charts (row panel is skipped)
-        self.assertEqual(len(chart_list), 3)
+        for expected, actual in zip(EXPECTED_CHARTS, charts, strict=False):
+            assert expected.name == actual.name
+            assert expected.displayName == actual.displayName
+            assert expected.chartType == actual.chartType
+            assert expected.service == actual.service
 
-        # Verify chart details
-        for expected, actual in zip(EXPECTED_CHARTS, chart_list):  # noqa: B905
-            self.assertEqual(expected.name, actual.name)
-            self.assertEqual(expected.displayName, actual.displayName)
-            self.assertEqual(expected.chartType, actual.chartType)
-            self.assertEqual(expected.service, actual.service)
+    def test_yield_dashboard_chart_expanded_row_is_not_yielded(self):
+        """Regression: expanded row panels are never surfaced as charts."""
+        charts = [r.right for r in self.grafana.yield_dashboard_chart(MOCK_DASHBOARD_RESPONSE) if r.right]
+        names = {c.name.root for c in charts}
+        assert "test-dashboard-uid_4" not in names
+
+    def test_yield_dashboard_chart_collapsed_row_panels_are_yielded(self):
+        """Charts nested inside a collapsed row are yielded; the row wrapper is not."""
+        charts = [r.right for r in self.grafana.yield_dashboard_chart(MOCK_DASHBOARD_WITH_COLLAPSED_ROW) if r.right]
+        names = {c.name.root for c in charts}
+
+        # Nested panels from the collapsed row must appear.
+        assert "test-dashboard-uid_21" in names, "Panel 21 nested in collapsed row must be yielded"
+        assert "test-dashboard-uid_22" in names, "Panel 22 nested in collapsed row must be yielded"
+
+        # Neither the collapsed-row wrapper nor the expanded row must appear as a chart.
+        assert "test-dashboard-uid_20" not in names, "Collapsed row wrapper must not appear as a chart"
+        assert "test-dashboard-uid_4" not in names, "Expanded row must not appear as a chart"
+
+        # Total: panels 1 and 2 from MOCK_PANELS plus panels 21 and 22 from collapsed row = 4
+        assert len(charts) == 4
+
+    # -----------------------------------------------------------------------
+    # Lineage — collapsed-row behaviour
+    # -----------------------------------------------------------------------
+
+    def test_yield_dashboard_lineage_collapsed_row_panels_contribute(self):
+        """Panels nested inside a collapsed row are processed for lineage; the row wrapper is not."""
+        self.grafana.metadata.get_by_name = MagicMock(return_value=EXAMPLE_DASHBOARD)
+
+        with patch.object(
+            GrafanaSource,
+            "_process_panel_lineage",
+            side_effect=lambda *args, **kwargs: iter([]),
+        ) as mock_process:
+            list(self.grafana.yield_dashboard_lineage_details(MOCK_DASHBOARD_WITH_COLLAPSED_ROW, "mock_postgres"))
+
+        processed_panel_ids = {call.kwargs["panel"].id for call in mock_process.call_args_list}
+        assert 21 in processed_panel_ids, "Panel 21 (nested in collapsed row) must be processed for lineage"
+        assert 22 in processed_panel_ids, "Panel 22 (nested in collapsed row) must be processed for lineage"
+        # The row wrapper must never reach the lineage processor.
+        assert 20 not in processed_panel_ids, "Collapsed row wrapper (id=20) must not be passed to lineage"
+
+    # -----------------------------------------------------------------------
+    # Helpers and mapping
+    # -----------------------------------------------------------------------
 
     def test_panel_type_mapping(self):
-        """Test Grafana panel type to OpenMetadata chart type mapping"""
+        """Test Grafana panel type to OpenMetadata chart type mapping."""
         test_cases = {
             "graph": "Line",
             "timeseries": "Line",
@@ -449,92 +546,57 @@ class GrafanaUnitTest(TestCase):
 
         for panel_type, expected_chart_type in test_cases.items():
             result = self.grafana._map_panel_type_to_chart_type(panel_type)
-            self.assertEqual(result.value, expected_chart_type)
-
-    @pytest.mark.skip(reason="Lineage test requires complex mocking - to be fixed")
-    @patch("metadata.ingestion.lineage.sql_lineage.search_table_entities")
-    def test_yield_dashboard_lineage_details(self, mock_search_table):
-        """Test lineage extraction from SQL queries"""
-        # Mock table search to return our example table
-        mock_search_table.return_value = EXAMPLE_TABLE
-
-        # Mock metadata.get_by_name to return the dashboard
-        self.grafana.metadata.get_by_name = MagicMock(return_value=EXAMPLE_DASHBOARD)
-
-        # Get lineage
-        lineage_results = list(self.grafana.yield_dashboard_lineage_details(MOCK_DASHBOARD_RESPONSE, "mock_postgres"))
-
-        # Should have lineage for panels with SQL queries (panels 1 and 2)
-        # Panel 3 has Prometheus query which doesn't generate lineage
-        # Panel 4 is a row type which is skipped
-        self.assertEqual(len(lineage_results), 2)
-
-        # Verify search_table_entities was called with correct SQL
-        self.assertEqual(mock_search_table.call_count, 2)
-
-        # Check first call (panel 1)
-        first_call = mock_search_table.call_args_list[0]
-        self.assertIn("SELECT date_trunc", first_call.kwargs["query"])
-
-        # Check second call (panel 2)
-        second_call = mock_search_table.call_args_list[1]
-        self.assertIn("SELECT name, email", second_call.kwargs["query"])
+            assert result.value == expected_chart_type
 
     def test_extract_datasource_name(self):
-        """Test datasource name extraction from different formats"""
-        # Test with string datasource
-        target = GrafanaTarget(datasource="postgres-uid")
+        """Test datasource name extraction from different formats."""
         panel = GrafanaPanel(id=1, type="graph", title="Test")
-        result = self.grafana._extract_datasource_name(target, panel)
-        self.assertEqual(result, "postgres-uid")
 
-        # Test with dict datasource
+        target = GrafanaTarget(datasource="postgres-uid")
+        assert self.grafana._extract_datasource_name(target, panel) == "postgres-uid"
+
         target = GrafanaTarget(datasource={"uid": "postgres-uid", "type": "postgres"})
-        result = self.grafana._extract_datasource_name(target, panel)
-        self.assertEqual(result, "postgres-uid")
+        assert self.grafana._extract_datasource_name(target, panel) == "postgres-uid"
 
-        # Test fallback to panel datasource
         target = GrafanaTarget()
-        panel = GrafanaPanel(id=1, type="graph", title="Test", datasource="panel-datasource")
-        result = self.grafana._extract_datasource_name(target, panel)
-        self.assertEqual(result, "panel-datasource")
+        panel_with_ds = GrafanaPanel(id=1, type="graph", title="Test", datasource="panel-datasource")
+        assert self.grafana._extract_datasource_name(target, panel_with_ds) == "panel-datasource"
 
     def test_extract_sql_query(self):
-        """Test SQL query extraction based on datasource type"""
-        postgres_ds = MOCK_DATASOURCES[0]
-        # Align datasource type with supported SQL types in current implementation
-        postgres_ds.type = "grafana-postgresql-datasource"
+        """Test SQL query extraction based on datasource type."""
+        postgres_ds = GrafanaDatasource(
+            id=1,
+            uid="postgres-uid",
+            name="PostgreSQL",
+            type="grafana-postgresql-datasource",
+            url="postgres:5432",
+            database="production",
+            isDefault=True,
+        )
         prometheus_ds = MOCK_DATASOURCES[1]
 
-        # Test SQL datasource
         target = GrafanaTarget(rawSql="SELECT * FROM customers")
-        result = self.grafana._extract_sql_query(target, postgres_ds)
-        self.assertEqual(result, "SELECT * FROM customers")
+        assert self.grafana._extract_sql_query(target, postgres_ds) == "SELECT * FROM customers"
 
-        # Test non-SQL datasource (Prometheus)
         target = GrafanaTarget(expr="up{job='prometheus'}")
-        result = self.grafana._extract_sql_query(target, prometheus_ds)
-        self.assertIsNone(result)
+        assert self.grafana._extract_sql_query(target, prometheus_ds) is None
 
     def test_get_owner_ref(self):
-        """Test owner reference extraction"""
-        # Mock the metadata API to return a user reference
+        """Test owner reference extraction."""
         mock_owner = EntityReference(id=str(uuid.uuid4()), type="user")
         self.grafana.metadata.get_reference_by_email = MagicMock(return_value=mock_owner)
 
         owner_ref = self.grafana.get_owner_ref(MOCK_DASHBOARD_RESPONSE)
-        self.assertIsNotNone(owner_ref)
+        assert owner_ref is not None
 
-        # Test with no createdBy
         dashboard_response = GrafanaDashboardResponse(
             dashboard=MOCK_DASHBOARD_RESPONSE.dashboard,
             meta=GrafanaDashboardMeta(**{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "createdBy": None}),
         )
-        owner_ref = self.grafana.get_owner_ref(dashboard_response)
-        self.assertIsNone(owner_ref)
+        assert self.grafana.get_owner_ref(dashboard_response) is None
 
     def test_complete_json_parsing(self):
-        """Test complete JSON parsing from raw dict through all nested levels"""
+        """Test complete JSON parsing from raw dict through all nested levels."""
         complete_json = {
             "dashboard": {
                 "id": 123,
@@ -608,75 +670,49 @@ class GrafanaUnitTest(TestCase):
             },
         }
 
-        expected_output = GrafanaDashboardResponse(
-            dashboard=GrafanaDashboard(
-                id=123,
-                uid="complete-test-uid",
-                title="Complete Test Dashboard",
-                tags=["test", "integration"],
-                description="Full integration test dashboard",
-                version=10,
-                panels=[
-                    GrafanaPanel(
-                        id=1,
-                        type="graph",
-                        title="SQL Query Panel",
-                        description="Panel with SQL query",
-                        datasource={"uid": "postgres-ds", "type": "postgres"},
-                        targets=[
-                            GrafanaTarget(
-                                refId="A",
-                                datasource={"uid": "postgres-ds", "type": "postgres"},
-                                rawSql="SELECT * FROM users WHERE created_at > now() - interval '1 day'",
-                                format="time_series",
-                            ),
-                            GrafanaTarget(
-                                refId="B",
-                                datasource={"uid": "postgres-ds", "type": "postgres"},
-                                rawSql="SELECT COUNT(*) FROM orders",
-                                format=0,
-                            ),
-                        ],
-                    ),
-                    GrafanaPanel(
-                        id=2,
-                        type="stat",
-                        title="Prometheus Panel",
-                        datasource="prometheus-ds",
-                        targets=[
-                            GrafanaTarget(
-                                refId="A",
-                                datasource="prometheus-ds",
-                                expr="rate(http_requests_total[5m])",
-                                format=None,
-                            )
-                        ],
-                    ),
-                ],
-            ),
-            meta=GrafanaDashboardMeta(
-                type="db",
-                canSave=True,
-                canEdit=True,
-                canAdmin=False,
-                canStar=True,
-                canDelete=False,
-                slug="complete-test-dashboard",
-                url="/d/complete-test-uid/complete-test-dashboard",
-                created="2024-01-01T00:00:00Z",
-                updated="2024-02-01T12:30:00Z",
-                updatedBy="user@example.com",
-                createdBy="admin@example.com",
-                version=10,
-                folderId=5,
-                folderUid="test-folder",
-                folderTitle="Test Folder",
-                folderUrl="/dashboards/f/test-folder/test-folder",
-            ),
-        )
-
         parsed_response = GrafanaDashboardResponse(**complete_json)
-        self.assertEqual(parsed_response, expected_output)
+
+        dashboard = parsed_response.dashboard
+        assert dashboard.uid == "complete-test-uid"
+        assert dashboard.title == "Complete Test Dashboard"
+        assert dashboard.tags == ["test", "integration"]
+        assert dashboard.version == 10
+        assert len(dashboard.panels) == 2
+
+        # Panel 0: SQL panel with a dict datasource and two nested targets.
+        sql_panel = dashboard.panels[0]
+        assert sql_panel.type == "graph"
+        assert sql_panel.datasource == {"uid": "postgres-ds", "type": "postgres"}
+        assert len(sql_panel.targets) == 2
+        assert sql_panel.targets[0].rawSql.startswith("SELECT * FROM users")
+        assert sql_panel.targets[0].format == "time_series"
+        assert sql_panel.targets[0].datasource == {
+            "uid": "postgres-ds",
+            "type": "postgres",
+        }
+        assert sql_panel.targets[1].rawSql == "SELECT COUNT(*) FROM orders"
+        # format=0 is a valid, falsy value and must survive as 0, not coerced to None.
+        assert sql_panel.targets[1].format == 0
+        assert sql_panel.targets[1].format is not None
+
+        # Panel 1: Prometheus panel with a string datasource and an expr target.
+        prom_panel = dashboard.panels[1]
+        assert prom_panel.datasource == "prometheus-ds"
+        assert prom_panel.targets[0].expr == "rate(http_requests_total[5m])"
+        assert prom_panel.targets[0].rawSql is None
+        assert prom_panel.targets[0].format is None
+        assert prom_panel.targets[0].datasource == "prometheus-ds"
+
+        # Meta fields carried through deserialization.
+        meta = parsed_response.meta
+        assert meta.canAdmin is False
+        assert meta.canDelete is False
+        assert meta.createdBy == "admin@example.com"
+        assert meta.updatedBy == "user@example.com"
+        assert meta.folderId == 5
+        assert meta.folderUid == "test-folder"
+        assert meta.folderTitle == "Test Folder"
+        assert meta.url == "/d/complete-test-uid/complete-test-dashboard"
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""

@@ -15,18 +15,52 @@ import { EntityType } from '../enums/entity.enum';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
 
+const getEntityTypesFromDataAssets = (
+  config: NodeConfig
+): EntityType | EntityType[] | undefined => {
+  if (!config.dataAssets || config.dataAssets.length === 0) {
+    return undefined;
+  }
+
+  const entityTypes = config.dataAssets.filter(Boolean);
+
+  if (entityTypes.length > 1) {
+    return entityTypes as EntityType[];
+  } else if (entityTypes.length === 1) {
+    return entityTypes[0] as EntityType;
+  }
+
+  return undefined;
+};
+
+const mapTriggerEntityTypes = (
+  entityTypes: string[]
+): EntityType | EntityType[] => {
+  const mappedEntityTypes = entityTypes
+    .map((entityType: string) => {
+      return Object.values(EntityType).includes(entityType as EntityType)
+        ? (entityType as EntityType)
+        : entityType;
+    })
+    .filter(Boolean);
+
+  if (mappedEntityTypes.length > 1) {
+    return mappedEntityTypes as EntityType[];
+  } else if (mappedEntityTypes.length === 1) {
+    return mappedEntityTypes[0] as EntityType;
+  } else {
+    return EntityType.ALL;
+  }
+};
+
 export const getSelectedEntityTypes = (
   config: NodeConfig,
   workflowDefinition: WorkflowDefinition
 ): EntityType | EntityType[] => {
-  if (config.dataAssets && config.dataAssets.length > 0) {
-    const entityTypes = config.dataAssets.filter(Boolean);
+  const dataAssetTypes = getEntityTypesFromDataAssets(config);
 
-    if (entityTypes.length > 1) {
-      return entityTypes as EntityType[];
-    } else if (entityTypes.length === 1) {
-      return entityTypes[0] as EntityType;
-    }
+  if (dataAssetTypes !== undefined) {
+    return dataAssetTypes;
   }
 
   if (!workflowDefinition) {
@@ -49,24 +83,42 @@ export const getSelectedEntityTypes = (
     Array.isArray(triggerConfig.entityTypes) &&
     triggerConfig.entityTypes.length > 0
   ) {
-    const mappedEntityTypes = triggerConfig.entityTypes
-      .map((entityType: string) => {
-        return Object.values(EntityType).includes(entityType as EntityType)
-          ? (entityType as EntityType)
-          : entityType;
-      })
-      .filter(Boolean);
-
-    if (mappedEntityTypes.length > 1) {
-      return mappedEntityTypes;
-    } else if (mappedEntityTypes.length === 1) {
-      return mappedEntityTypes[0];
-    } else {
-      return EntityType.ALL;
-    }
+    return mapTriggerEntityTypes(triggerConfig.entityTypes);
   }
 
   return EntityType.ALL;
+};
+
+const hasRequiredBaseFields = (config: NodeConfig): boolean => {
+  const hasName = Boolean(config.name && config.name.trim() !== '');
+  const hasTriggerType = Boolean(
+    config.triggerType && config.triggerType.trim() !== ''
+  );
+  const hasDataAssets = Boolean(
+    config.dataAssets && config.dataAssets.length > 0
+  );
+
+  return hasName && hasTriggerType && hasDataAssets;
+};
+
+const validatePeriodicBatchConfig = (config: NodeConfig): boolean => {
+  const hasScheduleType = Boolean(
+    config.scheduleType && config.scheduleType.trim() !== ''
+  );
+
+  // Must have a schedule type selected
+  if (!hasScheduleType) {
+    return false;
+  }
+
+  // If scheduled, validate cron expression
+  if (config.scheduleType === 'Scheduled') {
+    return Boolean(
+      config.cronExpression && config.cronExpression.trim() !== ''
+    );
+  }
+
+  return true;
 };
 
 export const validateWorkflowConfig = (
@@ -77,15 +129,7 @@ export const validateWorkflowConfig = (
     return true;
   }
 
-  const hasName = Boolean(config.name && config.name.trim() !== '');
-  const hasTriggerType = Boolean(
-    config.triggerType && config.triggerType.trim() !== ''
-  );
-  const hasDataAssets = Boolean(
-    config.dataAssets && config.dataAssets.length > 0
-  );
-
-  if (!hasName || !hasTriggerType || !hasDataAssets) {
+  if (!hasRequiredBaseFields(config)) {
     return false;
   }
 
@@ -93,33 +137,11 @@ export const validateWorkflowConfig = (
   const isPeriodicBatch = config.triggerType === 'Periodic Batch';
 
   if (isEventBased) {
-    const hasEventType = Boolean(
-      config.eventType && config.eventType.length > 0
-    );
-
-    return hasEventType;
+    return Boolean(config.eventType && config.eventType.length > 0);
   }
 
   if (isPeriodicBatch) {
-    const hasScheduleType = Boolean(
-      config.scheduleType && config.scheduleType.trim() !== ''
-    );
-
-    // Must have a schedule type selected
-    if (!hasScheduleType) {
-      return false;
-    }
-
-    // If scheduled, validate cron expression
-    if (config.scheduleType === 'Scheduled') {
-      const hasCronExpression = Boolean(
-        config.cronExpression && config.cronExpression.trim() !== ''
-      );
-
-      return hasCronExpression;
-    }
-
-    return true;
+    return validatePeriodicBatchConfig(config);
   }
 
   return true;

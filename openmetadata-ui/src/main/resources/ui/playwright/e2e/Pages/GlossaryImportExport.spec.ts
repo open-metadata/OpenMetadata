@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -19,6 +19,7 @@ import {
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
@@ -104,8 +105,6 @@ const exportActiveGlossaryCsv = async (
 };
 
 test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
-  test.slow(true);
-
   test.beforeAll('setup pre-test', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
 
@@ -320,6 +319,7 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   });
 
   test('Check for Circular Reference in Glossary Import', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const circularRefGlossary = new Glossary(`TestCSV-${uuid()}`);
 
@@ -714,6 +714,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
   });
 
   test('Glossary CSV import preserves typed relations', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const suffix = uuid();
     const relGlossary = new Glossary(`TypedRelations_${suffix}`);

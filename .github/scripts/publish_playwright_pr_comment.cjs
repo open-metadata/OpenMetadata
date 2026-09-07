@@ -13,6 +13,24 @@
 
 'use strict';
 
+// The payload arrives as an artifact built by the untrusted E2E run, and
+// Playwright error text carries the failing request's headers — including the
+// ephemeral admin JWT the fixtures mint. Redact again here, at the trust
+// boundary, so no bearer header can reach a PR comment (and GitHub secret
+// scanning) even if the producing workflow skips its own pass. This duplicates
+// `render_playwright_summary.cjs` deliberately: this helper is loaded from the
+// default branch with write permissions and must stay self-contained.
+const SENSITIVE_HEADER_PATTERN =
+  /((?:proxy-authorization|authorization|set-cookie|cookie|x-auth-token|x-api-key|api-key)[ \t]*[:=][ \t]*)[^\r\n]*/gi;
+const JSON_WEB_TOKEN_PATTERN =
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
+
+function redactSecrets(value) {
+  return String(value ?? '')
+    .replace(SENSITIVE_HEADER_PATTERN, '$1<redacted>')
+    .replace(JSON_WEB_TOKEN_PATTERN, '<redacted>');
+}
+
 module.exports = async function publishPlaywrightPrComment({
   github,
   context,
@@ -616,7 +634,7 @@ module.exports = async function publishPlaywrightPrComment({
     lines.push(`### Pipeline and setup failures (${infrastructureIssueCount})`);
     lines.push('');
     for (const issue of infrastructureIssues) {
-      lines.push(`- <code>${escapeHtml(issue)}</code>`);
+      lines.push(`- <code>${escapeHtml(redactSecrets(issue))}</code>`);
     }
     if (infrastructureIssueCount > infrastructureIssues.length) {
       lines.push(
@@ -762,7 +780,9 @@ module.exports = async function publishPlaywrightPrComment({
         )}</code> (shard ${escapeHtml(failure.shard)})</summary>`
       );
       lines.push('');
-      lines.push(`<pre><code>${escapeHtml(failure.error)}</code></pre>`);
+      lines.push(
+        `<pre><code>${escapeHtml(redactSecrets(failure.error))}</code></pre>`
+      );
       lines.push('</details>');
       lines.push('');
     }

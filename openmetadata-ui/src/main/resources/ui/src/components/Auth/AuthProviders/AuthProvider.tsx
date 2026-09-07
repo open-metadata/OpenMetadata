@@ -520,6 +520,14 @@ export const AuthProvider = ({
   // after a failed refresh loses their current URL and lands on the default
   // page after re-login instead of back where they were.
   useEffect(() => {
+    // Full token lifecycle now lives in the AuthCoordinator singleton:
+    // the axios 401 interceptor, the ProactiveTimer, the CrossTabLock,
+    // and the VisibilityWatcher (tab-focus refresh with freshness gating)
+    // all run inside `install()`. Origin/main is still on the pre-
+    // AuthCoordinator inline shape (per-provider `tokenService.current`
+    // + a document-level `visibilitychange` listener that duplicates the
+    // coordinator's own path); on this branch that role transferred to
+    // the coordinator so keeping the HEAD side.
     const disposeInterceptor = authCoordinator.install(
       axiosClient,
       isRefreshableAuthError,
@@ -627,6 +635,14 @@ export const AuthProvider = ({
     }
   };
 
+  // The `drainPendingRequests` / `startTokenRefresh` helpers (and the
+  // module-level `pendingRequests` / `isRefreshDriverActive` bindings) are
+  // no longer needed on this branch — the AuthCoordinator's RefreshQueue
+  // and CrossTabLock own the "coalesce concurrent 401s → one refresh →
+  // retry queued requests" flow now, driven from `authCoordinator.install`
+  // in the mount effect above. Dropped along with the response interceptor
+  // that used to call `startTokenRefresh`.
+
   /**
    * Initialize the Axios request interceptor to attach Bearer tokens (and
    * the language/persona/domain headers) to every outgoing request. This
@@ -666,6 +682,14 @@ export const AuthProvider = ({
         withActivePersonaHeader(withDomainFilter(config))
       );
     });
+    // The old response interceptor (401 → queue + drive one refresh with a
+    // cross-tab localStorage flag) is gone on this branch — that role
+    // transferred to `authCoordinator.install()` above, which owns the
+    // 401 interceptor, the pending-request queue, and the CrossTabLock
+    // that coalesces concurrent refreshes across tabs. Origin/main is
+    // still on that pre-coordinator shape (see the parallel edit in the
+    // useEffect block earlier in this file); dropping its block here so
+    // the two paths don't fight each other.
   };
 
   const fetchAuthConfig = async () => {
@@ -772,26 +796,39 @@ export const AuthProvider = ({
     }
   };
 
-  const getProtectedApp = () => {
-    // Show loader if application is loading or authenticating
-    const childElement =
-      isApplicationLoading || isAuthenticating ? (
-        <Loader fullScreen />
-      ) : (
-        children
-      );
+  const getAuth0ProviderConfig = () => ({
+    clientId: authConfig?.clientId?.toString() ?? '',
+    domain: authConfig?.authority?.toString() ?? '',
+    redirectUri: authConfig?.callbackUrl?.toString() ?? '',
+  });
 
-    // Handling for SAML moved to GenericAuthenticator
-    if (
-      clientType === ClientType.Confidential ||
-      authConfig?.provider === AuthProviderEnum.Saml
-    ) {
+  // Extracted so `renderAuthenticatorForProvider` stays under the
+  // sonarjs/cyclomatic-complexity threshold: the Azure branch's two
+  // nested guards (msalInstance / hasValidConfig) each contribute a +1
+  // that pushed the parent function over 10.
+  const renderAzureAuthenticator = (childElement: ReactNode) => {
+    if (msalInstance) {
       return (
-        <LazyGenericAuthenticator ref={authenticatorRef}>
-          {childElement}
-        </LazyGenericAuthenticator>
+        <LazyMsalProviderWrapper instance={msalInstance}>
+          <LazyMsalAuthenticator ref={authenticatorRef}>
+            {childElement}
+          </LazyMsalAuthenticator>
+        </LazyMsalProviderWrapper>
       );
     }
+
+    // No msalInstance because the config validator flagged fields
+    // missing and updateAuthInstance was skipped. Render children
+    // (SignInPage / AppRouter) directly so the shell isn't locked
+    // to Loader with an unrecoverable state.
+    if (!hasValidConfig) {
+      return <Fragment>{childElement}</Fragment>;
+    }
+
+    return <Loader fullScreen />;
+  };
+
+  const renderAuthenticatorForProvider = (childElement: ReactNode) => {
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
@@ -804,13 +841,15 @@ export const AuthProvider = ({
         );
       }
       case AuthProviderEnum.Auth0: {
+        const { clientId, domain, redirectUri } = getAuth0ProviderConfig();
+
         return (
           <LazyAuth0ProviderWrapper
             useRefreshTokens
             cacheLocation="memory"
-            clientId={authConfig.clientId?.toString() ?? ''}
-            domain={authConfig.authority?.toString() ?? ''}
-            redirectUri={authConfig.callbackUrl?.toString() ?? ''}>
+            clientId={clientId}
+            domain={domain}
+            redirectUri={redirectUri}>
             <LazyAuth0Authenticator ref={authenticatorRef}>
               {childElement}
             </LazyAuth0Authenticator>
@@ -839,30 +878,36 @@ export const AuthProvider = ({
         );
       }
       case AuthProviderEnum.Azure: {
-        if (msalInstance) {
-          return (
-            <LazyMsalProviderWrapper instance={msalInstance}>
-              <LazyMsalAuthenticator ref={authenticatorRef}>
-                {childElement}
-              </LazyMsalAuthenticator>
-            </LazyMsalProviderWrapper>
-          );
-        }
-
-        // No msalInstance because the config validator flagged fields
-        // missing and updateAuthInstance was skipped. Render children
-        // (SignInPage / AppRouter) directly so the shell isn't locked
-        // to Loader with an unrecoverable state.
-        if (!hasValidConfig) {
-          return <Fragment>{childElement}</Fragment>;
-        }
-
-        return <Loader fullScreen />;
+        return renderAzureAuthenticator(childElement);
       }
       default: {
         return null;
       }
     }
+  };
+
+  const getProtectedApp = () => {
+    // Show loader if application is loading or authenticating
+    const childElement =
+      isApplicationLoading || isAuthenticating ? (
+        <Loader fullScreen />
+      ) : (
+        children
+      );
+
+    // Handling for SAML moved to GenericAuthenticator
+    if (
+      clientType === ClientType.Confidential ||
+      authConfig?.provider === AuthProviderEnum.Saml
+    ) {
+      return (
+        <LazyGenericAuthenticator ref={authenticatorRef}>
+          {childElement}
+        </LazyGenericAuthenticator>
+      );
+    }
+
+    return renderAuthenticatorForProvider(childElement);
   };
 
   useEffect(() => {

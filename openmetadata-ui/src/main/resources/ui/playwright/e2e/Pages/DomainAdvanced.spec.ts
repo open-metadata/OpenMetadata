@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -25,6 +20,7 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -56,8 +52,6 @@ const test = base.extend<{
 });
 
 test.describe('Domain Expert Permissions', () => {
-  test.slow(true);
-
   let testResources: {
     expertUser: UserClass;
     domain: Domain;
@@ -142,8 +136,6 @@ test.describe('Domain Expert Permissions', () => {
 });
 
 test.describe('Move Assets Between Domains', () => {
-  test.slow(true);
-
   test('Move table from one domain to another via API', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
@@ -288,8 +280,6 @@ test.describe('Move Assets Between Domains', () => {
 });
 
 test.describe('Subdomain Permissions', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     domain: Domain;
@@ -419,8 +409,6 @@ test.describe('Subdomain Permissions', () => {
 });
 
 test.describe('Domain Version History', () => {
-  test.slow(true);
-
   test('Domain version history shows changes', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -499,8 +487,6 @@ test.describe('Domain Version History', () => {
 });
 
 test.describe('Domain Description Editing', () => {
-  test.slow(true);
-
   test('Admin can edit domain description', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -564,8 +550,6 @@ test.describe('Domain Description Editing', () => {
 });
 
 test.describe('Bulk Domain Asset Operations', () => {
-  test.slow(true);
-
   test('Add multiple assets to domain at once', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
@@ -619,8 +603,6 @@ test.describe('Bulk Domain Asset Operations', () => {
 });
 
 test.describe('Cross-Domain Access Denial', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     accessibleDomain: Domain;
@@ -793,8 +775,6 @@ test.describe('Cross-Domain Access Denial', () => {
 });
 
 test.describe('Domain Type Behavior', () => {
-  test.slow(true);
-
   test('Create domain with Source System type', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain({
@@ -847,8 +827,6 @@ test.describe('Domain Type Behavior', () => {
 });
 
 test.describe('Data Product Asset Management', () => {
-  test.slow(true);
-
   test('Move assets between data products', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -917,8 +895,6 @@ test.describe('Data Product Asset Management', () => {
 });
 
 test.describe('Domain Search and Filter', () => {
-  test.slow(true);
-
   test('Search for domain by name', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const uniqueId = uuid();
@@ -1004,8 +980,6 @@ test.describe('Domain Search and Filter', () => {
 });
 
 test.describe('Domain asset dryRun — remove confirmation', () => {
-  test.slow(true);
-
   const navigateToDomainAssets = async (page: Page, domain: Domain) => {
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
