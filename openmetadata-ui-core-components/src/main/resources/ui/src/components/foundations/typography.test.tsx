@@ -148,6 +148,20 @@ describe('Typography ellipsis tooltip', () => {
     });
   });
 
+  it('shows tooltip on hover when tooltip prop is set without ellipsis', async () => {
+    const user = userEvent.setup();
+
+    render(<Typography tooltip="Hint text">Plain text</Typography>);
+
+    expect(screen.queryByText('Hint text')).not.toBeInTheDocument();
+
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByText('Hint text')).toBeInTheDocument();
+    });
+  });
+
   it('does not wrap non-ellipsis Typography in a tooltip trigger', () => {
     const handleAncestorClick = vi.fn();
 

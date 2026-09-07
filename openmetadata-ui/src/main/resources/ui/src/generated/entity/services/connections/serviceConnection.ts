@@ -372,6 +372,9 @@ export interface Connection {
     sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
+     *
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
      */
     supportsMetadataExtraction?: boolean;
     /**
