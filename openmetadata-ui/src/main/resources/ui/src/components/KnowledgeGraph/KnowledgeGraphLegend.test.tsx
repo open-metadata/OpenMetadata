@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { PropsWithChildren } from 'react';
 import { RelationCategory } from './KnowledgeGraph.relations';
 import KnowledgeGraphLegend from './KnowledgeGraphLegend';
 
@@ -28,7 +29,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onPress,
       'data-testid': testId,
       ...rest
-    }: React.PropsWithChildren<{
+    }: PropsWithChildren<{
       onPress?: () => void;
       'data-testid'?: string;
     }>) =>
@@ -40,7 +41,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Typography: ({
       children,
       'data-testid': testId,
-    }: React.PropsWithChildren<{ 'data-testid'?: string }>) =>
+    }: PropsWithChildren<{ 'data-testid'?: string }>) =>
       R.createElement('span', { 'data-testid': testId }, children),
   };
 });
