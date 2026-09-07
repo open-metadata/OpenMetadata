@@ -114,19 +114,18 @@ const ContextCenterDashboardPage: FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const isDashboardLoading =
-    isArticlesLoading ||
-    isDocumentsLoading ||
-    isFoldersLoading ||
-    isMemoriesLoading ||
-    isMostCitedLoading;
+  // Groups the loading/empty derivations so their || / && chains are scoped
+  // here instead of adding to the component's own cyclomatic complexity.
+  const isDashboardEmpty = (() => {
+    const isPrimaryContentLoading =
+      isArticlesLoading || isDocumentsLoading || isFoldersLoading;
+    const isDashboardLoadingFlag =
+      isPrimaryContentLoading || isMemoriesLoading || isMostCitedLoading;
+    const hasEmptyPrimaryCounts =
+      !isDashboardLoadingFlag && articlesCount === 0 && documentsCount === 0;
 
-  const isDashboardEmpty =
-    !isDashboardLoading &&
-    articlesCount === 0 &&
-    documentsCount === 0 &&
-    folderCount === 0 &&
-    memoriesCount === 0;
+    return hasEmptyPrimaryCounts && folderCount === 0 && memoriesCount === 0;
+  })();
 
   const hasCreatePermission = useMemo(
     () => permissions.Create,

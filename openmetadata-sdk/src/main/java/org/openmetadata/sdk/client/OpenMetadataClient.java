@@ -141,7 +141,7 @@ public class OpenMetadataClient {
   private final GlossaryService glossaries;
   private final GlossaryTermService glossaryTerms;
 
-  // Ontology Studio
+  // Ontology
   private final RelationshipTypeService relationshipTypes;
   private final OntologyAxiomService ontologyAxioms;
   private final OntologyAiService ontologyAi;
@@ -284,7 +284,7 @@ public class OpenMetadataClient {
     this.glossaryTerms = new GlossaryTermService(httpClient);
     this.settings = new SystemSettingsService(httpClient);
 
-    // Initialize Ontology Studio services
+    // Initialize Ontology services
     this.relationshipTypes = new RelationshipTypeService(httpClient);
     this.ontologyAxioms = new OntologyAxiomService(httpClient);
     this.ontologyAi = new OntologyAiService(httpClient);

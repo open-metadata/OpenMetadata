@@ -12,7 +12,8 @@
 Utility functions for PII algorithms
 """
 
-from typing import Mapping, Sequence, TypeVar  # noqa: UP035
+from collections.abc import Mapping, Sequence
+from typing import TypeVar
 
 T = TypeVar("T")
 

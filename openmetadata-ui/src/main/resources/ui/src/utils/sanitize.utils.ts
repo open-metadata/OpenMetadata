@@ -13,24 +13,49 @@
 import DOMPurify from 'dompurify';
 
 export const getSanitizeContent = (html: string): string => {
-  // First, temporarily replace entity links to protect them from encoding
+  // Nonce makes placeholders unique per call, preventing collisions if the
+  // user's text itself contains a placeholder-shaped string.
+  const nonce = Math.random().toString(36).slice(2, 10);
+
+  // Protect math equations from DOMPurify's unknown-tag stripping
+  const mathEquationRegex =
+    /<block-math-equation[^>]*>[\s\S]*?<\/block-math-equation>/g;
+  const mathEquations: string[] = [];
+  let mathEquationIndex = 0;
+
+  const mathProtected = html.replaceAll(mathEquationRegex, (match) => {
+    mathEquations.push(match);
+
+    return `__OM_MATH_EQ_${nonce}_${mathEquationIndex++}__`;
+  });
+
+  // Protect entity links from DOMPurify encoding
   const entityLinkRegex = /<#E::[^>]+>/g;
   const entityLinks: string[] = [];
   let entityLinkIndex = 0;
 
-  const protectedHtml = html.replaceAll(entityLinkRegex, (match) => {
+  const protectedHtml = mathProtected.replaceAll(entityLinkRegex, (match) => {
     entityLinks.push(match);
 
-    return `__ENTITY_LINK_${entityLinkIndex++}__`;
+    return `__OM_ENTITY_LINK_${nonce}_${entityLinkIndex++}__`;
   });
 
-  // Sanitize the content with standard DOMPurify settings
   const sanitizedContent = DOMPurify.sanitize(protectedHtml);
 
-  // Restore entity links
+  // Restore entity links — use replacer fn so '$' in values is inserted verbatim
   let restoredContent = sanitizedContent;
   entityLinks.forEach((link, index) => {
-    restoredContent = restoredContent.replace(`__ENTITY_LINK_${index}__`, link);
+    restoredContent = restoredContent.replace(
+      `__OM_ENTITY_LINK_${nonce}_${index}__`,
+      () => link
+    );
+  });
+
+  mathEquations.forEach((eq, index) => {
+    restoredContent = restoredContent.replace(
+      `__OM_MATH_EQ_${nonce}_${index}__`,
+      () => eq
+    );
   });
 
   return restoredContent;

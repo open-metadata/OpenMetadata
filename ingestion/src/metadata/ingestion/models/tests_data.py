@@ -12,8 +12,6 @@
 Custom pydantic models for tests suites and requests
 """
 
-from typing import List  # noqa: UP035
-
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -31,7 +29,7 @@ class OMetaTestSuiteSample(BaseModel):
 
 class OMetaLogicalTestSuiteSample(BaseModel):
     test_suite: CreateTestSuiteRequest
-    test_cases: List[TestCase]  # noqa: UP006
+    test_cases: list[TestCase]
 
 
 class OMetaTestCaseSample(BaseModel):

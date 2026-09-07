@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Authenticated RDF and Ontology Studio capability status.
+ * Authenticated RDF and Ontology capability status.
  */
 export interface RDFStatus {
     /**
-     * Whether optional AI-assisted Ontology Studio routes may be rendered.
+     * Whether optional AI-assisted Ontology routes may be rendered.
      */
     askCollateEnabled: boolean;
     /**

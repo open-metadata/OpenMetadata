@@ -679,6 +679,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
+    if (grantsPrivileges(create)) {
+      authorizeAdminForPrivilegedFields(securityContext);
+    }
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
@@ -807,12 +810,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
           new OperationContext(entityType, MetadataOperation.CREATE));
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
-    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext);
-    } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
+    // Privileged fields are admin only whoever the target is. This has to be checked before the
+    // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
+    // roles to somebody else through PUT while PATCH refuses the same change.
+    if (Boolean.TRUE.equals(create.getIsAdmin())
+        || Boolean.TRUE.equals(create.getIsBot())
+        || hasRoleElevation(existingUser, user)) {
+      authorizeAdminForPrivilegedFields(securityContext);
+    } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
-      // however that is not supported for User.
+      // however that is not supported for User. The principal name comes from the token unmodified
+      // while user.getName() is normalized to lower case, so this comparison ignores case.
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
@@ -1081,12 +1090,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
           JsonPatch patch) {
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
-      if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
-        String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
-          authorizer.authorizeAdmin(securityContext);
-          continue;
-        }
+      if (!patchOpObject.containsKey("path")) {
+        continue;
+      }
+      String path = patchOpObject.getString("path");
+      if (isPrivilegedUserPatchPath(path)) {
+        authorizer.authorizeAdmin(securityContext);
+        continue;
+      }
+      if (patchOpObject.containsKey("value")) {
         // Check if updating personaPreferences - users can only update their own
         if (path.startsWith("/personaPreferences")) {
           String authenticatedUserName = securityContext.getUserPrincipal().getName();
@@ -1117,6 +1129,69 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
     }
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
+  private static final String IS_BOT_PATCH_PATH = "/isBot";
+  private static final String ROLES_FIELD = "roles";
+  private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
+
+  // A root-level operation (path "") replaces the whole user document, so it covers the same
+  // fields as the explicit paths below.
+  private static boolean isPrivilegedUserPatchPath(String path) {
+    return path.isEmpty()
+        || path.equals(IS_ADMIN_PATCH_PATH)
+        || path.equals(IS_BOT_PATCH_PATH)
+        || path.contains(ROLES_PATCH_PATH_SEGMENT);
+  }
+
+  // True when the request asks for a role the user does not already hold. A null existingUser
+  // means the user is being created, so every requested role is a new one.
+  private boolean hasRoleElevation(User existingUser, User updatedUser) {
+    Set<UUID> updatedRoleIds = roleIds(updatedUser.getRoles());
+    if (updatedRoleIds.isEmpty()) {
+      return false;
+    }
+    if (existingUser == null) {
+      return true;
+    }
+    // existingUser comes from findByNameOrNull(), which sets core fields only, so its roles are
+    // always null - they have to be loaded before they can be compared against.
+    List<EntityReference> currentRoles =
+        repository.get(null, existingUser.getId(), getFields(ROLES_FIELD), ALL, false).getRoles();
+    return !roleIds(currentRoles).containsAll(updatedRoleIds);
+  }
+
+  // Fields on CreateUser that only an admin may set, whoever the user being created is.
+  private boolean grantsPrivileges(CreateUser create) {
+    return Boolean.TRUE.equals(create.getIsAdmin())
+        || Boolean.TRUE.equals(create.getIsBot())
+        || grantsRolesFromRequestBody(create);
+  }
+
+  // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
+  // authorization token when useRolesFromProvider is on, so there the body has no effect.
+  private boolean grantsRolesFromRequestBody(CreateUser create) {
+    return !nullOrEmpty(create.getRoles())
+        && !Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider());
+  }
+
+  // The principal is not in the database yet during self sign-up, and authorizeAdmin() resolves the
+  // subject from it, so a plain call would surface the outcome as a 404 instead of a 403.
+  private void authorizeAdminForPrivilegedFields(SecurityContext securityContext) {
+    String principal = securityContext.getUserPrincipal().getName();
+    try {
+      authorizer.authorizeAdmin(securityContext);
+    } catch (EntityNotFoundException e) {
+      throw new AuthorizationException(CatalogExceptionMessage.notAdmin(principal));
+    }
+  }
+
+  private static Set<UUID> roleIds(List<EntityReference> roles) {
+    if (nullOrEmpty(roles)) {
+      return Set.of();
+    }
+    return roles.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */

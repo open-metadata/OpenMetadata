@@ -74,14 +74,14 @@ services:
           memory: 2G
 
   # Apache Jena Fuseki for RDF/Knowledge Graph storage. Built from the
-  # in-repo Dockerfile (Fuseki 5.6.0) — see ../development/docker-compose-fuseki.yml
+  # in-repo Dockerfile (Fuseki 6.2.0) — see ../development/docker-compose-fuseki.yml
   # for why we don't use the unmaintained stain/jena-fuseki image.
   fuseki:
     container_name: openmetadata_fuseki
     build:
       context: ../rdf-store
       dockerfile: Dockerfile
-    image: openmetadata-fuseki:5.6.0
+    image: openmetadata-fuseki:6.2.0
     restart: always
     environment:
       # Local-dev defaults — production deployments MUST override via the

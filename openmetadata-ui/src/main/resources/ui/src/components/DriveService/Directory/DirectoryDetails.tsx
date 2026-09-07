@@ -185,6 +185,8 @@ function DirectoryDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -192,6 +194,8 @@ function DirectoryDetails({
           entity: t('label.directory'),
         })
       );
+
+      return false;
     }
   };
 

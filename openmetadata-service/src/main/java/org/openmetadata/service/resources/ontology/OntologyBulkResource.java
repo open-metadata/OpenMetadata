@@ -53,7 +53,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Path("/v1/ontology/bulk")
-@Tag(name = "Ontology Bulk", description = "Typed QTT-style Ontology Studio bulk authoring.")
+@Tag(name = "Ontology Bulk", description = "Typed QTT-style Ontology bulk authoring.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyBulk", order = 12)

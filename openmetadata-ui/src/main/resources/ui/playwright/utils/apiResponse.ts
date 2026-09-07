@@ -159,9 +159,15 @@ export const createOrFetch = async <T = ResponseBody>(
   const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
   let createResponse = await apiContext.post(createPath, { data });
 
+  // 404 and 5xx are both "the server did not apply this", so re-sending is
+  // safe in either case — nothing was partially written. The 5xx arm covers a
+  // create whose parent reference is not resolvable yet: DashboardDataModelClass
+  // carried its own copy of this loop for exactly that, and can now drop it.
+  // A genuine failure still surfaces, just after the bounded retries.
   for (
     let attempt = 1;
-    attempt <= NOT_FOUND_RETRY_ATTEMPTS && createResponse.status() === 404;
+    attempt <= NOT_FOUND_RETRY_ATTEMPTS &&
+    (createResponse.status() === 404 || createResponse.status() >= 500);
     attempt++
   ) {
     await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);

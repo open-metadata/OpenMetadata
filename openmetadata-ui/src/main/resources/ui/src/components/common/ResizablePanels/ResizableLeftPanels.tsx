@@ -40,6 +40,41 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
     setIsLeftPanelCollapsed((prev) => !prev);
   };
 
+  const renderFirstPanelCard = () =>
+    hideFirstPanel ? null : (
+      <Card
+        className={classNames(
+          'reflex-card card-padding-0',
+          firstPanel.cardClassName
+        )}
+        title={
+          firstPanel.title && (
+            <div
+              className={classNames(
+                'd-flex align-items-center gap-2',
+                firstPanel.titleContainerClassName
+              )}>
+              <Typography.Text
+                className={classNames(
+                  'm-b-0 text-sm',
+                  firstPanel.titleClassName
+                )}
+                strong={firstPanel.titleStrong ?? true}>
+                {firstPanel.title}
+              </Typography.Text>
+              {showLearningIcon && (
+                <LearningIcon
+                  pageId={learningPageId}
+                  title={learningTitle ?? t('label.explore')}
+                />
+              )}
+            </div>
+          )
+        }>
+        {firstPanel.children}
+      </Card>
+    );
+
   return (
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
@@ -57,39 +92,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           onStopResize={(args) => {
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
-          {!hideFirstPanel && (
-            <Card
-              className={classNames(
-                'reflex-card card-padding-0',
-                firstPanel.cardClassName
-              )}
-              title={
-                firstPanel.title && (
-                  <div
-                    className={classNames(
-                      'd-flex align-items-center gap-2',
-                      firstPanel.titleContainerClassName
-                    )}>
-                    <Typography.Text
-                      className={classNames(
-                        'm-b-0 text-sm',
-                        firstPanel.titleClassName
-                      )}
-                      strong={firstPanel.titleStrong ?? true}>
-                      {firstPanel.title}
-                    </Typography.Text>
-                    {showLearningIcon && (
-                      <LearningIcon
-                        pageId={learningPageId}
-                        title={learningTitle ?? t('label.explore')}
-                      />
-                    )}
-                  </div>
-                )
-              }>
-              {firstPanel.children}
-            </Card>
-          )}
+          {renderFirstPanelCard()}
         </ReflexElement>
 
         <ReflexSplitter

@@ -19,9 +19,10 @@ import string
 import time
 import traceback
 from collections import namedtuple
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -219,7 +220,7 @@ class InvalidSampleDataException(Exception):  # noqa: N818
     """
 
 
-def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityReference]:  # noqa: UP045
+def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> EntityReference | None:
     edge_fqn = edge["fqn"]
     if edge["type"] == "table":
         table = metadata.get_by_name(entity=Table, fqn=edge_fqn)
@@ -240,7 +241,7 @@ def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityRefer
     return None
 
 
-def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:  # noqa: UP006, UP007
+def get_table_key(row: dict[str, Any]) -> TableKey | None:
     """
     Table key consists of schema and table name
     :param row:
@@ -935,7 +936,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
@@ -2091,7 +2092,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
                 )
 
-    def get_ml_feature_sources(self, feature: dict) -> List[FeatureSource]:  # noqa: UP006
+    def get_ml_feature_sources(self, feature: dict) -> list[FeatureSource]:
         """Build FeatureSources from sample data"""
 
         return [
@@ -2103,7 +2104,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             for source in feature.get("featureSources", [])
         ]
 
-    def get_ml_features(self, model: dict) -> List[MlFeature]:  # noqa: UP006
+    def get_ml_features(self, model: dict) -> list[MlFeature]:
         """Build MlFeatures from sample data"""
 
         return [
@@ -2390,7 +2391,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 displayName=logical_test_suite.get("testSuiteDisplayName"),
                 description=logical_test_suite["testSuiteDescription"],
             )  # type: ignore
-            test_cases: List[TestCase] = []  # noqa: UP006
+            test_cases: list[TestCase] = []
             for test_case in logical_test_suite["testCases"]:
                 test_case = self.metadata.get_by_name(  # noqa: PLW2901
                     entity=TestCase,
@@ -2524,7 +2525,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""
-        data: Dict[str, List] = self.data_insight_data["reports"]  # noqa: UP006
+        data: dict[str, list] = self.data_insight_data["reports"]
 
         for report_type, report_data in data.items():
             i = 0

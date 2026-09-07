@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.ResultList;
@@ -1851,6 +1852,57 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     createSchema.setName(ns.shortPrefix(name));
     createSchema.setDatabase(databaseFqn);
     return SdkClients.adminClient().databaseSchemas().create(createSchema);
+  }
+
+  @Test
+  void patch_systemTagProvider_rejected(TestNamespace ns) throws Exception {
+    // #29974: a seeded system tag (its provider inherited from the system classification, see
+    // TagResource) must not have its provider flipped to user via PATCH - that strips the delete
+    // protection that keeps system tags from being removed.
+    Tag goldTag = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(ProviderType.SYSTEM, goldTag.getProvider());
+
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PATCH, "/v1/tags/" + goldTag.getId(), providerToUser, Tag.class),
+        "Changing the provider of a system tag should be rejected");
+
+    Tag reloaded = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain unchanged");
+  }
+
+  @Test
+  void put_systemTagProvider_preserved(TestNamespace ns) throws Exception {
+    // A PUT carrying a user provider must not downgrade a seeded system tag - the system provider
+    // is preserved silently instead of stored as user.
+    Tag goldTag = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(ProviderType.SYSTEM, goldTag.getProvider());
+
+    CreateTag putBody =
+        new CreateTag()
+            .withName(goldTag.getName())
+            .withClassification("Certification")
+            .withDescription(goldTag.getDescription())
+            .withProvider(ProviderType.USER);
+    Tag updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/tags", putBody, Tag.class);
+    assertEquals(
+        ProviderType.SYSTEM, updated.getProvider(), "PUT must not downgrade the system provider");
+
+    // Reload to confirm the system provider was persisted, not just reflected in the response.
+    Tag reloaded = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain persisted");
   }
 
   @Test

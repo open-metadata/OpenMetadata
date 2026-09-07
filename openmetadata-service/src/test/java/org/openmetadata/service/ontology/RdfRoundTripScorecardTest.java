@@ -114,7 +114,7 @@ class RdfRoundTripScorecardTest {
 
   private static Model parse(final String turtle) {
     final Model model = ModelFactory.createDefaultModel();
-    RDFParser.fromString(turtle).lang(Lang.TURTLE).parse(model);
+    RDFParser.fromString(turtle, Lang.TURTLE).parse(model);
     return model;
   }
 
