@@ -21,10 +21,14 @@ import {
 } from '../generated/entity/data/metric';
 import { getDataAssetsVersionHeaderInfo } from './DataAssetsVersionHeaderUtils';
 
+// `MetricType.Conversion` (used by this test on main and 2.0) does not exist in
+// 1.13's metric schema, so this uses `Ratio` instead. `Percentage` would collide
+// with `UnitOfMeasurement.Percentage` below -- both render the text 'PERCENTAGE',
+// which would make the getByText assertion ambiguous.
 const mockMetric = {
   id: 'id',
   name: 'campaign_conversion_rate',
-  metricType: MetricType.Conversion,
+  metricType: MetricType.Ratio,
   unitOfMeasurement: UnitOfMeasurement.Percentage,
   granularity: MetricGranularity.Day,
   changeDescription: { fieldsAdded: [], fieldsUpdated: [], fieldsDeleted: [] },
@@ -37,7 +41,7 @@ describe('DataAssetsVersionHeaderUtils', () => {
     );
 
     expect(screen.getByText(UnitOfMeasurement.Percentage)).toBeInTheDocument();
-    expect(screen.getByText(MetricType.Conversion)).toBeInTheDocument();
+    expect(screen.getByText(MetricType.Ratio)).toBeInTheDocument();
     expect(screen.getByText(MetricGranularity.Day)).toBeInTheDocument();
   });
 
