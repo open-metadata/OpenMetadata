@@ -155,6 +155,10 @@ const TestSuiteAddTestCaseDialog = ({
   );
 };
 
+// Extracted so the empty-count fallback of the two tab badges doesn't add to
+// TestSuiteDetail's own cyclomatic complexity.
+const getTabBadge = (count?: number) => toString(count) || undefined;
+
 /**
  * App-mode (bundle) test suite details page. Follows the same design as the
  * app-mode test case detail page: boxed table-details header, Domains/Owners
@@ -458,13 +462,13 @@ const TestSuiteDetail = () => {
             onSelectionChange={(key) => setActiveTab(String(key))}>
             <Tabs.List size="sm" type="underline">
               <Tabs.Item
-                badge={toString(pagingData.paging.total) || undefined}
+                badge={getTabBadge(pagingData.paging.total)}
                 data-testid={EntityTabs.TEST_CASES}
                 id={EntityTabs.TEST_CASES}
                 label={t('label.test-case-plural')}
               />
               <Tabs.Item
-                badge={toString(ingestionPipelineCount) || undefined}
+                badge={getTabBadge(ingestionPipelineCount)}
                 data-testid={EntityTabs.PIPELINE}
                 id={EntityTabs.PIPELINE}
                 label={t('label.pipeline-plural')}
