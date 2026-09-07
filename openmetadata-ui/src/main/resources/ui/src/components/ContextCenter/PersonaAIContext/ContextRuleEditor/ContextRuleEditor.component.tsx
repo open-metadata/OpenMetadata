@@ -182,10 +182,12 @@ export const ContextRuleEditor = ({
     control: form.control,
     name: 'filterJsonTree',
   });
-  const fullyRendered =
-    useWatch({ control: form.control, name: 'fullyRendered' }) ?? false;
-  const filteredInSearch =
-    useWatch({ control: form.control, name: 'filteredInSearch' }) ?? false;
+  const fullyRendered = Boolean(
+    useWatch({ control: form.control, name: 'fullyRendered' })
+  );
+  const filteredInSearch = Boolean(
+    useWatch({ control: form.control, name: 'filteredInSearch' })
+  );
   const maxAssets = useWatch({ control: form.control, name: 'maxAssets' });
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);

@@ -160,13 +160,19 @@ const RuleSections = ({
 }: RuleSectionsProps) => {
   const { t } = useTranslation();
 
-  return (
-    <Box align="center" className="tw:gap-1.5" wrap="wrap">
-      {isScoped ? (
+  if (isScoped) {
+    return (
+      <Box align="center" className="tw:gap-1.5" wrap="wrap">
         <BadgeWithIcon color="brand" iconLeading={SearchLg} size="sm">
           {t('label.filtered-in-search')}
         </BadgeWithIcon>
-      ) : fullyRendered ? (
+      </Box>
+    );
+  }
+
+  return (
+    <Box align="center" className="tw:gap-1.5" wrap="wrap">
+      {fullyRendered ? (
         <BadgeWithIcon color="brand" iconLeading={Check} size="sm">
           {t('label.fully-rendered')}
         </BadgeWithIcon>
@@ -200,7 +206,7 @@ const RuleSections = ({
           )}
         </>
       )}
-      {alwaysInContext && !isScoped && (
+      {alwaysInContext && (
         <Badge color="gray" size="sm">
           {t('label.always-in-context')}
         </Badge>
