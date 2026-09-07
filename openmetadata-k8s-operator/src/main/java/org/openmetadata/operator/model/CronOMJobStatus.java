@@ -28,13 +28,6 @@ public class CronOMJobStatus {
       timezone = "UTC")
   private Instant lastScheduleTime;
 
-  @JsonProperty("lastSuccessfulTime")
-  @JsonFormat(
-      shape = JsonFormat.Shape.STRING,
-      pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'",
-      timezone = "UTC")
-  private Instant lastSuccessfulTime;
-
   @JsonProperty("lastOMJobName")
   private String lastOMJobName;
 
@@ -49,14 +42,6 @@ public class CronOMJobStatus {
 
   public void setLastScheduleTime(Instant lastScheduleTime) {
     this.lastScheduleTime = lastScheduleTime;
-  }
-
-  public Instant getLastSuccessfulTime() {
-    return lastSuccessfulTime;
-  }
-
-  public void setLastSuccessfulTime(Instant lastSuccessfulTime) {
-    this.lastSuccessfulTime = lastSuccessfulTime;
   }
 
   public String getLastOMJobName() {
