@@ -169,7 +169,7 @@ class DataInsightsEnricherBehaviorIT {
             .withTags(List.of(shared().PERSONAL_DATA_TAG_LABEL, tier))
             .execute();
 
-    // Assign USER1 (member of shared_team1) so processTeam has something to resolve.
+    // Assign USER1 (member of shared_team11) so processTeam has something to resolve.
     table =
         Tables.find(table.getId().toString())
             .fetch()
@@ -193,8 +193,7 @@ class DataInsightsEnricherBehaviorIT {
     assertEquals(1, snapshot.get("numberOfColumnsWithDescription"));
     assertEquals(0, snapshot.get("hasColumnDescription"), "not every column has a description → 0");
 
-    // Team step — owner USER1 → team shared_team1
-    assertEquals("shared_team1", snapshot.get("team"));
+    assertEquals("shared_team11", snapshot.get("team"));
 
     // Tier step — extracted from the Tier.Tier2 tag
     assertEquals("Tier.Tier2", snapshot.get("tier"));
