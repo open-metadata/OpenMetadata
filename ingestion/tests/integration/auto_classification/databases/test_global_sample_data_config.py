@@ -143,18 +143,6 @@ def autoclassification_config(db_service, bot_workflow_config, sink_config):
     }
 
 
-@pytest.fixture(autouse=True)
-def clean_sample_data(metadata, table_fqn):
-    """Delete sample data before and after each test so results are isolated."""
-    table = metadata.get_by_name(entity=Table, fqn=table_fqn)
-    if table:
-        metadata.delete_sample_data(table)
-    yield
-    table = metadata.get_by_name(entity=Table, fqn=table_fqn)
-    if table:
-        metadata.delete_sample_data(table)
-
-
 @pytest.fixture(scope="module", autouse=True)
 def _cleanup_profiler_config(metadata):
     """Reset the global profiler configuration after all tests in this module."""
