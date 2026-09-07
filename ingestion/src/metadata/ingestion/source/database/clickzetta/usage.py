@@ -42,7 +42,7 @@ class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):  # pyrigh
         window_start = self.start
         while window_start < self.end:
             window_end = min(window_start + timedelta(days=1), self.end)
-            logger.info(f"Scanning ClickZetta query history for {window_start} - {window_end}")
+            logger.info("Scanning ClickZetta query history for %s - %s", window_start, window_end)
             try:
                 for engine in self.get_engine():
                     engine = cast("Engine", engine)

@@ -13,7 +13,7 @@
 from abc import ABC
 from collections.abc import Mapping
 from datetime import date, datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (
     ClickzettaConnection,
@@ -61,7 +61,7 @@ def _lowercase_keys(row: Any) -> dict[str, Any]:
     return {str(key).lower(): value for key, value in _row_mapping(row).items()}
 
 
-def _coerce_datetime(value: Any) -> Optional[datetime]:  # noqa: UP045
+def _coerce_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         return value
     if isinstance(value, date):
@@ -74,7 +74,7 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:  # noqa: UP045
     return None
 
 
-def _coerce_bool(value: Any) -> Optional[bool]:  # noqa: UP045
+def _coerce_bool(value: Any) -> bool | None:
     if value is None or isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
@@ -88,7 +88,7 @@ def _coerce_bool(value: Any) -> Optional[bool]:  # noqa: UP045
     return None
 
 
-def _coerce_float(value: Any) -> Optional[float]:  # noqa: UP045
+def _coerce_float(value: Any) -> float | None:
     if value is None or value == "":
         return None
     try:
@@ -108,10 +108,10 @@ def normalize_clickzetta_query_row(
     row: Any,
     *,
     service_name: str,
-    database_name: Optional[str] = None,  # noqa: UP045
-    database_schema: Optional[str] = None,  # noqa: UP045
+    database_name: str | None = None,
+    database_schema: str | None = None,
     include_usage: bool,
-) -> Optional[TableQuery]:  # noqa: UP045
+) -> TableQuery | None:
     """Convert one canonical query-history row into OpenMetadata's TableQuery."""
     values = _lowercase_keys(row)
     query_value = values.get("query_text")
@@ -161,7 +161,7 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
         cls,
         config_dict: dict[str, Any],
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
@@ -206,13 +206,13 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
             result_limit=getattr(self.source_config, "resultLimit", None),
         )
 
-    def get_database_name(self, data: dict) -> Optional[str]:  # noqa: UP045  # pyright: ignore[reportIncompatibleMethodOverride]
+    def get_database_name(self, data: dict) -> str | None:  # pyright: ignore[reportIncompatibleMethodOverride]
         return data.get("database_name") or getattr(self.service_connection, "databaseName", None)
 
-    def get_schema_name(self, data: dict) -> Optional[str]:  # noqa: UP045  # pyright: ignore[reportIncompatibleMethodOverride]
+    def get_schema_name(self, data: dict) -> str | None:  # pyright: ignore[reportIncompatibleMethodOverride]
         return data.get("schema_name") or getattr(self.service_connection, "databaseSchema", None)
 
-    def normalize_query_row(self, row: Any, *, include_usage: bool) -> Optional[TableQuery]:  # noqa: UP045
+    def normalize_query_row(self, row: Any, *, include_usage: bool) -> TableQuery | None:
         return normalize_clickzetta_query_row(
             row,
             service_name=cast("str", self.config.serviceName),

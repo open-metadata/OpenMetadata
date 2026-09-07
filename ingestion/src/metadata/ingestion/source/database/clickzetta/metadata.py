@@ -11,7 +11,7 @@
 
 """ClickZetta metadata source."""
 
-from typing import Optional, cast
+from typing import cast
 
 from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (
     ClickzettaConnection,
@@ -32,7 +32,7 @@ class ClickzettaSource(CommonDbSourceService):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:

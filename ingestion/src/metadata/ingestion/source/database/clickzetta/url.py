@@ -9,14 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional
-
 from sqlalchemy.engine import URL
 
 
 def _split_host_port(
     host_port: str,
-) -> tuple[str, Optional[int]]:  # noqa: UP045
+) -> tuple[str, int | None]:
     if ":" not in host_port:
         return host_port, None
     host, port_text = host_port.rsplit(":", 1)
@@ -32,7 +30,7 @@ def build_clickzetta_url(
     password: str,
     workspace: str,
     virtual_cluster: str,
-    database_schema: Optional[str],  # noqa: UP045
+    database_schema: str | None,
     protocol: str,
 ) -> URL:
     host, port = _split_host_port(host_port)
