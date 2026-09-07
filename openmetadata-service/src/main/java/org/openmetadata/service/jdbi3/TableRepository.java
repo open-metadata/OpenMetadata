@@ -259,6 +259,15 @@ public class TableRepository extends EntityRepository<Table> {
     return extensionByColumnHash;
   }
 
+  /** Targeted single-column extension lookup for the single-column read path. */
+  private Object getColumnExtension(UUID tableId, String columnFQN) {
+    String extensionJson =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtension(tableId, FullyQualifiedName.buildHash(columnFQN));
+    return extensionJson == null ? null : JsonUtils.readValue(extensionJson, Object.class);
+  }
+
   @Override
   public void setFieldsInBulk(Fields fields, List<Table> entities) {
     // Bulk fetch and set default fields for all tables
@@ -2994,7 +3003,10 @@ public class TableRepository extends EntityRepository<Table> {
       column.setCustomMetrics(getCustomMetrics(table, column.getName()));
     }
     if (fieldsParam.contains("extension")) {
-      setColumnExtensions(table.getId(), singleton);
+      for (Column flattened : EntityUtil.getFlattenedEntityField(singleton)) {
+        flattened.setExtension(
+            getColumnExtension(table.getId(), flattened.getFullyQualifiedName()));
+      }
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);

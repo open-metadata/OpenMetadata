@@ -116,11 +116,11 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       <TriggerConfigSection
         availableEventTypes={availableEventTypes}
         availableExcludeFields={availableExcludeFields}
-        fieldGroups={fieldGroups}
         batchSize={config.batchSize}
         cronExpression={config.cronExpression}
         eventType={config.eventType}
         excludeFields={config.excludeFields}
+        fieldGroups={fieldGroups}
         include={config.include}
         lockNonIncludeExcludeFields={lockCoreStartFields}
         lockPeriodicBatchFields={lockFilterSections}

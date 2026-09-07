@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -20,6 +21,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -49,6 +52,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+  private static final String COLUMN_EXTENSION_JSON_SCHEMA = "columnExtension";
 
   public DashboardDataModelRepository() {
     super(
@@ -150,12 +154,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
     if (fields.contains("columns") && fields.contains("extension")) {
-      if (dashboardDataModel.getColumns() != null) {
-        for (Column column : EntityUtil.getFlattenedEntityField(dashboardDataModel.getColumns())) {
-          column.setExtension(
-              getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
-        }
-      }
+      setColumnExtensions(dashboardDataModel.getId(), dashboardDataModel.getColumns());
     }
   }
 
@@ -176,6 +175,37 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
     }
     return null;
+  }
+
+  /**
+   * Hydrates {@code extension} on every column and nested child in a single query — used by the
+   * full-column-list read paths (the single-column path uses the targeted {@link
+   * #getColumnExtension} instead).
+   */
+  private void setColumnExtensions(UUID dataModelId, List<Column> columns) {
+    if (nullOrEmpty(columns)) {
+      return;
+    }
+    Map<String, Object> extensionByColumnHash = new HashMap<>();
+    for (ExtensionRecord record :
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByJsonSchema(dataModelId, COLUMN_EXTENSION_JSON_SCHEMA)) {
+      try {
+        extensionByColumnHash.put(
+            record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to deserialize column extension for data model {} extensionKey {}: {}",
+            dataModelId,
+            record.extensionName(),
+            e.getMessage());
+      }
+    }
+    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
+      column.setExtension(
+          extensionByColumnHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
+    }
   }
 
   // Individual field fetchers registered in constructor
@@ -341,9 +371,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      for (Column column : EntityUtil.getFlattenedEntityField(paginatedColumns)) {
-        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
-      }
+      setColumnExtensions(dataModel.getId(), paginatedColumns);
     }
 
     // Calculate pagination metadata
