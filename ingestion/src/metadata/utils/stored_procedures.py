@@ -28,10 +28,14 @@ logger = utils_logger()
 # https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
 # https://docs.snowflake.com/en/sql-reference/identifiers-syntax
 _NAME_SPAN = r"(?:[\s\w.@$#]|`[^`]*`|\"[^\"]*\")*?"
+# The keyword needs a boundary on both sides. `\b` before it rejects `recall`, and `(?!\w)` after
+# it rejects an identifier that merely starts with the keyword, so `SELECT call_center(1)` and
+# `SELECT begin_date(1)` are not read as invocations of `_center` and `_date`.
+_KEYWORD = r"(?<=\b{keyword})(?!\w)"
 NAME_PATTERN = (
-    rf"(?<=\bcall){_NAME_SPAN}(?=\()"
-    rf"|(?<=\bbegin){_NAME_SPAN}(?=\()"
-    rf"|(?<=\bbegin){_NAME_SPAN}(?=;\s*end)"
+    rf"{_KEYWORD.format(keyword='call')}{_NAME_SPAN}(?=\()"
+    rf"|{_KEYWORD.format(keyword='begin')}{_NAME_SPAN}(?=\()"
+    rf"|{_KEYWORD.format(keyword='begin')}{_NAME_SPAN}(?=;\s*end)"
 )
 
 

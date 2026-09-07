@@ -160,6 +160,22 @@ class TestStoredProcedures:
 
         assert get_procedure_name_from_call(query_text="SELECT begin_dt\nFROM t\nWHERE y = SALES.LOAD_DIM(1)") is None
 
+    def test_get_procedure_name_ignores_identifiers_that_start_with_the_keyword(self):
+        """A word boundary before the keyword is not enough. `call_center` and `begin_date` both
+        start on a boundary, so `\\bcall` and `\\bbegin` match their prefix, and the rest of the
+        identifier is made of characters the name span accepts. Where such an identifier is
+        immediately followed by an argument list the whole thing looks like an invocation, which
+        is why the keyword also needs a boundary after it."""
+        assert get_procedure_name_from_call(query_text="SELECT call_center(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT begin_date(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT call_log(1) FROM t") is None
+
+        assert get_procedure_name_from_call(query_text="UPDATE t SET x = begin_dt(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT recall_fn(1)") is None
+
     def test_get_procedure_name_stays_linear_on_large_non_procedure_sql(self):
         """The name span must stay bounded. An unbounded `.*?` (as re.DOTALL allows) turns this
         into a quadratic scan, because every `call`/`begin` substring walks to the end of the
