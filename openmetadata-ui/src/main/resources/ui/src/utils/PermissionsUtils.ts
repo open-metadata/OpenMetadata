@@ -103,8 +103,7 @@ const toAllowedBoolean = (
       // reaches this branch. It must fail CLOSED — this is the single seam every
       // entity/resource permission flows through, so returning a truthy value here
       // would grant access app-wide.
-      const unhandled: never = access;
-      void unhandled;
+      const _unhandled: never = access;
 
       return false;
     }
