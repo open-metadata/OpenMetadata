@@ -446,7 +446,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
         response.status() === 200
     );
 
-    await page.goto('/explore/tables?search=sample_data');
+    await page.goto('/explore/tables?search=stored_procedures');
     await expect(page.getByTestId('explore-page')).toBeVisible();
     await countApiPromise;
 

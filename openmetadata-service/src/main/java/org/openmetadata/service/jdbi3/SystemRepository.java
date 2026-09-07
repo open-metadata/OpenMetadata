@@ -124,6 +124,7 @@ import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
+import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
@@ -309,6 +310,7 @@ public class SystemRepository {
 
   @Transaction
   public Response createOrUpdate(Settings setting) {
+    OpenMetadataBaseUrlValidator.validate(setting);
     Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
     preserveEmailSettings(setting, oldValue);
 
@@ -366,6 +368,7 @@ public class SystemRepository {
     Object updatedConfigValue = JsonUtils.readValue(jsonString, Object.class);
     original.setConfigValue(updatedConfigValue);
     preserveEmailSettings(original, stored);
+    OpenMetadataBaseUrlValidator.validate(original);
     updateSettingIfCurrent(original, expectedJson);
     prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
