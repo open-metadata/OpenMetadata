@@ -220,6 +220,8 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
     });
     const glossaryFqn = spiralGlossary.responseData.fullyQualifiedName;
     const termFqn = spiralTerm.responseData.fullyQualifiedName;
+    const termId = spiralTerm.responseData.id;
+    const tableId = spiralTable.entityResponseData.id;
     await expect(async () => {
       const response = await apiContext.get(
         '/api/v1/glossaryTerms/assets/counts',
@@ -227,6 +229,34 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
       );
       const counts = (await response.json()) as Record<string, number>;
       expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
+    }).toPass({ timeout: 60000, intervals: [2000] });
+
+    // /assets/counts and /ontology/data are served by two different indexes and
+    // the ontology-data one lags behind on a cold Elasticsearch. Waiting only
+    // on the counts endpoint let the test start with the ontology-data cluster
+    // still empty — the UI rendered the cluster shell but not the asset card,
+    // and the assertion at line 272 (`ontology-data-asset-<id>` visible) blew
+    // 15s waiting for a card the API had not yet returned. Poll the endpoint
+    // the test actually reads so the two are consistent before the UI runs.
+    await expect(async () => {
+      const response = await apiContext.get(
+        '/api/v1/glossaryTerms/ontology/data',
+        {
+          params: {
+            parent: glossaryFqn,
+            limit: '12',
+            offset: '0',
+            assetPreviewSize: '4',
+          },
+        }
+      );
+      const body = (await response.json()) as {
+        data?: { term?: { id?: string }; assets?: { id?: string }[] }[];
+      };
+      const cluster = (body.data ?? []).find((c) => c.term?.id === termId);
+      expect(
+        (cluster?.assets ?? []).some((asset) => asset.id === tableId)
+      ).toBe(true);
     }).toPass({ timeout: 60000, intervals: [2000] });
 
     await disposeApiContext(page, apiContext);
