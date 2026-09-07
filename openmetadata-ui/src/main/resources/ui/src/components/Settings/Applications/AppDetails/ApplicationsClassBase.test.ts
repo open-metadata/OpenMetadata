@@ -65,7 +65,7 @@ describe('ApplicationsClassBase', () => {
       expect(items).not.toHaveProperty('enum');
     });
 
-    it('should toast and keep only the all option when the server call fails', async () => {
+    it('should toast and leave the schema unconstrained when the server call fails', async () => {
       const error = new Error('boom');
       mockGetSearchEntityTypes.mockRejectedValue(error);
 
@@ -73,7 +73,9 @@ describe('ApplicationsClassBase', () => {
         'SearchIndexingApplication'
       )) as EntitiesEnumSchema;
 
-      expect(schema.properties.entities.items.enum).toEqual(['all']);
+      // Narrowing the enum here would make a stored `entities: ["table", …]` fail the
+      // form's AJV validation and block saving until the endpoint recovers.
+      expect(schema.properties.entities.items).not.toHaveProperty('enum');
       expect(showErrorToast).toHaveBeenCalledWith(error);
     });
 

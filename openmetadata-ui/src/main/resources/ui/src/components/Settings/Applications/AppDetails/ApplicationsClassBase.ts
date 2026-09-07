@@ -52,12 +52,18 @@ const ALL_ENTITY_TYPES = 'all';
 const withSearchEntityTypes = async (
   schema: RJSFSchema
 ): Promise<RJSFSchema> => {
-  let entityTypes: string[] = [];
+  let entityTypes: string[];
   try {
     entityTypes = await getSearchEntityTypes();
   } catch (error) {
-    // Leaves the picker with only "All" selectable rather than failing the whole form.
+    // Return the schema unconstrained rather than narrowing the enum to the sentinel:
+    // ApplicationConfiguration validates with @rjsf/validator-ajv8 against the stored
+    // appConfiguration, so an enum of just ["all"] makes a saved `entities: ["table", …]`
+    // fail validation and blocks every save until the endpoint recovers. Unconstrained,
+    // the picker degrades to a plain list but the stored selection stays editable.
     showErrorToast(error as AxiosError);
+
+    return schema;
   }
 
   return {
