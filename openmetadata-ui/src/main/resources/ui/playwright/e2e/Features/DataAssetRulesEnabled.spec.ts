@@ -428,7 +428,7 @@ test.describe(
     test('should scope the Add Assets picker to the Data Product domain', async ({
       page,
     }) => {
-      await authenticateAdminPage(page);
+      await redirectToHomePage(page);
       await pickerDataProduct.visitEntityPage(page);
 
       const initialSearch = page.waitForResponse(
