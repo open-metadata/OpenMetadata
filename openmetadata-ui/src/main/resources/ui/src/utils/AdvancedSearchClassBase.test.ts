@@ -1131,6 +1131,69 @@ describe('getCustomPropertiesSubFields', () => {
       });
     });
 
+    describe('Table-cp types', () => {
+      const mockTableField = {
+        name: 'testTable',
+        type: 'table-cp',
+        customPropertyConfig: {
+          config: {
+            columns: ['Col1', 'Col2'],
+          },
+        },
+      };
+
+      it('should use TEXT_FIELD_OPERATORS for table-cp columns with ElasticSearch output', () => {
+        const mockLabel = 'Test Table';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockTableField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(Array.isArray(result)).toBe(true);
+
+        if (!Array.isArray(result)) {
+          return;
+        }
+
+        expect(result).toHaveLength(2);
+
+        result.forEach((entry) => {
+          expect(entry.dataObject.operators).toBe(TEXT_FIELD_OPERATORS);
+        });
+      });
+
+      it('should use table_field_* operators for table-cp columns with JSONLogic output', () => {
+        const mockLabel = 'Test Table';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockTableField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(Array.isArray(result)).toBe(true);
+
+        if (!Array.isArray(result)) {
+          return;
+        }
+
+        expect(result).toHaveLength(2);
+
+        result.forEach((entry) => {
+          expect(entry.dataObject.operators).toEqual([
+            'table_field_equal',
+            'table_field_not_equal',
+            'table_field_like',
+            'table_field_not_like',
+            'is_null',
+            'is_not_null',
+          ]);
+        });
+      });
+    });
+
     describe('Backward compatibility - defaults to ElasticSearch', () => {
       it('should default to ElasticSearch behavior (.displayName.keyword) for entityReference when searchOutputType is not provided', () => {
         const mockField = {

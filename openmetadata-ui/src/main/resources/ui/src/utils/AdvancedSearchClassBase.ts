@@ -1495,7 +1495,8 @@ class AdvancedSearchClassBase {
 
   private buildMultiValueCustomPropertySubFields(
     field: CustomPropertySummary,
-    label: string
+    label: string,
+    searchOutputType: SearchOutputType
   ): Array<{ subfieldsKey: string; dataObject: Field }> {
     switch (field.type) {
       case 'timeInterval':
@@ -1553,22 +1554,30 @@ class AdvancedSearchClassBase {
         }
 
         // Standard TEXT_FIELD_OPERATORS emit {"==":[{"var":"...rows.<col>"},<val>]} which the
-        // jsonLogic evaluator cannot resolve — `rows` is an array. Use the table_field_* operators
-        // that emit {"contains":[<val>,{"tableColumnValues":"...rows.<col>"}]} instead. See
-        // JSONLogicSearchClassBase.configOperators.
+        // jsonLogic evaluator cannot resolve — `rows` is an array. For JsonLogic (workflows), use
+        // the table_field_* operators instead, which emit
+        // {"contains":[<val>,{"tableColumnValues":"...rows.<col>"}]}. These operators only exist in
+        // JSONLogicSearchClassBase.configOperators, not in this class's configOperators (used by
+        // Elasticsearch-backed Advanced Search), so Advanced Search keeps TEXT_FIELD_OPERATORS —
+        // those compile to real ES queries and never hit the jsonLogic `var`-on-array problem.
+        const tableFieldOperators =
+          searchOutputType === SearchOutputType.JSONLogic
+            ? [
+                'table_field_equal',
+                'table_field_not_equal',
+                'table_field_like',
+                'table_field_not_like',
+                'is_null',
+                'is_not_null',
+              ]
+            : TEXT_FIELD_OPERATORS;
+
         return columns.map((columnName) => ({
           subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
             type: 'text',
             label: `${label} - ${columnName}`,
-            operators: [
-              'table_field_equal',
-              'table_field_not_equal',
-              'table_field_like',
-              'table_field_not_like',
-              'is_null',
-              'is_not_null',
-            ],
+            operators: tableFieldOperators,
             valueSources: ['value'],
           },
         }));
@@ -1596,7 +1605,11 @@ class AdvancedSearchClassBase {
     }
 
     if (MULTI_VALUE_CUSTOM_PROPERTY_TYPES.includes(field.type)) {
-      return this.buildMultiValueCustomPropertySubFields(field, label);
+      return this.buildMultiValueCustomPropertySubFields(
+        field,
+        label,
+        searchOutputType
+      );
     }
 
     return this.buildScalarCustomPropertySubField(field, subfieldsKey, label);

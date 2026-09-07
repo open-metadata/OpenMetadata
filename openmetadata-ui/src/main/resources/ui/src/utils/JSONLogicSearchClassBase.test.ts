@@ -111,6 +111,35 @@ describe('JSONLogicSearchClassBase', () => {
       expect(is_null.label).toContain('label.is-not-set');
       expect(is_not_null.label).toContain('label.is-set');
     });
+
+    it('should have table_field_* operators for table-cp columns', () => {
+      const {
+        table_field_equal,
+        table_field_not_equal,
+        table_field_like,
+        table_field_not_like,
+      } = jsonLogicSearchClassBase.configOperators;
+
+      expect(table_field_equal).toBeDefined();
+      expect(table_field_equal.cardinality).toBe(1);
+      expect(table_field_equal.valueSources).toEqual(['value']);
+      expect(typeof table_field_equal.jsonLogic).toBe('function');
+
+      expect(table_field_not_equal).toBeDefined();
+      expect(table_field_not_equal.cardinality).toBe(1);
+      expect(table_field_not_equal.valueSources).toEqual(['value']);
+      expect(typeof table_field_not_equal.jsonLogic).toBe('function');
+
+      expect(table_field_like).toBeDefined();
+      expect(table_field_like.cardinality).toBe(1);
+      expect(table_field_like.valueSources).toEqual(['value']);
+      expect(typeof table_field_like.jsonLogic).toBe('function');
+
+      expect(table_field_not_like).toBeDefined();
+      expect(table_field_not_like.cardinality).toBe(1);
+      expect(table_field_not_like.valueSources).toEqual(['value']);
+      expect(typeof table_field_not_like.jsonLogic).toBe('function');
+    });
   });
 
   describe('configWidgets', () => {
@@ -232,6 +261,19 @@ describe('JSONLogicSearchClassBase', () => {
 
       expect(textType.valueSources).toEqual(['value']);
       expect(dateType.valueSources).toEqual(['value']);
+    });
+
+    it('should register table_field_* operators on the text widget so the value editor renders', () => {
+      const textType = jsonLogicSearchClassBase.configTypes.text;
+
+      expect(textType.widgets.text.operators).toEqual(
+        expect.arrayContaining([
+          'table_field_equal',
+          'table_field_not_equal',
+          'table_field_like',
+          'table_field_not_like',
+        ])
+      );
     });
   });
 

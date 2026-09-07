@@ -111,6 +111,22 @@ class JSONLogicSearchClassBase {
     },
     text: {
       ...this.baseConfig.types.text,
+      widgets: {
+        ...this.baseConfig.types.text.widgets,
+        // Registers the table_field_* operators (see configOperators) on the text widget's
+        // operator whitelist — RAQB only attaches a widget's value editor for operators listed
+        // here, so without this the operator is selectable but no value input renders.
+        text: {
+          ...(this.baseConfig.types.text.widgets?.text ?? {}),
+          operators: [
+            ...(this.baseConfig.types.text.widgets?.text?.operators ?? []),
+            'table_field_equal',
+            'table_field_not_equal',
+            'table_field_like',
+            'table_field_not_like',
+          ],
+        },
+      },
       valueSources: ['value'],
     },
     date: {
