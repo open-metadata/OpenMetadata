@@ -61,8 +61,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @Getter @JsonProperty private String basePath;
 
-  @Getter @JsonProperty private String timeFormat = "12h";
-
   @Getter
   @JsonProperty("assets")
   private Map<String, String> assets;
