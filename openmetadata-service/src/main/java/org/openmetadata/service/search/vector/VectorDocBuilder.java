@@ -53,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 3;
+  public static final int CHUNK_DOC_VERSION = 4;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -305,9 +305,10 @@ public class VectorDocBuilder {
    * <ul>
    *   <li>KNN filter fields ({@code entityType}, {@code deleted}, {@code tags}/{@code domains}/
    *       {@code tier}) — the original chunk-doc contract.
-   *   <li>Lexical parity: {@code description} (capped), {@code fqnParts}, {@code synonyms} and
-   *       {@code columns.name} so the shard-fair keyword clauses match on the best-semantic chunk,
-   *       not only on chunk 0's spliced entity doc.
+   *   <li>Lexical parity: {@code description} (capped), {@code fqnParts} and {@code synonyms} so the
+   *       shard-fair keyword clauses match on every chunk, not only on chunk 0's spliced entity
+   *       doc. Column names are deliberately not denormalized here: every chunk would carry the
+   *       entity's whole column list, and {@code textToEmbed} already carries them per chunk.
    *   <li>Filter parity: {@code owners}, {@code serviceType}, {@code service}/{@code database}/
    *       {@code databaseSchema} and {@code certification} so NLQ filters on those facets no longer
    *       exclude every chunk doc.
@@ -369,12 +370,6 @@ public class VectorDocBuilder {
         && term.getSynonyms() != null
         && !term.getSynonyms().isEmpty()) {
       fields.put("synonyms", new ArrayList<>(term.getSynonyms()));
-    }
-    if (entity instanceof Table table) {
-      List<Map<String, Object>> columns = columnNameObjects(table.getColumns());
-      if (!columns.isEmpty()) {
-        fields.put("columns", columns);
-      }
     }
     if (entity instanceof Metric metric) {
       addMetricFields(fields, metric);
@@ -480,19 +475,6 @@ public class VectorDocBuilder {
       }
     }
     return owners;
-  }
-
-  private static List<Map<String, Object>> columnNameObjects(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
-      return Collections.emptyList();
-    }
-    List<Map<String, Object>> result = new ArrayList<>(columns.size());
-    for (Column column : columns) {
-      if (column.getName() != null) {
-        result.add(Map.of("name", column.getName()));
-      }
-    }
-    return result;
   }
 
   /**
