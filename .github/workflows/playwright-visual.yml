@@ -27,9 +27,15 @@
 name: playwright-visual-regression
 
 on:
+  merge_group:
+  # Paths filter deliberately removed from the trigger — the workflow always
+  # fires so its required-check status posts on every PR. Path filtering moved
+  # into the `check-changes` job below (dorny/paths-filter), matching the
+  # pattern `ui-checkstyle.yml` uses: PRs without UI-relevant changes skip
+  # the expensive build/test job (green skipped status) while the required
+  # check still reports. Without this, backend-only PRs never see the check
+  # appear and stay stuck at "waiting for required status" forever.
   pull_request:
-    paths:
-      - "openmetadata-ui/**"
   workflow_dispatch:
 
 concurrency:
@@ -37,10 +43,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui-changed: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            ui:
+              - 'openmetadata-ui/**'
+              - '.github/workflows/playwright-visual.yml'
+
   playwright-visual-regression:
     name: playwright-visual-regression
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.ui-changed == 'true' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
     steps:
