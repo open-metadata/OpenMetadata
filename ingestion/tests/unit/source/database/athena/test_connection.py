@@ -12,6 +12,9 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
 )
@@ -65,6 +68,52 @@ def _run_steps_capturing(service_connection: AthenaConnectionConfig) -> dict:
             service_connection=service_connection,
         )
     return captured
+
+
+def test_assume_role_uses_refreshable_session_without_url_credentials():
+    refreshable_session = MagicMock()
+    config = _config(
+        awsConfig=AWSCredentials(
+            awsRegion="us-east-2",
+            assumeRoleArn="arn:aws:iam::123456789012:role/metadata-reader",
+        ),
+        catalogId="my_catalog",
+    )
+
+    with (
+        patch.object(AWSClient, "create_session", return_value=refreshable_session),
+        patch.object(AWSClient, "get_assume_role_config", return_value=None),
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection,
+    ):
+        athena_connection.get_connection(config)
+        url_builder = mock_connection.call_args.kwargs["get_connection_url_fn"]
+        args_builder = mock_connection.call_args.kwargs["get_connection_args_fn"]
+        url = url_builder(config)
+        args = args_builder(config)
+
+    assert url == (
+        "awsathena+rest://:@athena.us-east-2.amazonaws.com:443"
+        "?s3_staging_dir=s3%3A%2F%2Fpostgres%2Finput%2F&work_group=primary"
+        "&catalog_name=my_catalog"
+    )
+    assert args == {"session": refreshable_session}
+
+
+def test_assume_role_rejects_connection_argument_session():
+    config = _config(
+        awsConfig=AWSCredentials(
+            awsRegion="us-east-2",
+            assumeRoleArn="arn:aws:iam::123456789012:role/metadata-reader",
+        ),
+        connectionArguments={"session": "not-a-boto3-session"},
+    )
+
+    with (
+        patch.object(AWSClient, "get_assume_role_config", return_value=None),
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection"),
+        pytest.raises(ValueError, match="must not define 'session'"),
+    ):
+        athena_connection.get_connection(config)
 
 
 def test_get_tables_raises_when_all_targeted_schemas_empty():
