@@ -31,6 +31,7 @@ import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import {
   FC,
+  Key,
   ReactNode,
   useCallback,
   useEffect,
@@ -54,6 +55,41 @@ import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
+
+type MenuSelectionResult = {
+  updatedValues: SearchDropdownOption[];
+  updatedNullSelected: boolean;
+};
+
+// Pure computation of the next selected-options / null-option state for a
+// menu item click, kept outside the component so it stays free of nesting.
+const resolveMenuSelection = (
+  singleSelect: boolean,
+  selectedOptions: SearchDropdownOption[],
+  option: SearchDropdownOption | undefined,
+  currentKey: Key,
+  nullOptionSelected: boolean
+): MenuSelectionResult => {
+  const isAlreadySelected = selectedOptions.some(
+    (opt) => opt.key === currentKey
+  );
+
+  if (singleSelect) {
+    const isNewSelection = !isAlreadySelected && option;
+
+    return {
+      updatedValues: isNewSelection && option ? [option] : [],
+      updatedNullSelected: isNewSelection ? false : nullOptionSelected,
+    };
+  }
+
+  const updatedValues = isAlreadySelected
+    ? selectedOptions.filter((opt) => opt.key !== currentKey)
+    : [...selectedOptions, ...(option ? [option] : [])];
+
+  return { updatedValues, updatedNullSelected: nullOptionSelected };
+};
+
 const SearchDropdown: FC<SearchDropdownProps> = ({
   dropdownClassName,
   isSuggestionsLoading,
@@ -197,28 +233,19 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
     const option = options.find((op) => op.key === currentKey);
-    let updatedValues: SearchDropdownOption[];
-    let updatedNullSelected = nullOptionSelected;
 
-    if (singleSelect) {
-      const isAlreadySelected = selectedOptions.some(
-        (opt) => opt.key === currentKey
-      );
-      updatedValues = !isAlreadySelected && option ? [option] : [];
-      if (!isAlreadySelected && option) {
-        updatedNullSelected = false;
-        setNullOptionSelected(false);
-      }
-    } else {
-      const isAlreadySelected = selectedOptions.some(
-        (opt) => opt.key === currentKey
-      );
-      updatedValues = isAlreadySelected
-        ? selectedOptions.filter((opt) => opt.key !== currentKey)
-        : [...selectedOptions, ...(option ? [option] : [])];
-    }
+    const { updatedValues, updatedNullSelected } = resolveMenuSelection(
+      Boolean(singleSelect),
+      selectedOptions,
+      option,
+      currentKey,
+      nullOptionSelected
+    );
 
     setSelectedOptions(updatedValues);
+    if (updatedNullSelected !== nullOptionSelected) {
+      setNullOptionSelected(updatedNullSelected);
+    }
 
     if (immediateApply) {
       emitChange(updatedValues, updatedNullSelected);
