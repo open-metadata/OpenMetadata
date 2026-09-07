@@ -54,6 +54,7 @@ import {
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
 import { Trash01 } from '@untitledui/icons';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { queryClient } from '../../../queryClient';
@@ -61,7 +62,6 @@ import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { TagSource } from '../../../generated/type/tagLabel';
 import { ClassificationTag, GlossaryTag } from '../../common/atoms/Tag';
 
 export interface KnowledgeCardProps {

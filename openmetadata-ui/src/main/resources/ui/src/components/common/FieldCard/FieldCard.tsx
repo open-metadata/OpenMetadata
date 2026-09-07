@@ -133,7 +133,9 @@ const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
           ref={containerRef}>
           {items.map((item) => {
             const isGlossaryTerm = item.source === TagSource.Glossary;
-            const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
+            const TagComponent = isGlossaryTerm
+              ? GlossaryTag
+              : ClassificationTag;
 
             return (
               <span

@@ -29,7 +29,6 @@ import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeC
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 
-
 interface TaggedEntity {
   tags?: TagLabel[];
 }
@@ -119,10 +118,8 @@ export const renderDomainOwnersCell = (
 );
 
 export const renderDomainGlossaryTagsCell = (
-  entity: TaggedEntity,
-): ReactNode => (
-  <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />
-);
+  entity: TaggedEntity
+): ReactNode => <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity,

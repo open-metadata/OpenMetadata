@@ -12,12 +12,12 @@
  */
 import { Typography } from '@openmetadata/ui-core-components';
 import {
-  Typography as AntTypography,
   Button,
   Col,
   Row,
   Segmented,
   Table,
+  Typography as AntTypography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
@@ -1066,7 +1066,9 @@ const APIEndpointSchemaV1: React.FC<{
         <div className="d-flex flex-wrap gap-2">
           {tags?.map((tag) => {
             const isGlossaryTerm = tag.source === TagSource.Glossary;
-            const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
+            const TagComponent = isGlossaryTerm
+              ? GlossaryTag
+              : ClassificationTag;
 
             return (
               <TagComponent

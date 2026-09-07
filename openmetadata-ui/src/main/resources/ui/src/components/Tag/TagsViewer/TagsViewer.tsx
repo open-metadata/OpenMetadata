@@ -162,12 +162,16 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     () =>
       sortedTagsBySource.slice(sizeCap).length > 0 && (
         <div data-testid="popover-element">
-          <PopoverTrigger isOpen={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+          <PopoverTrigger
+            isOpen={isPopoverOpen}
+            onOpenChange={setIsPopoverOpen}>
             <Button color="link-color" data-testid="plus-more-count" size="xs">
               {`+${sortedTagsBySource.length - (sizeCap ?? 0)} more`}
             </Button>
-            <Popover containerClassName="tag-popover-container" placement="bottom">
-              <Box className="tw:p-2" direction='col' gap={2} wrap='wrap'>
+            <Popover
+              containerClassName="tag-popover-container"
+              placement="bottom">
+              <Box className="tw:p-2" direction="col" gap={2} wrap="wrap">
                 {sortedTagsBySource
                   .slice(sizeCap)
                   .map((tag) => getTagsElement(tag))}
