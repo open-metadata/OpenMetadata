@@ -1618,4 +1618,58 @@ describe('KnowledgeGraph', () => {
       await expect(idPassedToPanel(columnUri)).resolves.toBe(columnUri);
     });
   });
+
+  describe('Render failures', () => {
+    it('toasts and clears the loader when graph construction fails', async () => {
+      // applyGraphLayout rejecting stands in for any failure inside initGraph —
+      // ELK blowing up, or the Graph constructor throwing.
+      (applyGraphLayout as jest.Mock).mockRejectedValueOnce(
+        new Error('layout exploded')
+      );
+
+      renderKG();
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
+      );
+    });
+
+    it('toasts when the G6 render call rejects', async () => {
+      MockGraph.mockImplementationOnce(
+        () =>
+          ({
+            render: jest.fn().mockRejectedValue(new Error('render exploded')),
+            destroy: jest.fn(),
+            fitView: jest.fn().mockResolvedValue(undefined),
+            zoomTo: jest.fn(),
+            getZoom: jest.fn().mockReturnValue(1),
+            resize: jest.fn(),
+            on: jest.fn(),
+            setData: jest.fn(),
+          } as unknown as Graph)
+      );
+
+      renderKG();
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+    });
+
+    it('does not interrupt the user when fit-to-screen rejects', async () => {
+      renderKG();
+      await waitForGraphInit();
+
+      const instance = getGraphInstance();
+      instance.fitView.mockRejectedValueOnce(new Error('fit exploded'));
+      (showErrorToast as jest.Mock).mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fit-screen'));
+      });
+
+      // The graph is unchanged and still usable, so a failed fit is swallowed
+      // deliberately rather than toasted — but it must not reject unhandled.
+      expect(showErrorToast).not.toHaveBeenCalled();
+    });
+  });
 });

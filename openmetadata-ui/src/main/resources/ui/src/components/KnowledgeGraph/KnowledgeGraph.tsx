@@ -159,6 +159,19 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     [graphData]
   );
 
+  /**
+   * Rendering failed, so the canvas will stay blank. Clear the loading overlay
+   * as well as toasting — a spinner that never resolves reads as a hang rather
+   * than as an error.
+   */
+  const reportGraphFailure = useCallback(
+    (error: unknown) => {
+      showErrorToast(error as AxiosError, t('server.unexpected-error'));
+      setGraphReady(true);
+    },
+    [t]
+  );
+
   const fetchGraphData = useCallback(async () => {
     if (!entity?.id) {
       return;
@@ -223,10 +236,16 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     if (!networkRef.current) {
       return;
     }
-    void networkRef.current.fitView().then(() => {
-      const currentZoom = networkRef.current?.getZoom() ?? 1;
-      networkRef.current?.zoomTo(currentZoom * FIT_SCALE_FACTOR);
-    });
+    networkRef.current
+      .fitView()
+      .then(() => {
+        const currentZoom = networkRef.current?.getZoom() ?? 1;
+        networkRef.current?.zoomTo(currentZoom * FIT_SCALE_FACTOR);
+      })
+      // A fit that cannot run leaves the graph exactly as it was, which is a
+      // usable state — not worth interrupting the user, but it must not be an
+      // unhandled rejection either.
+      .catch(() => undefined);
   }, []);
 
   const handleFullscreen = useCallback(() => {
@@ -434,17 +453,24 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
       networkRef.current = graph;
 
-      void graph.render().then(async () => {
-        if (cancelled) {
-          return;
-        }
-        if (graph) {
-          await applyInitialFocus(graph, focusNodeId);
-        }
-        if (!cancelled) {
-          setGraphReady(true);
-        }
-      });
+      graph
+        .render()
+        .then(async () => {
+          if (cancelled) {
+            return;
+          }
+          if (graph) {
+            await applyInitialFocus(graph, focusNodeId);
+          }
+          if (!cancelled) {
+            setGraphReady(true);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            reportGraphFailure(error);
+          }
+        });
 
       setupGraphEventHandlers({
         graph,
@@ -506,7 +532,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         wheelContainer.removeEventListener('wheel', handleWheelOnOverlay);
     };
 
-    void initGraph();
+    initGraph().catch(reportGraphFailure);
 
     return () => {
       cancelled = true;
