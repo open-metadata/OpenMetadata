@@ -31,7 +31,12 @@
   }
 }
 
-.table-query-editor > .cm-editor {
+// These are descendant selectors, not `> .cm-editor`: @uiw/react-codemirror
+// renders a wrapper div (.cm-theme-*) around the editor, and the class can land
+// either on that wrapper (editorClass) or on .schema-editor-container
+// (className), so the editor is a child in one case and a grandchild in the
+// other. CodeMirror 5 needed two selectors for the same reason.
+.table-query-editor .cm-editor {
   height: auto !important;
 }
 .custom-query-editor {
@@ -53,7 +58,7 @@
     min-height: 60px;
   }
 }
-.full-screen-editor-height > .cm-editor {
+.full-screen-editor-height .cm-editor {
   height: calc(100vh - 250px) !important;
 }
 
