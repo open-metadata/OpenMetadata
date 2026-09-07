@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
+import type {
   EdgeData as G6EdgeData,
   Graph,
   NodeData as G6NodeData,

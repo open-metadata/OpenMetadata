@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NodePortStyleProps } from '@antv/g6';
+import type { NodePortStyleProps } from '@antv/g6';
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 

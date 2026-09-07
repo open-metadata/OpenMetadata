@@ -12,7 +12,8 @@
  */
 
 import { SlideoutMenu } from '@openmetadata/ui-core-components';
-import { FC, lazy } from 'react';
+import type { FC } from 'react';
+import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';

@@ -12,7 +12,7 @@
  */
 
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { FC } from 'react';
+import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitFullScreenIcon } from '../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FitScreenIcon } from '../../assets/svg/ic-fit-screen.svg';

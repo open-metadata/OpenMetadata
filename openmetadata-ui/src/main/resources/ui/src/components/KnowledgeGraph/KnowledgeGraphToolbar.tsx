@@ -22,7 +22,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
-import React, { FC } from 'react';
+import type { FC } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ExportGraphPanel from '../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
