@@ -90,8 +90,11 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                     AND tbsl."TBL_NAME" = '{table_name}'
                 {schema_join}
             )
-            -- Combine regular and partition columns
+            -- Combine regular and partition columns. The sentinel mirrors Hive
+            -- DESCRIBE output so get_columns can mark partition keys (#26712).
             SELECT * FROM regular_columns
+            UNION ALL
+            SELECT '# Partition Information', NULL, NULL
             UNION ALL
             SELECT * FROM partition_columns
         """  # noqa: W291

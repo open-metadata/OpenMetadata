@@ -224,6 +224,7 @@ EXPECTED_COMPLEX_COL_TYPE = [
         "default": None,
         "system_data_type": "int",
         "is_complex": False,
+        "is_partition": False,
     },
     {
         "name": "data",
@@ -233,6 +234,7 @@ EXPECTED_COMPLEX_COL_TYPE = [
         "default": None,
         "system_data_type": "struct<a:struct<b:decimal(20,0)>>",
         "is_complex": True,
+        "is_partition": False,
     },
     {
         "name": "data2",
@@ -242,6 +244,7 @@ EXPECTED_COMPLEX_COL_TYPE = [
         "default": None,
         "system_data_type": "struct<colll:decimal(20,0)>",
         "is_complex": True,
+        "is_partition": False,
     },
 ]
 
@@ -516,7 +519,7 @@ class HiveUnitTest(TestCase):
         """
         Standard Hive DESCRIBE output: partition columns are repeated after
         a '# Partition Information' sentinel row.
-        get_columns must stop at the sentinel and return each column once.
+        get_columns must return each column once and flag partition keys.
         """
         table_columns = [
             ("id", "int", None),
@@ -548,6 +551,86 @@ class HiveUnitTest(TestCase):
             f"dt should appear exactly once but got: {col_names}",
         )
         self.assertEqual(col_names, ["id", "name", "dt"])
+        columns = {col["name"]: col for col in col_list}
+        self.assertFalse(columns["id"]["is_partition"])
+        self.assertFalse(columns["name"]["is_partition"])
+        self.assertTrue(columns["dt"]["is_partition"])
+
+    def test_get_columns_marks_partition_only_keys_after_sentinel(self):
+        """Partition keys that appear only under Partition Information are kept."""
+        table_columns = [
+            ("id", "int", None),
+            ("amount", "decimal(10,2)", None),
+            ("# Partition Information", None, None),
+            ("# col_name", "data_type", "comment"),
+            ("year", "int", None),
+            ("country", "string", None),
+            ("# Detailed Table Information", None, None),
+            ("Owner:", "hive", None),
+        ]
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+            )
+            partition_only = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+                only_partition_columns=True,
+            )
+
+        self.assertEqual(
+            [col["name"] for col in col_list],
+            ["id", "amount", "year", "country"],
+        )
+        columns = {col["name"]: col for col in col_list}
+        self.assertFalse(columns["id"]["is_partition"])
+        self.assertTrue(columns["year"]["is_partition"])
+        self.assertTrue(columns["country"]["is_partition"])
+        self.assertEqual([col["name"] for col in partition_only], ["year", "country"])
+
+    def test_get_table_partition_details(self):
+        """HiveSource exposes partition keys via tablePartition metadata."""
+        mock_inspector = Mock()
+        mock_inspector.get_columns.return_value = [
+            {
+                "name": "year",
+                "type": Integer,
+                "is_partition": True,
+            },
+            {
+                "name": "country",
+                "type": String(),
+                "is_partition": True,
+            },
+        ]
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="sales",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition_details)
+        self.assertEqual(
+            [col.columnName.root for col in partition_details.columns],
+            ["year", "country"],
+        )
+        mock_inspector.get_columns.assert_called_once_with(
+            table_name="sales",
+            schema="analytics",
+            only_partition_columns=True,
+        )
 
     def test_ssl_connection_configuration(self):
         """

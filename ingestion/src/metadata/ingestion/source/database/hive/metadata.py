@@ -18,7 +18,12 @@ from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -118,3 +123,38 @@ class HiveSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> tuple[bool, TablePartition | None]:
+        """
+        Return Hive partition keys from DESCRIBE's Partition Information section.
+
+        Partition columns are flagged in ``get_columns`` via ``is_partition`` so the
+        table schema keeps them as columns while ``tablePartition`` marks their role.
+        """
+        try:
+            columns = inspector.get_columns(
+                table_name=table_name,
+                schema=schema_name,
+                only_partition_columns=True,
+            )
+            if not columns:
+                return False, None
+            partition_details = TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=col["name"],
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                    for col in columns
+                ]
+            )
+            return True, partition_details
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch partition details for {schema_name}.{table_name}: {exc}"
+            )
+            return False, None

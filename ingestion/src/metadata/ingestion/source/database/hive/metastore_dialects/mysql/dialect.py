@@ -63,8 +63,9 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             else ""
         )
 
-        # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility
-        # Using direct UNION ALL of subqueries instead of WITH clause
+        # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility.
+        # Insert a Hive-style Partition Information sentinel between regular and
+        # partition columns so get_columns can flag partition keys (issue #26712).
         query = f"""
             SELECT 
                 col.COLUMN_NAME,
@@ -76,6 +77,8 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
                 AND tbsl.TBL_NAME = '{table_name}'
             {schema_join}
+            UNION ALL
+            SELECT '# Partition Information', NULL, NULL
             UNION ALL
             SELECT 
                 pk.PKEY_NAME as COLUMN_NAME,

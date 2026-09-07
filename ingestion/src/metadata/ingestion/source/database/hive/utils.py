@@ -32,61 +32,90 @@ _type_map.update(
 )
 
 
+def _parse_hive_column(col_name, col_type, comment, *, is_partition: bool = False):
+    """Build a SQLAlchemy-style column dict from a Hive DESCRIBE row."""
+    col_raw_type = col_type
+    attype = re.sub(r"\(.*\)", "", col_type)
+    col_type = re.search(r"^\w+", col_type).group(0)
+    try:
+        coltype = _type_map[col_type]
+    except KeyError:
+        util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
+        coltype = types.NullType
+    charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
+    if charlen:
+        charlen = charlen.group(1)
+        if any(col_type.startswith(prefix) for prefix in complex_data_types):
+            # For complex types the regex above matches the parameters of a nested
+            # type instead, e.g. array<struct<a:decimal(16,4)>> yields "16,4".
+            # The nested fields are resolved later from `system_data_type`.
+            args = []
+        elif attype == "decimal":
+            prec, scale = charlen.split(",")
+            args = (int(prec), int(scale))
+        else:
+            args = (int(charlen),)
+        coltype = coltype(*args)
+
+    return {
+        "name": col_name,
+        "type": coltype,
+        "comment": comment,
+        "nullable": True,
+        "default": None,
+        "system_data_type": col_raw_type,
+        "is_complex": col_type in complex_data_types,
+        "is_partition": is_partition,
+    }
+
+
 def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument,too-many-locals
     """
-    Method to handle table columns
+    Method to handle table columns.
+
+    Hive DESCRIBE lists regular columns first, then a ``# Partition Information``
+    section. Partition keys must be kept and flagged so callers can populate
+    ``tablePartition`` (see HiveSource.get_table_partition_details).
     """
+    only_partition_columns = kw.get("only_partition_columns", False)
     rows = self._get_table_columns(  # pylint: disable=protected-access
         connection, table_name, schema
     )
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
-    seen_columns = set()
+    seen_columns: dict[str, dict] = {}
+    in_partition_section = False
     for col_name, col_type, comment in rows:
         if col_name == "# Partition Information":
-            break
-
-        # Skip duplicate column names (partition columns appear twice in DESCRIBE output)
-        if col_name in seen_columns:
+            in_partition_section = True
             continue
 
-        col_raw_type = col_type
-        attype = re.sub(r"\(.*\)", "", col_type)
-        col_type = re.search(r"^\w+", col_type).group(0)  # noqa: PLW2901
-        try:
-            coltype = _type_map[col_type]
+        if col_name.startswith("#"):
+            # DESCRIBE FORMATTED continues with other `# ...` sections after
+            # partitions; stop so Owner/Location rows are not treated as columns.
+            if in_partition_section:
+                break
+            continue
 
-        except KeyError:
-            util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
-            coltype = types.NullType
-        charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
-        if charlen:
-            charlen = charlen.group(1)
-            if any(col_type.startswith(prefix) for prefix in complex_data_types):
-                # For complex types the regex above matches the parameters of a nested
-                # type instead, e.g. array<struct<a:decimal(16,4)>> yields "16,4".
-                # The nested fields are resolved later from `system_data_type`.
-                args = []
-            elif attype == "decimal":
-                prec, scale = charlen.split(",")
-                args = (int(prec), int(scale))
-            else:
-                args = (int(charlen),)
-            coltype = coltype(*args)
+        if col_name in seen_columns:
+            # Partition keys often appear twice: once with data columns and again
+            # under Partition Information. Mark the existing entry as a partition.
+            if in_partition_section:
+                seen_columns[col_name]["is_partition"] = True
+            continue
 
-        result.append(
-            {
-                "name": col_name,
-                "type": coltype,
-                "comment": comment,
-                "nullable": True,
-                "default": None,
-                "system_data_type": col_raw_type,
-                "is_complex": col_type in complex_data_types,
-            }
+        if not col_type:
+            continue
+
+        column = _parse_hive_column(
+            col_name, col_type, comment, is_partition=in_partition_section
         )
-        seen_columns.add(col_name)
+        seen_columns[col_name] = column
+        result.append(column)
+
+    if only_partition_columns:
+        return [col for col in result if col.get("is_partition")]
     return result
 
 
