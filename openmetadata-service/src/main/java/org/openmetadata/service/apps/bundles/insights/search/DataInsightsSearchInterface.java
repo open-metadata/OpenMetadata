@@ -18,6 +18,22 @@ public interface DataInsightsSearchInterface {
 
   void createDataStream(String name) throws IOException;
 
+  default IndexMappingTemplate prepareDataAssetTemplates(
+      String name, String entityType, IndexMapping mapping, String language, String resourcePath)
+      throws IOException {
+    String built =
+        buildMapping(
+            entityType,
+            mapping,
+            language,
+            readResource(resourcePath + "/indexMappingsTemplate.json"));
+    createComponentTemplate(name + "-mapping", built);
+    createIndexTemplate(
+        name,
+        IndexTemplate.forDataStream(name, readResource(resourcePath + "/indexTemplate.json")));
+    return JsonUtils.readValue(built, IndexMappingTemplate.class);
+  }
+
   default String readResource(String resourceFile) {
     try (InputStream in = getClass().getResourceAsStream(resourceFile)) {
       assert in != null;
@@ -98,6 +114,11 @@ public interface DataInsightsSearchInterface {
       throws IOException;
 
   void deleteDataAssetDataStream(String name) throws IOException;
+
+  /** Updates existing backing indexes and the template used when the data stream rolls over. */
+  void updateDataAssetsDataStream(
+      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      throws IOException;
 
   Boolean dataAssetDataStreamExists(String name) throws IOException;
 

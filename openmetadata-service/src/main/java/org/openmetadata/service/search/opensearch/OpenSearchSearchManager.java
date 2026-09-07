@@ -1352,6 +1352,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
       SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
 
+      if (response.timedOut() || response.shards().failed() > 0) {
+        throw new IOException("Incomplete search export for " + request.getIndex());
+      }
+
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
 
