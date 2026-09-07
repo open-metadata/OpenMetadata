@@ -267,11 +267,10 @@ for (const [
   });
 }
 
-// Deeply nested rows (e.g. a Topic's level-2 fields) sit below the fold in the
-// TableV2 grid, so the expand icon must be scrolled to before it is clickable —
-// but TableV2 also remounts rows on re-render, detaching a pre-resolved handle
-// mid-scroll. Retrying scroll+click as a unit re-resolves the locator on each
-// attempt, so it both reaches the off-screen icon and survives the remount.
+// check-click-confirm inside toPass: skips the click when the child is already
+// shown (Topic auto-expands its first level, so a blind click would toggle it
+// shut), and a click that lands wrong fails the confirm so the retry corrects
+// it. Also absorbs the row remount and below-the-fold scroll.
 const expandNestedColumn = async (
   page: Page,
   nestedColumnFqn: string,
@@ -280,14 +279,17 @@ const expandNestedColumn = async (
   const childRow = childKey
     ? page.locator(`[data-row-key="${childKey}"]`)
     : undefined;
-  if (childRow && (await childRow.isVisible())) {
-    return;
-  }
   const expandIcon = page.locator(
     `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`
   );
   await expect(async () => {
+    if (childRow && (await childRow.isVisible())) {
+      return;
+    }
     await expandIcon.scrollIntoViewIfNeeded();
     await expandIcon.click({ timeout: 10_000 });
+    if (childRow) {
+      await expect(childRow).toBeVisible({ timeout: 5_000 });
+    }
   }).toPass({ timeout: 60_000 });
 };

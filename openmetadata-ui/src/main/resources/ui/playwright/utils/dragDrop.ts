@@ -51,12 +51,14 @@ export const dragAndDropElement = async (
     ? page.locator(dropTarget)
     : page.locator(`[data-row-key="${dropTarget}"]`);
 
-  // A prior iteration's error/confirmation toast stacks bottom-right, exactly
-  // where the last rows sit, and would swallow the drop. Error toasts auto-close
-  // on react-toastify's ~5s default, so wait a touch past that for every toast
-  // to clear before dropping — dragTo then lands on the row, not the overlay.
-  await expect(page.getByTestId('alert-bar'))
-    .toHaveCount(0, { timeout: 8_000 })
+  // A rejection toast lives 60s (ERROR_TOAST_TIMEOUT) and covers the drop row,
+  // so dismiss open error toasts rather than wait them out. Only error toasts
+  // render a close button; success/info toasts self-dismiss.
+  for (const close of await page.getByTestId('alert-icon-close').all()) {
+    await close.click().catch(() => undefined);
+  }
+  await expect(page.getByTestId('alert-icon-close'))
+    .toHaveCount(0, { timeout: 10_000 })
     .catch(() => undefined);
 
   await dragElementLocator.scrollIntoViewIfNeeded();
