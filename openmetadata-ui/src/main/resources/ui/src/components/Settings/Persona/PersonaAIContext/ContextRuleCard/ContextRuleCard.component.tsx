@@ -62,6 +62,200 @@ const ENTITY_TYPE_ICONS: Record<string, FC<{ className?: string }>> = {
   [EntityType.METRIC]: BarChartSquare02,
 };
 
+interface RuleConditionSummaryProps {
+  conditionParts: ReturnType<typeof getRuleConditionParts>;
+  conditionCount: number;
+  entityLabelPlural: string;
+}
+
+const RuleConditionSummary = ({
+  conditionParts,
+  conditionCount,
+  entityLabelPlural,
+}: RuleConditionSummaryProps) => {
+  const { t } = useTranslation();
+
+  const renderSummary = () => {
+    if (conditionParts) {
+      return (
+        <>
+          <Typography
+            as="span"
+            className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
+            size="text-xs"
+            weight="medium">
+            {conditionParts.field}
+          </Typography>
+          <Typography
+            as="span"
+            className="tw:text-quaternary"
+            size="text-xs"
+            weight="semibold">
+            {conditionParts.operator}
+          </Typography>
+          {conditionParts.value && (
+            <Typography
+              as="span"
+              className="tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary tw:px-2 tw:py-0.5 tw:font-mono tw:text-brand-secondary"
+              size="text-xs"
+              weight="medium">
+              {conditionParts.value}
+            </Typography>
+          )}
+        </>
+      );
+    }
+
+    if (conditionCount > 0) {
+      return (
+        <Typography
+          as="span"
+          className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
+          size="text-xs"
+          weight="medium">
+          {t('message.persona-context-condition-count', {
+            count: conditionCount,
+          })}
+        </Typography>
+      );
+    }
+
+    return (
+      <Typography
+        as="span"
+        className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-tertiary"
+        size="text-xs"
+        weight="medium">
+        <FilterLines className="tw:size-3.5 tw:text-quaternary" />
+        {t('label.all-entity', {
+          entity: entityLabelPlural,
+        })}
+      </Typography>
+    );
+  };
+
+  return (
+    <Box align="center" gap={2} wrap="wrap">
+      {renderSummary()}
+    </Box>
+  );
+};
+
+interface RuleSectionsProps {
+  fullyRendered?: boolean;
+  visibleSections: NonNullable<ContextRule['sections']>;
+  extraSections: number;
+  alwaysInContext?: boolean;
+}
+
+const RuleSections = ({
+  fullyRendered,
+  visibleSections,
+  extraSections,
+  alwaysInContext,
+}: RuleSectionsProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:gap-1.5" wrap="wrap">
+      {fullyRendered ? (
+        <BadgeWithIcon color="brand" iconLeading={Check} size="sm">
+          {t('label.fully-rendered')}
+        </BadgeWithIcon>
+      ) : (
+        <>
+          {visibleSections.map((section) => (
+            <Badge color="gray" key={section} size="sm">
+              <Typography as="span">
+                {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
+              </Typography>
+              {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
+                <Typography
+                  as="span"
+                  className="tw:ml-1 tw:text-quaternary"
+                  size="text-xs">
+                  {t('label.heavy')}
+                </Typography>
+              )}
+            </Badge>
+          ))}
+          {extraSections > 0 && (
+            <Typography
+              as="span"
+              className="tw:rounded-full tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-quaternary"
+              size="text-xs"
+              weight="medium">
+              {t('message.persona-context-more-sections', {
+                count: extraSections,
+              })}
+            </Typography>
+          )}
+        </>
+      )}
+      {alwaysInContext && (
+        <Badge color="gray" size="sm">
+          {t('label.always-in-context')}
+        </Badge>
+      )}
+    </Box>
+  );
+};
+
+interface RuleCardActionsProps {
+  matchedCount?: number;
+  canEdit: boolean;
+  entityLabelPlural: string;
+  onEdit: () => void;
+  onDeleteClick: () => void;
+}
+
+const RuleCardActions = ({
+  matchedCount,
+  canEdit,
+  entityLabelPlural,
+  onEdit,
+  onDeleteClick,
+}: RuleCardActionsProps) => {
+  const { t } = useTranslation();
+
+  if (matchedCount === undefined && !canEdit) {
+    return null;
+  }
+
+  return (
+    <Box align="end" className="tw:shrink-0 tw:gap-3.5" direction="col">
+      {matchedCount !== undefined && (
+        <BadgeWithDot color="success" size="md">
+          {t('message.persona-context-entity-matched', {
+            count: matchedCount,
+            entity: entityLabelPlural,
+          })}
+        </BadgeWithDot>
+      )}
+      {canEdit && (
+        <Box align="center" className="tw:mt-auto tw:gap-1.5">
+          <Button
+            aria-label={t('label.edit')}
+            color="secondary"
+            data-testid="edit-context-rule"
+            iconLeading={EditIcon}
+            size="xs"
+            onClick={onEdit}
+          />
+          <Button
+            aria-label={t('label.delete')}
+            color="secondary-destructive"
+            data-testid="delete-context-rule"
+            iconLeading={Trash01}
+            size="xs"
+            onClick={onDeleteClick}
+          />
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 export const ContextRuleCard = ({
   canEdit,
   matched,
@@ -112,98 +306,18 @@ export const ContextRuleCard = ({
           </BadgeWithIcon>
         </Box>
 
-        <Box align="center" gap={2} wrap="wrap">
-          {conditionParts ? (
-            <>
-              <Typography
-                as="span"
-                className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
-                size="text-xs"
-                weight="medium">
-                {conditionParts.field}
-              </Typography>
-              <Typography
-                as="span"
-                className="tw:text-quaternary"
-                size="text-xs"
-                weight="semibold">
-                {conditionParts.operator}
-              </Typography>
-              {conditionParts.value && (
-                <Typography
-                  as="span"
-                  className="tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary tw:px-2 tw:py-0.5 tw:font-mono tw:text-brand-secondary"
-                  size="text-xs"
-                  weight="medium">
-                  {conditionParts.value}
-                </Typography>
-              )}
-            </>
-          ) : conditionCount > 0 ? (
-            <Typography
-              as="span"
-              className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
-              size="text-xs"
-              weight="medium">
-              {t('message.persona-context-condition-count', {
-                count: conditionCount,
-              })}
-            </Typography>
-          ) : (
-            <Typography
-              as="span"
-              className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-tertiary"
-              size="text-xs"
-              weight="medium">
-              <FilterLines className="tw:size-3.5 tw:text-quaternary" />
-              {t('label.all-entity', {
-                entity: entityLabelPlural,
-              })}
-            </Typography>
-          )}
-        </Box>
+        <RuleConditionSummary
+          conditionCount={conditionCount}
+          conditionParts={conditionParts}
+          entityLabelPlural={entityLabelPlural}
+        />
 
-        <Box align="center" className="tw:gap-1.5" wrap="wrap">
-          {rule.fullyRendered ? (
-            <BadgeWithIcon color="brand" iconLeading={Check} size="sm">
-              {t('label.fully-rendered')}
-            </BadgeWithIcon>
-          ) : (
-            <>
-              {visibleSections.map((section) => (
-                <Badge color="gray" key={section} size="sm">
-                  <Typography as="span">
-                    {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
-                  </Typography>
-                  {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
-                    <Typography
-                      as="span"
-                      className="tw:ml-1 tw:text-quaternary"
-                      size="text-xs">
-                      {t('label.heavy')}
-                    </Typography>
-                  )}
-                </Badge>
-              ))}
-              {extraSections > 0 && (
-                <Typography
-                  as="span"
-                  className="tw:rounded-full tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-quaternary"
-                  size="text-xs"
-                  weight="medium">
-                  {t('message.persona-context-more-sections', {
-                    count: extraSections,
-                  })}
-                </Typography>
-              )}
-            </>
-          )}
-          {rule.alwaysInContext && (
-            <Badge color="gray" size="sm">
-              {t('label.always-in-context')}
-            </Badge>
-          )}
-        </Box>
+        <RuleSections
+          alwaysInContext={rule.alwaysInContext}
+          extraSections={extraSections}
+          fullyRendered={rule.fullyRendered}
+          visibleSections={visibleSections}
+        />
 
         <Typography as="p" className="tw:m-0 tw:text-quaternary" size="text-xs">
           {t('message.persona-context-max-assets', {
@@ -212,38 +326,13 @@ export const ContextRuleCard = ({
         </Typography>
       </Box>
 
-      {(matchedCount !== undefined || canEdit) && (
-        <Box align="end" className="tw:shrink-0 tw:gap-3.5" direction="col">
-          {matchedCount !== undefined && (
-            <BadgeWithDot color="success" size="md">
-              {t('message.persona-context-entity-matched', {
-                count: matchedCount,
-                entity: entityLabelPlural,
-              })}
-            </BadgeWithDot>
-          )}
-          {canEdit && (
-            <Box align="center" className="tw:mt-auto tw:gap-1.5">
-              <Button
-                aria-label={t('label.edit')}
-                color="secondary"
-                data-testid="edit-context-rule"
-                iconLeading={EditIcon}
-                size="xs"
-                onClick={onEdit}
-              />
-              <Button
-                aria-label={t('label.delete')}
-                color="secondary-destructive"
-                data-testid="delete-context-rule"
-                iconLeading={Trash01}
-                size="xs"
-                onClick={() => setConfirmOpen(true)}
-              />
-            </Box>
-          )}
-        </Box>
-      )}
+      <RuleCardActions
+        canEdit={canEdit}
+        entityLabelPlural={entityLabelPlural}
+        matchedCount={matchedCount}
+        onDeleteClick={() => setConfirmOpen(true)}
+        onEdit={onEdit}
+      />
       <DeleteModal
         entityTitle={rule.name}
         message={t('message.delete-persona-context-rule-confirmation')}

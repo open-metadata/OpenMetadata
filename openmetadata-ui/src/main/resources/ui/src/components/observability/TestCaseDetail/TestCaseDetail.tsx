@@ -187,30 +187,34 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
 
     const items = [getObservabilityRootBreadcrumb(t), ...leadingTrail];
 
-    if (isDimensionPage) {
+    const buildCrumbs = () => {
+      if (isDimensionPage) {
+        return [
+          ...items,
+          {
+            label: testCase?.name ?? '',
+            ariaLabel: testCase?.name ?? '',
+            href: observabilityRouterClassBase.getTestCaseDetailPagePath(
+              testCase?.fullyQualifiedName ?? ''
+            ),
+          },
+          {
+            label: dimensionKey ?? '',
+            ariaLabel: dimensionKey ?? '',
+          },
+        ];
+      }
+
       return [
         ...items,
         {
           label: testCase?.name ?? '',
           ariaLabel: testCase?.name ?? '',
-          href: observabilityRouterClassBase.getTestCaseDetailPagePath(
-            testCase?.fullyQualifiedName ?? ''
-          ),
-        },
-        {
-          label: dimensionKey ?? '',
-          ariaLabel: dimensionKey ?? '',
         },
       ];
-    }
+    };
 
-    return [
-      ...items,
-      {
-        label: testCase?.name ?? '',
-        ariaLabel: testCase?.name ?? '',
-      },
-    ];
+    return buildCrumbs();
   }, [t, testCase, isDimensionPage, dimensionKey, originBreadcrumb]);
 
   const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
@@ -238,6 +242,65 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
   if (isUndefined(testCase)) {
     return <ErrorPlaceHolder />;
   }
+
+  const getPageTitle = () =>
+    t(
+      isVersionPage
+        ? 'label.entity-version-detail-plural'
+        : 'label.entity-detail-plural',
+      {
+        entity: getEntityName(testCase) || t('label.test-case'),
+      }
+    );
+
+  const renderHeaderTitle = () => (
+    <Box className="tw:min-w-0" direction="col">
+      {displayName && (
+        <Typography
+          as="h2"
+          className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
+          data-testid="entity-header-display-name"
+          ellipsis={{
+            tooltip: breakableTooltipText(stringToHTML(displayName)),
+          }}
+          size="text-lg"
+          weight="bold">
+          {stringToHTML(displayName)}
+        </Typography>
+      )}
+      <Typography
+        as={displayName ? 'span' : 'h2'}
+        className={classNames(
+          'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
+          {
+            'tw:text-primary': !displayName,
+            'tw:text-tertiary': displayName,
+          }
+        )}
+        data-testid="entity-header-name"
+        ellipsis={{
+          tooltip: breakableTooltipText(testCase?.name),
+        }}
+        size={displayName ? 'text-sm' : 'text-lg'}
+        weight={displayName ? 'medium' : 'bold'}>
+        {testCase?.name}
+      </Typography>
+    </Box>
+  );
+
+  const renderExpandButton = () => {
+    if (!isExpandViewSupported) {
+      return null;
+    }
+
+    return (
+      <AlignRightIconButton
+        className={isTabExpanded ? 'rotate-180' : ''}
+        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+        onClick={toggleTabExpanded}
+      />
+    );
+  };
 
   return (
     <>
@@ -294,40 +357,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                     className="tw:min-w-0"
                     data-testid="entity-header-title"
                     gap={3}>
-                    <Box className="tw:min-w-0" direction="col">
-                      {displayName && (
-                        <Typography
-                          as="h2"
-                          className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-                          data-testid="entity-header-display-name"
-                          ellipsis={{
-                            tooltip: breakableTooltipText(
-                              stringToHTML(displayName)
-                            ),
-                          }}
-                          size="text-lg"
-                          weight="bold">
-                          {stringToHTML(displayName)}
-                        </Typography>
-                      )}
-                      <Typography
-                        as={displayName ? 'span' : 'h2'}
-                        className={classNames(
-                          'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-                          {
-                            'tw:text-primary': !displayName,
-                            'tw:text-tertiary': displayName,
-                          }
-                        )}
-                        data-testid="entity-header-name"
-                        ellipsis={{
-                          tooltip: breakableTooltipText(testCase?.name),
-                        }}
-                        size={displayName ? 'text-sm' : 'text-lg'}
-                        weight={displayName ? 'medium' : 'bold'}>
-                        {testCase?.name}
-                      </Typography>
-                    </Box>
+                    {renderHeaderTitle()}
                     <Tooltip
                       placement="top"
                       title={
@@ -382,14 +412,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
             </Box>
           </Box>
         }
-        pageTitle={t(
-          isVersionPage
-            ? 'label.entity-version-detail-plural'
-            : 'label.entity-detail-plural',
-          {
-            entity: getEntityName(testCase) || t('label.test-case'),
-          }
-        )}>
+        pageTitle={getPageTitle()}>
         <div className="test-case-detail-tabs">
           <Box
             align="end"
@@ -425,13 +448,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 ))}
               </Tabs.List>
             </Tabs>
-            {isExpandViewSupported && (
-              <AlignRightIconButton
-                className={isTabExpanded ? 'rotate-180' : ''}
-                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-                onClick={toggleTabExpanded}
-              />
-            )}
+            {renderExpandButton()}
           </Box>
           <div className="test-case-detail-tab-panel">{activeTabContent}</div>
         </div>

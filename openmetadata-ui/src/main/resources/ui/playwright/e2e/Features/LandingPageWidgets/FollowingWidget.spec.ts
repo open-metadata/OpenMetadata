@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -22,6 +22,7 @@ import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';

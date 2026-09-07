@@ -46,6 +46,26 @@ interface InlineEditCardProps {
   lockedLabel?: string;
 }
 
+// Reserve space on the right so the value never sits under the pencil
+// (narrow) or the "Admin-managed" lock (wider).
+const getRightPadding = (
+  isEditing: boolean,
+  canEdit: boolean,
+  showLock: boolean
+): string => {
+  if (isEditing) {
+    return 'tw:w-full';
+  }
+  if (canEdit) {
+    return 'tw:w-full tw:pr-8';
+  }
+  if (showLock) {
+    return 'tw:w-full tw:pr-32';
+  }
+
+  return 'tw:w-full';
+};
+
 const InlineEditCard: React.FC<InlineEditCardProps> = ({
   title,
   description,
@@ -85,15 +105,9 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
   };
 
   const showLock = !isEditing && !canEdit && Boolean(lockedLabel);
-  // Reserve space on the right so the value never sits under the pencil
-  // (narrow) or the "Admin-managed" lock (wider).
-  const rightPadding = isEditing
-    ? 'tw:w-full'
-    : canEdit
-    ? 'tw:w-full tw:pr-8'
-    : showLock
-    ? 'tw:w-full tw:pr-32'
-    : 'tw:w-full';
+  const rightPadding = getRightPadding(isEditing, canEdit, showLock);
+  const subTestId = (suffix: string) =>
+    testId ? `${testId}-${suffix}` : undefined;
 
   return (
     <Box
@@ -114,7 +128,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
           <button
             aria-label={t('label.edit')}
             className="tw:absolute tw:top-1/2 tw:right-4 tw:-translate-y-1/2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:text-quaternary tw:hover:text-secondary"
-            data-testid={testId ? `${testId}-edit` : undefined}
+            data-testid={subTestId('edit')}
             type="button"
             onClick={enterEdit}>
             <Edit02 height={14} width={14} />
@@ -124,7 +138,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
           <Box
             align="center"
             className="tw:absolute tw:top-1/2 tw:right-4 tw:-translate-y-1/2 tw:shrink-0 tw:gap-1 tw:text-quaternary"
-            data-testid={testId ? `${testId}-locked` : undefined}>
+            data-testid={subTestId('locked')}>
             <Lock01 height={13} width={13} />
             <Typography
               className="tw:text-quaternary"
@@ -139,14 +153,14 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
         <Box align="center" className="tw:mt-5 tw:pr-2" gap={2} justify="end">
           <Button
             color="secondary"
-            data-testid={testId ? `${testId}-cancel` : undefined}
+            data-testid={subTestId('cancel')}
             size="sm"
             onClick={cancel}>
             {t('label.cancel')}
           </Button>
           <Button
             color="primary"
-            data-testid={testId ? `${testId}-save` : undefined}
+            data-testid={subTestId('save')}
             isLoading={isSaving}
             size="sm"
             onClick={save}>
