@@ -116,6 +116,265 @@ export interface AssetsTabRef {
   closeSummaryPanel: () => void;
 }
 
+const checkDomainDryRunImpacts = async (
+  activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+  entities: EntityReference[]
+): Promise<BulkResponse[] | undefined> => {
+  const dryRunResult = await removeAssetsFromDomain(
+    activeEntity.fullyQualifiedName ?? '',
+    entities,
+    { dryRun: true }
+  );
+  const impacts = getDomainDryRunImpacts(dryRunResult);
+
+  return impacts.length > 0 ? impacts : undefined;
+};
+
+const removePortsHandler =
+  (
+    portType:
+      | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+      | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+  ) =>
+  async (
+    activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+    entities: EntityReference[]
+  ) => {
+    await removePortsFromDataProduct(
+      activeEntity.fullyQualifiedName ?? '',
+      entities,
+      portType
+    );
+  };
+
+const removeAssetsHandlers: Partial<
+  Record<
+    AssetsOfEntity,
+    (
+      activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+      entities: EntityReference[]
+    ) => Promise<void>
+  >
+> = {
+  [AssetsOfEntity.DATA_PRODUCT]: async (activeEntity, entities) => {
+    await removeAssetsFromDataProduct(
+      activeEntity.fullyQualifiedName ?? '',
+      entities
+    );
+  },
+  [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: removePortsHandler(
+    AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+  ),
+  [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: removePortsHandler(
+    AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+  ),
+  [AssetsOfEntity.GLOSSARY]: async (activeEntity, entities) => {
+    await removeAssetsFromGlossaryTerm(activeEntity as GlossaryTerm, entities);
+  },
+  [AssetsOfEntity.TAG]: async (activeEntity, entities) => {
+    await removeAssetsFromTags(activeEntity.id ?? '', entities);
+  },
+  [AssetsOfEntity.DOMAIN]: async (activeEntity, entities) => {
+    await removeAssetsFromDomain(
+      activeEntity.fullyQualifiedName ?? '',
+      entities
+    );
+    queryClient.invalidateQueries({
+      queryKey: domainAssetsCountQueryKey,
+    });
+  },
+};
+
+const removeAssetsByType = async (
+  type: AssetsOfEntity,
+  activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+  entities: EntityReference[]
+) => {
+  await removeAssetsHandlers[type]?.(activeEntity, entities);
+};
+
+type AssetsQueryFilter = AssetsTabsProps['queryFilter'];
+
+const getPortsQueryParam = (
+  entityFqn: string | undefined,
+  queryFilter: AssetsQueryFilter
+) =>
+  queryFilter ??
+  getTermQuery({
+    'dataProducts.fullyQualifiedName': entityFqn ?? '',
+  });
+
+const getFollowedTeamQueryParam = (
+  _entityFqn: string | undefined,
+  queryFilter: AssetsQueryFilter
+) => queryFilter ?? undefined;
+
+const queryParamBuilders: Partial<
+  Record<
+    AssetsOfEntity,
+    (
+      entityFqn: string | undefined,
+      queryFilter: AssetsQueryFilter
+    ) => AssetsQueryFilter | ReturnType<typeof getTermQuery>
+  >
+> = {
+  [AssetsOfEntity.DOMAIN]: (entityFqn, queryFilter) =>
+    queryFilter ??
+    getTermQuery(
+      { 'domains.fullyQualifiedName': entityFqn ?? '' },
+      'must',
+      undefined,
+      {
+        mustNotTerms: { entityType: 'dataProduct' },
+      }
+    ),
+  [AssetsOfEntity.DATA_PRODUCT]: (entityFqn) =>
+    getTermQuery({
+      'dataProducts.fullyQualifiedName': entityFqn ?? '',
+    }),
+  // Use the provided queryFilter (which filters by specific port FQNs)
+  // Fall back to default data product query if no filter provided
+  [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: getPortsQueryParam,
+  [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: getPortsQueryParam,
+  [AssetsOfEntity.TEAM]: getFollowedTeamQueryParam,
+  [AssetsOfEntity.MY_DATA]: getFollowedTeamQueryParam,
+  [AssetsOfEntity.FOLLOWING]: getFollowedTeamQueryParam,
+  [AssetsOfEntity.GLOSSARY]: (entityFqn) =>
+    getTermQuery({ 'tags.tagFQN': entityFqn ?? '' }),
+  [AssetsOfEntity.TAG]: (entityFqn) => getTagAssetsQueryFilter(entityFqn ?? ''),
+};
+
+interface AssetsFilterBarProps {
+  type: AssetsOfEntity;
+  totalAssetCount: number;
+  filterMenu: ItemType[];
+  selectedFilter: string[];
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  selectedQuickFilters: ExploreQuickFilterField[];
+  aggregations: Aggregations | undefined;
+  quickFilterQuery: QueryFilterInterface | undefined;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+  onClearFilters: () => void;
+}
+
+const AssetsFilterBar = ({
+  type,
+  totalAssetCount,
+  filterMenu,
+  selectedFilter,
+  searchValue,
+  onSearchChange,
+  selectedQuickFilters,
+  aggregations,
+  quickFilterQuery,
+  onFieldValueSelect,
+  onClearFilters,
+}: AssetsFilterBarProps) => {
+  const { t } = useTranslation();
+
+  if (type !== AssetsOfEntity.MY_DATA && totalAssetCount <= 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <Col className="d-flex gap-3" span={24}>
+        <Dropdown
+          menu={{
+            items: filterMenu,
+            selectedKeys: selectedFilter,
+          }}
+          trigger={['click']}>
+          <Button
+            className={classNames('feed-filter-icon')}
+            data-testid="asset-filter-button"
+            icon={<FilterIcon height={16} />}
+          />
+        </Dropdown>
+        <div className="flex-1">
+          <Searchbar
+            removeMargin
+            showClearSearch
+            placeholder={t('label.search-entity', {
+              entity: t('label.asset-plural'),
+            })}
+            searchValue={searchValue}
+            onSearch={onSearchChange}
+          />
+        </div>
+      </Col>
+      {selectedFilter.length > 0 && (
+        <Col className="searched-data-container" span={24}>
+          <div className="d-flex justify-between">
+            <ExploreQuickFilters
+              aggregations={aggregations}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={onFieldValueSelect}
+            />
+            {quickFilterQuery && (
+              <Typography.Text
+                className="text-primary self-center cursor-pointer"
+                onClick={onClearFilters}>
+                {t('label.clear-entity', {
+                  entity: '',
+                })}
+              </Typography.Text>
+            )}
+          </div>
+        </Col>
+      )}
+    </>
+  );
+};
+
+interface BulkDeleteNotificationProps {
+  isLoading: boolean;
+  hasEditAllPermission: boolean;
+  totalAssetCount: number;
+  selectedItemsCount: number;
+  assetRemoving: boolean;
+  onBulkDeleteClick: () => void;
+}
+
+const BulkDeleteNotification = ({
+  isLoading,
+  hasEditAllPermission,
+  totalAssetCount,
+  selectedItemsCount,
+  assetRemoving,
+  onBulkDeleteClick,
+}: BulkDeleteNotificationProps) => {
+  const { t } = useTranslation();
+
+  if (isLoading || !hasEditAllPermission || totalAssetCount <= 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className={classNames('asset-tab-delete-notification', {
+        visible: selectedItemsCount > 0,
+      })}>
+      <div className="d-flex items-center justify-between">
+        <Typography.Text className="text-white">
+          {selectedItemsCount} {t('label.items-selected-lowercase')}
+        </Typography.Text>
+        <Button
+          danger
+          data-testid="delete-all-button"
+          loading={assetRemoving}
+          type="primary"
+          onClick={onBulkDeleteClick}>
+          {t('label.delete')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const AssetsTabs = forwardRef(
   (
     {
@@ -214,49 +473,11 @@ const AssetsTabs = forwardRef(
 
     const queryParam = useMemo(() => {
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
-      switch (type) {
-        case AssetsOfEntity.DOMAIN:
-          return (
-            queryFilter ??
-            getTermQuery(
-              { 'domains.fullyQualifiedName': entityFqn ?? '' },
-              'must',
-              undefined,
-              {
-                mustNotTerms: { entityType: 'dataProduct' },
-              }
-            )
-          );
-        case AssetsOfEntity.DATA_PRODUCT:
-          return getTermQuery({
-            'dataProducts.fullyQualifiedName': entityFqn ?? '',
-          });
+      const builder = queryParamBuilders[type];
 
-        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-          // Use the provided queryFilter (which filters by specific port FQNs)
-          // Fall back to default data product query if no filter provided
-          return (
-            queryFilter ??
-            getTermQuery({
-              'dataProducts.fullyQualifiedName': entityFqn ?? '',
-            })
-          );
-
-        case AssetsOfEntity.TEAM:
-        case AssetsOfEntity.MY_DATA:
-        case AssetsOfEntity.FOLLOWING:
-          return queryFilter ?? undefined;
-
-        case AssetsOfEntity.GLOSSARY:
-          return getTermQuery({ 'tags.tagFQN': entityFqn ?? '' });
-
-        case AssetsOfEntity.TAG:
-          return getTagAssetsQueryFilter(entityFqn ?? '');
-
-        default:
-          return getTagAssetsQueryFilter(encodedFqn);
-      }
+      return builder
+        ? builder(entityFqn, queryFilter)
+        : getTagAssetsQueryFilter(encodedFqn);
     }, [type, entityFqn, queryFilter]);
 
     const fetchAssets = useCallback(
@@ -534,13 +755,11 @@ const AssetsTabs = forwardRef(
           });
 
           if (type === AssetsOfEntity.DOMAIN) {
-            const dryRunResult = await removeAssetsFromDomain(
-              activeEntity.fullyQualifiedName ?? '',
-              entities,
-              { dryRun: true }
+            const impacts = await checkDomainDryRunImpacts(
+              activeEntity,
+              entities
             );
-            const impacts = getDomainDryRunImpacts(dryRunResult);
-            if (impacts.length > 0) {
+            if (impacts) {
               setRemoveDryRunWarnings(impacts);
               setPendingRemoveEntities(entities);
               dryRunImpactDetected = true;
@@ -549,51 +768,7 @@ const AssetsTabs = forwardRef(
             }
           }
 
-          switch (type) {
-            case AssetsOfEntity.DATA_PRODUCT:
-              await removeAssetsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-            case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-              await removePortsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities,
-                type
-              );
-
-              break;
-
-            case AssetsOfEntity.GLOSSARY:
-              await removeAssetsFromGlossaryTerm(
-                activeEntity as GlossaryTerm,
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.TAG:
-              await removeAssetsFromTags(activeEntity.id ?? '', entities);
-
-              break;
-
-            case AssetsOfEntity.DOMAIN:
-              await removeAssetsFromDomain(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-              queryClient.invalidateQueries({
-                queryKey: domainAssetsCountQueryKey,
-              });
-
-              break;
-            default:
-              break;
-          }
+          await removeAssetsByType(type, activeEntity, entities);
 
           await new Promise((resolve) => {
             setTimeout(() => {
@@ -1045,57 +1220,19 @@ const AssetsTabs = forwardRef(
               'h-full': totalAssetCount === 0,
             })}
             gutter={[0, 20]}>
-            {(type === AssetsOfEntity.MY_DATA || totalAssetCount > 0) && (
-              <>
-                <Col className="d-flex gap-3" span={24}>
-                  <Dropdown
-                    menu={{
-                      items: filterMenu,
-                      selectedKeys: selectedFilter,
-                    }}
-                    trigger={['click']}>
-                    <Button
-                      className={classNames('feed-filter-icon')}
-                      data-testid="asset-filter-button"
-                      icon={<FilterIcon height={16} />}
-                    />
-                  </Dropdown>
-                  <div className="flex-1">
-                    <Searchbar
-                      removeMargin
-                      showClearSearch
-                      placeholder={t('label.search-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                      searchValue={searchValue}
-                      onSearch={setSearchValue}
-                    />
-                  </div>
-                </Col>
-                {selectedFilter.length > 0 && (
-                  <Col className="searched-data-container" span={24}>
-                    <div className="d-flex justify-between">
-                      <ExploreQuickFilters
-                        aggregations={aggregations}
-                        fields={selectedQuickFilters}
-                        index={SearchIndex.ALL}
-                        showDeleted={false}
-                        onFieldValueSelect={handleQuickFiltersValueSelect}
-                      />
-                      {quickFilterQuery && (
-                        <Typography.Text
-                          className="text-primary self-center cursor-pointer"
-                          onClick={clearFilters}>
-                          {t('label.clear-entity', {
-                            entity: '',
-                          })}
-                        </Typography.Text>
-                      )}
-                    </div>
-                  </Col>
-                )}
-              </>
-            )}
+            <AssetsFilterBar
+              aggregations={aggregations}
+              filterMenu={filterMenu}
+              quickFilterQuery={quickFilterQuery}
+              searchValue={searchValue}
+              selectedFilter={selectedFilter}
+              selectedQuickFilters={selectedQuickFilters}
+              totalAssetCount={totalAssetCount}
+              type={type}
+              onClearFilters={clearFilters}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+              onSearchChange={setSearchValue}
+            />
             {isLoading ? (
               <Col className="border-default border-radius-sm p-lg" span={24}>
                 <Space
@@ -1154,26 +1291,14 @@ const AssetsTabs = forwardRef(
             onConfirm={confirmDomainAssetRemove}
           />
         </div>
-        {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
-          <div
-            className={classNames('asset-tab-delete-notification', {
-              visible: selectedItems.size > 0,
-            })}>
-            <div className="d-flex items-center justify-between">
-              <Typography.Text className="text-white">
-                {selectedItems.size} {t('label.items-selected-lowercase')}
-              </Typography.Text>
-              <Button
-                danger
-                data-testid="delete-all-button"
-                loading={assetRemoving}
-                type="primary"
-                onClick={handleBulkDeleteClick}>
-                {t('label.delete')}
-              </Button>
-            </div>
-          </div>
-        )}
+        <BulkDeleteNotification
+          assetRemoving={assetRemoving}
+          hasEditAllPermission={Boolean(permissions?.EditAll)}
+          isLoading={isLoading}
+          selectedItemsCount={selectedItems.size}
+          totalAssetCount={totalAssetCount}
+          onBulkDeleteClick={handleBulkDeleteClick}
+        />
       </>
     );
   }

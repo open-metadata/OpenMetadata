@@ -488,6 +488,25 @@ const expandSharedConcepts = (
   return expanded;
 };
 
+const resolveMappingEndpoints = (
+  link: GraphLink3D,
+  byId: Map<string, GraphNode3D>,
+  expanded: Map<string, string>
+): { conceptId?: string; assetId: string; asset?: GraphNode3D } => {
+  const source = idOf(link.source);
+  const target = idOf(link.target);
+  let conceptId: string | undefined;
+  if (expanded.has(source)) {
+    conceptId = source;
+  } else if (expanded.has(target)) {
+    conceptId = target;
+  }
+  const assetId = conceptId === source ? target : source;
+  const asset = conceptId ? byId.get(assetId) : undefined;
+
+  return { conceptId, assetId, asset };
+};
+
 const collectSharedAssets = (
   links: GraphLink3D[],
   byId: Map<string, GraphNode3D>,
@@ -504,16 +523,11 @@ const collectSharedAssets = (
     // concept endpoint is the one we've expanded; the other endpoint is the
     // shared asset. Resolving by endpoint (not by source/target position) keeps
     // this correct for reverse-direction (concept->table) mappings.
-    const source = idOf(link.source);
-    const target = idOf(link.target);
-    let conceptId: string | undefined;
-    if (expanded.has(source)) {
-      conceptId = source;
-    } else if (expanded.has(target)) {
-      conceptId = target;
-    }
-    const assetId = conceptId === source ? target : source;
-    const asset = conceptId ? byId.get(assetId) : undefined;
+    const { conceptId, assetId, asset } = resolveMappingEndpoints(
+      link,
+      byId,
+      expanded
+    );
     if (asset?.type === 'table' && assetId !== selfId && !seen.has(assetId)) {
       seen.add(assetId);
       shared.push({

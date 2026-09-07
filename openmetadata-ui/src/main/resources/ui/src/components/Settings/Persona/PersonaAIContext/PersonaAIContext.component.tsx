@@ -67,6 +67,358 @@ const VERSION_BADGE_CLASS = [
   'tw:transition tw:hover:bg-primary_hover',
 ].join(' ');
 
+const derivePersonaAIContextState = (
+  definition: PersonaContextDefinition,
+  canEdit: boolean
+) => {
+  const rules = definition.rules ?? [];
+  const hasRules = rules.length > 0;
+  const settingsDisabled = !canEdit || !hasRules;
+  const lastGenerated = definition.lastGeneratedAt
+    ? getRelativeTime(definition.lastGeneratedAt)
+    : undefined;
+  const characterBudget =
+    definition.characterBudget ??
+    DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget ??
+    400000;
+  const cacheTtlMinutes =
+    definition.cacheTtlMinutes ??
+    DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes ??
+    30;
+
+  return {
+    rules,
+    hasRules,
+    settingsDisabled,
+    lastGenerated,
+    characterBudget,
+    cacheTtlMinutes,
+  };
+};
+
+interface PersonaAIContextHeaderProps {
+  persona: Persona;
+  hasRules: boolean;
+  canEdit: boolean;
+  onOpenVersionHistory: () => void;
+  onOpenPreview: () => void;
+  onAddRule: () => void;
+}
+
+const PersonaAIContextHeader = ({
+  persona,
+  hasRules,
+  canEdit,
+  onOpenVersionHistory,
+  onOpenPreview,
+  onAddRule,
+}: PersonaAIContextHeaderProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="start" className="tw:mb-4.5" gap={6} justify="between">
+      <Box direction="col">
+        <Typography
+          className="tw:m-0 tw:text-primary"
+          size="text-lg"
+          weight="semibold">
+          {t('label.ai-context')}
+        </Typography>
+        <Typography
+          as="p"
+          className="tw:mt-1 tw:mb-0 tw:text-secondary"
+          size="text-sm">
+          {t('message.persona-ai-context-description')}
+        </Typography>
+      </Box>
+      <Box align="center" className="tw:shrink-0 tw:gap-2.5">
+        {persona.version && (
+          <Typography
+            as="button"
+            className={VERSION_BADGE_CLASS}
+            data-testid="persona-context-version"
+            size="text-sm"
+            title={t('label.version-history')}
+            weight="semibold"
+            onClick={onOpenVersionHistory}>
+            <ClockRewind className="tw:size-4" />
+            {t('label.version-short', {
+              version: formatPersonaVersion(persona.version),
+            })}
+          </Typography>
+        )}
+        <Button
+          color="secondary"
+          data-testid="preview-persona-context"
+          iconLeading={Eye}
+          isDisabled={!hasRules}
+          onClick={onOpenPreview}>
+          {t('label.preview-context')}
+        </Button>
+        {canEdit && (
+          <Button
+            color="primary"
+            data-testid="add-context-rule"
+            iconLeading={Plus}
+            onClick={onAddRule}>
+            {t('label.add-rule')}
+          </Button>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+interface PersonaAIContextSettingsCardProps {
+  definition: PersonaContextDefinition;
+  hasRules: boolean;
+  settingsDisabled: boolean;
+  budgetDraft?: string;
+  ttlDraft?: string;
+  characterBudget: number;
+  cacheTtlMinutes: number;
+  lastGenerated?: string;
+  setBudgetDraft: (value?: string) => void;
+  setTtlDraft: (value?: string) => void;
+  setDefinition: (
+    updater: (current: PersonaContextDefinition) => PersonaContextDefinition
+  ) => void;
+  persistSettings: (updated: PersonaContextDefinition) => Promise<void>;
+}
+
+const PersonaAIContextSettingsCard = ({
+  definition,
+  hasRules,
+  settingsDisabled,
+  budgetDraft,
+  ttlDraft,
+  characterBudget,
+  cacheTtlMinutes,
+  lastGenerated,
+  setBudgetDraft,
+  setTtlDraft,
+  setDefinition,
+  persistSettings,
+}: PersonaAIContextSettingsCardProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Card
+      className={`tw:mb-6 tw:rounded-[10px] tw:px-5 tw:py-4.5 tw:shadow-xs ${
+        hasRules ? '' : 'tw:opacity-60'
+      }`}
+      data-disabled={settingsDisabled}
+      data-testid="persona-ai-context-settings-card">
+      <Box align="center" gap={7} wrap="wrap">
+        <Box align="center" gap={3}>
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {t('label.enabled')}
+          </Typography>
+          <Toggle
+            aria-label={t('label.enabled')}
+            data-testid="persona-context-enabled"
+            isDisabled={settingsDisabled}
+            isSelected={definition.enabled ?? true}
+            size="md"
+            onChange={(enabled) => persistSettings({ ...definition, enabled })}
+          />
+        </Box>
+
+        <Divider className="tw:h-9 tw:self-center" orientation="vertical" />
+
+        <Box className="tw:gap-1.5" direction="col">
+          <Typography
+            className="tw:text-quaternary"
+            size="text-xs"
+            weight="medium">
+            {t('label.character-budget')}
+          </Typography>
+          <Box align="center" gap={2}>
+            <Input
+              aria-label={t('label.character-budget')}
+              inputDataTestId="persona-context-character-budget"
+              inputMode="numeric"
+              isDisabled={settingsDisabled}
+              value={budgetDraft ?? characterBudget.toLocaleString()}
+              wrapperClassName="tw:w-28"
+              onBlur={() => {
+                setBudgetDraft(undefined);
+                persistSettings(definition);
+              }}
+              onChange={(value) => {
+                const digits = value.replace(/[^0-9]/g, '');
+                setBudgetDraft(digits);
+                const parsed = Number(digits);
+                setDefinition((current) => ({
+                  ...current,
+                  characterBudget:
+                    parsed ||
+                    DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
+                }));
+              }}
+            />
+            <Typography className="tw:text-quaternary" size="text-sm">
+              {t('label.chars')}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box className="tw:gap-1.5" direction="col">
+          <Typography
+            className="tw:text-quaternary"
+            size="text-xs"
+            weight="medium">
+            {t('label.cache-ttl')}
+          </Typography>
+          <Box align="center" gap={2}>
+            <Input
+              aria-label={t('label.cache-ttl')}
+              inputDataTestId="persona-context-cache-ttl"
+              inputMode="numeric"
+              isDisabled={settingsDisabled}
+              value={ttlDraft ?? String(cacheTtlMinutes)}
+              wrapperClassName="tw:w-16"
+              onBlur={() => {
+                setTtlDraft(undefined);
+                persistSettings(definition);
+              }}
+              onChange={(value) => {
+                const digits = value.replace(/[^0-9]/g, '');
+                setTtlDraft(digits);
+                const parsed = Number(digits);
+                setDefinition((current) => ({
+                  ...current,
+                  cacheTtlMinutes:
+                    parsed ||
+                    DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes,
+                }));
+              }}
+            />
+            <Typography className="tw:text-quaternary" size="text-sm">
+              {t('label.min').toLowerCase()}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box align="center" className="tw:ml-auto" gap={2}>
+          <Clock className="tw:size-4 tw:text-quaternary" />
+          <Typography
+            className="tw:text-[13px] tw:text-quaternary"
+            weight="regular">
+            {lastGenerated
+              ? t('message.persona-context-last-generated-time', {
+                  time: lastGenerated,
+                })
+              : t('message.persona-context-not-generated')}
+          </Typography>
+          {definition.cacheState && (
+            <Badge
+              color={CACHE_STATE_BADGE_COLOR[definition.cacheState]}
+              size="sm">
+              {definition.cacheState.toLowerCase()}
+            </Badge>
+          )}
+        </Box>
+      </Box>
+      {definition.lastError && (
+        <Typography
+          as="p"
+          className="tw:mt-3 tw:mb-0 tw:text-error-primary"
+          size="text-sm">
+          {definition.lastError}
+        </Typography>
+      )}
+    </Card>
+  );
+};
+
+interface PersonaAIContextRulesSectionProps {
+  rules: ContextRule[];
+  hasRules: boolean;
+  canEdit: boolean;
+  onDeleteRule: (ruleId: string) => void;
+  onEditRule: (ruleId?: string) => void;
+  onAddRule: () => void;
+}
+
+const PersonaAIContextRulesSection = ({
+  rules,
+  hasRules,
+  canEdit,
+  onDeleteRule,
+  onEditRule,
+  onAddRule,
+}: PersonaAIContextRulesSectionProps) => {
+  const { t } = useTranslation();
+
+  if (!hasRules) {
+    return (
+      <Box
+        align="center"
+        className="tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-primary tw:p-10 tw:text-center"
+        direction="col">
+        <FeaturedIcon
+          className="tw:isolate tw:mb-4 tw:bg-brand-primary"
+          color="brand"
+          icon={FolderPlus}
+          size="xl"
+        />
+        <Box className="tw:mb-5.5 tw:max-w-100" direction="col" gap={1}>
+          <Typography
+            className="tw:text-primary"
+            size="text-md"
+            weight="semibold">
+            {t('message.no-ai-context-rules')}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.no-ai-context-rules-description')}
+          </Typography>
+        </Box>
+        {canEdit && (
+          <Button
+            color="primary"
+            data-testid="empty-add-context-rule"
+            iconLeading={Plus}
+            onClick={onAddRule}>
+            {t('label.add-rule')}
+          </Button>
+        )}
+      </Box>
+    );
+  }
+
+  return (
+    <Box direction="col" gap={3}>
+      <Box align="center" gap={2}>
+        <Typography
+          as="p"
+          className="tw:text-primary"
+          size="text-md"
+          weight="semibold">
+          {t('label.rule-plural')}
+        </Typography>
+        <Badge color="blue-dark" size="sm" type="pill-color">
+          {rules.length}
+        </Badge>
+      </Box>
+      <Box direction="col" gap={3}>
+        {rules.map((rule) => (
+          <ContextRuleCard
+            canEdit={canEdit}
+            key={rule.id ?? `${rule.name}-${rule.entityType}`}
+            rule={rule}
+            onDelete={() => rule.id && onDeleteRule(rule.id)}
+            onEdit={() => onEditRule(rule.id)}
+          />
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 export const PersonaAIContext = ({
   canEdit,
   persona,
@@ -246,25 +598,23 @@ export const PersonaAIContext = ({
   );
 
   const personaName = persona.displayName || persona.name;
-  const rules = definition.rules ?? [];
-  const hasRules = rules.length > 0;
-  const settingsDisabled = !canEdit || !hasRules;
-  const lastGenerated = definition.lastGeneratedAt
-    ? getRelativeTime(definition.lastGeneratedAt)
-    : undefined;
+  const {
+    rules,
+    hasRules,
+    settingsDisabled,
+    lastGenerated,
+    characterBudget,
+    cacheTtlMinutes,
+  } = derivePersonaAIContextState(definition, canEdit);
   const editingRule = useMemo(
     () => rules.find(({ id }) => id === editingRuleId),
     [editingRuleId, rules]
   );
 
-  const characterBudget =
-    definition.characterBudget ??
-    DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget ??
-    400000;
-  const cacheTtlMinutes =
-    definition.cacheTtlMinutes ??
-    DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes ??
-    30;
+  const handleEditRule = useCallback((ruleId?: string) => {
+    setEditingRuleId(ruleId);
+    setEditorOpen(true);
+  }, []);
 
   if (loading) {
     return <Loader />;
@@ -272,251 +622,38 @@ export const PersonaAIContext = ({
 
   return (
     <Box data-testid="persona-ai-context" direction="col">
-      <Box align="start" className="tw:mb-4.5" gap={6} justify="between">
-        <Box direction="col">
-          <Typography
-            className="tw:m-0 tw:text-primary"
-            size="text-lg"
-            weight="semibold">
-            {t('label.ai-context')}
-          </Typography>
-          <Typography
-            as="p"
-            className="tw:mt-1 tw:mb-0 tw:text-secondary"
-            size="text-sm">
-            {t('message.persona-ai-context-description')}
-          </Typography>
-        </Box>
-        <Box align="center" className="tw:shrink-0 tw:gap-2.5">
-          {persona.version && (
-            <Typography
-              as="button"
-              className={VERSION_BADGE_CLASS}
-              data-testid="persona-context-version"
-              size="text-sm"
-              title={t('label.version-history')}
-              weight="semibold"
-              onClick={() => setVersionHistoryOpen(true)}>
-              <ClockRewind className="tw:size-4" />
-              {t('label.version-short', {
-                version: formatPersonaVersion(persona.version),
-              })}
-            </Typography>
-          )}
-          <Button
-            color="secondary"
-            data-testid="preview-persona-context"
-            iconLeading={Eye}
-            isDisabled={!hasRules}
-            onClick={() => setPreviewOpen(true)}>
-            {t('label.preview-context')}
-          </Button>
-          {canEdit && (
-            <Button
-              color="primary"
-              data-testid="add-context-rule"
-              iconLeading={Plus}
-              onClick={openAddRule}>
-              {t('label.add-rule')}
-            </Button>
-          )}
-        </Box>
-      </Box>
+      <PersonaAIContextHeader
+        canEdit={canEdit}
+        hasRules={hasRules}
+        persona={persona}
+        onAddRule={openAddRule}
+        onOpenPreview={() => setPreviewOpen(true)}
+        onOpenVersionHistory={() => setVersionHistoryOpen(true)}
+      />
 
-      <Card
-        className={`tw:mb-6 tw:rounded-[10px] tw:px-5 tw:py-4.5 tw:shadow-xs ${
-          hasRules ? '' : 'tw:opacity-60'
-        }`}
-        data-disabled={settingsDisabled}
-        data-testid="persona-ai-context-settings-card">
-        <Box align="center" gap={7} wrap="wrap">
-          <Box align="center" gap={3}>
-            <Typography
-              className="tw:text-primary"
-              size="text-sm"
-              weight="semibold">
-              {t('label.enabled')}
-            </Typography>
-            <Toggle
-              aria-label={t('label.enabled')}
-              data-testid="persona-context-enabled"
-              isDisabled={settingsDisabled}
-              isSelected={definition.enabled ?? true}
-              size="md"
-              onChange={(enabled) =>
-                persistSettings({ ...definition, enabled })
-              }
-            />
-          </Box>
+      <PersonaAIContextSettingsCard
+        budgetDraft={budgetDraft}
+        cacheTtlMinutes={cacheTtlMinutes}
+        characterBudget={characterBudget}
+        definition={definition}
+        hasRules={hasRules}
+        lastGenerated={lastGenerated}
+        persistSettings={persistSettings}
+        setBudgetDraft={setBudgetDraft}
+        setDefinition={setDefinition}
+        setTtlDraft={setTtlDraft}
+        settingsDisabled={settingsDisabled}
+        ttlDraft={ttlDraft}
+      />
 
-          <Divider className="tw:h-9 tw:self-center" orientation="vertical" />
-
-          <Box className="tw:gap-1.5" direction="col">
-            <Typography
-              className="tw:text-quaternary"
-              size="text-xs"
-              weight="medium">
-              {t('label.character-budget')}
-            </Typography>
-            <Box align="center" gap={2}>
-              <Input
-                aria-label={t('label.character-budget')}
-                inputDataTestId="persona-context-character-budget"
-                inputMode="numeric"
-                isDisabled={settingsDisabled}
-                value={budgetDraft ?? characterBudget.toLocaleString()}
-                wrapperClassName="tw:w-28"
-                onBlur={() => {
-                  setBudgetDraft(undefined);
-                  persistSettings(definition);
-                }}
-                onChange={(value) => {
-                  const digits = value.replace(/[^0-9]/g, '');
-                  setBudgetDraft(digits);
-                  const parsed = Number(digits);
-                  setDefinition((current) => ({
-                    ...current,
-                    characterBudget:
-                      parsed ||
-                      DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
-                  }));
-                }}
-              />
-              <Typography className="tw:text-quaternary" size="text-sm">
-                {t('label.chars')}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box className="tw:gap-1.5" direction="col">
-            <Typography
-              className="tw:text-quaternary"
-              size="text-xs"
-              weight="medium">
-              {t('label.cache-ttl')}
-            </Typography>
-            <Box align="center" gap={2}>
-              <Input
-                aria-label={t('label.cache-ttl')}
-                inputDataTestId="persona-context-cache-ttl"
-                inputMode="numeric"
-                isDisabled={settingsDisabled}
-                value={ttlDraft ?? String(cacheTtlMinutes)}
-                wrapperClassName="tw:w-16"
-                onBlur={() => {
-                  setTtlDraft(undefined);
-                  persistSettings(definition);
-                }}
-                onChange={(value) => {
-                  const digits = value.replace(/[^0-9]/g, '');
-                  setTtlDraft(digits);
-                  const parsed = Number(digits);
-                  setDefinition((current) => ({
-                    ...current,
-                    cacheTtlMinutes:
-                      parsed ||
-                      DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes,
-                  }));
-                }}
-              />
-              <Typography className="tw:text-quaternary" size="text-sm">
-                {t('label.min').toLowerCase()}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box align="center" className="tw:ml-auto" gap={2}>
-            <Clock className="tw:size-4 tw:text-quaternary" />
-            <Typography
-              className="tw:text-[13px] tw:text-quaternary"
-              weight="regular">
-              {lastGenerated
-                ? t('message.persona-context-last-generated-time', {
-                    time: lastGenerated,
-                  })
-                : t('message.persona-context-not-generated')}
-            </Typography>
-            {definition.cacheState && (
-              <Badge
-                color={CACHE_STATE_BADGE_COLOR[definition.cacheState]}
-                size="sm">
-                {definition.cacheState.toLowerCase()}
-              </Badge>
-            )}
-          </Box>
-        </Box>
-        {definition.lastError && (
-          <Typography
-            as="p"
-            className="tw:mt-3 tw:mb-0 tw:text-error-primary"
-            size="text-sm">
-            {definition.lastError}
-          </Typography>
-        )}
-      </Card>
-
-      {hasRules ? (
-        <Box direction="col" gap={3}>
-          <Box align="center" gap={2}>
-            <Typography
-              as="p"
-              className="tw:text-primary"
-              size="text-md"
-              weight="semibold">
-              {t('label.rule-plural')}
-            </Typography>
-            <Badge color="blue-dark" size="sm" type="pill-color">
-              {rules.length}
-            </Badge>
-          </Box>
-          <Box direction="col" gap={3}>
-            {rules.map((rule) => (
-              <ContextRuleCard
-                canEdit={canEdit}
-                key={rule.id ?? `${rule.name}-${rule.entityType}`}
-                rule={rule}
-                onDelete={() => rule.id && handleDeleteRule(rule.id)}
-                onEdit={() => {
-                  setEditingRuleId(rule.id);
-                  setEditorOpen(true);
-                }}
-              />
-            ))}
-          </Box>
-        </Box>
-      ) : (
-        <Box
-          align="center"
-          className="tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-primary tw:p-10 tw:text-center"
-          direction="col">
-          <FeaturedIcon
-            className="tw:isolate tw:mb-4 tw:bg-brand-primary"
-            color="brand"
-            icon={FolderPlus}
-            size="xl"
-          />
-          <Box className="tw:mb-5.5 tw:max-w-100" direction="col" gap={1}>
-            <Typography
-              className="tw:text-primary"
-              size="text-md"
-              weight="semibold">
-              {t('message.no-ai-context-rules')}
-            </Typography>
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {t('message.no-ai-context-rules-description')}
-            </Typography>
-          </Box>
-          {canEdit && (
-            <Button
-              color="primary"
-              data-testid="empty-add-context-rule"
-              iconLeading={Plus}
-              onClick={openAddRule}>
-              {t('label.add-rule')}
-            </Button>
-          )}
-        </Box>
-      )}
+      <PersonaAIContextRulesSection
+        canEdit={canEdit}
+        hasRules={hasRules}
+        rules={rules}
+        onAddRule={openAddRule}
+        onDeleteRule={handleDeleteRule}
+        onEditRule={handleEditRule}
+      />
 
       <ContextRuleEditor
         existingRuleNames={rules

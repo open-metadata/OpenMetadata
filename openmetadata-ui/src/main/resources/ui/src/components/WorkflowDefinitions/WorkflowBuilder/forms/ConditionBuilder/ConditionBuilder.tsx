@@ -56,6 +56,20 @@ interface ConditionBuilderValueControlProps {
   onChange: (values: string[]) => void;
 }
 
+const resolveMultiSelectItems = (
+  hasFetchOptions: boolean,
+  loading: boolean,
+  asyncOptions: ConditionBuilderOption[],
+  staticOptions: ConditionBuilderOption[]
+): SelectItemType[] => {
+  let sourceOptions = staticOptions;
+  if (hasFetchOptions) {
+    sourceOptions = loading ? [] : asyncOptions;
+  }
+
+  return sourceOptions.map((o) => ({ id: o.value, label: o.label }));
+};
+
 function ConditionBuilderValueControl(
   props: Readonly<ConditionBuilderValueControlProps>
 ) {
@@ -183,11 +197,12 @@ function ConditionBuilderValueControl(
   }
 
   const options = hasFetchOptions ? asyncOptions : staticOptions;
-  const itemsSource = hasFetchOptions && loading ? [] : options;
-  const items: SelectItemType[] = itemsSource.map((o) => ({
-    id: o.value,
-    label: o.label,
-  }));
+  const items: SelectItemType[] = resolveMultiSelectItems(
+    hasFetchOptions,
+    loading,
+    asyncOptions,
+    staticOptions
+  );
 
   return (
     <Autocomplete
