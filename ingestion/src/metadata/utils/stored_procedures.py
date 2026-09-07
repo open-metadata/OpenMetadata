@@ -18,7 +18,20 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-NAME_PATTERN = r"(?<=call)(.*?)(?=\()|(?<=begin)(.*?)(?=\()|(?<=begin)(.*?)(?=;\s*end)"
+# The span between the keyword and the opening paren (or the statement-terminating `end`) is
+# limited to identifier, qualifier and whitespace characters. `\s` already crosses newlines, so a
+# CALL or BEGIN block split over several lines still matches without re.DOTALL, while the walk
+# stops at the first operator or separator. An unbounded `.*?` under re.DOTALL would instead run
+# to the next paren anywhere in the statement, so ordinary SQL that merely contains the substring
+# `call` or `begin` (`call_center`, `begin_date`) would yield a bogus name, and a statement like
+# `UPDATE call_log SET x = pkg.refresh_stats(1)` would resolve to a real procedure and fabricate
+# lineage. The `\b` before each keyword keeps `recall` and similar from matching at all.
+_NAME_SPAN = r"[\s\w.`\"]*?"
+NAME_PATTERN = (
+    rf"(?<=\bcall){_NAME_SPAN}(?=\()"
+    rf"|(?<=\bbegin){_NAME_SPAN}(?=\()"
+    rf"|(?<=\bbegin){_NAME_SPAN}(?=;\s*end)"
+)
 
 
 def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False) -> str | None:
@@ -33,11 +46,7 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     We'll return the lowered procedure name
     """
 
-    res = re.search(
-        NAME_PATTERN,
-        query_text,
-        (re.IGNORECASE | re.DOTALL) if not sensitive_match else re.DOTALL,
-    )
+    res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:
         return None
 

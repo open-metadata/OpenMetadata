@@ -12,6 +12,8 @@
 Test Stored Procedures Utils
 """
 
+import time
+
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 
 
@@ -58,7 +60,8 @@ class TestStoredProcedures:
 
     def test_get_procedure_name_from_multiline_call(self):
         """Multi-line CALL statements (keyword and name on different lines, as captured
-        by query-log SQL) must still be parsed. Regression test for missing re.DOTALL."""
+        by query-log SQL) must still be parsed. Regression test for a name span that
+        could not cross newlines."""
         assert get_procedure_name_from_call(query_text="CALL\n  proc_name()") == "proc_name"
 
         assert get_procedure_name_from_call(query_text="CALL\n  my_db.my_schema.my_proc()") == "my_proc"
@@ -89,7 +92,8 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="BEGIN\n  schema.proc_name\n;\nEND;") == "proc_name"
 
     def test_get_procedure_name_from_multiline_preserves_single_line_behavior(self):
-        """Enabling re.DOTALL must not change any previously-working single-line result."""
+        """Letting the name span cross newlines must not change any previously-working
+        single-line result."""
         assert get_procedure_name_from_call(query_text="CALL db.schema.procedure_name(...)") == "procedure_name"
 
         assert get_procedure_name_from_call(query_text="CALL procedure_name(...)") == "procedure_name"
@@ -104,7 +108,8 @@ class TestStoredProcedures:
 
     def test_get_procedure_name_sensitive_match_is_case_sensitive_but_spans_newlines(self):
         """sensitive_match=True drops re.IGNORECASE (so the call/begin keyword must be
-        lowercase) but re.DOTALL still applies (so multi-line text is still parsed)."""
+        lowercase) while multi-line text is still parsed, because the name span matches
+        whitespace directly rather than relying on re.DOTALL."""
         assert get_procedure_name_from_call(query_text="call\n  proc_name()", sensitive_match=True) == "proc_name"
 
         assert get_procedure_name_from_call(query_text="begin\n  schema.proc;\nend;", sensitive_match=True) == "proc"
@@ -112,3 +117,63 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="CALL\n  proc_name()", sensitive_match=True) is None
 
         assert get_procedure_name_from_call(query_text="BEGIN\n  proc();\nEND;", sensitive_match=True) is None
+
+    def test_get_procedure_name_ignores_non_procedure_sql(self):
+        """Oracle's stored-procedure query filters on `UPPER(sql_text) LIKE '%CALL%' OR LIKE
+        '%BEGIN%'`, an unanchored substring match, so ordinary multi-line SQL reaches this
+        parser as procedure_text. None of it names a procedure and none of it may parse as one."""
+        assert (
+            get_procedure_name_from_call(
+                query_text="SELECT\n  begin_date,\n  end_date\nFROM sales\nWHERE id IN (1, 2, 3)"
+            )
+            is None
+        )
+
+        assert (
+            get_procedure_name_from_call(
+                query_text="INSERT INTO ledger\nSELECT beginning_balance\nFROM accounts\nWHERE dt > TRUNC(SYSDATE)"
+            )
+            is None
+        )
+
+        assert (
+            get_procedure_name_from_call(
+                query_text="UPDATE call_center\nSET x = 1\nWHERE id IN (SELECT id FROM staging)"
+            )
+            is None
+        )
+
+        assert (
+            get_procedure_name_from_call(
+                query_text="-- recall the prior run\nMERGE INTO tgt USING (SELECT 1 FROM dual) s ON (1=1)"
+            )
+            is None
+        )
+
+        assert get_procedure_name_from_call(query_text="BEGIN\n  UPDATE t SET a = 1;\n  COMMIT;\nEND;") is None
+
+    def test_get_procedure_name_does_not_fabricate_a_procedure_from_a_function_call(self):
+        """The worst failure mode is not a bogus name, it is a plausible one. A package or
+        function call on a line after a `call`/`begin` substring must not reduce to a bare
+        identifier, or it would match a real StoredProcedure entity and fabricate lineage."""
+        assert get_procedure_name_from_call(query_text="UPDATE call_log\nSET x = pkg.refresh_stats(1)") is None
+
+        assert get_procedure_name_from_call(query_text="SELECT begin_dt\nFROM t\nWHERE y = SALES.LOAD_DIM(1)") is None
+
+    def test_get_procedure_name_stays_linear_on_large_non_procedure_sql(self):
+        """The name span must stay bounded. An unbounded `.*?` (as re.DOTALL allows) turns this
+        into a quadratic scan, because every `call`/`begin` substring walks to the end of the
+        text looking for a paren that never arrives.
+
+        Measured on this input: a bounded span takes ~6ms, an unbounded one ~2.5s. The 500ms
+        budget therefore leaves ~85x headroom on the correct implementation while still failing
+        a return to quadratic behaviour by ~5x, so it does not flake on a loaded CI runner."""
+        line = "begin_date, end_date, beginning_balance, call_center,\n"
+        query_text = "SELECT\n" + line * (64 * 1024 // len(line)) + "FROM t"
+
+        start = time.perf_counter()
+        result = get_procedure_name_from_call(query_text=query_text)
+        elapsed = time.perf_counter() - start
+
+        assert result is None
+        assert elapsed < 0.5, f"parsing {len(query_text)} bytes took {elapsed:.2f}s, expected well under 0.5s"
