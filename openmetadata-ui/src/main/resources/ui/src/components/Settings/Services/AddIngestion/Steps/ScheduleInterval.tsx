@@ -78,7 +78,7 @@ const CronOptionSelect = ({
       data-testid={testId}
       isDisabled={disabled}
       items={items}
-      selectedKey={selectedValue === undefined ? null : String(selectedValue)}
+      selectedKey={selectedValue ?? null}
       onSelectionChange={(key: Key | null) =>
         key !== null && onSelect(String(key))
       }>
@@ -547,7 +547,9 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 dow={dow}
                 handleCustomCronChange={handleCustomCronChange}
                 handleStateChange={handleStateChange}
-                minValue={state.min}
+                minValue={
+                  state.min === undefined ? undefined : String(state.min)
+                }
                 minuteOptions={minuteOptions}
                 showCustomInput={showCustomInput}
                 showMinuteOnly={showMinuteOnly}

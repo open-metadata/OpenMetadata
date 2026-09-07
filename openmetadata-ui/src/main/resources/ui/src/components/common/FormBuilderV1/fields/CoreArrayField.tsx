@@ -14,6 +14,7 @@
 import { Button, HintText, Label } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Copy01, XClose } from '@untitledui/icons';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
@@ -36,21 +37,19 @@ const parsePastedValues = (text: string): string[] => {
 };
 
 const getArrayFieldContainerClass = (isInvalid: boolean, isDisabled: boolean) =>
-  [
+  classNames(
     // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
     // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
     // only box-shadow, so it must name the outline properties now.
     'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
     'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
     isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
-    isDisabled
-      ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+    {
+      'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled':
+        isDisabled,
+    }
+  );
 
-// Each chip owns its own remove affordance so the field body stays a flat list.
 // Plain derivations of the RJSF props; pulled out so the component body stays a
 // render function rather than a chain of defaulting expressions.
 const getCoreArrayFieldState = (
@@ -78,6 +77,7 @@ const ArrayFieldError = ({
   return <HintText isInvalid>{rawErrors[0]}</HintText>;
 };
 
+// Each chip owns its own remove affordance so the field body stays a flat list.
 const ArrayValueChip = ({
   value,
   isDisabled,
