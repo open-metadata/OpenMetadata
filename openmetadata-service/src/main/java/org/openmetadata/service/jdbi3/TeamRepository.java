@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -88,6 +89,7 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -104,6 +106,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -161,6 +164,8 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(
         fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
+    team.setDescendantTeams(
+        fields.contains("descendantTeams") ? getDescendantTeams(team) : team.getDescendantTeams());
     team.setDomains(fields.contains(FIELD_DOMAINS) ? getDomains(team.getId()) : team.getDomains());
   }
 
@@ -180,6 +185,7 @@ public class TeamRepository extends EntityRepository<Team> {
     if (!fields.contains("userCount")) {
       team.setUserCount(0);
     }
+    team.setDescendantTeams(fields.contains("descendantTeams") ? team.getDescendantTeams() : null);
   }
 
   private void fetchAndSetUsers(List<Team> teams, Fields fields) {
@@ -916,6 +922,56 @@ public class TeamRepository extends EntityRepository<Team> {
     Set<UUID> subtreeTeamIds = discoverSubtreeTeams(List.of(teamId), childrenMap);
     Map<UUID, Set<UUID>> directUsers = batchFetchDirectUsers(subtreeTeamIds);
     return countSubtreeUsers(teamId, childrenMap, directUsers);
+  }
+
+  /**
+   * Name hashes to match when listing/exporting the users under {@code teamName}'s umbrella. Group
+   * and Organization teams keep direct membership (empty result &rarr; callers fall back to the
+   * plain {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree
+   * (self + all descendants) so their Users tab and export show the rollup of users inherited from
+   * sub-groups, matching what {@link #getUserCount} already counts.
+   */
+  public List<String> getUserRollupTeamHashes(String teamName) {
+    Team team;
+    try {
+      team = getByName(null, teamName, Fields.EMPTY_FIELDS);
+    } catch (EntityNotFoundException e) {
+      // Unknown team name: leave the plain team filter to return an empty page (existing behavior).
+      return Collections.emptyList();
+    }
+    TeamType teamType = team.getTeamType();
+    if (teamType != DEPARTMENT && teamType != DIVISION && teamType != BUSINESS_UNIT) {
+      return Collections.emptyList();
+    }
+    List<String> hashes = new ArrayList<>();
+    collectSubtreeTeamHashes(team.getId(), team.getName(), hashes);
+    return hashes;
+  }
+
+  private void collectSubtreeTeamHashes(UUID teamId, String teamName, List<String> hashes) {
+    hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(teamName)));
+    for (EntityReference child : getChildren(teamId)) {
+      collectSubtreeTeamHashes(child.getId(), child.getName(), hashes);
+    }
+  }
+
+  /**
+   * All teams nested under {@code team}, resolved recursively (the subtree, excluding the team
+   * itself). Computed on read like {@code childrenCount}/{@code userCount} — nothing is stored, so it
+   * stays correct across reparents/renames with no reindex. Backs the {@code descendantTeams} field
+   * the Users tab uses to scope its member search to a non-Group team's sub-groups.
+   */
+  private List<EntityReference> getDescendantTeams(Team team) {
+    List<EntityReference> descendants = new ArrayList<>();
+    collectDescendantTeams(team.getId(), descendants);
+    return descendants;
+  }
+
+  private void collectDescendantTeams(UUID teamId, List<EntityReference> descendants) {
+    for (EntityReference child : getChildren(teamId)) {
+      descendants.add(child);
+      collectDescendantTeams(child.getId(), descendants);
+    }
   }
 
   private List<EntityReference> getOwns(Team team) {

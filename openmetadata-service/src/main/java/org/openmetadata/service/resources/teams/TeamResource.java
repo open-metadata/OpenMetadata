@@ -91,7 +91,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
-      "owners,profile,users,owns,defaultRoles,defaultPersona,parents,children,policies,userCount,childrenCount,domains";
+      "owners,profile,users,owns,defaultRoles,defaultPersona,parents,children,descendantTeams,policies,userCount,childrenCount,domains";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {

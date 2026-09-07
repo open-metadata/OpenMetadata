@@ -137,6 +137,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserPreferencesRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -320,6 +321,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+    if (teamParam != null) {
+      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the rollup
+      // of users inherited from their sub-group descendants (empty for Group/Organization teams).
+      TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
+      List<String> rollupTeamHashes = teamRepository.getUserRollupTeamHashes(teamParam);
+      if (!rollupTeamHashes.isEmpty()) {
+        filter.addQueryParam("teamHashes", String.join(",", rollupTeamHashes));
+      }
+    }
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
     }

@@ -20,10 +20,12 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -595,9 +597,25 @@ public interface AccessControlDAOs {
       return User.class;
     }
 
+    /**
+     * Optional subtree filter set by {@code UserResource.list}: when the requested team is a
+     * non-Group team, {@code teamHashes} carries the FQN name hashes of its whole subtree so its
+     * Users tab/export roll up the users inherited from sub-group descendants. Bypasses the
+     * single-team {@code te.nameHash = :team} equality. The hashes are server-computed hex, safe to
+     * inline.
+     */
+    private static String teamRollupCondition(String teamHashesCsv) {
+      String inList =
+          Arrays.stream(teamHashesCsv.split(","))
+              .map(hash -> "'" + hash + "'")
+              .collect(Collectors.joining(","));
+      return " AND te.nameHash IN (" + inList + ") ";
+    }
+
     @Override
     default int listCount(ListFilter filter) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamHashesCsv = filter.getQueryParam("teamHashes");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -650,7 +668,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamHashesCsv != null) {
+        String rollup = teamRollupCondition(teamHashesCsv);
+        mySqlCondition = mySqlCondition + rollup;
+        postgresCondition = postgresCondition + rollup;
+      }
       if (team == null
+          && teamHashesCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -658,13 +682,18 @@ public interface AccessControlDAOs {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
-          getTableName(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal());
+          getTableName(),
+          mySqlCondition,
+          postgresCondition,
+          teamHashesCsv != null ? null : team,
+          Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamHashesCsv = filter.getQueryParam("teamHashes");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -717,7 +746,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamHashesCsv != null) {
+        String rollup = teamRollupCondition(teamHashesCsv);
+        mySqlCondition = mySqlCondition + rollup;
+        postgresCondition = postgresCondition + rollup;
+      }
       if (team == null
+          && teamHashesCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -728,7 +763,7 @@ public interface AccessControlDAOs {
           getTableName(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamHashesCsv != null ? null : team,
           limit,
           beforeName,
           beforeId,
@@ -738,6 +773,7 @@ public interface AccessControlDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamHashesCsv = filter.getQueryParam("teamHashes");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -790,7 +826,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamHashesCsv != null) {
+        String rollup = teamRollupCondition(teamHashesCsv);
+        mySqlCondition = mySqlCondition + rollup;
+        postgresCondition = postgresCondition + rollup;
+      }
       if (team == null
+          && teamHashesCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -801,7 +843,7 @@ public interface AccessControlDAOs {
           getTableName(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamHashesCsv != null ? null : team,
           limit,
           afterName,
           afterId,
