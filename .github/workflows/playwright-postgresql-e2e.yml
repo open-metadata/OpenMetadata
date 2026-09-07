@@ -108,6 +108,30 @@ jobs:
       full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
       protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
+      # Split the retry policy by event so the two runs answer different
+      # questions:
+      #
+      #   pull_request(_target) → 0 retries. A test that only passes on a
+      #     retry is flakiness the author owns; surfacing it as a hard fail
+      #     on PR CI is how it gets fixed before it lands. Prevents authors
+      #     from bouncing off the merge queue's own retry noise later.
+      #
+      #   merge_group → 1 retry. Once code has been reviewed and PR CI has
+      #     ratified it, a single CI-infrastructure hiccup (a network blip,
+      #     a browser startup race, docker image pull) should not eject the
+      #     PR. The queue is the wrong place to relitigate a real product
+      #     failure vs. a transient — that is what PR CI is for.
+      #
+      # workflow_dispatch keeps the reusable's default of 1 (nothing to
+      # protect against on a manual run). Nightlies pass their own explicit
+      # `retries: 2` in their own callers and are unaffected.
+      #
+      # Strings, not raw numbers, in the ternary: GH Actions' `X && Y || Z`
+      # short-circuits when `Y` is falsy (`0`), so `pull_request && 0 || 1`
+      # would resolve to `1` and defeat the whole change. `'0'` is a
+      # non-empty string, so it is truthy in the expression and coerces to
+      # numeric 0 when the reusable reads it as `type: number`.
+      retries: ${{ github.event_name == 'merge_group' && '1' || contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && '0' || '1' }}
 
   playwright-summary:
     name: >-
