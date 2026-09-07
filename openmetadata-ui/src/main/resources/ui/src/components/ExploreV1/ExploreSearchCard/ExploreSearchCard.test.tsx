@@ -121,6 +121,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </nav>
   )),
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+  // The glossary-term icon renders a loading skeleton until the image resolves.
+  Skeleton: jest.fn(() => <span data-testid="skeleton" />),
 }));
 
 const baseSource: ExploreSearchCardProps['source'] = {
@@ -477,7 +479,10 @@ describe('ExploreSearchCard - Entity icon', () => {
       { showEntityIcon: true }
     );
 
-    expect(screen.getByTestId('icon')).toHaveAttribute('src', '/icon.svg');
+    expect(screen.getByTestId('icon-image')).toHaveAttribute(
+      'src',
+      `${window.location.origin}/icon.svg`
+    );
     expect(screen.queryByText('glossaryTerm-icon')).not.toBeInTheDocument();
   });
 

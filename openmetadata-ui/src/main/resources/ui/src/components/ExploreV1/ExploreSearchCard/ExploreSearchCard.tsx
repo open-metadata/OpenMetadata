@@ -46,6 +46,7 @@ import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
+import { Icon } from '../../common/Icon/Icon';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -828,13 +829,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         if (source.entityType === EntityType.GLOSSARY_TERM) {
           if (source.style?.iconURL) {
             return (
-              <img
+              <Icon
                 alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
-                data-testid="icon"
-                height={24}
-                src={source.style.iconURL}
-                width={24}
+                className="align-middle m-r-xs"
+                iconValue={source.style.iconURL}
+                imageClassName="object-contain"
+                size={24}
               />
             );
           }
