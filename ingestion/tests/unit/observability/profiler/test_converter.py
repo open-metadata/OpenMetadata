@@ -240,3 +240,37 @@ def test_money_and_bit_stay_out_of_the_common_mapper():
     common_reverse_map = CommonMapTypes.map_sqa_to_om_types()
     assert DataType.MONEY not in common_reverse_map[sqlalchemy.NUMERIC]
     assert DataType.BIT not in common_reverse_map[sqlalchemy.BOOLEAN]
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
+    """Columns whose names begin with __ or _sa_ are filtered by SQLAlchemy 2.x's
+    declarative scan and silently dropped from the mapped Table.  When the dropped
+    column is the first one it also carries the synthetic primary key, causing a hard
+    mapper error (see #32508).  ometa_to_sqa_orm must remap such names to a safe
+    class-attribute key so every column reaches the ORM table.
+    """
+    column_definition = [
+        ("__hevo_id", DataType.STRING),     # dunder prefix — is the PK, must not be dropped
+        ("normal_col", DataType.INT),
+        ("_sa_special", DataType.STRING),   # _sa_ prefix — also filtered by SQLAlchemy
+    ]
+
+    columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="dunder_test_table",
+        columns=columns,
+        serviceType=DatabaseServiceType.BigQuery,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    # Every column must appear in the underlying Table under its original name
+    assert [col.name for col in orm_table.__table__.columns] == [name for name, _ in column_definition]
+    # The first column (dunder-prefixed) must be the primary key
+    pk_cols = list(orm_table.__table__.primary_key)
+    assert len(pk_cols) == 1
+    assert pk_cols[0].name == "__hevo_id"
