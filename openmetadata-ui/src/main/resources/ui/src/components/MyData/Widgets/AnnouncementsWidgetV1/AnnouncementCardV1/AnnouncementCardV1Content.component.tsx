@@ -120,6 +120,77 @@ const AnnouncementCardV1Content = ({
     e.stopPropagation();
   };
 
+  const renderHeaderContent = () =>
+    userName || entityName ? (
+      <div
+        className={classNames('announcement-header', variantConfig.header)}
+        style={announcementTitleStyle}>
+        {userName && (
+          <Link
+            className="user-name"
+            data-testid="user-link"
+            style={userNameStyle}
+            to={getUserPath(userName)}
+            onClick={handleUserClick}>
+            {userName}
+          </Link>
+        )}
+        <span
+          className={classNames(
+            'announcement-card-entity-icon tw:flex tw:items-center',
+            variantConfig.iconSize
+          )}
+          style={{ color }}>
+          {entityIcon}
+        </span>
+        {entityFQN && entityType ? (
+          <Typography.Text
+            ellipsis={{
+              tooltip: (
+                <div className="announcement-entity-name-tooltip">
+                  {entityName}
+                </div>
+              ),
+            }}
+            style={{
+              color: currentBackgroundColor ?? 'inherit',
+            }}>
+            <Link
+              className={classNames(
+                'announcement-entity-name',
+                variantConfig.entityName
+              )}
+              data-testid="announcement-entity-link"
+              style={{
+                color: currentBackgroundColor ?? 'inherit',
+              }}
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
+              onClick={handleEntityClick}>
+              {entityName}
+            </Link>
+          </Typography.Text>
+        ) : (
+          <Typography.Text
+            className={classNames(
+              'announcement-entity-name',
+              variantConfig.entityName
+            )}
+            ellipsis={{ tooltip: true }}
+            style={{
+              color: currentBackgroundColor ?? 'inherit',
+            }}>
+            {entityName}
+          </Typography.Text>
+        )}
+      </div>
+    ) : (
+      <Typography.Text
+        className="announcement-header"
+        style={announcementTitleStyle}>
+        {title}
+      </Typography.Text>
+    );
+
   return (
     <div className={classNames('announcement-card-v1-content', className)}>
       <div className="announcement-header-container">
@@ -130,81 +201,7 @@ const AnnouncementCardV1Content = ({
             variantConfig.titleSection
           )}
           style={announcementTitleSectionStyle}>
-          {userName || entityName ? (
-            <div
-              className={classNames(
-                'announcement-header',
-                variantConfig.header
-              )}
-              style={announcementTitleStyle}>
-              {userName && (
-                <Link
-                  className="user-name"
-                  data-testid="user-link"
-                  style={userNameStyle}
-                  to={getUserPath(userName)}
-                  onClick={handleUserClick}>
-                  {userName}
-                </Link>
-              )}
-              <span
-                className={classNames(
-                  'announcement-card-entity-icon tw:flex tw:items-center',
-                  variantConfig.iconSize
-                )}
-                style={{ color }}>
-                {entityIcon}
-              </span>
-              {entityFQN && entityType ? (
-                <Typography.Text
-                  ellipsis={{
-                    tooltip: (
-                      <div className="announcement-entity-name-tooltip">
-                        {entityName}
-                      </div>
-                    ),
-                  }}
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}>
-                  <Link
-                    className={classNames(
-                      'announcement-entity-name',
-                      variantConfig.entityName
-                    )}
-                    data-testid="announcement-entity-link"
-                    style={{
-                      color: currentBackgroundColor ?? 'inherit',
-                    }}
-                    to={entityUtilClassBase.getEntityLink(
-                      entityType,
-                      entityFQN
-                    )}
-                    onClick={handleEntityClick}>
-                    {entityName}
-                  </Link>
-                </Typography.Text>
-              ) : (
-                <Typography.Text
-                  className={classNames(
-                    'announcement-entity-name',
-                    variantConfig.entityName
-                  )}
-                  ellipsis={{ tooltip: true }}
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}>
-                  {entityName}
-                </Typography.Text>
-              )}
-            </div>
-          ) : (
-            <Typography.Text
-              className="announcement-header"
-              style={announcementTitleStyle}>
-              {title}
-            </Typography.Text>
-          )}
+          {renderHeaderContent()}
           <Typography.Text className="timestamp" style={timeStampStyle}>
             {getShortRelativeTime(timestamp)}
           </Typography.Text>

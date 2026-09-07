@@ -20,15 +20,19 @@ import { Graph, NodePortStyleProps } from '@antv/g6';
 import { ELK } from 'elkjs/lib/elk-api';
 import {
   BIDIRECTIONAL_CURVE_OFFSET,
+  DAGRE_PORTS,
   DIMMED_OPACITY,
   EDGE_HIGHLIGHT_LINE_WIDTH,
   EDGE_LINE_WIDTH,
   MAX_NODE_WIDTH,
+  NODE_HEIGHT,
   NODE_NEUTRAL_COLOR,
+  RADIAL_EDGE_CURVE_OFFSET,
   RING_STRETCH_MAX,
 } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import { getRelationStyle } from '../components/KnowledgeGraph/KnowledgeGraph.relations';
 import {
+  applyGraphLayout,
   applyInitialFocus,
   assignRadialPorts,
   buildEdgeBaseStyle,
@@ -42,6 +46,7 @@ import {
   countRelationCategories,
   findHighlightPath,
   getColorSetForType,
+  resolveFocusNodeId,
   setupGraphEventHandlers,
   stretchRingToViewport,
   transformToG6Format,
@@ -585,6 +590,109 @@ describe('KnowledgeGraph.utils', () => {
       );
 
       expect(stretched.get('a')?.x).toBe(1000 + 100 * RING_STRETCH_MAX);
+    });
+  });
+
+  describe('resolveFocusNodeId', () => {
+    it('matches a node whose id equals the entity id', () => {
+      expect(
+        resolveFocusNodeId([makeNode('abc'), makeNode('def')], 'abc')
+      ).toBe('abc');
+    });
+
+    it('matches a prefixed node id by suffix', () => {
+      // The server may return `table::<uuid>` rather than the bare id.
+      expect(resolveFocusNodeId([makeNode('table::abc')], 'abc')).toBe(
+        'table::abc'
+      );
+    });
+
+    it('falls back to the entity id when no node matches', () => {
+      expect(resolveFocusNodeId([makeNode('other')], 'abc')).toBe('abc');
+    });
+
+    it('returns an empty string when there is no entity', () => {
+      expect(resolveFocusNodeId([makeNode('abc')])).toBe('');
+    });
+  });
+
+  describe('applyGraphLayout', () => {
+    const graph = () => ({
+      nodes: [makeNode('focus'), makeNode('other')],
+      edges: [makeEdge('e1', 'focus', 'other')],
+    });
+
+    const layoutOptions = {
+      focusNodeId: 'focus',
+      width: 1200,
+      height: 500,
+      hasEntity: true,
+    };
+
+    it('sizes the focus node to the full card width', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      expect(
+        result.nodes?.find((n) => n.id === 'focus')?.style?.size
+      ).toEqual([MAX_NODE_WIDTH, NODE_HEIGHT]);
+    });
+
+    it('gives every node side ports in the layered layout', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      result.nodes?.forEach((node) => {
+        expect(node.style?.ports).toEqual(DAGRE_PORTS);
+      });
+    });
+
+    it('bows the edges in the radial layout so spokes stay separable', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'radial',
+      });
+
+      result.edges?.forEach((edge) => {
+        expect(edge.style?.curveOffset).toBe(RADIAL_EDGE_CURVE_OFFSET);
+      });
+    });
+
+    it('leaves edges unbowed in the layered layout', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      result.edges?.forEach((edge) => {
+        expect(edge.style?.curveOffset).toBeUndefined();
+      });
+    });
+
+    it('skips radial positioning when there is no entity to centre on', async () => {
+      // Without an entity there is no meaningful centre, so the rings would be
+      // arbitrary; the nodes keep whatever positions they arrived with.
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'radial',
+        hasEntity: false,
+      });
+
+      expect(result.nodes?.every((n) => n.style?.x === undefined)).toBe(true);
+    });
+
+    it('tolerates a graph with no nodes or edges', async () => {
+      const result = await applyGraphLayout(
+        {},
+        { ...layoutOptions, layout: 'dagre' }
+      );
+
+      expect(result.nodes).toEqual([]);
+      expect(result.edges).toEqual([]);
     });
   });
 

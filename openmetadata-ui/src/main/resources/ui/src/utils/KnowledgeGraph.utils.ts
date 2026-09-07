@@ -24,6 +24,7 @@ import { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { toString } from 'lodash';
 import {
   BIDIRECTIONAL_CURVE_OFFSET,
+  DAGRE_PORTS,
   DIMMED_OPACITY,
   EDGE_ARROW_SIZE,
   EDGE_HIGHLIGHT_ARROW_SIZE,
@@ -39,6 +40,9 @@ import {
   NODE_HEIGHT,
   NODE_NEUTRAL_COLOR,
   NODE_WIDTH,
+  RADIAL_EDGE_CURVE_OFFSET,
+  RADIAL_PORT_LINE_WIDTH,
+  RADIAL_PORT_RADIUS,
   RING_STRETCH_MAX,
   SERVICE_TYPE_COLOR,
   ZOOM_DURATION_MS,
@@ -48,6 +52,7 @@ import {
   ElementFocusState,
   GraphData,
   GraphInteractionCtx,
+  KnowledgeGraphLayout,
 } from '../components/KnowledgeGraph/KnowledgeGraph.interface';
 import {
   classifyMergedRelation,
@@ -56,6 +61,7 @@ import {
   RelationCategory,
   RELATION_CATEGORIES,
 } from '../components/KnowledgeGraph/KnowledgeGraph.relations';
+import { LITE_GRAY_COLOR, WHITE_COLOR } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { resolveCssColor } from './common/cssColor.utils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
@@ -421,55 +427,57 @@ export const stretchRingToViewport = (
   );
 };
 
-export const computeELKRadialPositions = async (
+/** Undirected BFS hop-count from the focus node, keyed by node id. */
+const computeUndirectedDepths = (
   nodes: G6NodeData[],
   edges: G6EdgeData[],
-  focusId: string,
-  cx: number,
-  cy: number
-): Promise<Map<string, { x: number; y: number }>> => {
-  // BFS depth from focusId — needed for adaptive ring radii.
+  focusId: string
+): Map<string, number> => {
   const adj = new Map<string, string[]>();
   nodes.forEach((n) => adj.set(n.id, []));
   edges.forEach((e) => {
-    adj.get(e.source)?.push(e.target);
-    adj.get(e.target)?.push(e.source);
+    adj.get(String(e.source))?.push(String(e.target));
+    adj.get(String(e.target))?.push(String(e.source));
   });
 
-  const bfsDepth = new Map<string, number>();
-  bfsDepth.set(focusId, 0);
-  const bfsQueue = [focusId];
-  let bfsQi = 0;
-  while (bfsQi < bfsQueue.length) {
-    const curr = bfsQueue[bfsQi++];
-    const d = bfsDepth.get(curr) ?? 0;
-    for (const neighbor of adj.get(curr) ?? []) {
-      if (!bfsDepth.has(neighbor)) {
-        bfsDepth.set(neighbor, d + 1);
-        bfsQueue.push(neighbor);
-      }
-    }
-  }
+  return bfsFromNode(adj, focusId);
+};
 
+/** Inverts a node → depth map into depth → node ids. */
+const groupIdsByDepth = (
+  depths: Map<string, number>
+): Map<number, string[]> => {
   const byDepth = new Map<number, string[]>();
-  bfsDepth.forEach((d, id) => {
-    if (!byDepth.has(d)) {
-      byDepth.set(d, []);
+  depths.forEach((depth, id) => {
+    const bucket = byDepth.get(depth);
+    if (bucket) {
+      bucket.push(id);
+    } else {
+      byDepth.set(depth, [id]);
     }
-    byDepth.get(d)?.push(id);
   });
 
-  // Compute target radius per ring: only expand as much as each ring's own
-  // nodes require, never by the global maximum across all rings.
+  return byDepth;
+};
+
+/**
+ * Radius of each ring, expanded only as much as that ring's own nodes need
+ * rather than by the widest ring in the graph. Each ring also clears the one
+ * inside it by at least MIN_INTER_RING_GAP so the spokes stay separable.
+ */
+const computeRingRadii = (
+  byDepth: Map<number, string[]>,
+  nodes: G6NodeData[]
+): Map<number, number> => {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const ringRadii = new Map<number, number>();
   const sortedDepths = [...byDepth.keys()]
     .filter((d) => d > 0)
     .sort((a, b) => a - b);
-  const ringRadii = new Map<number, number>();
   let prevRadius = 0;
 
-  for (const d of sortedDepths) {
-    const nodeIds = byDepth.get(d) ?? [];
+  sortedDepths.forEach((depth) => {
+    const nodeIds = byDepth.get(depth) ?? [];
     const totalWidth = nodeIds.reduce((sum, id) => {
       const size = nodeMap.get(id)?.style?.size as [number, number] | undefined;
 
@@ -477,17 +485,43 @@ export const computeELKRadialPositions = async (
     }, 0);
     const minCircRadius =
       (totalWidth + nodeIds.length * INTRA_RING_GAP) / (2 * Math.PI);
-    const minComfort = d === 1 ? MIN_FIRST_RING_RADIUS : 0;
-    const minFromPrev = prevRadius + MIN_INTER_RING_GAP;
-    const radius = Math.max(minCircRadius, minComfort, minFromPrev);
-    ringRadii.set(d, radius);
+    const minComfort = depth === 1 ? MIN_FIRST_RING_RADIUS : 0;
+    const radius = Math.max(
+      minCircRadius,
+      minComfort,
+      prevRadius + MIN_INTER_RING_GAP
+    );
+    ringRadii.set(depth, radius);
     prevRadius = radius;
-  }
+  });
 
-  // Use ELK radial for angular placement (smarter than uniform: distributes
-  // nodes proportionally by subtree size). Override the radii with ours.
-  try {
-    const elkNodes = nodes.map((node) => {
+  return ringRadii;
+};
+
+const polarPosition = (
+  cx: number,
+  cy: number,
+  radius: number,
+  angle: number
+): { x: number; y: number } => ({
+  x: cx + radius * Math.cos(angle),
+  y: cy + radius * Math.sin(angle),
+});
+
+/**
+ * Angular placement from ELK's radial layout, which distributes nodes by
+ * subtree size rather than spreading them evenly — our own radii are then
+ * substituted for ELK's so ring spacing stays under our control.
+ */
+const elkRadialAngles = async (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[],
+  focusId: string
+): Promise<Map<string, number>> => {
+  const result = await ELKLayout.getElk().layout({
+    id: 'root',
+    layoutOptions: ELK_KG_RADIAL_LAYOUT_OPTIONS,
+    children: nodes.map((node) => {
       const size = node.style?.size as [number, number] | undefined;
 
       return {
@@ -495,66 +529,72 @@ export const computeELKRadialPositions = async (
         width: size?.[0] ?? NODE_WIDTH,
         height: size?.[1] ?? NODE_HEIGHT,
       };
-    });
-
-    const elkEdges: ElkExtendedEdge[] = edges.map((edge, i) => ({
+    }),
+    edges: edges.map((edge, i) => ({
       id: String(edge.id ?? `elk-radial-edge-${i}`),
       sources: [String(edge.source)],
       targets: [String(edge.target)],
-    }));
+    })) as ElkExtendedEdge[],
+  });
 
-    const result = await ELKLayout.getElk().layout({
-      id: 'root',
-      layoutOptions: ELK_KG_RADIAL_LAYOUT_OPTIONS,
-      children: elkNodes,
-      edges: elkEdges,
-    });
+  const rawPositions = new Map(
+    (result.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
+  );
+  const focusPosition = rawPositions.get(focusId) ?? { x: 0, y: 0 };
+  const angles = new Map<string, number>();
 
-    const elkRawPos = new Map(
-      (result.children ?? []).map((n) => [n.id, { x: n.x ?? 0, y: n.y ?? 0 }])
-    );
-    const elkFocusPos = elkRawPos.get(focusId) ?? { x: 0, y: 0 };
+  rawPositions.forEach((position, id) => {
+    if (id !== focusId) {
+      angles.set(
+        id,
+        Math.atan2(position.y - focusPosition.y, position.x - focusPosition.x)
+      );
+    }
+  });
 
-    const finalPositions = new Map<string, { x: number; y: number }>();
-    finalPositions.set(focusId, { x: cx, y: cy });
+  return angles;
+};
 
-    for (const [id, elkPos] of elkRawPos) {
-      if (id === focusId) {
-        continue;
-      }
-      const dx = elkPos.x - elkFocusPos.x;
-      const dy = elkPos.y - elkFocusPos.y;
-      const angle = Math.atan2(dy, dx);
-      const depth = bfsDepth.get(id) ?? 1;
-      const radius = ringRadii.get(depth) ?? MIN_FIRST_RING_RADIUS;
-      finalPositions.set(id, {
-        x: cx + radius * Math.cos(angle),
-        y: cy + radius * Math.sin(angle),
+/** Evenly spaced angles per ring, used when ELK's layout is unavailable. */
+const uniformRingAngles = (byDepth: Map<number, string[]>): Map<string, number> => {
+  const angles = new Map<string, number>();
+  byDepth.forEach((nodeIds, depth) => {
+    if (depth > 0) {
+      nodeIds.forEach((id, i) => {
+        angles.set(id, (2 * Math.PI * i) / nodeIds.length - Math.PI / 2);
       });
     }
+  });
 
-    return stretchRingToViewport(finalPositions, cx, cy);
-  } catch {
-    // Fallback: uniform angular distribution with our adaptive radii.
-    const fallback = new Map<string, { x: number; y: number }>();
-    fallback.set(focusId, { x: cx, y: cy });
+  return angles;
+};
 
-    byDepth.forEach((nodeIds, d) => {
-      if (d === 0) {
-        return;
-      }
-      const radius = ringRadii.get(d) ?? MIN_FIRST_RING_RADIUS;
-      nodeIds.forEach((id, i) => {
-        const angle = (2 * Math.PI * i) / nodeIds.length - Math.PI / 2;
-        fallback.set(id, {
-          x: cx + radius * Math.cos(angle),
-          y: cy + radius * Math.sin(angle),
-        });
-      });
-    });
+export const computeELKRadialPositions = async (
+  nodes: G6NodeData[],
+  edges: G6EdgeData[],
+  focusId: string,
+  cx: number,
+  cy: number
+): Promise<Map<string, { x: number; y: number }>> => {
+  const depths = computeUndirectedDepths(nodes, edges, focusId);
+  const byDepth = groupIdsByDepth(depths);
+  const ringRadii = computeRingRadii(byDepth, nodes);
 
-    return stretchRingToViewport(fallback, cx, cy);
-  }
+  // ELK gives better angles, but it can throw on some topologies; an even
+  // spread per ring is a correct, if less pretty, substitute.
+  const angles = await elkRadialAngles(nodes, edges, focusId).catch(() =>
+    uniformRingAngles(byDepth)
+  );
+
+  const positions = new Map<string, { x: number; y: number }>();
+  positions.set(focusId, { x: cx, y: cy });
+
+  angles.forEach((angle, id) => {
+    const radius = ringRadii.get(depths.get(id) ?? 1) ?? MIN_FIRST_RING_RADIUS;
+    positions.set(id, polarPosition(cx, cy, radius, angle));
+  });
+
+  return stretchRingToViewport(positions, cx, cy);
 };
 
 export const assignRadialPorts = (
@@ -680,6 +720,158 @@ export const findHighlightPath = (
  * `showLabels: false` keeps the geometry but drops the text, which is how the
  * "Relationship labels" toggle de-clutters a dense graph.
  */
+/**
+ * The graph node matching the entity in focus.
+ *
+ * The server may prefix ids (e.g. `table::<uuid>`), so a suffix match covers
+ * both forms; the raw id is the fallback so callers always get something to
+ * centre on.
+ */
+export const resolveFocusNodeId = (
+  nodes: G6NodeData[],
+  entityId?: string
+): string =>
+  entityId
+    ? nodes.find((n) => n.id === entityId || n.id.endsWith(entityId))?.id ??
+      entityId
+    : '';
+
+const withPositions = (
+  nodes: G6NodeData[],
+  positions: Map<string, { x: number; y: number }>
+): G6NodeData[] =>
+  nodes.map((node) => {
+    const position = positions.get(node.id);
+
+    return position
+      ? { ...node, style: { ...node.style, x: position.x, y: position.y } }
+      : node;
+  });
+
+const radialPort = (
+  key: string,
+  placement: [number, number]
+): NodePortStyleProps => ({
+  key,
+  placement,
+  r: RADIAL_PORT_RADIUS,
+  fill: WHITE_COLOR,
+  stroke: LITE_GRAY_COLOR,
+  lineWidth: RADIAL_PORT_LINE_WIDTH,
+});
+
+/** Sizes the focus node to the full card width so it reads as the subject. */
+const enlargeFocusNode = (
+  nodes: G6NodeData[],
+  focusNodeId: string
+): G6NodeData[] =>
+  focusNodeId
+    ? nodes.map((node) =>
+        node.id === focusNodeId
+          ? {
+              ...node,
+              style: {
+                ...node.style,
+                size: [MAX_NODE_WIDTH, NODE_HEIGHT] as [number, number],
+              },
+            }
+          : node
+      )
+    : nodes;
+
+/**
+ * Runs the chosen layout over the transformed graph: sizes the focus node,
+ * positions every node, and attaches the ports edges anchor to. Kept out of the
+ * component so the geometry is testable without mounting a canvas.
+ */
+export const applyGraphLayout = async (
+  data: G6GraphData,
+  options: {
+    layout: KnowledgeGraphLayout;
+    focusNodeId: string;
+    width: number;
+    height: number;
+    /** Radial positioning needs a real entity to centre the rings on. */
+    hasEntity: boolean;
+  }
+): Promise<G6GraphData> => {
+  const { layout, focusNodeId, width, height, hasEntity } = options;
+  const isRadial = layout === 'radial';
+  let nodes = enlargeFocusNode(data.nodes ?? [], focusNodeId);
+  let edges = data.edges ?? [];
+
+  if (isRadial && hasEntity) {
+    nodes = withPositions(
+      nodes,
+      await computeELKRadialPositions(
+        nodes,
+        edges,
+        focusNodeId,
+        width / 2,
+        height / 2
+      )
+    );
+    edges = edges.map((edge) => ({
+      ...edge,
+      style: { ...edge.style, curveOffset: RADIAL_EDGE_CURVE_OFFSET },
+    }));
+  } else if (layout === 'dagre') {
+    nodes = withPositions(
+      nodes,
+      await computeELKPositions(nodes, edges, focusNodeId)
+    );
+  }
+
+  nodes = isRadial
+    ? assignRadialPorts(
+        nodes,
+        edges,
+        focusNodeId,
+        width / 2,
+        radialPort('left', [-0.04, 0.5]),
+        radialPort('right', [1.04, 0.5])
+      )
+    : nodes.map((node) => ({
+        ...node,
+        style: { ...node.style, ports: DAGRE_PORTS },
+      }));
+
+  return { nodes, edges };
+};
+
+/** True when the response carried no graph to draw. */
+export const isGraphEmpty = (data: GraphData | null): boolean =>
+  !data || data.nodes.length === 0;
+
+/**
+ * Whether the user has moved any control off its default, which is what makes
+ * "Clear all" worth showing.
+ */
+export const hasActiveGraphFilters = (state: {
+  layout: KnowledgeGraphLayout;
+  selectedEntityTypes: string[];
+  selectedRelationshipTypes: string[];
+  selectedDepth: number;
+  defaultDepth: number;
+}): boolean =>
+  state.layout !== 'radial' ||
+  state.selectedEntityTypes.length > 0 ||
+  state.selectedRelationshipTypes.length > 0 ||
+  state.selectedDepth !== state.defaultDepth;
+
+/**
+ * Class names for the fullscreen wrapper. Fullscreen is positioned against the
+ * viewport, so it has to know how wide the app sidebar currently is.
+ */
+export const getFullscreenClassNames = (
+  isFullscreen: boolean,
+  isSidebarCollapsed?: boolean
+): Record<string, boolean> => ({
+  'full-screen-knowledge-graph': isFullscreen,
+  'sidebar-collapsed': isFullscreen && Boolean(isSidebarCollapsed),
+  'sidebar-expanded': isFullscreen && !isSidebarCollapsed,
+});
+
 export const buildEdgeBaseStyle = (
   category: RelationCategory,
   labelText: string,

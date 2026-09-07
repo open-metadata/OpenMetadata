@@ -53,6 +53,30 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
+
+const getGlossaryCustomPageType = (isGlossaryActive: boolean) =>
+  isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm;
+
+const shouldShowGlossaryLoader = (
+  isLoading: boolean,
+  isPermissionLoading: boolean
+) => isLoading || isPermissionLoading;
+
+const shouldRenderGlossarySelectedData = (
+  isLoading: boolean,
+  isPermissionLoading: boolean,
+  selectedData: Glossary | GlossaryTerm
+) => !isLoading && !isPermissionLoading && !isEmpty(selectedData);
+
+const getActiveGlossaryPermission = (
+  isGlossaryActive: boolean,
+  glossaryPermission: OperationPermission,
+  glossaryTermPermission: OperationPermission
+) => (isGlossaryActive ? glossaryPermission : glossaryTermPermission);
+
+const getActiveGlossaryEntityType = (isGlossaryActive: boolean) =>
+  isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM;
+
 const GlossaryV1 = ({
   isGlossaryActive,
   selectedData,
@@ -74,7 +98,7 @@ const GlossaryV1 = ({
     tab: string;
   }>();
   const { customizedPage } = useCustomPages(
-    isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
+    getGlossaryCustomPageType(isGlossaryActive)
   );
   const navigate = useNavigate();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
@@ -319,8 +343,7 @@ const GlossaryV1 = ({
         newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
-          id: term,
-          type: 'glossaryTerm',
+          term: { id: term, type: 'glossaryTerm' },
         }));
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
@@ -448,12 +471,15 @@ const GlossaryV1 = ({
     updateVote,
   ]);
 
-  const shouldRenderSelectedData =
-    !isLoading && !isPermissionLoading && !isEmpty(selectedData);
+  const shouldRenderSelectedData = shouldRenderGlossarySelectedData(
+    isLoading,
+    isPermissionLoading,
+    selectedData
+  );
 
   return (
     <>
-      {(isLoading || isPermissionLoading) && <Loader />}
+      {shouldShowGlossaryLoader(isLoading, isPermissionLoading) && <Loader />}
 
       <GenericProvider<Glossary | GlossaryTerm>
         currentVersionData={selectedData}
@@ -461,10 +487,12 @@ const GlossaryV1 = ({
         data={selectedData}
         isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
-        permissions={
-          isGlossaryActive ? glossaryPermission : glossaryTermPermission
-        }
-        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        permissions={getActiveGlossaryPermission(
+          isGlossaryActive,
+          glossaryPermission,
+          glossaryTermPermission
+        )}
+        type={getActiveGlossaryEntityType(isGlossaryActive)}
         onUpdate={handleGlossaryUpdate}>
         {shouldRenderSelectedData &&
           (isGlossaryActive ? (

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { NodePortStyleProps } from '@antv/g6';
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 
@@ -82,6 +83,22 @@ export const LABEL_PLACEMENT_SOLO = 0.4;
  * near its ends run almost parallel and stop reading as separate directions.
  */
 export const RING_STRETCH_MAX = 1.6;
+
+/** Bow applied to radial edges so parallel spokes stay distinguishable. */
+export const RADIAL_EDGE_CURVE_OFFSET = 50;
+
+/**
+ * Anchor points edges attach to. The layered layout runs left-to-right so its
+ * ports sit on the node's sides; the radial layout nudges them just outside the
+ * card (-0.04 / 1.04) and draws them, since a spoke can arrive from any angle.
+ */
+export const DAGRE_PORTS: NodePortStyleProps[] = [
+  { key: 'left', placement: 'left', linkToCenter: false },
+  { key: 'right', placement: 'right', linkToCenter: false },
+];
+
+export const RADIAL_PORT_RADIUS = 6;
+export const RADIAL_PORT_LINE_WIDTH = 1.5;
 
 /** Colour tokens for the node card, resolved against the live theme. */
 export const NODE_NEUTRAL_COLOR = {

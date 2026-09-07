@@ -13,7 +13,7 @@
 
 import { Tabs } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
-import { Key, useEffect, useMemo, useState } from 'react';
+import { Key, ReactElement, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Binding } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
@@ -51,6 +51,117 @@ function toResultView(key: Key): ResultView {
 
 function getResultValue(binding: Binding | undefined): string {
   return binding?.value ?? '';
+}
+
+type ResultRow = { [key: string]: Binding };
+
+interface ResultTable {
+  keyedRows: Array<{ key: string; row: ResultRow }>;
+  rows: ResultRow[];
+  variables: string[];
+}
+
+type ResultGraph = ReturnType<typeof buildGraphFromSparqlBindings>;
+
+interface ResultBodyParams {
+  resultView: ResultView;
+  hasResultGraph: boolean;
+  resultGraph: ResultGraph;
+  conceptResults: Array<{ key: string; value: string }> | null;
+  resultTable: ResultTable;
+  result: SparqlPlaygroundResult;
+  relationshipTypes: RelationshipType[];
+}
+
+function renderResultBody({
+  resultView,
+  hasResultGraph,
+  resultGraph,
+  conceptResults,
+  resultTable,
+  result,
+  relationshipTypes,
+}: ResultBodyParams): ReactElement {
+  const showGraphView = resultView === 'graph' && hasResultGraph;
+
+  if (showGraphView) {
+    return (
+      <div
+        className="tw:h-96 tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-primary"
+        data-testid="ontology-sparql-result-graph">
+        <OntologyGraph
+          studioMode
+          edges={resultGraph.edges}
+          glossaries={[]}
+          glossaryColorMap={{}}
+          nodes={resultGraph.nodes}
+          relationTypes={relationshipTypes}
+          settings={{
+            layout: LayoutType.Circular,
+            showEdgeLabels: true,
+          }}
+          onNodeClick={NO_OP}
+          onNodeDoubleClick={NO_OP}
+          onPaneClick={NO_OP}
+        />
+      </div>
+    );
+  }
+
+  if (conceptResults) {
+    return (
+      <div
+        className="tw:flex tw:flex-wrap tw:gap-2"
+        data-testid="ontology-sparql-chips">
+        {conceptResults.map(({ key, value }) => (
+          <span
+            className="tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-primary"
+            key={key}>
+            {value}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (resultTable.variables.length > 0) {
+    return (
+      <div className="tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary">
+        <table className="tw:w-full tw:border-collapse tw:text-xs">
+          <thead>
+            <tr>
+              {resultTable.variables.map((variable) => (
+                <th
+                  className="tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2 tw:text-left tw:font-semibold tw:text-secondary"
+                  key={variable}>
+                  {variable}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {resultTable.keyedRows.map(({ key, row }) => (
+              <tr key={key}>
+                {resultTable.variables.map((variable) => (
+                  <td
+                    className="tw:border-b tw:border-secondary tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:text-secondary"
+                    key={variable}>
+                    {getResultValue(row[variable])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <pre className="tw:m-0 tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary">
+      {result.body}
+    </pre>
+  );
 }
 
 const OntologyQueryResults = ({
@@ -98,12 +209,6 @@ const OntologyQueryResults = ({
     setResultView('table');
   }, [result]);
 
-  const showGraphView = resultView === 'graph' && hasResultGraph;
-  const showConceptChips = !showGraphView && Boolean(conceptResults);
-  const showResultTable =
-    !showGraphView && !showConceptChips && resultTable.variables.length > 0;
-  const showRawBody = !showGraphView && !showConceptChips && !showResultTable;
-
   return (
     <div data-testid="ontology-sparql-result">
       <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between tw:gap-3">
@@ -132,75 +237,15 @@ const OntologyQueryResults = ({
         ) : null}
       </div>
 
-      {showGraphView && (
-        <div
-          className="tw:h-96 tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-primary"
-          data-testid="ontology-sparql-result-graph">
-          <OntologyGraph
-            studioMode
-            edges={resultGraph.edges}
-            glossaries={[]}
-            glossaryColorMap={{}}
-            nodes={resultGraph.nodes}
-            relationTypes={relationshipTypes}
-            settings={{
-              layout: LayoutType.Circular,
-              showEdgeLabels: true,
-            }}
-            onNodeClick={NO_OP}
-            onNodeDoubleClick={NO_OP}
-            onPaneClick={NO_OP}
-          />
-        </div>
-      )}
-      {showConceptChips && conceptResults && (
-        <div
-          className="tw:flex tw:flex-wrap tw:gap-2"
-          data-testid="ontology-sparql-chips">
-          {conceptResults.map(({ key, value }) => (
-            <span
-              className="tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-primary"
-              key={key}>
-              {value}
-            </span>
-          ))}
-        </div>
-      )}
-      {showResultTable && (
-        <div className="tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary">
-          <table className="tw:w-full tw:border-collapse tw:text-xs">
-            <thead>
-              <tr>
-                {resultTable.variables.map((variable) => (
-                  <th
-                    className="tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2 tw:text-left tw:font-semibold tw:text-secondary"
-                    key={variable}>
-                    {variable}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {resultTable.keyedRows.map(({ key, row }) => (
-                <tr key={key}>
-                  {resultTable.variables.map((variable) => (
-                    <td
-                      className="tw:border-b tw:border-secondary tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:text-secondary"
-                      key={variable}>
-                      {getResultValue(row[variable])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {showRawBody && (
-        <pre className="tw:m-0 tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary">
-          {result.body}
-        </pre>
-      )}
+      {renderResultBody({
+        resultView,
+        hasResultGraph,
+        resultGraph,
+        conceptResults,
+        resultTable,
+        result,
+        relationshipTypes,
+      })}
     </div>
   );
 };

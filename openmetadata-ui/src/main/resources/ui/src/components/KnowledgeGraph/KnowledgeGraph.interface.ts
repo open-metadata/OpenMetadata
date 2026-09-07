@@ -15,6 +15,7 @@ import {
   Graph,
   NodeData as G6NodeData,
 } from '@antv/g6';
+import type { Key, Selection } from 'react-aria-components';
 import { EntityReference } from '../../generated/entity/type';
 import {
   GraphEdge,
@@ -82,3 +83,57 @@ export interface EdgeTooltipState {
 }
 
 export type KnowledgeGraphLayout = 'dagre' | 'radial';
+
+export interface GraphFilterChoice {
+  id: string;
+  label: string;
+}
+
+export interface KnowledgeGraphToolbarProps {
+  entityDropdownOpen: boolean;
+  entityFilterText: string;
+  entityTypeOptions: GraphFilterChoice[];
+  filteredEntityTypeOptions: GraphFilterChoice[];
+  filteredRelationshipTypeOptions: GraphFilterChoice[];
+  hasActiveFilters: boolean;
+  layout: KnowledgeGraphLayout;
+  relationshipDropdownOpen: boolean;
+  relationshipFilterText: string;
+  relationshipTypeOptions: GraphFilterChoice[];
+  selectedDepth: number;
+  selectedEntityTypes: string[];
+  selectedRelationshipTypes: string[];
+  showEdgeLabels: boolean;
+  onClearAll: () => void;
+  onDepthChange: (value: number | number[]) => void;
+  onEntityDropdownChange: (open: boolean) => void;
+  onEntityFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEntityTypeSelectionChange: (keys: Selection) => void;
+  onExportJsonLd: () => Promise<void>;
+  onExportPng: () => Promise<void>;
+  onExportTurtle: () => Promise<void>;
+  onLayoutChange: (key: Key) => void;
+  onRelationshipDropdownChange: (open: boolean) => void;
+  onRelationshipFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRelationshipTypeSelectionChange: (keys: Selection) => void;
+  onShowEdgeLabelsChange: (isSelected: boolean) => void;
+}
+
+export interface KnowledgeGraphOverlaysProps {
+  edges: GraphEdge[];
+  edgeTooltip: EdgeTooltipState | null;
+  /** Node id → display label, for the edge manifest's test ids. */
+  nodeLabelById: Map<string, string>;
+  selectedNode: GraphNode | null;
+  onClosePanel: () => void;
+  onSlideoutOpenChange: (isOpen: boolean) => void;
+}
+
+export interface KnowledgeGraphViewControlsProps {
+  isFullscreen: boolean;
+  onFit: () => void;
+  onFullscreen: () => void;
+  onRefresh: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+}

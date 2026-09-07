@@ -19,8 +19,8 @@ import { useLocation } from 'react-router-dom';
 import { EntityReference } from '../../generated/entity/type';
 import { downloadEntityGraph, getEntityGraphData } from '../../rest/rdfAPI';
 import {
+  applyGraphLayout,
   applyInitialFocus,
-  assignRadialPorts,
   computeELKPositions,
   computeELKRadialPositions,
   countRelationCategories,
@@ -67,7 +67,29 @@ jest.mock('../../utils/KnowledgeGraph.utils', () => ({
   applyInitialFocus: jest.fn().mockResolvedValue(undefined),
   computeELKPositions: jest.fn().mockResolvedValue(new Map()),
   computeELKRadialPositions: jest.fn().mockResolvedValue(new Map()),
-  assignRadialPorts: jest.fn().mockImplementation((nodes: unknown[]) => nodes),
+  resolveFocusNodeId: jest.fn(
+    (nodes: Array<{ id: string }>, entityId?: string) =>
+      entityId
+        ? nodes.find((n) => n.id === entityId || n.id.endsWith(entityId))?.id ??
+          entityId
+        : ''
+  ),
+  // Mirrors the real helper's contract: it returns the laid-out graph, and the
+  // layout it picked is observable through which ELK routine it called.
+  applyGraphLayout: jest.fn(
+    async (
+      data: { nodes?: unknown[]; edges?: unknown[] },
+      options: { layout: string; hasEntity: boolean }
+    ) => {
+      if (options.layout === 'radial' && options.hasEntity) {
+        await (computeELKRadialPositions as jest.Mock)();
+      } else if (options.layout === 'dagre') {
+        await (computeELKPositions as jest.Mock)();
+      }
+
+      return data;
+    }
+  ),
   countRelationCategories: jest.fn(() => ({
     lineage: 0,
     structure: 0,
@@ -569,9 +591,6 @@ describe('KnowledgeGraph', () => {
       ])
     );
     (applyInitialFocus as jest.Mock).mockResolvedValue(undefined);
-    (assignRadialPorts as jest.Mock).mockImplementation(
-      (nodes: unknown[]) => nodes
-    );
     (useLocation as jest.Mock).mockReturnValue({
       search: '',
       pathname: '/',
@@ -720,9 +739,16 @@ describe('KnowledgeGraph', () => {
       await waitFor(() => expect(computeELKRadialPositions).toHaveBeenCalled());
     });
 
-    it('calls assignRadialPorts when layout is radial', async () => {
+    it('asks for a radial layout sized to the container', async () => {
+      // Port assignment itself now lives inside applyGraphLayout and is covered
+      // by its own unit tests; what the component owns is the request.
       await renderWithRadial();
-      await waitFor(() => expect(assignRadialPorts).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(applyGraphLayout).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ layout: 'radial', hasEntity: true })
+        )
+      );
     });
 
     it('switches to the layered layout when Hierarchical is selected', async () => {

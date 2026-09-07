@@ -16,32 +16,19 @@ import {
   ExtensionCategory,
   Graph,
   NodeData as G6NodeData,
-  NodePortStyleProps,
   register,
 } from '@antv/g6';
 import { ReactNode as AntVReactNode } from '@antv/g6-extension-react';
 import {
-  Box,
-  Button,
   Card,
-  Divider,
-  Dropdown,
-  SlideoutMenu,
-  Slider,
-  Tabs,
-  Toggle,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toPng } from 'html-to-image';
 import { isArray } from 'lodash';
 import Qs from 'qs';
 import React, {
-  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -51,18 +38,8 @@ import React, {
 import type { Key, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as ExitFullScreenIcon } from '../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FitScreenIcon } from '../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as FullscreenIcon } from '../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as LineageIcon } from '../../assets/svg/ic-platform-lineage.svg';
-import { ReactComponent as ZoomInIcon } from '../../assets/svg/ic-zoom-in.svg';
-import { ReactComponent as ZoomOutIcon } from '../../assets/svg/ic-zoom-out.svg';
-import { ReactComponent as RefreshIcon } from '../../assets/svg/reload.svg';
-import {
-  FULLSCREEN_QUERY_PARAM_KEY,
-  LITE_GRAY_COLOR,
-  WHITE_COLOR,
-} from '../../constants/constants';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
@@ -70,39 +47,28 @@ import { downloadEntityGraph, getEntityGraphData } from '../../rest/rdfAPI';
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
+  applyGraphLayout,
   applyInitialFocus,
-  assignRadialPorts,
-  computeELKPositions,
-  computeELKRadialPositions,
   countRelationCategories,
+  getFullscreenClassNames,
+  hasActiveGraphFilters,
+  isGraphEmpty,
   getNodeRenderKey,
+  resolveFocusNodeId,
   setupGraphEventHandlers,
   transformToG6Format,
 } from '../../utils/KnowledgeGraph.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { SearchSourceDetails } from '../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
 
-const EntitySummaryPanel = withSuspenseFallback(
-  lazy(
-    () => import('../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
-  )
-);
-
-import ExportGraphPanel from '../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import CustomNode from './GraphElements/CustomNode';
 import {
-  ENTITY_UUID_REGEX,
   EXPORT_FORMAT_MAP,
   FIT_SCALE_FACTOR,
-  MAX_NODE_WIDTH,
-  NODE_HEIGHT,
-  PANEL_WIDTH,
   ZOOM_DURATION_MS,
   ZOOM_EASING,
   ZOOM_IN_FACTOR,
@@ -117,15 +83,11 @@ import {
 } from './KnowledgeGraph.interface';
 import './KnowledgeGraph.style.less';
 import KnowledgeGraphLegend from './KnowledgeGraphLegend';
+import KnowledgeGraphOverlays from './KnowledgeGraphOverlays';
+import KnowledgeGraphToolbar from './KnowledgeGraphToolbar';
+import KnowledgeGraphViewControls from './KnowledgeGraphViewControls';
 
 register(ExtensionCategory.NODE, 'react-node', AntVReactNode);
-
-/**
- * The dropdown popover only mounts its search box when the user opens the
- * dropdown, so taking focus on mount is the behaviour they asked for — unlike
- * `autoFocus`, which steals focus on page load and is linted against.
- */
-const focusOnMount = (node: HTMLInputElement | null): void => node?.focus();
 
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
@@ -390,11 +352,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     []
   );
 
-  const stopKeydownPropagation = useCallback(
-    (e: React.KeyboardEvent) => e.stopPropagation(),
-    []
-  );
-
   const handleClosePanel = useCallback(() => {
     setSelectedNode(null);
   }, []);
@@ -432,109 +389,20 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         return;
       }
 
-      const g6Data = transformToG6Format(graphData, { showEdgeLabels });
       const width = containerRef.current.offsetWidth || 800;
       const height = containerRef.current.offsetHeight || 600;
-
-      const focusNodeId = entity?.id
-        ? (g6Data.nodes ?? []).find(
-            // Server may prefix IDs (e.g. "table::<uuid>"); suffix-match the raw UUID to cover both forms.
-            (n) => n.id === entity.id || n.id.endsWith(entity.id)
-          )?.id ?? entity.id
-        : '';
-
-      if (focusNodeId) {
-        g6Data.nodes = (g6Data.nodes ?? []).map((node) =>
-          node.id === focusNodeId
-            ? {
-                ...node,
-                style: {
-                  ...node.style,
-                  size: [MAX_NODE_WIDTH, NODE_HEIGHT] as [number, number],
-                },
-              }
-            : node
-        );
-      }
-
-      if (layout === 'radial' && entity?.id) {
-        const positions = await computeELKRadialPositions(
-          g6Data.nodes ?? [],
-          g6Data.edges ?? [],
-          focusNodeId,
-          width / 2,
-          height / 2
-        );
-        if (cancelled) {
-          return;
-        }
-        g6Data.nodes = (g6Data.nodes ?? []).map((node) => {
-          const pos = positions.get(node.id);
-
-          return pos
-            ? { ...node, style: { ...node.style, x: pos.x, y: pos.y } }
-            : node;
-        });
-        g6Data.edges = (g6Data.edges ?? []).map((edge) => ({
-          ...edge,
-          style: { ...edge.style, curveOffset: 50 },
-        }));
-      } else if (layout === 'dagre') {
-        const positions = await computeELKPositions(
-          g6Data.nodes ?? [],
-          g6Data.edges ?? [],
-          focusNodeId
-        );
-        if (cancelled) {
-          return;
-        }
-        g6Data.nodes = (g6Data.nodes ?? []).map((node) => {
-          const pos = positions.get(node.id);
-
-          return pos
-            ? { ...node, style: { ...node.style, x: pos.x, y: pos.y } }
-            : node;
-        });
-      }
-
-      const dagrePorts: NodePortStyleProps[] = [
-        { key: 'left', placement: 'left', linkToCenter: false },
-        { key: 'right', placement: 'right', linkToCenter: false },
-      ];
-
-      const radialLeftPort = {
-        key: 'left',
-        placement: [-0.04, 0.5] as [number, number],
-        r: 6,
-        fill: WHITE_COLOR,
-        stroke: LITE_GRAY_COLOR,
-        lineWidth: 1.5,
-      };
-
-      const radialRightPort = {
-        key: 'right',
-        placement: [1.04, 0.5] as [number, number],
-        r: 6,
-        fill: WHITE_COLOR,
-        stroke: LITE_GRAY_COLOR,
-        lineWidth: 1.5,
-      };
-
-      if (layout === 'radial') {
-        g6Data.nodes = assignRadialPorts(
-          g6Data.nodes ?? [],
-          g6Data.edges ?? [],
-          focusNodeId,
-          width / 2,
-          radialLeftPort,
-          radialRightPort
-        );
-      } else {
-        g6Data.nodes = (g6Data.nodes ?? []).map((node) => ({
-          ...node,
-          style: { ...node.style, ports: dagrePorts },
-        }));
-      }
+      const transformed = transformToG6Format(graphData, { showEdgeLabels });
+      const focusNodeId = resolveFocusNodeId(
+        transformed.nodes ?? [],
+        entity?.id
+      );
+      const g6Data = await applyGraphLayout(transformed, {
+        layout,
+        focusNodeId,
+        width,
+        height,
+        hasEntity: Boolean(entity?.id),
+      });
 
       if (cancelled) {
         return;
@@ -661,7 +529,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
   }, [fetchGraphData]);
 
-  const hasNoData = !graphData || graphData.nodes.length === 0;
+  const hasNoData = isGraphEmpty(graphData);
 
   const entityTypeOptions = useMemo(
     () =>
@@ -719,11 +587,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     [relationshipTypeOptions]
   );
 
-  const hasActiveFilters =
-    layout !== 'radial' ||
-    selectedEntityTypes.length > 0 ||
-    selectedRelationshipTypes.length > 0 ||
-    selectedDepth !== depth;
+  const hasActiveFilters = hasActiveGraphFilters({
+    layout,
+    selectedEntityTypes,
+    selectedRelationshipTypes,
+    selectedDepth,
+    defaultDepth: depth,
+  });
 
   const handleClearAll = useCallback(() => {
     setLayout('radial');
@@ -731,15 +601,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     setSelectedRelationshipTypes([]);
     setSelectedDepth(depth);
   }, [depth]);
-
-  // Borders are drawn with `border`/`outline`, never `ring`: rings compile to
-  // box-shadow, which WebKit does not pixel-snap, so they thin out at non-100%
-  // zoom.
-  const filterInputClassName =
-    'tw:w-full tw:rounded-md tw:bg-primary tw:px-2.5 tw:py-1.5 tw:text-sm' +
-    ' tw:text-primary tw:placeholder:text-placeholder tw:border' +
-    ' tw:border-primary tw:focus:border-brand tw:focus:outline-2' +
-    ' tw:focus:-outline-offset-2 tw:focus:outline-brand';
 
   const graphCanvas = (
     <>
@@ -770,78 +631,14 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         onToggleCollapsed={handleToggleLegend}
       />
 
-      <div
-        aria-hidden="true"
-        className="tw:hidden"
-        data-testid="knowledge-graph-edges">
-        {graphData?.edges.map((edge) => (
-          <div
-            data-edge-label={edge.label}
-            data-edge-source={edge.from}
-            data-edge-target={edge.to}
-            data-testid={`edge-${nodeLabelById.get(edge.from) ?? edge.from}-${
-              edge.label
-            }-${nodeLabelById.get(edge.to) ?? edge.to}`}
-            key={`${edge.from}-${edge.label}-${edge.to}`}
-          />
-        ))}
-      </div>
-
-      {edgeTooltip && (
-        <div
-          aria-hidden="true"
-          className="kg-edge-tooltip"
-          data-testid="edge-tooltip"
-          style={{
-            left: edgeTooltip.x + 12,
-            position: 'fixed',
-            top: edgeTooltip.y + 12,
-          }}>
-          <div className="kg-edge-tooltip__direction">
-            {`${edgeTooltip.sourceLabel} ${t('label.arrow-symbol')} ${
-              edgeTooltip.targetLabel
-            }`}
-          </div>
-          {edgeTooltip.labels.map((label) => (
-            <div
-              className="kg-edge-tooltip__label"
-              key={`${edgeTooltip.edgeId}-${label}`}>
-              {label}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {selectedNode?.fullyQualifiedName && (
-        <SlideoutMenu
-          isDismissable
-          isOpen
-          className="tw:z-1100"
-          dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
-          width={PANEL_WIDTH}
-          onOpenChange={handleSlideoutClose}>
-          {({ close }) => (
-            <EntitySummaryPanel
-              isSideDrawer
-              entityDetails={{
-                details: {
-                  id:
-                    ENTITY_UUID_REGEX.exec(selectedNode.id)?.[1] ??
-                    selectedNode.id,
-                  fullyQualifiedName: selectedNode.fullyQualifiedName,
-                  entityType: selectedNode.type as EntityType,
-                  name: selectedNode.name ?? selectedNode.label,
-                  displayName: selectedNode.label,
-                } as SearchSourceDetails,
-              }}
-              handleClosePanel={() => {
-                handleClosePanel();
-                close();
-              }}
-            />
-          )}
-        </SlideoutMenu>
-      )}
+      <KnowledgeGraphOverlays
+        edgeTooltip={edgeTooltip}
+        edges={graphData?.edges ?? []}
+        nodeLabelById={nodeLabelById}
+        selectedNode={selectedNode}
+        onClosePanel={handleClosePanel}
+        onSlideoutOpenChange={handleSlideoutClose}
+      />
     </>
   );
 
@@ -881,11 +678,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   return (
     <div
-      className={classNames({
-        'full-screen-knowledge-graph': isFullscreen,
-        'sidebar-collapsed': isFullscreen && preferences?.isSidebarCollapsed,
-        'sidebar-expanded': isFullscreen && !preferences?.isSidebarCollapsed,
-      })}>
+      className={classNames(
+        getFullscreenClassNames(isFullscreen, preferences?.isSidebarCollapsed)
+      )}>
       {isFullscreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb
           useCustomArrow
@@ -899,241 +694,51 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         <Card.Header
           className="tw:block"
           extra={
-            <Box
-              align="center"
-              className="tw:p-sm tw:w-full"
-              data-testid="knowledge-graph-controls"
-              justify="between">
-              <Box align="center" gap={4}>
-                <Typography className="tw:text-secondary" weight="medium">
-                  {t('label.view-entity', { entity: t('label.mode') }) + ':'}
-                </Typography>
-                <Tabs
-                  className="tw:w-auto"
-                  data-testid="layout-tabs"
-                  selectedKey={layout}
-                  onSelectionChange={handleLayoutChange}>
-                  <Tabs.List
-                    items={[
-                      {
-                        id: 'dagre',
-                        label: t('label.hierarchical'),
-                      },
-                      {
-                        id: 'radial',
-                        label: t('label.radial'),
-                      },
-                    ]}
-                    size="sm"
-                    type="button-minimal">
-                    {(tab) => <Tabs.Item {...tab} />}
-                  </Tabs.List>
-                </Tabs>
-
-                <Divider orientation="vertical" />
-                <Dropdown.Root
-                  isOpen={entityDropdownOpen}
-                  onOpenChange={handleEntityDropdownChange}>
-                  <Button
-                    color="secondary"
-                    isDisabled={entityTypeOptions.length === 0}
-                    size="sm">
-                    <Box align="center" gap={4}>
-                      {selectedEntityTypes.length > 0
-                        ? `${t('label.entity-type')} (${
-                            selectedEntityTypes.length
-                          })`
-                        : t('label.entity-type')}
-                      <ChevronDown
-                        aria-hidden="true"
-                        className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
-                      />
-                    </Box>
-                  </Button>
-                  <Dropdown.Popover>
-                    <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
-                      <input
-                        aria-label={t('label.entity-type')}
-                        className={filterInputClassName}
-                        placeholder={t('label.search')}
-                        ref={focusOnMount}
-                        type="text"
-                        value={entityFilterText}
-                        onChange={handleEntityFilterChange}
-                        onKeyDown={stopKeydownPropagation}
-                      />
-                    </div>
-                    <Dropdown.Menu
-                      disallowEmptySelection={false}
-                      items={filteredEntityTypeOptions}
-                      selectedKeys={new Set(selectedEntityTypes)}
-                      selectionMode="multiple"
-                      onSelectionChange={handleEntityTypeSelectionChange}>
-                      {(item) => (
-                        <Dropdown.Item
-                          showCheckbox
-                          id={item.id}
-                          key={item.id}
-                          label={item.label}
-                        />
-                      )}
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown.Root>
-                <Divider orientation="vertical" />
-                <Dropdown.Root
-                  isOpen={relationshipDropdownOpen}
-                  onOpenChange={handleRelationshipDropdownChange}>
-                  <Button
-                    color="secondary"
-                    isDisabled={relationshipTypeOptions.length === 0}
-                    size="sm">
-                    <Box align="center" gap={4}>
-                      {selectedRelationshipTypes.length > 0
-                        ? `${t('label.relationship-type')} (${
-                            selectedRelationshipTypes.length
-                          })`
-                        : t('label.relationship-type')}
-                      <ChevronDown
-                        aria-hidden="true"
-                        className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary"
-                      />
-                    </Box>
-                  </Button>
-                  <Dropdown.Popover>
-                    <div className="tw:border-b tw:border-border-secondary tw:px-4 tw:py-2">
-                      <input
-                        aria-label={t('label.relationship-type')}
-                        className={filterInputClassName}
-                        placeholder={t('label.search')}
-                        ref={focusOnMount}
-                        type="text"
-                        value={relationshipFilterText}
-                        onChange={handleRelationshipFilterChange}
-                        onKeyDown={stopKeydownPropagation}
-                      />
-                    </div>
-                    <Dropdown.Menu
-                      disallowEmptySelection={false}
-                      items={filteredRelationshipTypeOptions}
-                      selectedKeys={new Set(selectedRelationshipTypes)}
-                      selectionMode="multiple"
-                      onSelectionChange={handleRelationshipTypeSelectionChange}>
-                      {(item) => (
-                        <Dropdown.Item
-                          showCheckbox
-                          id={item.id}
-                          key={item.id}
-                          label={item.label}
-                        />
-                      )}
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown.Root>
-                <Divider orientation="vertical" />
-
-                <Box align="center" gap={5}>
-                  <Typography className="depth-label">
-                    {t('label.node-depth') + ':'}
-                  </Typography>
-                  <Slider
-                    showHoverPreview
-                    showRange
-                    className="depth-slider"
-                    data-testid="depth-slider"
-                    labelPosition="top-floating"
-                    maxValue={5}
-                    minValue={1}
-                    rangeCount={5}
-                    step={1}
-                    style={{
-                      width: '150px',
-                    }}
-                    value={[selectedDepth]}
-                    onChange={handleDepthChange}
-                  />
-                </Box>
-                <Divider orientation="vertical" />
-                <Toggle
-                  data-testid="toggle-edge-labels"
-                  isSelected={showEdgeLabels}
-                  label={t('label.show-relationship-label-plural')}
-                  size="sm"
-                  onChange={handleShowEdgeLabelsChange}
-                />
-                <Divider orientation="vertical" />
-                <ExportGraphPanel
-                  data-testid="knowledge-graph-export"
-                  supportedExports={[
-                    ExportFormat.PNG,
-                    ExportFormat.JSONLD,
-                    ExportFormat.TURTLE,
-                  ]}
-                  onExportJsonLd={handleExportJsonLd}
-                  onExportPng={handleExportPng}
-                  onExportTurtle={handleExportTurtle}
-                />
-              </Box>
-
-              {hasActiveFilters && (
-                <Button color="link-gray" size="sm" onPress={handleClearAll}>
-                  {t('label.clear-entity', { entity: t('label.all') })}
-                </Button>
-              )}
-            </Box>
+            <KnowledgeGraphToolbar
+              entityDropdownOpen={entityDropdownOpen}
+              entityFilterText={entityFilterText}
+              entityTypeOptions={entityTypeOptions}
+              filteredEntityTypeOptions={filteredEntityTypeOptions}
+              filteredRelationshipTypeOptions={filteredRelationshipTypeOptions}
+              hasActiveFilters={hasActiveFilters}
+              layout={layout}
+              relationshipDropdownOpen={relationshipDropdownOpen}
+              relationshipFilterText={relationshipFilterText}
+              relationshipTypeOptions={relationshipTypeOptions}
+              selectedDepth={selectedDepth}
+              selectedEntityTypes={selectedEntityTypes}
+              selectedRelationshipTypes={selectedRelationshipTypes}
+              showEdgeLabels={showEdgeLabels}
+              onClearAll={handleClearAll}
+              onDepthChange={handleDepthChange}
+              onEntityDropdownChange={handleEntityDropdownChange}
+              onEntityFilterChange={handleEntityFilterChange}
+              onEntityTypeSelectionChange={handleEntityTypeSelectionChange}
+              onExportJsonLd={handleExportJsonLd}
+              onExportPng={handleExportPng}
+              onExportTurtle={handleExportTurtle}
+              onLayoutChange={handleLayoutChange}
+              onRelationshipDropdownChange={handleRelationshipDropdownChange}
+              onRelationshipFilterChange={handleRelationshipFilterChange}
+              onRelationshipTypeSelectionChange={
+                handleRelationshipTypeSelectionChange
+              }
+              onShowEdgeLabelsChange={handleShowEdgeLabelsChange}
+            />
           }
         />
 
         <Card.Content className="tw:p-0">
           {knowledgeGraph}
 
-          <div className="knowledge-graph-action-buttons">
-            <Tooltip title={t('label.zoom-in')}>
-              <TooltipTrigger
-                className="kg-control-btn"
-                data-testid="zoom-in"
-                onPress={handleZoomIn}>
-                <ZoomInIcon />
-              </TooltipTrigger>
-            </Tooltip>
-            <Tooltip title={t('label.zoom-out')}>
-              <TooltipTrigger
-                className="kg-control-btn"
-                data-testid="zoom-out"
-                onPress={handleZoomOut}>
-                <ZoomOutIcon />
-              </TooltipTrigger>
-            </Tooltip>
-            <Tooltip title={t('label.fit-to-screen')}>
-              <TooltipTrigger
-                className="kg-control-btn"
-                data-testid="fit-screen"
-                onPress={handleFit}>
-                <FitScreenIcon />
-              </TooltipTrigger>
-            </Tooltip>
-            <Tooltip
-              title={
-                isFullscreen
-                  ? t('label.exit-full-screen')
-                  : t('label.full-screen-view')
-              }>
-              <TooltipTrigger
-                className="kg-control-btn"
-                data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-                onPress={handleFullscreen}>
-                {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
-              </TooltipTrigger>
-            </Tooltip>
-            <Tooltip title={t('label.refresh')}>
-              <TooltipTrigger
-                className="kg-control-btn"
-                data-testid="refresh"
-                onPress={handleRefresh}>
-                <RefreshIcon />
-              </TooltipTrigger>
-            </Tooltip>
-          </div>
+          <KnowledgeGraphViewControls
+            isFullscreen={isFullscreen}
+            onFit={handleFit}
+            onFullscreen={handleFullscreen}
+            onRefresh={handleRefresh}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+          />
         </Card.Content>
       </Card>
     </div>
