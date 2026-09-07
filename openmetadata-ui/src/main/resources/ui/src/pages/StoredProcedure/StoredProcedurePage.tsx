@@ -452,6 +452,8 @@ const StoredProcedurePage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -459,6 +461,8 @@ const StoredProcedurePage = () => {
           entity: t('label.stored-procedure-plural'),
         })
       );
+
+      return false;
     }
   };
 
