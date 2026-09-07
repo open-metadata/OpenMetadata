@@ -603,7 +603,11 @@ describe('Test GlossaryTermTab component', () => {
       mockUseGlossaryStore.glossaryChildTerms = [];
     });
 
-    it('should render NoSearchResultsPlaceholder when a search matches zero terms', async () => {
+    it('should render NoSearchResultsPlaceholder for the empty-terms + active-search branch', async () => {
+      // The table's own zero-rows state comes from the store's
+      // glossaryChildTerms (reset to [] above), not this response — so this
+      // covers the isSearchActive placeholder-selection branch, not a real
+      // API-driven zero-result search flow.
       mockSearchGlossaryTermsPaginated.mockResolvedValue({
         data: [],
         paging: { total: 0, after: null },
@@ -613,10 +617,10 @@ describe('Test GlossaryTermTab component', () => {
         wrapper: MemoryRouter,
       });
 
-      await waitFor(() => {
-        const searchInput = screen.getByPlaceholderText('label.search-entity');
-        fireEvent.change(searchInput, { target: { value: 'doesnotexist' } });
-      });
+      const searchInput = await screen.findByPlaceholderText(
+        'label.search-entity'
+      );
+      fireEvent.change(searchInput, { target: { value: 'doesnotexist' } });
 
       await waitFor(() => {
         expect(
@@ -629,7 +633,11 @@ describe('Test GlossaryTermTab component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should render NoFilteredResultsPlaceholder with the translated description when the current page has no terms and no search is active', async () => {
+    it('should render NoFilteredResultsPlaceholder with the translated description for the empty-terms + no-search branch', async () => {
+      // As above, the store's glossaryChildTerms (not this response's
+      // `data`) is what makes the table show zero rows; `paging.total: 5`
+      // only exists to keep totalTermsCount non-zero so the render reaches
+      // this branch instead of the "Add first term" onboarding placeholder.
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
         paging: { total: 5, after: null },
