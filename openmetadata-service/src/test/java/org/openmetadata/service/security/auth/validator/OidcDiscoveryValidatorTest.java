@@ -34,7 +34,7 @@ public class OidcDiscoveryValidatorTest {
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_Success() throws Exception {
+  void testSyncPublicKeyUrls_Success() throws Exception {
     String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
     String mockDiscoveryResponse =
         "{"
@@ -47,7 +47,7 @@ public class OidcDiscoveryValidatorTest {
           new ValidationHttpUtil.HttpResponseData(200, mockDiscoveryResponse);
       mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
 
-      validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig);
+      validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig);
 
       assertNotNull(authConfig.getPublicKeyUrls());
       assertEquals(1, authConfig.getPublicKeyUrls().size());
@@ -57,35 +57,64 @@ public class OidcDiscoveryValidatorTest {
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_SkipWhenAlreadyPopulated() throws Exception {
-    String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
-    authConfig.setPublicKeyUrls(java.util.List.of("https://existing.com/keys"));
+  void testSyncPublicKeyUrls_ReplacesStaleUrlsWhenDiscoveryUriChanges() throws Exception {
+    String discoveryUri = "https://new-idp.example.com/.well-known/openid-configuration";
+    String mockDiscoveryResponse =
+        "{"
+            + "\"issuer\": \"https://new-idp.example.com\","
+            + "\"jwks_uri\": \"https://new-idp.example.com/keys\""
+            + "}";
+    authConfig.setPublicKeyUrls(java.util.List.of("https://old-idp.example.com/keys"));
 
-    validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig);
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      ValidationHttpUtil.HttpResponseData mockResponse =
+          new ValidationHttpUtil.HttpResponseData(200, mockDiscoveryResponse);
+      mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
 
-    assertEquals(1, authConfig.getPublicKeyUrls().size());
-    assertEquals("https://existing.com/keys", authConfig.getPublicKeyUrls().get(0));
+      validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig);
+
+      assertEquals(List.of("https://new-idp.example.com/keys"), authConfig.getPublicKeyUrls());
+    }
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_NullDiscoveryUri_ThrowsIOException() {
+  void testSyncPublicKeyUrls_KeepsExistingUrlsWhenDiscoveryFetchFails() {
+    String discoveryUri = "https://new-idp.example.com/.well-known/openid-configuration";
+    authConfig.setPublicKeyUrls(java.util.List.of("https://old-idp.example.com/keys"));
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(503, "Service Unavailable"));
+
+      assertThrows(
+          IOException.class,
+          () -> validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig));
+
+      assertEquals(List.of("https://old-idp.example.com/keys"), authConfig.getPublicKeyUrls());
+    }
+  }
+
+  @Test
+  void testSyncPublicKeyUrls_NullDiscoveryUri_ThrowsIOException() {
     IOException exception =
         assertThrows(
-            IOException.class, () -> validator.autoPopulatePublicKeyUrls(null, authConfig));
+            IOException.class, () -> validator.syncPublicKeyUrlsFromDiscovery(null, authConfig));
 
     assertTrue(exception.getMessage().contains("Discovery URI is required"));
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_EmptyDiscoveryUri_ThrowsIOException() {
+  void testSyncPublicKeyUrls_EmptyDiscoveryUri_ThrowsIOException() {
     IOException exception =
-        assertThrows(IOException.class, () -> validator.autoPopulatePublicKeyUrls("", authConfig));
+        assertThrows(
+            IOException.class, () -> validator.syncPublicKeyUrlsFromDiscovery("", authConfig));
 
     assertTrue(exception.getMessage().contains("Discovery URI is required"));
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_HttpFailure_ThrowsIOException() {
+  void testSyncPublicKeyUrls_HttpFailure_ThrowsIOException() {
     String discoveryUri = "https://invalid.example.com/.well-known/openid-configuration";
 
     try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
@@ -96,7 +125,7 @@ public class OidcDiscoveryValidatorTest {
       IOException exception =
           assertThrows(
               IOException.class,
-              () -> validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig));
+              () -> validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig));
 
       assertTrue(exception.getMessage().contains("Failed to fetch discovery document"));
       assertTrue(exception.getMessage().contains("HTTP 404"));
@@ -104,7 +133,7 @@ public class OidcDiscoveryValidatorTest {
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_MissingJwksUri_ThrowsIOException() {
+  void testSyncPublicKeyUrls_MissingJwksUri_ThrowsIOException() {
     String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
     String mockDiscoveryResponse = "{\"issuer\": \"https://accounts.google.com\"}";
 
@@ -116,7 +145,7 @@ public class OidcDiscoveryValidatorTest {
       IOException exception =
           assertThrows(
               IOException.class,
-              () -> validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig));
+              () -> validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig));
 
       assertTrue(
           exception.getMessage().contains("Discovery document missing required 'jwks_uri' field"));
@@ -124,7 +153,7 @@ public class OidcDiscoveryValidatorTest {
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_EmptyJwksUri_ThrowsIOException() {
+  void testSyncPublicKeyUrls_EmptyJwksUri_ThrowsIOException() {
     String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
     String mockDiscoveryResponse =
         "{" + "\"issuer\": \"https://accounts.google.com\"," + "\"jwks_uri\": \"\"" + "}";
@@ -137,7 +166,7 @@ public class OidcDiscoveryValidatorTest {
       IOException exception =
           assertThrows(
               IOException.class,
-              () -> validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig));
+              () -> validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig));
 
       assertTrue(
           exception.getMessage().contains("Discovery document contains empty 'jwks_uri' field"));
@@ -145,7 +174,7 @@ public class OidcDiscoveryValidatorTest {
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_Http500_ThrowsIOException() {
+  void testSyncPublicKeyUrls_Http500_ThrowsIOException() {
     String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
 
     try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
@@ -156,7 +185,7 @@ public class OidcDiscoveryValidatorTest {
       IOException exception =
           assertThrows(
               IOException.class,
-              () -> validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig));
+              () -> validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig));
 
       assertTrue(exception.getMessage().contains("Failed to fetch discovery document"));
       assertTrue(exception.getMessage().contains("HTTP 500"));
@@ -164,7 +193,7 @@ public class OidcDiscoveryValidatorTest {
   }
 
   @Test
-  void testAutoPopulatePublicKeyUrls_InvalidJson_ThrowsException() {
+  void testSyncPublicKeyUrls_InvalidJson_ThrowsException() {
     String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
     String mockDiscoveryResponse = "{ invalid json }";
 
@@ -174,7 +203,8 @@ public class OidcDiscoveryValidatorTest {
       mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
 
       assertThrows(
-          Exception.class, () -> validator.autoPopulatePublicKeyUrls(discoveryUri, authConfig));
+          Exception.class,
+          () -> validator.syncPublicKeyUrlsFromDiscovery(discoveryUri, authConfig));
     }
   }
 

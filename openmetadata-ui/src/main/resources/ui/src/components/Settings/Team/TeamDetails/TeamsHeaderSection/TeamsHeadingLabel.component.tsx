@@ -86,108 +86,111 @@ const TeamsHeadingLabel = ({
     setIsHeadingEditing(false);
   }, [currentTeam]);
 
-  const teamHeadingRender = useMemo(
-    () =>
-      isHeadingEditing ? (
-        // Used onClick stop click propagation event anywhere in the component to parent
-        // TeamDetailsV1 component collapsible panel
-        <div
-          className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}>
-          <Input
-            className="flex-1 w-min-0"
-            data-testid="team-name-input"
-            placeholder={t('message.enter-comma-separated-field', {
-              field: t('label.term-lowercase'),
-            })}
-            type="text"
-            value={heading}
-            onChange={(e) => setHeading(e.target.value)}
-          />
-          <Space className="flex-none" data-testid="buttons" size={4}>
-            <Button
-              className="rounded-4 text-sm p-xss"
-              data-testid="cancelAssociatedTag"
-              disabled={isLoading}
-              type="primary"
-              onMouseDown={handleClose}>
-              <CloseOutlined />
-            </Button>
-            <Button
-              className="rounded-4 text-sm p-xss"
-              data-testid="saveAssociatedTag"
-              loading={isLoading}
-              type="primary"
-              onMouseDown={onHeadingSave}>
-              <CheckOutlined />
-            </Button>
-          </Space>
-        </div>
-      ) : (
+  const teamHeadingRender = useMemo(() => {
+    const headingTitle = heading ? (
+      <Typography.Title
+        className="m-b-0 flex-1 w-min-0"
+        data-testid="team-heading"
+        ellipsis={{ tooltip: true }}
+        level={5}>
+        {heading}
+      </Typography.Title>
+    ) : (
+      <Typography.Text
+        className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
+        data-testid="team-heading">
+        {t('label.no-entity', {
+          entity: t('label.display-name'),
+        })}
+      </Typography.Text>
+    );
+
+    const canEditHeading = hasAccess || isCurrentTeamOwner;
+    const editHeadingButton = canEditHeading && !currentTeam.deleted && (
+      <Tooltip
+        placement="right"
+        title={
+          hasEditDisplayNamePermission
+            ? t('label.edit-entity', {
+                entity: t('label.display-name'),
+              })
+            : t('message.no-permission-for-action')
+        }>
+        <Button
+          className="p-0 edit-team-name flex-center"
+          data-testid="edit-team-name"
+          disabled={!hasEditDisplayNamePermission}
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+          size="small"
+          type="text"
+          onClick={(e) => {
+            // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+            e.stopPropagation();
+            setIsHeadingEditing(true);
+          }}
+        />
+      </Tooltip>
+    );
+
+    return isHeadingEditing ? (
+      // Used onClick stop click propagation event anywhere in the component to parent
+      // TeamDetailsV1 component collapsible panel
+      <div
+        className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
+        role="presentation"
+        onClick={(e) => e.stopPropagation()}>
+        <Input
+          className="flex-1 w-min-0"
+          data-testid="team-name-input"
+          placeholder={t('message.enter-comma-separated-field', {
+            field: t('label.term-lowercase'),
+          })}
+          type="text"
+          value={heading}
+          onChange={(e) => setHeading(e.target.value)}
+        />
+        <Space className="flex-none" data-testid="buttons" size={4}>
+          <Button
+            className="rounded-4 text-sm p-xss"
+            data-testid="cancelAssociatedTag"
+            disabled={isLoading}
+            type="primary"
+            onMouseDown={handleClose}>
+            <CloseOutlined />
+          </Button>
+          <Button
+            className="rounded-4 text-sm p-xss"
+            data-testid="saveAssociatedTag"
+            loading={isLoading}
+            type="primary"
+            onMouseDown={onHeadingSave}>
+            <CheckOutlined />
+          </Button>
+        </Space>
+      </div>
+    ) : (
+      <>
         <>
-          <>
-            {heading ? (
-              <Typography.Title
-                className="m-b-0 flex-1 w-min-0"
-                data-testid="team-heading"
-                ellipsis={{ tooltip: true }}
-                level={5}>
-                {heading}
-              </Typography.Title>
-            ) : (
-              <Typography.Text
-                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
-                data-testid="team-heading">
-                {t('label.no-entity', {
-                  entity: t('label.display-name'),
-                })}
-              </Typography.Text>
-            )}
-            {(hasAccess || isCurrentTeamOwner) && !currentTeam.deleted && (
-              <Tooltip
-                placement="right"
-                title={
-                  hasEditDisplayNamePermission
-                    ? t('label.edit-entity', {
-                        entity: t('label.display-name'),
-                      })
-                    : t('message.no-permission-for-action')
-                }>
-                <Button
-                  className="p-0 edit-team-name flex-center"
-                  data-testid="edit-team-name"
-                  disabled={!hasEditDisplayNamePermission}
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setIsHeadingEditing(true);
-                  }}
-                />
-              </Tooltip>
-            )}
-          </>
-          {currentTeam.deleted && (
-            <div
-              className="deleted-badge-button text-xs flex-center"
-              data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss" />
-              {t('label.deleted')}
-            </div>
-          )}
+          {headingTitle}
+          {editHeadingButton}
         </>
-      ),
-    [
-      heading,
-      isHeadingEditing,
-      hasEditDisplayNamePermission,
-      currentTeam,
-      isLoading,
-    ]
-  );
+        {currentTeam.deleted && (
+          <div
+            className="deleted-badge-button text-xs flex-center"
+            data-testid="deleted-badge">
+            <ExclamationCircleFilled className="m-r-xss" />
+            {t('label.deleted')}
+          </div>
+        )}
+      </>
+    );
+  }, [
+    heading,
+    isHeadingEditing,
+    hasEditDisplayNamePermission,
+    currentTeam,
+    isLoading,
+  ]);
 
   useEffect(() => {
     if (currentTeam) {

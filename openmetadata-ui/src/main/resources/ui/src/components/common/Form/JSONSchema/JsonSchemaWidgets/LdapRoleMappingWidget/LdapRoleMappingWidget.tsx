@@ -27,6 +27,7 @@ import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
+import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
@@ -47,6 +48,36 @@ interface RoleOption {
 interface MappingError {
   [mappingId: string]: string;
 }
+
+const computeNextSearchResults = (
+  prev: Map<string, RoleOption[]>,
+  searchState: { availableRoles: RoleOption[]; mappings: RoleMappingEntry[] },
+  mappingId: string,
+  results: Role[]
+): Map<string, RoleOption[]> => {
+  const next = new Map(prev);
+  const { availableRoles, mappings } = searchState;
+  const currentMapping = mappings.find((mapping) => mapping.id === mappingId);
+  const selectedRoles = new Set(currentMapping?.roles ?? []);
+  const selectedRoleOptions = availableRoles.filter((role) =>
+    selectedRoles.has(role.value)
+  );
+  next.set(
+    mappingId,
+    uniqBy(
+      [
+        ...selectedRoleOptions,
+        ...results.map((role) => ({
+          label: role.displayName || role.name,
+          value: role.name,
+        })),
+      ],
+      'value'
+    )
+  );
+
+  return next;
+};
 
 const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const { t } = useTranslation();
@@ -228,32 +259,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
       debounce(async (mappingId: string, searchText: string) => {
         try {
           const results = await searchRoles(searchText);
-          setSearchResults((prev) => {
-            const next = new Map(prev);
-            const { availableRoles, mappings } = searchStateRef.current;
-            const currentMapping = mappings.find(
-              (mapping) => mapping.id === mappingId
-            );
-            const selectedRoles = new Set(currentMapping?.roles ?? []);
-            const selectedRoleOptions = availableRoles.filter((role) =>
-              selectedRoles.has(role.value)
-            );
-            next.set(
+          setSearchResults((prev) =>
+            computeNextSearchResults(
+              prev,
+              searchStateRef.current,
               mappingId,
-              uniqBy(
-                [
-                  ...selectedRoleOptions,
-                  ...results.map((role) => ({
-                    label: role.displayName || role.name,
-                    value: role.name,
-                  })),
-                ],
-                'value'
-              )
-            );
-
-            return next;
-          });
+              results
+            )
+          );
         } catch (err) {
           showErrorToast(err as AxiosError);
         }
