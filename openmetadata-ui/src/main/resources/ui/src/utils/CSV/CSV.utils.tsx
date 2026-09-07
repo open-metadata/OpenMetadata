@@ -275,34 +275,51 @@ const formatMetricExtension = (extension: unknown) => {
 
 // Column -> accessor, rather than a 19-case switch: the dispatch is pure data,
 // and a lookup keeps the cyclomatic complexity flat as columns are added.
-const METRIC_CSV_VALUE_BY_COLUMN = {
-  name: (metric: Metric) => metric.name,
-  displayName: (metric: Metric) => metric.displayName,
-  description: (metric: Metric) => metric.description,
-  metricType: (metric: Metric) => metric.metricType,
-  unitOfMeasurement: (metric: Metric) => metric.unitOfMeasurement,
-  customUnitOfMeasurement: (metric: Metric) => metric.customUnitOfMeasurement,
-  granularity: (metric: Metric) => metric.granularity,
-  expressionLanguage: (metric: Metric) => metric.metricExpression?.language,
-  expressionCode: (metric: Metric) => metric.metricExpression?.code,
-  relatedMetrics: (metric: Metric) =>
-    joinEntityReferences(metric.relatedMetrics),
-  tags: (metric: Metric) => joinMetricTags(metric, TagSource.Classification),
-  glossaryTerms: (metric: Metric) => joinMetricTags(metric, TagSource.Glossary),
-  tiers: (metric: Metric) => joinMetricTiers(metric),
-  owners: (metric: Metric) => joinOwners(metric.owners),
-  reviewers: (metric: Metric) => joinOwners(metric.reviewers),
-  domains: (metric: Metric) => joinEntityReferences(metric.domains),
-  dataProducts: (metric: Metric) => joinEntityReferences(metric.dataProducts),
-  entityStatus: (metric: Metric) => metric.entityStatus,
-  extension: (metric: Metric) => formatMetricExtension(metric.extension),
-};
+// A Map rather than an object literal: `columnName` comes from the server's
+// CsvHeaderDocumentation, and a plain object resolves inherited keys, so a
+// header named `toString` would return a function and be called.
+const METRIC_CSV_VALUE_BY_COLUMN = new Map<
+  string,
+  (metric: Metric) => string | undefined
+>([
+  ['name', (metric: Metric) => metric.name],
+  ['displayName', (metric: Metric) => metric.displayName],
+  ['description', (metric: Metric) => metric.description],
+  ['metricType', (metric: Metric) => metric.metricType],
+  ['unitOfMeasurement', (metric: Metric) => metric.unitOfMeasurement],
+  [
+    'customUnitOfMeasurement',
+    (metric: Metric) => metric.customUnitOfMeasurement,
+  ],
+  ['granularity', (metric: Metric) => metric.granularity],
+  ['expressionLanguage', (metric: Metric) => metric.metricExpression?.language],
+  ['expressionCode', (metric: Metric) => metric.metricExpression?.code],
+  [
+    'relatedMetrics',
+    (metric: Metric) => joinEntityReferences(metric.relatedMetrics),
+  ],
+  [
+    'tags',
+    (metric: Metric) => joinMetricTags(metric, TagSource.Classification),
+  ],
+  [
+    'glossaryTerms',
+    (metric: Metric) => joinMetricTags(metric, TagSource.Glossary),
+  ],
+  ['tiers', (metric: Metric) => joinMetricTiers(metric)],
+  ['owners', (metric: Metric) => joinOwners(metric.owners)],
+  ['reviewers', (metric: Metric) => joinOwners(metric.reviewers)],
+  ['domains', (metric: Metric) => joinEntityReferences(metric.domains)],
+  [
+    'dataProducts',
+    (metric: Metric) => joinEntityReferences(metric.dataProducts),
+  ],
+  ['entityStatus', (metric: Metric) => metric.entityStatus],
+  ['extension', (metric: Metric) => formatMetricExtension(metric.extension)],
+]);
 
 const getMetricCsvValue = (metric: Metric, columnName: string) => {
-  const accessor =
-    METRIC_CSV_VALUE_BY_COLUMN[
-      columnName as keyof typeof METRIC_CSV_VALUE_BY_COLUMN
-    ];
+  const accessor = METRIC_CSV_VALUE_BY_COLUMN.get(columnName);
 
   // An unknown column yields '', but a known column keeps its own undefined —
   // the switch returned the raw property, and callers distinguish the two.
