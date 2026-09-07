@@ -368,56 +368,52 @@ test.describe('Glossary Hierarchy', () => {
   });
 
   // H-DD05: Drag term - cancel operation
-  test(
-    'should cancel drag and drop operation',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
-      const term1 = new GlossaryTerm(glossary);
-      const term2 = new GlossaryTerm(glossary);
+  test('should cancel drag and drop operation', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const term1 = new GlossaryTerm(glossary);
+    const term2 = new GlossaryTerm(glossary);
 
-      try {
-        await glossary.create(apiContext);
-        await term1.create(apiContext);
-        await term2.create(apiContext);
+    try {
+      await glossary.create(apiContext);
+      await term1.create(apiContext);
+      await term2.create(apiContext);
 
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Drag term1 to term2
-        await dragAndDropTerm(
-          page,
-          term1.responseData.displayName,
-          term2.responseData.displayName
-        );
+      // Drag term1 to term2
+      await dragAndDropTerm(
+        page,
+        term1.responseData.displayName,
+        term2.responseData.displayName
+      );
 
-        // Wait for confirmation modal content to be visible
-        await expect(
-          page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-        ).toBeVisible();
+      // Wait for confirmation modal content to be visible
+      await expect(
+        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
+      ).toBeVisible();
 
-        // Click Cancel button
-        await page.getByRole('button', { name: 'Cancel' }).click();
+      // Click Cancel button
+      await page.getByRole('button', { name: 'Cancel' }).click();
 
-        // Verify modal content is closed
-        await expect(
-          page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-        ).toBeHidden();
+      // Verify modal content is closed
+      await expect(
+        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
+      ).toBeHidden();
 
-        // Verify terms are still at root level (no hierarchy change)
-        await expect(
-          page.getByTestId(term1.responseData.displayName)
-        ).toBeVisible();
-        await expect(
-          page.getByTestId(term2.responseData.displayName)
-        ).toBeVisible();
-      } finally {
-        await term1.delete(apiContext);
-        await term2.delete(apiContext);
-        await glossary.delete(apiContext);
-        await afterAction();
-      }
+      // Verify terms are still at root level (no hierarchy change)
+      await expect(
+        page.getByTestId(term1.responseData.displayName)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(term2.responseData.displayName)
+      ).toBeVisible();
+    } finally {
+      await term1.delete(apiContext);
+      await term2.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
     }
-  );
+  });
 });

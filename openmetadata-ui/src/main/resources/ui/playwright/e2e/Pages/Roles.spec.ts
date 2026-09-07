@@ -15,8 +15,8 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -84,7 +84,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -233,7 +233,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -267,7 +267,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await editDescriptionButton.click();
 
       // Wait for description editor to be visible
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(`${description}-updated`);
 

@@ -104,12 +104,14 @@ const ProfilePage: React.FC = () => {
         if (!response) {
           return;
         }
+        const nonTeamKeyData =
+          key === 'roles'
+            ? { roles: response.roles, isAdmin: response.isAdmin }
+            : { [key]: response[key] };
         const updatedKeyData =
           key === 'teams'
             ? { teams: response.teams, domains: response.domains }
-            : key === 'roles'
-            ? { roles: response.roles, isAdmin: response.isAdmin }
-            : { [key]: response[key] };
+            : nonTeamKeyData;
         const newUserData = omitBy(
           { ...userData, ...updatedKeyData },
           isUndefined

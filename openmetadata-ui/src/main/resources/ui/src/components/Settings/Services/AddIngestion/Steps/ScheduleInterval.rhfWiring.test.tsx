@@ -23,7 +23,7 @@ import { FormField, HookForm } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../../constants/Schedular.constants';
-import ScheduleIntervalV1 from './ScheduleIntervalV1';
+import ScheduleInterval from './ScheduleInterval';
 
 // Mirrors how consumers wire the scheduler: the cron is stored as an empty
 // string when cleared, but handed back to the component as undefined.
@@ -40,7 +40,7 @@ const FormWrapper = ({
     <HookForm form={form} onSubmit={jest.fn()}>
       <FormField control={form.control} name="cron">
         {({ field }) => (
-          <ScheduleIntervalV1
+          <ScheduleInterval
             defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
             entity="test"
             value={field.value || undefined}
@@ -53,7 +53,7 @@ const FormWrapper = ({
   );
 };
 
-describe('ScheduleIntervalV1 react-hook-form wiring', () => {
+describe('ScheduleInterval react-hook-form wiring', () => {
   it('switches to on demand inside an RHF FormField using the empty-string cron sentinel', () => {
     const Wrapper = () => {
       const form = useForm<{ cron?: string }>({
@@ -68,7 +68,7 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
                 <div data-testid="probe">
                   {JSON.stringify(field.value ?? 'UNDEF')}
                 </div>
-                <ScheduleIntervalV1
+                <ScheduleInterval
                   defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                   entity="test"
                   value={field.value || undefined}
@@ -161,7 +161,7 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
   it('emits onChange(undefined) when the on demand card is clicked', () => {
     const handleChange = jest.fn();
     render(
-      <ScheduleIntervalV1
+      <ScheduleInterval
         defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
         entity="test"
         value={DEFAULT_SCHEDULE_CRON_DAILY}
