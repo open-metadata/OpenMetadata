@@ -25,7 +25,6 @@ import java.util.Locale;
 import java.util.Map;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
-import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -229,7 +228,7 @@ public interface ColumnAggregator {
    * addition to the label-specific ones, mirroring what {@code TagLabelRowMapperWithTargetFqnHash}
    * populates for the DB-backed read path so tag icon/color render consistently everywhere.
    */
-  static TagLabel parseTagLabel(JsonNode tagData) {Expand commentComment on line R126Resolved
+  static TagLabel parseTagLabel(JsonNode tagData) {
     return JsonUtils.convertValueLenient(tagData, TagLabel.class);
   }
 

@@ -916,7 +916,11 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
     List<TagLabel> tags = new ArrayList<>();
     for (JsonNode tagData : tagsData) {
-      tags.add(ColumnAggregator.parseTagLabel(tagData));
+      try {
+        tags.add(ColumnAggregator.parseTagLabel(tagData));
+      } catch (Exception e) {
+        LOG.warn("Failed to parse column tag, skipping it", e);
+      }
     }
     column.setTags(tags);
   }
