@@ -11,8 +11,10 @@
 """
 Source connection handler
 """
-from typing import Optional
 
+from typing import TYPE_CHECKING, Optional, cast
+
+from sqlalchemy.dialects.mysql.base import MySQLIdentifierPreparer
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -35,16 +37,29 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine.default import DefaultDialect
+
+
+class DorisIdentifierPreparer(MySQLIdentifierPreparer):
+    """Quote every identifier because Doris reserves more words than MySQL."""
+
+    def _requires_quotes(self, value: str) -> bool:
+        return True
+
 
 def get_connection(connection: DorisConnection) -> Engine:
     """
     Create connection
     """
-    return create_generic_db_connection(
+    engine = create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
         get_connection_args_fn=get_connection_args_common,
     )
+    dialect = cast("DefaultDialect", engine.dialect)
+    engine.dialect.identifier_preparer = DorisIdentifierPreparer(dialect)
+    return engine
 
 
 def test_connection(
