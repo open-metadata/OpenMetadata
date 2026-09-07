@@ -282,9 +282,19 @@ class SearchUtilsTest {
 
       when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+
+      // A bot is policy-evaluated exactly like a human (#30023): exempting bots left every
+      // bot-authenticated search unfiltered, because a skipped injection matches everything.
       when(subjectContext.isAdmin()).thenReturn(false);
       when(subjectContext.isBot()).thenReturn(true);
+      assertTrue(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+
+      // Being a bot does not defeat the other exemptions.
+      when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      when(subjectContext.isAdmin()).thenReturn(false);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
+
       when(subjectContext.isBot()).thenReturn(false);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
       assertFalse(SearchUtils.shouldApplyRbacConditions(null, evaluator));
@@ -292,6 +302,8 @@ class SearchUtilsTest {
       settingsCache
           .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
           .thenReturn(disabledSettings);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      when(subjectContext.isBot()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
     }
 
@@ -571,8 +583,6 @@ class SearchUtilsTest {
         // user/team/dataAsset alias are NOT data assets in this classifier's sense
         "user_search_index",
         "team_search_index",
-        "metric_group_search_index",
-        Entity.METRIC_GROUP,
         "dataAsset",
         "all",
         "garbage"
@@ -682,8 +692,6 @@ class SearchUtilsTest {
         "pipeline_search_index | pipeline",
         "container_search_index | container",
         "metric_search_index | metric",
-        "metric_group_search_index | metricGroup",
-        "metricGroup | metricGroup",
         "user_search_index | user",
         "team_search_index | team",
         "context_file_search_index | contextFile",

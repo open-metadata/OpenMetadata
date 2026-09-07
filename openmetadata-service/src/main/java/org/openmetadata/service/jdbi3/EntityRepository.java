@@ -1837,8 +1837,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return bundle;
     }
 
-    boolean onlyNonDeleted = isReadPlanNonDeletedOnly(readPlan);
-    CachedReadBundle bundleCache = onlyNonDeleted ? CacheBundle.getCachedReadBundle() : null;
+    boolean cacheReadBundle =
+        isReadPlanNonDeletedOnly(readPlan) && isCacheableEntityType(entityType);
+    CachedReadBundle bundleCache = cacheReadBundle ? CacheBundle.getCachedReadBundle() : null;
 
     java.util.concurrent.locks.Lock loadLock = null;
     CachedReadBundle.Dto initialDto = null;
@@ -4158,7 +4159,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
-      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4239,8 +4239,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityUpdater.update();
       }
     }
-    EventType change =
-        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFields")) {
       setInheritedFields(updated, new Fields(allowedFields));
     }
@@ -4277,8 +4276,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("putEntityUpdateImport")) {
       entityUpdater.updateForImport();
     }
-    EventType change =
-        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFieldsImport")) {
       setInheritedFields(updated, new Fields(allowedFields));
     }
@@ -4482,10 +4480,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
-    if (entityUpdater.incrementalFieldsChanged()) {
-      return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
-    }
-    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
+    return new PatchResponse<>(
+        Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
   }
 
   /**
@@ -4679,15 +4675,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntitySoftDeletedOrRestored(entity, false, null);
     }
-    postRestoreFromSearch(entity);
   }
-
-  /**
-   * Runs after a restored entity's search document is updated. Both synchronous and asynchronous
-   * resource paths invoke {@link #restoreFromSearch(EntityInterface)} only after the database
-   * restore returns, so relationship-derived documents can be rebuilt from committed state here.
-   */
-  protected void postRestoreFromSearch(T entity) {}
 
   public ResultList<T> listFromSearchWithOffset(
       UriInfo uriInfo,
@@ -5102,8 +5090,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Run {@code flushBody} as a single JDBI transaction, wrapped in deadlock retry. The
    * {@code DeadlockRetry.execute} layer is OUTER (each replay opens a fresh handle) and
    * {@code inTransaction} is INNER, matching the {@code DeadlockRetry} contract that the operation
-   * opens its own transaction. The handle-bound {@link CollectionDAO} is exposed through {@link
-   * RepositoryTransactionContext} for mutations that must share this transaction.
+   * opens its own transaction. Every {@code daoCollection.xDAO()} call inside {@code flushBody}
+   * enrolls in the single thread-bound handle and commits ONCE instead of auto-committing per call.
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
@@ -5120,8 +5108,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             Entity.getJdbi()
                 .inTransaction(
                     handle -> {
-                      RepositoryTransactionContext.runWith(
-                          handle.attach(CollectionDAO.class), flushBody);
+                      flushBody.run();
                       return null;
                     }));
   }
@@ -5492,20 +5479,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     store(entity, update, null);
   }
 
-  protected EntityDAO<T> entityDAOForWrite() {
-    return dao;
-  }
-
   protected void store(T entity, boolean update, Double expectedVersion) {
     String json = serializeForStorage(entity);
-    EntityDAO<T> writeDAO = entityDAOForWrite();
 
     if (update) {
       if (expectedVersion != null) {
         int rowsUpdated =
-            writeDAO.updateWithVersion(
-                writeDAO.getTableName(),
-                writeDAO.getNameHashColumn(),
+            dao.updateWithVersion(
+                dao.getTableName(),
+                dao.getNameHashColumn(),
                 entity.getFullyQualifiedName(),
                 entity.getId().toString(),
                 json,
@@ -5523,16 +5505,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             expectedVersion,
             entity.getVersion());
       } else {
-        writeDAO.update(entity.getId(), entity.getFullyQualifiedName(), json);
+        dao.update(entity.getId(), entity.getFullyQualifiedName(), json);
         LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
       }
       invalidate(entity);
     } else {
-      writeDAO.insert(
-          writeDAO.getTableName(),
-          writeDAO.getNameHashColumn(),
-          entity.getFullyQualifiedName(),
-          json);
+      dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     StoredEntityJson pendingCapture = storedEntityJson.get();
@@ -5550,8 +5528,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    EntityDAO<T> writeDAO = entityDAOForWrite();
-    writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   protected void updateMany(List<T> entities) {
@@ -5563,8 +5540,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ids.add(entity.getId());
       jsons.add(serializeForStorage(entity));
     }
-    EntityDAO<T> writeDAO = entityDAOForWrite();
-    writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);
+    dao.updateMany(dao.getTableName(), dao.getNameHashColumn(), fqns, ids, jsons);
   }
 
   @Transaction
@@ -8759,7 +8735,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     private boolean entityStored = false;
+
+    /**
+     * Diff produced by THIS request. Every {@code EntityUpdater} entry point must populate this
+     * before its caller classifies the change: {@link #getChangeType()} reads it, and a null value
+     * is indistinguishable from "nothing changed", which silently drops the ChangeEvent (see
+     * #32092).
+     */
     @Getter protected ChangeDescription incrementalChangeDescription = null;
+
     private final ChangeSource changeSource;
     @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
@@ -8801,6 +8785,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
       return false;
+    }
+
+    /**
+     * Blocks downgrading a system entity's provider to user, which would strip its delete/rename
+     * protection (#29974). Both update paths prevent it, only the response differs: a PATCH change is
+     * deliberate and rejected with a 400; a PUT's provider defaults to user when omitted (ambiguous),
+     * so the system provider is kept silently rather than break PUTs that never meant to change it.
+     */
+    protected final void restrictSystemProviderChange(Consumer<ProviderType> providerSetter) {
+      if (!ProviderType.SYSTEM.equals(original.getProvider())) {
+        return;
+      }
+      if (operation.isPatch()) {
+        if (!ProviderType.SYSTEM.equals(updated.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityModifyNotAllowed(original.getName(), entityType));
+        }
+        return;
+      }
+      providerSetter.accept(original.getProvider());
     }
 
     protected final void compareAndUpdate(String fieldName, Runnable updater) {
@@ -9124,12 +9128,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>Skips consolidateChanges/revert — those are for interactive user sessions where the same
      * user edits the same entity multiple times within a session window. Bulk API is used by
      * ingestion connectors where each run is a distinct update.
+     *
+     * <p>Still captures the incremental change description: skipping consolidation does not mean
+     * skipping the per-request diff, which is what the caller classifies the change event from.
+     * Omitting it made every bulk update look like ENTITY_NO_CHANGE (see #32092).
      */
     @Transaction
     public final void updateWithDeferredStore() {
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
+      }
+      try (var ignored = phase("entityUpdateIncrementalChangeDeferred")) {
+        captureIncrementalFromCurrentChange();
       }
 
       versionChanged = updateVersion(original.getVersion());
@@ -9524,8 +9535,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
 
-      if (operation.isPut()) {
-        // PUT operation merges tags in the request with what already exists
+      boolean shouldMergeTags =
+          operation.isPut() && (!overrideMetadata || nullOrEmpty(updatedTags));
+      if (shouldMergeTags) {
+        // A regular PUT merges tags in the request with what already exists.
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> origTagKeys = createTagKeySet(origTags);
@@ -9539,7 +9552,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityUtil.mergeTags(updatedTags, origTags);
         checkMutuallyExclusive(updatedTags);
       } else {
-        // PATCH operation replaces tags
+        // PATCH and an explicit PUT override replace tags.
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> updatedTagKeys = createTagKeySet(updatedTags);
         Set<String> origTagKeys = createTagKeySet(origTags);
@@ -10113,6 +10126,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return !incrementalChangeDescription.getFieldsAdded().isEmpty()
           || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
           || !incrementalChangeDescription.getFieldsDeleted().isEmpty();
+    }
+
+    /** Event type produced by this update: ENTITY_UPDATED when this request changed any field. */
+    public final EventType getChangeType() {
+      return incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) {
@@ -12877,7 +12895,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           for (var updater : changedUpdaters) {
             postUpdate(updater.getOriginal(), updater.getUpdated());
             updater.runDeferredReactOperations();
-            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            var changeType = updater.getChangeType();
             buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
                 .ifPresent(changeEventJsons::add);
           }
@@ -12932,7 +12950,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (updater.isVersionChanged() || updater.isEntityChanged()) {
             postUpdate(updater.getOriginal(), updater.getUpdated());
             updater.runDeferredReactOperations();
-            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            var changeType = updater.getChangeType();
             buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
                 .ifPresent(changeEventJsons::add);
           }
@@ -13185,7 +13203,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private Optional<String> buildChangeEventJsonForBulkOperation(
+  Optional<String> buildChangeEventJsonForBulkOperation(
       T entity, EventType eventType, String userName) {
     return buildChangeEventJsonForBulkOperation(entity, eventType, userName, false);
   }
@@ -13224,7 +13242,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void insertChangeEventsBatch(List<String> changeEvents) {
+  void insertChangeEventsBatch(List<String> changeEvents) {
     if (changeEvents == null || changeEvents.isEmpty()) {
       return;
     }

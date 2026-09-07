@@ -44,7 +44,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontologyEditLocks")
-@Tag(name = "Ontology Edit Locks", description = "Renewable Ontology Studio authoring leases.")
+@Tag(name = "Ontology Edit Locks", description = "Renewable Ontology authoring leases.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyEditLocks", order = 5)

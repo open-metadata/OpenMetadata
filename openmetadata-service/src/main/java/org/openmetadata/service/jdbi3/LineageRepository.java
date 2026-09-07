@@ -48,10 +48,8 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -71,8 +69,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.data.MetricDimension;
-import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -83,7 +79,6 @@ import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
-import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
@@ -109,6 +104,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.lineage.LineageGraphPruner;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -141,7 +137,9 @@ public class LineageRepository {
       SubjectContext subjectContext) {
     EntityReference ref =
         Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+    EntityLineage lineage = getLineage(ref, upstreamDepth, downstreamDepth);
+    pruneLineageByDomain(lineage, subjectContext);
+    return lineage;
   }
 
   public EntityLineage getByName(
@@ -155,21 +153,38 @@ public class LineageRepository {
       int upstreamDepth,
       int downstreamDepth,
       SubjectContext subjectContext) {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
-    return pruneLineageByDomain(getLineage(ref, upstreamDepth, downstreamDepth), subjectContext);
+    return getByNameReportingPrune(entityType, fqn, upstreamDepth, downstreamDepth, subjectContext)
+        .lineage();
   }
 
-  private EntityLineage pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+  /** A domain-pruned graph and how many nodes the caller's domain scope removed from it. */
+  public record DomainPrunedLineage(EntityLineage lineage, int hiddenNodes) {}
+
+  /**
+   * As {@link #getByName}, but reports the domain prune. A caller that also filters the graph and
+   * tells the user how much was hidden needs this count, or its total silently omits every
+   * domain-scoped removal and understates what was withheld.
+   */
+  public DomainPrunedLineage getByNameReportingPrune(
+      String entityType,
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      SubjectContext subjectContext) {
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+    EntityLineage lineage = getLineage(ref, upstreamDepth, downstreamDepth);
+    return new DomainPrunedLineage(lineage, pruneLineageByDomain(lineage, subjectContext));
+  }
+
+  /** Returns how many nodes the domain scope removed; 0 when it does not apply. */
+  private int pruneLineageByDomain(EntityLineage lineage, SubjectContext subjectContext) {
+    int hidden = 0;
     if (LineageDomainFilter.shouldApply(subjectContext)
         && lineage != null
         && !nullOrEmpty(lineage.getNodes())) {
-      Set<UUID> visible = visibleNodeIds(lineage, subjectContext);
-      Set<UUID> keep = reachableNodeIds(lineage.getEntity().getId(), visible, lineage);
-      lineage.setNodes(filterNodes(lineage.getNodes(), keep));
-      lineage.setUpstreamEdges(filterEdges(lineage.getUpstreamEdges(), keep));
-      lineage.setDownstreamEdges(filterEdges(lineage.getDownstreamEdges(), keep));
+      hidden = LineageGraphPruner.retainReachable(lineage, visibleNodeIds(lineage, subjectContext));
     }
-    return lineage;
+    return hidden;
   }
 
   private Set<UUID> visibleNodeIds(EntityLineage lineage, SubjectContext subjectContext) {
@@ -212,62 +227,6 @@ public class LineageRepository {
       }
     }
     return domainsByNode;
-  }
-
-  private Set<UUID> reachableNodeIds(UUID rootId, Set<UUID> visible, EntityLineage lineage) {
-    Set<UUID> reachable = new HashSet<>();
-    if (visible.contains(rootId)) {
-      Map<UUID, Set<UUID>> adjacency = buildDomainAdjacency(lineage, visible);
-      Deque<UUID> queue = new ArrayDeque<>();
-      queue.add(rootId);
-      reachable.add(rootId);
-      while (!queue.isEmpty()) {
-        for (UUID neighbor : adjacency.getOrDefault(queue.poll(), Set.of())) {
-          if (reachable.add(neighbor)) {
-            queue.add(neighbor);
-          }
-        }
-      }
-    }
-    return reachable;
-  }
-
-  private Map<UUID, Set<UUID>> buildDomainAdjacency(EntityLineage lineage, Set<UUID> visible) {
-    Map<UUID, Set<UUID>> adjacency = new HashMap<>();
-    List<Edge> edges = new ArrayList<>(listOrEmpty(lineage.getUpstreamEdges()));
-    edges.addAll(listOrEmpty(lineage.getDownstreamEdges()));
-    for (Edge edge : edges) {
-      linkVisibleNodes(adjacency, visible, edge.getFromEntity(), edge.getToEntity());
-    }
-    return adjacency;
-  }
-
-  private void linkVisibleNodes(
-      Map<UUID, Set<UUID>> adjacency, Set<UUID> visible, UUID from, UUID to) {
-    if (from != null && to != null && visible.contains(from) && visible.contains(to)) {
-      adjacency.computeIfAbsent(from, key -> new HashSet<>()).add(to);
-      adjacency.computeIfAbsent(to, key -> new HashSet<>()).add(from);
-    }
-  }
-
-  private List<EntityReference> filterNodes(List<EntityReference> nodes, Set<UUID> keep) {
-    List<EntityReference> filtered = new ArrayList<>();
-    for (EntityReference node : listOrEmpty(nodes)) {
-      if (keep.contains(node.getId())) {
-        filtered.add(node);
-      }
-    }
-    return filtered;
-  }
-
-  private List<Edge> filterEdges(List<Edge> edges, Set<UUID> keep) {
-    List<Edge> filtered = new ArrayList<>();
-    for (Edge edge : listOrEmpty(edges)) {
-      if (keep.contains(edge.getFromEntity()) && keep.contains(edge.getToEntity())) {
-        filtered.add(edge);
-      }
-    }
-    return filtered;
   }
 
   @Transaction
@@ -316,16 +275,14 @@ public class LineageRepository {
     String detailsJson = validateLineageDetails(from, to, lineageDetails);
 
     // Finally, add lineage relationship
-    executeRelationshipWriteWithDeadlockRetry(
-        () ->
-            dao.relationshipDAO()
-                .insert(
-                    from.getId(),
-                    to.getId(),
-                    from.getType(),
-                    to.getType(),
-                    Relationship.UPSTREAM.ordinal(),
-                    detailsJson));
+    dao.relationshipDAO()
+        .insert(
+            from.getId(),
+            to.getId(),
+            from.getType(),
+            to.getType(),
+            Relationship.UPSTREAM.ordinal(),
+            detailsJson);
     addLineageToSearch(from, to, lineageDetails);
 
     // Direct invalidation of cached lineage rooted at either endpoint of the new edge.
@@ -571,16 +528,14 @@ public class LineageRepository {
 
   private void insertLineage(
       EntityReference from, EntityReference to, LineageDetails lineageDetails) {
-    executeRelationshipWriteWithDeadlockRetry(
-        () ->
-            dao.relationshipDAO()
-                .insert(
-                    from.getId(),
-                    to.getId(),
-                    from.getType(),
-                    to.getType(),
-                    Relationship.UPSTREAM.ordinal(),
-                    JsonUtils.pojoToJson(lineageDetails)));
+    dao.relationshipDAO()
+        .insert(
+            from.getId(),
+            to.getId(),
+            from.getType(),
+            to.getType(),
+            Relationship.UPSTREAM.ordinal(),
+            JsonUtils.pojoToJson(lineageDetails));
     addLineageToSearch(from, to, lineageDetails);
 
     // Add lineage to RDF
@@ -1236,8 +1191,8 @@ public class LineageRepository {
         return result;
       }
       case METRIC -> {
-        Metric metric = Entity.getEntity(METRIC, entityReference.getId(), "", Include.NON_DELETED);
-        return metricChildNames(metric);
+        LOG.info("Metric column level lineage is not supported");
+        return new HashSet<>();
       }
       case PIPELINE -> {
         LOG.info("Pipeline column level lineage is not supported");
@@ -1247,24 +1202,6 @@ public class LineageRepository {
         LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
         return new HashSet<>();
       }
-    }
-  }
-
-  static Set<String> metricChildNames(Metric metric) {
-    Set<String> result = new HashSet<>();
-    String prefix = metric.getFullyQualifiedName() + ".";
-    for (MetricDimension dimension : listOrEmpty(metric.getDimensions())) {
-      addMetricChildName(result, dimension.getFullyQualifiedName(), prefix);
-    }
-    for (MetricMeasure measure : listOrEmpty(metric.getMeasures())) {
-      addMetricChildName(result, measure.getFullyQualifiedName(), prefix);
-    }
-    return result;
-  }
-
-  private static void addMetricChildName(Set<String> names, String childFqn, String parentPrefix) {
-    if (childFqn != null && childFqn.startsWith(parentPrefix)) {
-      names.add(childFqn.substring(parentPrefix.length()));
     }
   }
 
@@ -1497,16 +1434,14 @@ public class LineageRepository {
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
       lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
-      executeRelationshipWriteWithDeadlockRetry(
-          () ->
-              dao.relationshipDAO()
-                  .insert(
-                      fromRef.getId(),
-                      toRef.getId(),
-                      fromRef.getType(),
-                      toRef.getType(),
-                      Relationship.UPSTREAM.ordinal(),
-                      JsonUtils.pojoToJson(lineageDetails)));
+      dao.relationshipDAO()
+          .insert(
+              fromRef.getId(),
+              toRef.getId(),
+              fromRef.getType(),
+              toRef.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(lineageDetails));
       addLineageToSearch(fromRef, toRef, lineageDetails);
 
       // Add lineage to RDF
@@ -1529,14 +1464,6 @@ public class LineageRepository {
         () ->
             dao.relationshipDAO()
                 .delete(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal()));
-  }
-
-  static void executeRelationshipWriteWithDeadlockRetry(Runnable relationshipWrite) {
-    DeadlockRetry.execute(
-        () -> {
-          relationshipWrite.run();
-          return null;
-        });
   }
 
   private void processDeletedRelations(
@@ -1729,16 +1656,8 @@ public class LineageRepository {
 
       // Validate Lineage Details
       String detailsJson = validateLineageDetails(from, to, updated);
-      executeRelationshipWriteWithDeadlockRetry(
-          () ->
-              dao.relationshipDAO()
-                  .insert(
-                      fromId,
-                      toId,
-                      fromEntity,
-                      toEntity,
-                      Relationship.UPSTREAM.ordinal(),
-                      detailsJson));
+      dao.relationshipDAO()
+          .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
       addLineageToSearch(from, to, updated);
       return new RestUtil.PatchResponse<>(Response.Status.OK, updated, EventType.ENTITY_UPDATED)
           .toResponse();
@@ -1839,16 +1758,14 @@ public class LineageRepository {
           details.setUpdatedAt(System.currentTimeMillis());
           details.setUpdatedBy(updatedBy);
           // UPSERT the updated lineage JSON back into the relationship table
-          executeRelationshipWriteWithDeadlockRetry(
-              () ->
-                  dao.relationshipDAO()
-                      .insert(
-                          UUID.fromString(row.getFromId()),
-                          UUID.fromString(row.getToId()),
-                          row.getFromEntity(),
-                          row.getToEntity(),
-                          row.getRelation(),
-                          JsonUtils.pojoToJson(details)));
+          dao.relationshipDAO()
+              .insert(
+                  UUID.fromString(row.getFromId()),
+                  UUID.fromString(row.getToId()),
+                  row.getFromEntity(),
+                  row.getToEntity(),
+                  row.getRelation(),
+                  JsonUtils.pojoToJson(details));
         }
       } catch (Exception ex) {
         LOG.warn(

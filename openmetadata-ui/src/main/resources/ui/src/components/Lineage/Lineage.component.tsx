@@ -13,12 +13,19 @@
 
 import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import type { DragEvent } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Edge, Node } from 'reactflow';
+import {
+  DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import ReactFlow, {
   Background,
+  Edge,
   MiniMap,
+  Node,
   Panel,
   ReactFlowProvider,
 } from 'reactflow';
@@ -36,9 +43,9 @@ import { nodeTypes } from '../../utils/EntityLineageUtils';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
-import type { SourceType } from '../SearchedData/SearchedData.interface';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
-import type { LineageProps } from './Lineage.interface';
+import { LineageProps } from './Lineage.interface';
 import LineageSkeleton from './LineageSkeleton.component';
 
 const Lineage = ({

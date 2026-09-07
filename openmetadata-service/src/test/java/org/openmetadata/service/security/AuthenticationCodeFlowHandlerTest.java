@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -57,6 +58,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -687,6 +689,26 @@ class AuthenticationCodeFlowHandlerTest {
     assertFalse((Boolean) method.invoke(handler, TEST_SERVER_URL + "/auth/callback"));
     assertFalse((Boolean) method.invoke(handler, "https://evil.example.com" + MCP_CALLBACK));
     assertFalse((Boolean) method.invoke(handler, (Object) null));
+  }
+
+  @Test
+  void resolveProviderMetadata_initializesResolverAndReturnsLoadedMetadata() throws Exception {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "resolveProviderMetadata", OidcConfiguration.class);
+    method.setAccessible(true);
+
+    Object result = method.invoke(null, oidcConfiguration);
+
+    // pac4j 6 removed getProviderMetadata(); the helper must initialize the resolver, then load().
+    assertEquals(metadata, result);
+    verify(oidcConfiguration).ensuresMetadataResolverInitialized();
+    verify(resolver).load();
   }
 
   private void stubOidcConfigForLogin() {

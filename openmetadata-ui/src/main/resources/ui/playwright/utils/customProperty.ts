@@ -28,6 +28,8 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
+  getDescriptionBox,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -71,70 +73,6 @@ export interface CustomProperty {
     type: string;
   };
 }
-
-const parseMetricExtension = (value: string): Record<string, unknown> => {
-  const extension: unknown = JSON.parse(value);
-
-  if (
-    extension === null ||
-    typeof extension !== 'object' ||
-    Array.isArray(extension)
-  ) {
-    throw new Error('Metric extension must be a JSON object');
-  }
-
-  return extension as Record<string, unknown>;
-};
-
-export const setMetricCustomPropertyValue = async ({
-  page,
-  propertyName,
-  value,
-}: {
-  page: Page;
-  propertyName: string;
-  value: string;
-}) => {
-  await page.getByTestId('edit-metric-metadata').click();
-
-  const dialog = page.getByTestId('metric-metadata-edit-dialog');
-  const extensionInput = dialog
-    .getByTestId('metric-extension-json')
-    .getByRole('textbox');
-
-  await expect(dialog).toBeVisible();
-  await expect(extensionInput).toBeVisible();
-
-  const currentExtension = parseMetricExtension(
-    await extensionInput.inputValue()
-  );
-  const updatedExtension = {
-    ...currentExtension,
-    [propertyName]: value,
-  };
-
-  await extensionInput.fill(JSON.stringify(updatedExtension, null, 2));
-
-  const patchRequest = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/metrics/') &&
-      response.request().method() === 'PATCH'
-  );
-
-  await dialog.getByTestId('save-metric-metadata').click();
-
-  const patchResponse = await patchRequest;
-  const responseBody = await patchResponse.json();
-
-  expect(patchResponse.status()).toBe(200);
-  expect(responseBody).toMatchObject({
-    extension: updatedExtension,
-  });
-  await expect(dialog).toBeHidden();
-  await expect(
-    page.getByTestId(`metric-custom-property-${propertyName}`)
-  ).toContainText(value);
-};
 
 export const fillTableColumnInputDetails = async (
   page: Page,
@@ -205,7 +143,8 @@ export const setValueForProperty = async (data: {
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await expect(page.locator(descriptionBox)).toBeVisible();
+      await expect(getDescriptionBox(page)).toHaveCount(1);
+      await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -832,8 +771,9 @@ export const addCustomPropertiesForEntity = async ({
     page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
 
-  await page.locator(descriptionBox).waitFor({ state: 'visible' });
-  await page.locator(descriptionBox).click();
+  await getDescriptionBox(page).waitFor({ state: 'visible' });
+  await expect(getDescriptionBox(page)).toHaveCount(1);
+  await getDescriptionBox(page).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
   // Click on name field to blur description and trigger validation without closing modal
@@ -902,8 +842,8 @@ export const editCreatedProperty = async (
   await page.fill('[data-testid="display-name"]', '');
   await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
 
-  await page.locator(descriptionBox).fill('');
-  await page.locator(descriptionBox).fill('This is new description');
+  await fillDescriptionBox(page, '');
+  await fillDescriptionBox(page, 'This is new description');
 
   if (type === 'Enum') {
     await page.click(String.raw`#root\/customPropertyConfig`);
@@ -1392,7 +1332,8 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   switch (propertyType) {
     case 'markdown':
-      await expect(page.locator(descriptionBox)).toBeVisible();
+      await expect(getDescriptionBox(page)).toHaveCount(1);
+      await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();

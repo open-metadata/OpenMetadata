@@ -68,6 +68,7 @@ function resolve(name, defs, seen = new Set()) {
 
 const GROUPS = [
   { key: /^--om-space-/, title: 'Spacing', note: 'padding / margin / gap. See foundations/spacing.md.' },
+  { key: /^--om-page-/, title: 'Layout', note: 'Shared viewport and shell-derived dimensions.' },
   { key: /^--om-radius-/, title: 'Radius', note: 'border-radius. See foundations/radius.md.' },
   { key: /^--om-font-size-/, title: 'Font size', note: 'font-size. See foundations/typography.md.' },
   { key: /^--om-font-weight-/, title: 'Font weight', note: 'font-weight.' },

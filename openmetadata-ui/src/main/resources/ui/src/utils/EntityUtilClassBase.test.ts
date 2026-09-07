@@ -433,17 +433,4 @@ describe('EntityUtilClassBase', () => {
       expect(entityUtil.getEntityTypes()).not.toContain('aiAutomation');
     });
   });
-
-  describe('shouldShowEntityStatus', () => {
-    it('shows the status badge for metrics, which run an approval workflow', () => {
-      expect(entityUtil.shouldShowEntityStatus(EntityType.METRIC)).toBe(true);
-    });
-
-    it('hides it for entities with no approval workflow', () => {
-      expect(entityUtil.shouldShowEntityStatus(EntityType.TABLE)).toBe(false);
-      expect(entityUtil.shouldShowEntityStatus(EntityType.DASHBOARD)).toBe(
-        false
-      );
-    });
-  });
 });

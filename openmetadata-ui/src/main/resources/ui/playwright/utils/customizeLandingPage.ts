@@ -621,26 +621,31 @@ export const verifyWidgetEntityNavigation = async (
     altApiResponseUrl?: string;
   }
 ) => {
-  // Wait for API response matching the search query with timeout fallback
-  const response = Promise.race([
-    page.waitForResponse((response) => {
-      // Check primary API URL
-      if (response.url().includes(apiResponseUrl)) {
-        if (Array.isArray(searchQuery)) {
-          return searchQuery.every((query) => response.url().includes(query));
+  // Wait for the API response matching the search query, but tolerate it never
+  // arriving: waitForResponse's own timeout replaces the Promise.race against a
+  // fixed waitForTimeout, and .catch keeps the previous behaviour of continuing
+  // rather than failing when nothing matches inside the budget.
+  const response = page
+    .waitForResponse(
+      (response) => {
+        // Check primary API URL
+        if (response.url().includes(apiResponseUrl)) {
+          if (Array.isArray(searchQuery)) {
+            return searchQuery.every((query) => response.url().includes(query));
+          }
+          return response.url().includes(searchQuery);
         }
-        return response.url().includes(searchQuery);
-      }
 
-      // Check alternative API URL (for Task API migration)
-      if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
-        return true;
-      }
+        // Check alternative API URL (for Task API migration)
+        if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
+          return true;
+        }
 
-      return false;
-    }),
-    page.waitForTimeout(10000),
-  ]);
+        return false;
+      },
+      { timeout: 10_000 }
+    )
+    .catch(() => null);
 
   await redirectToHomePage(page);
 

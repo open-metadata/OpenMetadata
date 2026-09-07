@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toast } from '@openmetadata/ui-core-components';
 import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  InfoCircle,
-} from '@untitledui/icons';
+  ExclamationCircleOutlined,
+  InfoCircleOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
+import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
-import type { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
+import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
+import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
@@ -29,35 +29,35 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {
     case 'info':
       return {
-        icon: InfoCircle,
+        icon: InfoCircleOutlined,
         className: 'info',
         type: 'info',
       };
 
     case 'grey-info':
       return {
-        icon: InfoCircle,
+        icon: InfoCircleOutlined,
         className: 'grey-info',
         type: 'info',
       };
 
     case 'success':
       return {
-        icon: CheckCircle,
+        icon: SuccessIcon,
         className: 'success',
         type: 'success',
       };
 
     case 'warning':
       return {
-        icon: AlertTriangle,
+        icon: WarningOutlined,
         className: 'warning',
         type: 'warning',
       };
 
     case 'error':
       return {
-        icon: AlertCircle,
+        icon: ExclamationCircleOutlined,
         className: 'error',
         type: 'error',
       };
@@ -69,6 +69,75 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
         type: 'info',
       };
   }
+};
+
+interface AxiosErrorResolution {
+  errorMessage: string | JSX.Element;
+  isRuleViolation: boolean;
+  shouldSuppress: boolean;
+}
+
+// Pulled out of showErrorToast's 'config'/'response' branch: resolves the
+// display message plus whether the toast should be a warning (rule
+// violation) or suppressed entirely (unauthorized/forbidden GET, unless the
+// message calls out a principal-domain issue).
+const resolveAxiosErrorMessage = (
+  error: AxiosError,
+  fallbackText?: string
+): AxiosErrorResolution => {
+  const method = error.config?.method?.toUpperCase();
+  const fallback =
+    fallbackText && fallbackText.length > 0
+      ? fallbackText
+      : i18n.t('server.unexpected-error');
+  const errorMessage = getErrorText(error, fallback);
+  const isRuleViolation =
+    get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
+  const isUnauthorizedOrForbiddenGet =
+    error.response?.status === ClientErrors.UNAUTHORIZED ||
+    (error.response?.status === ClientErrors.FORBIDDEN && method === 'GET');
+  const shouldSuppress = Boolean(
+    error &&
+      isUnauthorizedOrForbiddenGet &&
+      !errorMessage.includes('principal domain')
+  );
+
+  return { errorMessage, isRuleViolation, shouldSuppress };
+};
+
+// Pulled out of showErrorToast: resolves the display message plus the
+// rule-violation/suppress flags for every accepted `error` shape (JSX
+// element, plain string, or AxiosError), so the toast function itself only
+// has to act on the resolved result.
+const resolveErrorDetails = (
+  error: AxiosError | string | JSX.Element,
+  fallbackText?: string
+): AxiosErrorResolution => {
+  if (React.isValidElement(error)) {
+    return {
+      errorMessage: error,
+      isRuleViolation: false,
+      shouldSuppress: false,
+    };
+  }
+
+  if (isString(error)) {
+    return {
+      errorMessage: error.toString(),
+      isRuleViolation: false,
+      shouldSuppress: false,
+    };
+  }
+
+  if ('config' in error && 'response' in error) {
+    return resolveAxiosErrorMessage(error, fallbackText);
+  }
+
+  return {
+    errorMessage: fallbackText ?? i18n.t('server.unexpected-error'),
+    isRuleViolation: false,
+    shouldSuppress: false,
+  };
 };
 
 /**
@@ -83,33 +152,15 @@ export const showErrorToast = (
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string | JSX.Element>) => void
 ) => {
-  let errorMessage;
-  let isRuleViolation = false;
-  if (React.isValidElement(error)) {
-    errorMessage = error;
-  } else if (isString(error)) {
-    errorMessage = error.toString();
-  } else if ('config' in error && 'response' in error) {
-    const method = error.config?.method?.toUpperCase();
-    const fallback =
-      fallbackText && fallbackText.length > 0
-        ? fallbackText
-        : i18n.t('server.unexpected-error');
-    errorMessage = getErrorText(error, fallback);
-    isRuleViolation =
-      get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
-    if (
-      error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
-          method === 'GET')) &&
-      !errorMessage.includes('principal domain')
-    ) {
-      return;
-    }
-  } else {
-    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
+  const { errorMessage, isRuleViolation, shouldSuppress } = resolveErrorDetails(
+    error,
+    fallbackText
+  );
+
+  if (shouldSuppress) {
+    return;
   }
+
   callback && callback(errorMessage);
 
   if (isRuleViolation) {

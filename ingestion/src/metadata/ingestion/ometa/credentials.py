@@ -14,13 +14,12 @@ for the OpenMetadata Python API
 """
 
 import os
-from typing import Tuple  # noqa: UP035
 
 import dateutil.parser
 
 from metadata.utils.logger import ometa_logger
 
-Credentials = Tuple[str, str, str]  # noqa: UP006
+Credentials = tuple[str, str, str]
 
 logger = ometa_logger()
 

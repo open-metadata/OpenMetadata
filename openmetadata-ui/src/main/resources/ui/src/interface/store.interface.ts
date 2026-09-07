@@ -10,24 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type {
+import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import type { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import type {
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import {
   EntityUnion,
   ExploreSearchIndex,
 } from '../components/Explore/ExplorePage.interface';
-import type { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import type { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
-import type { LineageSettings } from '../generated/configuration/lineageSettings';
-import type { LoginConfiguration } from '../generated/configuration/loginConfiguration';
-import type { LogoConfiguration } from '../generated/configuration/logoConfiguration';
-import type { SearchSettings } from '../generated/configuration/searchSettings';
-import type { UIThemePreference } from '../generated/configuration/uiThemePreference';
-import type { User } from '../generated/entity/teams/user';
-import type { EntityReference } from '../generated/entity/type';
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
+import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
+import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { SearchSettings } from '../generated/configuration/searchSettings';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { User } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/entity/type';
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;

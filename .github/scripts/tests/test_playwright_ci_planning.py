@@ -193,66 +193,14 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
-def test_checked_in_baseline_augments_downloaded_history(tmp_path):
-    planner = load_script("build_playwright_shards")
-    downloaded = tmp_path / "downloaded.json"
-    baseline = tmp_path / "timing-baseline.json"
-    downloaded.write_text(
-        json.dumps(
-            {
-                "mode": "full",
-                "tests": [
-                    {
-                        "id": "existing-test",
-                        "file": "Features/Existing.spec.ts",
-                        "title": "existing test",
-                        "durationMs": 100,
-                    }
-                ],
-            }
-        )
-    )
-    baseline.write_text(
-        json.dumps(
-            {
-                "mode": "full",
-                "tests": [
-                    {
-                        "id": "existing-test",
-                        "file": "Features/Existing.spec.ts",
-                        "title": "existing test",
-                        "durationMs": 900,
-                    },
-                    {
-                        "id": "new-test",
-                        "file": "Features/New.spec.ts",
-                        "title": "new test",
-                        "durationMs": 200,
-                    }
-                ],
-            }
-        )
-    )
-
-    weights, identity_weights = planner.load_history_with_baseline(
-        [downloaded], baseline
-    )
-
-    assert weights == {"existing-test": 100, "new-test": 200}
-    assert identity_weights[("Features/Existing.spec.ts", "existing test")] == 100
-    assert identity_weights[("Features/New.spec.ts", "new test")] == 200
-    assert planner.load_history_with_baseline([downloaded, baseline], baseline) == (
-        weights,
-        identity_weights,
-    )
-
-
 def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
-    tmp_path,
+    tmp_path, monkeypatch
 ):
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
-    baseline = tmp_path / "timing-baseline.json"
+    baseline = tmp_path / planner.CHECKED_IN_BASELINE
+    baseline.parent.mkdir(parents=True)
+    monkeypatch.setattr(planner, "SPEC_ROOT_CANDIDATES", (tmp_path,))
     history.write_text(
         json.dumps(
             {
@@ -290,8 +238,9 @@ def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
         )
     )
 
-    weights, identity_weights = planner.load_history_with_baseline(
-        [history], baseline
+    weights, identity_weights = planner.load_history([history])
+    planner.backfill_from_checked_in_baseline(
+        [history], weights, identity_weights
     )
 
     assert weights == {"existing-test": 200, "new-test": 700}
@@ -2241,6 +2190,35 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
     assert "Ingestion" in mapping["projects"]
     assert "tag: '@ingestion'" in schema_search
+
+
+def test_scheduler_impact_mapping_covers_shared_consumers():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    scheduler_source = (
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/"
+        "AddIngestion/Steps/ScheduleInterval*"
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if scheduler_source in entry["sources"]
+    )
+
+    assert mapping["projects"] == [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "Data Insight",
+    ]
+    assert {
+        "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+    }.issubset(mapping["specs"])
 
 
 def test_permission_impact_mapping_includes_ingestion_project():

@@ -38,6 +38,7 @@ import {
 import {
   clickOutside,
   descriptionBox,
+  fillDescriptionBox,
   getAuthContext,
   getRandomLastName,
   getToken,
@@ -482,21 +483,11 @@ test.describe('Glossary tests', () => {
         page1.locator('.ant-popover:not(.ant-popover-hidden)')
       ).toHaveCount(0);
 
+      const taskResolve2 = page1.waitForResponse('/api/v1/tasks/*/resolve');
       await page1
         .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
         .click();
-      await page1
-        .getByTestId('glossary-term-reject-comment')
-        .getByRole('textbox')
-        .fill('Rejected by glossary reviewer');
-      const taskResolve2 = page1.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/tasks/') &&
-          response.url().endsWith('/resolve') &&
-          response.request().method() === 'POST'
-      );
-      await page1.getByTestId('confirm-reject-glossary-term').click();
-      expect((await taskResolve2).ok()).toBe(true);
+      await taskResolve2;
 
       await expect(
         page1.getByTestId(`${glossary1.data.terms[1].data.name}`)
@@ -2398,7 +2389,7 @@ test.describe('Glossary tests', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillDescriptionBox(page, glossary.data.description);
 
       await page.click('[data-testid="tag-selector"]');
       await page.fill(
@@ -2501,9 +2492,7 @@ test.describe('Glossary tests', () => {
 
       const childTermName = `ChildTerm_${uuid()}`;
       await page.getByTestId('name').fill(childTermName);
-      await page
-        .locator(descriptionBox)
-        .fill('Child term created via row action');
+      await fillDescriptionBox(page, 'Child term created via row action');
 
       const createRes = page.waitForResponse(
         (response) =>
@@ -2714,9 +2703,10 @@ test.describe('Glossary tests', () => {
 
       const termName = `P1Term_${uuid()}`;
       await page.getByTestId('name').fill(termName);
-      await page
-        .locator(descriptionBox)
-        .fill('Term created with multiple optional fields');
+      await fillDescriptionBox(
+        page,
+        'Term created with multiple optional fields'
+      );
 
       const termModal = page.locator('.edit-glossary-modal');
       const tagsSelect = termModal.locator('[data-testid="tag-selector"]');

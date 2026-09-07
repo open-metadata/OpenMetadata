@@ -16,8 +16,6 @@ import { isEmpty } from 'lodash';
 import { BrowserRouter } from 'react-router-dom';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
-import type { Metric } from '../generated/entity/data/metric';
-import { Language } from '../generated/entity/data/metric';
 import { Column } from '../generated/entity/data/table';
 import {
   getHighlightOfListItem,
@@ -59,14 +57,6 @@ jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
     'columns.description',
     'columns.children.name',
   ],
-}));
-
-jest.mock('../hooks/useEntityRules', () => ({
-  useEntityRules: jest.fn().mockReturnValue({
-    entityRules: {},
-    isLoading: false,
-    rules: [],
-  }),
 }));
 
 jest.mock('../components/Database/SchemaEditor/SchemaEditor', () => {
@@ -308,26 +298,6 @@ describe('EntitySummaryPanelUtils tests', () => {
           'label.code'
         );
       });
-    });
-
-    it('renders the supplied metric expression in the summary', async () => {
-      const metric = {
-        id: 'metric-id',
-        name: 'gross_margin',
-        fullyQualifiedName: 'gross_margin',
-        metricExpression: {
-          code: 'SUM(profit) / SUM(revenue)',
-          language: Language.SQL,
-        },
-      } as Metric;
-
-      const result = getEntityChildDetails(EntityType.METRIC, metric);
-
-      renderWithRouter(result as JSX.Element);
-
-      expect(await screen.findByTestId('code-component')).toHaveTextContent(
-        'SUM(profit) / SUM(revenue)'
-      );
     });
   });
 });

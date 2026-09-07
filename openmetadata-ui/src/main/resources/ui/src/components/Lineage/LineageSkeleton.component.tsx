@@ -10,35 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Skeleton } from '@openmetadata/ui-core-components';
-import { useTranslation } from 'react-i18next';
+import { Skeleton, Space } from 'antd';
+import './LineageSkeleton.less';
 
-const LINEAGE_SKELETON_NODE_COUNT = 3;
-
+/**
+ * In-canvas placeholder for the {@link Lineage} React Flow graph while node data is loading.
+ *
+ * The original loader was a centered spinner inside a `loading-card` div — visually correct but
+ * gives no hint of the upcoming content. This skeleton sketches a row of node-shaped cards
+ * connected by a thin line so the user perceives "graph is coming" rather than "loading".
+ *
+ * Styling lives in {@link LineageSkeleton.less} so we can reference design tokens
+ * (`--ant-color-border-secondary`, `--ant-color-bg-container`) and stay consistent with the
+ * rest of the codebase's Less-based theming.
+ */
 export const LineageSkeleton = () => {
-  const { t } = useTranslation();
-
   return (
-    <Box
-      align="center"
-      aria-label={t('label.loading')}
-      className="loading-card tw:min-h-80 tw:justify-center"
-      data-testid="lineage-skeleton"
-      role="status">
-      <Box className="tw:w-full" gap={6} justify="center" wrap="wrap">
-        {Array.from({ length: LINEAGE_SKELETON_NODE_COUNT }, (_, index) => (
-          <Box
-            className="tw:min-w-44 tw:bg-primary tw:rounded-lg tw:border tw:border-secondary tw:p-4"
-            data-testid="lineage-skeleton-node"
-            direction="col"
-            gap={3}
-            key={index}>
-            <Skeleton height={16} variant="rounded" width="60%" />
-            <Skeleton height={14} variant="rounded" width="80%" />
-          </Box>
+    <div className="loading-card lineage-skeleton">
+      <Space align="center" size={24}>
+        {[0, 1, 2].map((i) => (
+          <div className="lineage-skeleton-node" key={i}>
+            <Skeleton
+              active
+              paragraph={{ rows: 1, width: ['80%'] }}
+              title={{ width: '60%' }}
+            />
+          </div>
         ))}
-      </Box>
-    </Box>
+      </Space>
+    </div>
   );
 };
 

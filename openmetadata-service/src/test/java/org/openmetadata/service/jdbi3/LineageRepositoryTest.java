@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -37,9 +36,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.data.MetricDimension;
-import org.openmetadata.schema.api.data.MetricMeasure;
-import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
@@ -897,57 +893,5 @@ class LineageRepositoryTest {
     org.mockito.Mockito.verify(relationshipDAO)
         .deleteLineageBySourcePipeline(
             entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
-  }
-
-  @Test
-  void metricChildNamesPreserveDimensionAndMeasureNamespaces() {
-    Metric metric =
-        new Metric()
-            .withFullyQualifiedName("revenue")
-            .withDimensions(
-                List.of(
-                    new MetricDimension()
-                        .withName("region")
-                        .withFullyQualifiedName("revenue.dimension.region"),
-                    new MetricDimension()
-                        .withName("foreign")
-                        .withFullyQualifiedName("anotherMetric.dimension.foreign")))
-            .withMeasures(
-                List.of(
-                    new MetricMeasure()
-                        .withName("amount")
-                        .withFullyQualifiedName("revenue.measure.amount")));
-
-    assertEquals(
-        Set.of("dimension.region", "measure.amount"), LineageRepository.metricChildNames(metric));
-  }
-
-  @Test
-  void relationshipWritesRetryTransientDeadlocks() {
-    Runnable relationshipWrite = mock(Runnable.class);
-    doThrow(new RuntimeException("Deadlock found when trying to get lock"))
-        .doNothing()
-        .when(relationshipWrite)
-        .run();
-
-    assertDoesNotThrow(
-        () -> LineageRepository.executeRelationshipWriteWithDeadlockRetry(relationshipWrite));
-
-    verify(relationshipWrite, times(2)).run();
-  }
-
-  @Test
-  void relationshipWritesDoNotRetryOtherFailures() {
-    Runnable relationshipWrite = mock(Runnable.class);
-    RuntimeException failure = new RuntimeException("Relationship validation failed");
-    doThrow(failure).when(relationshipWrite).run();
-
-    RuntimeException thrown =
-        assertThrows(
-            RuntimeException.class,
-            () -> LineageRepository.executeRelationshipWriteWithDeadlockRetry(relationshipWrite));
-
-    assertSame(failure, thrown);
-    verify(relationshipWrite).run();
   }
 }

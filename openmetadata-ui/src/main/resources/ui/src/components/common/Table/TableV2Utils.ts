@@ -20,46 +20,6 @@ import type {
 } from './Table.interface';
 import type { FlatRow } from './TableV2.interface';
 
-/**
- * Resolves an aria selection back to the caller's row keys and records.
- *
- * Tree tables resolve against the flattened visible rows rather than the top-level data source:
- * an expanded child is nested inside its parent record, so a top-level scan silently drops it.
- * Select-all is the worst case — aria checks every visible row, so reporting only the roots would
- * hand a bulk action a shorter list than the user can see is selected.
- */
-export function resolveSelectedRows<T>({
-  selection,
-  isTree,
-  flatRows,
-  dataSource,
-  getRowKey,
-}: {
-  selection: 'all' | Iterable<string | number>;
-  isTree: boolean;
-  flatRows: FlatRow<T>[];
-  dataSource: T[];
-  getRowKey: (record: T, index: number) => string;
-}): { selectedKeys: string[]; selectedRows: T[] } {
-  const selectableKeys = isTree
-    ? flatRows.map((row) => row.rowKey)
-    : dataSource.map((record, index) => getRowKey(record, index));
-
-  const selectedKeys =
-    selection === 'all' ? selectableKeys : [...selection].map(String);
-  const selectedKeySet = new Set(selectedKeys);
-
-  const selectedRows = isTree
-    ? flatRows
-        .filter((row) => selectedKeySet.has(row.rowKey))
-        .map((row) => row.record)
-    : dataSource.filter((record, index) =>
-        selectedKeySet.has(getRowKey(record, index))
-      );
-
-  return { selectedKeys, selectedRows };
-}
-
 export function flattenTreeRows<T>(
   data: T[],
   getRowKey: (r: T, i: number) => string,
@@ -106,15 +66,17 @@ export function resolveCellValue<T>(
   index: number
 ): ReactNode {
   const { dataIndex, render } = col;
-  const rawValue = Array.isArray(dataIndex)
-    ? dataIndex.reduce(
-        (obj: unknown, key) =>
-          (obj as Record<string, unknown>)?.[key as string],
-        record as unknown
-      )
-    : typeof dataIndex === 'string'
-    ? (record as Record<string, unknown>)[dataIndex]
-    : undefined;
+  let rawValue: unknown;
+  if (Array.isArray(dataIndex)) {
+    rawValue = dataIndex.reduce(
+      (obj: unknown, key) => (obj as Record<string, unknown>)?.[key as string],
+      record as unknown
+    );
+  } else if (typeof dataIndex === 'string') {
+    rawValue = (record as Record<string, unknown>)[dataIndex];
+  } else {
+    rawValue = undefined;
+  }
 
   if (render) {
     const rendered = render(rawValue, record, index);
@@ -175,4 +137,130 @@ export function getColumnStickyStyle(
   }
 
   return {};
+}
+
+/** Header cell style: sized to its share of the table plus any sticky offset. */
+export function getColumnHeaderStyle(
+  colWidth: number | string | undefined,
+  scrollWidth: number | string | undefined,
+  toColumnWidth: (
+    width: number | string | undefined
+  ) => number | string | undefined,
+  resizableColumns: boolean | undefined,
+  stickyStyle: React.CSSProperties
+): React.CSSProperties {
+  return {
+    ...(colWidth !== undefined
+      ? {
+          width: toColumnWidth(colWidth),
+          ...(scrollWidth !== undefined && typeof colWidth === 'number'
+            ? { minWidth: colWidth }
+            : {}),
+        }
+      : {}),
+    ...(resizableColumns ? { position: 'relative' as const } : {}),
+    ...stickyStyle,
+  };
+}
+
+/** Cell width, matching a header's sizing so columns stay aligned with their cells. */
+export function getCellWidthStyle<T>(
+  cellKey: string,
+  columnWidths: Record<string, number>,
+  colType: ColumnType<T>,
+  scrollWidth: number | string | undefined,
+  toColumnWidth: (
+    width: number | string | undefined
+  ) => number | string | undefined
+): React.CSSProperties {
+  const hasWidth =
+    columnWidths[cellKey] !== undefined || colType.width !== undefined;
+
+  if (!hasWidth) {
+    return {};
+  }
+
+  return {
+    width: toColumnWidth(columnWidths[cellKey] ?? (colType.width as number)),
+    // Scrollable pixel columns only — see the header cell.
+    ...(scrollWidth !== undefined && typeof colType.width === 'number'
+      ? { minWidth: colType.width }
+      : {}),
+  };
+}
+
+/**
+ * `table-fixed`/`table-auto` toggle: resizing always needs fixed (an auto
+ * table re-solves its own widths and swallows the drag); otherwise honour an
+ * explicit `tableLayout`, defaulting to fixed unless the table is sized by
+ * content.
+ */
+export function getTableLayoutClasses(
+  resizableColumns: boolean | undefined,
+  tableLayout: string | undefined,
+  sizeByContent: boolean
+): { fixed: boolean | undefined; auto: boolean | undefined } {
+  return {
+    fixed: resizableColumns || (tableLayout !== 'auto' && !sizeByContent),
+    auto: !resizableColumns && (tableLayout === 'auto' || sizeByContent),
+  };
+}
+
+export function getTableContainerStyle(
+  scrollY: string | number | undefined
+): React.CSSProperties | undefined {
+  return scrollY ? { maxHeight: scrollY, overflowY: 'auto' } : undefined;
+}
+
+export function getTableWidthStyle(
+  scrollWidth: number | string | undefined
+): React.CSSProperties | undefined {
+  return scrollWidth !== undefined
+    ? { width: scrollWidth, minWidth: '100%' }
+    : undefined;
+}
+
+export function getSelectedKeysSet(
+  selectedRowKeys: React.Key[] | undefined
+): Set<string> | undefined {
+  return selectedRowKeys ? new Set(selectedRowKeys.map(String)) : undefined;
+}
+
+export function getSortDescriptorProp(effectiveSort: {
+  columnKey: string | null;
+  direction: 'ascending' | 'descending' | null;
+}): { column: string; direction: 'ascending' | 'descending' } | undefined {
+  return effectiveSort.columnKey && effectiveSort.direction
+    ? { column: effectiveSort.columnKey, direction: effectiveSort.direction }
+    : undefined;
+}
+
+/**
+ * `scroll.x` only counts as a width when it is one — AntD accepts
+ * `scroll={{ x: true }}` to mean "allow sideways scroll, size by content".
+ */
+export function resolveScrollWidth(
+  scrollX: string | number | boolean | undefined
+): string | number | undefined {
+  return typeof scrollX === 'number' || typeof scrollX === 'string'
+    ? scrollX
+    : undefined;
+}
+
+export function resolveShowClientPagination(
+  clientPagination: {
+    hideOnSinglePage: boolean;
+    pageSize: number;
+    serverTotal?: number;
+  } | null,
+  filteredDataSourceLength: number
+): boolean {
+  return Boolean(
+    clientPagination &&
+      !(
+        clientPagination.hideOnSinglePage &&
+        (clientPagination.serverTotal ?? filteredDataSourceLength) <=
+          clientPagination.pageSize
+      )
+  );
 }
