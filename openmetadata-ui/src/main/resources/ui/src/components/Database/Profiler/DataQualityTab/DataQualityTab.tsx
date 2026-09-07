@@ -116,6 +116,28 @@ const getColumnLayoutStyle = (
   };
 };
 
+/**
+ * Row-level action permissions for the actions cell. Extracted from `getActionCellConfig` so
+ * the boolean short-circuits live in their own complexity scope.
+ */
+const getRowActionPermissions = (
+  testCasePermission: TestCasePermission | undefined,
+  isEditAllowed: boolean,
+  canRemoveFromTestSuite?: boolean
+) => {
+  const flags = getDerivedPermissionFlags(
+    testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+  );
+
+  return {
+    edit: isEditAllowed || flags.canEditAll,
+    delete: Boolean(canRemoveFromTestSuite || flags.canDelete),
+    // Restore is offered on a soft-deleted row, so this must NOT be deleted-gated
+    // (mirrors DataAssetsHeader's `ungatedFlags` precedent for the same reason).
+    restore: flags.canEditAll,
+  };
+};
+
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,
@@ -578,17 +600,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         permission.fullyQualifiedName === record.fullyQualifiedName
     );
 
-    const testCaseEditPermission =
-      isEditAllowed ||
-      getDerivedPermissionFlags(testCasePermission ?? DEFAULT_ENTITY_PERMISSION)
-        .canEditAll;
-    const testCaseDeletePermission =
-      removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
-    // Restore is offered on a soft-deleted row, so this must NOT be deleted-gated
-    // (mirrors DataAssetsHeader's `ungatedFlags` precedent for the same reason).
-    const testCaseRestorePermission = getDerivedPermissionFlags(
-      testCasePermission ?? DEFAULT_ENTITY_PERMISSION
-    ).canEditAll;
+    const {
+      edit: testCaseEditPermission,
+      delete: testCaseDeletePermission,
+      restore: testCaseRestorePermission,
+    } = getRowActionPermissions(
+      testCasePermission,
+      isEditAllowed,
+      removeFromTestSuite?.isAllowed
+    );
     const isRestoreMode =
       deletionMode === TEST_CASE_DELETION_MODE.SOFT && record.deleted;
 
