@@ -236,6 +236,48 @@ class TestAirflow(TestCase):
             ],
         )
 
+    def test_parsing_mapped_task_xlets(self):
+        mapped_task = {
+            "task_id": "mapped",
+            "_is_mapped": True,
+            "_task_type": "EmptyOperator",
+            "partial_kwargs": {
+                "inlets": [
+                    {
+                        "__var": {
+                            "tables": ["my_service.my_database.my_schema.input_table"]
+                        },
+                        "__type": "dict",
+                    }
+                ],
+                "outlets": [
+                    {
+                        "__var": {
+                            "tables": ["my_service.my_database.my_schema.output_table"]
+                        },
+                        "__type": "dict",
+                    }
+                ],
+            },
+        }
+
+        task = AirflowTask(**mapped_task)
+
+        assert task.inlets == mapped_task["partial_kwargs"]["inlets"]
+        assert task.outlets == mapped_task["partial_kwargs"]["outlets"]
+
+    def test_parsing_top_level_xlets_win_over_partial_kwargs(self):
+        task = AirflowTask(
+            task_id="plain",
+            _outlets=[{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}],
+            partial_kwargs={
+                "outlets": [{"__var": {"tables": ["w.x.y.z"]}, "__type": "dict"}]
+            },
+        )
+
+        assert task.outlets == [{"__var": {"tables": ["a.b.c.d"]}, "__type": "dict"}]
+        assert task.inlets is None
+
     def test_get_dag_owners(self):
         """Test DAG owner extraction from tasks"""
         data = SERIALIZED_DAG["dag"]
