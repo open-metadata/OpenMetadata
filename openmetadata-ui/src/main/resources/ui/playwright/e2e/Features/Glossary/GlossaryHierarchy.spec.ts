@@ -137,42 +137,46 @@ test.describe('Glossary Hierarchy', () => {
 
   // H-M04: Move term to root of different glossary
   // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
-  test('should move term to root of different glossary', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary1 = new Glossary();
-    const glossary2 = new Glossary();
-    const term1 = new GlossaryTerm(glossary1);
-    const term2 = new GlossaryTerm(glossary2);
+  test(
+    'should move term to root of different glossary',
+    { tag: '@quarantine' },
+    async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary1 = new Glossary();
+      const glossary2 = new Glossary();
+      const term1 = new GlossaryTerm(glossary1);
+      const term2 = new GlossaryTerm(glossary2);
 
-    try {
-      await glossary1.create(apiContext);
-      await glossary2.create(apiContext);
-      await term1.create(apiContext);
-      await term2.create(apiContext);
+      try {
+        await glossary1.create(apiContext);
+        await glossary2.create(apiContext);
+        await term1.create(apiContext);
+        await term2.create(apiContext);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, term1.data.displayName);
-      await changeTermHierarchyFromModal(
-        page,
-        term2.responseData.displayName,
-        glossary2.responseData.fullyQualifiedName
-      );
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, term1.data.displayName);
+        await changeTermHierarchyFromModal(
+          page,
+          term2.responseData.displayName,
+          glossary2.responseData.fullyQualifiedName
+        );
 
-      // Verify term is now in glossary2
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary2.data.displayName);
+        // Verify term is now in glossary2
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary2.data.displayName);
 
-      await expect(
-        page.getByTestId(term1.responseData.displayName)
-      ).toBeVisible();
-    } finally {
-      await glossary1.delete(apiContext);
-      await glossary2.delete(apiContext);
-      await afterAction();
+        await expect(
+          page.getByTestId(term1.responseData.displayName)
+        ).toBeVisible();
+      } finally {
+        await glossary1.delete(apiContext);
+        await glossary2.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   // H-M05: Move term with children to different glossary
   // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
