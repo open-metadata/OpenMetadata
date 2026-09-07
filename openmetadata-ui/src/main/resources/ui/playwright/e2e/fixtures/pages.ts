@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, Page, test as base } from '@playwright/test';
+import { Browser, Page } from '@playwright/test';
+import { test as base } from '../../support/fixtures/base';
+import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { disableEtagConditionalReads } from '../../utils/common';
 
 // Define the type for our custom fixtures
@@ -29,6 +31,7 @@ export type CustomFixtures = {
 // always receive fresh entity state.
 const openRolePage = async (browser: Browser, storageState: string) => {
   const page = await browser.newPage({ storageState });
+  await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
 
   return page;

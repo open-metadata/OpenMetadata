@@ -24,9 +24,12 @@ import DirectoryChildrenTable from './DirectoryChildrenTable';
 
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../Customization/GenericProvider/GenericContext');
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div data-testid="error-placeholder">No data</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest.fn(() => (
+    <div data-testid="error-placeholder">No data</div>
+  )),
+}));
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest.fn(({ markdown }) => (
     <div data-testid="rich-text-previewer">{markdown}</div>

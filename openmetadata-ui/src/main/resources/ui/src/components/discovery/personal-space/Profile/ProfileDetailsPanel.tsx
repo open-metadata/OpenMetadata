@@ -26,12 +26,14 @@ import { User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import ChangePasswordRow from './components/ChangePasswordRow';
 import DefaultPersonaRow from './components/DefaultPersonaRow';
 import DomainsRow from './components/DomainsRow';
 import FieldRow from './components/FieldRow';
 import InlineEditCard from './components/InlineEditCard';
 import PersonaRow from './components/PersonaRow';
 import RowSkeleton from './components/RowSkeleton';
+import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 
 interface ProfileDetailsPanelProps {
   userData: User;
@@ -144,10 +146,15 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, authConfig } = useApplicationStore();
   const displayName = getEntityName(userData) || userData.name;
   const isSelf = currentUser?.name === userData.name;
   const canEditName = (Boolean(isAdminUser) || isSelf) && !userData.deleted;
+  const canChangePassword = canUserChangePassword({
+    provider: authConfig?.provider,
+    isSelf,
+    isDeleted: userData.deleted,
+  });
 
   return (
     <Box data-testid="profile-details-panel" direction="col" gap={6}>
@@ -192,6 +199,14 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
           </Box>
         </ReadOnlyRow>
       </ProfileSection>
+
+      {canChangePassword && (
+        <ProfileSection
+          testId="profile-section-security"
+          title={t('label.security')}>
+          <ChangePasswordRow username={userData.name} />
+        </ProfileSection>
+      )}
 
       <ProfileSection
         testId="profile-section-identity"

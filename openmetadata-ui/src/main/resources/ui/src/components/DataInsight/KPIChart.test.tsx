@@ -16,6 +16,15 @@ import { act } from 'react-test-renderer';
 import { KPI_LIST } from '../../pages/KPIPage/KPIMock.mock';
 import KPIChart from './KPIChart';
 
+jest.mock('../../hooks/insights/useDataInsightChartColors', () => ({
+  useDataInsightChartColors: jest.fn().mockReturnValue({
+    axis: '#123456',
+    dataInsightSeries: ['#234567'],
+    grid: '#345678',
+    inactive: '#456789',
+  }),
+}));
+
 jest.mock('../../rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()

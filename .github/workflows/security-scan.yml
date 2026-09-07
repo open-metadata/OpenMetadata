@@ -163,6 +163,8 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     environment: security-scan
+    permissions:
+      contents: read
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       SNYK_ORGANIZATION: ${{ secrets.SNYK_ORGANIZATION_ID }}
@@ -281,6 +283,11 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     environment: security-scan
+    # Same-run download-artifact needs no GITHUB_TOKEN scope; actions: read is the
+    # margin, since both downloads are continue-on-error and would fail silently.
+    # Slack posts with SLACK_BOT_TOKEN, not GITHUB_TOKEN. Everything else is none.
+    permissions:
+      actions: read
     needs: [vulnerability-scan, security-scan]
     if: always()
     steps:

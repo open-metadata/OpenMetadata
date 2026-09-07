@@ -14,8 +14,8 @@ Databricks pipeline source to extract metadata
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -102,14 +102,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
         super().__init__(config, metadata)
         # Cache for Databricks services to avoid repeated API calls
         self._databricks_services_cached = False
-        self._databricks_services: List[str] = []  # noqa: UP006
+        self._databricks_services: list[str] = []
 
         # bounded so a large workspace cannot grow these without limit
         self._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
         self._dlt_table_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksPipelineConnection = config.serviceConnection.root.config
@@ -146,7 +146,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
         return None
 
-    def get_pipeline_name(self, pipeline_details: DataBrickPipelineDetails) -> Optional[str]:  # noqa: UP045
+    def get_pipeline_name(self, pipeline_details: DataBrickPipelineDetails) -> str | None:
         try:
             if pipeline_details.pipeline_id:
                 return pipeline_details.name
@@ -214,7 +214,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 )
             )
 
-    def get_tasks(self, pipeline_details: DataBrickPipelineDetails) -> List[Task]:  # noqa: UP006
+    def get_tasks(self, pipeline_details: DataBrickPipelineDetails) -> list[Task]:
         try:
             if not pipeline_details.settings or not pipeline_details.settings.tasks:
                 return []
@@ -245,7 +245,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             lookback_days = self.source_config.statusLookbackDays or 1
             cutoff_ts = int((datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp() * 1000)
-            statuses: List[PipelineStatus] = []  # noqa: UP006
+            statuses: list[PipelineStatus] = []
             seen_start_times = set()
 
             for run in self.client.get_job_runs(job_id=pipeline_details.job_id) or []:
@@ -305,10 +305,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def _process_and_validate_column_lineage(
         self,
-        column_lineage: List[Tuple[str, str]],  # noqa: UP006
+        column_lineage: list[tuple[str, str]],
         from_entity: Table,
         to_entity: Table,
-    ) -> List[ColumnLineage]:  # noqa: UP006
+    ) -> list[ColumnLineage]:
         """
         Process and validate column lineage
         """
@@ -350,7 +350,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.warning(f"No column lineage found for {from_entity.name} to {to_entity.name}")
         return processed_column_lineage or []
 
-    def _get_databricks_services(self) -> List[str]:  # noqa: UP006
+    def _get_databricks_services(self) -> list[str]:
         """
         Get list of all Databricks/Unity Catalog database service names from OpenMetadata
 
@@ -407,7 +407,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._databricks_services_cached = True
             return []
 
-    def _lookup_table(self, table_fqn: Optional[str]) -> Optional[Table]:  # noqa: UP045
+    def _lookup_table(self, table_fqn: str | None) -> Table | None:
         """Resolve a table FQN, caching both hits and misses."""
         if not table_fqn:
             return None
@@ -418,12 +418,12 @@ class DatabrickspipelineSource(PipelineServiceSource):
     def _expand_workspace_directory(
         self,
         library: DLTLibrarySource,
-        path: Optional[str] = None,  # noqa: UP045
+        path: str | None = None,
         # Deep enough that a real repository layout is never truncated, while still
         # bounding the recursion. A directory that is not there costs nothing, but a
         # transformation missed below the cap costs the lineage that depends on it.
         max_depth: int = 20,
-    ) -> List[str]:  # noqa: UP006
+    ) -> list[str]:
         """
         List every notebook and file under a library directory.
 
@@ -445,24 +445,24 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     collected.append(obj_path)
                     # per-path, so DEBUG. A deep tree would otherwise bury the run
                     # summary under one line per file.
-                    logger.debug(f"   ✓ Found {obj_type.lower()}: {obj_path}")
+                    logger.debug("   ✓ Found %s: %s", obj_type.lower(), obj_path)
                 elif obj_type == "DIRECTORY":
                     if max_depth <= 0:
-                        logger.warning(f"   ⊗ Max depth reached, not descending into {obj_path}")
+                        logger.warning("   ⊗ Max depth reached, not descending into %s", obj_path)
                         continue
                     collected.extend(
                         self._expand_workspace_directory(library, obj_path.rstrip("/") + "/", max_depth - 1)
                     )
         except Exception as exc:
-            logger.warning(f"   ✗ Could not list directory {path}: {exc}")
+            logger.warning("   ✗ Could not list directory %s: %s", path, exc)
             logger.debug(traceback.format_exc())
         return collected
 
     @staticmethod
     def _qualify_dlt_table_name(
         table_name: str,
-        catalog: Optional[str],  # noqa: UP045
-        schema: Optional[str],  # noqa: UP045
+        catalog: str | None,
+        schema: str | None,
     ) -> DLTTableReference:
         """
         Resolve a dataset reference to the catalog, schema and table it points at.
@@ -481,7 +481,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         # the cleaned token, so stray whitespace or dots never reach the FQN
         return DLTTableReference(catalog=catalog, schema=schema, table=parts[0] if parts else "")
 
-    def _find_dlt_table(self, table_name: str, catalog: Optional[str], schema: Optional[str]) -> Optional[Table]:  # noqa: UP045
+    def _find_dlt_table(self, table_name: str, catalog: str | None, schema: str | None) -> Table | None:
         """
         Find DLT table in OpenMetadata by iterating through Databricks services
 
@@ -593,7 +593,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self._dlt_table_cache.put(cache_key, None)
         return None
 
-    def _find_kafka_topic(self, topic_name: str) -> Optional[Topic]:  # noqa: UP045
+    def _find_kafka_topic(self, topic_name: str) -> Topic | None:
         """
         Find Kafka topic in OpenMetadata using Elasticsearch search
 
@@ -756,7 +756,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                 logger.info(f"✓ Total notebook paths found: {len(notebook_paths)}")
                 for idx, library in enumerate(notebook_paths):
-                    logger.info(f"   {idx + 1}. {library.path}")
+                    logger.info("   %s. %s", idx + 1, library.path)
             except Exception as exc:
                 logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")
                 logger.debug(traceback.format_exc())
@@ -775,7 +775,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             for library in notebook_paths:
                 if library.is_directory is False:
                     expanded_paths.append(library.path)
-                    logger.debug(f"   Direct path: {library.path}")
+                    logger.debug("   Direct path: %s", library.path)
                     continue
 
                 found = self._expand_workspace_directory(library)
@@ -785,9 +785,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     # the spec did not say what this is and nothing listed under it,
                     # so it names a single source rather than a directory
                     expanded_paths.append(library.path)
-                    logger.debug(f"   Direct path: {library.path}")
+                    logger.debug("   Direct path: %s", library.path)
                 else:
-                    logger.debug(f"   ⊗ Nothing found under {library.path}")
+                    logger.debug("   ⊗ Nothing found under %s", library.path)
 
             logger.info(f"✓ Total notebooks to process: {len(expanded_paths)}")
 

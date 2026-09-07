@@ -13,7 +13,6 @@ Pydantic models for Airflow REST API responses
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,43 +21,43 @@ class AirflowApiTask(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     task_id: str
-    downstream_task_ids: Optional[List[str]] = None  # noqa: UP006, UP045
-    owner: Optional[str] = None  # noqa: UP045
-    doc_md: Optional[str] = None  # noqa: UP045
-    start_date: Optional[str] = None  # noqa: UP045
-    end_date: Optional[str] = None  # noqa: UP045
-    class_ref: Optional[Dict[str, str]] = None  # noqa: UP006, UP045
+    downstream_task_ids: list[str] | None = None
+    owner: str | None = None
+    doc_md: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    class_ref: dict[str, str] | None = None
 
 
 class AirflowApiDagDetails(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     dag_id: str
-    description: Optional[str] = None  # noqa: UP045
-    fileloc: Optional[str] = None  # noqa: UP045
-    is_paused: Optional[bool] = None  # noqa: UP045
-    owners: Optional[List[str]] = None  # noqa: UP006, UP045
-    tags: Optional[List[str]] = None  # noqa: UP006, UP045
-    schedule_interval: Optional[str] = None  # noqa: UP045
-    max_active_runs: Optional[int] = None  # noqa: UP045
-    start_date: Optional[datetime] = None  # noqa: UP045
-    tasks: List[AirflowApiTask] = []  # noqa: UP006
+    description: str | None = None
+    fileloc: str | None = None
+    is_paused: bool | None = None
+    owners: list[str] | None = None
+    tags: list[str] | None = None
+    schedule_interval: str | None = None
+    max_active_runs: int | None = None
+    start_date: datetime | None = None
+    tasks: list[AirflowApiTask] = []
 
 
 class AirflowApiDagRun(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     dag_run_id: str
-    state: Optional[str] = None  # noqa: UP045
-    execution_date: Optional[datetime] = None  # noqa: UP045
-    start_date: Optional[datetime] = None  # noqa: UP045
-    end_date: Optional[datetime] = None  # noqa: UP045
+    state: str | None = None
+    execution_date: datetime | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
 
 class AirflowApiTaskInstance(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     task_id: str
-    state: Optional[str] = None  # noqa: UP045
-    start_date: Optional[datetime] = None  # noqa: UP045
-    end_date: Optional[datetime] = None  # noqa: UP045
+    state: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None

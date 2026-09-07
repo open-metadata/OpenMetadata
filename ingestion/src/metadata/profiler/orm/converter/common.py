@@ -13,8 +13,6 @@
 Common Class For Profiler Converter.
 """
 
-from typing import Dict, Set  # noqa: UP035
-
 import sqlalchemy
 from sqlalchemy.sql.sqltypes import TypeEngine
 
@@ -84,7 +82,7 @@ class CommonMapTypes:
         return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
 
     @staticmethod
-    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
+    def map_sqa_to_om_types() -> dict[TypeEngine, set[DataType]]:
         """returns an ORM type"""
         return {
             sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { type APIRequestContext } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { getDefaultAdminAPIContext, uuid } from '../../utils/common';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
