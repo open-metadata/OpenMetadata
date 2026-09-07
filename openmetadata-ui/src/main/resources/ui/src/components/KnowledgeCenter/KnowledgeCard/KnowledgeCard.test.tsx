@@ -74,16 +74,28 @@ jest.mock('../../../utils/ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
 }));
 
-jest.mock('../../../components/common/atoms/TagChip/TagChip', () =>
-  jest.fn().mockImplementation(({ label, tagColor, icon, ...props }) => (
-    <span
-      data-color={tagColor}
-      data-icon={icon}
-      data-testid={props['data-testid'] ?? 'tag-chip'}>
-      {label}
-    </span>
-  ))
-);
+jest.mock('../../common/atoms/Tag', () => ({
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+}));
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest

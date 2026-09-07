@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { OwnerType } from '../../../enums/user.enum';
@@ -62,6 +61,8 @@ import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { ClassificationTag, GlossaryTag } from '../../common/atoms/Tag';
 
 export interface KnowledgeCardProps {
   knowledgeItem: KnowledgePage;
@@ -129,17 +130,21 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
 
       <span className="tw:flex-1" />
       <Box align="center" className="tw:gap-1.5">
-        {tagList.slice(0, 2).map((tag) => (
-          <TagChip
-            icon={tag.style?.iconURL}
-            key={String(tag.tagFQN ?? '')}
-            label={getEntityName(tag)}
-            maxWidth={120}
-            size="small"
-            tagColor={tag.style?.color}
-            variant="blueGray"
-          />
-        ))}
+        {tagList.slice(0, 2).map((tag) => {
+          const isGlossaryTerm = tag.source === TagSource.Glossary;
+          const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
+
+          return (
+            <TagComponent
+              color={tag.style?.color}
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN ?? ''}
+              label={getEntityName(tag)}
+              maxWidth={120}
+              tooltip={getEntityName(tag)}
+            />
+          );
+        })}
         {tagList.length > 2 && (
           <Typography
             className="tw:text-secondary tw:whitespace-nowrap"

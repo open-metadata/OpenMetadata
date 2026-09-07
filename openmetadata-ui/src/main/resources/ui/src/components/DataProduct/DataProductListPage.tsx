@@ -256,9 +256,7 @@ const DataProductListPage = ({
             />
           );
         case 'glossaryTerms':
-          return (
-            <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />
-          );
+          return <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
