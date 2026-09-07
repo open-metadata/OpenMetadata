@@ -542,6 +542,32 @@ class TestGenerateSourceHash:
         )
         assert generate_source_hash(request1) == generate_source_hash(request2)
 
+    def test_hash_stable_across_certification_applied_and_expiry_dates(self):
+        """appliedDate/expiryDate are always recomputed server-side from
+        AssetCertificationSettings when a certification is applied, so a
+        connector populating them with a run-time-relative value (e.g. now())
+        must not defeat the bulk fast-path when the certification itself is
+        unchanged. Only tagLabel is a real change-detection signal."""
+        tag_label = TagLabel(
+            tagFQN="Certification.Gold",
+            source=TagSource.Classification,
+            labelType=LabelType.Automated,
+            state=State.Confirmed,
+        )
+        request1 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=AssetCertification(tagLabel=tag_label, appliedDate=1700000000000, expiryDate=1731536000000),
+        )
+        request2 = CreateTableRequest(
+            name="test_table",
+            databaseSchema="service.db.schema",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            certification=AssetCertification(tagLabel=tag_label, appliedDate=1800000000000, expiryDate=1999999999999),
+        )
+        assert generate_source_hash(request1) == generate_source_hash(request2)
+
     def test_hash_with_custom_exclude_fields(self):
         request1 = CreateTableRequest(
             name="test_table",

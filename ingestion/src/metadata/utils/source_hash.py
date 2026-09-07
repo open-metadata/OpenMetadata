@@ -135,6 +135,11 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     4. Sorts owners by FQN/name/id
     5. Removes volatile EntityReference fields (href, deleted, inherited)
     6. Normalizes schemaDefinition whitespace
+    7. Drops certification.appliedDate/expiryDate, which the backend always
+       recomputes server-side from AssetCertificationSettings and never takes
+       from the request, so they carry no change-detection signal and would
+       otherwise destabilize the hash if a connector ever populates them with
+       a run-time-relative value
     """
     result = _remove_volatile_fields(data)
 
@@ -152,6 +157,11 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
 
     if "schemaDefinition" in result and result["schemaDefinition"]:  # noqa: RUF019
         result["schemaDefinition"] = _normalize_whitespace(result["schemaDefinition"])
+
+    if "certification" in result and isinstance(result["certification"], dict):
+        result["certification"] = {
+            k: v for k, v in result["certification"].items() if k not in ("appliedDate", "expiryDate")
+        }
 
     return result
 
