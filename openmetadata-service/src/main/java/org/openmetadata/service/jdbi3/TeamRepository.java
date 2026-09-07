@@ -70,7 +70,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
@@ -421,14 +420,18 @@ public class TeamRepository extends EntityRepository<Team> {
     populateChildren(team); // Validate children
     validateHierarchy(team); // Validate hierarchy for circular dependency
     validateUsers(team.getUsers());
+    if (!update) {
+      validateDirectUserAddition(team, team.getUsers());
+    }
     validateRoles(team.getDefaultRoles());
     validatePolicies(team.getPolicies());
     validateDefaultPersona(team);
   }
 
   public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
-    Team team = getByName(null, teamName, getFields("id"));
+    Team team = getByName(null, teamName, getFields("id,teamType"));
     validateAllRefUsers(request.getAssets());
+    validateDirectUserAddition(team, request.getAssets());
     return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
@@ -977,6 +980,13 @@ public class TeamRepository extends EntityRepository<Team> {
     Entity.getEntityReferenceById(Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED);
   }
 
+  private void validateDirectUserAddition(Team team, List<EntityReference> users) {
+    if (!GROUP.equals(team.getTeamType()) && !nullOrEmpty(users)) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidTeamDirectUserAssignment(team.getTeamType()));
+    }
+  }
+
   private void validateSingleParent(Team team, List<EntityReference> parentRefs) {
     if (listOrEmpty(parentRefs).size() != 1) {
       throw new IllegalArgumentException(invalidParentCount(1, team.getTeamType()));
@@ -992,12 +1002,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     Team team = Entity.getEntity(Entity.TEAM, teamId, USERS_FIELD, Include.NON_DELETED);
-    if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
-    }
-
-    List<EntityReference> currentUsers = team.getUsers();
+    List<EntityReference> currentUsers = listOrEmpty(team.getUsers());
 
     Set<UUID> oldUserIds =
         currentUsers.stream().map(EntityReference::getId).collect(Collectors.toSet());
@@ -1008,7 +1013,10 @@ public class TeamRepository extends EntityRepository<Team> {
             .filter(user -> !oldUserIds.contains(user.getId()))
             .collect(Collectors.toList());
 
-    Optional.of(addedUsers).ifPresent(this::validateUsers);
+    validateDirectUserAddition(team, addedUsers);
+    if (!nullOrEmpty(addedUsers)) {
+      validateUsers(addedUsers);
+    }
 
     List<UUID> addedUserIds =
         updatedUsers.stream()
@@ -1058,10 +1066,6 @@ public class TeamRepository extends EntityRepository<Team> {
   public final RestUtil.PutResponse<Team> deleteTeamUser(
       String updatedBy, UUID teamId, UUID userId) {
     Team team = find(teamId, NON_DELETED);
-    if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidTeamUpdateUsers(team.getTeamType()));
-    }
 
     // Validate user
     EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
@@ -1344,6 +1348,24 @@ public class TeamRepository extends EntityRepository<Team> {
     private void updateUsers(Team origTeam, Team updatedTeam) {
       List<EntityReference> origUsers = listOrEmpty(origTeam.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedTeam.getUsers());
+      if (!EntityUtil.entityReferenceListMatch.test(origUsers, updatedUsers)) {
+        updateChangedUsers(origTeam, updatedTeam, origUsers, updatedUsers);
+      }
+    }
+
+    private void updateChangedUsers(
+        Team origTeam,
+        Team updatedTeam,
+        List<EntityReference> origUsers,
+        List<EntityReference> updatedUsers) {
+      List<EntityReference> addedUsers =
+          updatedUsers.stream()
+              .filter(
+                  user ->
+                      origUsers.stream()
+                          .noneMatch(origUser -> origUser.getId().equals(user.getId())))
+              .toList();
+      validateDirectUserAddition(updatedTeam, addedUsers);
       updateToRelationships(
           "users",
           TEAM,
@@ -1353,7 +1375,6 @@ public class TeamRepository extends EntityRepository<Team> {
           origUsers,
           updatedUsers,
           false);
-
       updatedTeam.setUserCount(updatedUsers.size());
     }
 
