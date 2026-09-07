@@ -176,7 +176,7 @@ test.describe(
         // Verify the team is moved under the business team
         await openDragDropDropdown(page, droppableTeamName);
         const movedTeam = page.locator(
-          `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
+          `[data-level="1"][data-row-key="${teamNameGroup}"]`
         );
 
         await expect(movedTeam).toBeVisible();
@@ -191,14 +191,14 @@ test.describe(
       await dragAndDropElement(
         page,
         teamNameGroup,
-        '.ant-table-thead > tr',
+        '[data-testid="team-hierarchy-table"]',
         true
       );
       await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
 
       // Verify the team is moved under the table level
       const movedTeam = page.locator(
-        `.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`
+        `[data-level="0"][data-row-key="${teamNameGroup}"]`
       );
       await movedTeam.scrollIntoViewIfNeeded();
 

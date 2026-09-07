@@ -41,3 +41,19 @@ export const getRowByName = (
 
   return rows.filter({ hasText: name });
 };
+
+/**
+ * Resolves a table cell by accessible name across both table stacks. Ant Design
+ * renders `<td>` as `cell`; the react-aria `TableV2` grid renders body cells as
+ * `gridcell` and the first column as `rowheader` — never `cell`. ORing the three
+ * lets callers stay agnostic to which stack renders the table.
+ */
+export const getCellByName = (
+  page: Page,
+  name: string,
+  options?: { exact?: boolean }
+): Locator =>
+  page
+    .getByRole('cell', { name, ...options })
+    .or(page.getByRole('rowheader', { name, ...options }))
+    .or(page.getByRole('gridcell', { name, ...options }));

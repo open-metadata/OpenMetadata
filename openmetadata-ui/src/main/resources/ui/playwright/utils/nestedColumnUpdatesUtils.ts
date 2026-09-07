@@ -136,22 +136,21 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
 const DUPLICATE_NAME = `name-${uuid()}`;
 
+// TableV2 remounts rows on re-render; click() re-resolves the locator so it
+// survives the remount that a pre-resolved scrollIntoView handle did not.
 const expandNestedColumn = async (
   page: Page,
   rowKey: string,
   childKey: string
 ) => {
-  const expandIcon = page.locator(
-    `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
-  );
-  await expect(expandIcon).toBeVisible();
   const childRow = page.locator(`[data-row-key="${childKey}"]`);
   if (await childRow.isVisible()) {
     return;
   }
-  await page.waitForLoadState('domcontentloaded');
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
+  await page
+    .locator(`[data-row-key="${rowKey}"] [data-testid="expand-icon"]`)
+    .click();
+  await expect(childRow).toBeVisible();
 };
 
 const collapseNestedColumn = async (
@@ -159,17 +158,14 @@ const collapseNestedColumn = async (
   rowKey: string,
   childKey: string
 ) => {
-  const expandIcon = page.locator(
-    `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
-  );
-  await expect(expandIcon).toBeVisible();
   const childRow = page.locator(`[data-row-key="${childKey}"]`);
   if (!(await childRow.isVisible())) {
     return;
   }
-  await page.waitForLoadState('domcontentloaded');
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
+  await page
+    .locator(`[data-row-key="${rowKey}"] [data-testid="expand-icon"]`)
+    .click();
+  await expect(childRow).toBeHidden();
 };
 
 export const verifyExpandCollapseForSummaryPanel = async (page: Page) => {

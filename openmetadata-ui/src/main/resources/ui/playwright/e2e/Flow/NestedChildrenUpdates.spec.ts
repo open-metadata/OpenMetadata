@@ -267,23 +267,23 @@ for (const [
   });
 }
 
+// TableV2 remounts rows on re-render; click() re-resolves the locator so it
+// survives the remount that a pre-resolved scrollIntoView handle did not.
 const expandNestedColumn = async (
   page: Page,
   nestedColumnFqn: string,
   childKey?: string
 ) => {
-  const expandIcon = page.locator(
-    `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`
-  );
-  await expandIcon.waitFor({ state: 'visible' });
-
-  if (childKey) {
-    const childRow = page.locator(`[data-row-key="${childKey}"]`);
-    if (await childRow.isVisible()) {
-      return;
-    }
+  const childRow = childKey
+    ? page.locator(`[data-row-key="${childKey}"]`)
+    : undefined;
+  if (childRow && (await childRow.isVisible())) {
+    return;
   }
-
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
+  await page
+    .locator(`[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`)
+    .click();
+  if (childRow) {
+    await expect(childRow).toBeVisible();
+  }
 };
