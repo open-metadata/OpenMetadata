@@ -24,14 +24,8 @@ const SUPPRESSIONS = path.join(
 test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
-  // `eslint-suppressions.json` is shared: `src/**` records its own backlog in
-  // the same file. This test owns the playwright corpus only, so it counts the
-  // playwright entries and leaves the src ratchet to the src lint run.
   const actual = {};
-  for (const [path, file] of Object.entries(suppressions)) {
-    if (!path.startsWith('playwright/')) {
-      continue;
-    }
+  for (const file of Object.values(suppressions)) {
     for (const [ruleId, entry] of Object.entries(file)) {
       actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }
