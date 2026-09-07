@@ -43,6 +43,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.DatasetCandidate;
+import org.openmetadata.service.util.LikeEscape;
 
 @Slf4j
 public class OpenLineageEntityResolver {
@@ -246,19 +247,15 @@ public class OpenLineageEntityResolver {
       String namespace, String datasetName, List<DatasetCandidate> candidates) {
     if (!candidates.isEmpty()) {
       LOG.debug("Could not resolve dataset {} using candidates {}", datasetName, candidates);
-    } else if (bareToken(datasetName) != null) {
-      LOG.warn(
-          "Dataset {} (namespace {}) carries no schema, so it can only be matched by table name. "
-              + "Map this namespace to a service via namespaceToServiceMapping to enable that lookup",
-          datasetName,
-          namespace);
-    } else {
+    } else if (bareToken(datasetName) == null) {
       LOG.warn(
           "No parsable table identifier for dataset {} (namespace {}). "
               + "Expected schema.table, catalog.schema.table, a Glue table/db/table symlink, or a Hive warehouse path",
           datasetName,
           namespace);
     }
+    // A bare token is reported by resolveBareTokenViaNamespaceMapping, which knows whether the
+    // namespace was mapped - logging it again here would advise a mapping the operator may have.
   }
 
   /**
@@ -269,13 +266,56 @@ public class OpenLineageEntityResolver {
    * arbitrary same-named table from any database.
    */
   private String resolveBareTokenViaNamespaceMapping(String namespace, String datasetName) {
-    String result = null;
     String table = bareToken(datasetName);
-    String mappedService = lookupServiceFromNamespace(namespace);
-    if (table != null && mappedService != null) {
-      result = searchUniqueTableByFqnPattern(mappedService + ".%." + table);
+    if (table == null) {
+      return null;
     }
-    return result;
+    String mappedService = lookupServiceFromNamespace(namespace);
+    if (mappedService == null) {
+      LOG.warn(
+          "Dataset {} (namespace {}) carries no schema, so it can only be matched by table name. "
+              + "Map this namespace to a service via namespaceToServiceMapping to enable that lookup",
+          datasetName,
+          namespace);
+      return null;
+    }
+    return resolveBareTokenInService(namespace, datasetName, table, mappedService);
+  }
+
+  private String resolveBareTokenInService(
+      String namespace, String datasetName, String table, String mappedService) {
+    String pattern = LikeEscape.escape(mappedService) + ".%." + LikeEscape.escape(table);
+    List<Table> matches = listTables(pattern, new ListFilterByFqnPattern(pattern, true));
+    if (matches.size() == 1) {
+      return matches.getFirst().getFullyQualifiedName();
+    }
+    logUnresolvedBareToken(namespace, datasetName, table, mappedService, matches);
+    return null;
+  }
+
+  private void logUnresolvedBareToken(
+      String namespace,
+      String datasetName,
+      String table,
+      String mappedService,
+      List<Table> matches) {
+    if (matches.isEmpty()) {
+      LOG.warn(
+          "Dataset {} (namespace {}) carries no schema and no table named {} exists in service {}",
+          datasetName,
+          namespace,
+          table,
+          mappedService);
+    } else {
+      LOG.warn(
+          "Bare dataset name {} (namespace {}) matched {} tables in service {}, dropping the edge "
+              + "rather than guessing. Candidates: {}",
+          datasetName,
+          namespace,
+          matches.size(),
+          mappedService,
+          describeCandidates(matches));
+    }
   }
 
   /** Returns the name when it is a single undelimited token, else null. */
@@ -382,22 +422,6 @@ public class OpenLineageEntityResolver {
     if (!tables.isEmpty()) {
       result = tables.getFirst().getFullyQualifiedName();
       warnOnAmbiguousMatch(searchKey, result, tables);
-    }
-    return result;
-  }
-
-  /** Resolves only an unambiguous match; a multi-match is dropped rather than guessed. */
-  private String searchUniqueTableByFqnPattern(String fqnPattern) {
-    List<Table> tables = listTables(fqnPattern, new ListFilterByFqnPattern(fqnPattern));
-    String result = null;
-    if (tables.size() == 1) {
-      result = tables.getFirst().getFullyQualifiedName();
-    } else if (tables.size() > 1) {
-      LOG.warn(
-          "Bare dataset name matched {} tables for [{}], dropping the edge rather than guessing. Candidates: {}",
-          tables.size(),
-          fqnPattern,
-          describeCandidates(tables));
     }
     return result;
   }
@@ -778,15 +802,22 @@ public class OpenLineageEntityResolver {
   }
 
   private static class ListFilterByFqnPattern extends ListFilter {
+    private final boolean usesEscapedLiterals;
+
     public ListFilterByFqnPattern(String pattern) {
+      this(pattern, false);
+    }
+
+    public ListFilterByFqnPattern(String pattern, boolean usesEscapedLiterals) {
       super(Include.NON_DELETED);
+      this.usesEscapedLiterals = usesEscapedLiterals;
       addQueryParam("fqnPattern", pattern);
     }
 
     @Override
     public String getCondition(String tableName) {
       String baseCondition = super.getCondition(tableName);
-      String fqnClause = buildFqnLikeClause(tableName, "fqnPattern");
+      String fqnClause = buildFqnLikeClause(tableName, "fqnPattern", usesEscapedLiterals);
       return baseCondition + " AND " + fqnClause;
     }
   }
@@ -818,13 +849,25 @@ public class OpenLineageEntityResolver {
   }
 
   private static String buildFqnLikeClause(String tableName, String paramName) {
+    return buildFqnLikeClause(tableName, paramName, false);
+  }
+
+  /**
+   * {@code ESCAPE} is spelled with {@code !} rather than a backslash because MySQL
+   * NO_BACKSLASH_ESCAPES and Postgres standard_conforming_strings make backslash handling
+   * deployment-dependent, while {@code !} is unremarkable to both parsers.
+   */
+  private static String buildFqnLikeClause(
+      String tableName, String paramName, boolean usesEscapedLiterals) {
     String column = tableName == null ? "json" : tableName + ".json";
+    String escapeClause = usesEscapedLiterals ? " ESCAPE '!'" : "";
     if (Boolean.TRUE.equals(
         org.openmetadata.service.resources.databases.DatasourceConfig.getInstance().isMySQL())) {
       return String.format(
-          "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.fullyQualifiedName')) LIKE :%s", column, paramName);
+          "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.fullyQualifiedName')) LIKE :%s%s",
+          column, paramName, escapeClause);
     } else {
-      return String.format("%s->>'fullyQualifiedName' LIKE :%s", column, paramName);
+      return String.format("%s->>'fullyQualifiedName' LIKE :%s%s", column, paramName, escapeClause);
     }
   }
 }
