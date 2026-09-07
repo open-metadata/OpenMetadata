@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import axiosClient from '.';
 import { ChangeSource } from '../generated/type/changeSummaryMap';
+import axiosClient from './axiosClient';
 
 export interface ChangeSummaryEntry {
   changedAt?: number;

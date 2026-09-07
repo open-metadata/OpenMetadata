@@ -19,7 +19,7 @@ import { CreateQuery } from '../generated/api/data/createQuery';
 import { Query } from '../generated/entity/data/query';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export type ListQueriesParams = ListParams & {
   entityId?: string;

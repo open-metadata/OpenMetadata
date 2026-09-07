@@ -34,7 +34,7 @@ import {
   ServicesType,
 } from '../interface/service.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import { searchQuery } from './searchAPI';
 
 interface ServiceRequestParams {

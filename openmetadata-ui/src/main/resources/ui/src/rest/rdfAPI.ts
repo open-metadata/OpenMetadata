@@ -26,7 +26,7 @@ import {
   SparqlQuerySettings,
 } from '../generated/configuration/sparqlQuerySettings';
 import { SettingType } from '../generated/settings/settings';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   EntityGraphExportFormat,
   EntityGraphParams,

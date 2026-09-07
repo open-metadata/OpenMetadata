@@ -14,7 +14,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
 import { act } from 'react-test-renderer';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import axiosClient from '../../../rest';
+import axiosClient from '../../../rest/axiosClient';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 

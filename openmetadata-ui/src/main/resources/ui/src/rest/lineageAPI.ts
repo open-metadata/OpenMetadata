@@ -27,7 +27,7 @@ import { AddLineage } from '../generated/api/lineage/addLineage';
 import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
 import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
   const response = await APIClient.put<AddLineage>(`/lineage`, edge);

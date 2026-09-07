@@ -77,7 +77,7 @@ import {
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
-import axiosClient from '../../../rest';
+import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {

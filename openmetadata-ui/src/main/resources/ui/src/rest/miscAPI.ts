@@ -29,7 +29,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const getSearchAPIQueryParams = (
   queryString: string,

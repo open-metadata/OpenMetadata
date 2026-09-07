@@ -18,7 +18,7 @@ import { Category, Type } from '../generated/entity/type';
 import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import { CustomPropertiesForAssets } from './metadataTypeAPI.interface';
 
 export type FieldData = {

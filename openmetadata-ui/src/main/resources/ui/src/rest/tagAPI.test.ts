@@ -22,7 +22,7 @@ import {
   updateTag,
 } from './tagAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest
     .fn()
     .mockImplementation((url) =>

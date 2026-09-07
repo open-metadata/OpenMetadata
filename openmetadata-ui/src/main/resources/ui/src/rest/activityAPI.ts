@@ -16,7 +16,7 @@ import { CreatePost } from '../generated/api/feed/createPost';
 import { ActivityEvent } from '../generated/entity/activity/activityEvent';
 import { ConversationReply } from '../generated/entity/feed/conversation';
 import { ReactionType } from '../generated/type/reaction';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/activity';
 

@@ -26,7 +26,7 @@
 
 import { PagingResponse } from 'Models';
 import { Include } from '../generated/type/include';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/taskFormSchemas';
 

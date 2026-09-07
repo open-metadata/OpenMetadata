@@ -14,7 +14,7 @@
 import { EntityType } from '../enums/entity.enum';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import { PipelineViewMode } from '../generated/configuration/lineageSettings';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   exportLineageByEntityCountAsync,
   getLineageByEntityCount,
@@ -22,7 +22,7 @@ import {
   getLineagePagingData,
 } from './lineageAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn().mockResolvedValue({ data: {} }),
 }));
 

@@ -21,7 +21,7 @@ import {
   SuggestionType,
 } from '../types/taskSuggestion';
 import EntityLink from '../utils/EntityLink';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   resolveTask,
   Task,

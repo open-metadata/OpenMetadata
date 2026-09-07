@@ -18,7 +18,7 @@ import { CreateTestCaseResolutionStatus } from '../generated/api/tests/createTes
 import { EntityReference } from '../generated/entity/data/table';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import type { ListTasksParams, ResolveTask, Task } from './tasksAPI';
 import { getTaskById, listTasks, resolveTask, TaskCategory } from './tasksAPI';
 

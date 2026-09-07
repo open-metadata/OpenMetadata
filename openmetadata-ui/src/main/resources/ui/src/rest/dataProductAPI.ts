@@ -35,7 +35,7 @@ import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
 import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';

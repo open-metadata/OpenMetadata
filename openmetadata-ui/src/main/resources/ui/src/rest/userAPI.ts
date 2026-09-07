@@ -25,7 +25,7 @@ import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface UsersQueryParams {
   fields?: string;

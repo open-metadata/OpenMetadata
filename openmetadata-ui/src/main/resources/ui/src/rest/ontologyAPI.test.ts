@@ -13,7 +13,7 @@
 
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   generateOntologyDomainDraft,
   generateOntologySparql,
@@ -33,7 +33,7 @@ import {
   upsertInferenceRule,
 } from './ontologyAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   delete: jest.fn(),
   get: jest.fn(),
   patch: jest.fn(),
