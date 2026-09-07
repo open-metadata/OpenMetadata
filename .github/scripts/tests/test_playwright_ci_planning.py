@@ -2855,3 +2855,263 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     # ...while the non-delegated Ontology Studio specs from the same glob remain,
     # proving the mapping fired and only the delegated spec was dropped.
     assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
+
+
+def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatch):
+    """
+    Generated mappings are appended to the hand-authored ones. A source path
+    that is only covered by the generated map still routes to its specs, and
+    a source path covered by both routes to the union of specs.
+    """
+    selector = load_script("select_playwright_tests")
+
+    hand = tmp_path / "impact-map.json"
+    hand.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "sharedInfrastructure": [],
+                "delegatedSpecs": [],
+                "mappings": [
+                    {
+                        "sources": ["src/pages/Hand/handRoute.tsx"],
+                        "specs": ["playwright/e2e/Features/HandCovered.spec.ts"],
+                    },
+                ],
+            }
+        )
+    )
+    generated = tmp_path / "impact-map.generated.json"
+    generated.write_text(
+        json.dumps(
+            {
+                "mappings": [
+                    {
+                        "sources": ["src/pages/Gen/genOnly.tsx"],
+                        "specs": ["playwright/e2e/Features/GenOnly.spec.ts"],
+                    },
+                    {
+                        # Also collides with the hand-authored source.
+                        "sources": ["src/pages/Hand/handRoute.tsx"],
+                        "specs": ["playwright/e2e/Features/AlsoTouched.spec.ts"],
+                    },
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+
+    def run_with(changed_files: list[str]):
+        changed.write_text("\n".join(changed_files))
+        monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "select_playwright_tests.py",
+                "--event-name",
+                "pull_request_target",
+                "--changed-files",
+                str(changed),
+                "--impact-map",
+                str(hand),
+                "--generated-impact-map",
+                str(generated),
+                "--output",
+                str(output),
+            ],
+        )
+        selector.main()
+        return {
+            entry["spec"] for entry in json.loads(output.read_text())["selectors"]
+        }
+
+    # Generated-only source routes the generated spec.
+    specs = run_with(["src/pages/Gen/genOnly.tsx"])
+    assert "playwright/e2e/Features/GenOnly.spec.ts" in specs
+
+    # Collision — both hand and generated fire, so the union is selected.
+    specs = run_with(["src/pages/Hand/handRoute.tsx"])
+    assert "playwright/e2e/Features/HandCovered.spec.ts" in specs
+    assert "playwright/e2e/Features/AlsoTouched.spec.ts" in specs
+
+
+def test_generated_impact_map_auto_detected_beside_hand_authored(tmp_path, monkeypatch):
+    """
+    If the caller does not pass `--generated-impact-map`, the planner looks
+    for a sibling `impact-map.generated.json` next to the hand-authored map
+    and loads it automatically. This keeps the CI workflow untouched — just
+    committing the generated file is enough for it to take effect.
+    """
+    selector = load_script("select_playwright_tests")
+
+    hand = tmp_path / "impact-map.json"
+    hand.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "sharedInfrastructure": [],
+                "delegatedSpecs": [],
+                "mappings": [],
+            }
+        )
+    )
+    # Sibling file — the planner should find it without an explicit CLI arg.
+    (tmp_path / "impact-map.generated.json").write_text(
+        json.dumps(
+            {
+                "mappings": [
+                    {
+                        "sources": ["src/pages/AutoLoad/auto.tsx"],
+                        "specs": ["playwright/e2e/Features/AutoLoad.spec.ts"],
+                    },
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text("src/pages/AutoLoad/auto.tsx\n")
+    output = tmp_path / "selection.json"
+
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(hand),
+            # No --generated-impact-map — proves auto-detect works.
+            "--output",
+            str(output),
+        ],
+    )
+    selector.main()
+
+    specs = {entry["spec"] for entry in json.loads(output.read_text())["selectors"]}
+    assert "playwright/e2e/Features/AutoLoad.spec.ts" in specs
+
+
+def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_path):
+    """
+    End-to-end smoke test on a miniature UI tree: a spec that both imports a
+    generated type AND uses a component's testId must resolve both signals
+    into the same output entry set. The generator's output is JSON so a
+    trivial round-trip check with sort_keys makes drift diffs stable.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    # Build a mini repo: a src component with a testId, and a spec that uses
+    # both the testId and a generated import.
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget").mkdir(
+        parents=True
+    )
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/src/generated/entity").mkdir(
+        parents=True
+    )
+    (tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features").mkdir(
+        parents=True
+    )
+    (
+        tmp_path / "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
+    ).write_text('export const W = () => <div data-testid="widget-open" />;\n')
+    (
+        tmp_path
+        / "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts"
+    ).write_text("export type Table = { id: string };\n")
+    (
+        tmp_path
+        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Widget.spec.ts"
+    ).write_text(
+        "import { Table } from '../../../src/generated/entity/table';\n"
+        "test('opens', async ({ page }) => {\n"
+        "  await page.getByTestId('widget-open').click();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+
+    sources = {
+        source
+        for entry in result["mappings"]
+        for source in entry["sources"]
+    }
+    # Import-graph signal picked up the generated schema.
+    assert (
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/table.ts"
+        in sources
+    )
+    # testId cross-reference picked up the component.
+    assert (
+        "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
+        in sources
+    )
+
+
+def test_committed_generated_impact_map_matches_the_generator_output():
+    """
+    Drift guard: the committed `.github/playwright/impact-map.generated.json`
+    must equal what the generator produces against the current tree. If a
+    spec is added, a testId changes, or a schema import is added, the
+    generated map must be regenerated and committed in the same PR — the
+    generator is not free to drift silently, otherwise the source→spec
+    routing would go stale between regenerations.
+    """
+    repo_root = Path(__file__).parents[3]
+    generated_path = repo_root / ".github/playwright/impact-map.generated.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / ".github/scripts/generate_playwright_impact_map.py"),
+            "--check",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"{generated_path.relative_to(repo_root)} is out of date.\n"
+        "Run: python3 .github/scripts/generate_playwright_impact_map.py\n"
+        f"stderr:\n{result.stderr}"
+    )
+
+
+def test_generator_drops_testids_owned_by_too_many_files(tmp_path):
+    """
+    A testId used across many files (a wrapper's `loader`, a page's
+    `close-btn`, etc.) is not evidence that the spec depends on any one
+    owner. Include such a testId in the source→spec map and we would
+    generate a ~500-way fan-out entry every time a shared component is
+    edited. The generator drops testIds owned by more than
+    TESTID_MAX_OWNERS files (currently 3) exactly to prevent that.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "src").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+    # 4 owners for `loader`, over the threshold.
+    for name in ("A", "B", "C", "D"):
+        (ui / "src" / f"{name}.tsx").write_text(
+            f'export const X = () => <div data-testid="loader" />;\n'
+        )
+    (ui / "playwright/e2e/Features/UsesLoader.spec.ts").write_text(
+        "test('waits', async ({ page }) => {\n"
+        "  await page.getByTestId('loader').isVisible();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    sources = {s for entry in result["mappings"] for s in entry["sources"]}
+
+    # None of the 4 loader owners were emitted — the testId was too broadly used.
+    assert all("openmetadata-ui" not in s or "loader" not in s for s in sources)
+    assert not any("A.tsx" in s or "B.tsx" in s for s in sources)
