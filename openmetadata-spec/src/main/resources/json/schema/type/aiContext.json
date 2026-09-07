@@ -156,6 +156,10 @@
                 "dataModel": {
                     "description": "The dbt/DDL model that produces this table (type, path, and defining SQL), when available.",
                     "$ref": "#/definitions/tableDataModel"
+                },
+                "sampleData": {
+                    "description": "A permission-filtered preview of stored sample data, masked when the caller lacks PII access. The AI context returns at most 10 rows.",
+                    "$ref": "../entity/data/table.json#/definitions/tableData"
                 }
             },
             "additionalProperties": false

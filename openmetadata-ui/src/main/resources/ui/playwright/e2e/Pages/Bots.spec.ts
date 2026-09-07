@@ -32,8 +32,6 @@ test.describe(
   'Bots Page should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test('Bots Page should work properly', async ({ page }) => {
       await redirectToBotPage(page);
 

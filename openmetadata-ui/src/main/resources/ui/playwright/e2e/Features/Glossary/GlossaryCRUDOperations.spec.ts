@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import {
   descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -49,9 +50,7 @@ test.describe('Glossary CRUD Operations', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossaryName);
-      await page
-        .locator(descriptionBox)
-        .fill('Glossary with all optional fields');
+      await fillDescriptionBox(page, 'Glossary with all optional fields');
 
       const createResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');
@@ -96,7 +95,7 @@ test.describe('Glossary CRUD Operations', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossaryName);
-      await page.locator(descriptionBox).fill('Mutually exclusive glossary');
+      await fillDescriptionBox(page, 'Mutually exclusive glossary');
 
       const meToggle = page.getByTestId('mutually-exclusive-button');
 
