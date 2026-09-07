@@ -38,7 +38,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Pattern;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.awaitility.Awaitility;
@@ -50,6 +49,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.rdf.RdfDatasetNames;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
@@ -122,38 +123,43 @@ public class RdfBlueGreenRebuildIT {
                   jdbi.withHandle(
                           handle -> handle.createQuery("SELECT 1").mapTo(Integer.class).one())
                       == 1);
-      final String previous =
-          Files.readString(
-              ROOT.resolve(
-                  "bootstrap/sql/migrations/native/2.0.2/" + migration + "/schemaChanges.sql"));
-      final var active =
-          Pattern.compile("CREATE TABLE IF NOT EXISTS rdf_active_dataset.*?;", Pattern.DOTALL)
-              .matcher(previous);
-      assertTrue(active.find());
-      jdbi.useHandle(handle -> handle.execute(active.group()));
-      final String inferenceMigration =
-          Files.readString(
-              ROOT.resolve(
-                  "bootstrap/sql/migrations/native/2.1.0/" + migration + "/schemaChanges.sql"));
-      final var inferenceTable =
-          Pattern.compile("CREATE TABLE IF NOT EXISTS rdf_inference_rule.*?;", Pattern.DOTALL)
-              .matcher(inferenceMigration);
-      assertTrue(inferenceTable.find());
-      jdbi.useHandle(handle -> handle.execute(inferenceTable.group()));
-      final String upgrade =
-          Files.readString(
-              ROOT.resolve(
-                  "bootstrap/sql/migrations/native/2.0.3/" + migration + "/schemaChanges.sql"));
+      initializeSchema();
+    }
+
+    private void initializeSchema() {
+      createTable("1.3.0", "change_event_consumers");
+      createTable("1.13.0", "rdf_index_job");
+      createTable("1.13.0", "rdf_index_partition");
+      createTable("2.1.0", "rdf_inference_rule");
       for (int pass = 0; pass < 2; pass++) {
-        jdbi.useHandle(
-            handle -> {
-              for (String statement : upgrade.split(";")) {
-                if (!statement.isBlank()) {
-                  handle.execute(statement);
-                }
-              }
-            });
+        applyReleaseMigration();
       }
+    }
+
+    void applyReleaseMigration() {
+      final List<String> statements = migrationStatements("2.0.2");
+      jdbi.useHandle(handle -> statements.forEach(handle::execute));
+    }
+
+    private void createTable(final String version, final String table) {
+      final String create =
+          migrationStatements(version).stream()
+              .filter(statement -> statement.contains("CREATE TABLE IF NOT EXISTS " + table + " ("))
+              .findFirst()
+              .orElseThrow(() -> new IllegalStateException("Missing migration for table " + table));
+      jdbi.useHandle(handle -> handle.execute(create));
+    }
+
+    private List<String> migrationStatements(final String version) {
+      final Path path =
+          ROOT.resolve(
+              "bootstrap/sql/migrations/native/"
+                  + version
+                  + "/"
+                  + migration
+                  + "/schemaChanges.sql");
+      return MigrationFile.parseSQLFile(
+          path.toFile(), this == MYSQL ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
     }
   }
 
@@ -184,6 +190,26 @@ public class RdfBlueGreenRebuildIT {
     }
     if (fuseki != null) {
       fuseki.close();
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void releaseMigrationCanBeReappliedWithoutLosingRebuildState(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final UUID id = UUID.randomUUID();
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), id, "snapshot");
+      write(fixture.other.routedStorage(), id, "live");
+
+      database.applyReleaseMigration();
+
+      assertEquals(target.id(), fixture.store.state().rebuildId());
+      assertEquals(1, fixture.store.page(target.id(), 0, 10).size());
+      fixture.primary.promote(target, "test");
+      database.applyReleaseMigration();
+      assertEquals(target.dataset(), fixture.other.activeDataset());
+      assertName(fixture.other.routedStorage(), id, "live");
     }
   }
 

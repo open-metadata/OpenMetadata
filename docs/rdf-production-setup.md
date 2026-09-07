@@ -78,7 +78,7 @@ its duplicate registration from `FUSEKI_BASE/configuration`. Preserve the active
 starting an empty alternate with an existing active pointer would expose an empty graph. Verify
 counts against the active dataset after restart.
 
-Apply the native 2.0.3 SQL migrations and upgrade every OpenMetadata pod before enabling online
+Apply the native 2.0.2 SQL migrations and upgrade every OpenMetadata pod before enabling online
 rebuilds. Older pods do not participate in the mutation journal or routing fence.
 
 ## Capacity planning
