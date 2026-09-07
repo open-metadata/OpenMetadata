@@ -367,17 +367,34 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
+                # Only a refused connection can mean a datashare database. A failure
+                # after the connection is open - a missing grant on an external-table
+                # view, say - must not downgrade a usable connection to the catalog
+                # views, so the two steps get their own handlers.
                 try:
                     self.set_inspector(database_name=new_database)
-                    self._set_incremental_table_processor(new_database)
-                    self.set_external_location_map(new_database)
-                    yield new_database
+                    # `set_inspector` only builds a lazy engine, so without this the
+                    # refusal would surface inside whichever query ran first and be
+                    # indistinguishable from a permission error on that query. The
+                    # connection is cached, so the queries below reuse it.
+                    self.connection  # noqa: B018  # pylint: disable=pointless-statement
                 except Exception as exc:
                     if new_database in shared_databases and self._enter_datashare_mode(new_database, exc):
                         yield new_database
-                        continue
+                    else:
+                        logger.debug(traceback.format_exc())
+                        logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    continue
+
+                try:
+                    self._set_incremental_table_processor(new_database)
+                    self.set_external_location_map(new_database)
+                except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    continue
+
+                yield new_database
 
     def _enter_datashare_mode(self, database_name: str, connection_error: Exception) -> bool:
         """Read a datashare database from the cross-database catalog views.

@@ -167,6 +167,28 @@ class RedshiftDatashareTest(unittest.TestCase):
         # Only the one probe that classifies the databases reached the connection
         self.assertEqual(self.connection.execute.call_count, 1)
 
+    def test_shared_database_that_connects_is_never_downgraded(self):
+        """A failure *after* the connection opens is not a datashare refusal.
+
+        `set_inspector` only builds a lazy engine, so a missing grant on a
+        per-database query used to look exactly like a refused connection and
+        silently sent a perfectly usable connection down the catalog path.
+        """
+
+        def failing_location_map(database_name: str):
+            raise RuntimeError(f"permission denied for relation svv_external_tables ({database_name})")
+
+        with (
+            patch.object(RedshiftSource, "get_database_names_raw", return_value=[LOCAL_DATABASE, SHARED_DATABASE]),
+            patch.object(RedshiftSource, "set_inspector"),
+            patch.object(RedshiftSource, "_set_incremental_table_processor"),
+            patch.object(RedshiftSource, "set_external_location_map", side_effect=failing_location_map),
+        ):
+            self.assertEqual(list(self.redshift_source.get_database_names()), [])
+        self.assertIsNone(self.redshift_source.datashare_database)
+        # Only the classification probe ran; no catalog view was consulted
+        self.assertEqual(self.connection.execute.call_count, 1)
+
     def test_unreachable_local_database_is_reported(self):
         """A database that is not shared keeps failing as it does today"""
         self.assertEqual(self._database_names({LOCAL_DATABASE}), [SHARED_DATABASE])
