@@ -196,9 +196,10 @@ test.describe(
       );
       await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
 
-      // Verify the team is moved under the table level
+      // Verify the team is moved to the table root. TableV2 numbers the first
+      // visible level as 1 (AntD used 0), so a root team is data-level="1".
       const movedTeam = page.locator(
-        `[data-level="0"][data-row-key="${teamNameGroup}"]`
+        `[data-level="1"][data-row-key="${teamNameGroup}"]`
       );
       await movedTeam.scrollIntoViewIfNeeded();
 

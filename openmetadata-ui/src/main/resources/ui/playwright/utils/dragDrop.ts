@@ -47,7 +47,12 @@ export const dragAndDropElement = async (
   dropTarget: string,
   isHeader?: boolean
 ) => {
-  const dragElementLocator = page.locator(`[data-row-key="${dragElement}"]`);
+  const dragRowLocator = page.locator(`[data-row-key="${dragElement}"]`);
+  // Grab the row's own drag handle rather than a point on the <tr>: rows are
+  // native draggable, and dragging a deep row up to the top toolbar with a
+  // point locator can fire dragstart on whatever <tr> slid under the stale
+  // coordinate. The handle is unique to this row, so dragstart binds this team.
+  const dragElementLocator = dragRowLocator.locator('.drag-icon');
   const dropTargetLocator = isHeader
     ? page.locator(dropTarget)
     : page.locator(`[data-row-key="${dropTarget}"]`);
@@ -62,13 +67,12 @@ export const dragAndDropElement = async (
     .toHaveCount(0, { timeout: 10_000 })
     .catch(() => undefined);
 
-  await dragElementLocator.scrollIntoViewIfNeeded();
-  await waitForStableBox(dragElementLocator);
+  await dragRowLocator.scrollIntoViewIfNeeded();
+  await waitForStableBox(dragRowLocator);
   await waitForStableBox(dropTargetLocator);
 
   await dragElementLocator.dragTo(dropTargetLocator, {
     force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
-    sourcePosition: { x: 10, y: 10 },
   });
 };
 
