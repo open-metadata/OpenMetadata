@@ -89,9 +89,13 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
     }
 
 
-@pytest.fixture(scope="module")
-def load_metadata(run_workflow, ingestion_config) -> MetadataWorkflow:
-    return run_workflow(MetadataWorkflow, ingestion_config)
+@pytest.fixture
+def load_metadata(run_workflow, ingestion_config, metadata, table_fqn) -> Generator[MetadataWorkflow, None, None]:
+    yield run_workflow(MetadataWorkflow, ingestion_config)
+    # Each test needs a fresh table: generated PII tags affect subsequent recognition.
+    table = metadata.get_by_name(entity=Table, fqn=table_fqn)
+    if table:
+        metadata.delete(entity=Table, entity_id=table.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
