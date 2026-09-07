@@ -50,16 +50,16 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import close_on_failure, create_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.data360.client import (
     get_calculated_insight_by_name,
     get_dataspaces,
     get_metadata_by_type,
 )
-from metadata.ingestion.source.database.data360.connection import get_connection
 from metadata.ingestion.source.database.data360.constant import (
     DEFAULT_PAGINATION_LIMIT,
     Constant,
@@ -109,14 +109,16 @@ class Data360Source(DatabaseServiceSource):
 
         self.dataspace_map: dict = {}
         self.table_map: dict = {}
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.table_constraints = None
         self.database_source_state: set = set()
         # Schemas whose table discovery failed this run. Deletion reconciliation
         # must skip these, otherwise a transient API failure (zero tables seen)
         # would be mistaken for "every table in this schema was removed".
         self.failed_schema_fqns: set[str] = set()
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(cls, config_dict: Any, metadata: OpenMetadata, pipeline_name: str | None = None) -> "Data360Source":
@@ -495,10 +497,3 @@ class Data360Source(DatabaseServiceSource):
     def yield_view_lineage(self) -> Iterable[Either[Any]]:
         """Not implemented for Data Cloud."""
         return iter([])
-
-    def close(self):
-        """Nothing to close."""
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.client, self.service_connection)
