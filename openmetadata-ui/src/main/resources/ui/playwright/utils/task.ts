@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { clickOutside, descriptionBox, toastNotification } from './common';
+import { clickOutside, fillDescriptionBox, toastNotification } from './common';
 
 export type TaskDetails = {
   term: string;
@@ -120,9 +120,7 @@ export const createDescriptionTask = async (
   }
 
   if (addDescription) {
-    await page
-      .locator(descriptionBox)
-      .fill(value.description ?? 'Updated description');
+    await fillDescriptionBox(page, value.description ?? 'Updated description');
   }
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
