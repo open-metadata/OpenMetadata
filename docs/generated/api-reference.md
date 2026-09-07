@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1861 endpoints** across 75 resource packages · 1851 carry a summary.
+**1881 endpoints** across 75 resource packages · 1871 carry a summary.
 
 ## (root)
 
