@@ -24,6 +24,18 @@
     overflow: auto;
   }
 
+  // Ant Design injects a global `::selection { color: #fff }`. CodeMirror 5 never
+  // felt it — its visible text is display-only, with the real selection in an
+  // offscreen textarea — but CodeMirror 6 selects the content element itself, so
+  // the white text landed on v6's pale drawn selection band and became
+  // unreadable. The band stays; the text colour is pinned to the editor's own.
+  // (`inherit` cannot be used: browsers chain ::selection inheritance through
+  // the ancestors' ::selection colour, which is the white we are overriding.)
+  ::selection {
+    background: transparent;
+    color: var(--tw-color-text-primary);
+  }
+
   // CodeMirror 6 draws a dotted focus outline of its own. The editor is what
   // keyboard users land on, so recolour it rather than removing it.
   &.cm-focused {
