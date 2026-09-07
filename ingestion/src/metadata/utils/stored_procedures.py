@@ -26,7 +26,12 @@ logger = utils_logger()
 # `call` or `begin` (`call_center`, `begin_date`) would yield a bogus name, and a statement like
 # `UPDATE call_log SET x = pkg.refresh_stats(1)` would resolve to a real procedure and fabricate
 # lineage. The `\b` before each keyword keeps `recall` and similar from matching at all.
-_NAME_SPAN = r"[\s\w.`\"]*?"
+#
+# The class covers everything Oracle's CALL grammar allows between the keyword and the argument
+# list, which is `[schema.][package|type][@dblink] name`. That means `@` for remote calls over a
+# database link, and `$` and `#` because both are legal in an Oracle identifier. Dropping any of
+# them silently stops those calls resolving, which is the same silent lineage loss as #32673.
+_NAME_SPAN = r"[\s\w.@$#`\"]*?"
 NAME_PATTERN = (
     rf"(?<=\bcall){_NAME_SPAN}(?=\()"
     rf"|(?<=\bbegin){_NAME_SPAN}(?=\()"

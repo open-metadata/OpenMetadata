@@ -177,3 +177,22 @@ class TestStoredProcedures:
 
         assert result is None
         assert elapsed < 0.5, f"parsing {len(query_text)} bytes took {elapsed:.2f}s, expected well under 0.5s"
+
+    def test_get_procedure_name_parses_every_form_the_call_grammar_allows(self):
+        """Oracle's CALL grammar is `CALL [schema.][package|type][@dblink] name(args)`, so the
+        text between the keyword and the argument list can carry a database link and identifiers
+        containing `$` or `#`, both of which are legal in an Oracle identifier.
+
+        https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/CALL.html
+        """
+        assert get_procedure_name_from_call(query_text="CALL schema.pkg@dblink.proc_name(1)") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL pkg@dblink.proc_name(1)") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL\n  pkg@dblink.proc_name(1)") == "proc_name"
+
+        assert get_procedure_name_from_call(query_text="CALL my$proc(1)") == "my$proc"
+
+        assert get_procedure_name_from_call(query_text="CALL my#proc(1)") == "my#proc"
+
+        assert get_procedure_name_from_call(query_text="CALL emp_mgmt.remove_dept(162)") == "remove_dept"
