@@ -1484,8 +1484,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (typeA.equals(typeB)) {
       return true;
     }
-    String inverseOfA = getInverseRelationType(typeA);
-    return typeB.equals(inverseOfA);
+    return typeB.equals(safeInverseName(typeA)) || typeA.equals(safeInverseName(typeB));
+  }
+
+  private String safeInverseName(String relationType) {
+    try {
+      return getInverseRelationType(relationType);
+    } catch (BadRequestException ignored) {
+      return null;
+    }
   }
 
   private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
