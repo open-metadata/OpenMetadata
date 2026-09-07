@@ -29,13 +29,8 @@
  * persona-changed-mid-session case.
  */
 
-import {
-  APIRequestContext,
-  Browser,
-  expect,
-  Page,
-  test,
-} from '@playwright/test';
+import { APIRequestContext, Browser, Page } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';

@@ -16,6 +16,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -85,6 +86,9 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
     conditions.add(getTierCondition(tableName));
+    conditions.add(getDomainTypeCondition(tableName));
+    conditions.add(getClassificationTagsCondition(tableName));
+    conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
@@ -796,15 +800,29 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getOwnerCondition(String tableName) {
-    String ownerId = getQueryParam("ownerId");
-    if (ownerId == null) {
+    // Generic owner filter for any entity: matches the indexed entity_relationship.fromId.
+    // Accepts one or more owner (user/team) ids as a comma-separated value. Callers may pass an
+    // optional "ownerToEntity" to constrain the subquery to a single owned entity type.
+    String ownerIds = getQueryParam("ownerId");
+    if (nullOrEmpty(ownerIds)) {
       return "";
     }
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
-    queryParams.put("ownerIdParam", ownerId);
+    String inCondition = buildIndexedBindParams("ownerId", ownerIds);
+    String toEntityCondition = "";
+    String ownerToEntity = getQueryParam("ownerToEntity");
+    if (!nullOrEmpty(ownerToEntity)) {
+      queryParams.put("ownerToEntityParam", ownerToEntity);
+      toEntityCondition = " AND entity_relationship.toEntity = :ownerToEntityParam";
+    }
     return String.format(
-        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId = :ownerIdParam AND relation=8))",
-        entityIdColumn);
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('%s', '%s') AND entity_relationship.fromId IN (%s)%s AND relation=%d))",
+        entityIdColumn,
+        Entity.USER,
+        Entity.TEAM,
+        inCondition,
+        toEntityCondition,
+        Relationship.OWNS.ordinal());
   }
 
   /**
@@ -881,6 +899,54 @@ public class ListFilter extends Filter<ListFilter> {
     return String.format(
         "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.tagFQN = :tierParam))",
         fqnHashColumn);
+  }
+
+  private String getDomainTypeCondition(String tableName) {
+    String domainType = getQueryParam("domainType");
+    if (nullOrEmpty(domainType)) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams("domainType", domainType);
+    String jsonColumn = nullOrEmpty(tableName) ? "json" : (tableName + ".json");
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.domainType')) IN (%s)", jsonColumn, inCondition);
+    }
+    return String.format("%s->>'domainType' IN (%s)", jsonColumn, inCondition);
+  }
+
+  private String getClassificationTagsCondition(String tableName) {
+    return getTagUsageCondition(
+        tableName, "tags", TagLabel.TagSource.CLASSIFICATION, "classificationTag");
+  }
+
+  private String getGlossaryTermsCondition(String tableName) {
+    return getTagUsageCondition(
+        tableName, "glossaryTerms", TagLabel.TagSource.GLOSSARY, "glossaryTerm");
+  }
+
+  private String getTagUsageCondition(
+      String tableName, String param, TagLabel.TagSource source, String bindPrefix) {
+    String value = getQueryParam(param);
+    if (nullOrEmpty(value)) {
+      return "";
+    }
+    // Match on the ascii_bin tagFQNHash column (hashing inputs the same way tag_usage is written)
+    // so the comparison is exact and identical on MySQL and Postgres, not collation-dependent.
+    String hashCsv =
+        Arrays.stream(value.split(","))
+            .map(String::trim)
+            .filter(fqn -> !fqn.isEmpty())
+            .map(FullyQualifiedName::buildHash)
+            .collect(Collectors.joining(","));
+    if (hashCsv.isEmpty()) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams(bindPrefix, hashCsv);
+    String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+    return String.format(
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s)))",
+        fqnHashColumn, source.ordinal(), inCondition);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {

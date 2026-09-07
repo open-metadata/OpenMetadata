@@ -489,27 +489,27 @@ const TagsContainerV2 = ({
     return null;
   }, [permission, entityType, isGlossaryType, selectedUserSuggestions]);
 
+  const renderNewLookCard = () => (
+    <WidgetCard
+      dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
+      forceExpand={isEditTags}
+      headerExtra={headerExtra}
+      isExpandDisabled={isEmpty(tags?.[tagType]) && !isEditTags}
+      title={isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}>
+      {/* Since WidgetCard is another component without onClick, wrapping the content in a
+          div to stop propagation */}
+      <div
+        role="presentation"
+        onClick={(e) => {
+          e.stopPropagation();
+        }}>
+        {suggestionDataRender ?? tagBody}
+      </div>
+    </WidgetCard>
+  );
+
   if (newLook) {
-    return (
-      <WidgetCard
-        dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
-        forceExpand={isEditTags}
-        headerExtra={headerExtra}
-        isExpandDisabled={isEmpty(tags?.[tagType]) && !isEditTags}
-        title={
-          isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')
-        }>
-        {/* Since WidgetCard is another component without onClick, wrapping the content in a
-            div to stop propagation */}
-        <div
-          role="presentation"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}>
-          {suggestionDataRender ?? tagBody}
-        </div>
-      </WidgetCard>
-    );
+    return renderNewLookCard();
   }
 
   return (

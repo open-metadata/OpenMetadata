@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenMetadata PR Review"
+  short_description: "Review OpenMetadata PRs with maintainer rigor"
+  default_prompt: "Use $openmetadata-pr-review to review this pull request from its live diff, issue, CI, and meaningful-test evidence."
+policy:
+  allow_implicit_invocation: true
