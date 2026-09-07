@@ -62,10 +62,6 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
-import {
-  AnnouncementEntity,
-  getActiveAnnouncements,
-} from '../../../rest/announcementsAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import {
   exportDataProductToODPSYaml,
