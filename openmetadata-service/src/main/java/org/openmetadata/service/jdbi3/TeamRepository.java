@@ -166,6 +166,8 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(
         fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
+    team.setDescendantTeams(
+        fields.contains("descendantTeams") ? getDescendantTeams(team) : team.getDescendantTeams());
     team.setDomains(fields.contains(FIELD_DOMAINS) ? getDomains(team.getId()) : team.getDomains());
   }
 
@@ -185,6 +187,7 @@ public class TeamRepository extends EntityRepository<Team> {
     if (!fields.contains("userCount")) {
       team.setUserCount(0);
     }
+    team.setDescendantTeams(fields.contains("descendantTeams") ? team.getDescendantTeams() : null);
   }
 
   private void fetchAndSetUsers(List<Team> teams, Fields fields) {
@@ -826,6 +829,25 @@ public class TeamRepository extends EntityRepository<Team> {
     hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(teamName)));
     for (EntityReference child : getChildren(teamId)) {
       collectSubtreeTeamHashes(child.getId(), child.getName(), hashes);
+    }
+  }
+
+  /**
+   * All teams nested under {@code team}, resolved recursively (the subtree, excluding the team
+   * itself). Computed on read like {@code childrenCount}/{@code userCount} — nothing is stored, so it
+   * stays correct across reparents/renames with no reindex. Backs the {@code descendantTeams} field
+   * the Users tab uses to scope its member search to a non-Group team's sub-groups.
+   */
+  private List<EntityReference> getDescendantTeams(Team team) {
+    List<EntityReference> descendants = new ArrayList<>();
+    collectDescendantTeams(team.getId(), descendants);
+    return descendants;
+  }
+
+  private void collectDescendantTeams(UUID teamId, List<EntityReference> descendants) {
+    for (EntityReference child : getChildren(teamId)) {
+      descendants.add(child);
+      collectDescendantTeams(child.getId(), descendants);
     }
   }
 

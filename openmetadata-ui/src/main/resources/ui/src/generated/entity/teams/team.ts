@@ -45,6 +45,11 @@ export interface Team {
      */
     deleted?: boolean;
     /**
+     * All teams nested under this team, resolved recursively (the full subtree, excluding this
+     * team itself). Computed on read; not stored.
+     */
+    descendantTeams?: EntityReference[];
+    /**
      * Description of the team.
      */
     description?: string;
