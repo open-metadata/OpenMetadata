@@ -302,11 +302,7 @@
       "a472e8db2c1e4d1a4812312cb9466bf1c0fc7cfa402304d1be0a84d5c7c987b6": 1
     },
     "ingestion/src/metadata/ingestion/api/parser.py": {
-      "5e85f291ef5e6771c616e24c39b0efecf4933188813fa38b41b2c63c37a6f264": 1,
-      "8cf781a4e8a9e76fa02569f46390cfd60c66f888c7afe45339844bc79cd8d164": 1,
-      "b9f2a9c923069a806feb68111cc88b8a7f08e199f88de46d8bb96965d33b0295": 1,
-      "c106ab86df4e3fad9299036aba9803fef5c702c89eaee89f5d704010925c6251": 1,
-      "e082cc80d3384e1f24a3062e94159a51f48bf3dc4b0e97fda1820a6a4da66628": 1
+      "5e85f291ef5e6771c616e24c39b0efecf4933188813fa38b41b2c63c37a6f264": 1
     },
     "ingestion/src/metadata/ingestion/api/step.py": {
       "1b317377072cf74a2760694a5768b6bcff02a91bd8b06bdf5c105582e0c4776c": 1,
@@ -699,14 +695,6 @@
       "8f0ce9a77b5ac3d16e5e26070bbfd47418aa710808bbcc6f0035d6f6df4dac1e": 1,
       "947b8075bd6922219d5b74538e37a1bf21cb15b562cccdb6eb8c18243c048685": 1,
       "e736d5594b512a99713c3fb001f14ebb9146648b90be54faa82e822c913bb0af": 1
-    },
-    "ingestion/src/metadata/ingestion/source/dashboard/grafana/metadata.py": {
-      "19f6bd8f4525394333e0833c2e84c7e42c951bb0f6a6c494928cffd8a271fd79": 1,
-      "1c2431fd916279660681ee89db4a3969dbd2d76e141b05d0357ab84a6a7cdffc": 1,
-      "3b87bfa2bd2af058526733769685154d4ddaa8e805e8c42a7eaff6ca53cbea6b": 1,
-      "637985790153d72012ce6c6a0447753499a61468c38be66f4998fa195c1638b8": 1,
-      "9d9be4196bac263f8054a1b10e81e5c7ce30fd47dbeaf8be207603af4d17d9b9": 1,
-      "d446bfa08dbdabc064f5d2bc9566c9bef8db9694d88bcd6d99c48d4eba86f81e": 1
     },
     "ingestion/src/metadata/ingestion/source/dashboard/hex/client.py": {
       "baee761583c77b309c6b232156c86faf07e7e4f767868e8353289d090ad0c0e9": 1,
@@ -2735,12 +2723,6 @@
       "068ec9ff58b10c2a74e457662f8c72a493033a5cbc8447024c9f1095d961e387": 1,
       "1c8bab8a8d80782adf5d3a4a5bdc78698b33a754194b6ac5b5d26bed3626dff0": 1
     },
-    "ingestion/src/metadata/parsers/protobuf_parser.py": {
-      "75c64aa566e8ff51a3d39ff86b8508f431640018870763951fba2514f07fb444": 1,
-      "b2520ce8bdf41e9e26cfeabcf44401b405408e23c8dcae67b21eecc922af4f2c": 1,
-      "edc8a3601d7ce94c4b25f2bef42c703d0dfd925eda928e60a337daa2cd8d5871": 1,
-      "f8e5b52b47b233aff013595df9af7591bf7ce692335b9f803037b9fe8de2f396": 1
-    },
     "ingestion/src/metadata/pii/algorithms/feature_extraction.py": {
       "3c7ba2b41400c4a145f687b36da8ebf2c4a9b10d5ea21043a54ee0dd7ca4177f": 1
     },
@@ -3236,9 +3218,6 @@
     },
     "ingestion/tests/load/test_resources/all_resources.py": {
       "0b161019e5e476cd0c464807cf94b7d24c333e2a02bb92fa90bd0f4d1f95a912": 1
-    },
-    "openmetadata-airflow-apis/openmetadata_managed_apis/api/error_handlers.py": {
-      "1ea3f12c439a1aa361f37b347e2a634511314520abae6e05ba452232b0a2655f": 1
     },
     "openmetadata-airflow-apis/openmetadata_managed_apis/api/routes/csrf_token.py": {
       "bf7550e65c620fc984c1811588a5f173f77ad25ef8be76e1429ad6948fa07591": 1
