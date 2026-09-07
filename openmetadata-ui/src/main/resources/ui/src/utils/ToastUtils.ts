@@ -71,6 +71,75 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
   }
 };
 
+interface AxiosErrorResolution {
+  errorMessage: string | JSX.Element;
+  isRuleViolation: boolean;
+  shouldSuppress: boolean;
+}
+
+// Pulled out of showErrorToast's 'config'/'response' branch: resolves the
+// display message plus whether the toast should be a warning (rule
+// violation) or suppressed entirely (unauthorized/forbidden GET, unless the
+// message calls out a principal-domain issue).
+const resolveAxiosErrorMessage = (
+  error: AxiosError,
+  fallbackText?: string
+): AxiosErrorResolution => {
+  const method = error.config?.method?.toUpperCase();
+  const fallback =
+    fallbackText && fallbackText.length > 0
+      ? fallbackText
+      : i18n.t('server.unexpected-error');
+  const errorMessage = getErrorText(error, fallback);
+  const isRuleViolation =
+    get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
+  const isUnauthorizedOrForbiddenGet =
+    error.response?.status === ClientErrors.UNAUTHORIZED ||
+    (error.response?.status === ClientErrors.FORBIDDEN && method === 'GET');
+  const shouldSuppress = Boolean(
+    error &&
+      isUnauthorizedOrForbiddenGet &&
+      !errorMessage.includes('principal domain')
+  );
+
+  return { errorMessage, isRuleViolation, shouldSuppress };
+};
+
+// Pulled out of showErrorToast: resolves the display message plus the
+// rule-violation/suppress flags for every accepted `error` shape (JSX
+// element, plain string, or AxiosError), so the toast function itself only
+// has to act on the resolved result.
+const resolveErrorDetails = (
+  error: AxiosError | string | JSX.Element,
+  fallbackText?: string
+): AxiosErrorResolution => {
+  if (React.isValidElement(error)) {
+    return {
+      errorMessage: error,
+      isRuleViolation: false,
+      shouldSuppress: false,
+    };
+  }
+
+  if (isString(error)) {
+    return {
+      errorMessage: error.toString(),
+      isRuleViolation: false,
+      shouldSuppress: false,
+    };
+  }
+
+  if ('config' in error && 'response' in error) {
+    return resolveAxiosErrorMessage(error, fallbackText);
+  }
+
+  return {
+    errorMessage: fallbackText ?? i18n.t('server.unexpected-error'),
+    isRuleViolation: false,
+    shouldSuppress: false,
+  };
+};
+
 /**
  * Display an error toast message.
  * @param error error text or AxiosError object
@@ -83,34 +152,15 @@ export const showErrorToast = (
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string | JSX.Element>) => void
 ) => {
-  let errorMessage;
-  let isRuleViolation = false;
-  if (React.isValidElement(error)) {
-    errorMessage = error;
-  } else if (isString(error)) {
-    errorMessage = error.toString();
-  } else if ('config' in error && 'response' in error) {
-    const method = error.config?.method?.toUpperCase();
-    const fallback =
-      fallbackText && fallbackText.length > 0
-        ? fallbackText
-        : i18n.t('server.unexpected-error');
-    errorMessage = getErrorText(error, fallback);
-    isRuleViolation =
-      get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
-    const isUnauthorizedOrForbiddenGet =
-      error.response?.status === ClientErrors.UNAUTHORIZED ||
-      (error.response?.status === ClientErrors.FORBIDDEN && method === 'GET');
-    if (
-      error &&
-      isUnauthorizedOrForbiddenGet &&
-      !errorMessage.includes('principal domain')
-    ) {
-      return;
-    }
-  } else {
-    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
+  const { errorMessage, isRuleViolation, shouldSuppress } = resolveErrorDetails(
+    error,
+    fallbackText
+  );
+
+  if (shouldSuppress) {
+    return;
   }
+
   callback && callback(errorMessage);
 
   if (isRuleViolation) {
