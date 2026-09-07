@@ -136,8 +136,21 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
 const DUPLICATE_NAME = `name-${uuid()}`;
 
-// TableV2 remounts rows on re-render; click() re-resolves the locator so it
-// survives the remount that a pre-resolved scrollIntoView handle did not.
+// Deeply nested rows sit below the fold in the TableV2 grid, so the expand icon
+// must be scrolled to before it is clickable — but TableV2 also remounts rows on
+// re-render, detaching a pre-resolved handle mid-scroll. Retrying scroll+click as
+// a unit re-resolves the locator each attempt: it reaches the off-screen icon and
+// survives the remount.
+const toggleNestedColumn = async (page: Page, rowKey: string) => {
+  const expandIcon = page.locator(
+    `[data-row-key="${rowKey}"] [data-testid="expand-icon"]`
+  );
+  await expect(async () => {
+    await expandIcon.scrollIntoViewIfNeeded();
+    await expandIcon.click({ timeout: 10_000 });
+  }).toPass({ timeout: 60_000 });
+};
+
 const expandNestedColumn = async (
   page: Page,
   rowKey: string,
@@ -147,9 +160,7 @@ const expandNestedColumn = async (
   if (await childRow.isVisible()) {
     return;
   }
-  await page
-    .locator(`[data-row-key="${rowKey}"] [data-testid="expand-icon"]`)
-    .click();
+  await toggleNestedColumn(page, rowKey);
   await expect(childRow).toBeVisible();
 };
 
@@ -162,9 +173,7 @@ const collapseNestedColumn = async (
   if (!(await childRow.isVisible())) {
     return;
   }
-  await page
-    .locator(`[data-row-key="${rowKey}"] [data-testid="expand-icon"]`)
-    .click();
+  await toggleNestedColumn(page, rowKey);
   await expect(childRow).toBeHidden();
 };
 
