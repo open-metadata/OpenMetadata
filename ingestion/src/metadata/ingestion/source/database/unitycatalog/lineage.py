@@ -360,7 +360,7 @@ class UnitycatalogLineageSource(Source):
                 if location_entity[0].dataModel:
                     lineage_details = self._get_container_column_lineage(location_entity[0].dataModel, table)
 
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
