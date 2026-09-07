@@ -69,33 +69,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({ children, onClick, className, size, type, ...props }) => (
-        <button
-          className={className}
-          data-size={size}
-          data-testid="button"
-          data-type={type}
-          onClick={onClick}
-          {...props}>
-          {children}
-        </button>
-      )
-    ),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-  },
-}));
-
 jest.mock('../atoms/Tag/ClassificationTag', () =>
   jest
     .fn()
@@ -379,7 +352,6 @@ describe('TagsSection', () => {
     it('should render without crashing', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 

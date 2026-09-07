@@ -260,10 +260,10 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
             <TagComponent
               color={tagData?.style?.color}
               icon={tagData?.style?.iconURL}
-              key={tagData?.tagFQN ?? ''}
-              label={getEntityName(tagData)}
+              key={String(item.id)}
+              label={getEntityName(tagData) || String(item.label ?? item.id)}
               maxWidth={120}
-              tooltip={getEntityName(tagData)}
+              tooltip={getEntityName(tagData) || String(item.label ?? item.id)}
               onDelete={onRemove}
             />
           );

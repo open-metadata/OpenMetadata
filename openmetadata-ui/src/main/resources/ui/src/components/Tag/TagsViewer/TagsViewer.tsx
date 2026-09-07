@@ -12,11 +12,14 @@
  */
 
 import {
+  Box,
   Button,
+  Popover,
+  PopoverTrigger,
   Tooltip,
   TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Popover, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
@@ -45,6 +48,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
@@ -158,32 +162,29 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     () =>
       sortedTagsBySource.slice(sizeCap).length > 0 && (
         <div data-testid="popover-element">
-          <Popover
-            content={
-              <div className="d-flex flex-column flex-wrap gap-2">
-                {sortedTagsBySource
-                  .slice(sizeCap)
-                  .map((tag) => getTagsElement(tag))}
-              </div>
-            }
-            overlayClassName="tag-popover-container"
-            placement="bottom"
-            trigger="click">
+          <PopoverTrigger isOpen={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <Button color="link-color" data-testid="plus-more-count" size="xs">
               {`+${sortedTagsBySource.length - (sizeCap ?? 0)} more`}
             </Button>
-          </Popover>
+            <Popover containerClassName="tag-popover-container" placement="bottom">
+              <Box className="tw:p-2" direction='col' gap={2} wrap='wrap'>
+                {sortedTagsBySource
+                  .slice(sizeCap)
+                  .map((tag) => getTagsElement(tag))}
+              </Box>
+            </Popover>
+          </PopoverTrigger>
         </div>
       ),
 
-    [sizeCap, sortedTagsBySource, getTagsElement]
+    [sizeCap, sortedTagsBySource, getTagsElement, isPopoverOpen]
   );
 
   if (isEmpty(sortedTagsBySource) && showNoDataPlaceholder) {
     return (
-      <Typography.Text className="text-grey-muted m-r-xss">
+      <Typography className="text-grey-muted m-r-xss">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

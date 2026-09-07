@@ -36,8 +36,8 @@ jest.mock('../TagsSelectForm/TagsSelectForm.component', () => {
 });
 
 // Renders a portaled link alongside its normal output, standing in for the "+n more" popover:
-// antd mounts overlay content in `document.body`, so it is a React-tree descendant whose clicks
-// bubble through the container while being a DOM sibling of it.
+// the Popover mounts overlay content in `document.body`, so it is a React-tree descendant whose
+// clicks bubble through the container while being a DOM sibling of it.
 jest.mock('../TagsViewer/TagsViewer', () => {
   const { createPortal } = jest.requireActual('react-dom');
 

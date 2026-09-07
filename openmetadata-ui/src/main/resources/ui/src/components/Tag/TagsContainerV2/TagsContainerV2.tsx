@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isEmpty, isEqual } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -76,7 +76,6 @@ const TagsContainerV2 = ({
   multiSelect,
 }: TagsContainerV2Props) => {
   const navigate = useNavigate();
-  const [form] = Form.useForm();
   const { t } = useTranslation();
   const {
     onThreadLinkSelect,
@@ -194,14 +193,12 @@ const TagsContainerV2 = ({
       ]);
     }
 
-    form.resetFields();
     handleExternalControl(false);
   };
 
   const handleCancel = useCallback(() => {
     handleExternalControl(false);
-    form.resetFields();
-  }, [form, handleExternalControl]);
+  }, [handleExternalControl]);
 
   const handleAddClick = useCallback(() => {
     handleExternalControl(true);
@@ -226,16 +223,14 @@ const TagsContainerV2 = ({
   const renderTags = useMemo(
     () =>
       isEmpty(tags?.[tagType]) && !showNoDataPlaceholder ? null : (
-        <Col span={24}>
-          <TagsViewer
-            displayType={displayType}
-            entityFqn={columnData?.fqn ?? ''}
-            showNoDataPlaceholder={showNoDataPlaceholder}
-            sizeCap={sizeCap}
-            tagType={tagType}
-            tags={tags?.[tagType] ?? []}
-          />
-        </Col>
+        <TagsViewer
+          displayType={displayType}
+          entityFqn={columnData?.fqn ?? ''}
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          sizeCap={sizeCap}
+          tagType={tagType}
+          tags={tags?.[tagType] ?? []}
+        />
       ),
     [
       displayType,
@@ -316,7 +311,7 @@ const TagsContainerV2 = ({
     }
 
     return (
-      <Space>
+      <Box align="center" gap={2}>
         {addTagButton ?? (
           <WidgetEditButton
             data-testid="edit-button"
@@ -335,7 +330,7 @@ const TagsContainerV2 = ({
             {conversationThreadElement}
           </>
         )}
-      </Space>
+      </Box>
     );
   }, [
     tags,
@@ -369,7 +364,7 @@ const TagsContainerV2 = ({
 
   const horizontalLayout = useMemo(() => {
     return (
-      <Space>
+      <Box align="center" gap={2}>
         {showAddTagButton ? (
           <WidgetPlusButton
             data-testid="add-tag"
@@ -389,7 +384,7 @@ const TagsContainerV2 = ({
           tags={tags?.[tagType] ?? []}
         />
         {showInlineEditButton ? editTagButton : null}
-      </Space>
+      </Box>
     );
   }, [
     showAddTagButton,
@@ -419,9 +414,9 @@ const TagsContainerV2 = ({
     }
 
     return (
-      <Row data-testid="entity-tags">
+      <Box align="center" data-testid="entity-tags" gap={2} wrap="wrap">
         {showAddTagButton && (
-          <Col className="m-t-xss">
+          <div className="m-t-xss">
             <WidgetPlusButton
               data-testid="add-tag"
               title={t('label.add-entity', {
@@ -431,11 +426,11 @@ const TagsContainerV2 = ({
               })}
               onClick={handleAddClick}
             />
-          </Col>
+          </div>
         )}
         {renderTags}
-        {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
-      </Row>
+        {showInlineEditButton ? <div>{editTagButton}</div> : null}
+      </Box>
     );
   }, [
     isEditTags,
