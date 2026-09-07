@@ -3752,6 +3752,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "Заполните ещё 1 обязательное поле, затем выполните успешный тест для продолжения",
     "fill-required-fields-then-test-connection": "Заполните ещё {{count}} обязательных поля, затем выполните успешный тест для продолжения",
+    "filter-no-matching-terms": "Ваш фильтр не содержит совпадающих терминов. Попробуйте изменить его.",
     "filter-pattern-description": "Применяйте шаблоны регулярных выражений для включения или исключения определённых ресурсов.",
     "filter-pattern-include-exclude-info": "{{activity}} {{filterPattern}} путем добавления списка регулярных выражений, разделенных запятыми.",
     "filter-pattern-info": "Выберите, следует ли включить или исключить {{filterPattern}} при приеме метаданных.",

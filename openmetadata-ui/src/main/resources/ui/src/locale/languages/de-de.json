@@ -3752,6 +3752,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "Füllen Sie 1 weiteres Pflichtfeld aus und führen Sie dann einen erfolgreichen Test durch",
     "fill-required-fields-then-test-connection": "Füllen Sie {{count}} weitere Pflichtfelder aus und führen Sie dann einen erfolgreichen Test durch",
+    "filter-no-matching-terms": "Ihr Filter hat keine passenden Begriffe. Versuchen Sie, ihn anzupassen.",
     "filter-pattern-description": "Wenden Sie reguläre Ausdrücke an, um bestimmte Assets ein- oder auszuschließen.",
     "filter-pattern-include-exclude-info": "Schließen Sie explizit {{filterPattern}} durch Hinzufügen einer Liste von durch Kommas getrennten regulären Ausdrücken {{activity}} ein oder aus.",
     "filter-pattern-info": "Wählen Sie aus, ob {{filterPattern}} als Teil der Metadaten-Erfassung ein- oder ausgeschlossen werden soll.",

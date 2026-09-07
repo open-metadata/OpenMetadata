@@ -3752,6 +3752,7 @@
     "files-uploaded-for-ai-retrieval": "Files uploaded for AI retrieval.",
     "fill-one-required-field-then-test-connection": "Fill 1 more required field, then run a successful test to continue",
     "fill-required-fields-then-test-connection": "Fill {{count}} more required fields, then run a successful test to continue",
+    "filter-no-matching-terms": "Your filter doesn't have any matching terms. Try adjusting it.",
     "filter-pattern-description": "Apply regex patterns to include or exclude specific assets.",
     "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex.",
     "filter-pattern-info": "Choose to include or exclude {{filterPattern}} as part of the metadata ingestion.",
