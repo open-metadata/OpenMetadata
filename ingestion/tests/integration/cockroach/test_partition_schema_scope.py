@@ -1,13 +1,11 @@
-import textwrap
-import time
-
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import create_engine
 from testcontainers.cockroachdb import CockroachDBContainer
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.workflow.metadata import MetadataWorkflow
+
+from .conftest import execute_ddl  # noqa: TID252
 
 # Partitioning requires an enterprise-enabled cluster. The shared conftest
 # fixture uses `cockroachdb/cockroach:v23.1.0`, where `PARTITION BY` needs a
@@ -20,8 +18,17 @@ PARTITION_TEST_IMAGE = "cockroachdb/cockroach:v24.3.0"
 def cockroach_container():
     """Override the shared conftest fixture with a v24.3 image that supports
     partitioning on a license-free single-node dev cluster."""
+    from testcontainers.core.config import testcontainers_config
+
+    old_max_tries = testcontainers_config.max_tries
+    testcontainers_config.max_tries = 240
+
     container = CockroachDBContainer(image=PARTITION_TEST_IMAGE)
-    container.start()
+    try:
+        container.start()
+    finally:
+        testcontainers_config.max_tries = old_max_tries
+
     try:
         yield container
     finally:
@@ -79,22 +86,7 @@ def prepare_partitioned_schemas(cockroach_container):
         """,
     ]
     with engine.connect() as conn:
-        for stmt in sql:
-            # CockroachDB schema changes can transiently fail with a
-            # SerializationFailure ("cannot publish new versions for
-            # descriptors ... old versions still in use") when descriptors are
-            # leased. Commit each DDL in its own transaction and retry.
-            for attempt in range(5):
-                try:
-                    conn.execute(text(textwrap.dedent(stmt)))
-                    conn.commit()
-                    break
-                except OperationalError as exc:
-                    conn.rollback()
-                    if "restart transaction" in str(exc).lower() and attempt < 4:
-                        time.sleep(1)
-                        continue
-                    raise
+        execute_ddl(conn, sql)
 
 
 @pytest.mark.parametrize(

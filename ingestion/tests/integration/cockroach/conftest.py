@@ -1,9 +1,11 @@
 import os
 import textwrap
+import time
 import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import DBAPIError
 
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -16,6 +18,41 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+
+# CockroachDB rejects a statement for two reasons that are pure startup/lease noise
+# and say nothing about the statement itself:
+#
+# * 42501 insufficient_privilege — the container entrypoint logs
+#   `finished creating default user`, which is the readiness predicate testcontainers
+#   waits on, *before* it runs `GRANT ALL ON DATABASE <db> TO <user>`. The first
+#   statements therefore race the GRANT and can fail with
+#   "user cockroach does not have CREATE privilege on database roach".
+# * 40001 serialization_failure — a schema change cannot publish a new descriptor
+#   version while an older version is still leased ("restart transaction").
+TRANSIENT_PGCODES = frozenset({"42501", "40001"})
+
+GRANT_WAIT_TIMEOUT_SECONDS = 60
+
+
+def execute_ddl(conn, statements, timeout: float = GRANT_WAIT_TIMEOUT_SECONDS) -> None:
+    """Run each statement in its own transaction, retrying transient failures.
+
+    Committing per statement means a retry replays only the statement that failed
+    instead of the whole batch.
+    """
+    for stmt in statements:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                conn.execute(text(textwrap.dedent(stmt)))
+                conn.commit()
+                break
+            except DBAPIError as exc:
+                conn.rollback()
+                pgcode = getattr(exc.orig, "pgcode", None)
+                if pgcode not in TRANSIENT_PGCODES or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.5)
 
 
 @pytest.fixture(scope="module")
@@ -35,10 +72,10 @@ def cockroach_container():
         testcontainers_config.max_tries = old_max_tries
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
-            conn.execute(
-                text(
-                    textwrap.dedent(
-                        """
+            execute_ddl(
+                conn,
+                [
+                    """
                     CREATE TABLE user_profiles (
                         user_id UUID PRIMARY KEY,
                         first_name TEXT,
@@ -48,10 +85,8 @@ def cockroach_container():
                         is_active BOOLEAN
                     );
                     """
-                    )
-                )
+                ],
             )
-            conn.commit()
 
         yield container
 
@@ -142,8 +177,6 @@ def create_test_data(cockroach_container):
     ]
 
     with engine.connect() as conn:
-        for stmt in setup_statements:
-            conn.execute(text(textwrap.dedent(stmt)))
-        conn.commit()
+        execute_ddl(conn, setup_statements)
 
     yield
