@@ -49,8 +49,9 @@ import {
   InputOutputPortsTabProps,
   InputOutputPortsTabRef,
 } from './InputOutputPortsTab.types';
-import { PortsLineageView } from './PortsLineageView';
-import { PortsListView, PortsListViewRef } from './PortsListView';
+import PortsLineageView from './PortsLineageView/PortsLineageView.component';
+import PortsListView from './PortsListView/PortsListView.component';
+import { PortsListViewRef } from './PortsListView/PortsListView.types';
 
 interface LineageAccordionSectionProps {
   isLineageExpanded: boolean;

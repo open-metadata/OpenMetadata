@@ -236,7 +236,7 @@ jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
   return jest.fn().mockImplementation(() => <div>StyleModal</div>);
 });
 
-jest.mock('../../components/Modals/IconColorModal', () => {
+jest.mock('../../components/Modals/IconColorModal/IconColorModal', () => {
   return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 

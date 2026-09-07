@@ -118,14 +118,14 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
-import CustomPropertiesSection from './CustomPropertiesSection';
+import CustomPropertiesSection from './CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import {
   EntitySummaryPanelProps,
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
-import { LineageTabContent } from './LineageTab';
+import LineageTabContent from './LineageTab/LineageTabContent';
 
 type EntityFetchResolution =
   | { immediate: true }

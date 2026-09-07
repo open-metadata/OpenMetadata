@@ -64,7 +64,7 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
-import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
+import LineageTabContent from '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent';
 import { LineageData } from '../../Lineage/Lineage.interface';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -75,7 +75,7 @@ import {
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
-import { KeyProfileMetrics } from './KeyProfileMetrics';
+import { KeyProfileMetrics } from './KeyProfileMetrics/KeyProfileMetrics.component';
 import { NestedColumnsSection } from './NestedColumnsSection';
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;

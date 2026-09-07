@@ -69,7 +69,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
-import IconColorModal from '../../components/Modals/IconColorModal';
+import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,

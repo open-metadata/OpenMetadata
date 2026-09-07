@@ -238,7 +238,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
 
-jest.mock('../../Modals/IconColorModal', () =>
+jest.mock('../../Modals/IconColorModal/IconColorModal', () =>
   jest.fn().mockImplementation(({ onSubmit }: IconColorModalProps) => (
     <div data-testid="icon-color-modal">
       <button

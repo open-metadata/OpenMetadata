@@ -12,13 +12,13 @@
  */
 
 import { ReactNode } from 'react';
-import { SearchIndex } from '../../../../../enums/search.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Aggregations,
   SearchResponse,
-} from '../../../../../interface/search.interface';
-import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
-import { SearchDropdownOption } from '../../../../SearchDropdown/SearchDropdown.interface';
+} from '../../../../interface/search.interface';
+import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
+import { SearchDropdownOption } from '../../../SearchDropdown/SearchDropdown.interface';
 
 export interface UrlStateConfig {
   searchKey?: string;

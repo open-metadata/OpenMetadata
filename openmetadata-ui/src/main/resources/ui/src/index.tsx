@@ -15,7 +15,7 @@ import { initCoreI18n } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
-import './styles/index';
+import './styles/globalStyles';
 import { getBasePath } from './utils/HistoryUtils';
 import i18next from './utils/i18next/LocalUtil';
 import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';

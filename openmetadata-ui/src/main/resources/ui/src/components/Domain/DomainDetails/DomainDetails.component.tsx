@@ -115,7 +115,7 @@ import {
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';

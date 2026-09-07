@@ -46,7 +46,8 @@ import {
   serializeEventBasedFilters,
   serializePeriodicBatchFilters,
 } from '../../../utils/WorkflowSerializationUtils';
-import { FormActionButtons, WorkflowConfigFormV1 } from './forms';
+import { FormActionButtons } from './forms/FormActionButtons';
+import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
 
 const computeStartNodeConfig = (
   node: Node,

@@ -54,7 +54,7 @@ import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_uniq
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
+import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import {
   CellRenderer,

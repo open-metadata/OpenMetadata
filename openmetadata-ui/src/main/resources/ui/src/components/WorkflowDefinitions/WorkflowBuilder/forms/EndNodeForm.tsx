@@ -17,7 +17,8 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface EndNodeFormProps {
   node: Node;

@@ -25,7 +25,7 @@
 
 import { getByTestId, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import SamlCallback, { getSamlCallbackParams } from './index';
+import SamlCallback, { getSamlCallbackParams } from './SamlCallback';
 
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)

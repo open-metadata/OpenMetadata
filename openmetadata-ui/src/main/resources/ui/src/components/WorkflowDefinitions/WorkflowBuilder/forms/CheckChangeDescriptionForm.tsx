@@ -17,13 +17,14 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
-import { FormActionButtons, MetadataFormSection } from './';
 import type { CheckChangeDescConditionPayload } from './ConditionBuilder';
+import { ConditionBuilder } from './ConditionBuilder/ConditionBuilder';
 import {
   buildConditionBuilderPayload,
-  ConditionBuilder,
   parseConditionBuilderPayload,
-} from './ConditionBuilder';
+} from './ConditionBuilder/conditionBuilderTransformer';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface CheckChangeDescriptionFormProps {
   node: Node;

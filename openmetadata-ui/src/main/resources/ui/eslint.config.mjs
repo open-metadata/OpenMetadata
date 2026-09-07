@@ -395,7 +395,7 @@ export default [
       'openmetadata-imports/no-cross-page-imports': 'warn',
       'openmetadata-imports/no-hook-ui-imports': 'error',
       'openmetadata-imports/no-impure-pure-utils': 'warn',
-      'openmetadata-imports/no-internal-barrel-imports': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'error',
       'openmetadata-imports/no-lodash-default-import': 'warn',
       'openmetadata-imports/no-lower-layer-page-imports': 'warn',
       'openmetadata-imports/no-rest-ui-imports': 'warn',

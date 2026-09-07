@@ -98,8 +98,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   ),
 }));
 
-jest.mock('../../components/OntologyExplorer', () => ({
-  OntologyExplorer: jest.fn((props: ExplorerMockProps) => {
+jest.mock('../../components/OntologyExplorer/OntologyExplorer', () => ({
+  __esModule: true,
+  default: jest.fn((props: ExplorerMockProps) => {
     mockOntologyExplorer(props);
 
     return <div data-testid="ontology-explorer" />;
