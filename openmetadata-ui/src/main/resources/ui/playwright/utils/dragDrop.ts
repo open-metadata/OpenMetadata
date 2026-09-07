@@ -12,23 +12,34 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 
-const pointOf = async (locator: Locator, position: 'center' | 'top') => {
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.boundingBox();
-  if (!box) {
-    throw new Error('Drag target is not visible in the viewport');
-  }
-  const y = position === 'top' ? box.y + 8 : box.y + box.height / 2;
+// The teams table keeps reflowing after its loaders clear (async detail counts
+// hydrate and shift rows). dragTo snapshots both boxes up front and presses at
+// those coordinates, so a drag begun mid-reflow presses on whatever slid into
+// the old spot and no dragstart fires. Hold both rows still before pressing.
+const waitForStableBox = async (locator: Locator) => {
+  let previous: { x: number; y: number } | undefined;
 
-  return { x: box.x + box.width / 2, y };
+  await expect(async () => {
+    const box = await locator.boundingBox();
+
+    expect(box).not.toBeNull();
+
+    const current = { x: box?.x ?? NaN, y: box?.y ?? NaN };
+    const held = previous?.x === current.x && previous?.y === current.y;
+
+    previous = current;
+
+    expect(held, 'element is still moving').toBe(true);
+  }).toPass({ timeout: 15_000, intervals: [200, 200, 400, 800] });
 };
 
-// TableV2 rows drag via react-aria's pointer-based useDragAndDrop, not HTML5
-// draggable, so this drives a real pointer gesture. The stepped moves are load
-// bearing: react-aria needs movement to start the drag and to register a drop
-// over the target instead of cancelling. Dropping on a row triggers a move
-// under it; dropping near the table top (isHeader) lands on the root DropZone
-// surface, which moves the team to the table root.
+// TableV2 rows drag through react-aria's useDragAndDrop, whose mouse path is the
+// native HTML drag-and-drop API — the same one dragTo drives. Manual mouse
+// events do not reliably synthesise native drag in headless Chromium, so a real
+// dragTo is required. force skips the actionability wait that the row hover
+// overlays would otherwise block. Dropping at a row's centre lands "on" it (a
+// move under that row); dropping near the table top (isHeader) lands on the
+// root DropZone surface, which moves the team to the table root.
 export const dragAndDropElement = async (
   page: Page,
   dragElement: string,
@@ -40,15 +51,15 @@ export const dragAndDropElement = async (
     ? page.locator(dropTarget)
     : page.locator(`[data-row-key="${dropTarget}"]`);
 
-  const source = await pointOf(dragElementLocator, 'center');
-  const target = await pointOf(dropTargetLocator, isHeader ? 'top' : 'center');
+  await dragElementLocator.scrollIntoViewIfNeeded();
+  await waitForStableBox(dragElementLocator);
+  await waitForStableBox(dropTargetLocator);
 
-  await page.mouse.move(source.x, source.y);
-  await page.mouse.down();
-  await page.mouse.move(source.x + 8, source.y + 8, { steps: 6 });
-  await page.mouse.move(target.x, target.y, { steps: 12 });
-  await page.mouse.move(target.x, target.y, { steps: 6 });
-  await page.mouse.up();
+  await dragElementLocator.dragTo(dropTargetLocator, {
+    force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
+    sourcePosition: { x: 10, y: 10 },
+    ...(isHeader ? { targetPosition: { x: 40, y: 8 } } : {}),
+  });
 };
 
 export const openDragDropDropdown = async (page: Page, name: string) => {

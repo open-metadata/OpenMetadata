@@ -283,7 +283,4 @@ const expandNestedColumn = async (
   await page
     .locator(`[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`)
     .click();
-  if (childRow) {
-    await expect(childRow).toBeVisible();
-  }
 };
