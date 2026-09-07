@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
 from metadata.profiler.orm.registry import CustomTypes
@@ -274,3 +274,27 @@ def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
     pk_cols = list(orm_table.__table__.primary_key)
     assert len(pk_cols) == 1
     assert pk_cols[0].name == "__hevo_id"
+
+
+def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
+    """A normal column named exactly like a remapped dunder key must not collide.
+
+    If a table has both ``__hevo_id`` (remapped to ``om_col___hevo_id``) and a
+    real column literally named ``om_col___hevo_id``, _safe_orm_attr must yield
+    distinct keys for both so neither column is silently overwritten.
+    """
+    existing: set = set()
+
+    # The real column arrives first and claims "om_col___hevo_id".
+    real_key = _safe_orm_attr("om_col___hevo_id", existing)
+    existing.add(real_key)
+    assert real_key == "om_col___hevo_id"
+
+    # The dunder column is remapped — its initial candidate collides, so it
+    # must get an extra underscore suffix.
+    dunder_key = _safe_orm_attr("__hevo_id", existing)
+    existing.add(dunder_key)
+    assert dunder_key == "om_col___hevo_id_"
+
+    # Both keys are distinct — no column was silently overwritten.
+    assert real_key != dunder_key

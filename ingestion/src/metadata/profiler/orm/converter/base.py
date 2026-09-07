@@ -63,7 +63,7 @@ def _safe_orm_attr(name: str, existing: set) -> str:
     elif _SQA_DUNDER_RE.match(name):
         candidate = _OM_SAFE_PREFIX + name
     else:
-        return name
+        candidate = name
     while candidate in existing:
         candidate += "_"
     return candidate
