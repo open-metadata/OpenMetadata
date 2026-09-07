@@ -956,7 +956,7 @@ class K8sPipelineClientTest {
 
   @Test
   void testParsePodSummariesThrowsOnMalformedJson() {
-      assertThrows(IOException.class, () -> client.parsePodSummaries("{ invalid json"));
+    assertThrows(IOException.class, () -> client.parsePodSummaries("{ invalid json"));
   }
 
   @Test
