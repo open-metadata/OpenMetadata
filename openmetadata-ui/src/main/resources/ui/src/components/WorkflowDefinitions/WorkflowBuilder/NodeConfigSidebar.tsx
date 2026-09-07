@@ -31,11 +31,7 @@ import {
   NodeConfig,
   NodeConfigSidebarProps,
 } from '../../../interface/workflow-builder-components.interface';
-import {
-  getCustomPropertiesByEntityType,
-  getWorkflowTriggerFields,
-  WorkflowTriggerFieldsConfig,
-} from '../../../rest/metadataTypeAPI';
+import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import {
   convertDisplayToBackendTriggerType,
   getInitialNodeConfig,
@@ -108,6 +104,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowDefinition,
   workflowMetadata,
   onWorkflowMetadataUpdate,
+  triggerFieldsConfig,
 }) => {
   const {
     allowFullStartNodeConfiguration,
@@ -144,15 +141,6 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
   );
-
-  const [triggerFieldsConfig, setTriggerFieldsConfig] =
-    useState<WorkflowTriggerFieldsConfig>({ common: [], byEntity: {} });
-
-  useEffect(() => {
-    getWorkflowTriggerFields()
-      .then(setTriggerFieldsConfig)
-      .catch(() => setTriggerFieldsConfig({ common: [], byEntity: {} }));
-  }, []);
 
   useEffect(() => {
     const assets = effectiveConfig.dataAssets ?? [];

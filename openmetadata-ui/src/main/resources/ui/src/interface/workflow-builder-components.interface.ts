@@ -22,6 +22,7 @@ import {
 } from 'reactflow';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
+import { WorkflowTriggerFieldsConfig } from '../rest/metadataTypeAPI';
 
 export interface DataAssetFilter {
   id: number;
@@ -331,4 +332,5 @@ export interface NodeConfigSidebarProps {
   onWorkflowUpdate: (workflowDefinition: WorkflowDefinition) => void;
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
+  triggerFieldsConfig: WorkflowTriggerFieldsConfig;
 }
