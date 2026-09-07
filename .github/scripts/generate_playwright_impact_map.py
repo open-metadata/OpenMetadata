@@ -113,6 +113,50 @@ def is_delegated(spec_rel: str) -> bool:
     return any(spec_rel.startswith(prefix) for prefix in DELEGATED_SPEC_PATTERNS)
 
 
+# Files under `src/` that are NOT product code — unit tests, Jest mocks, and
+# manual mock fixtures — and therefore should never appear as sources in the
+# generated map. Filtering them out prevents an edit to a Jest test from
+# scheduling a full E2E rerun of every spec whose runtime happens to touch the
+# same component.
+#
+# The filter looks at (a) the filename suffix, matching the repo's own naming
+# convention (`Foo.test.tsx`, `Foo.mock.ts`, `Foo.stories.tsx`), and (b) two
+# canonical mock/fixture directories (`src/mocks/`, `__mocks__/`) — Jest picks
+# both up automatically and neither ships in the browser bundle.
+NON_PRODUCT_SUFFIXES = (
+    ".test.ts",
+    ".test.tsx",
+    ".mock.ts",
+    ".mock.tsx",
+    ".stories.ts",
+    ".stories.tsx",
+    ".spec.ts",  # any unit spec that colocates next to a component (rare here)
+    ".spec.tsx",
+)
+
+NON_PRODUCT_DIRS = (
+    "/src/mocks/",
+    "/__mocks__/",
+    "/__snapshots__/",
+    "/__fixtures__/",
+    "/.storybook/",
+)
+
+
+def is_product_source(path_posix: str) -> bool:
+    """
+    True when `path_posix` is a `src/**` file that ships in the browser bundle
+    (component, page, util, hook, rest client, generated model, …). False for
+    Jest tests, Jest mocks, storybook fixtures, and snapshots — none of which
+    can break an E2E spec by being edited alone.
+    """
+    if any(path_posix.endswith(suffix) for suffix in NON_PRODUCT_SUFFIXES):
+        return False
+    if any(marker in path_posix for marker in NON_PRODUCT_DIRS):
+        return False
+    return True
+
+
 def resolve_import(from_file: Path, spec: str) -> Path | None:
     """
     Resolve a single import target to a filesystem path, or return None.
@@ -164,9 +208,14 @@ def crawl(spec_path: Path, repo_root: Path) -> set[Path]:
             visited.add(resolved)
             try:
                 resolved.relative_to(src_root_abs)
-                src_hits.add(resolved)
             except ValueError:
-                pass  # not under src/ — keep crawling but don't record it
+                frontier.append((resolved, depth + 1))
+                continue  # not under src/ — keep crawling but don't record it
+            # Under src/. Only record it as evidence for this spec if it is
+            # product code — Jest tests and mocks colocated with components
+            # would otherwise cause a unit-test edit to schedule an E2E.
+            if is_product_source(resolved.as_posix()):
+                src_hits.add(resolved)
             frontier.append((resolved, depth + 1))
 
     return src_hits
@@ -189,8 +238,13 @@ def build_src_testid_index(repo_root: Path) -> dict[str, set[str]]:
     for source_path in src_root_abs.rglob("*.ts*"):
         if source_path.suffix not in (".ts", ".tsx"):
             continue
-        text = source_path.read_text(encoding="utf-8", errors="replace")
         source_rel = source_path.relative_to(repo_root).as_posix()
+        # A `data-testid` in a Jest test file or a mock fixture is not evidence
+        # that any Playwright spec depends on that file — the strings are just
+        # rendered by the unit test itself.
+        if not is_product_source(source_rel):
+            continue
+        text = source_path.read_text(encoding="utf-8", errors="replace")
         for testid in SRC_TESTID_RE.findall(text):
             index.setdefault(testid, set()).add(source_rel)
     return index

@@ -3055,6 +3055,59 @@ def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_p
     )
 
 
+def test_generator_ignores_unit_tests_and_mocks_that_colocate_with_components(
+    tmp_path,
+):
+    """
+    Product-source filter: Jest tests, Jest mocks, and manual mock fixtures
+    live next to their components (`Foo.tsx`, `Foo.test.tsx`, `Foo.mock.tsx`).
+    Only the production file may appear in the source→spec map — editing a
+    Jest test should never schedule a Playwright rerun.
+
+    Regression guard for the shipped v1 map, which routed 70 `.test.tsx`
+    files as sources and would have scheduled Playwright on every Jest edit.
+    """
+    generator = load_script("generate_playwright_impact_map")
+
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "src/components/Widget").mkdir(parents=True)
+    (ui / "src/mocks").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+
+    # Product source, unit test, and Jest mock all define the SAME data-testid.
+    # Only the product source should surface as an owner.
+    (ui / "src/components/Widget/Widget.tsx").write_text(
+        'export const W = () => <div data-testid="widget-open" />;\n'
+    )
+    (ui / "src/components/Widget/Widget.test.tsx").write_text(
+        'test("renders", () => render(<div data-testid="widget-open" />));\n'
+    )
+    (ui / "src/mocks/Widget.mock.tsx").write_text(
+        'export const mock = () => <div data-testid="widget-open" />;\n'
+    )
+    (ui / "playwright/e2e/Features/Widget.spec.ts").write_text(
+        "test('opens', async ({ page }) => {\n"
+        "  await page.getByTestId('widget-open').click();\n"
+        "});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    sources = {s for entry in result["mappings"] for s in entry["sources"]}
+
+    assert (
+        "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.tsx"
+        in sources
+    )
+    for excluded in (
+        "openmetadata-ui/src/main/resources/ui/src/components/Widget/Widget.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/mocks/Widget.mock.tsx",
+    ):
+        assert excluded not in sources, (
+            f"{excluded} should be excluded — editing a Jest test or a mock "
+            "must not schedule Playwright"
+        )
+
+
 def test_committed_generated_impact_map_matches_the_generator_output():
     """
     Drift guard: the committed `.github/playwright/impact-map.generated.json`
