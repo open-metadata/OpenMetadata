@@ -306,9 +306,6 @@ class DataContractPipelineTokenRefreshTest {
         .withName("dq-pipeline")
         .withFullyQualifiedName("dq-pipeline")
         .withPipelineType(PipelineType.TEST_SUITE)
-        // A DQ pipeline is born with this source config in
-        // DataContractRepository#createIngestionPipeline, and deployIngestionPipeline rejects a
-        // pipeline whose sourceConfig carries no type before it ever reaches the runner.
         .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()))
         .withDeployed(deployed);
   }
