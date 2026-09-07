@@ -114,9 +114,10 @@ class UserSSOOAuthProviderTest {
     assertThat(html)
         .contains(
             "iss=" + java.net.URLEncoder.encode(ISSUER, java.nio.charset.StandardCharsets.UTF_8));
-    // User-facing error messaging.
+    // User-facing error messaging is generic: the page must not render the IdP-supplied strings
+    // as markup, only carry them in the redirect query.
     assertThat(html).contains("Authentication Failed");
-    assertThat(html).contains("login_required");
+    assertThat(html).contains("The identity provider could not complete authentication.");
     // Status + content type for an HTML page.
     verify(response).setStatus(HttpServletResponse.SC_OK);
     verify(response).setContentType("text/html; charset=UTF-8");
@@ -219,7 +220,10 @@ class UserSSOOAuthProviderTest {
   }
 
   @Test
-  void handleSSOErrorCallback_htmlEscapesMaliciousErrorDescription() throws Exception {
+  void handleSSOErrorCallback_doesNotRenderIdpSuppliedText() throws Exception {
+    // The error/error_description come from an external IdP and are attacker-influenceable, so
+    // they are never written into OpenMetadata's own markup - not even HTML-escaped. They still
+    // reach the MCP client percent-encoded in the redirect query, which is where it reads them.
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
     when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
@@ -233,14 +237,12 @@ class UserSSOOAuthProviderTest {
     provider.handleSSOErrorCallback(response, AUTH_REQUEST_ID, "server_error", malicious);
 
     String html = body.toString();
-    // The raw malicious payload must never appear verbatim in the rendered HTML. (The page's
-    // own auto-redirect <script> tag is expected and legitimate, so only assert the specific
-    // attacker-controlled substring is absent.)
+    // Neither the raw payload nor any escaped rendering of it appears in the page body.
     assertThat(html).doesNotContain("<script>alert(1)</script>");
-    // The alert text is present (so the description rendered) but only inside HTML-escaped
-    // entities (escapeForHtmlAttribute escapes angle brackets), proving it cannot execute.
-    assertThat(html).contains("alert(1)");
-    assertThat(html).contains("lt;script");
+    assertThat(html).doesNotContain("lt;script");
+    assertThat(html).doesNotContain("alert(1)");
+    // But it is relayed to the client, percent-encoded, so diagnosis is not lost.
+    assertThat(html).contains("error_description=%22%3E%3Cscript%3Ealert%281%29%3C%2Fscript%3E");
   }
 
   @Test

@@ -433,9 +433,9 @@ public class McpCallbackServlet extends HttpServlet {
       if (idpError != null && !idpError.isEmpty()) {
         String errorDescription = request.getParameter("error_description");
         LOG.warn(
-            "IdP returned OAuth error for MCP callback (pac4j state={}, error={}); "
+            "IdP returned OAuth error for MCP callback (pac4j state hash={}, error={}); "
                 + "relaying to MCP client redirect_uri",
-            pac4jState,
+            Integer.toHexString(pac4jState.hashCode()),
             idpError);
         processBufferedCallbackResponse(
             response,

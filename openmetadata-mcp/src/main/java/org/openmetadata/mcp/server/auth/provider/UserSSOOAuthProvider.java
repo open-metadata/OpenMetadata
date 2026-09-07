@@ -681,12 +681,16 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         UriUtils.constructAuthorizationResponseUri(
             pendingRequest.redirectUri(), queryParams, issuer);
 
+    // The IdP-supplied error and description are logged here for the operator and relayed to the
+    // MCP client in the redirect query. They are deliberately NOT rendered into the page below.
     LOG.warn(
-        "Relaying IdP OAuth error to MCP client (error={}, client={}, redirectUri={})",
+        "Relaying IdP OAuth error to MCP client (error={}, description={}, client={}, "
+            + "redirectUri={})",
         errorCode,
+        errorDescription,
         pendingRequest.clientId(),
         pendingRequest.redirectUri());
-    serveErrorPage(response, redirectUrl, errorCode, errorDescription);
+    serveErrorPage(response, redirectUrl);
 
     // Best-effort cleanup — failure here doesn't affect the relayed error.
     try {
@@ -1163,55 +1167,49 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    * browser to the MCP client's {@code redirect_uri} carrying the OAuth error response.
    *
    * <p>Mirrors {@link #serveSuccessPage}: a raw 302 would leave the browser on the SSO callback
-   * URL with no feedback, so we render a short error page first. The {@code error_description}
-   * (sourced from the IdP callback) is HTML-escaped before being rendered so a malicious or
-   * malformed IdP response cannot inject markup into the page.
+   * URL with no feedback, so we render a short error page first.
+   *
+   * <p>The page deliberately shows a generic message and does <b>not</b> render the IdP-supplied
+   * {@code error} / {@code error_description}. Those are attacker-influenceable strings from an
+   * external system; OpenMetadata has no reason to paint them into its own markup. They still
+   * reach the MCP client (percent-encoded in the redirect query, which is where the client reads
+   * them) and the operator (the WARN log in {@link #handleSSOErrorCallback}), so nothing is lost
+   * for diagnosis.
    */
-  private void serveErrorPage(
-      HttpServletResponse response, String redirectUrl, String errorCode, String errorDescription)
-      throws IOException {
+  private void serveErrorPage(HttpServletResponse response, String redirectUrl) throws IOException {
     response.setStatus(HttpServletResponse.SC_OK);
     response.setContentType("text/html; charset=UTF-8");
 
     String htmlSafeUrl = escapeForHtmlAttribute(redirectUrl);
     String jsSafeUrl = escapeForJavaScriptString(redirectUrl);
-    String safeErrorCode = escapeForHtmlAttribute(errorCode != null ? errorCode : "");
-    String safeErrorDesc = escapeForHtmlAttribute(errorDescription != null ? errorDescription : "");
 
-    StringBuilder body = new StringBuilder();
-    body.append("<!DOCTYPE html><html><head>")
-        .append("<meta charset=\"UTF-8\">")
-        .append("<meta http-equiv=\"refresh\" content=\"1;url=")
-        .append(htmlSafeUrl)
-        .append("\">")
-        .append("<style>")
-        .append("body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;")
-        .append("display:flex;justify-content:center;align-items:center;min-height:100vh;")
-        .append("margin:0;background:#f5f5f5;color:#333}")
-        .append(".card{text-align:center;background:#fff;border-radius:12px;")
-        .append("padding:48px;box-shadow:0 2px 8px rgba(0,0,0,0.1);max-width:480px}")
-        .append("h1{color:#c62828;margin:0 0 12px}")
-        .append("p{margin:4px 0;color:#666}")
-        .append("</style></head><body>")
-        .append("<div class=\"card\">")
-        .append("<h1>Authentication Failed</h1>")
-        .append("<p>The identity provider could not complete authentication.</p>");
-    if (!safeErrorCode.isEmpty()) {
-      body.append("<p style=\"font-size:13px;margin-top:8px\">Error: ")
-          .append(safeErrorCode)
-          .append("</p>");
-    }
-    if (!safeErrorDesc.isEmpty()) {
-      body.append("<p style=\"font-size:13px\">").append(safeErrorDesc).append("</p>");
-    }
-    body.append(
-            "<p style=\"font-size:13px;margin-top:16px\">Redirecting back to your application...</p>")
-        .append("</div>")
-        .append("<script>setTimeout(function(){window.location.href=\"")
-        .append(jsSafeUrl)
-        .append("\"},500);</script>")
-        .append("</body></html>");
-    response.getWriter().write(body.toString());
+    response
+        .getWriter()
+        .write(
+            "<!DOCTYPE html><html><head>"
+                + "<meta charset=\"UTF-8\">"
+                + "<meta http-equiv=\"refresh\" content=\"1;url="
+                + htmlSafeUrl
+                + "\">"
+                + "<style>"
+                + "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
+                + "display:flex;justify-content:center;align-items:center;min-height:100vh;"
+                + "margin:0;background:#f5f5f5;color:#333}"
+                + ".card{text-align:center;background:#fff;border-radius:12px;"
+                + "padding:48px;box-shadow:0 2px 8px rgba(0,0,0,0.1);max-width:480px}"
+                + "h1{color:#c62828;margin:0 0 12px}"
+                + "p{margin:4px 0;color:#666}"
+                + "</style></head><body>"
+                + "<div class=\"card\">"
+                + "<h1>Authentication Failed</h1>"
+                + "<p>The identity provider could not complete authentication.</p>"
+                + "<p style=\"font-size:13px;margin-top:16px\">"
+                + "Redirecting back to your application...</p>"
+                + "</div>"
+                + "<script>setTimeout(function(){window.location.href=\""
+                + jsSafeUrl
+                + "\"},500);</script>"
+                + "</body></html>");
   }
 
   private boolean verifyPKCE(String codeVerifier, String codeChallenge) {

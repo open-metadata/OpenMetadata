@@ -425,7 +425,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           pendingLoginContext.nonce(),
           pendingLoginContext.pkceVerifier());
 
-      if (!nullOrEmpty(promptType)) {
+      // prompt=none asks the IdP to authenticate only if it can do so with no user interaction.
+      // That is a web-SSO optimization, and it is self-defeating on the MCP path: an MCP client
+      // has just opened a fresh browser context precisely so the user can log in, so forcing
+      // silent auth there can only come back as login_required (#32671). Every other prompt value
+      // (login, consent, select_account) is deliberate admin policy and still applies to MCP.
+      boolean forcesSilentAuth = "none".equalsIgnoreCase(promptType);
+      if (!nullOrEmpty(promptType) && !(isMcpFlow && forcesSilentAuth)) {
         params.put(OidcConfiguration.PROMPT, promptType);
       }
 
