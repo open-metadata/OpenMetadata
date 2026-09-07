@@ -95,6 +95,123 @@ describe('Glossary Utils', () => {
     );
   });
 
+  it('should hold back a nested term whose parent term is absent instead of promoting it to a root', () => {
+    // Progressive expand-all paginates all levels by name, so a descendant can
+    // arrive on an earlier page than its parent term. Such an orphan must be
+    // held back (not rendered as a spurious root) and attach once its parent's
+    // page loads.
+    const orphanChild = {
+      fullyQualifiedName: 'G.Parent.Child',
+      name: 'Child',
+      parent: {
+        fullyQualifiedName: 'G.Parent',
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+    const topLevel = {
+      fullyQualifiedName: 'G.Top',
+      name: 'Top',
+    } as unknown as GlossaryTerm;
+    const parentTerm = {
+      fullyQualifiedName: 'G.Parent',
+      name: 'Parent',
+      children: [],
+    } as unknown as GlossaryTerm;
+
+    // Parent not yet loaded: only the genuine root is returned.
+    expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
+
+    // Parent loaded on a later page: the child attaches beneath it.
+    expect(buildTree([orphanChild, topLevel, parentTerm])).toEqual([
+      topLevel,
+      { ...parentTerm, children: [{ ...orphanChild, type: 'glossaryTerm' }] },
+    ]);
+  });
+
+  it('should hold back an orphan even when the parent reference omits its type', () => {
+    // The API may return a parent reference with only fqn/id and no type. The
+    // orphan must still be held back rather than promoted to a spurious root.
+    const orphanChild = {
+      fullyQualifiedName: 'G.Parent.Child',
+      name: 'Child',
+      parent: { fullyQualifiedName: 'G.Parent' },
+    } as unknown as GlossaryTerm;
+    const topLevel = {
+      fullyQualifiedName: 'G.Top',
+      name: 'Top',
+    } as unknown as GlossaryTerm;
+
+    expect(buildTree([orphanChild, topLevel])).toEqual([topLevel]);
+  });
+
+  it('should treat direct children of the view root as roots when the root itself is absent', () => {
+    // When expanding a term (not a glossary), the flat list holds that term's
+    // descendants but not the term itself. Its direct children reference it as
+    // their parent, so they must render as roots — passing the root FQN lets
+    // buildTree distinguish them from orphans of a not-yet-loaded page.
+    const rootTermFqn = 'G.Term1';
+    const child = {
+      fullyQualifiedName: 'G.Term1.Term2',
+      name: 'Term2',
+      children: [],
+      parent: {
+        fullyQualifiedName: rootTermFqn,
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+    const grandChild = {
+      fullyQualifiedName: 'G.Term1.Term2.Term3',
+      name: 'Term3',
+      parent: {
+        fullyQualifiedName: 'G.Term1.Term2',
+        type: EntityType.GLOSSARY_TERM,
+      },
+    } as unknown as GlossaryTerm;
+
+    // Without the root FQN the direct child would be held back as an orphan.
+    expect(buildTree([child, grandChild])).toEqual([]);
+
+    // With the root FQN it renders as a root with its grandchild nested.
+    expect(buildTree([child, grandChild], rootTermFqn)).toEqual([
+      { ...child, children: [{ ...grandChild, type: 'glossaryTerm' }] },
+    ]);
+  });
+
+  it('should keep grandchildren when an intermediate term has no inline children', () => {
+    // Flat pages deliver a parent before its children, and an intermediate
+    // term may arrive with an empty children field. The grandchild must still
+    // appear beneath it (regression: a snapshot copy would orphan it).
+    const root = {
+      fullyQualifiedName: 'A',
+      name: 'A',
+      children: [],
+    } as unknown as GlossaryTerm;
+    const intermediate = {
+      fullyQualifiedName: 'A.B',
+      name: 'B',
+      children: [],
+      parent: { fullyQualifiedName: 'A', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+    const leaf = {
+      fullyQualifiedName: 'A.B.C',
+      name: 'C',
+      parent: { fullyQualifiedName: 'A.B', type: EntityType.GLOSSARY_TERM },
+    } as unknown as GlossaryTerm;
+
+    expect(buildTree([root, intermediate, leaf])).toEqual([
+      {
+        ...root,
+        children: [
+          {
+            ...intermediate,
+            type: 'glossaryTerm',
+            children: [{ ...leaf, type: 'glossaryTerm' }],
+          },
+        ],
+      },
+    ]);
+  });
+
   it('should return an empty array if no glossary term is provided', () => {
     const expandableKeys = findExpandableKeys();
 
@@ -409,12 +526,12 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      description: 350,
+      description: 420,
       name: 250,
-      owners: 280,
-      reviewers: 220,
+      owners: 220,
+      reviewers: 200,
       status: 150,
-      synonyms: 220,
+      synonyms: 200,
     });
   });
 

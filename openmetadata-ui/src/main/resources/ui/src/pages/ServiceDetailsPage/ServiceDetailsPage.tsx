@@ -1417,6 +1417,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -1424,6 +1426,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
           entity: t('label.service'),
         })
       );
+
+      return false;
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
