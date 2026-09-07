@@ -462,12 +462,13 @@ class Data360Source(DatabaseServiceSource):
         if not self.source_config.markDeletedTables:
             return
 
-        logger.info(f"Mark Deleted Tables set to True. Processing database [{self._database_name}]")
+        logger.info("Mark Deleted Tables set to True. Processing database [%s]", self._database_name)
         for schema_fqn in self._get_filtered_schema_names(return_fqn=True, add_to_status=False):
             if schema_fqn in self.failed_schema_fqns:
                 logger.warning(
-                    f"Skipping table deletion for schema [{schema_fqn}]: its table discovery failed "
-                    "this run, so an empty listing is not evidence that its tables were removed."
+                    "Skipping table deletion for schema [%s]: its table discovery failed this run, "
+                    "so an empty listing is not evidence that its tables were removed.",
+                    schema_fqn,
                 )
                 continue
             yield from delete_entity_from_source(

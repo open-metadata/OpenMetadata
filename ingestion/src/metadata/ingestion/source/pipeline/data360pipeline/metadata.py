@@ -100,7 +100,7 @@ class Data360PipelineSource(PipelineServiceSource):
 
     def _filter_inactive_pipeline(self, name: str | None, status: str | None, pipeline_type: str) -> bool:
         if status != "ACTIVE":
-            logger.debug(f"Filtering {pipeline_type} {name}. Status: {status}")
+            logger.debug("Filtering %s %s. Status: %s", pipeline_type, name, status)
             self.status.filter(str(name), "Pipeline Filtered Out")
             return True
         return False
@@ -271,7 +271,7 @@ class Data360PipelineSource(PipelineServiceSource):
                 return f"https://{base}.lightning.force.com/lightning/r/DataLakeObjectInstance/{datastream_id}/view"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
+            logger.error("Unable to get source url: %s", exc)
             self.status.failed(
                 error=StackTraceError(
                     name="Source Url",
