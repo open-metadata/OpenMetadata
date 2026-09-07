@@ -10,22 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BadgeWithIcon,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataTypeString } from '../../../utils/TablePureUtils';
 import { prepareConstraintIcon } from '../../../utils/TableUtils';
+import TagChip from '../atoms/TagChip/TagChip';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
 
@@ -89,7 +84,6 @@ interface FieldMetadataSectionProps {
   visibleCount: number | null;
   showAll: boolean;
   moreLabel: string;
-  icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
   itemClassName: string;
   testIdPrefix: string;
   moreButtonClassName: string;
@@ -105,7 +99,6 @@ const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
   visibleCount,
   showAll,
   moreLabel,
-  icon,
   itemClassName,
   testIdPrefix,
   moreButtonClassName,
@@ -143,13 +136,13 @@ const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
               className={itemClassName}
               data-testid={`${testIdPrefix}-${item.tagFQN}`}
               key={item.tagFQN}>
-              <BadgeWithIcon
-                color="gray"
-                iconLeading={icon}
-                size="xs"
-                type="color">
-                {getEntityName(item)}
-              </BadgeWithIcon>
+              <TagChip
+                icon={item.style?.iconURL}
+                label={getEntityName(item)}
+                size="small"
+                tagColor={item.style?.color}
+                variant="blueGray"
+              />
             </span>
           ))}
           {showMoreButton && (
@@ -484,7 +477,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
         <div className="tw:mt-3 tw:mb-2 tw:flex tw:flex-col tw:gap-2">
           <FieldMetadataSection
             containerRef={tagsContainerRef}
-            icon={ClassificationIcon}
             itemClassName="tag-item"
             items={visibleTags}
             label={t('label.tag-plural')}
@@ -499,7 +491,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
           />
           <FieldMetadataSection
             containerRef={termsContainerRef}
-            icon={GlossaryIcon}
             itemClassName="glossary-term-item"
             items={visibleTerms}
             label={t('label.glossary-term-plural')}
