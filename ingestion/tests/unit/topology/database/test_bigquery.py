@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -671,9 +674,6 @@ class BigqueryUnitTest(TestCase):
         """
         from google.auth.credentials import Credentials
 
-        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-            BigQueryConnection,
-        )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
@@ -708,6 +708,36 @@ class BigqueryUnitTest(TestCase):
         )
         assert "location=eu" not in str(result_null.engine.url)
         assert result_null.client._location is None
+
+    @patch("metadata.utils.credentials.auth.default")
+    def test_inspector_scopes_adc_and_path_credentials(self, mock_auth_default):
+        from google.auth.credentials import Credentials
+
+        from metadata.ingestion.source.database.bigquery.helper import (
+            get_inspector_details,
+        )
+
+        mock_auth_default.return_value = (Mock(spec=Credentials), "project-one")
+
+        for gcp_config in (
+            {"type": "gcp_adc", "projectId": ["project-one", "project-two"]},
+            {
+                "type": "gcp_credential_path",
+                "path": "credentials.json",
+                "projectId": ["project-one", "project-two"],
+            },
+        ):
+            config = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
+            config["credentials"]["gcpConfig"] = gcp_config
+            service_connection = BigQueryConnection.model_validate(config)
+
+            result = get_inspector_details("project-two", service_connection)
+
+            assert str(result.engine.url).startswith("bigquery://project-two")
+            assert service_connection.credentials.gcpConfig.projectId.root == [
+                "project-one",
+                "project-two",
+            ]
 
 
 class BigqueryLineageSourceTest(TestCase):
