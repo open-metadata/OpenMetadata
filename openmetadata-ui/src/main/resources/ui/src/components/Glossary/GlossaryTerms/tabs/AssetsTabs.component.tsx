@@ -950,10 +950,12 @@ const AssetsTabs = forwardRef(
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
-    const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-      const quickFilterQuery = getQuickFilterQuery(data);
-      setQuickFilterQuery(quickFilterQuery);
-    };
+    const handleQuickFiltersChange = useCallback(
+      (data: ExploreQuickFilterField[]) => {
+        setQuickFilterQuery(getQuickFilterQuery(data));
+      },
+      []
+    );
 
     const handleQuickFiltersValueSelect = useCallback(
       (field: ExploreQuickFilterField) => {
@@ -971,7 +973,7 @@ const AssetsTabs = forwardRef(
           return data;
         });
       },
-      [setSelectedQuickFilters]
+      [handleQuickFiltersChange]
     );
 
     const assetListing = useMemo(
@@ -1163,7 +1165,12 @@ const AssetsTabs = forwardRef(
           handleQuickFiltersChange(updatedQuickFilters);
         }
       }
-    }, [selectedFilter, selectedQuickFilters, filters]);
+    }, [
+      selectedFilter,
+      selectedQuickFilters,
+      filters,
+      handleQuickFiltersChange,
+    ]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
