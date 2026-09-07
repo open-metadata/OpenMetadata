@@ -14,6 +14,7 @@ Protobuf parser tests
 """
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -134,3 +135,51 @@ class ProtobufParserTests:
         assert parsed_schema[0].children[3].name.root == "contact"
         assert parsed_schema[0].children[3].children[0].name.root == "email"
         assert parsed_schema[0].children[3].children[1].name.root == "phone"
+
+
+@pytest.mark.parametrize("schema_name", ["../outside", r"..\outside", r"C:\outside"])
+def test_create_proto_files_rejects_traversal_schema_names(tmp_path, schema_name):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name=schema_name,
+            schema_text='syntax = "proto3";',
+            base_file_path=str(tmp_path / "protobuf"),
+        )
+    )
+
+    assert parser.create_proto_files() is None
+    assert not (tmp_path / "protobuf" / "outside.proto").exists()
+    assert not (tmp_path / "outside.proto").exists()
+
+
+def test_create_proto_files_rejects_absolute_schema_name(tmp_path):
+    outside_path = tmp_path / "outside"
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name=str(outside_path),
+            schema_text='syntax = "proto3";',
+            base_file_path=str(tmp_path / "protobuf"),
+        )
+    )
+
+    assert parser.create_proto_files() is None
+    assert not outside_path.with_suffix(".proto").exists()
+
+
+def test_create_proto_files_accepts_simple_schema_name(tmp_path):
+    parser = ProtobufParser(
+        config=ProtobufParserConfig(
+            schema_name="safe_schema",
+            schema_text='syntax = "proto3";',
+            base_file_path=str(tmp_path / "protobuf"),
+        )
+    )
+
+    proto_path, file_path = parser.create_proto_files()
+
+    assert proto_path == f"generated={tmp_path / 'protobuf' / 'interfaces'}"
+    assert (
+        Path(file_path).resolve()
+        == (tmp_path / "protobuf" / "interfaces" / "safe_schema.proto").resolve()
+    )
+    assert Path(file_path).read_text(encoding="UTF-8") == 'syntax = "proto3";'

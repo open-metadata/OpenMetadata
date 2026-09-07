@@ -248,10 +248,13 @@ public class JwtFilter implements ContainerRequestFilter {
           enforcePrincipalDomain);
     }
 
-    // Validate Bot token matches what was created in OM
-    // Skip validation for impersonation tokens - they are generated dynamically and not stored in
-    // cache
-    if (impersonatedBy == null && isBot(claims)) {
+    // Validate Bot token matches what was created in OM. Under impersonation the presented token
+    // belongs to the impersonating bot (impersonatedBy), while userName is the target, so validate
+    // the bot's own token against its cache entry instead of skipping - otherwise a rotated (i.e.
+    // revoked) bot token keeps working as long as an X-Impersonate-User header is attached.
+    if (impersonatedBy != null) {
+      validateBotToken(tokenFromHeader, impersonatedBy);
+    } else if (isBot(claims)) {
       validateBotToken(tokenFromHeader, userName);
     }
 

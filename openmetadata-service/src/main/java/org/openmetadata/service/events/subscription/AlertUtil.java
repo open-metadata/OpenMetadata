@@ -212,6 +212,14 @@ public final class AlertUtil {
   }
 
   public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, String reason, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(reason)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
       TestDestinationStatus.Status status, StatusContext statusContext) {
     return new TestDestinationStatus()
         .withStatus(status)

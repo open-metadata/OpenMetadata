@@ -708,9 +708,10 @@ export const verifyGlossaryWorkflowReviewerCase = async (
             glossaryTermFqn
           );
 
-          // The newest instance is the reviewer's edit, matching what the Workflow History widget
-          // reads; the trigger excludes entityStatus so the workflow's own write spawns no newer run.
-          return snapshot.instances[0]?.stages ?? [];
+          // A null-businessKey race can produce a FINISHED instance with stages=[] as the
+          // newest entry. Flatten all instances so the stage is found even when the
+          // auto-approve completed in an earlier-indexed instance.
+          return snapshot.instances.flatMap((i) => i.stages ?? []);
         },
         {
           message: `the newest ${GLOSSARY_TERM_APPROVAL_WORKFLOW} run to record "${AUTO_APPROVED_BY_REVIEWER_STAGE}" for ${glossaryTermFqn}`,
@@ -965,12 +966,25 @@ const testFilterWithSpecificOption = async (
   filterWrapper: Locator,
   filterName: string,
   optionTestId: string,
-  expectedQueryFilterValue: string
+  expectedQueryFilterValue: string,
+  searchText?: string
 ) => {
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
-  await page.getByTestId('drop-down-menu').waitFor();
+  const menu = page.getByTestId('drop-down-menu');
+  await menu.waitFor();
+
+  // A filter backed by sourceFields fetches a size-capped, alphabetically
+  // ordered aggregation, so the wanted option may not be on the first page —
+  // narrow the aggregation by searching before clicking.
+  if (searchText) {
+    const aggregateResponse = page.waitForResponse(
+      '/api/v1/search/aggregate?*'
+    );
+    await menu.getByTestId('search-input').fill(searchText);
+    await aggregateResponse;
+  }
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
@@ -1011,6 +1025,7 @@ const testFilterWithFirstOption = async (
   const noDataPlaceholder = page.getByText(/No data available/i);
   if (await noDataPlaceholder.isVisible()) {
     await page.getByTestId('close-btn').click();
+    await page.getByTestId('close-btn').waitFor({ state: 'detached' });
   } else {
     const optionCount = await firstOption.count();
     if (optionCount > 0) {
@@ -1091,6 +1106,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'Service Type',
+    'mysql',
     'mysql',
     'mysql'
   );

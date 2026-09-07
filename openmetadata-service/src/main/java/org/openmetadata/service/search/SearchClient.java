@@ -52,7 +52,8 @@ public interface SearchClient
         }
       }
       """;
-  String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String REMOVE_DOMAINS_CHILDREN_SCRIPT =
+      "ctx._source.domains.removeIf(domain -> domain.id == params.id)";
 
   // Updates field if null or if inherited is true and the parent is the same (matched by previous
   // ID), setting inherited=true on the new object.

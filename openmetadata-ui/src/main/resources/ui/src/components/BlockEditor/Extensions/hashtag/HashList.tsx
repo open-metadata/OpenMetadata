@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { SuggestionProps } from '@tiptap/suggestion';
-import { Space, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -129,9 +129,16 @@ export default forwardRef<
             size={2}
             onClick={() => selectItem(index)}>
             <div className="d-flex flex-wrap">
-              <span className="text-grey-muted truncate w-max-200 text-xss">
-                {breadcrumbsData}
-              </span>
+              <Tooltip
+                getPopupContainer={(triggerNode) =>
+                  triggerNode.closest('.suggestion-menu-wrapper') ||
+                  document.body
+                }
+                title={breadcrumbsData}>
+                <span className="text-grey-muted truncate w-max-200 text-xss">
+                  {breadcrumbsData}
+                </span>
+              </Tooltip>
             </div>
             <Space align="center">
               <div className="w-5" style={{ marginTop: '6px' }}>

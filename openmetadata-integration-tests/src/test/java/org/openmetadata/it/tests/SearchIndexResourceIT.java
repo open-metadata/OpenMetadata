@@ -166,6 +166,13 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Override
+  protected String getEntityServiceFqn(SearchIndex entity) {
+    return entity == null || entity.getService() == null
+        ? null
+        : entity.getService().getFullyQualifiedName();
+  }
+
+  @Override
   protected SearchIndex getEntityWithFields(String id, String fields) {
     return SdkClients.adminClient().searchIndexes().get(id, fields);
   }

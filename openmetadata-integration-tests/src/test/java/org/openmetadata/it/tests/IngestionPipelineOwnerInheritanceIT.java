@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import jakarta.ws.rs.ForbiddenException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -39,6 +38,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -363,19 +363,27 @@ public class IngestionPipelineOwnerInheritanceIT {
 
               // Kill now requires EditAll: a view-only user can read but must be forbidden.
               viewerClient.ingestionPipelines().get(pipeline.getId().toString());
-              assertThrows(
-                  ForbiddenException.class,
-                  () ->
-                      viewerClient
-                          .getHttpClient()
-                          .execute(HttpMethod.POST, killPath, null, Void.class),
-                  "View-only user must be forbidden from killing an ingestion pipeline");
+              ApiException viewerEx =
+                  assertThrows(
+                      ApiException.class,
+                      () ->
+                          viewerClient
+                              .getHttpClient()
+                              .execute(HttpMethod.POST, killPath, null, Void.class),
+                      "View-only user must be forbidden from killing an ingestion pipeline");
+              assertEquals(
+                  403,
+                  viewerEx.getStatusCode(),
+                  "Kill on view-only user must yield HTTP 403, got " + viewerEx.getStatusCode());
 
               // EditAll user must pass authz; only a 403 fails the test.
               try {
                 editorClient.getHttpClient().execute(HttpMethod.POST, killPath, null, Void.class);
-              } catch (ForbiddenException e) {
-                fail("User with EditAll must be authorized to kill an ingestion pipeline");
+              } catch (ApiException e) {
+                if (e.getStatusCode() == 403) {
+                  fail("User with EditAll must be authorized to kill an ingestion pipeline");
+                }
+                // Non-403 (e.g. 5xx from a downstream orchestrator) is not an authz rejection.
               } catch (Exception ignored) {
                 // Downstream orchestrator failure, not an authz rejection.
               }

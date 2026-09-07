@@ -97,6 +97,8 @@ class DistributedSearchIndexExecutorTest {
     executor = new DistributedSearchIndexExecutor(collectionDAO);
     setField("coordinator", coordinator);
     setField("recoveryManager", recoveryManager);
+    // Unit tests exercise the force-cancel logic, not the participant-drain grace timing.
+    setField("participantDrainTimeoutMs", 0L);
   }
 
   @AfterEach
@@ -974,6 +976,61 @@ class DistributedSearchIndexExecutorTest {
   }
 
   @Test
+  void driveJobToTerminalStateWaitsForParticipantsInsteadOfForceCancelling() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    // A non-STOPPING job whose workers drained, but a participant's partition is still PROCESSING
+    // and the job has not reached a terminal state yet.
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING))
+        .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PROCESSING)));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // We wait for the participant to finish so the entity is promoted with a fully-built index; the
+    // in-flight partition must NOT be force-cancelled (that would promote a partial index). The
+    // completion check still runs so the job terminalizes once the partition actually finishes.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateForceCancelsProcessingPartitionsWhenStopping() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(
+                SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // A user-requested stop force-cancels in-flight partitions so the job can reach STOPPED.
+    verify(coordinator).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateDoesNotForceCancelWhenNoProcessingPartitionsRemain()
+      throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING)).thenReturn(List.of());
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // Nothing is still processing, so there is nothing to force-cancel; the completion check alone
+    // takes the job terminal.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
   void runWorkerLoopAggregatesPartitionResults() throws Exception {
     UUID jobId = UUID.randomUUID();
     SearchIndexJob runningJob =
@@ -1349,6 +1406,23 @@ class DistributedSearchIndexExecutorTest {
         .cursor(0)
         .assignedServer(SERVER_ID)
         .build();
+  }
+
+  @Test
+  void recordTerminalMetricCountsPromotingAsCompletedNotFailed() throws Exception {
+    ReindexingMetrics metrics = mock(ReindexingMetrics.class);
+    Timer.Sample sample = mock(Timer.Sample.class);
+    Class<?>[] sig = {ReindexingMetrics.class, Timer.Sample.class, IndexJobStatus.class};
+
+    // PROMOTING is the drained hand-off state execute() ends on (the strategy promotes and flips it
+    // terminal afterwards). It must record a COMPLETED run — pre-fix it fell through to
+    // recordJobFailed, misreporting every successful distributed reindex as a failure.
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.PROMOTING);
+    verify(metrics).recordJobCompleted(sample);
+    verify(metrics, never()).recordJobFailed(sample);
+
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.FAILED);
+    verify(metrics).recordJobFailed(sample);
   }
 
   private Object invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)

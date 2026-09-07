@@ -99,7 +99,7 @@ import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityDeleteMessage } from '../../utils/EntityDisplayPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { renderIcon } from '../../utils/IconUtils';
+import { Icon } from '../../components/common/Icon/Icon';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -670,10 +670,11 @@ const TagPage = () => {
     if (tagItem?.style?.iconURL) {
       return (
         <div className="align-middle" data-testid="icon">
-          {renderIcon(tagItem.style.iconURL, {
-            size: 36,
-            className: 'object-contain',
-          })}
+          <Icon
+            className="object-contain"
+            iconValue={tagItem.style.iconURL}
+            size={36}
+          />
         </div>
       );
     }

@@ -41,6 +41,7 @@ export interface RenameFormProps {
   isClassification?: boolean;
   data?: Classification[];
   isSystemTag?: boolean;
+  isParentAutoClassificationEnabled?: boolean;
   permissions?: {
     createTags?: boolean;
     editDescription?: boolean;
@@ -55,6 +56,14 @@ export interface ClassificationFormDrawerProps {
   classifications: Classification[];
   isTier: boolean;
   isLoading: boolean;
+  editClassification?: Classification;
+  isSystemClassification?: boolean;
+  permissions?: {
+    createTags?: boolean;
+    editDescription?: boolean;
+    editDisplayName?: boolean;
+    editAll?: boolean;
+  };
   onClose: () => void;
   onSubmit: (data: CreateClassification) => Promise<void>;
 }
@@ -71,6 +80,7 @@ export interface TagFormDrawerProps {
     editDescription: boolean;
     editDisplayName: boolean;
   };
+  isParentAutoClassificationEnabled?: boolean;
   tagsFormHeader: string;
   onClose: () => void;
   onSubmit: (data: CreateTag) => Promise<void>;

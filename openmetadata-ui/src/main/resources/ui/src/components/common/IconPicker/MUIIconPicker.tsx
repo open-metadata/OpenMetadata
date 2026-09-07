@@ -25,7 +25,8 @@ import {
 } from '@mui/material';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isImageUrl, renderIcon } from '../../../utils/IconUtils';
+import { isImageUrl } from '../../../utils/IconUtils';
+import { Icon } from '../Icon/Icon';
 import { useSearch } from '../atoms/navigation/useSearch';
 import { AVAILABLE_ICONS, DEFAULT_ICON_NAME } from './IconPicker.constants';
 import {
@@ -193,10 +194,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
             handleToggle();
           }
         }}>
-        {renderIcon(parsedValue.value, {
-          size: 24,
-          strokeWidth: 1.5,
-        })}
+        <Icon iconValue={parsedValue.value} size={24} strokeWidth={1.5} />
       </Box>
 
       {/* Popper with icon selection */}

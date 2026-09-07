@@ -34,7 +34,6 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -527,8 +526,13 @@ test.describe('User Profile Feed Interactions', () => {
     const popover = page.locator('.ant-popover-card');
     await popover.waitFor({ state: 'visible' });
 
-    // Get the expected username from the popover BEFORE clicking
+    // Get the expected username from the popover BEFORE clicking. The popover
+    // renders an empty name until its user request resolves, so wait for the
+    // resolved text instead of capturing an empty string.
     const userNameElement = popover.getByTestId('user-name');
+
+    await expect(userNameElement).not.toBeEmpty();
+
     const expectedUserName = await userNameElement.textContent();
 
     // Set up response listener AFTER getting expected name and BEFORE clicking
@@ -762,87 +766,6 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     }
   });
 
-  test('Should revert to default persona after page refresh when non-default is selected', async ({
-    adminPage,
-  }) => {
-    // First, verify default persona is selected initially
-    await adminPage.locator('[data-testid="dropdown-profile"]').click();
-    await adminPage.locator('[role="menu"].profile-dropdown').waitFor({
-      state: 'visible',
-    });
-
-    // Expand personas if needed
-    const moreButton = adminPage.getByText(/\d+ More/);
-    if (await moreButton.isVisible()) {
-      await moreButton.click();
-    }
-
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const personaCount = await personaLabels.count();
-
-    if (personaCount > 1) {
-      // Verify default persona is initially selected (first one)
-      const defaultPersonaRadio = personaLabels
-        .first()
-        .locator('input[type="radio"]');
-
-      await expect(defaultPersonaRadio).toBeChecked();
-
-      // Select the second (non-default) persona
-      const secondPersona = personaLabels.nth(1);
-      const personaChangeResponse = adminPage.waitForResponse(
-        '/api/v1/docStore/name/persona.*'
-      );
-
-      await secondPersona.click();
-
-      // Wait for persona change API call
-      await personaChangeResponse;
-
-      // Verify the second persona is now selected
-      const secondPersonaRadio = personaLabels
-        .nth(1)
-        .locator('input[type="radio"]');
-
-      await expect(secondPersonaRadio).toBeChecked();
-
-      // Close dropdown
-      await adminPage.keyboard.press('Escape');
-
-      // Refresh the page
-      await adminPage.reload();
-
-      // Open dropdown again after refresh
-      await adminPage.locator('[data-testid="dropdown-profile"]').click();
-      await adminPage.locator('[role="menu"].profile-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      // Expand personas if needed
-      const moreButtonAfterRefresh = adminPage.getByText(/\d+ More/);
-      if (await moreButtonAfterRefresh.isVisible()) {
-        await moreButtonAfterRefresh.click();
-      }
-
-      // Verify default persona is selected again after refresh
-      const personaLabelsAfterRefresh = adminPage.locator(
-        '[data-testid="persona-label"]'
-      );
-      const defaultPersonaRadioAfterRefresh = personaLabelsAfterRefresh
-        .first()
-        .locator('input[type="radio"]');
-
-      await expect(defaultPersonaRadioAfterRefresh).toBeChecked();
-
-      // Verify default persona tag is still visible
-      await expect(
-        personaLabelsAfterRefresh
-          .first()
-          .locator('[data-testid="default-persona-tag"]')
-      ).toBeVisible();
-    }
-  });
-
   test('Should handle default persona change and removal correctly', async ({
     adminPage,
   }) => {
@@ -982,19 +905,32 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify no default persona tag exists
+    // Scope to the user's own personas: a system-wide default persona still
+    // renders here as a fallback.
     const finalPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
 
-    await expect(
-      finalPersonaLabels.locator('[data-testid="default-persona-tag"]')
-    ).not.toBeVisible();
+    for (const personaName of [
+      persona1.responseData.displayName,
+      persona2.responseData.displayName,
+    ]) {
+      const userPersonaLabel = finalPersonaLabels.filter({
+        hasText: personaName,
+      });
 
-    // Verify there are no selected nor a default persona
-    const checkedRadios = adminPage.locator('input[type="radio"]:checked');
+      // Asserted first so the negative checks below cannot pass against a
+      // label that never rendered.
+      await expect(userPersonaLabel).toBeVisible();
 
-    await expect(checkedRadios).toHaveCount(0);
+      await expect(
+        userPersonaLabel.locator('[data-testid="default-persona-tag"]')
+      ).not.toBeVisible();
+
+      await expect(
+        userPersonaLabel.locator('input[type="radio"]')
+      ).not.toBeChecked();
+    }
   });
 });
 

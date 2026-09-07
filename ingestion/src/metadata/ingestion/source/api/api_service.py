@@ -39,6 +39,7 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -61,6 +62,15 @@ class ApiServiceTopology(ServiceTopology):
 
     We could have a topology validator. We can only consume
     data that has been produced by any parent node.
+
+    Collections and endpoints are two sibling nodes rather than two stages of one
+    node so that *every* collection is sunk and flushed before the first endpoint
+    is produced. Endpoints carry an ``apiCollection`` FQN the server resolves at
+    write time, so an endpoint that reaches the API before its collection is
+    rejected with ``apiCollection instance for <fqn> not found``. Interleaving the
+    two entity types in one node leaves that ordering up to how the sink's bulk
+    buffer happens to be chunked, which breaks once a document is large enough to
+    flush mid-collection.
     """
 
     root: Annotated[
@@ -77,7 +87,7 @@ class ApiServiceTopology(ServiceTopology):
                 cache_entities=True,
             ),
         ],
-        children=["api_collection"],
+        children=["api_collection", "api_endpoint"],
         post_process=["mark_api_collections_as_deleted"],
     )
     api_collection: Annotated[
@@ -92,6 +102,16 @@ class ApiServiceTopology(ServiceTopology):
                 consumer=["api_service"],
                 use_cache=True,
             ),
+        ],
+        children=None,
+        post_process=["flush_api_collections"],
+        threads=False,
+    )
+    api_endpoint: Annotated[
+        TopologyNode, Field(description="API Endpoint Processing Node")
+    ] = TopologyNode(
+        producer="get_api_collections",
+        stages=[
             NodeStage(
                 type_=APIEndpoint,
                 context="api_endpoints",
@@ -100,6 +120,9 @@ class ApiServiceTopology(ServiceTopology):
                 use_cache=True,
             ),
         ],
+        children=None,
+        post_process=None,
+        threads=False,
     )
 
 
@@ -155,7 +178,12 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_api_collections(self, *args, **kwargs) -> Iterable[Any]:
         """
         Method to list all collections to process.
-        Here is where filtering happens
+        Here is where filtering happens.
+
+        Both the collection and the endpoint node produce from this method, so an
+        implementation must be idempotent and must replay the same collection
+        objects on the second call - ``yield_api_collection`` enriches them in
+        place (``collection.url``) and ``yield_api_endpoint`` reads that back.
         """
 
     @abstractmethod
@@ -188,6 +216,13 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
                 mark_deleted_entity=self.source_config.markDeletedApiCollections,
                 params={"service": self.context.get().api_service},
             )
+
+    def flush_api_collections(self) -> Iterable[Either[Barrier]]:
+        """Drain the sink's bulk buffer so every collection is committed before the
+        endpoint node starts producing endpoints that reference them."""
+        yield Either(
+            right=Barrier(reason="api_collections_flush")
+        )  # pyright: ignore[reportCallIssue]
 
     def register_record(self, collection_request: CreateAPICollectionRequest) -> None:
         """

@@ -22,6 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.azure.core.exception.HttpResponseException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -37,18 +41,27 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
@@ -2287,6 +2300,430 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     // Cleanup: Remove the test user
     deleteEntity(testUser.getId().toString());
+  }
+
+  // ===================================================================
+  // AUTHORIZATION
+  // Root JSON Patch replacement, roles and personal access token constraints
+  // ===================================================================
+
+  private static final ObjectMapper PATCH_MAPPER = new ObjectMapper();
+
+  @Test
+  void test_patchUser_rootReplacement_forbiddenForNonAdmin(TestNamespace ns) {
+    User testUser = getLoggedInUser(SdkClients.testUserClient());
+    ArrayNode rootPatch = rootReplacementOps(userJsonWithField(testUser, "isBot", true));
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH, "/v1/users/" + testUser.getId(), rootPatch));
+    assertEquals(403, exception.getStatusCode());
+
+    User afterPatch = Users.get(testUser.getId().toString(), "isBot");
+    assertFalse(
+        Boolean.TRUE.equals(afterPatch.getIsBot()),
+        "isBot must stay false when the root replacement patch is rejected");
+  }
+
+  @Test
+  void test_patchUser_rootReplacement_allowedForAdmin(TestNamespace ns) {
+    String userName = ns.prefix("rootPatchTarget");
+    User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
+    String displayName = ns.prefix("rootPatchedDisplayName");
+    ArrayNode rootPatch = rootReplacementOps(userJsonWithField(user, "displayName", displayName));
+
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), rootPatch);
+
+    assertTrue(response.contains(displayName), "Admin root replacement patch should be applied");
+  }
+
+  @Test
+  void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
+    // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
+    // username from the token's email claim, and BotTokenCache is keyed by that name.
+    String localPart = "patbot" + ns.shortPrefix();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    User botUser =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@test.com")
+                .withIsBot(true)
+                .withAuthenticationMechanism(authMechanism));
+
+    JWTAuthMechanism botToken =
+        SdkClients.adminClient().users().generateToken(botUser.getId(), JWTTokenExpiry.Seven);
+    OpenMetadataClient botClient =
+        new OpenMetadataClient(
+            OpenMetadataConfig.builder()
+                .serverUrl(SdkClients.getServerUrl())
+                .accessToken(botToken.getJWTToken())
+                .build());
+    String tokenRequest =
+        "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}";
+
+    OpenMetadataException directException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                botClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users/security/token", tokenRequest));
+    assertEquals(
+        400,
+        directException.getStatusCode(),
+        "Bots cannot own personal access tokens: " + directException.getMessage());
+
+    RequestOptions impersonateAdmin =
+        RequestOptions.builder().header("X-Impersonate-User", "admin").build();
+    OpenMetadataException impersonatedException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                botClient
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users/security/token",
+                        tokenRequest,
+                        impersonateAdmin));
+    assertEquals(
+        403,
+        impersonatedException.getStatusCode(),
+        "Impersonated personal access token creation must be rejected: "
+            + impersonatedException.getMessage());
+  }
+
+  @Test
+  void test_createPersonalAccessToken_regularUser_ok(TestNamespace ns) {
+    String response =
+        SdkClients.testUserClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}");
+
+    assertTrue(response.contains("jwtToken"), "Regular users can create their own personal tokens");
+  }
+
+  @Test
+  void test_updateUser_selfRoleElevation_forbidden(TestNamespace ns) throws Exception {
+    User testUser = getLoggedInUser(SdkClients.testUserClient());
+    String dataStewardRoleId = getRoleId("DataSteward");
+
+    String elevateBody =
+        "{\"name\":\""
+            + testUser.getName()
+            + "\",\"email\":\""
+            + testUser.getEmail()
+            + "\",\"roles\":[\""
+            + dataStewardRoleId
+            + "\"]}";
+    OpenMetadataException elevateException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", elevateBody));
+    assertEquals(
+        403,
+        elevateException.getStatusCode(),
+        "Role elevation must be rejected: " + elevateException.getMessage());
+
+    // Self-updates that leave the roles alone stay allowed
+    String selfUpdateBody =
+        "{\"name\":\""
+            + testUser.getName()
+            + "\",\"email\":\""
+            + testUser.getEmail()
+            + "\",\"description\":\"self update without role change\"}";
+    String response =
+        SdkClients.testUserClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.PUT, "/v1/users", selfUpdateBody);
+    assertTrue(response.contains("self update without role change"));
+  }
+
+  @Test
+  void test_updateUser_selfPartialRoleShedding_allowed(TestNamespace ns) throws Exception {
+    // Dropping one of several roles asks for no new role, so it must not require admin even though
+    // the resulting role set still differs from the current one.
+    // The name must equal the email local part: JwtFilter resolves the caller's username from the
+    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
+    String userName = "roleshedder" + ns.shortPrefix();
+    String dataStewardRoleId = getRoleId("DataSteward");
+    String dataConsumerRoleId = getRoleId("DataConsumer");
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@test.com")
+                .withRoles(
+                    List.of(
+                        UUID.fromString(dataStewardRoleId), UUID.fromString(dataConsumerRoleId))));
+    OpenMetadataClient userClient =
+        SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+
+    String shedBody =
+        "{\"name\":\""
+            + user.getName()
+            + "\",\"email\":\""
+            + user.getEmail()
+            + "\",\"roles\":[\""
+            + dataConsumerRoleId
+            + "\"]}";
+    userClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", shedBody);
+
+    List<EntityReference> roles = Users.get(user.getId().toString(), "roles").getRoles();
+    assertEquals(1, roles.size(), "Only the retained role should remain");
+    assertEquals(dataConsumerRoleId, roles.get(0).getId().toString());
+  }
+
+  @Test
+  void test_createUser_adminOrBot_forbiddenForNonAdmin(TestNamespace ns) {
+    String adminAttempt = ns.prefix("adminAttempt");
+    String adminUserBody =
+        "{\"name\":\""
+            + adminAttempt
+            + "\",\"email\":\""
+            + toValidEmail(adminAttempt)
+            + "\",\"isAdmin\":true}";
+    OpenMetadataException adminException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", adminUserBody));
+    assertEquals(403, adminException.getStatusCode());
+
+    String botAttempt = ns.prefix("botAttempt");
+    String botUserBody =
+        "{\"name\":\""
+            + botAttempt
+            + "\",\"email\":\""
+            + toValidEmail(botAttempt)
+            + "\",\"isBot\":true}";
+    OpenMetadataException botException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", botUserBody));
+    assertEquals(403, botException.getStatusCode());
+  }
+
+  @Test
+  void test_createUser_withRoles_forbiddenForNonAdmin(TestNamespace ns) throws Exception {
+    String roleGrab = ns.prefix("roleGrab");
+    String createBody =
+        "{\"name\":\""
+            + roleGrab
+            + "\",\"email\":\""
+            + toValidEmail(roleGrab)
+            + "\",\"roles\":[\""
+            + getRoleId("DataSteward")
+            + "\"]}";
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Setting roles at creation is admin only: " + exception.getMessage());
+  }
+
+  @Test
+  void test_createUser_selfSignUpWithRoles_forbidden(TestNamespace ns) throws Exception {
+    // A principal that authenticates but has no user row yet takes the self sign-up path, where the
+    // roles in the payload are decided before the entity exists.
+    // The name must equal the email local part for JwtFilter to resolve the caller.
+    String userName = "selfsignup" + ns.shortPrefix();
+    String email = userName + "@test.com";
+    OpenMetadataClient newcomerClient = SdkClients.createClient(userName, email, new String[] {});
+    String createBody =
+        "{\"name\":\""
+            + userName
+            + "\",\"email\":\""
+            + email
+            + "\",\"roles\":[\""
+            + getRoleId("DataSteward")
+            + "\"]}";
+
+    OpenMetadataException postException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        postException.getStatusCode(),
+        "Self sign-up cannot set roles: " + postException.getMessage());
+
+    OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", createBody));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Self creation through PUT cannot set roles: " + putException.getMessage());
+
+    OpenMetadataException notCreated =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/name/" + userName, null));
+    assertEquals(404, notCreated.getStatusCode(), "The rejected user should not exist");
+  }
+
+  @Test
+  void test_updateUser_crossUserRoleElevation_forbidden(TestNamespace ns) throws Exception {
+    // A principal holding EDIT on users may update somebody else, but granting them a role stays
+    // admin only - the same rule PATCH /v1/users/{id} enforces on the /roles path.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.prefix("userEditor");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_policy")
+                    .withDescription("Grants cross user edit for the role elevation IT")
+                    .withRules(
+                        List.of(
+                            userRule(prefix + "_view", MetadataOperation.VIEW_ALL),
+                            userRule(prefix + "_edit", MetadataOperation.EDIT_ALL))));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withDescription("Cross user edit role for the role elevation IT")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(prefix + "_team");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    createTeam.setDefaultRoles(List.of(role.getId()));
+    Team team = admin.teams().create(createTeam);
+
+    // The name must equal the email local part: JwtFilter resolves the caller's username from the
+    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
+    String editorName = "usereditor" + ns.shortPrefix();
+    User editor =
+        createEntity(
+            new CreateUser()
+                .withName(editorName)
+                .withEmail(editorName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    OpenMetadataClient editorClient =
+        SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {});
+
+    String targetName = ns.prefix("elevationTarget");
+    User target =
+        createEntity(new CreateUser().withName(targetName).withEmail(toValidEmail(targetName)));
+    String elevateBody =
+        "{\"name\":\""
+            + target.getName()
+            + "\",\"email\":\""
+            + target.getEmail()
+            + "\",\"roles\":[\""
+            + getRoleId("DataSteward")
+            + "\"]}";
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                editorClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", elevateBody));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Granting a role to another user is admin only: " + exception.getMessage());
+
+    List<EntityReference> roles = Users.get(target.getId().toString(), "roles").getRoles();
+    assertTrue(roles == null || roles.isEmpty(), "The rejected role must not have been assigned");
+
+    // The same principal can still update the target as long as no role is granted, which shows the
+    // rejection above comes from the role gate and not from a missing EDIT permission.
+    String description = "edited by a non admin holding user EDIT";
+    String updateBody =
+        "{\"name\":\""
+            + target.getName()
+            + "\",\"email\":\""
+            + target.getEmail()
+            + "\",\"description\":\""
+            + description
+            + "\"}";
+    String response =
+        editorClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", updateBody);
+    assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
+  }
+
+  private Rule userRule(String name, MetadataOperation operation) {
+    return new Rule()
+        .withName(name)
+        .withResources(List.of("user"))
+        .withOperations(List.of(operation))
+        .withEffect(Rule.Effect.ALLOW);
+  }
+
+  private String getRoleId(String roleName) throws Exception {
+    String roleJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/roles/name/" + roleName, null);
+    return PATCH_MAPPER.readTree(roleJson).get("id").asText();
+  }
+
+  private User getLoggedInUser(OpenMetadataClient client) {
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
+  }
+
+  private ObjectNode userJsonWithField(User user, String field, Object value) {
+    ObjectNode userJson = PATCH_MAPPER.valueToTree(user);
+    userJson.set(field, PATCH_MAPPER.valueToTree(value));
+    return userJson;
+  }
+
+  private ArrayNode rootReplacementOps(JsonNode value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ObjectNode operation = ops.addObject();
+    operation.put("op", "replace");
+    operation.put("path", "");
+    operation.set("value", value);
+    return ops;
   }
 
   // ===================================================================

@@ -561,6 +561,9 @@ test('destination should work properly', async ({ page }) => {
     for (const testResult of testResults) {
       const isGChat = testResult.type === 'GChat';
 
+      // Destination configs carry credentials and must not be echoed back
+      expect(testResult.config).toBeUndefined();
+
       await test
         .expect(
           page

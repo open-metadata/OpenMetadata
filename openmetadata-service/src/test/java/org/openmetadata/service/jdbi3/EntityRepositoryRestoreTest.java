@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -88,9 +89,11 @@ class EntityRepositoryRestoreTest {
     int softDeleteAdditionalChildrenCalls = 0;
     int hardDeleteAdditionalChildrenCalls = 0;
     int bulkEntitySpecificCleanupCalls = 0;
+    final List<String> entitySpecificCleanupDeletedBy = new ArrayList<>();
     final Set<UUID> bulkRestoreInvokedWith = new HashSet<>();
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
+    UUID unresolvableHistoryId;
 
     CountingPipelineRepo(CollectionDAO.PipelineDAO dao) {
       super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
@@ -112,6 +115,17 @@ class EntityRepositoryRestoreTest {
     protected void storeRelationships(Pipeline entity) {}
 
     @Override
+    public void setFieldsInBulk(Fields fields, List<Pipeline> entities) {
+      if (unresolvableHistoryId != null) {
+        if (entities.stream().anyMatch(entity -> unresolvableHistoryId.equals(entity.getId()))) {
+          throw new EntityRelationshipNotFoundException("parent was deleted concurrently");
+        }
+        return;
+      }
+      super.setFieldsInBulk(fields, entities);
+    }
+
+    @Override
     protected void restoreAdditionalChildren(UUID id, String updatedBy) {
       restoreAdditionalChildrenCalls++;
       bulkRestoreInvokedWith.add(id);
@@ -130,8 +144,14 @@ class EntityRepositoryRestoreTest {
     }
 
     @Override
-    protected void bulkEntitySpecificCleanup(List<Pipeline> entities) {
+    protected void entitySpecificCleanup(String deletedBy, Pipeline entity) {
+      entitySpecificCleanupDeletedBy.add(deletedBy);
+    }
+
+    @Override
+    protected void bulkEntitySpecificCleanup(List<Pipeline> entities, String deletedBy) {
       bulkEntitySpecificCleanupCalls++;
+      super.bulkEntitySpecificCleanup(entities, deletedBy);
     }
   }
 
@@ -235,6 +255,84 @@ class EntityRepositoryRestoreTest {
 
     verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
+  }
+
+  @Test
+  void invalidate_advancesLoaderEpochBeforeEvictingCachedEntity() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+    long epochBefore = EntityRepository.readEpochById(Entity.PIPELINE, pipeline.getId());
+    long nameEpochBefore =
+        EntityRepository.readEpochByName(Entity.PIPELINE, pipeline.getFullyQualifiedName());
+
+    repo.invalidate(pipeline);
+
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, pipeline.getId()) > epochBefore,
+        "Invalidation must advance the epoch seen by in-flight cache loaders");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, pipeline.getFullyQualifiedName())
+            > nameEpochBefore,
+        "Invalidation must also advance the by-name epoch, which guards the Redis-populating loader");
+  }
+
+  @Test
+  void invalidateCacheForEntity_advancesLoaderEpochBeforeEvictingReferencedEntity() {
+    UUID id = UUID.randomUUID();
+    long epochBefore = EntityRepository.readEpochById(Entity.PIPELINE, id);
+    long nameEpochBefore = EntityRepository.readEpochByName(Entity.PIPELINE, "service.pipeline");
+
+    EntityRepository.invalidateCacheForEntity(Entity.PIPELINE, id, "service.pipeline");
+
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, id) > epochBefore,
+        "Reference and tag invalidation must reject in-flight stale cache loads");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.pipeline") > nameEpochBefore,
+        "Reference and tag invalidation must reject in-flight stale by-name loads");
+  }
+
+  @Test
+  void renameCascadeInvalidation_advancesLoaderEpochForEveryDescendant() {
+    UUID childId = UUID.randomUUID();
+    UUID grandchildId = UUID.randomUUID();
+    long childEpochBefore = EntityRepository.readEpochById(Entity.PIPELINE, childId);
+    long grandchildEpochBefore = EntityRepository.readEpochById(Entity.PIPELINE, grandchildId);
+    long childNameEpochBefore = EntityRepository.readEpochByName(Entity.PIPELINE, "service.child");
+    long grandchildNameEpochBefore =
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.child.grandchild");
+    List<EntityDAO.EntityIdFqnPair> descendants =
+        List.of(
+            new EntityDAO.EntityIdFqnPair(childId, "service.child"),
+            new EntityDAO.EntityIdFqnPair(grandchildId, "service.child.grandchild"));
+
+    EntityRepository.finishInvalidateCacheForRenameCascade(Entity.PIPELINE, descendants);
+
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, childId) > childEpochBefore,
+        "Rename invalidation must reject an in-flight stale child load");
+    assertTrue(
+        EntityRepository.readEpochById(Entity.PIPELINE, grandchildId) > grandchildEpochBefore,
+        "Rename invalidation must reject an in-flight stale grandchild load");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.child") > childNameEpochBefore,
+        "Rename invalidation must reject an in-flight stale child load by name");
+    assertTrue(
+        EntityRepository.readEpochByName(Entity.PIPELINE, "service.child.grandchild")
+            > grandchildNameEpochBefore,
+        "Rename invalidation must reject an in-flight stale grandchild load by name");
+  }
+
+  private Pipeline historyPipeline(String name, long updatedAt) {
+    return new Pipeline()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("service." + name)
+        .withUpdatedAt(updatedAt);
   }
 
   @Test
@@ -468,6 +566,10 @@ class EntityRepositoryRestoreTest {
 
     // bulkEntitySpecificCleanup is invoked once per bulk call with the whole batch.
     assertEquals(1, repo.bulkEntitySpecificCleanupCalls);
+    // ...and it must reach the deletedBy-aware per-entity hook. Dispatching to the no-arg variant
+    // instead silently disabled TableRepository's residual test case sweep for every table deleted
+    // through an ancestor cascade, leaving orphans that 404 the test case listing.
+    assertEquals(List.of("user", "user"), repo.entitySpecificCleanupDeletedBy);
     // hardDeleteAdditionalChildren is invoked once per entity in the batch.
     assertEquals(2, repo.hardDeleteAdditionalChildrenCalls);
     assertTrue(repo.bulkHardDeleteInvokedWith.contains(a));

@@ -342,59 +342,34 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
+    await waitForAllLoadersToDisappear(page);
 
+    const dataProductAssetsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataProducts/name/') &&
+        response.url().includes('fields=domains%2Cassets') &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId('assets').click();
+    await dataProductAssetsResponse;
 
-    await page
-      .getByTestId('loader')
-      .waitFor({
-        state: 'detached',
-        timeout: 10000,
-      })
-      .catch(() => {
-        /* ignore if loader not found */
-      });
+    // The card list paints after the assets response resolves, and count()
+    // does not auto-wait. Wait for a card before selecting every attached asset.
+    await waitForAllLoadersToDisappear(page);
+    const assetCard = page.locator('[data-testid^="table-data-card_"]');
+    await assetCard.first().waitFor({ state: 'visible' });
 
-    let hasAssets = true;
-    while (hasAssets) {
-      const checkboxes = page.locator(
-        '[data-testid^="table-data-card_"] input[type="checkbox"]'
-      );
-      const count = await checkboxes.count();
-
-      if (count === 0) {
-        hasAssets = false;
-        break;
-      }
-
-      const selectAll = page.getByRole('checkbox', { name: 'Select All' });
-      if (await selectAll.isVisible()) {
-        await selectAll.check();
-      } else {
-        for (let i = 0; i < count; i++) {
-          await checkboxes.nth(i).check();
-        }
-      }
-
-      const previousCount = count;
-      const removeRes = page.waitForResponse('**/assets/remove');
-      await page.getByTestId('delete-all-button').click();
-      await removeRes;
-
-      await expect
-        .poll(
-          async () =>
-            page
-              .locator(
-                '[data-testid^="table-data-card_"] input[type="checkbox"]'
-              )
-              .count(),
-          { timeout: 10_000 }
-        )
-        .toBeLessThan(previousCount);
+    const attachedCount = await assetCard.count();
+    for (let i = 0; i < attachedCount; i++) {
+      await assetCard.nth(i).locator('input[type="checkbox"]').check();
     }
 
+    const removeRes = page.waitForResponse('**/assets/remove');
+    await page.getByTestId('delete-all-button').click();
+    await removeRes;
+
     await page.reload();
+    await waitForAllLoadersToDisappear(page);
     await checkAssetsCount(page, 0);
 
     await redirectToHomePage(page);

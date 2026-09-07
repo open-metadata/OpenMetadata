@@ -13,18 +13,19 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+
 import json
 import logging
 import traceback
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.algorithms.preprocessing import MAX_NLP_TEXT_LENGTH
-from metadata.pii.algorithms.presidio_utils import _load_spacy_model
-from metadata.pii.constants import PII, SPACY_EN_MODEL
+from metadata.pii.algorithms.presidio_utils import build_analyzer_engine
+from metadata.pii.constants import PII
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.ner import NEREntity
 from metadata.pii.scanners.base import BaseScanner
@@ -45,28 +46,10 @@ class StringAnalysis(BaseModel):
     appearances: int
 
 
-class NLPEngineModel(BaseModel):
-    """Required to pass the nlp_engine as {"lang_code": "en", "model_name": "en_core_web_lg"}"""
-
-    model_config = ConfigDict(protected_namespaces=())
-    lang_code: str
-    model_name: str
-
-
-# pylint: disable=import-outside-toplevel
 class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        from presidio_analyzer import AnalyzerEngine
-        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
-
-        _load_spacy_model(SPACY_EN_MODEL)
-
-        nlp_engine_model = NLPEngineModel(
-            lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL
-        )
-
         # Set the presidio logger to talk less about internal entities unless we are debugging
         logging.getLogger(PRESIDIO_LOGGER).setLevel(
             logging.INFO
@@ -74,19 +57,20 @@ class NERScanner(BaseScanner):
             else logging.ERROR
         )
 
-        self.analyzer = AnalyzerEngine(
-            nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()])
-        )
+        self.analyzer = build_analyzer_engine()
 
     @staticmethod
     def get_highest_score_label(
-        entities_score: Dict[str, StringAnalysis]
+        entities_score: Dict[str, StringAnalysis],
     ) -> Tuple[str, float]:
+        # Confidence is the tie-breaker: a weak pattern matching every row can reach
+        # the same weighted total as a strong one matching a subset.
         top_entity = max(
             entities_score,
-            key=lambda type_: entities_score[type_].score
-            * entities_score[type_].appearances
-            * 0.8,
+            key=lambda type_: (
+                entities_score[type_].score * entities_score[type_].appearances * 0.8,
+                entities_score[type_].score,
+            ),
         )
         return top_entity, entities_score[top_entity].score
 
@@ -108,7 +92,9 @@ class NERScanner(BaseScanner):
           b. Each time an `Entity` appears (e.g., DATE_TIME), we store its max score and the number of appearances
         3. After gathering all the results for each row, get the `Entity` with maximum overall score
            and number of appearances. This gets computed as "score * appearances * 0.8", which can
-           be thought as the "score" times "weighted down appearances".
+           be thought as the "score" times "weighted down appearances". Equal weighted totals are
+           broken by the raw confidence, so a weak pattern matching every row does not outrank a
+           strong one matching a subset.
         4. Once we have the "top" `Entity` from that column, we assign the PII label accordingly from `NEREntity`.
         """
         logger.debug("Processing '%s'", data)
@@ -178,8 +164,10 @@ class NERScanner(BaseScanner):
         results = self.analyzer.analyze(value, language="en")
         for result in results:
             entities_score[result.entity_type] = StringAnalysis(
-                score=result.score
-                if result.score > entities_score[result.entity_type].score
-                else entities_score[result.entity_type].score,
+                score=(
+                    result.score
+                    if result.score > entities_score[result.entity_type].score
+                    else entities_score[result.entity_type].score
+                ),
                 appearances=entities_score[result.entity_type].appearances + 1,
             )

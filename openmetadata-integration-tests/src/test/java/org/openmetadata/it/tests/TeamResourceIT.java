@@ -255,6 +255,37 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_userCountStaleAfterMemberSoftDeleted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    User user = createTestUser(ns, "staleCountUser");
+
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("staleCountTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withUsers(List.of(user.getId()))
+            .withDescription("Repro: userCount stays inflated after a member is soft-deleted");
+
+    Team team = createEntity(create);
+    String teamId = team.getId().toString();
+
+    Team before = client.teams().get(teamId, "users,userCount");
+    assertEquals(1, before.getUsers().size());
+    assertEquals(1, before.getUserCount());
+
+    client.users().delete(user.getId().toString());
+
+    Team after = client.teams().get(teamId, "users,userCount");
+    int visibleMembers = after.getUsers() == null ? 0 : after.getUsers().size();
+    assertEquals(0, visibleMembers, "Soft-deleted member must not appear in the team's users list");
+    assertEquals(
+        visibleMembers,
+        after.getUserCount(),
+        "userCount must match the visible users after a member is soft-deleted");
+  }
+
+  @Test
   void test_createTeamWithDefaultRoles(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

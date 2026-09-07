@@ -26,12 +26,31 @@ public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
   private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
 
+  // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
+  // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
+  private String sortField;
+  private String sortOrder;
+
   public ListFilter() {
     this(Include.NON_DELETED);
   }
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getSortField() {
+    return sortField;
+  }
+
+  public String getSortOrder() {
+    return sortOrder;
+  }
+
+  public ListFilter withSort(String sortField, String sortOrder) {
+    this.sortField = sortField;
+    this.sortOrder = sortOrder;
+    return this;
   }
 
   public String getCondition(String tableName) {

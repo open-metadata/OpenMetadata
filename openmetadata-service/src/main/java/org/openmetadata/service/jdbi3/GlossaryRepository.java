@@ -688,7 +688,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+      // Capture the descendants so their caches can be evicted again after the FQN rewrite.
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -709,11 +711,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-      // Cascade rename into the search index — child term FQNs and the embedded glossary denorm
-      // (glossary.name / glossary.fullyQualifiedName) must reflect the new name. This used to be
-      // driven by entityRelationshipReindex, which has no caller since PR #19550, so the call has
-      // to happen inline here (mirroring Domain / Classification / GlossaryTerm renames).
-      updateAssetIndexes(original, updated);
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+
+      // Reordered to run after every DB write and after the phase-2 evict. @Transaction on
+      // EntityRepository is inert on this branch (JDBI SqlObject annotation on a plain class),
+      // so each DAO call autocommits; this is an ordering fix, not a commit hook. Matches the
+      // ordering main gets from its post-commit DeferralScope.
+      deferReactOperation(() -> updateAssetIndexes(original, updated));
     }
 
     public void invalidateGlossary(UUID classificationId) {
