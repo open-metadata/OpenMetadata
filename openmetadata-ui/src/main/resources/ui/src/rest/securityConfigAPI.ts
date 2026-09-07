@@ -20,6 +20,9 @@ import { FieldError } from '../generated/system/securityValidationResponse';
 import { TestLoginResult } from '../generated/system/testLoginResult';
 import APIClient from './index';
 
+const SECURITY_CONFIG_PATH = '/system/security/config';
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
+
 export interface SecurityConfiguration {
   authenticationConfiguration: AuthenticationConfiguration;
   authorizerConfiguration: AuthorizerConfiguration;
@@ -79,7 +82,7 @@ export const applySecurityConfiguration = async (
   return APIClient.put<
     SecurityConfiguration,
     AxiosResponse<SecurityConfiguration>
-  >('/system/security/config', data);
+  >(SECURITY_CONFIG_PATH, data);
 };
 
 /**
@@ -89,7 +92,7 @@ export const applySecurityConfiguration = async (
 export const getSecurityConfiguration = async (): Promise<
   AxiosResponse<SecurityConfiguration>
 > => {
-  return APIClient.get<SecurityConfiguration>('/system/security/config');
+  return APIClient.get<SecurityConfiguration>(SECURITY_CONFIG_PATH);
 };
 
 /**
@@ -105,7 +108,7 @@ export const patchAuthenticationConfiguration = async (
     AxiosResponse<AuthenticationConfiguration>
   >('/system/settings/authenticationConfiguration', patches, {
     headers: {
-      'Content-Type': 'application/json-patch+json',
+      'Content-Type': JSON_PATCH_CONTENT_TYPE,
     },
   });
 };
@@ -123,7 +126,7 @@ export const patchAuthorizerConfiguration = async (
     patches,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
       },
     }
   );
@@ -138,11 +141,11 @@ export const patchSecurityConfiguration = async (
   patches: Operation[]
 ): Promise<AxiosResponse<SecurityConfiguration>> => {
   return APIClient.patch<Operation[], AxiosResponse<SecurityConfiguration>>(
-    '/system/security/config',
+    SECURITY_CONFIG_PATH,
     patches,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
       },
     }
   );

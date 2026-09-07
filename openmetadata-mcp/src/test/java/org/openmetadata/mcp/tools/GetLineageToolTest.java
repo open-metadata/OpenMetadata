@@ -62,6 +62,90 @@ class GetLineageToolTest {
         .withDownstreamEdges(List.of());
   }
 
+  private static EntityLineage edgeThroughPipeline(EntityReference pipeline) {
+    EntityReference root = ref("orders", "db.public.orders");
+    EntityReference upstream = ref("raw_orders", "db.raw.raw_orders");
+    Edge edge =
+        new Edge()
+            .withFromEntity(upstream.getId())
+            .withToEntity(root.getId())
+            .withLineageDetails(details("select 1", null).withPipeline(pipeline));
+    return new EntityLineage()
+        .withEntity(root)
+        .withNodes(List.of(upstream))
+        .withUpstreamEdges(List.of(edge))
+        .withDownstreamEdges(List.of());
+  }
+
+  private static EntityReference pipelineRef() {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType("pipeline")
+        .withName("nightly_etl")
+        .withFullyQualifiedName("airflow.nightly_etl")
+        .withDescription("Loads orders every night");
+  }
+
+  /**
+   * A pipeline is edge metadata, so the node filter never sees it, yet it is its own entity with its
+   * own policy. A caller allowed on both endpoint tables must not learn which pipeline joins them.
+   */
+  @Test
+  void deniedPipelineKeepsTheRelationshipButNotItsIdentity() {
+    EntityLineage lineage = edgeThroughPipeline(pipelineRef());
+
+    Map<String, Object> edge =
+        firstUpstreamEdge(
+            GetLineageTool.enforceSizeBudget(
+                GetLineageTool.toSlim(
+                    lineage, new GetLineageTool.EdgeOptions(false, false), pipeline -> false)));
+
+    assertEquals(
+        "pipeline",
+        edge.get("relationshipType"),
+        "the caller still learns a pipeline connects these, but not which one");
+    assertNull(edge.get("pipelineFQN"));
+    assertNull(edge.get("pipelineDescription"));
+  }
+
+  @Test
+  void visiblePipelineIsNamedInFull() {
+    EntityLineage lineage = edgeThroughPipeline(pipelineRef());
+
+    Map<String, Object> edge =
+        firstUpstreamEdge(
+            GetLineageTool.enforceSizeBudget(
+                GetLineageTool.toSlim(
+                    lineage, new GetLineageTool.EdgeOptions(false, false), pipeline -> true)));
+
+    assertEquals("pipeline:nightly_etl", edge.get("relationshipType"));
+    assertEquals("airflow.nightly_etl", edge.get("pipelineFQN"));
+    assertEquals("Loads orders every night", edge.get("pipelineDescription"));
+  }
+
+  /**
+   * Temp-table hops are names parsed out of the transformation rather than catalog entities, so
+   * there is no policy to check them against; they travel with the SQL they came from.
+   */
+  @Test
+  void tempLineageTablesTravelWithTheSql() {
+    EntityLineage lineage = singleUpstreamEdge("select 1", null);
+
+    Map<String, Object> withoutSql =
+        firstUpstreamEdge(
+            GetLineageTool.enforceSizeBudget(
+                GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, false))));
+    assertFalse(
+        withoutSql.containsKey("tempLineageTables"),
+        "SQL-derived table names must not ride the default response");
+
+    Map<String, Object> withSql =
+        firstUpstreamEdge(
+            GetLineageTool.enforceSizeBudget(
+                GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true))));
+    assertTrue(withSql.containsKey("tempLineageTables"));
+  }
+
   @SuppressWarnings("unchecked")
   private static Map<String, Object> firstUpstreamEdge(Map<String, Object> response) {
     List<Map<String, Object>> upstream = (List<Map<String, Object>>) response.get("upstream");

@@ -569,33 +569,37 @@ export const PaginationCardWithControls = ({
           </Pagination.NextTrigger>
         </div>
 
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>
-            {t('label.records', 'Records')}
-          </span>
-          <Select
-            aria-label={t('label.records', 'Records')}
-            className={compactRowsPerPageSelectClassName}
-            data-testid="rows-per-page-dropdown"
-            fontSize="xs"
-            items={pageSizeItems}
-            placeholder={String(pageSize)}
-            popoverClassName="tw:min-w-16!"
-            selectedKey={String(pageSize)}
-            size="sm"
-            onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
-            {(item) => (
-              <Select.Item
-                className={compactRowsPerPageItemClassName}
-                data-testid={`rows-per-page-option-${item.id}`}
-                id={item.id}
-                key={item.id}
-                textValue={item.label}>
-                {item.label}
-              </Select.Item>
-            )}
-          </Select>
-        </div>
+        {onPageSizeChange && (
+          // A size picker with nothing wired to it is dead UI, and AntD
+          // hides its own unless the caller asks for it.
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+            <span className={compactTextClassName}>
+              {t('label.records', 'Records')}
+            </span>
+            <Select
+              aria-label={t('label.records', 'Records')}
+              className={compactRowsPerPageSelectClassName}
+              data-testid="rows-per-page-dropdown"
+              fontSize="xs"
+              items={pageSizeItems}
+              placeholder={String(pageSize)}
+              popoverClassName="tw:min-w-16!"
+              selectedKey={String(pageSize)}
+              size="sm"
+              onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
+              {(item) => (
+                <Select.Item
+                  className={compactRowsPerPageItemClassName}
+                  data-testid={`rows-per-page-option-${item.id}`}
+                  id={item.id}
+                  key={item.id}
+                  textValue={item.label}>
+                  {item.label}
+                </Select.Item>
+              )}
+            </Select>
+          </div>
+        )}
       </div>
     </Pagination.Root>
   );

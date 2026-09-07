@@ -227,6 +227,14 @@ MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
 """
 )
 
+MSSQL_TEST_GET_TABLES = """
+SELECT TOP 1 name FROM sys.tables WHERE is_ms_shipped = 0
+"""
+
+MSSQL_TEST_GET_VIEWS = """
+SELECT TOP 1 name FROM sys.views WHERE is_ms_shipped = 0
+"""
+
 MSSQL_GET_FOREIGN_KEY = """\
 WITH fk_info AS (
     SELECT

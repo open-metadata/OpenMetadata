@@ -217,8 +217,9 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Cache Maven Dependencies
-        uses: actions/cache@v6
+      - name: Restore Maven Dependencies
+        id: maven-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -242,6 +243,20 @@ jobs:
 
       - name: Build with Maven
         run: mvn -DskipTests clean package
+
+      - name: Save Maven Dependencies
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # The restore above stays ungated so forks are not forced into a cold
+        # ~/.m2 download; only the write into main's cache scope is blocked.
+        if: >-
+          steps.maven-cache.outputs.cache-hit != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
 
       - name: Upload OpenMetadata distribution
         uses: actions/upload-artifact@v7

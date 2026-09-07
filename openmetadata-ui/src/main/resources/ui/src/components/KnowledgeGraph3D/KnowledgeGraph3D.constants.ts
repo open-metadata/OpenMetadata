@@ -13,42 +13,45 @@
 
 import { Level, NodeType } from './types';
 
+const BRAND_500_COLOR = 'var(--color-brand-500, #2E90FA)';
+const PURPLE_500_COLOR = 'var(--color-purple-500, #7A5AF8)';
+
 /**
- * Scene-level design constants. These colors are painted onto WebGL materials
- * and canvas textures, so they cannot be sourced from CSS design tokens; they
- * are the exact values fixed by the Knowledge Graph 3D design specification.
+ * Canvas and WebGL cannot consume CSS variables directly. Keep token references
+ * here with concrete fallbacks, then resolve them at the paint boundary so
+ * theme and brand overrides still reach the 3D scene.
  */
 export const ENTITY_COLORS: Record<string, string> = {
-  domain: '#7A5AF8',
-  product: '#17B26A',
-  table: '#2E90FA',
-  column: '#53B1FD',
-  database: '#475467',
-  schema: '#667085',
-  service: '#98A2B3',
-  dashboard: '#EE46BC',
-  pipeline: '#EAAA08',
-  user: '#F63D68',
-  team: '#7A5AF8',
-  concept: '#F79009',
-  tag: '#15B79E',
-  query: '#6172F3',
-  topic: '#FB6514',
-  container: '#7839EE',
-  mlmodel: '#0E9384',
-  searchIndex: '#4E5BA6',
-  storedProcedure: '#9E77ED',
-  testCase: '#66C61C',
-  testSuite: '#4CA30D',
-  dataContract: '#DD2590',
-  api: '#155EEF',
-  metric: '#E04F16',
-  chart: '#BA24D5',
-  file: '#344054',
-  directory: '#B54708',
+  domain: PURPLE_500_COLOR,
+  product: 'var(--color-success-500, #17B26A)',
+  table: BRAND_500_COLOR,
+  column: 'var(--color-brand-400, #53B1FD)',
+  database: 'var(--color-gray-600, #475467)',
+  schema: 'var(--color-gray-500, #667085)',
+  service: 'var(--color-gray-400, #98A2B3)',
+  dashboard: 'var(--color-pink-500, #EE46BC)',
+  pipeline: 'var(--color-warning-500, #EAAA08)',
+  user: 'var(--color-rose-500, #F63D68)',
+  team: PURPLE_500_COLOR,
+  concept: 'var(--color-warning-500, #F79009)',
+  tag: 'var(--color-teal-500, #15B79E)',
+  query: 'var(--color-indigo-500, #6172F3)',
+  topic: 'var(--color-orange-500, #FB6514)',
+  container: 'var(--color-violet-600, #7839EE)',
+  mlmodel: 'var(--color-teal-600, #0E9384)',
+  searchIndex: 'var(--color-gray-blue-500, #4E5BA6)',
+  storedProcedure: 'var(--color-purple-400, #9E77ED)',
+  testCase: 'var(--color-green-light-500, #66C61C)',
+  testSuite: 'var(--color-green-light-600, #4CA30D)',
+  dataContract: 'var(--color-pink-600, #DD2590)',
+  api: 'var(--color-blue-dark-600, #155EEF)',
+  metric: 'var(--color-orange-dark-600, #E04F16)',
+  chart: 'var(--color-fuchsia-600, #BA24D5)',
+  file: 'var(--color-gray-700, #344054)',
+  directory: 'var(--color-warning-700, #B54708)',
 };
 
-export const DEFAULT_NODE_COLOR = '#9AA3B2';
+export const DEFAULT_NODE_COLOR = 'var(--color-gray-modern-400, #9AA3B2)';
 
 export const ENTITY_SIZES: Record<string, number> = {
   domain: 18,
@@ -84,29 +87,31 @@ export const DEFAULT_NODE_SIZE = 9;
 
 /** Deterministic avatar palette for users/teams (hash(name) -> index). */
 export const AVATAR_PALETTE = [
-  '#F63D68',
-  '#7A5AF8',
-  '#2E90FA',
-  '#15B79E',
-  '#F79009',
-  '#EE46BC',
-  '#0BA5EC',
-  '#6172F3',
-  '#DD2590',
-  '#12B76A',
+  'var(--color-rose-500, #F63D68)',
+  PURPLE_500_COLOR,
+  BRAND_500_COLOR,
+  'var(--color-teal-500, #15B79E)',
+  'var(--color-warning-500, #F79009)',
+  'var(--color-pink-500, #EE46BC)',
+  'var(--color-blue-light-500, #0BA5EC)',
+  'var(--color-indigo-500, #6172F3)',
+  'var(--color-pink-600, #DD2590)',
+  'var(--color-success-500, #12B76A)',
 ];
 
-export const LINK_TECHNICAL_COLOR = '#3B96F6';
-export const LINK_TECHNICAL_SWATCH = '#2E90FA';
-export const LINK_ONTOLOGY_COLOR = '#F79009';
-export const ONTOLOGY_PARTICLE_COLOR = '#FDB022';
-export const COVERAGE_GAP_COLOR = '#F04438';
-export const LABEL_COLOR = '#EAF0FB';
-/** Dark text drawn on the orange glossary-term pill laid over ontology-mode assets. */
-export const TERM_BADGE_TEXT_COLOR = '#0E1430';
+export const LINK_TECHNICAL_COLOR = 'var(--color-border-brand, #3B96F6)';
+export const LINK_TECHNICAL_SWATCH = BRAND_500_COLOR;
+export const LINK_ONTOLOGY_COLOR = 'var(--color-text-warning-primary, #F79009)';
+export const ONTOLOGY_PARTICLE_COLOR = 'var(--color-warning-400, #FDB022)';
+export const COVERAGE_GAP_COLOR = 'var(--color-border-error, #F04438)';
+export const LABEL_COLOR = 'var(--color-text-primary, #EAF0FB)';
+/** Fixed dark foreground preserves contrast on the warning-colored term badge. */
+export const TERM_BADGE_TEXT_COLOR = 'var(--color-gray-950, #0E1430)';
+export const NODE_ICON_COLOR = 'var(--color-text-white, #FFFFFF)';
+export const DIM_LINK_COLOR = 'var(--color-border-secondary, #7A8194)';
 
 export const STAGE_BACKDROP =
-  'radial-gradient(130% 120% at 28% 0%, #182747 0%, #0C1326 52%, #060A16 100%)';
+  'radial-gradient(130% 120% at 28% 0%, var(--color-bg-brand-primary_alt, #EFF8FF) 0%, var(--color-bg-secondary, #FAFAFA) 52%, var(--color-bg-primary, #FFFFFF) 100%)';
 
 /** The entity type rendered 1.5x larger at each level so hierarchy reads. */
 export const PRIMARY_TYPE_BY_LEVEL: Record<Level, NodeType> = {
