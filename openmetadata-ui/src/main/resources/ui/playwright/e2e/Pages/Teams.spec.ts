@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import {
   EDIT_USER_FOR_TEAM_RULES,
   OWNER_TEAM_RULES,
@@ -22,6 +23,7 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -36,6 +38,7 @@ import {
   toastNotification,
   uuid,
   visitOwnProfilePage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -708,6 +711,117 @@ test.describe('Teams Page', () => {
       await team2.delete(apiContext);
       await team3.delete(apiContext);
       await team4.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Team assets entity type filter should apply, toggle off and clear', async ({
+    page,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass();
+    const topic = new TopicClass();
+    const filterTeam = new TeamClass({
+      name: `pw-asset-filter-${id}`,
+      displayName: `pw team asset filter ${id}`,
+      description: 'playwright team for asset entity type filter',
+      teamType: 'Group',
+    });
+
+    await table.create(apiContext);
+    await topic.create(apiContext);
+    await filterTeam.create(apiContext);
+
+    const ownerPatch: Operation[] = [
+      {
+        op: 'add',
+        path: '/owners/-',
+        value: { id: filterTeam.responseData.id, type: 'team' },
+      },
+    ];
+    await table.patch({ apiContext, patchData: ownerPatch });
+    await topic.patch({ apiContext, patchData: ownerPatch });
+
+    const tableFqn = table.entityResponseData?.['fullyQualifiedName'];
+    const topicFqn = topic.entityResponseData?.['fullyQualifiedName'];
+    const tableCard = page.getByTestId(`table-data-card_${tableFqn}`);
+    const topicCard = page.getByTestId(`table-data-card_${topicFqn}`);
+    const entityTypeFilterChip = page.getByRole('button', {
+      name: 'Entity Type',
+    });
+
+    const selectEntityTypeFromMenu = async () => {
+      await page.getByTestId('asset-filter-button').click();
+      const menuItem = page.getByRole('menuitem', { name: 'Entity Type' });
+      await expect(menuItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await menuItem.click();
+    };
+
+    const applyTableEntityTypeFilter = async () => {
+      await entityTypeFilterChip.click();
+      await page.getByTestId('table-checkbox').check();
+      const filterResponse = page.waitForResponse('/api/v1/search/query?q=*');
+      await page.getByTestId('update-btn').click();
+      await filterResponse;
+      await waitForAllLoadersToDisappear(page);
+    };
+
+    try {
+      await test.step('Apply entity type filter', async () => {
+        await filterTeam.visitTeamPage(page);
+
+        const assetsResponse = page.waitForResponse('/api/v1/search/query?q=*');
+        await page.getByTestId('assets').click();
+        await assetsResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+
+        await selectEntityTypeFromMenu();
+
+        await expect(entityTypeFilterChip).toBeVisible();
+
+        await applyTableEntityTypeFilter();
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).not.toBeVisible();
+      });
+
+      await test.step('Toggle the filter off from the dropdown', async () => {
+        const removeFilterResponse = page.waitForResponse(
+          '/api/v1/search/query?q=*'
+        );
+        await selectEntityTypeFromMenu();
+        await removeFilterResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(entityTypeFilterChip).not.toBeVisible();
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+      });
+
+      await test.step('Clear removes the selected filter entirely', async () => {
+        await selectEntityTypeFromMenu();
+        await applyTableEntityTypeFilter();
+
+        await expect(topicCard).not.toBeVisible();
+
+        const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+        await page.getByText('Clear').click();
+        await clearResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(entityTypeFilterChip).not.toBeVisible();
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+      });
+    } finally {
+      await table.delete(apiContext);
+      await topic.delete(apiContext);
+      await filterTeam.delete(apiContext);
       await afterAction();
     }
   });
