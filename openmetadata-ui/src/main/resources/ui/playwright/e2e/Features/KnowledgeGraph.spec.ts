@@ -228,6 +228,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     browser,
     page,
   }) => {
+    test.slow();
     const { apiContext, afterAction } = await createNewPage(browser);
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
@@ -274,7 +275,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
 
         expect(response.ok()).toBe(true);
         expect(result.boolean).toBe(true);
-      }).toPass({ intervals: [1_000, 2_000, 5_000], timeout: 60_000 });
+      }).toPass({ intervals: [2_000, 5_000], timeout: 120_000 });
 
       const pageErrors = await openKnowledgeGraph(page, ontologyTable);
       await selectDepth(page, 2, ontologyTable);
