@@ -174,7 +174,7 @@ class TestCacheLineage:
 
         key = ("cat.schema.src", "cat.schema.tgt")
         assert key in lineage_source.column_lineage_map
-        assert lineage_source.column_lineage_map[key] == [
+        assert list(lineage_source.column_lineage_map[key]) == [
             ("col_a", "col_x"),
             ("col_b", "col_y"),
         ]
@@ -222,7 +222,7 @@ class TestProcessTableLineage:
 
     def test_process_table_lineage_with_column_lineage(self, lineage_source):
         lineage_source.table_lineage_map = {"cat.schema.target": {"cat.schema.source"}}
-        lineage_source.column_lineage_map = {("cat.schema.source", "cat.schema.target"): [("col_a", "col_x")]}
+        lineage_source.column_lineage_map = {("cat.schema.source", "cat.schema.target"): {("col_a", "col_x"): None}}
 
         target_table = Table(
             id=uuid4(),
@@ -296,7 +296,7 @@ class TestProcessTableLineage:
 
 class TestColumnLineageDetails:
     def test_self_loop_prevention(self, lineage_source):
-        lineage_source.column_lineage_map = {("cat.schema.src", "cat.schema.tgt"): [("col_a", "col_a")]}
+        lineage_source.column_lineage_map = {("cat.schema.src", "cat.schema.tgt"): {("col_a", "col_a"): None}}
 
         table = Table(
             id=uuid4(),
@@ -652,7 +652,7 @@ class TestPathBasedLineage:
             ],
         )
 
-        assert lineage_source.column_lineage_map[("cat.schema.ext", "cat.schema.tgt")] == [
+        assert list(lineage_source.column_lineage_map[("cat.schema.ext", "cat.schema.tgt")]) == [
             ("col_a", "col_x"),
             ("col_b", "col_y"),
         ]
@@ -670,7 +670,7 @@ class TestPathBasedLineage:
             ],
         )
 
-        assert lineage_source.column_lineage_map[("cat.schema.ext", "cat.schema.tgt")] == [("col_a", "col_x")]
+        assert lineage_source.column_lineage_map[("cat.schema.ext", "cat.schema.tgt")] == {("col_a", "col_x"): None}
 
     def test_cache_external_locations_builds_the_inverse_map(self, lineage_source):
         mock_rows = [

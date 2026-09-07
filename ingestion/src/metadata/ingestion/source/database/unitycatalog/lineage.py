@@ -91,7 +91,7 @@ class UnitycatalogLineageSource(Source):
         self.connection_obj = connection.client
         self.engine = connection.sql.client
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
-        self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+        self.column_lineage_map: dict[tuple[str, str], dict[tuple[str, str], None]] = defaultdict(dict)
         self.external_location_map: dict[str, str] = {}
         self.path_to_table_map: dict[str, set[str]] = defaultdict(set)
         self.path_lineage_map: dict[str, set[str]] = defaultdict(set)
@@ -196,8 +196,9 @@ class UnitycatalogLineageSource(Source):
                             # One edge reaches us twice when Databricks reports it both by
                             # name and by path, and a duplicated pair would be sent as a
                             # duplicated column edge.
-                            if column_pair not in self.column_lineage_map[table_key]:
-                                self.column_lineage_map[table_key].append(column_pair)
+                            pairs = self.column_lineage_map[table_key]
+                            if column_pair not in pairs:
+                                pairs[column_pair] = None
             logger.info(
                 f"Cached column lineage: {sum(len(v) for v in self.column_lineage_map.values())} "
                 f"column mappings for {len(self.column_lineage_map)} table pairs"
@@ -274,7 +275,7 @@ class UnitycatalogLineageSource(Source):
     ) -> LineageDetails | None:
         try:
             table_key = (source_table_fqn, target_table_fqn)
-            column_pairs = self.column_lineage_map.get(table_key, [])
+            column_pairs = self.column_lineage_map.get(table_key, {})
             if not column_pairs:
                 return None
 

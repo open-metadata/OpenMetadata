@@ -59,7 +59,7 @@ def _source(rows, column_rows=None):
     source.source_config = MagicMock()
     source.source_config.queryLogDuration = 1
 
-    source.column_lineage_map = defaultdict(list)
+    source.column_lineage_map = defaultdict(dict)
     source.path_to_table_map = defaultdict(set)
     source.path_lineage_map = defaultdict(set)
 
@@ -117,4 +117,4 @@ class TestSelfReferencingColumnLineageCache:
             column_rows=[_column_row(EVENT_LOG, SNAPSHOT, "id")],
         )
         source._cache_lineage()
-        assert source.column_lineage_map[(EVENT_LOG, SNAPSHOT)] == [("id", "id")]
+        assert source.column_lineage_map[(EVENT_LOG, SNAPSHOT)] == {("id", "id"): None}
