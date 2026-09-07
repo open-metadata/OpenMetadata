@@ -615,7 +615,7 @@ class SnowflakeSource(
                         )
                     ),
                     {
-                        "database_name": self.context.get().database,
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
                         "schema_name": schema_name,
                     },
                 )
@@ -623,7 +623,7 @@ class SnowflakeSource(
             except Exception as exc:
                 try:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error fetching tags {exc}. Retrying with unquoted context names")
+                    logger.warning("Error fetching tags %s. Retrying with unquoted context names", exc)
                     result = self.connection.execute(
                         text(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
@@ -631,8 +631,8 @@ class SnowflakeSource(
                             )
                         ),
                         {
-                            "database_name": fqn.unquote_name(self.context.get().database),
-                            "schema_name": fqn.unquote_name(self.context.get().database_schema),
+                            "database_name": fqn.unquote_name(self.context.get().database),  # pyright: ignore[reportAttributeAccessIssue]
+                            "schema_name": fqn.unquote_name(self.context.get().database_schema),  # pyright: ignore[reportAttributeAccessIssue]
                         },
                     )
                 except Exception as inner_exc:
