@@ -14,6 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
+import re
 from collections import Counter
 from typing import cast
 
@@ -37,6 +38,35 @@ class Base(DeclarativeBase):
 
 
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
+
+# SQLAlchemy 2.x's declarative scan filters out any class attribute whose name matches
+# this pattern (see sqlalchemy.orm.decl_base._match_exclude_dunders).  A column keyed
+# under such a name is silently dropped from the mapped Table, which removes the primary
+# key when that column happens to be first and raises a hard mapper error.
+_SQA_DUNDER_RE = re.compile(r"^(?:__|_sa_)")
+_OM_SAFE_PREFIX = "om_col_"
+
+
+def _safe_orm_attr(name: str, existing: set) -> str:
+    """Return a class-attribute key safe for SQLAlchemy's declarative base.
+
+    Renames attributes that SQLAlchemy would silently discard:
+    - reserved names (e.g. "metadata") get a trailing underscore (existing behaviour)
+    - dunder/``_sa_``-prefixed names get the ``om_col_`` prefix so they pass the
+      declarative scan filter; ``Column.name`` and ``Column.key`` are unchanged, so
+      the profiler still addresses columns by their original name.
+
+    Collisions introduced by the renaming are resolved by appending underscores.
+    """
+    if name in SQA_RESERVED_ATTRIBUTES:
+        candidate = name + "_"
+    elif _SQA_DUNDER_RE.match(name):
+        candidate = _OM_SAFE_PREFIX + name
+    else:
+        return name
+    while candidate in existing:
+        candidate += "_"
+    return candidate
 
 
 def check_snowflake_case_sensitive(table_service_type, table_or_col) -> bool | None:
@@ -163,12 +193,12 @@ def ometa_to_sqa_orm(
     orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(".", "_")
 
     col_keys = build_orm_col_keys(table.columns)
-    cols = {
-        (col.name.root + "_" if col.name.root in SQA_RESERVED_ATTRIBUTES else col.name.root): build_orm_col(
-            idx, col, table.serviceType, key=col_keys[idx]
-        )
-        for idx, col in enumerate(table.columns)
-    }
+    attr_names: set = set()
+    cols: dict = {}
+    for idx, col in enumerate(table.columns):
+        attr = _safe_orm_attr(col.name.root, attr_names)
+        attr_names.add(attr)
+        cols[attr] = build_orm_col(idx, col, table.serviceType, key=col_keys[idx])
 
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
