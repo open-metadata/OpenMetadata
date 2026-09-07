@@ -112,7 +112,52 @@ interface DetailsTab {
   label: ReactNode;
   order: number;
   badge?: number;
+  useCount?: (context: PluginEntityDetailsContext) => number | undefined;
 }
+
+const getTabItemClassName = ({
+  isSelected,
+  isHovered,
+}: {
+  isSelected: boolean;
+  isHovered: boolean;
+}): string =>
+  `tw:py-2 tw:px-0 tw:text-sm tw:font-medium tw:transition-colors ${
+    isSelected
+      ? 'tw:border-fg-brand-primary tw:text-fg-brand-primary'
+      : `tw:border-transparent tw:text-tertiary ${
+          isHovered ? 'tw:border-gray-300 tw:text-secondary' : ''
+        }`
+  }`;
+
+/**
+ * Renders a tab trigger whose contribution supplies a `useCount` hook for a live
+ * badge (e.g. Collate's agents count). The hook is called unconditionally in this
+ * component's render body so it obeys the rules of hooks and the badge updates
+ * even while another tab is active. Only rendered for tabs that have `useCount`.
+ */
+const DynamicCountTabItem = ({
+  detailsTab,
+  context,
+}: {
+  detailsTab: DetailsTab & {
+    useCount: (context: PluginEntityDetailsContext) => number | undefined;
+  };
+  context: PluginEntityDetailsContext;
+}) => {
+  const useTabCount = detailsTab.useCount;
+  const dynamicCount = useTabCount(context);
+
+  return (
+    <Tabs.Item
+      badge={dynamicCount ?? detailsTab.badge}
+      className={getTabItemClassName}
+      data-testid={`${detailsTab.key}-tab`}
+      id={detailsTab.key}
+      label={detailsTab.label}
+    />
+  );
+};
 
 // OSS built-in tabs. A plugin (e.g. Collate's summary/insights/agents) contributes the rest via
 // SERVICE_DETAILS_TABS with its own `order`; sorting the merged list ascending is what lets a
@@ -633,6 +678,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       label: pluginTab.label,
       order: pluginTab.order ?? Number.MAX_SAFE_INTEGER,
       badge: pluginTab.count,
+      useCount: pluginTab.useCount,
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
@@ -782,26 +828,30 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 className="tw:gap-7 tw:before:hidden"
                 size="sm"
                 type="underline">
-                {tabs.map((detailsTab) => (
-                  <Tabs.Item
-                    badge={detailsTab.badge}
-                    className={({ isSelected, isHovered }) =>
-                      `tw:py-2 tw:px-0 tw:text-sm tw:font-medium tw:transition-colors ${
-                        isSelected
-                          ? 'tw:border-fg-brand-primary tw:text-fg-brand-primary'
-                          : `tw:border-transparent tw:text-tertiary ${
-                              isHovered
-                                ? 'tw:border-gray-300 tw:text-secondary'
-                                : ''
-                            }`
-                      }`
-                    }
-                    data-testid={`${detailsTab.key}-tab`}
-                    id={detailsTab.key}
-                    key={detailsTab.key}
-                    label={detailsTab.label}
-                  />
-                ))}
+                {tabs.map((detailsTab) =>
+                  detailsTab.useCount ? (
+                    <DynamicCountTabItem
+                      context={extensionContext}
+                      detailsTab={
+                        detailsTab as DetailsTab & {
+                          useCount: (
+                            context: PluginEntityDetailsContext
+                          ) => number | undefined;
+                        }
+                      }
+                      key={detailsTab.key}
+                    />
+                  ) : (
+                    <Tabs.Item
+                      badge={detailsTab.badge}
+                      className={getTabItemClassName}
+                      data-testid={`${detailsTab.key}-tab`}
+                      id={detailsTab.key}
+                      key={detailsTab.key}
+                      label={detailsTab.label}
+                    />
+                  )
+                )}
               </Tabs.List>
             </Tabs>
           }

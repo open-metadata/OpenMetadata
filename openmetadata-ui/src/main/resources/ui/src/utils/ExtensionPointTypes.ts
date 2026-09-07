@@ -164,6 +164,15 @@ export interface TabContribution {
   /** Optional count badge to display on tab */
   count?: number;
 
+  /**
+   * Optional React hook returning a live count badge for the tab. The consuming
+   * page calls it (unconditionally, once per contributed tab) with the page
+   * context, so the badge can reflect data the contribution fetches itself and
+   * stays in sync even while another tab is active. Takes precedence over the
+   * static `count`. MUST obey the rules of hooks (call it from the render body).
+   */
+  useCount?: (context: PluginEntityDetailsContext) => number | undefined;
+
   /** Optional sort order (ascending) among contributed tabs; unset sorts last/insertion order. */
   order?: number;
 
