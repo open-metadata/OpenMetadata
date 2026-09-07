@@ -31,6 +31,7 @@ from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
+    AirflowTask,
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 
