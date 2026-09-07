@@ -14,8 +14,10 @@
 import {
   Breadcrumbs,
   Button,
+  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -31,7 +33,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -250,13 +251,18 @@ function EditConnectionFormPage() {
 
   if (isError && !isLoading) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(serviceCategory, serviceFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
+        <EmptyPlaceholder
+          description={getEntityMissingError(serviceCategory, serviceFQN)}
+          icon={<OpenIncidents className="tw:text-secondary" />}
+          title={t('message.something-went-wrong')}
+        />
+      </div>
     );
   }
 
   const isSavingService = saveServiceState === 'waiting';
+  const resolvedServiceType = serviceDetails?.serviceType ?? '';
 
   const handleFooterBack = () => {
     if (activeServiceStep === 1) {
@@ -309,7 +315,7 @@ function EditConnectionFormPage() {
         <div className="tw:mt-6">
           <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
             {getServiceLogo(
-              serviceDetails?.serviceType ?? '',
+              resolvedServiceType,
               'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
             )}
             <Typography
@@ -337,7 +343,7 @@ function EditConnectionFormPage() {
                   data={serviceDetails}
                   ref={connectionFormRef}
                   serviceCategory={serviceCategory}
-                  serviceType={serviceDetails?.serviceType ?? ''}
+                  serviceType={resolvedServiceType}
                   status={saveServiceState}
                   onFocus={handleFieldFocus}
                   onSave={async (e) => {
@@ -353,7 +359,7 @@ function EditConnectionFormPage() {
                   data={serviceDetails}
                   ref={filtersFormRef}
                   serviceCategory={serviceCategory}
-                  serviceType={serviceDetails?.serviceType ?? ''}
+                  serviceType={resolvedServiceType}
                   showConnectedMessage={isConnectionVerified}
                   status={saveServiceState}
                   onFocus={handleFieldFocus}
@@ -392,7 +398,7 @@ function EditConnectionFormPage() {
                   focusedMode
                   activeField={activeField}
                   activeFieldMeta={activeFieldMeta}
-                  serviceName={serviceDetails?.serviceType ?? ''}
+                  serviceName={resolvedServiceType}
                   serviceType={getServiceType(serviceCategory)}
                 />
               </Suspense>

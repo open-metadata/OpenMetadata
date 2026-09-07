@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
   descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -125,7 +127,7 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
     // Fill in term details
     const termName = `ApprovedTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Test description for status');
+    await fillDescriptionBox(page, 'Test description for status');
 
     // Submit the term
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
@@ -162,7 +164,7 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
     // Fill in term details
     const termName = `DraftTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Test description for draft');
+    await fillDescriptionBox(page, 'Test description for draft');
 
     // Submit the term
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
@@ -198,9 +200,7 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
     // Fill in term details
     const termName = `InheritReviewerTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
-    await page
-      .locator(descriptionBox)
-      .fill('Test term to verify reviewer inheritance');
+    await fillDescriptionBox(page, 'Test term to verify reviewer inheritance');
 
     // Submit the term
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
@@ -258,7 +258,7 @@ test(
       await openAddGlossaryTermModal(page);
 
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term for review testing');
+      await fillDescriptionBox(page, 'Term for review testing');
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -319,7 +319,7 @@ test(
       await openAddGlossaryTermModal(page);
 
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Test term for status badge');
+      await fillDescriptionBox(page, 'Test term for status badge');
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -391,7 +391,7 @@ test(
       await openAddGlossaryTermModal(page);
 
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term for owner approval test');
+      await fillDescriptionBox(page, 'Term for owner approval test');
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');

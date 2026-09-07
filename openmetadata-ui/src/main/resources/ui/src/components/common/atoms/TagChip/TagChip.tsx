@@ -88,13 +88,15 @@ const TagChip: FC<TagChipProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const labelColorStyle = tagColor ? { color: tagColor } : undefined;
+
   const chipIcon = useMemo(
     () => (
       <Icon
+        className="tw:mr-1 tw:shrink-0"
         fallback={<Tag01 size={sizeStyles[size].icon} />}
         iconValue={icon}
         size={12}
-        wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
       />
     ),
     [icon, size]
@@ -152,7 +154,7 @@ const TagChip: FC<TagChipProps> = ({
           inline
           align="center"
           className="tw:mr-1 tw:shrink-0"
-          style={tagColor ? { color: tagColor } : undefined}>
+          style={labelColorStyle}>
           {chipIcon}
         </Box>
       )}
@@ -161,7 +163,7 @@ const TagChip: FC<TagChipProps> = ({
         data-testid={labelDataTestId}
         ellipsis={showEllipsis}
         size={sizeStyles[size].typography}
-        style={tagColor ? { color: tagColor } : undefined}
+        style={labelColorStyle}
         weight={variant === 'blueGray' ? 'regular' : 'medium'}>
         {label}
       </Typography>

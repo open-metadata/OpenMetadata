@@ -12,8 +12,6 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
   cloneDeep,
   groupBy,
@@ -26,6 +24,10 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../components/common/Table/Table.interface';
 
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
@@ -242,10 +244,12 @@ const SearchIndexFieldsTable = ({
         return <>{NO_DATA_PLACEHOLDER}</>;
       }
 
+      const shouldShowPlainText =
+        isReadOnly || (displayValue && displayValue.length < 25 && !isReadOnly);
+
       return (
         <div data-testid={`${record.name}-data-type`}>
-          {isReadOnly ||
-          (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+          {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
             <Tooltip title={toLower(displayValue)}>

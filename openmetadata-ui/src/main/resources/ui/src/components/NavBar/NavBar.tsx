@@ -76,7 +76,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -84,6 +84,7 @@ import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvide
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { NotificationBoxProp } from '../NotificationBox/NotificationBox.interface';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
@@ -95,6 +96,10 @@ const DomainSelectableList = withSuspenseFallback(
 );
 
 const cookieStorage = new CookieStorage();
+
+const renderNotificationBox = (props: NotificationBoxProp) => (
+  <NotificationBox {...props} />
+);
 
 const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
@@ -134,12 +139,11 @@ const NavBar = () => {
     setPreference,
   } = useCurrentUserPreferences();
 
-  // Check if current route is home page
-  const isHomePage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname === ROUTES.MY_DATA;
-  }, [location.pathname]);
+  // Check if current route is the landing page (either `/` or `/my-data`)
+  const isHomePage = useMemo(
+    () => isLandingPagePath(location.pathname),
+    [location.pathname]
+  );
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -483,7 +487,14 @@ const NavBar = () => {
   );
 
   const showAllDomains = !isDomainRestricted;
-  const isSingleDomainUser = isDomainRestricted && userDomains.length === 1;
+  const isSingleDomainUser = useMemo(
+    () => isDomainRestricted && userDomains.length === 1,
+    [isDomainRestricted, userDomains]
+  );
+  const restrictedDomains = useMemo(
+    () => (isDomainRestricted ? userDomains : undefined),
+    [isDomainRestricted, userDomains]
+  );
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
     await localUtilClassBase.loadLocales(key);
@@ -495,26 +506,55 @@ const NavBar = () => {
     ? upperCase(i18n.language.split('-')[0])
     : '';
 
+  const headerStyle = useMemo(
+    () =>
+      isDataMarketplacePage
+        ? {
+            background: 'transparent',
+            marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+            position: 'relative' as const,
+            zIndex: 10,
+          }
+        : undefined,
+    [isDataMarketplacePage]
+  );
+
+  const sidebarTooltipTitle = useMemo(
+    () => (isSidebarCollapsed ? t('label.expand') : t('label.collapse')),
+    [isSidebarCollapsed, t]
+  );
+
+  const versionMismatchAlert = useMemo(
+    () =>
+      showVersionMissMatchAlert ? (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                navigate(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      ) : null,
+    [showVersionMissMatchAlert, navigate, t]
+  );
+
   return (
     <>
-      <Header
-        style={
-          isDataMarketplacePage
-            ? {
-                background: 'transparent',
-                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
-                position: 'relative' as const,
-                zIndex: 10,
-              }
-            : undefined
-        }>
+      <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip
-              placement="right"
-              title={
-                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
-              }>
+            <Tooltip placement="right" title={sidebarTooltipTitle}>
               <Button
                 className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
@@ -544,9 +584,7 @@ const NavBar = () => {
                       setIsDomainDropdownOpen(open);
                     },
                   }}
-                  restrictedDomains={
-                    isDomainRestricted ? userDomains : undefined
-                  }
+                  restrictedDomains={restrictedDomains}
                   selectedDomain={activeDomainEntityRef}
                   showAllDomains={showAllDomains}
                   wrapInButton={false}
@@ -607,18 +645,17 @@ const NavBar = () => {
             <Dropdown
               destroyPopupOnHide
               className="cursor-pointer"
-              dropdownRender={() => (
-                <NotificationBox
-                  activeTab={activeTab}
-                  hasMentionNotification={hasMentionNotification}
-                  hasTaskNotification={hasTaskNotification}
-                  onMarkMentionsNotificationRead={
-                    handleMentionsNotificationRead
-                  }
-                  onMarkTaskNotificationRead={handleTaskNotificationRead}
-                  onTabChange={handleActiveTab}
-                />
-              )}
+              dropdownRender={() =>
+                renderNotificationBox({
+                  activeTab,
+                  hasMentionNotification,
+                  hasTaskNotification,
+                  onMarkMentionsNotificationRead:
+                    handleMentionsNotificationRead,
+                  onMarkTaskNotificationRead: handleTaskNotificationRead,
+                  onTabChange: handleActiveTab,
+                })
+              }
               overlayStyle={{
                 width: '425px',
                 minHeight: '375px',
@@ -658,26 +695,7 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      {showVersionMissMatchAlert && (
-        <Alert
-          showIcon
-          action={
-            <Button
-              size="small"
-              type="link"
-              onClick={() => {
-                navigate(0);
-              }}>
-              {t('label.refresh')}
-            </Button>
-          }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
-      )}
+      {versionMismatchAlert}
       {renderAlertCards}
     </>
   );

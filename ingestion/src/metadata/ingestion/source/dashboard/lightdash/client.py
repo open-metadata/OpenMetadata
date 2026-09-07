@@ -13,7 +13,6 @@ REST Auth & Client for Lightdash
 """
 
 import traceback
-from typing import List  # noqa: UP035
 
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
@@ -54,7 +53,7 @@ class LightdashApiClient:
             "/api/v1/org",
         )
 
-    def get_spaces(self) -> List[LightdashSpace]:  # noqa: UP006
+    def get_spaces(self) -> list[LightdashSpace]:
         """GET Lightdash Spaces within the project"""
         try:
             response = self.client.get(f"api/v1/projects/{self.config.projectUUID}/spaces")
@@ -84,7 +83,7 @@ class LightdashApiClient:
             logger.warning("Failed to fetch the project data from the Lightdash Connector")
             return ""
 
-    def get_charts_list(self) -> List[LightdashChart]:  # noqa: UP006
+    def get_charts_list(self) -> list[LightdashChart]:
         """
         Get List of all charts
         """
@@ -105,7 +104,7 @@ class LightdashApiClient:
             logger.warning("Failed to fetch the charts list for the Lightdash Connector")
         return []
 
-    def test_get_dashboards_list(self) -> List[LightdashDashboard]:  # noqa: UP006
+    def test_get_dashboards_list(self) -> list[LightdashDashboard]:
         """
         Get List of dashboards without exception handling for test connections.
         This method will raise exceptions to properly fail test connections.
@@ -128,7 +127,7 @@ class LightdashApiClient:
             return dashboards_list
         return []
 
-    def get_dashboards_list(self) -> List[LightdashDashboard]:  # noqa: UP006
+    def get_dashboards_list(self) -> list[LightdashDashboard]:
         """
         Get List of all dashboards
         """
@@ -155,7 +154,7 @@ class LightdashApiClient:
             logger.warning("Failed to fetch the dashboard list for the Lightdash Connector")
         return []
 
-    def add_dashboard_lineage(self, dashboards_list: List[LightdashDashboard]) -> None:  # noqa: UP006
+    def add_dashboard_lineage(self, dashboards_list: list[LightdashDashboard]) -> None:
         """
         Get Lineage of all dashboard charts
         """
@@ -194,7 +193,7 @@ class LightdashApiClient:
             dashboard_external_charts = self.get_charts_objects(dashboard_external_uuid_charts)
             dashboard.charts = dashboard_external_charts + dashboard_internal_charts
 
-    def get_charts_objects(self, charts_uuid_list) -> List[LightdashChart]:  # noqa: UP006
+    def get_charts_objects(self, charts_uuid_list) -> list[LightdashChart]:
         """
         Get Lineage of all non-dashboard charts
         """

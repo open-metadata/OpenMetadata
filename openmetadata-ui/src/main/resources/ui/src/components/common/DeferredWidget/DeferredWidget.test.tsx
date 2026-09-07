@@ -56,8 +56,9 @@ describe('<DeferredWidget />', () => {
     // window.IntersectionObserver to undefined and restore it after the assertion so the
     // global mock from setupTests.js isn't leaked across cases.
     const original = window.IntersectionObserver;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).IntersectionObserver = undefined;
+    (
+      window as { IntersectionObserver?: typeof IntersectionObserver }
+    ).IntersectionObserver = undefined;
 
     try {
       render(

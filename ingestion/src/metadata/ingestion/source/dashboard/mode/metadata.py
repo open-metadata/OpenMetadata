@@ -11,7 +11,7 @@
 """Mode source module"""
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -67,14 +67,14 @@ class ModeSource(DashboardServiceSource):
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: ModeConnection = config.serviceConnection.root.config
         if not isinstance(connection, ModeConnection):
             raise InvalidSourceException(f"Expected ModeConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[dict] | None:
         """
         Get List of all dashboards
         """
@@ -130,7 +130,7 @@ class ModeSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (

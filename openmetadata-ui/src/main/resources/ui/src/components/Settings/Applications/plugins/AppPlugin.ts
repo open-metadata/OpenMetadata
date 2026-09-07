@@ -16,6 +16,7 @@ import { App } from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { LeftSidebarItem } from '../../../MyData/LeftSidebar/LeftSidebar.interface';
+import { AppModule } from '../../../platform/ai-shell/AppModule.types';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
   index: number;
@@ -135,4 +136,14 @@ export interface AppPlugin {
    * ```
    */
   contributeExtensions?(registry: ExtensionPointRegistry): void;
+
+  /**
+   * Install-gated AI modules. `useAllAppModules` merges these with the
+   * base modules from `LeftSidebarClassBase.getAppModeModules()`. Because the
+   * `ApplicationsProvider` only exposes INSTALLED plugins, anything returned
+   * here appears only when this app is installed — use it for surfaces that
+   * must not show otherwise (e.g. AI Studio / AI Automations / AI Analytics).
+   * The always-present modules belong in the sidebar class, not here.
+   */
+  getModeModules?(): AppModule[];
 }

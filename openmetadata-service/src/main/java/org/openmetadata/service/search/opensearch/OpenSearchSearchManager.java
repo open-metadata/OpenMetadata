@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -1035,6 +1037,31 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
+   * Keys a compiled RBAC query by the subject fields that end up embedded in it as literal ids.
+   * Roles select the policies; {@code hasDomain()} compiles domain ids into term clauses; {@code
+   * isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the same way. Nothing
+   * invalidates this cache, so any field left out of the key is served stale for the remainder of
+   * the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator} whenever a new
+   * condition starts reading another subject field.
+   */
+  static String rbacCacheKey(SubjectContext subjectContext) {
+    return subjectContext.user().getId()
+        + ":"
+        + sortedIds(subjectContext.user().getRoles())
+        + ":"
+        + sortedIds(subjectContext.user().getDomains())
+        + ":"
+        + sortedIds(subjectContext.user().getTeams());
+  }
+
+  private static String sortedIds(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(reference -> reference.getId().toString())
+        .sorted()
+        .collect(Collectors.joining(","));
+  }
+
+  /**
    * Applies RBAC query constraints with caching to the request builder.
    *
    * @param subjectContext the subject context containing user and role information
@@ -1046,14 +1073,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return;
     }
 
-    // Create cache key from user ID and roles
-    String cacheKey =
-        subjectContext.user().getId()
-            + ":"
-            + subjectContext.user().getRoles().stream()
-                .map(r -> r.getId().toString())
-                .sorted()
-                .collect(Collectors.joining(","));
+    String cacheKey = rbacCacheKey(subjectContext);
 
     try {
       // Guava Cache forbids null values, so we check getIfPresent first, then build and cache.

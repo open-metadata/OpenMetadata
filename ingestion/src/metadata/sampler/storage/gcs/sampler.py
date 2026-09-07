@@ -13,7 +13,6 @@ GCS sampler implementation
 """
 
 import secrets
-from typing import Optional, Tuple  # noqa: UP035
 
 from google.cloud.exceptions import NotFound
 
@@ -47,7 +46,7 @@ class GCSSampler(StorageSampler):
         gcs_clients = get_connection(self.service_connection_config)
         return gcs_clients.storage_client
 
-    def _get_bucket_and_project(self) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
+    def _get_bucket_and_project(self) -> tuple[str, str | None]:
         """
         Extract bucket name from container FQN and find the project ID
         Returns: (bucket_name, project_id)
@@ -89,7 +88,7 @@ class GCSSampler(StorageSampler):
         """
         return [entry.name for entry in blobs if entry.name.endswith(file_format)]
 
-    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
+    def _get_sample_file_path(self) -> str | None:
         """Get a sample file path from the container"""
         bucket_name, project_id = self._get_bucket_and_project()
 

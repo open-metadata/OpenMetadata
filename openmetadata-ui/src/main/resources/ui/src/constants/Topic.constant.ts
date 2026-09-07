@@ -18,6 +18,8 @@ import {
   Topic,
 } from '../generated/entity/data/topic';
 
+const DOMAIN_WITH_DOT = 'domain.with.dot';
+
 export const TOPIC_DUMMY_DATA: Topic = {
   id: 'd68d2e86-41cd-4c6c-bd78-41db489d46d1',
   name: 'address_book',
@@ -135,10 +137,10 @@ export const TOPIC_DUMMY_DATA: Topic = {
     {
       id: '761f0a12-7b08-4889-acc3-b8d4d11a7865',
       type: 'domain',
-      name: 'domain.with.dot',
+      name: DOMAIN_WITH_DOT,
       fullyQualifiedName: '"domain.with.dot"',
-      description: 'domain.with.dot',
-      displayName: 'domain.with.dot',
+      description: DOMAIN_WITH_DOT,
+      displayName: DOMAIN_WITH_DOT,
     },
   ],
   dataProducts: [],

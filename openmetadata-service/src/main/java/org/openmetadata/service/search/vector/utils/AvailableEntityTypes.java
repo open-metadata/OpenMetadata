@@ -40,6 +40,7 @@ public final class AvailableEntityTypes {
           "container",
           "testSuite",
           "testCase",
+          "query",
           // AI Governance Studio assets. The execution types (agentExecution, mcpExecution) and the
           // framework/report leaves are deliberately excluded: they are drill-downs reached from a
           // parent, not things a user searches for by name.

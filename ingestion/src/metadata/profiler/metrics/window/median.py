@@ -14,7 +14,7 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import TYPE_CHECKING, List, NamedTuple, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from sqlalchemy import column
 
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 class MedianAccumulator(NamedTuple):
     """Accumulator holding chunked NumPy arrays for fast median computation."""
 
-    arrays: List["np.ndarray"]  # noqa: UP006
+    arrays: list["np.ndarray"]
     count_value: int
 
 
@@ -122,7 +122,7 @@ class Median(StaticMetric, PercentilMixin):
         return median
 
     def get_pandas_computation(self) -> PandasComputation:
-        return PandasComputation[MedianAccumulator, Optional[float]](  # noqa: UP045
+        return PandasComputation[MedianAccumulator, float | None](
             create_accumulator=lambda: MedianAccumulator([], 0),
             update_accumulator=lambda acc, df: Median.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Median.aggregate_accumulator,
@@ -137,12 +137,12 @@ class Median(StaticMetric, PercentilMixin):
         if series.empty:
             return acc
 
-        arr: Optional["np.ndarray"] = None  # noqa: UP037, UP045
+        arr: "np.ndarray" | None = None  # noqa: UP037
 
         if is_quantifiable(column.type):
             try:
                 arr = series.to_numpy(dtype=float, copy=False)
-            except Exception:  # noqa: BLE001, RUF100
+            except Exception:
                 arr = series.astype(float).to_numpy(copy=False)
         else:
             logger.debug(f"Don't know how to process type {column.type} when computing Median")
@@ -154,7 +154,7 @@ class Median(StaticMetric, PercentilMixin):
         return MedianAccumulator(acc.arrays, acc.count_value + int(arr.size))
 
     @staticmethod
-    def aggregate_accumulator(acc: MedianAccumulator) -> Optional[float]:  # noqa: UP045
+    def aggregate_accumulator(acc: MedianAccumulator) -> float | None:
         import numpy as np  # pylint: disable=import-outside-toplevel
 
         if acc.count_value == 0:

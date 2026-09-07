@@ -112,7 +112,6 @@ describe('CertificationTag', () => {
       expect.objectContaining({
         iconValue: 'https://example.com/gold.png',
         size: 14,
-        className: 'certification-img',
         alt: 'certification: Gold Medal',
       }),
       expect.anything()

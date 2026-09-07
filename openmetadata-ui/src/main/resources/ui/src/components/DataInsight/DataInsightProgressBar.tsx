@@ -16,6 +16,7 @@ import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import CustomStatistic from './CustomStatistic';
 
 interface DataInsightProgressBarProps {
@@ -32,6 +33,19 @@ interface DataInsightProgressBarProps {
   showProgress?: boolean;
 }
 
+const renderProgressTarget = (target?: number, suffix?: string) => (
+  <>
+    {target ? (
+      <span className="data-insight-kpi-target" style={{ width: `${target}%` }}>
+        <span className="target-text">
+          {round(target, 2)}
+          {suffix}
+        </span>
+      </span>
+    ) : null}
+  </>
+);
+
 const DataInsightProgressBar = ({
   width,
   progress,
@@ -44,6 +58,8 @@ const DataInsightProgressBar = ({
   duration,
   showProgress = true,
 }: DataInsightProgressBarProps) => {
+  const { progress: progressColor } = useDataInsightChartColors();
+
   return (
     <div
       className={classNames(className)}
@@ -60,22 +76,9 @@ const DataInsightProgressBar = ({
         <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
           <Progress
             className="data-insight-progress-bar"
-            format={() => (
-              <>
-                {target ? (
-                  <span
-                    className="data-insight-kpi-target"
-                    style={{ width: `${target}%` }}>
-                    <span className="target-text">
-                      {round(target, 2)}
-                      {suffix}
-                    </span>
-                  </span>
-                ) : null}
-              </>
-            )}
+            format={() => renderProgressTarget(target, suffix)}
             percent={progress}
-            strokeColor="#B3D4F4"
+            strokeColor={progressColor}
           />
           {showSuccessInfo && progress >= 100 && (
             <Icon

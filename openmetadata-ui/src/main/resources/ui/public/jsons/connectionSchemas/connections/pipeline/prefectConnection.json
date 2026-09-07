@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrefectConnection",
+  "description": "Prefect Metadata Database Connection Config",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.PrefectConnection",
+  "definitions": {
+    "prefectType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Prefect"
+      ],
+      "default": "Prefect"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Prefect",
+      "type": "string",
+      "enum": [
+        "Prefect"
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your self-hosted server's URL, e.g. http://localhost:4200.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Authentication",
+      "description": "Choose between Prefect Cloud or a self-hosted Prefect Server.",
+      "oneOf": [
+        {
+          "title": "Prefect Cloud",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Authentication configuration for Prefect Cloud.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth",
+          "type": "object",
+          "properties": {
+            "apiKey": {
+              "title": "Prefect API Key",
+              "description": "Prefect Cloud API key for authentication.",
+              "type": "string",
+              "format": "password"
+            },
+            "accountId": {
+              "title": "Account ID",
+              "description": "Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.",
+              "type": "string"
+            },
+            "workspaceId": {
+              "title": "Workspace ID",
+              "description": "Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "apiKey",
+            "accountId",
+            "workspaceId"
+          ]
+        },
+        {
+          "title": "Prefect Server",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String empty if the server has no auth enabled.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth",
+          "type": "object",
+          "properties": {
+            "authString": {
+              "title": "Basic Auth String",
+              "description": "Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format 'user:password'. Leave empty if the server has no auth enabled.",
+              "type": "string",
+              "format": "password",
+              "default": ""
+            }
+          },
+          "additionalProperties": false,
+          "required": []
+        }
+      ]
+    },
+    "numberOfStatus": {
+      "title": "Number of Status",
+      "description": "Number of past flow run statuses to ingest per flow.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "default": "no-ssl",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration for Prefect API connection.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "authType",
+    "hostPort"
+  ]
+}

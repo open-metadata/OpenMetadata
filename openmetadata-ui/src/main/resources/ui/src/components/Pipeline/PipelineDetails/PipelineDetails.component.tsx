@@ -202,6 +202,8 @@ const PipelineDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -209,6 +211,8 @@ const PipelineDetails = ({
           entity: t('label.pipeline'),
         })
       );
+
+      return false;
     }
   };
 

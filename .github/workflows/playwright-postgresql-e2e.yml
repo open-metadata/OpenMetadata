@@ -110,30 +110,15 @@ jobs:
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
 
   playwright-summary:
-    # Publish the required check name `playwright-summary` ONLY when the
-    # reusable's gate authorized the run. Every explicit gate skip publishes
-    # a differently-named check so a redundant sibling event cannot satisfy
-    # branch protection before the real pipeline finishes. Gate failures
-    # keep the required name and fail in the guard step below.
-    #
-    # Decision tree (mirrors the reusable's gate outputs verbatim):
-    #   gate succeeded with should_run=true              → 'playwright-summary'
-    #   gate failed                                      → 'playwright-summary'
-    #   labeled event with non-'safe to test' label      → 'playwright-summary (label ignored)'
-    #   gate succeeded with should_run=false             → 'playwright-summary (skipped)'
     name: >-
       ${{
         (
-          needs.playwright.outputs.gate_result != 'success'
+          github.event.action == 'labeled'
+          || needs.playwright.outputs.gate_result != 'success'
           || needs.playwright.outputs.gate_should_run == 'true'
         )
         && 'playwright-summary'
-        || (
-          github.event.action == 'labeled'
-          && github.event.label.name != 'safe to test'
-          && 'playwright-summary (label ignored)'
-          || 'playwright-summary (skipped)'
-        )
+        || 'playwright-summary (skipped)'
       }}
     if: ${{ always() && !cancelled() }}
     needs: [playwright]
@@ -322,7 +307,7 @@ jobs:
         id: upload-report
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-report
@@ -444,7 +429,7 @@ jobs:
         id: upload-timing-history
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-timing-history-${{ needs.playwright.outputs.detect_changes_mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-timing-history
@@ -471,7 +456,7 @@ jobs:
       - name: Upload Playwright shadow-gate ledger
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-shadow-gate-postgresql-pr-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
@@ -507,7 +492,7 @@ jobs:
 
       - name: Render consolidated job summary and gate on results
         if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}
           CACHE_KEYS_RESULT: ${{ needs.playwright.outputs.cache_keys_result }}
@@ -546,7 +531,7 @@ jobs:
       - name: Upload Playwright PR comment payload
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-pr-comment-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-pr-comment/summary.json

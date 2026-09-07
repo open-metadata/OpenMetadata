@@ -126,6 +126,9 @@ public interface RdfStorageInterface {
    */
   long getTripleCount();
 
+  /** Get the exact triple count for one named graph. */
+  long getTripleCount(String graphUri);
+
   /**
    * Clear all triples from a specific graph
    */

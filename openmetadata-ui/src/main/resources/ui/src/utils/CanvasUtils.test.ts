@@ -481,11 +481,14 @@ describe('CanvasUtils', () => {
       const result = getEdgeBounds(edge, sourceNode, targetNode);
 
       expect(result).not.toBeNull();
-      expect(result!.minX).toBeLessThan(351);
-      expect(result!.maxX).toBeGreaterThan(500);
+
+      const bounds = result as NonNullable<typeof result>;
+
+      expect(bounds.minX).toBeLessThan(351);
+      expect(bounds.maxX).toBeGreaterThan(500);
       // sourceY = 50 (node.height=100 / 2), padding=50 → minY = 0
-      expect(result!.minY).toBeLessThan(0);
-      expect(result!.maxY).toBeGreaterThan(100);
+      expect(bounds.minY).toBeLessThan(0);
+      expect(bounds.maxY).toBeGreaterThan(100);
     });
   });
 
@@ -686,7 +689,7 @@ describe('CanvasUtils', () => {
   describe('drawArrowMarker', () => {
     it('draws arrow with correct transformations', () => {
       const canvas = createMockCanvas();
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
       drawArrowMarker(ctx, 100, 100, Math.PI / 4, '#000000');
 
@@ -700,7 +703,7 @@ describe('CanvasUtils', () => {
 
     it('uses correct color', () => {
       const canvas = createMockCanvas();
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
       drawArrowMarker(ctx, 100, 100, 0, '#ff0000');
 

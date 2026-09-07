@@ -11,7 +11,6 @@
 """Domain and Data Product specific operations"""
 
 import traceback
-from typing import Dict, List  # noqa: UP035
 
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -25,7 +24,7 @@ logger = ometa_logger()
 class AssetsRequest(BaseModel):
     """Request to add assets to a data product"""
 
-    assets: List[EntityReference]  # noqa: UP006
+    assets: list[EntityReference]
 
 
 class OMetaDomainMixin:
@@ -33,7 +32,7 @@ class OMetaDomainMixin:
 
     client: REST
 
-    def add_assets_to_data_product(self, name: str, assets: List[EntityReference]) -> Dict:  # noqa: UP006
+    def add_assets_to_data_product(self, name: str, assets: list[EntityReference]) -> dict:
         """
         Add assets to a data product
 
@@ -46,7 +45,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_assets(name, assets, "add")
 
-    def remove_assets_from_data_product(self, name: str, assets: List[EntityReference]) -> Dict:  # noqa: UP006
+    def remove_assets_from_data_product(self, name: str, assets: list[EntityReference]) -> dict:
         """
         Remove assets from a data product
 
@@ -59,7 +58,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_assets(name, assets, "remove")
 
-    def get_data_product_assets(self, name: str, limit: int = 10, offset: int = 0) -> Dict:  # noqa: UP006
+    def get_data_product_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
         """
         Get paginated list of assets for a data product
 
@@ -80,7 +79,7 @@ class OMetaDomainMixin:
             logger.warning(f"Could not get data product assets due to {exc}")
             return {}
 
-    def get_domain_assets(self, name: str, limit: int = 10, offset: int = 0) -> Dict:  # noqa: UP006
+    def get_domain_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
         """
         Get paginated list of assets for a domain
 
@@ -104,9 +103,9 @@ class OMetaDomainMixin:
     def _handle_data_product_assets(
         self,
         name: str,
-        assets: List[EntityReference],  # noqa: UP006
+        assets: list[EntityReference],
         operation: str,
-    ) -> Dict:  # noqa: UP006
+    ) -> dict:
         """
         Handle adding or removing assets from a data product
 
@@ -125,7 +124,7 @@ class OMetaDomainMixin:
 
     # Input Ports methods
 
-    def add_input_ports_to_data_product(self, name: str, ports: List[EntityReference]) -> Dict:  # noqa: UP006
+    def add_input_ports_to_data_product(self, name: str, ports: list[EntityReference]) -> dict:
         """
         Add input ports to a data product
 
@@ -138,7 +137,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_ports(name, ports, "inputPorts", "add")
 
-    def remove_input_ports_from_data_product(self, name: str, ports: List[EntityReference]) -> Dict:  # noqa: UP006
+    def remove_input_ports_from_data_product(self, name: str, ports: list[EntityReference]) -> dict:
         """
         Remove input ports from a data product
 
@@ -153,7 +152,7 @@ class OMetaDomainMixin:
 
     # Output Ports methods
 
-    def add_output_ports_to_data_product(self, name: str, ports: List[EntityReference]) -> Dict:  # noqa: UP006
+    def add_output_ports_to_data_product(self, name: str, ports: list[EntityReference]) -> dict:
         """
         Add output ports to a data product
 
@@ -166,7 +165,7 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_ports(name, ports, "outputPorts", "add")
 
-    def remove_output_ports_from_data_product(self, name: str, ports: List[EntityReference]) -> Dict:  # noqa: UP006
+    def remove_output_ports_from_data_product(self, name: str, ports: list[EntityReference]) -> dict:
         """
         Remove output ports from a data product
 
@@ -182,10 +181,10 @@ class OMetaDomainMixin:
     def _handle_data_product_ports(
         self,
         name: str,
-        ports: List[EntityReference],  # noqa: UP006
+        ports: list[EntityReference],
         port_type: str,
         operation: str,
-    ) -> Dict:  # noqa: UP006
+    ) -> dict:
         """
         Handle adding or removing ports from a data product
 

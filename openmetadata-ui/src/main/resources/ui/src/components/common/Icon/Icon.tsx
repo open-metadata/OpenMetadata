@@ -11,23 +11,10 @@
  *  limitations under the License.
  */
 import { Skeleton } from '@openmetadata/ui-core-components';
-import { FC, ReactNode, useEffect, useState } from 'react';
+import classNames from 'classnames';
+import { FC, useEffect, useRef, useState } from 'react';
 import { getTagImageSrc, ICON_MAP, isImageUrl } from '../../../utils/IconUtils';
-
-export interface IconProps {
-  iconValue: string | undefined;
-  size?: number;
-  className?: string;
-  /** Layout/positioning styles (e.g. margin, flexShrink). Applied to the element
-   * occupying space in the caller's layout, regardless of loading state. */
-  wrapperStyle?: React.CSSProperties;
-  /** Cosmetic styles for the rendered icon/image itself (e.g. borderRadius). Never
-   * applied to the loading skeleton. */
-  imageStyle?: React.CSSProperties;
-  strokeWidth?: number;
-  alt?: string;
-  fallback?: ReactNode;
-}
+import { IconProps } from './Icon.interface';
 
 type IconLoadState = 'loading' | 'loaded' | 'error';
 
@@ -42,16 +29,31 @@ export const Icon: FC<IconProps> = ({
   fallback = null,
   size = 24,
   className = '',
-  wrapperStyle,
+  imageClassName = '',
   imageStyle = {},
   strokeWidth = 1.5,
   alt = 'icon',
 }) => {
   const [loadState, setLoadState] = useState<IconLoadState>('loading');
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setLoadState('loading');
   }, [iconValue]);
+
+  // For already-cached images the browser fires the load event synchronously
+  // while creating the <img> element — before React has attached its onLoad
+  // listener. Check img.complete after every transition into 'loading' so
+  // cached icons are revealed immediately on re-mount.
+  useEffect(() => {
+    if (loadState !== 'loading') {
+      return;
+    }
+    const img = imgRef.current;
+    if (img?.complete) {
+      setLoadState(img.naturalWidth > 0 ? 'loaded' : 'error');
+    }
+  }, [loadState]);
 
   if (!iconValue) {
     return <>{fallback}</>;
@@ -61,9 +63,9 @@ export const Icon: FC<IconProps> = ({
   if (IconComponent) {
     return (
       <IconComponent
-        className={className}
+        className={classNames(className, imageClassName)}
         size={size}
-        style={{ strokeWidth, ...wrapperStyle, ...imageStyle }}
+        style={{ strokeWidth, ...imageStyle }}
       />
     );
   }
@@ -73,14 +75,16 @@ export const Icon: FC<IconProps> = ({
   }
 
   return (
-    <span className={className} style={wrapperStyle}>
+    <span className={className}>
       {loadState === 'loading' && (
         <Skeleton height={size} variant="circular" width={size} />
       )}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         alt={alt}
+        className={imageClassName}
         data-testid="icon-image"
+        ref={imgRef}
         src={getTagImageSrc(iconValue)}
         style={{
           width: size,

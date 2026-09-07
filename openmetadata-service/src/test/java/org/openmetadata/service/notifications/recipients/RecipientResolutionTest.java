@@ -39,6 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
+import org.openmetadata.service.notifications.recipients.strategy.impl.ExternalRecipientResolver;
 import org.openmetadata.service.notifications.recipients.strategy.impl.TeamRecipientResolver;
 import org.openmetadata.service.notifications.recipients.strategy.impl.UserRecipientResolver;
 
@@ -51,6 +52,7 @@ class RecipientResolutionTest {
 
   private static final String TEAM_EMAIL = "data-platform@open-metadata.org";
   private static final String USER_EMAIL = "with-webhook@open-metadata.org";
+  private static final String VALID_RECEIVER = "https://hooks.open-metadata.org/services/valid";
   private static final UUID TEAM_WITH_CONTACT_ID = UUID.randomUUID();
   private static final UUID TEAM_WITHOUT_CONTACT_ID = UUID.randomUUID();
   private static final UUID USER_ID = UUID.randomUUID();
@@ -155,6 +157,32 @@ class RecipientResolutionTest {
   }
 
   @Test
+  void malformedExternalReceiverDoesNotDropTheOtherReceivers() {
+    Set<Recipient> recipients =
+        new ExternalRecipientResolver()
+            .resolve(
+                UUID.randomUUID(),
+                Entity.TABLE,
+                new Webhook().withReceivers(Set.of(VALID_RECEIVER, "{{SLACK_WEBHOOK_URL}}")),
+                externalDestination());
+
+    assertEquals(Set.of(VALID_RECEIVER), endpointsOf(recipients));
+  }
+
+  @Test
+  void blankExternalReceiverIsSkipped() {
+    Set<Recipient> recipients =
+        new ExternalRecipientResolver()
+            .resolve(
+                UUID.randomUUID(),
+                Entity.TABLE,
+                new Webhook().withReceivers(Set.of(VALID_RECEIVER, "  ")),
+                externalDestination());
+
+    assertEquals(Set.of(VALID_RECEIVER), endpointsOf(recipients));
+  }
+
+  @Test
   void emailRecipientIsNullWhenTeamHasNoEmail() {
     assertNull(EmailRecipient.fromTeam(team("no-email-team", null)));
     assertNull(EmailRecipient.fromTeam(team("blank-email-team", "")));
@@ -183,6 +211,20 @@ class RecipientResolutionTest {
 
   private static SubscriptionDestination destination(SubscriptionType type) {
     return new SubscriptionDestination().withType(type);
+  }
+
+  private static SubscriptionDestination externalDestination() {
+    return new SubscriptionDestination()
+        .withType(SubscriptionType.WEBHOOK)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(new Webhook().withEndpoint(URI.create("https://fallback.open-metadata.org")));
+  }
+
+  private static Set<String> endpointsOf(Set<Recipient> recipients) {
+    return recipients.stream()
+        .map(WebhookRecipient.class::cast)
+        .map(recipient -> recipient.getWebhook().getEndpoint().toString())
+        .collect(Collectors.toSet());
   }
 
   private static Set<String> emailsOf(Set<Recipient> recipients) {

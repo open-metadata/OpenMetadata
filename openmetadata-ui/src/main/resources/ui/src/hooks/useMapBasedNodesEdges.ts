@@ -11,8 +11,87 @@
  *  limitations under the License.
  */
 import { useCallback, useMemo, useState } from 'react';
-import type { Edge, Node, OnEdgesChange, OnNodesChange } from 'reactflow';
+import type {
+  Edge,
+  Node,
+  NodeChange,
+  OnEdgesChange,
+  OnNodesChange,
+} from 'reactflow';
 import { getClassifiedEdge } from '../utils/EntityLineageEdgeUtils';
+
+const mergeNodeChangeIntoNode = (
+  node: Node,
+  change: Extract<NodeChange, { type: 'position' | 'dimensions' | 'select' }>
+): Node => {
+  const positionUpdate =
+    change.type === 'position' && change.position
+      ? {
+          position: change.position,
+          dragging: change.dragging,
+          ...(change.positionAbsolute
+            ? { positionAbsolute: change.positionAbsolute }
+            : {}),
+        }
+      : {};
+
+  const dimensionsUpdate =
+    change.type === 'dimensions' && change.dimensions
+      ? {
+          width: change.dimensions.width,
+          height: change.dimensions.height,
+          resizing: change.resizing,
+          ...(change.updateStyle !== undefined
+            ? { style: { ...node.style, ...change.updateStyle } }
+            : {}),
+        }
+      : {};
+
+  const selectUpdate =
+    change.type === 'select' ? { selected: change.selected } : {};
+
+  return {
+    ...node,
+    ...positionUpdate,
+    ...dimensionsUpdate,
+    ...selectUpdate,
+  };
+};
+
+const applyNodeChangeToMap = (
+  next: Map<string, Node>,
+  change: NodeChange
+): Map<string, Node> => {
+  switch (change.type) {
+    case 'add': {
+      const nodeToAdd = change.item;
+      next.set(nodeToAdd.id, nodeToAdd);
+
+      return next;
+    }
+    case 'remove':
+      next.delete(change.id);
+
+      return next;
+    case 'reset': {
+      const nodeToReset = change.item;
+
+      return new Map([[nodeToReset.id, nodeToReset]]);
+    }
+    case 'position':
+    case 'dimensions':
+    case 'select': {
+      const node = next.get(change.id);
+      if (node) {
+        next.set(change.id, mergeNodeChangeIntoNode(node, change));
+      }
+
+      return next;
+    }
+    default:
+      return next;
+  }
+};
 
 interface UseMapBasedNodesEdgesReturn {
   nodes: Node[];
@@ -183,58 +262,7 @@ export const useMapBasedNodesEdges = (
     setNodesMap((prev) => {
       let next = new Map(prev);
       for (const change of changes) {
-        switch (change.type) {
-          case 'add': {
-            const nodeToAdd = change.item;
-            next.set(nodeToAdd.id, nodeToAdd);
-
-            break;
-          }
-          case 'remove':
-            next.delete(change.id);
-
-            break;
-          case 'reset': {
-            const nodeToReset = change.item;
-            next = new Map([[nodeToReset.id, nodeToReset]]);
-
-            break;
-          }
-          case 'position':
-          case 'dimensions':
-          case 'select': {
-            const node = next.get(change.id);
-            if (node) {
-              next.set(change.id, {
-                ...node,
-                ...(change.type === 'position' && change.position
-                  ? {
-                      position: change.position,
-                      dragging: change.dragging,
-                      ...(change.positionAbsolute
-                        ? { positionAbsolute: change.positionAbsolute }
-                        : {}),
-                    }
-                  : {}),
-                ...(change.type === 'dimensions' && change.dimensions
-                  ? {
-                      width: change.dimensions.width,
-                      height: change.dimensions.height,
-                      resizing: change.resizing,
-                      ...(change.updateStyle !== undefined
-                        ? { style: { ...node.style, ...change.updateStyle } }
-                        : {}),
-                    }
-                  : {}),
-                ...(change.type === 'select'
-                  ? { selected: change.selected }
-                  : {}),
-              });
-            }
-
-            break;
-          }
-        }
+        next = applyNodeChangeToMap(next, change);
       }
 
       return next;

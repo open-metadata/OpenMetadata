@@ -13,7 +13,7 @@
 import json
 from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -30,12 +30,12 @@ class MockSSEResponse:
         self,
         lines: list[str],
         status_code: int = 200,
-        raise_error: Optional[Exception] = None,  # noqa: UP045
+        raise_error: Exception | None = None,
     ):
         self.lines: list[str] = lines
         self.status_code: int = status_code
-        self.raise_error: Optional[Exception] = raise_error  # noqa: UP045
-        self.encoding: Optional[str] = None  # noqa: UP045
+        self.raise_error: Exception | None = raise_error
+        self.encoding: str | None = None
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -43,7 +43,7 @@ class MockSSEResponse:
             err.response = Mock(status_code=self.status_code)
             raise err
 
-    def iter_lines(self, decode_unicode: bool = False, delimiter: Optional[str] = None) -> Iterator[str]:  # noqa: UP045
+    def iter_lines(self, decode_unicode: bool = False, delimiter: str | None = None) -> Iterator[str]:
         if self.raise_error:
             raise self.raise_error
         yield from self.lines
@@ -82,7 +82,7 @@ class MockByteStreamSSEResponse:
             err.response = Mock(status_code=self.status_code)
             raise err
 
-    def iter_lines(self, decode_unicode: bool = False, delimiter: Optional[str] = None) -> Iterator[str]:  # noqa: UP045
+    def iter_lines(self, decode_unicode: bool = False, delimiter: str | None = None) -> Iterator[str]:
         text = self.raw.decode(self.encoding) if decode_unicode else self.raw
         lines = text.split(delimiter) if delimiter else text.splitlines()
         yield from lines
