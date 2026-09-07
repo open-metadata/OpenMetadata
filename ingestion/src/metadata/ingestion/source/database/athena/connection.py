@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from functools import partial
 from typing import List, Optional
 from urllib.parse import quote_plus
@@ -39,6 +40,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
     test_connection_steps,
 )
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.filters import filter_by_schema
@@ -48,20 +50,12 @@ from metadata.utils.filters import filter_by_schema
 MAX_SCHEMAS_TO_PROBE = 100
 
 
-def get_connection_url(connection: AthenaConnection) -> str:
-    """
-    Method to get connection url
-    """
-    aws_access_key_id = connection.awsConfig.awsAccessKeyId
-    aws_secret_access_key = connection.awsConfig.awsSecretAccessKey
-    aws_session_token = connection.awsConfig.awsSessionToken
-    if connection.awsConfig.assumeRoleArn:
-        assume_configs = AWSClient.get_assume_role_config(connection.awsConfig)
-        if assume_configs:
-            aws_access_key_id = assume_configs.accessKeyId
-            aws_secret_access_key = assume_configs.secretAccessKey
-            aws_session_token = assume_configs.sessionToken
-
+def _get_connection_url(
+    connection: AthenaConnection,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[CustomSecretStr] = None,
+    aws_session_token: Optional[str] = None,
+) -> str:
     url = f"{connection.scheme.value}://"
     if aws_access_key_id:
         url += aws_access_key_id
@@ -82,10 +76,51 @@ def get_connection_url(connection: AthenaConnection) -> str:
     return url
 
 
+def get_connection_url(connection: AthenaConnection) -> str:
+    """Build the existing Athena URL with static AWS credentials."""
+    aws_access_key_id = connection.awsConfig.awsAccessKeyId
+    aws_secret_access_key = connection.awsConfig.awsSecretAccessKey
+    aws_session_token = connection.awsConfig.awsSessionToken
+    if connection.awsConfig.assumeRoleArn:
+        assume_configs = AWSClient.get_assume_role_config(connection.awsConfig)
+        if assume_configs:
+            aws_access_key_id = assume_configs.accessKeyId
+            aws_secret_access_key = assume_configs.secretAccessKey
+            aws_session_token = assume_configs.sessionToken
+    return _get_connection_url(
+        connection,
+        aws_access_key_id,
+        aws_secret_access_key,
+        aws_session_token,
+    )
+
+
+def get_connection_url_without_credentials(connection: AthenaConnection) -> str:
+    """Build an Athena URL that delegates authentication to a Boto3 session."""
+    return _get_connection_url(connection)
+
+
 def get_connection(connection: AthenaConnection) -> Engine:
     """
     Create connection
     """
+    if connection.awsConfig.assumeRoleArn:
+        connection_args = get_connection_args_common(connection)
+        if "session" in connection_args:
+            raise ValueError(
+                "Athena connectionArguments must not define 'session' when "
+                "assumeRoleArn is configured."
+            )
+        session = AWSClient(connection.awsConfig).create_session()
+        return create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=get_connection_url_without_credentials,
+            get_connection_args_fn=lambda _: {
+                **connection_args,
+                "session": session,
+            },
+        )
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
