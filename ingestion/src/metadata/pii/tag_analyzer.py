@@ -78,6 +78,11 @@ def _corroborated_content_results(evidence: Sequence[_RecognitionEvidence]) -> l
     Pattern recognizers, vetted date results and context-enhanced NER results are strong
     enough to stand on their own. Uncontextualized statistical NER needs one independent
     corroborating entity so a repeated model mistake does not classify the whole column.
+
+    Distinct matches are a recall-first heuristic, not proof that an entity is PII: two
+    different spaCy mistakes can still corroborate each other. spaCy assigns the same
+    recognizer score to both real and mistaken entities, so a higher score threshold would
+    not distinguish them, while requiring more matches would miss sparse PII again.
     """
     uncertain_ner_evidence = [item for item in evidence if _is_uncontextualized_spacy_named_entity(item.result)]
     distinct_matches = {match for item in uncertain_ner_evidence if (match := _normalized_match(item))}
