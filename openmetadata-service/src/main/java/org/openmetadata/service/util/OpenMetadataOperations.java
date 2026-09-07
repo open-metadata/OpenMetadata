@@ -482,6 +482,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               required = true)
           String openMetadataUrl) {
     try {
+      OpenMetadataBaseUrlValidator.validateUrl(openMetadataUrl);
       URI uri = URI.create(openMetadataUrl);
       parseConfig();
       Settings updatedSettings =

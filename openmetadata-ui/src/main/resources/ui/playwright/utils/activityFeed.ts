@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { descriptionBox } from './common';
+import { getDescriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -53,7 +53,7 @@ export const checkDescriptionInEditModal = async (
     `Update description for table ${taskValue.term} columns/${taskValue.columnName}`
   );
 
-  await expect(page.locator(descriptionBox)).toContainText(
+  await expect(getDescriptionBox(page)).toContainText(
     taskValue.description ?? ''
   );
 
