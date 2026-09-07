@@ -38,7 +38,7 @@ class FilterEntityImplTest {
     filterEntity = new FilterEntityImpl();
     passesFieldBasedFilter =
         FilterEntityImpl.class.getDeclaredMethod(
-            "passesFieldBasedFilter", List.class, List.class, List.class);
+            "passesFieldBasedFilter", String.class, List.class, List.class, List.class);
     passesFieldBasedFilter.setAccessible(true);
     sanitizeFilterValue =
         FilterEntityImpl.class.getDeclaredMethod("sanitizeFilterValue", String.class);
@@ -303,8 +303,10 @@ class FilterEntityImplTest {
   private boolean invokeFilter(
       List<FieldChange> changedFields, List<String> includeFields, List<String> excludeFields)
       throws Exception {
+    // Common trigger fields are recognized for every entity type; "table" is a representative one.
     return (boolean)
-        passesFieldBasedFilter.invoke(filterEntity, changedFields, includeFields, excludeFields);
+        passesFieldBasedFilter.invoke(
+            filterEntity, "table", changedFields, includeFields, excludeFields);
   }
 
   private String invokeSanitize(String filter) throws Exception {
