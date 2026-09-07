@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +54,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -319,6 +321,52 @@ class JwtFilterTest {
 
     verify(context, times(1))
         .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+  }
+
+  @Test
+  void botTokenIsRejectedOnceRevokedOrRotated() {
+    String jwt = botJwt("ingestion-bot");
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<BotTokenCache> botTokenCache =
+        org.mockito.Mockito.mockStatic(BotTokenCache.class)) {
+      // Revoked: the stored token is cleared. Rotated: a newer token is stored. The presented
+      // token matches neither, so both must fail even though the JWT is still signed and unexpired.
+      botTokenCache
+          .when(() -> BotTokenCache.getToken("ingestion-bot"))
+          .thenReturn(BotTokenCache.EMPTY_STRING, botJwt("rotated-" + "ingestion-bot"));
+      for (int attempt = 0; attempt < 2; attempt++) {
+        Exception exception =
+            assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+        assertTrue(exception.getMessage().contains("does not match the current bot's token"));
+      }
+    }
+    verify(context, never()).setSecurityContext(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void botTokenIsAcceptedWhileItIsTheCurrentOne() {
+    String jwt = botJwt("ingestion-bot");
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<BotTokenCache> botTokenCache =
+        org.mockito.Mockito.mockStatic(BotTokenCache.class)) {
+      botTokenCache.when(() -> BotTokenCache.getToken("ingestion-bot")).thenReturn(jwt);
+      jwtFilter.filter(context);
+    }
+
+    verify(context, times(1))
+        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+  }
+
+  private static String botJwt(String botName) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("sub", botName)
+        .withClaim("email", botName + "@openmetadata.org")
+        .withClaim(JwtFilter.BOT_CLAIM, true)
+        .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
+        .sign(algorithm);
   }
 
   @Test

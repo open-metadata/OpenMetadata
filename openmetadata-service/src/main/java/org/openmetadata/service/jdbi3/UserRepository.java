@@ -98,6 +98,7 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.session.SessionService;
@@ -1413,9 +1414,13 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    // If the User is bot it's token needs to be invalidated
+    // Deleting a user must cut its live credentials too, not just its sessions. The token caches
+    // are what JwtFilter consults, so drop them here or a deleted bot's token / a deleted user's
+    // personal access tokens keep working on this pod until the cache TTL.
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
+    } else {
+      UserTokenCache.invalidateToken(entity.getName());
     }
     revokeLiveSessions(entity);
     if (hardDelete) {

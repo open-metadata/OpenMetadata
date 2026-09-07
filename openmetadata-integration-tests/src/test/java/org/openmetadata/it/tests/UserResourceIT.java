@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -2284,6 +2286,162 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}");
 
     assertTrue(response.contains("jwtToken"), "Regular users can create their own personal tokens");
+  }
+
+  // ===================================================================
+  // CREDENTIAL REVOCATION
+  // A revoked bot token or personal access token must fail on the very next request, while the
+  // JWT itself is still signed and unexpired (open-metadata/OpenMetadata#32052).
+  // ===================================================================
+
+  @Test
+  void test_revokeBotToken_rejectsTokenOnNextRequest(TestNamespace ns) {
+    User botUser = createBotUser(ns, "revokebot");
+    String botToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient botClient = clientWithToken(botToken);
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/revokeToken", "{\"id\":\"" + botUser.getId() + "\"}");
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_regenerateBotToken_rejectsPreviousToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "rotatebot");
+    String firstToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient firstClient = clientWithToken(firstToken);
+    assertEquals(botUser.getId(), getLoggedInUser(firstClient).getId());
+
+    // JWT timestamps have second precision, so two tokens minted within the same second with the
+    // same expiry are byte-identical (and therefore both "current"). A different expiry makes the
+    // rotation observable without sleeping across a second boundary.
+    String secondToken = generateBotToken(botUser, JWTTokenExpiry.Thirty);
+    assertNotEquals(firstToken, secondToken);
+
+    assertUnauthorized(firstClient);
+    assertEquals(botUser.getId(), getLoggedInUser(clientWithToken(secondToken)).getId());
+  }
+
+  @Test
+  void test_deleteBotUser_rejectsBotToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "deletedbot");
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    deleteEntity(botUser.getId().toString());
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_rejectsTokenOnNextRequest(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    PersonalAccessToken pat = createPersonalAccessToken(owner, ns.prefix("pat"));
+    OpenMetadataClient patClient = clientWithToken(pat.getJwtToken());
+    assertNotNull(getLoggedInUser(patClient));
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + pat.getToken() + "\"]}");
+
+    assertUnauthorized(patClient);
+  }
+
+  @Test
+  void test_revokeAllPersonalAccessTokens_rejectsEveryToken(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    OpenMetadataClient first =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat1")).getJwtToken());
+    OpenMetadataClient second =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat2")).getJwtToken());
+    assertNotNull(getLoggedInUser(first));
+    assertNotNull(getLoggedInUser(second));
+
+    owner
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, "/v1/users/security/token/revoke?removeAll=true", "{}");
+
+    assertUnauthorized(first);
+    assertUnauthorized(second);
+  }
+
+  @Test
+  void test_deleteUser_rejectsPersonalAccessToken(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patdeleted");
+    OpenMetadataClient patClient =
+        clientWithToken(
+            createPersonalAccessToken(clientFor(owner), ns.prefix("pat")).getJwtToken());
+    assertNotNull(getLoggedInUser(patClient));
+
+    deleteEntity(owner.getId().toString());
+
+    assertUnauthorized(patClient);
+  }
+
+  /**
+   * JwtFilter resolves a bot's username from the token's email local-part and BotTokenCache is
+   * keyed by that name, so the bot's stored name must equal the local-part.
+   */
+  private User createBotUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    return createEntity(
+        new CreateUser()
+            .withName(localPart)
+            .withEmail(localPart + "@test.com")
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism));
+  }
+
+  private String generateBotToken(User botUser, JWTTokenExpiry expiry) {
+    return SdkClients.adminClient().users().generateToken(botUser.getId(), expiry).getJWTToken();
+  }
+
+  private User createRegularUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return createEntity(
+        new CreateUser().withName(localPart).withEmail(localPart + "@open-metadata.org"));
+  }
+
+  /** A client authenticated as {@code user} with a harness-signed JWT, like the shared clients. */
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static OpenMetadataClient clientWithToken(String token) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.getServerUrl())
+            .accessToken(token)
+            .build());
+  }
+
+  private static PersonalAccessToken createPersonalAccessToken(
+      OpenMetadataClient owner, String tokenName) {
+    String response =
+        owner
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                "{\"tokenName\":\"" + tokenName + "\",\"JWTTokenExpiry\":\"OneHour\"}");
+    return JsonUtils.readValue(response, PersonalAccessToken.class);
+  }
+
+  private void assertUnauthorized(OpenMetadataClient client) {
+    OpenMetadataException exception =
+        assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
+    assertEquals(401, exception.getStatusCode(), exception.getMessage());
   }
 
   @Test

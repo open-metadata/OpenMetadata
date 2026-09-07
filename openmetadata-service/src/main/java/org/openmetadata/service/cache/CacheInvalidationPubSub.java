@@ -18,6 +18,7 @@ import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -49,6 +50,20 @@ public class CacheInvalidationPubSub {
    * {@code session}/{@code revoke} signal handled in {@code CacheBundle}.
    */
   public static final String TYPE_PERSONA_CONTEXT = "personaContext";
+
+  /**
+   * Credential-revocation signals. {@code JwtFilter} checks bot tokens and personal access tokens
+   * against per-JVM caches ({@code BotTokenCache}, {@code UserTokenCache}); a revoke on one pod
+   * must evict every pod's entry or the revoked token stays accepted elsewhere until the cache TTL.
+   * {@code fqn} carries the user name the cache is keyed by. Like {@link #TYPE_PERSONA_CONTEXT},
+   * these are not entity writes.
+   */
+  public static final String TYPE_BOT_TOKEN = "botToken";
+
+  public static final String TYPE_USER_TOKEN = "userToken";
+  public static final String OP_REVOKE = "revoke";
+  private static final Set<String> NON_ENTITY_TYPES =
+      Set.of(TYPE_PERSONA_CONTEXT, TYPE_BOT_TOKEN, TYPE_USER_TOKEN);
 
   private final CacheConfig.Redis redisConfig;
   @Getter private final String instanceId;
@@ -175,6 +190,11 @@ public class CacheInvalidationPubSub {
     } catch (Exception e) {
       return UUID.randomUUID().toString();
     }
+  }
+
+  /** Whether {@code type} names an entity type, as opposed to one of the out-of-band signals. */
+  public static boolean isEntityType(String type) {
+    return !NON_ENTITY_TYPES.contains(type);
   }
 
   public record InvalidateMessage(String type, UUID id, String fqn, String op, String sender) {}
