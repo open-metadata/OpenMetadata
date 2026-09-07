@@ -230,6 +230,48 @@ class EntityRepositoryCertificationTest {
   }
 
   @Test
+  void updateCertificationSameTagLabelWithDifferentDatesIsNotReapplied() throws Exception {
+    // The server always recomputes appliedDate/expiryDate when a certification is applied, so a
+    // request that legitimately can't know the server's current dates (e.g. an ingestion
+    // connector re-sending the same certification every run) must not be treated as a change.
+    // Comparing the full AssetCertification object (including dates) would otherwise never
+    // compare equal, causing a spurious re-apply and version bump on every non-bulk PUT.
+    registerBotUser("ingestion-bot");
+    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert =
+        new AssetCertification()
+            .withTagLabel(tagLabel)
+            .withAppliedDate(1700000000000L)
+            .withExpiryDate(1731536000000L);
+    AssetCertification updatedCert =
+        new AssetCertification()
+            .withTagLabel(tagLabel)
+            .withAppliedDate(4000000000000L)
+            .withExpiryDate(4100000000000L);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", updatedCert);
+
+    EntityRepository<Pipeline>.EntityUpdater updater =
+        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertEquals(4000000000000L, updated.getCertification().getAppliedDate());
+    verify(tagUsageDAO, never())
+        .applyTag(
+            anyInt(),
+            anyString(),
+            anyString(),
+            anyString(),
+            anyInt(),
+            anyInt(),
+            nullable(String.class),
+            nullable(String.class),
+            nullable(TagLabelMetadata.class));
+  }
+
+  @Test
   void getCertificationReturnsCertWhenTagFound() {
     Pipeline entity =
         new Pipeline()

@@ -10050,7 +10050,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (Objects.equals(origCertification, updatedCertification)) {
+      // Compare by tagLabel only, not full-object equality: appliedDate/expiryDate are always
+      // recomputed server-side below and stored back, so a request that legitimately doesn't
+      // know the server's current dates (e.g. an ingestion connector re-sending the same
+      // certification every run) would otherwise never compare equal, causing a spurious
+      // version bump and re-apply on every non-bulk PUT.
+      boolean certificationTagUnchanged =
+          origCertification != null
+              && origCertification.getTagLabel() != null
+              && updatedCertification.getTagLabel() != null
+              && Objects.equals(
+                  origCertification.getTagLabel().getTagFQN(),
+                  updatedCertification.getTagLabel().getTagFQN());
+      if (certificationTagUnchanged) {
         LOG.debug("Certification unchanged");
         return;
       }
