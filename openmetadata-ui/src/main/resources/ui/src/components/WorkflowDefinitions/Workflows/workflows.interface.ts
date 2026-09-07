@@ -10,32 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node } from 'reactflow';
-import { StartEvent } from '../../../generated/governance/workflows/elements/nodes/startEvent/startEvent';
-import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 
-export interface WorkflowState {
-  workflowDefinition: WorkflowDefinition | undefined;
-  initialised: boolean;
-  defaultNodes: Node[];
-  defaultEdges: Edge[];
-  drawerVisible: boolean;
-  isEditMode: boolean;
-  selectedNode: StartEvent | undefined;
-  setWorkflowDefinition: (
-    workflowDefinition: WorkflowDefinition | undefined
-  ) => void;
-  setInitialised: (initialised: boolean) => void;
-  setDefaultNodes: (nodes: Node[]) => void;
-  setDefaultEdges: (edges: Edge[]) => void;
-  setDrawerVisible: (visible: boolean) => void;
-  setSelectedNode: (node: StartEvent | undefined) => void;
-  setNodesEdgesData: (data: {
-    nodes: Node[];
-    edges: Edge[];
-    init: boolean;
-  }) => void;
-}
+export type { WorkflowState } from '../../../interface/workflow-store.interface';
 
 export interface WorkflowNodeData {
   /**

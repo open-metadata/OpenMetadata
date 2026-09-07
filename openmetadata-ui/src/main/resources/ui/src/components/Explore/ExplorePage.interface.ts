@@ -37,7 +37,6 @@ import { SearchService } from '../../generated/entity/services/searchService';
 import { StorageService } from '../../generated/entity/services/storageService';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
 export type UrlParams = {
@@ -118,23 +117,9 @@ export interface ExploreProps {
   }) => void;
 }
 
-export interface ExploreQuickFilterField {
-  key: string;
-  label: string;
-  labelKeyOptions?: Record<string, string | number | boolean>;
-  options?: SearchDropdownOption[];
-  value?: SearchDropdownOption[];
-  hideCounts?: boolean;
-  hideSearchBar?: boolean;
-  searchIndex?: SearchIndex;
-  searchKey?: string;
-  dropdownClassName?: string;
-  singleSelect?: boolean;
-  sourceFields?: string;
-}
-
 // Type for all the explore tab entities
 export type { EntityUnion } from '../../interface/entity-union.interface';
+export type { ExploreQuickFilterField } from '../../interface/quick-filter.interface';
 
 export type EntityWithServices =
   | Topic

@@ -16,8 +16,8 @@ import {
   LogStreamEndReason,
   LogStreamEvent,
   LogStreamEventType,
-} from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
-import { getBasePath } from '../../../utils/HistoryUtils';
+} from '../generated/entity/services/ingestionPipelines/logStreamEvent';
+import { getBasePath } from '../utils/HistoryUtils';
 import {
   abortableSleep,
   createStreamOpenHandler,
@@ -27,9 +27,9 @@ import {
   nextRetryHealth,
   RetriableStreamError,
   StreamHealth,
-} from '../../../utils/SseStreamUtils';
-import { getEncodedFqn } from '../../../utils/StringUtils';
-import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
+} from '../utils/SseStreamUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
+import { getOidcToken } from '../utils/SwTokenStorageUtils';
 
 export interface UseLogStreamParams {
   // Base URL of the SSE endpoint to tail, without a cursor — the hook appends

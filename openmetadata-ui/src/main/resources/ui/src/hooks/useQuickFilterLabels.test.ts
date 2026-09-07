@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import { ExploreQuickFilterField } from '../interface/quick-filter.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getAggregationOptions } from '../utils/ExploreUtils';

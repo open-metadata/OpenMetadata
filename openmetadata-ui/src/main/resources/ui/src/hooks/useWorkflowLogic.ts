@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect } from 'react';
 import type { Edge, Node, OnConnect } from 'reactflow';
 import { useEdgesState, useNodesState, useReactFlow } from 'reactflow';
-import { useWorkflowStore } from '../components/WorkflowDefinitions/Workflows/useWorkflowStore';
+import { useWorkflowStore } from './useWorkflowStore';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import { getWorkflowDefinitionByFQN } from '../rest/workflowDefinitionsAPI';
 import {

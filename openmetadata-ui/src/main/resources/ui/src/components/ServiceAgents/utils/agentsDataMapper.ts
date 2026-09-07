@@ -19,7 +19,6 @@ import {
   PipelineType,
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { IngestionPipelineLogByIdInterface } from '../../../interface/IngestionPipelineLogs.interface';
 import { getAgentStatusLabelFromStatus } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
   customFormatDateTime,
@@ -104,23 +103,6 @@ const LOG_LEVEL_TOKEN_TO_LEVEL: Record<string, LogLevel> = {
   WARNING: 'warn',
   ERROR: 'error',
   DEBUG: 'debug',
-};
-
-const PIPELINE_TYPE_TO_LOG_TASK_FIELD: Record<
-  PipelineType,
-  keyof IngestionPipelineLogByIdInterface
-> = {
-  [PipelineType.Metadata]: 'ingestion_task',
-  [PipelineType.Application]: 'application_task',
-  [PipelineType.Profiler]: 'profiler_task',
-  [PipelineType.Usage]: 'usage_task',
-  [PipelineType.Lineage]: 'lineage_task',
-  [PipelineType.Dbt]: 'dbt_task',
-  [PipelineType.TestSuite]: 'test_suite_task',
-  [PipelineType.DataInsight]: 'data_insight_task',
-  [PipelineType.ElasticSearchReindex]: 'elasticsearch_reindex_task',
-  [PipelineType.AutoClassification]: 'auto_classification_task',
-  [PipelineType.PolicyAgent]: 'ingestion_task',
 };
 
 export const getAgentTypeFromPipelineType = (
@@ -463,16 +445,4 @@ export const parseLogLines = (raw: string): LogLine[] =>
     .filter((line) => line.trim().length > 0)
     .map(parseLogLine);
 
-export const getLogTaskFieldForType = (
-  log: IngestionPipelineLogByIdInterface,
-  pipelineType: PipelineType
-): string => {
-  // A by-fqn fetch returns the logs under a generic `logs` key; prefer it, else the *_task field.
-  if (log.logs) {
-    return log.logs;
-  }
-  const fieldKey =
-    PIPELINE_TYPE_TO_LOG_TASK_FIELD[pipelineType] ?? 'ingestion_task';
-
-  return log[fieldKey] ?? '';
-};
+export { getLogTaskFieldForType } from '../../../utils/IngestionLogsUtils';

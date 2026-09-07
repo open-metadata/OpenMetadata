@@ -20,7 +20,7 @@ import {
   LogStreamEndReason,
   LogStreamEvent,
   LogStreamEventType,
-} from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
+} from '../generated/entity/services/ingestionPipelines/logStreamEvent';
 import {
   getIngestionLogStreamUrl,
   useLogStream,
@@ -31,20 +31,20 @@ jest.mock('@microsoft/fetch-event-source', () => ({
   fetchEventSource: jest.fn(),
 }));
 
-jest.mock('../../../utils/SwTokenStorageUtils', () => ({
+jest.mock('../utils/SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn().mockResolvedValue('test-jwt-token'),
 }));
 
 const mockRefreshToken = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+jest.mock('../utils/Auth/TokenService/TokenServiceUtil', () => ({
   __esModule: true,
   default: {
     getInstance: () => ({ refreshToken: mockRefreshToken }),
   },
 }));
 
-jest.mock('../../../utils/HistoryUtils', () => ({
+jest.mock('../utils/HistoryUtils', () => ({
   getBasePath: jest.fn().mockReturnValue(''),
 }));
 

@@ -18,10 +18,10 @@ import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI'
 import {
   useLogStream,
   UseLogStreamResult,
-} from '../../common/LogViewerModal/useLogStream';
+} from '../../../hooks/useLogStream';
 import { useAgentLogs } from './useAgentLogs';
 
-jest.mock('../../common/LogViewerModal/useLogStream', () => ({
+jest.mock('../../../hooks/useLogStream', () => ({
   useLogStream: jest.fn(),
   getIngestionLogStreamUrl: (fqn: string, runId: string) =>
     `/stream/${fqn}/${runId}`,

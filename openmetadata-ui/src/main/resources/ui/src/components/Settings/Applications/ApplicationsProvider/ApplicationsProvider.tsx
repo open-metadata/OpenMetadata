@@ -11,24 +11,19 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+  ApplicationsContext,
+  useApplicationsProvider,
+} from '../../../../context/ApplicationsProvider/ApplicationsContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import type { AppPlugin } from '../plugins/AppPlugin';
-import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
-export const ApplicationsContext = createContext({} as ApplicationsContextType);
+export { ApplicationsContext, useApplicationsProvider };
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
@@ -123,7 +118,5 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     </ApplicationsContext.Provider>
   );
 };
-
-export const useApplicationsProvider = () => useContext(ApplicationsContext);
 
 export default ApplicationsProvider;

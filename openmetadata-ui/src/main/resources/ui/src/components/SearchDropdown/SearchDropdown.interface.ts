@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
+import { SearchDropdownOption } from '../../interface/quick-filter.interface';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
@@ -44,11 +44,4 @@ export interface SearchDropdownProps {
   getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
 
-export interface SearchDropdownOption {
-  key: string;
-  label: string;
-  labelKeyOptions?: Record<string, string | number | boolean>;
-  count?: number;
-  description?: string;
-  icon?: ReactNode;
-}
+export type { SearchDropdownOption } from '../../interface/quick-filter.interface';

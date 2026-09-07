@@ -15,8 +15,8 @@ import { useCallback, useMemo } from 'react';
 import {
   getIngestionLogStreamUrl,
   useLogStream,
-} from '../components/common/LogViewerModal/useLogStream';
-import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
+} from './useLogStream';
+import { getLogTaskFieldForType } from '../utils/IngestionLogsUtils';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
 import { getIngestionPipelineLogById } from '../rest/ingestionPipelineAPI';

@@ -14,7 +14,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import {
   useLogStream,
   UseLogStreamResult,
-} from '../components/common/LogViewerModal/useLogStream';
+} from './useLogStream';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
@@ -70,7 +70,7 @@ jest.mock('../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../components/common/LogViewerModal/useLogStream', () => ({
+jest.mock('./useLogStream', () => ({
   useLogStream: jest.fn(),
   getIngestionLogStreamUrl: (fqn: string, runId: string) =>
     `/stream/${fqn}/${runId}`,

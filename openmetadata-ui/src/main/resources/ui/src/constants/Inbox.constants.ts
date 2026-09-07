@@ -11,4 +11,8 @@
  *  limitations under the License.
  */
 
-export * from '../../../interface/app-module.interface';
+// Query key for the sidebar inbox badge's unread count. Lives in constants so
+// the hook that reads it does not have to import the Inbox page.
+export const INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY = [
+  'inbox-unread-activity-count',
+] as const;
