@@ -84,6 +84,11 @@ const MetricDetailsPage = () => {
     [metricFqn]
   );
 
+  const isMetricQueryEnabled = useMemo(
+    () => Boolean(metricFqn && canViewMetric && !permissionsLoading),
+    [metricFqn, canViewMetric, permissionsLoading]
+  );
+
   const {
     data: metricDetails,
     isLoading: metricLoading,
@@ -91,7 +96,7 @@ const MetricDetailsPage = () => {
   } = useQuery({
     queryKey: metricCacheKey,
     queryFn: metricQueryFn(metricFqn, METRIC_DEFAULT_FIELDS),
-    enabled: Boolean(metricFqn && canViewMetric && !permissionsLoading),
+    enabled: isMetricQueryEnabled,
   });
 
   const isError = useMemo(
