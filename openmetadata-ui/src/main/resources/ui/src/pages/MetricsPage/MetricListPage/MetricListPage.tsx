@@ -55,6 +55,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import {
   CSV_JOBS_REFRESH_EVENT,
@@ -459,18 +460,18 @@ const MetricListPage = () => {
       <span className="metric-list-empty-dash">{t('label.empty-dash')}</span>
     );
 
-    const renderTagPills = (tags: TagLabel[], className: string) => (
+    const renderTagPills = (tags: TagLabel[]) => (
       <div className="metric-list-glossary">
         {tags.length
           ? tags.map((tag) => (
-              <Badge
-                className={className}
-                color="blue"
+              <TagChip
+                icon={tag.style?.iconURL}
                 key={tag.tagFQN}
-                size="sm"
-                type="color">
-                {tag.name ?? tag.tagFQN}
-              </Badge>
+                label={tag.name ?? tag.tagFQN}
+                size="small"
+                tagColor={tag.style?.color}
+                variant="blueGray"
+              />
             ))
           : emptyDash}
       </div>
@@ -543,8 +544,7 @@ const MetricListPage = () => {
         dataIndex: 'tags',
         key: 'glossary',
         width: 240,
-        render: (tags: TagLabel[]) =>
-          renderTagPills(glossaryTerms(tags), 'metric-list-glossary-pill'),
+        render: (tags: TagLabel[]) => renderTagPills(glossaryTerms(tags)),
       },
       entityStatus: {
         title: t('label.status'),
@@ -598,8 +598,7 @@ const MetricListPage = () => {
         dataIndex: 'tags',
         key: 'tags',
         width: 220,
-        render: (tags: TagLabel[]) =>
-          renderTagPills(metricTags(tags), 'metric-list-tag-pill'),
+        render: (tags: TagLabel[]) => renderTagPills(metricTags(tags)),
       },
       domains: {
         title: t('label.domain-plural'),
