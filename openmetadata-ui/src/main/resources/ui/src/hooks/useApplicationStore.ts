@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
+import { AuthenticationConfigurationWithScope } from '../interface/auth.interface';
+import { EntityUnion } from '../interface/entity-union.interface';
 import { ApplicationStore } from '../interface/store.interface';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import {

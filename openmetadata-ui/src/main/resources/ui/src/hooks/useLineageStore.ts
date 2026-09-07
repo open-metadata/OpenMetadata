@@ -13,11 +13,11 @@
 import { uniq } from 'lodash';
 import type { Edge, Node } from 'reactflow';
 import { create } from 'zustand';
-import type { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
+import type { LineageConfig } from '../interface/lineage.interface';
+import type { SourceType } from '../interface/source.interface';
 
 interface LineageState {
   // state properties

@@ -54,8 +54,4 @@ export interface IAuthContext {
   jwtPrincipalClaimsMapping: string[];
 }
 
-export type AuthenticationConfigurationWithScope =
-  AuthenticationConfiguration & {
-    responseType?: string;
-    scope: string;
-  };
+export type { AuthenticationConfigurationWithScope } from '../../../interface/auth.interface';
