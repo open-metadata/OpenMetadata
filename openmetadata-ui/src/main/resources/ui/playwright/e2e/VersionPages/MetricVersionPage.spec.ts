@@ -16,7 +16,7 @@ import {
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
 } from '../../constant/config';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
@@ -81,8 +81,12 @@ test.describe(
   'Metric version page',
   { tag: [DOMAIN_TAGS.GOVERNANCE, PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
-    test.beforeAll('Setup metric versions', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    // createAdminApiContext, not performAdminLogin: on 1.13 the latter drives a
+    // real browser login (browser.newPage -> admin.login -> getToken), which
+    // does not fit in the 60s hook budget on a loaded shard. main and 2.0 both
+    // default performAdminLogin to an API-only login, which is what this is.
+    test.beforeAll('Setup metric versions', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
       // Created already carrying the custom unit, so the initial version has no
       // change description and the header falls back to the entity values. That
@@ -111,8 +115,8 @@ test.describe(
       await afterAction();
     });
 
-    test.afterAll('Cleanup metric', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.afterAll('Cleanup metric', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
       await metric.delete(apiContext);
 
