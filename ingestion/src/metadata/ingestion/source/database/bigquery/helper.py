@@ -24,6 +24,10 @@ from sqlalchemy import inspect, text
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
+    GcpCredentialsPath,
+)
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     SingleProjectId,
@@ -119,7 +123,10 @@ def get_inspector_details(
     if new_service_connection.usageLocation:
         kwargs["location"] = new_service_connection.usageLocation
 
-    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+    if isinstance(
+        new_service_connection.credentials.gcpConfig,
+        (GcpCredentialsValues, GcpADC, GcpCredentialsPath),
+    ):
         new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(
             database_name
         )
