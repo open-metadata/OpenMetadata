@@ -822,8 +822,7 @@ export const waitForTeamAssetsSearchResponse = (page: Page, teamId: string) =>
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=all') &&
-      response.url().includes(teamId) &&
-      response.status() === 200
+      response.url().includes(teamId)
   );
 
 export const selectAssetsFilterFromDropdown = async (
@@ -846,6 +845,8 @@ export const applyEntityTypeFilterValue = async (
   await page.getByTestId(entityTypeCheckboxTestId).check();
   const filterResponse = waitForTeamAssetsSearchResponse(page, teamId);
   await page.getByTestId('update-btn').click();
-  await filterResponse;
+  const response = await filterResponse;
+
+  expect(response.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 };

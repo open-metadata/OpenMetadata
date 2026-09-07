@@ -718,13 +718,19 @@ test.describe('Teams Page', () => {
   });
 
   test.describe('Team assets entity type filter', () => {
-    const filterTable = new TableClass();
-    const filterTopic = new TopicClass();
-    const filterTeam = new TeamClass();
+    let filterTable: TableClass;
+    let filterTopic: TopicClass;
+    let filterTeam: TeamClass;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
+        // Instantiate here so a retry regenerates entity names instead of
+        // re-creating the same ones and hitting 409s
+        filterTable = new TableClass();
+        filterTopic = new TopicClass();
+        filterTeam = new TeamClass();
+
         await filterTable.create(apiContext);
         await filterTopic.create(apiContext);
         await filterTeam.create(apiContext);
@@ -757,7 +763,10 @@ test.describe('Teams Page', () => {
     test('should apply, toggle off and clear the entity type filter', async ({
       page,
     }) => {
-      const teamId = filterTeam.responseData.id;
+      const teamId = filterTeam.responseData.id ?? '';
+
+      expect(teamId).not.toBe('');
+
       const tableCard = page.getByTestId(
         `table-data-card_${filterTable.entityResponseData?.['fullyQualifiedName']}`
       );
@@ -773,7 +782,9 @@ test.describe('Teams Page', () => {
 
         const assetsResponse = waitForTeamAssetsSearchResponse(page, teamId);
         await page.getByTestId('assets').click();
-        await assetsResponse;
+        const assetsSearchResponse = await assetsResponse;
+
+        expect(assetsSearchResponse.status()).toBe(200);
         await waitForAllLoadersToDisappear(page);
 
         await expect(tableCard).toBeVisible();
@@ -795,7 +806,10 @@ test.describe('Teams Page', () => {
           teamId
         );
         await selectAssetsFilterFromDropdown(page, 'Entity Type');
-        await removeFilterResponse;
+        const removeSearchResponse = await removeFilterResponse;
+
+        expect(removeSearchResponse.status()).toBe(200);
+
         await waitForAllLoadersToDisappear(page);
 
         await expect(tableCard).toBeVisible();
@@ -812,7 +826,10 @@ test.describe('Teams Page', () => {
 
         const clearResponse = waitForTeamAssetsSearchResponse(page, teamId);
         await page.getByText('Clear').click();
-        await clearResponse;
+        const clearSearchResponse = await clearResponse;
+
+        expect(clearSearchResponse.status()).toBe(200);
+
         await waitForAllLoadersToDisappear(page);
 
         await expect(tableCard).toBeVisible();
