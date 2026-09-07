@@ -98,6 +98,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Soft budget: exceed → ping #pw-health, do not fail. See the
+      # `Soft budget check` step at the end of this job.
+      SOFT_BUDGET_MINUTES: "10"
     outputs:
       lint_src_result: ${{ steps.lint_src.outcome }}
       lint_src_changed_files: ${{ steps.lint_src.outputs.changed_files }}
@@ -121,6 +125,9 @@ jobs:
       eslint_summary: ${{ steps.lint_src.outputs.summary }}
       eslint_details: ${{ steps.lint_src.outputs.details }}
     steps:
+      - name: Record job start
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
@@ -513,6 +520,37 @@ jobs:
             echo "EOF" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+
+      # Soft budget: signal, do not fail. Job carries no `timeout-minutes`
+      # so GitHub's 360-min default is the last-resort cap.
+      - name: Soft budget check
+        if: ${{ always() && env.JOB_STARTED_AT != '' }}
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          python3 .github/scripts/soft_budget_check.py \
+            --job "ui-checkstyle" \
+            --started-at "$JOB_STARTED_AT" \
+            --budget-minutes "$SOFT_BUDGET_MINUTES" \
+            --run-url "$RUN_URL" \
+            --commit-url "$COMMIT_URL" \
+            --commit-sha "$GITHUB_SHA" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --pr-number "${{ github.event.pull_request.number || '' }}" \
+            --output "$RUNNER_TEMP/soft-budget-slack.json"
+
+      - name: Post budget ping to #pw-health
+        if: ${{ always() && hashFiles(format('{0}/soft-budget-slack.json', runner.temp)) != '' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/soft-budget-slack.json
 
   ui-checkstyle:
     needs: [authorize, checkstyle]

@@ -384,7 +384,14 @@ jobs:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
       BUNDLE_MODE: ${{ needs.cache-keys.outputs.bundle_mode }}
       BUILD_TOOLCHAIN: ${{ needs.cache-keys.outputs.toolchain }}
+      # Soft budget: exceed → ping #pw-health, do not fail. See the
+      # `Soft budget check` step at the end of this job. Kept as an env so
+      # the two ends stay in sync.
+      SOFT_BUDGET_MINUTES: "10"
     steps:
+      - name: Record job start
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
@@ -565,6 +572,37 @@ jobs:
             ${{ env.DISTRIBUTION_CACHE_DIR }}/distribution-manifest.json
           compression-level: 0
           retention-days: 1
+
+      # Soft budget: signal, do not fail. The job carries no `timeout-minutes`
+      # so GitHub's 360-min default is the last-resort cap.
+      - name: Soft budget check
+        if: ${{ always() && env.JOB_STARTED_AT != '' }}
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          python3 .github/scripts/soft_budget_check.py \
+            --job "build (playwright-e2e-reusable)" \
+            --started-at "$JOB_STARTED_AT" \
+            --budget-minutes "$SOFT_BUDGET_MINUTES" \
+            --run-url "$RUN_URL" \
+            --commit-url "$COMMIT_URL" \
+            --commit-sha "$GITHUB_SHA" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --pr-number "${{ github.event.pull_request.number || '' }}" \
+            --output "$RUNNER_TEMP/soft-budget-slack.json"
+
+      - name: Post budget ping to #pw-health
+        if: ${{ always() && hashFiles(format('{0}/soft-budget-slack.json', runner.temp)) != '' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/soft-budget-slack.json
 
   detect-changes:
     needs: check-changes
@@ -1244,22 +1282,14 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # Budget breakdown: up to 60 min playwright hang-protection wrapper on
-    # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
-    # and teardown/artifact upload. The job clock must clear the inner
-    # wrapper plus setup/teardown so a slow-but-finishing shard is never
-    # cancelled here while playwright still has wrapper time left.
-    #
-    # This ceiling only works when the sub-budgets it composes actually hold.
-    # `Install Playwright Browsers` carries its own `timeout 5m` for exactly
-    # this reason — a slow apt mirror there previously ate 10 min silently,
-    # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
-    # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
-    # sync when adjusting this outer ceiling.
-    timeout-minutes: 75
-    # `warm_caches_only` runs the pipeline for its cache side effects alone;
-    # the shards are what makes it expensive and they prove nothing on a commit
-    # the merge queue already tested.
+    # No `timeout-minutes` on purpose — a slow-but-finishing shard now runs
+    # to completion (up to GitHub's 360-min default, the last-resort cap we
+    # can't remove) and pings #pw-health via the `Soft shard-budget check`
+    # step at the end. The soft budget is 19 min on `pull_request` (a PR
+    # shard that misses the 19-min budget is a signal, not a failure) and
+    # 60 min otherwise (matches the inner playwright hang-protection wrapper
+    # on the test step). See `Install Playwright Browsers`'s own `timeout 5m`
+    # for a related inner step whose behaviour hasn't changed.
     if: ${{ !cancelled() && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -1275,6 +1305,9 @@ jobs:
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
       PW_SHARD_ID: ${{ matrix.shardId }}
       PW_PRESEEDED_STATE: "true"
+      # Soft budget: exceed → ping #pw-health, do not fail. See the
+      # `Soft shard-budget check` step at the end of this job.
+      SOFT_BUDGET_MINUTES: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && '19' || '60' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan-playwright.outputs.matrix) }}
@@ -1860,6 +1893,37 @@ jobs:
         if: always()
         continue-on-error: true
         run: ./.github/scripts/stop_playwright_fast_environment.sh
+
+      # Soft budget: signal, do not fail. Reuses `PW_JOB_STARTED_AT` set at
+      # the top of the job by `Mark shard start`.
+      - name: Soft shard-budget check
+        if: ${{ always() && env.PW_JOB_STARTED_AT != '' }}
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          python3 .github/scripts/soft_budget_check.py \
+            --job "playwright-ci shard ${{ matrix.shardId }} (${{ inputs.database }})" \
+            --started-at "$PW_JOB_STARTED_AT" \
+            --budget-minutes "$SOFT_BUDGET_MINUTES" \
+            --run-url "$RUN_URL" \
+            --commit-url "$COMMIT_URL" \
+            --commit-sha "$GITHUB_SHA" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --pr-number "${{ github.event.pull_request.number || '' }}" \
+            --output "$RUNNER_TEMP/soft-budget-slack.json"
+
+      - name: Post shard budget ping to #pw-health
+        if: ${{ always() && hashFiles(format('{0}/soft-budget-slack.json', runner.temp)) != '' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/soft-budget-slack.json
 
   # Optional Slack summary — preserved from the old nightly workflows so a
   # caller (mysql-nightly, on-demand postgres release-branch run) can still

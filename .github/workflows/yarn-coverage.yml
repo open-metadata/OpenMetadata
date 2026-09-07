@@ -61,11 +61,18 @@ jobs:
       sonar_gate_status: ${{ steps.sonar_pr_scan.outputs.gate_status }}
       # Exposed so the gate can tell "scanner never ran" apart from "gate passed".
       sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
+    env:
+      # Soft budget: exceed → ping #pw-health, do not fail. See the
+      # `Soft budget check` step at the end of this job.
+      SOFT_BUDGET_MINUTES: "15"
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
+      - name: Record job start
+        run: echo "JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -200,6 +207,37 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
           SONARCLOUD_URL: https://sonarcloud.io
+
+      # Soft budget: signal, do not fail. Job carries no `timeout-minutes`
+      # so GitHub's 360-min default is the last-resort cap.
+      - name: Soft budget check
+        if: ${{ always() && env.JOB_STARTED_AT != '' }}
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          python3 .github/scripts/soft_budget_check.py \
+            --job "ui-coverage-tests" \
+            --started-at "$JOB_STARTED_AT" \
+            --budget-minutes "$SOFT_BUDGET_MINUTES" \
+            --run-url "$RUN_URL" \
+            --commit-url "$COMMIT_URL" \
+            --commit-sha "$GITHUB_SHA" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --pr-number "${{ github.event.pull_request.number || '' }}" \
+            --output "$RUNNER_TEMP/soft-budget-slack.json"
+
+      - name: Post budget ping to #pw-health
+        if: ${{ always() && hashFiles(format('{0}/soft-budget-slack.json', runner.temp)) != '' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/soft-budget-slack.json
 
   # This job is the one to set as the required status check in branch protection.
   # It always runs and passes when ui-coverage-tests succeeded OR was skipped
