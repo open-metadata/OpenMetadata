@@ -1767,8 +1767,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return bundle;
     }
 
-    boolean onlyNonDeleted = isReadPlanNonDeletedOnly(readPlan);
-    CachedReadBundle bundleCache = onlyNonDeleted ? CacheBundle.getCachedReadBundle() : null;
+    boolean cacheReadBundle =
+        isReadPlanNonDeletedOnly(readPlan) && isCacheableEntityType(entityType);
+    CachedReadBundle bundleCache = cacheReadBundle ? CacheBundle.getCachedReadBundle() : null;
 
     java.util.concurrent.locks.Lock loadLock = null;
     CachedReadBundle.Dto initialDto = null;
@@ -12304,7 +12305,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private Optional<String> buildChangeEventJsonForBulkOperation(
+  Optional<String> buildChangeEventJsonForBulkOperation(
       T entity, EventType eventType, String userName) {
     try {
       if (eventType.equals(ENTITY_NO_CHANGE)) {
@@ -12334,7 +12335,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void insertChangeEventsBatch(List<String> changeEvents) {
+  void insertChangeEventsBatch(List<String> changeEvents) {
     if (changeEvents == null || changeEvents.isEmpty()) {
       return;
     }
