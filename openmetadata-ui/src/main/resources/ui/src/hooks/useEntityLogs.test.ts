@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import {
-  useLogStream,
-  UseLogStreamResult,
-} from './useLogStream';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
@@ -29,6 +25,7 @@ import {
 } from '../rest/ingestionPipelineAPI';
 import { downloadIngestionLog } from '../utils/IngestionLogs/LogsUtils';
 import { useEntityLogs } from './useEntityLogs';
+import { useLogStream, UseLogStreamResult } from './useLogStream';
 
 const mockReset = jest.fn();
 const mockUpdateProgress = jest.fn();

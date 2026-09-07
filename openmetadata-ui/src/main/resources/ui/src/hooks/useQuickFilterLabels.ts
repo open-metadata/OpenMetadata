@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ExploreQuickFilterField } from '../interface/quick-filter.interface';
 import { SearchIndex } from '../enums/search.enum';
+import type { ExploreQuickFilterField } from '../interface/quick-filter.interface';
 import {
   applyQuickFilterLabels,
   getOptionsFromAggregationBucket,

@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect } from 'react';
 import type { Edge, Node, OnConnect } from 'reactflow';
 import { useEdgesState, useNodesState, useReactFlow } from 'reactflow';
-import { useWorkflowStore } from './useWorkflowStore';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import { getWorkflowDefinitionByFQN } from '../rest/workflowDefinitionsAPI';
 import {
@@ -30,6 +29,7 @@ import workflowClassBase from '../utils/WorkflowClassBase';
 import { applyFlowchartLayout } from '../utils/WorkflowLayout';
 import { deserializeWorkflow } from '../utils/WorkflowSerializer';
 import { useWorkflowState } from './useWorkflowState';
+import { useWorkflowStore } from './useWorkflowStore';
 
 interface UseWorkflowLogicProps {
   fqn?: string;

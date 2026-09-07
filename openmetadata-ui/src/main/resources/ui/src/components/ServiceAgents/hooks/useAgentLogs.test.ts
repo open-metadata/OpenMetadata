@@ -14,11 +14,8 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
+import { useLogStream, UseLogStreamResult } from '../../../hooks/useLogStream';
 import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
-import {
-  useLogStream,
-  UseLogStreamResult,
-} from '../../../hooks/useLogStream';
 import { useAgentLogs } from './useAgentLogs';
 
 jest.mock('../../../hooks/useLogStream', () => ({

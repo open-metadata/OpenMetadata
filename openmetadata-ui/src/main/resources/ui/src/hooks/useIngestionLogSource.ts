@@ -12,15 +12,12 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import {
-  getIngestionLogStreamUrl,
-  useLogStream,
-} from './useLogStream';
-import { getLogTaskFieldForType } from '../utils/IngestionLogsUtils';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
 import { getIngestionPipelineLogById } from '../rest/ingestionPipelineAPI';
+import { getLogTaskFieldForType } from '../utils/IngestionLogsUtils';
 import { StreamHealth } from '../utils/SseStreamUtils';
+import { getIngestionLogStreamUrl, useLogStream } from './useLogStream';
 import { usePaginatedLiveLog } from './usePaginatedLiveLog';
 
 export interface UseIngestionLogSourceParams {

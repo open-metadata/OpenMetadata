@@ -15,8 +15,8 @@ import { RouteProps } from 'react-router-dom';
 import { App } from '../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ExtensionPointRegistry } from '../utils/ExtensionPointRegistry';
-import { LeftSidebarItem } from './sidebar.interface';
 import { AppModule } from './app-module.interface';
+import { LeftSidebarItem } from './sidebar.interface';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
   index: number;

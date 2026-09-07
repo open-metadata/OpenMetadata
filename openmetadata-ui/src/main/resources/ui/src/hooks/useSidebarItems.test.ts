@@ -12,10 +12,10 @@
  */
 import { renderHook } from '@testing-library/react-hooks';
 import { ReactNode } from 'react';
-import { LeftSidebarItem } from '../interface/sidebar.interface';
 import { useApplicationsProvider } from '../context/ApplicationsProvider/ApplicationsContext';
-import { AppPlugin } from '../interface/app-plugin.interface';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
+import { AppPlugin } from '../interface/app-plugin.interface';
+import { LeftSidebarItem } from '../interface/sidebar.interface';
 import { filterHiddenNavigationItems } from '../utils/CustomizaNavigation/CustomizeNavigation';
 import { useCustomPages } from './useCustomPages';
 import { useSidebarItems } from './useSidebarItems';

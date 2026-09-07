@@ -27,6 +27,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
   removeActivityReaction,
@@ -135,7 +136,6 @@ export type InboxScope = 'all' | 'me';
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
 export type { InboxDateRange } from '../../../../interface/inbox.interface';
-import { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // Default Inbox window: the last 30 days (start-of-day to now), used by the page
 // on first render and by the sidebar inbox-icon count.
