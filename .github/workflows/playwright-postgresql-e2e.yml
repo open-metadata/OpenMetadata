@@ -436,6 +436,22 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+      # What `main` itself does not reliably pass, published by
+      # playwright-main-lane.yml. Restored read-only: this job never writes
+      # the baseline, so a PR can never teach the gate to excuse its own
+      # flake. A miss is the pre-first-main-lane-run state and degrades to
+      # the previous behaviour — every retry pass reported, none of them
+      # attributable.
+      - name: Restore the main flake baseline
+        id: restore-flake-baseline
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/flake-baseline/flake-baseline.json
+          key: playwright-flake-baseline-v1-postgresql-main-${{ github.run_id }}
+          restore-keys: playwright-flake-baseline-v1-postgresql-main-
+
       - name: Evaluate zero-retry gate in shadow mode
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
@@ -443,7 +459,18 @@ jobs:
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright.outputs.playwright_ci_result }}
           SOURCE_SHA: ${{ github.sha }}
+          BASELINE: ${{ runner.temp }}/flake-baseline/flake-baseline.json
         run: |
+          # With the baseline present the ledger reports
+          # newRetryPassStableIds — retry passes this run introduced that
+          # main does NOT already have. That is the differential signal a
+          # future enforcing gate blocks on; the shadow gate stays
+          # non-enforcing here (shadowGate.enforcing is False) so landing
+          # this changes no check result.
+          baseline_args=()
+          if [[ -f "$BASELINE" ]]; then
+            baseline_args=(--retry-baseline "$BASELINE")
+          fi
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
             --status-glob 'results/playwright-results-json-*/ci-status.json' \
@@ -451,6 +478,7 @@ jobs:
             --expected-matrix-json "$EXPECTED_MATRIX" \
             --profile postgresql-pr \
             --source-sha "$SOURCE_SHA" \
+            ${baseline_args[@]+"${baseline_args[@]}"} \
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
       - name: Upload Playwright shadow-gate ledger
