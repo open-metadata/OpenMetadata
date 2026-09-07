@@ -617,7 +617,7 @@ const MemoryTagsRow: FC<{
       </div>
       <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
         {isViewOnly && selectedTags.length === 0 && <EmptyTags />}
-       {selectedTags.map((tag) => (
+        {selectedTags.map((tag) => (
           <ClassificationTag
             color={tag.style?.color}
             icon={tag.style?.iconURL}
@@ -626,9 +626,7 @@ const MemoryTagsRow: FC<{
             maxWidth={160}
             size="sm"
             onDelete={
-              isViewOnly
-                ? undefined
-                : () => handleRemoveTag(tag.tagFQN)
+              isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
             }
           />
         ))}

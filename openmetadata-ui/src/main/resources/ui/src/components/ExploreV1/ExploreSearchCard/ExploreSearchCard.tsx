@@ -431,13 +431,13 @@ const getTierEntries = (
   const tierValue = isString(source.tier)
     ? source.tier
     : source.tier && (
-      <ClassificationTag
-        color={source.tier.style?.color}
-        href={getTagRedirectLink(source.tier)}
-        icon={source.tier.style?.iconURL}
-        label={getTagName(source.tier)}
-        size="sm"
-      />
+        <ClassificationTag
+          color={source.tier.style?.color}
+          href={getTagRedirectLink(source.tier)}
+          icon={source.tier.style?.iconURL}
+          label={getTagName(source.tier)}
+          size="sm"
+        />
       );
 
   return searchClassBase
