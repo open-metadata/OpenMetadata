@@ -221,59 +221,50 @@ export const getFrontEndFormat = (message: string) => {
   return getSanitizeContent(updatedMessage);
 };
 
+const getServiceEntityDisplayName = (entityFQN: string) =>
+  getPartialNameFromFQN(entityFQN, ['service']);
+
+const getTestEntityDisplayName = (entityFQN: string) =>
+  getPartialNameFromTableFQN(entityFQN, [FqnPart.TestCase], FQN_SEPARATOR_CHAR);
+
+const getLastFqnPartDisplayName = (entityFQN: string) =>
+  entityFQN.split(FQN_SEPARATOR_CHAR).pop();
+
+const ENTITY_DISPLAY_NAME_RESOLVERS: Record<
+  string,
+  (entityFQN: string) => string | undefined
+> = {
+  [EntityType.TABLE]: (entityFQN) =>
+    getPartialNameFromTableFQN(
+      entityFQN,
+      [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+      FQN_SEPARATOR_CHAR
+    ),
+  [EntityType.TEST_CASE]: getTestEntityDisplayName,
+  [EntityType.TEST_SUITE]: getTestEntityDisplayName,
+  [EntityType.DATABASE_SCHEMA]: (entityFQN) =>
+    getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]),
+  [EntityType.DATABASE_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.DASHBOARD_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.MESSAGING_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.PIPELINE_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.MLMODEL_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.METADATA_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.STORAGE_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.SEARCH_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.API_SERVICE]: getServiceEntityDisplayName,
+  [EntityType.TYPE]: getServiceEntityDisplayName,
+  [EntityType.GLOSSARY]: getLastFqnPartDisplayName,
+  [EntityType.GLOSSARY_TERM]: getLastFqnPartDisplayName,
+  [EntityType.DOMAIN]: getLastFqnPartDisplayName,
+};
+
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
-  let displayName;
+  const resolver = ENTITY_DISPLAY_NAME_RESOLVERS[entityType];
 
-  switch (entityType) {
-    case EntityType.TABLE:
-      displayName = getPartialNameFromTableFQN(
-        entityFQN,
-        [FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      );
-
-      break;
-
-    case EntityType.TEST_CASE:
-    case EntityType.TEST_SUITE:
-      displayName = getPartialNameFromTableFQN(
-        entityFQN,
-        [FqnPart.TestCase],
-        FQN_SEPARATOR_CHAR
-      );
-
-      break;
-
-    case EntityType.DATABASE_SCHEMA:
-      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
-
-      break;
-
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.METADATA_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.API_SERVICE:
-    case EntityType.TYPE:
-      displayName = getPartialNameFromFQN(entityFQN, ['service']);
-
-      break;
-
-    case EntityType.GLOSSARY:
-    case EntityType.GLOSSARY_TERM:
-    case EntityType.DOMAIN:
-      displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
-
-      break;
-    default:
-      displayName = getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
-
-      break;
-  }
+  let displayName = resolver
+    ? resolver(entityFQN)
+    : getPartialNameFromFQN(entityFQN, ['database']) || entityFQN;
 
   // Remove quotes if the name is wrapped in quotes
   if (displayName) {

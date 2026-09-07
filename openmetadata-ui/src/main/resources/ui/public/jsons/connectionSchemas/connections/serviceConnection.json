@@ -37341,10 +37341,10 @@
                       "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
-                      "description": "Supports Metadata Extraction.",
+                      "title": "Supports Metadata Extraction",
+                      "description": "Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not supported.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Metadata Extraction"
+                      "default": false
                     }
                   },
                   "additionalProperties": false
@@ -80054,10 +80054,10 @@
                       "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
-                      "description": "Supports Metadata Extraction.",
+                      "title": "Supports Metadata Extraction",
+                      "description": "Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not supported.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Metadata Extraction"
+                      "default": false
                     }
                   },
                   "additionalProperties": false

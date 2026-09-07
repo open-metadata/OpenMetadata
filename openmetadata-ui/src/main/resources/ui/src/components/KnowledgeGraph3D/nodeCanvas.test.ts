@@ -16,21 +16,53 @@ import {
   DEFAULT_NODE_SIZE,
   ENTITY_COLORS,
   ENTITY_SIZES,
+  LABEL_COLOR,
   LEGEND_TYPES,
 } from './KnowledgeGraph3D.constants';
-import { colorFor, hexRgba, initials, sizeFor } from './nodeCanvas';
+import {
+  colorFor,
+  hexRgba,
+  initials,
+  resolveGraphColor,
+  sizeFor,
+} from './nodeCanvas';
 
 describe('colorFor', () => {
-  it('returns the mapped color for a known type', () => {
-    expect(colorFor('table')).toBe(ENTITY_COLORS.table);
+  afterEach(() => {
+    document.documentElement.className = '';
+    document.documentElement.removeAttribute('style');
+  });
+
+  it('resolves a categorical token before painting it to canvas', () => {
+    document.documentElement.style.setProperty('--color-brand-500', '#123456');
+
+    expect(colorFor('table')).toBe('#123456');
   });
 
   it('returns the default fallback for an unknown type', () => {
     const result = colorFor('not-a-real-type');
 
-    expect(result).toBe(DEFAULT_NODE_COLOR);
+    expect(DEFAULT_NODE_COLOR).toContain('#9AA3B2');
+    expect(result).toBe('#9AA3B2');
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('re-resolves semantic colors after the active theme changes', () => {
+    document.documentElement.style.setProperty(
+      '--color-text-primary',
+      '#181d27'
+    );
+
+    expect(resolveGraphColor(LABEL_COLOR)).toBe('#181d27');
+
+    document.documentElement.classList.add('dark-mode');
+    document.documentElement.style.setProperty(
+      '--color-text-primary',
+      '#fafafa'
+    );
+
+    expect(resolveGraphColor(LABEL_COLOR)).toBe('#fafafa');
   });
 });
 
@@ -54,6 +86,23 @@ describe('hexRgba', () => {
 
   it('handles full opacity', () => {
     expect(hexRgba('#000000', 1)).toBe('rgba(0,0,0,1)');
+  });
+
+  it('handles the space-separated RGB format used by palette tokens', () => {
+    expect(hexRgba('rgb(102 198 28)', 0.5)).toBe('rgba(102,198,28,0.5)');
+  });
+
+  it('expands short hex colors before applying opacity', () => {
+    expect(hexRgba('#fff', 0.25)).toBe('rgba(255,255,255,0.25)');
+  });
+
+  it('uses the token fallback when the resolved format is not canvas-safe', () => {
+    document.documentElement.style.setProperty(
+      '--color-brand-500',
+      'oklch(62% 0.2 250)'
+    );
+
+    expect(hexRgba(ENTITY_COLORS.table, 0.5)).toBe('rgba(46,144,250,0.5)');
   });
 });
 
