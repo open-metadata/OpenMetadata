@@ -23,6 +23,13 @@ ALTER TABLE test_case ADD INDEX idx_test_case_id (id);
 -- index and full-scanned the timeline at scale.
 ALTER TABLE test_case_resolution_status_time_series ADD INDEX idx_test_case_resolution_status_assignee (assignee, timestamp);
 
+-- Column extension keys hash every FQN segment separately and join the hashes with dots.
+-- A fourth-level nested table column has eight segments and needs 263 characters.
+-- VARCHAR(512) supports eleven column levels after the four-part table FQN while keeping
+-- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
+ALTER TABLE entity_extension
+  MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
 -- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.

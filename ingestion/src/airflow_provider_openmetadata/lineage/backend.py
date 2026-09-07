@@ -14,7 +14,6 @@ OpenMetadata Airflow Lineage Backend
 """
 
 import traceback
-from typing import Dict, List, Optional  # noqa: UP035
 
 from airflow.lineage.backend import LineageBackend
 
@@ -47,9 +46,9 @@ class OpenMetadataLineageBackend(LineageBackend):
     def send_lineage(
         self,
         operator: "BaseOperator",  # noqa: F821
-        inlets: Optional[List] = None,  # noqa: UP006, UP045
-        outlets: Optional[List] = None,  # noqa: UP006, UP045
-        context: Dict = None,  # noqa: RUF013, UP006
+        inlets: list | None = None,
+        outlets: list | None = None,
+        context: dict = None,  # noqa: RUF013
     ) -> None:
         """
         Send lineage to OpenMetadata
@@ -68,7 +67,7 @@ class OpenMetadataLineageBackend(LineageBackend):
             dag.log.info("Executing OpenMetadata Lineage Backend...")
 
             config: AirflowLineageConfig = get_lineage_config()
-            xlet_list: List[XLets] = get_xlets_from_dag(dag)  # noqa: UP006
+            xlet_list: list[XLets] = get_xlets_from_dag(dag)
             # Only pass client config arguments that are set
             additional_client_config_arguments = {
                 key: value

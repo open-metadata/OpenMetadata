@@ -853,6 +853,52 @@ describe('fetchEntityData', () => {
     );
   });
 
+  it('ignores the tied top hit and uses the counts when NLQ is enabled', async () => {
+    // The NLQ count query spans the 24-index dataAsset alias, where RRF ranks per
+    // shard: two dozen documents tie on an identical score, so hits[0] is arbitrary
+    // and carries no relevance signal. The aggregation counts do.
+    const countResponse = {
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'table', doc_count: 24 },
+            { key: 'apiEndpoint', doc_count: 4 },
+          ],
+        },
+      },
+      hits: {
+        hits: [{ _source: { entityType: EntityType.API_ENDPOINT } }],
+        total: { value: 28 },
+      },
+    };
+    mockNlqSearch
+      .mockResolvedValueOnce(countResponse)
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      searchQueryParam: 'revenue by region',
+      isNLPRequestEnabled: true,
+      tab: '',
+      tabsInfo: {
+        [SearchIndex.TABLE]: {},
+        [SearchIndex.API_ENDPOINT]: {},
+      },
+      TABS_SEARCH_INDEXES: [SearchIndex.TABLE, SearchIndex.API_ENDPOINT],
+      EntityTypeSearchIndexMapping: {
+        [EntityType.TABLE]: SearchIndex.TABLE,
+        [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT,
+      },
+    });
+
+    await fetchEntityData(params);
+
+    expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
+      SearchIndex.TABLE
+    );
+    expect(mockNlqSearch.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ searchIndex: SearchIndex.TABLE })
+    );
+  });
+
   it('ANDs the browse/filter scope into the query_filter sent to search', async () => {
     mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
     const params = buildParams({

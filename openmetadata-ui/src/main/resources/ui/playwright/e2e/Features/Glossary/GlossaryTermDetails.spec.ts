@@ -15,8 +15,9 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
 } from '../../../utils/common';
 import {
@@ -355,8 +356,8 @@ test.describe('Glossary Term Details Operations', () => {
 
       // Update the description
       const newDescription = 'Updated description via table edit modal';
-      await page.locator(descriptionBox).clear();
-      await page.locator(descriptionBox).fill(newDescription);
+      await getDescriptionBox(page).clear();
+      await fillDescriptionBox(page, newDescription);
 
       // Add a synonym
       const newSynonym = 'TableEditSynonym';
@@ -425,7 +426,7 @@ test.describe('Glossary Term Details Operations', () => {
       const termName = `FullTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
       await page.fill('[data-testid="display-name"]', termName);
-      await page.locator(descriptionBox).fill('A comprehensive test term');
+      await fillDescriptionBox(page, 'A comprehensive test term');
 
       // Add synonyms
       const synonyms = ['synonym1', 'synonym2', 'alternative'];

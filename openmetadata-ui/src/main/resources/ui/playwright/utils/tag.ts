@@ -25,6 +25,7 @@ import {
   descriptionBox,
   descriptionBoxReadOnly,
   getApiContext,
+  getDescriptionBox,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -201,9 +202,11 @@ export const removeAssetsFromTag = async (
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
+  // After a reload the badge renders only once the assets search returns —
+  // give it the same 30s the domain util allows instead of the default 15s.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString());
+  ).toContainText(count.toString(), { timeout: 30_000 });
 };
 
 export const setupAssetsForTag = async (page: Page) => {
@@ -397,10 +400,15 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await expect(page.getByTestId('edit-description')).toBeVisible();
   await page.getByTestId('edit-description').click();
 
-  await expect(page.getByRole('dialog')).toBeVisible();
+  const descriptionModal = page.getByRole('dialog');
 
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await expect(descriptionModal).toBeVisible();
+
+  const editor = getDescriptionBox(descriptionModal);
+
+  await expect(editor).toHaveCount(1);
+  await editor.clear();
+  await editor.fill(updatedDescription);
 
   const editDescription = page.waitForResponse(
     (response) =>

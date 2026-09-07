@@ -12,8 +12,6 @@
 Common Query Log Connector
 """
 
-from typing import Optional
-
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -23,7 +21,7 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 
 class QueryLogLineageSource(LineageSource):
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 

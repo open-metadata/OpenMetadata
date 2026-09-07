@@ -15,7 +15,6 @@ DomoClient source to extract data from DOMO
 
 import traceback
 from dataclasses import dataclass
-from typing import List, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict
 from pydomo import Domo
@@ -65,10 +64,10 @@ class DomoDashboardDetails(DomoBaseModel):
     Response from Domo API
     """
 
-    cardIds: Optional[List[int]] = None  # noqa: N815, UP006, UP045
-    collectionIds: Optional[List[int]] = None  # noqa: N815, UP006, UP045
-    description: Optional[str] = None  # noqa: UP045
-    owners: Optional[List[DomoOwner]] = None  # noqa: UP006, UP045
+    cardIds: list[int] | None = None  # noqa: N815
+    collectionIds: list[int] | None = None  # noqa: N815
+    description: str | None = None
+    owners: list[DomoOwner] | None = None
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -78,7 +77,7 @@ class DomoChartMetadataDetails(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    chartType: Optional[str] = None  # noqa: N815, UP045
+    chartType: str | None = None  # noqa: N815
 
 
 class DomoChartDetails(DomoBaseModel):
@@ -87,7 +86,7 @@ class DomoChartDetails(DomoBaseModel):
     """
 
     metadata: DomoChartMetadataDetails
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
 
 
 class DomoClient:
@@ -98,7 +97,7 @@ class DomoClient:
 
     def __init__(
         self,
-        config: Union[DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection],  # noqa: UP007
+        config: DomoDashboardConnection | DomoPipelineConnection | DomoDatabaseConnection,
     ):
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
@@ -110,7 +109,7 @@ class DomoClient:
         )
         self.client = TrackedREST(client_config)
 
-    def get_chart_details(self, page_id) -> Optional[DomoChartDetails]:  # noqa: UP045
+    def get_chart_details(self, page_id) -> DomoChartDetails | None:
         """
         Getting chart details for particular page
         """

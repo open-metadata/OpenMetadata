@@ -2192,6 +2192,35 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "tag: '@ingestion'" in schema_search
 
 
+def test_scheduler_impact_mapping_covers_shared_consumers():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    scheduler_source = (
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/"
+        "AddIngestion/Steps/ScheduleInterval*"
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if scheduler_source in entry["sources"]
+    )
+
+    assert mapping["projects"] == [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "Data Insight",
+    ]
+    assert {
+        "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+    }.issubset(mapping["specs"])
+
+
 def test_permission_impact_mapping_includes_ingestion_project():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()

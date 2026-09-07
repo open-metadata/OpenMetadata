@@ -16,18 +16,22 @@ import {
   Avatar,
   Badge,
   Box,
+  EmptyPlaceholder,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Domain as DomainIcon,
+  Expand,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -53,7 +57,6 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
@@ -64,17 +67,79 @@ interface DomainTreeViewProps {
   filters?: Record<string, string[]>;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
+  onClearSearch?: () => void;
 }
 
 const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
 const LOAD_MORE_ITEM_SUFFIX = '__load_more';
 
+type ChildPagingState = Record<
+  string,
+  { offset: number; limit: number; total: number }
+>;
+
+// Derived, per-node tree-rendering flags pulled out of the `.map` callback so
+// that callback keeps only rendering branches, not these lookups too.
+const getTreeNodeMeta = (
+  node: Domain,
+  childPaging: ChildPagingState,
+  loadingChildren: Record<string, boolean>
+) => {
+  const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+  const childDomains = (node?.children as unknown as Domain[]) ?? [];
+  const childrenCount = node?.childrenCount || childDomains?.length || 0;
+  const hasChildren = childDomains?.length > 0 || childrenCount > 0;
+  const isLoading = loadingChildren?.[identifier as string] ?? false;
+  const paging = childPaging?.[identifier as string];
+  const hasMoreChildren =
+    paging != null && paging?.offset + paging?.limit < paging?.total;
+
+  return {
+    identifier,
+    childDomains,
+    childrenCount,
+    hasChildren,
+    isLoading,
+    hasMoreChildren,
+  };
+};
+
+const LoadMoreTreeItem = ({
+  identifier,
+  isLoading,
+  t,
+  onLoadMore,
+}: {
+  identifier: string;
+  isLoading: boolean;
+  t: (key: string) => string;
+  onLoadMore: (identifier: string) => void;
+}) => (
+  <Tree.Item
+    id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+    key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+    textValue={t('label.load-more')}>
+    <Tree.ItemContent showExpandIcon={false}>
+      <button
+        className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onLoadMore(identifier);
+        }}>
+        {isLoading ? <Loader size="small" /> : t('label.load-more')}
+      </button>
+    </Tree.ItemContent>
+  </Tree.Item>
+);
+
 const DomainTreeView = ({
   searchQuery,
   filters,
   refreshToken = 0,
   openAddDomainDrawer,
+  onClearSearch,
 }: DomainTreeViewProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -761,13 +826,9 @@ const DomainTreeView = ({
 
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      if (
-        !hasMore ||
-        isLoadingMore ||
-        isHierarchyLoading ||
-        searchQuery ||
-        hasActiveFilters
-      ) {
+      const isScrollLoadBlocked =
+        !hasMore || isLoadingMore || isHierarchyLoading;
+      if (isScrollLoadBlocked || searchQuery || hasActiveFilters) {
         return;
       }
 
@@ -790,19 +851,18 @@ const DomainTreeView = ({
   const renderTreeItems = useCallback(
     (nodes: Domain[]) => {
       return nodes.map((node) => {
-        const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+        const {
+          identifier,
+          childDomains,
+          childrenCount,
+          hasChildren,
+          isLoading,
+          hasMoreChildren,
+        } = getTreeNodeMeta(node, childPaging, loadingChildren);
 
         if (!identifier) {
           return null;
         }
-
-        const childDomains = (node?.children as unknown as Domain[]) ?? [];
-        const childrenCount = node?.childrenCount || childDomains?.length || 0;
-        const hasChildren = childDomains?.length > 0 || childrenCount > 0;
-        const isLoading = loadingChildren?.[identifier] ?? false;
-        const paging = childPaging?.[identifier];
-        const hasMoreChildren =
-          paging != null && paging?.offset + paging?.limit < paging?.total;
 
         return (
           <Tree.Item
@@ -836,26 +896,12 @@ const DomainTreeView = ({
             </Tree.ItemContent>
             {childDomains.length > 0 && renderTreeItems(childDomains)}
             {hasMoreChildren && (
-              <Tree.Item
-                id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
-                key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
-                textValue={t('label.load-more')}>
-                <Tree.ItemContent showExpandIcon={false}>
-                  <button
-                    className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      loadDomains(identifier, true);
-                    }}>
-                    {loadingChildren[identifier] ? (
-                      <Loader size="small" />
-                    ) : (
-                      t('label.load-more')
-                    )}
-                  </button>
-                </Tree.ItemContent>
-              </Tree.Item>
+              <LoadMoreTreeItem
+                identifier={identifier}
+                isLoading={isLoading}
+                t={t}
+                onLoadMore={(id) => loadDomains(id, true)}
+              />
             )}
           </Tree.Item>
         );
@@ -957,21 +1003,49 @@ const DomainTreeView = ({
     t,
   ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
+    if (searchQuery?.trim() || hasActiveFilters) {
+      return (
+        <div className="tw:relative tw:flex-1 tw:h-full">
+          <EmptyPlaceholder
+            actions={[
+              {
+                color: 'primary',
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => onClearSearch?.(),
+              },
+            ]}
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearch className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+          />
+        </div>
+      );
+    }
+
     return (
-      <ErrorPlaceHolder
-        buttonId="domain-add-button"
-        buttonTitle={t('label.add-entity', {
-          entity: t('label.domain'),
-        })}
-        className="border-none"
-        heading={t('message.no-data-message', {
-          entity: t('label.domain-lowercase-plural'),
-        })}
-        icon={<FolderEmptyIcon />}
-        permission={permissions.domain?.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-        onClick={openAddDomainDrawer}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          actions={
+            permissions.domain?.Create
+              ? [
+                  {
+                    color: 'primary',
+                    iconLeading: <Expand size={14} />,
+                    key: 'add-domain',
+                    label: t('label.add-entity', { entity: t('label.domain') }),
+                    onPress: openAddDomainDrawer,
+                  },
+                ]
+              : []
+          }
+          description={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
+          icon={<DomainIcon className="tw:text-fg-brand-primary" />}
+          title={t('label.no-entity', { entity: t('label.domain-plural') })}
+        />
+      </div>
     );
   }
 

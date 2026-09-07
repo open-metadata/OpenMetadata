@@ -14,7 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -100,28 +104,23 @@ export class PipelineClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/pipelineServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/pipelines', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'PipelineClass.create service',
+      createPath: '/api/v1/services/pipelineServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'PipelineClass.create pipeline',
+      createPath: '/api/v1/pipelines',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'PipelineClass.create'
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'PipelineClass.create'
-    );
-
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
