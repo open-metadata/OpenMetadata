@@ -12,6 +12,10 @@
 Salesforce Data 360 constants
 """
 
+# Mirrors the `paginationLimit` default in data360Connection.json; used when the
+# stored connection carries an explicit null.
+DEFAULT_PAGINATION_LIMIT = 10
+
 
 class MetadataTypesConstant:
     DATASPACES = "Dataspaces"

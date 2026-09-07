@@ -1,7 +1,7 @@
 {
   "name": "Data360",
   "displayName": "Data360 Test Connection",
-  "description": "This Test Connection validates the access against the Salesforce Data 360 instance and confirms that the provided credentials are valid.",
+  "description": "This Test Connection validates the access against the Salesforce Data 360 instance and the basic metadata extraction of data spaces and their Data Lake, Data Model and Calculated Insight objects.",
   "steps": [
     {
       "name": "CheckAccess",
@@ -9,6 +9,24 @@
       "errorMessage": "Failed to connect to Salesforce Data 360 — please validate the Consumer Key, Consumer Secret, and Salesforce Domain.",
       "shortCircuit": true,
       "mandatory": true
+    },
+    {
+      "name": "GetDatabases",
+      "description": "List the Data 360 data spaces, which are ingested as databases.",
+      "errorMessage": "Failed to fetch data spaces, please validate that the connected app is granted the cdp_query_api and cdp_profile_api scopes.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "From the first data space, list its Data Lake Objects, which are ingested as tables.",
+      "errorMessage": "Failed to fetch Data Lake Objects, please validate that the connected app can read the ssot/metadata endpoint.",
+      "mandatory": true
+    },
+    {
+      "name": "GetCalculatedInsights",
+      "description": "From the first data space, list its Calculated Insights, which are ingested as views. Not mandatory: an instance with no Calculated Insight still ingests successfully.",
+      "errorMessage": "Failed to fetch Calculated Insights. Data Lake and Data Model Objects will still be ingested.",
+      "mandatory": false
     }
   ]
 }

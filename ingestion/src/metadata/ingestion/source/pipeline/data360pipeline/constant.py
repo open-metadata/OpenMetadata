@@ -12,6 +12,10 @@
 Salesforce Data 360 pipeline constants
 """
 
+# Mirrors the `paginationLimit` default in data360PipelineConnection.json; used when
+# the stored connection carries an explicit null.
+DEFAULT_PAGINATION_LIMIT = 10
+
 
 class MetadataTypesConstant:
     DATASTREAMS = "dataStreams"

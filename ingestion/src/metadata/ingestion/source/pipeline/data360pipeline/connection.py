@@ -22,6 +22,18 @@ from metadata.generated.schema.entity.services.connections.pipeline.data360Pipel
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.data360.client import (
+    get_calculated_insights,
+    get_datastreams,
+    get_datatransforms,
+)
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+# The steps below prove the connected app can reach each API; they are not a dry
+# run of the ingestion, so they ask for the smallest page the endpoints allow.
+PROBE_LIMIT = 1
 
 
 def get_connection(connection: Data360PipelineConnection) -> Salesforce:
@@ -40,11 +52,22 @@ def test_connection(
     service_connection: Data360PipelineConnection,
     automation_workflow: AutomationWorkflow | None = None,
 ):
-    """Validates connectivity to the Salesforce Data 360 instance."""
-    test_fn = {"CheckAccess": client.describe}
+    """Validates connectivity and that the connected app can list each object type
+    ingested as a pipeline. Authenticating is not enough on its own, since Data 360
+    grants its scopes per API."""
+    test_fn = {
+        "CheckAccess": client.describe,
+        "GetPipelines": lambda: get_datastreams(client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning),
+        "GetCalculatedInsights": lambda: get_calculated_insights(
+            client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
+        ),
+        "GetDataTransforms": lambda: get_datatransforms(
+            client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
+        ),
+    }
     return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_type=service_connection.type.value,
+        service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
         automation_workflow=automation_workflow,
     )

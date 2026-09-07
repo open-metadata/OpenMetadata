@@ -15,7 +15,7 @@ Pydantic models for Salesforce Data 360 pipeline entities
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
     MetadataTypesConstant,
@@ -28,11 +28,11 @@ class DataCloudPipelineDetails(ABC):
         pass
 
     @abstractmethod
-    def get_display_name(self) -> str:
+    def get_display_name(self) -> str | None:
         pass
 
     @abstractmethod
-    def get_status(self) -> str:
+    def get_status(self) -> str | None:
         pass
 
     @abstractmethod
@@ -125,9 +125,11 @@ class AdvancedAttributes(BaseModel):
     delimiter: str | None = ""
     driveLibraryId: str | None = ""  # noqa: N815
     fileType: str | None = ""  # noqa: N815
-    schema: str | None = ""
+    source_schema: str | None = Field(default="", alias="schema")
     database: str | None = ""
     object: str | None = ""
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class SourceField(BaseModel):
@@ -149,7 +151,7 @@ class DataStreamDetails(BaseModel, DataCloudPipelineDetails):
     lastRunStatus: str | None = None  # noqa: N815
     lastRefreshDate: str | None = None  # noqa: N815
     mappings: list[Mapping] | None = None
-    name: str | None = None
+    name: str
     recordId: str | None = None  # noqa: N815
     refreshConfig: RefreshConfig | None = None  # noqa: N815
     sourceFields: list[SourceField] | None = None  # noqa: N815
@@ -160,14 +162,14 @@ class DataStreamDetails(BaseModel, DataCloudPipelineDetails):
     def get_name(self) -> str:
         return self.name
 
-    def get_display_name(self) -> str:
+    def get_display_name(self) -> str | None:
         return self.label
 
-    def get_status(self) -> str:
+    def get_status(self) -> str | None:
         return self.status
 
     def get_tags(self) -> list[str]:
-        return [self.status, self.dataStreamType]
+        return [tag for tag in (self.status, self.dataStreamType) if tag]
 
     def get_metadata_type(self) -> str:
         return MetadataTypesConstant.DATASTREAM
@@ -199,7 +201,7 @@ class Measure(BaseModel):
 
 
 class CalculatedInsightDetails(BaseModel, DataCloudPipelineDetails):
-    apiName: str | None = None  # noqa: N815
+    apiName: str  # noqa: N815
     calculatedInsightStatus: str | None = None  # noqa: N815
     creationType: str | None = None  # noqa: N815
     dataSpace: str | None = None  # noqa: N815
@@ -226,14 +228,14 @@ class CalculatedInsightDetails(BaseModel, DataCloudPipelineDetails):
     def get_name(self) -> str:
         return self.apiName
 
-    def get_display_name(self) -> str:
+    def get_display_name(self) -> str | None:
         return self.displayName
 
-    def get_status(self) -> str:
+    def get_status(self) -> str | None:
         return self.calculatedInsightStatus
 
     def get_tags(self) -> list[str]:
-        return [self.calculatedInsightStatus, self.definitionType, self.creationType]
+        return [tag for tag in (self.calculatedInsightStatus, self.definitionType, self.creationType) if tag]
 
     def get_metadata_type(self) -> str:
         return MetadataTypesConstant.CALCULATED_INSIGHT
@@ -248,7 +250,7 @@ class ActionUrls(BaseModel):
     retryAction: str | None = None  # noqa: N815
 
 
-class Field(BaseModel):
+class DataObjectField(BaseModel):
     isPrimaryKey: bool | None = None  # noqa: N815
     keyQualifierField: str | None = None  # noqa: N815
     label: str | None = None
@@ -259,7 +261,7 @@ class Field(BaseModel):
 class OutputDataObject(BaseModel):
     category: str | None = None
     createdDate: str | None = None  # noqa: N815
-    fields: list[Field] | None = None
+    fields: list[DataObjectField] | None = None
     id: str | None = None
     label: str | None = None
     lastModifiedDate: str | None = None  # noqa: N815
@@ -299,7 +301,7 @@ class DataTransformDetails(BaseModel, DataCloudPipelineDetails):
     lastModifiedDate: str | None = None  # noqa: N815
     lastRunDate: str | None = None  # noqa: N815
     lastRunStatus: str | None = None  # noqa: N815
-    name: str | None = None
+    name: str
     status: str | None = None
     type: str | None = None
     url: str | None = None
@@ -311,14 +313,14 @@ class DataTransformDetails(BaseModel, DataCloudPipelineDetails):
     def get_name(self) -> str:
         return self.name
 
-    def get_display_name(self) -> str:
+    def get_display_name(self) -> str | None:
         return self.label
 
-    def get_status(self) -> str:
+    def get_status(self) -> str | None:
         return self.status
 
     def get_tags(self) -> list[str]:
-        return [self.status, self.creationType, self.type]
+        return [tag for tag in (self.status, self.creationType, self.type) if tag]
 
     def get_metadata_type(self) -> str:
         return MetadataTypesConstant.DATATRANSFORM

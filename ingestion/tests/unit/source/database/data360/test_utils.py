@@ -20,11 +20,12 @@ from metadata.ingestion.source.database.data360.constant import (
     MetadataTypesConstant,
     ResponseConstant,
 )
+from metadata.ingestion.source.database.data360.exceptions import Data360ResponseError
 from metadata.ingestion.source.database.data360.utils import (
     add_column_suffix,
     combine_ci_fields,
     decode_html_entities,
-    get_json_config,
+    get_endpoint_paging,
     get_metadata_type,
     get_schema_name,
     get_table_constraints,
@@ -95,23 +96,27 @@ def test_get_schema_name_raises_for_unknown_suffix():
         get_schema_name("unknown_suffix")
 
 
-def test_get_json_config_returns_none_for_unknown_type():
-    assert get_json_config("UnknownType") is None
+def test_get_endpoint_paging_raises_for_unknown_type():
+    # An unmapped object type used to yield ``{None: limit, None: 0}`` query params
+    # and a first-page-only listing; it must be a hard error instead.
+    with pytest.raises(Data360ResponseError, match="No Data 360 pagination contract"):
+        get_endpoint_paging("UnknownType")
 
 
-def test_get_json_config_calculated_insight_uses_batch_size_and_total():
-    config = get_json_config(MetadataTypesConstant.CALCULATED_INSIGHT)
-    assert config is not None
-    assert config[Constant.LIMIT] == Constant.BATCH_SIZE
-    assert config[ResponseConstant.TOTAL_SIZE] == ResponseConstant.TOTAL
+def test_get_endpoint_paging_calculated_insight_uses_batch_size_and_total():
+    paging = get_endpoint_paging(MetadataTypesConstant.CALCULATED_INSIGHT)
+    assert paging.limit_param == Constant.BATCH_SIZE
+    assert paging.total_size_field == ResponseConstant.TOTAL
+    assert paging.items_field == ResponseConstant.ITEMS
+    assert paging.envelope_field == ResponseConstant.COLLECTION
 
 
-def test_get_json_config_dataspaces_uses_limit_and_total_size():
-    config = get_json_config(MetadataTypesConstant.DATASPACES)
-    assert config is not None
-    assert config[Constant.LIMIT] == Constant.LIMIT
-    assert config[ResponseConstant.TOTAL_SIZE] == ResponseConstant.TOTAL_SIZE
-    assert config[ResponseConstant.ITEMS] == ResponseConstant.DATASPACES
+def test_get_endpoint_paging_dataspaces_uses_limit_and_total_size():
+    paging = get_endpoint_paging(MetadataTypesConstant.DATASPACES)
+    assert paging.limit_param == Constant.LIMIT
+    assert paging.total_size_field == ResponseConstant.TOTAL_SIZE
+    assert paging.items_field == ResponseConstant.DATASPACES
+    assert paging.envelope_field is None
 
 
 def test_add_column_suffix_appends_when_missing():

@@ -647,7 +647,7 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):  # noqa: UP
                 if "localhost" not in host_port_str:
                     raise error  # noqa: TRY201
 
-                host_port_type = type(config.serviceConnection.root.config.hostPort)
+                host_port_type = type(config.serviceConnection.root.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]
                 docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
                 config.serviceConnection.root.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
                 func(*args, **kwargs)

@@ -15,6 +15,7 @@ Salesforce Data 360 pipeline operational (run status) ingestion
 import re
 import traceback
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -28,17 +29,15 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.database.data360.client import (
-    get_calculated_insights,
     get_data_transform_run_history,
-    get_datastreams,
-    get_datatransforms,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
-    MetadataTypesConstant,
     ResponseConstant,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
@@ -54,6 +53,7 @@ from metadata.ingestion.source.pipeline.data360pipeline.models import (
     DataTransformDetails,
     DataTransformRun,
 )
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -64,125 +64,116 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
     Extracts run/status data from Salesforce Data 360 pipeline objects.
     """
 
-    def _get_datastreams(self):
-        for item in get_datastreams(
-            self.client,
-            pagination_limit=self.pagination_limit,
-            log_warning=self.log_warning,
-        ):
-            if self._filter_inactive_pipeline(
-                name=item.get(ResponseConstant.NAME),
-                status=item.get(ResponseConstant.STATUS),
-                pipeline_type=MetadataTypesConstant.DATASTREAM,
-            ):
-                continue
-            yield DataStreamDetails(
-                name=item.get(ResponseConstant.NAME),
-                lastRefreshDate=item.get(ResponseConstant.LAST_REFRESH_DATE),
-                lastRunStatus=item.get(ResponseConstant.LAST_RUN_STATUS),
-            )
-
-    def _get_calculated_insights(self):
-        for item in get_calculated_insights(
-            self.client,
-            pagination_limit=self.pagination_limit,
-            log_warning=self.log_warning,
-        ):
-            if self._filter_inactive_pipeline(
-                name=item.get(ResponseConstant.API_NAME),
-                status=item.get(ResponseConstant.CALCULATED_INSIGHT_STATUS),
-                pipeline_type=MetadataTypesConstant.CALCULATED_INSIGHT,
-            ):
-                continue
-            yield CalculatedInsightDetails(
-                apiName=item.get(ResponseConstant.API_NAME),
-                lastRunDateTime=item.get(ResponseConstant.LAST_RUN_DATE_TIME),
-                lastRunStatusDateTime=item.get(ResponseConstant.LAST_RUN_STATUS_DATE_TIME),
-                lastRunStatus=item.get(ResponseConstant.LAST_RUN_STATUS),
-            )
-
-    def _get_datatransforms(self):
-        for item in get_datatransforms(
-            client=self.client,
-            pagination_limit=self.pagination_limit,
-            log_warning=self.log_warning,
-        ):
-            if self._filter_inactive_pipeline(
-                name=item.get(ResponseConstant.NAME),
-                status=item.get(ResponseConstant.STATUS),
-                pipeline_type=MetadataTypesConstant.DATATRANSFORM,
-            ):
-                continue
-            yield DataTransformDetails(name=item.get(ResponseConstant.NAME))
-
-    def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:
+    def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Yields all active pipeline objects with minimal fields for status ingestion."""
-        self.pagination_limit = self.config.serviceConnection.root.config.paginationLimit
-        self.existing_pipelines_set: set = set()
-        for pipeline in self.metadata.list_all_entities(entity=Pipeline, params={"service": self.config.serviceName}):
+        self.existing_pipelines_set: set[str] = set()
+        for pipeline in self.metadata.list_all_entities(
+            entity=Pipeline, params={"service": str(self.config.serviceName)}
+        ):
             self.existing_pipelines_set.add(pipeline.name.root)
         yield from self._get_datastreams()
         yield from self._get_calculated_insights()
         yield from self._get_datatransforms()
 
     def _get_pipeline_status_type(self, status: str) -> StatusType:
-        status_map = {
-            r"\bsuccess\b": StatusType.Successful,
-            r"\bfail(ed|ure)?\b": StatusType.Failed,
-            r"\bskipped(_no_changes)?\b": StatusType.Skipped,
-        }
+        """Maps a Data 360 run status onto a StatusType.
+
+        Data 360 reports statuses in several shapes for the same outcome
+        ("SUCCESS", "COMPLETED SUCCESSFULLY", "REFRESH_FAILED", "SKIPPED_NO_CHANGES"),
+        so the keyword is searched for anywhere in the string rather than anchored
+        at the start. Failure is checked before success so a status that mentions
+        both is never reported as a success.
+        """
+        status_patterns = (
+            (r"fail(ed|ure)?\b", StatusType.Failed),
+            (r"success(ful(ly)?)?\b", StatusType.Successful),
+            (r"skipped(_no_changes)?\b", StatusType.Skipped),
+        )
         status_lower = status.lower()
-        for pattern, status_type in status_map.items():
-            if re.match(pattern, status_lower):
+        for pattern, status_type in status_patterns:
+            if re.search(pattern, status_lower):
                 return status_type
         return StatusType.Pending
 
-    def _create_pipeline_status_request(self, pipeline_name: str, status: StatusType, start_time, end_time):
-        if start_time and end_time:
-            pipeline_fqn = f"{self.config.serviceName}.{pipeline_name}"
-            task_status = TaskStatus(
-                name=pipeline_name,
-                executionStatus=status,
-                startTime=start_time,
-                endTime=end_time,
+    def _create_pipeline_status_request(
+        self,
+        pipeline_name: str,
+        status: StatusType,
+        start_time: int | None,
+        end_time: int | None,
+    ) -> Either[OMetaPipelineStatus] | None:
+        """Builds one pipeline status record, or None when Data 360 gave us no usable
+        run window. A dropped record is reported: silently returning None here is
+        how a pipeline ends up with no status at all and no explanation."""
+        if start_time is None or end_time is None:
+            self.log_warning(
+                f"Skipping {pipeline_name} run status: Data 360 returned no "
+                f"start/end timestamp (start={start_time}, end={end_time})"
             )
-            pipeline_status = PipelineStatus(timestamp=start_time, executionStatus=status, taskStatus=[task_status])
-            return Either(right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status))
-        return None
+            return None
+        task_status = TaskStatus(
+            name=pipeline_name,
+            executionStatus=status,
+            startTime=Timestamp(root=start_time),
+            endTime=Timestamp(root=end_time),
+        )
+        pipeline_status = PipelineStatus(
+            timestamp=Timestamp(root=start_time),
+            executionStatus=status,
+            taskStatus=[task_status],
+        )
+        return Either(  # pyright: ignore[reportCallIssue]
+            right=OMetaPipelineStatus(
+                pipeline_fqn=f"{self.config.serviceName}.{pipeline_name}",
+                pipeline_status=pipeline_status,
+            )
+        )
 
-    def yield_data_transform_status(self, pipeline_details: DataTransformDetails):
+    def _status_cutoff_timestamp(self) -> int:
+        """Epoch-ms floor for run statuses, from the standard `statusLookbackDays`."""
+        lookback_days = self.source_config.statusLookbackDays or 1
+        return int((datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp()) * 1000
+
+    def yield_data_transform_status(
+        self, pipeline_details: DataTransformDetails
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         run_histories = get_data_transform_run_history(
             client=self.client,
             name=pipeline_details.get_name(),
-            limit=self.source_config.lastRunsLimit,
+            limit=self.pagination_limit,
             log_warning=self.log_warning,
         )
+        cutoff_timestamp = self._status_cutoff_timestamp()
         for run in (run_histories or {}).get(ResponseConstant.HISTORIES, []):
             data_transform_run = DataTransformRun(**run)
+            start_time = self.get_timestamp(data_transform_run.startTime)
+            if start_time is not None and start_time < cutoff_timestamp:
+                continue
             result = self._create_pipeline_status_request(
                 pipeline_name=pipeline_details.get_name(),
-                start_time=self.get_timestamp(data_transform_run.startTime or 0),
-                end_time=self.get_timestamp(data_transform_run.endTime or 0),
+                start_time=start_time,
+                end_time=self.get_timestamp(data_transform_run.endTime),
                 status=self._get_pipeline_status_type(data_transform_run.status or ""),
             )
             if result:
                 yield result
 
-    def yield_ci_status(self, pipeline_details: CalculatedInsightDetails):
+    def yield_ci_status(self, pipeline_details: CalculatedInsightDetails) -> Iterable[Either[OMetaPipelineStatus]]:
         result = self._create_pipeline_status_request(
             pipeline_name=pipeline_details.get_name(),
-            start_time=self.get_timestamp(pipeline_details.lastRunDateTime or 0),
-            end_time=self.get_timestamp(pipeline_details.lastRunStatusDateTime or 0),
+            start_time=self.get_timestamp(pipeline_details.lastRunDateTime),
+            end_time=self.get_timestamp(pipeline_details.lastRunStatusDateTime),
             status=self._get_pipeline_status_type(pipeline_details.lastRunStatus or ""),
         )
         if result:
             yield result
 
-    def yield_datastream_status(self, pipeline_details: DataStreamDetails):
+    def yield_datastream_status(self, pipeline_details: DataStreamDetails) -> Iterable[Either[OMetaPipelineStatus]]:
+        refreshed_at = self.get_timestamp(pipeline_details.lastRefreshDate)
         result = self._create_pipeline_status_request(
             pipeline_name=pipeline_details.get_name(),
-            start_time=self.get_timestamp(pipeline_details.lastRefreshDate or 0),
-            end_time=self.get_timestamp(pipeline_details.lastRefreshDate or 0),
+            start_time=refreshed_at,
+            end_time=refreshed_at,
             status=self._get_pipeline_status_type(pipeline_details.lastRunStatus or ""),
         )
         if result:
@@ -208,9 +199,9 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
                     f"Unknown pipeline type {pipeline_details.get_metadata_type()} for {pipeline_details.get_name()}"
                 )
         except ResourceNotFoundException as exc:
-            self.log_warning(exc)
+            self.log_warning(str(exc))
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{pipeline_details.get_name()} Pipeline Status",
                     error=f"Unexpected error while yielding status for {pipeline_details.get_name()}: {exc}",
@@ -218,23 +209,30 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
                 )
             )
 
-    def yield_pipeline_lineage_details(self, _: DataCloudPipelineDetails) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(
+        self, pipeline_details: DataCloudPipelineDetails
+    ) -> Iterable[Either[AddLineageRequest]]:
         """Implemented in lineage ingestion."""
         return iter([])
 
-    def yield_pipeline(self, _: Any) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: DataCloudPipelineDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """Implemented in metadata ingestion."""
         return iter([])
 
-    def yield_tag(self, _: DataCloudPipelineDetails, **__) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, pipeline_details: DataCloudPipelineDetails, **__
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Implemented in metadata ingestion."""
         return iter([])
 
-    def yield_pipeline_usage(self, _: Any):
+    def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[Either[PipelineUsage]]:
         """Not implemented."""
+        return iter([])
 
-    def mark_pipelines_as_deleted(self):
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Handled by metadata ingestion."""
+        return iter([])
 
-    def process_pipeline_bulk_lineage(self):
+    def process_pipeline_bulk_lineage(self) -> Iterable[AddLineageRequest]:
         """Handled by lineage ingestion."""
+        return iter([])

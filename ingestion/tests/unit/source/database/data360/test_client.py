@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.data360.client import (
     get_dmo_mappings,
     get_metadata_by_type,
 )
+from metadata.ingestion.source.database.data360.exceptions import Data360ResponseError
 
 
 def _client(restful_return_value=None, side_effect=None) -> MagicMock:
@@ -108,7 +109,7 @@ def test_run_paginator_raises_on_a_failed_page():
     log_warning = MagicMock()
     # A failed page must raise rather than silently return a partial listing,
     # since callers use this result to mark unseen entities as deleted.
-    with pytest.raises(RuntimeError, match="Failed to fetch page"):
+    with pytest.raises(Data360ResponseError, match="page 2 of Dataspaces"):
         _run_paginator(
             client=client,
             object_type="Dataspaces",
@@ -123,7 +124,7 @@ def test_run_paginator_raises_when_first_page_has_no_response():
     log_warning = MagicMock()
     # A failed initial fetch must raise rather than silently return an empty
     # listing, since callers use this result to mark unseen entities as deleted.
-    with pytest.raises(RuntimeError, match="No response from Data 360 API"):
+    with pytest.raises(Data360ResponseError, match="No response from Data 360 API"):
         _run_paginator(
             client=client,
             object_type="Dataspaces",
@@ -131,6 +132,50 @@ def test_run_paginator_raises_when_first_page_has_no_response():
             limit=50,
             log_warning=log_warning,
         )
+
+
+def test_run_paginator_raises_when_total_size_is_missing():
+    # Defaulting a missing total to 0 stops the paginator after page one, so the
+    # truncated listing would be reported as the full set of live entities.
+    client = _client(restful_return_value={"dataSpaces": [{"name": "a"}]})
+    with pytest.raises(Data360ResponseError, match="Missing 'totalSize'"):
+        _run_paginator(
+            client=client,
+            object_type="Dataspaces",
+            path="ssot/data-spaces",
+            limit=50,
+            log_warning=MagicMock(),
+        )
+
+
+def test_run_paginator_raises_when_a_page_is_empty_before_the_total_is_reached():
+    page_one = {"totalSize": 10, "dataSpaces": [{"name": "a"}, {"name": "b"}]}
+    page_two = {"totalSize": 10, "dataSpaces": []}
+    client = _client()
+    client.restful.side_effect = [page_one, page_two]
+    with pytest.raises(Data360ResponseError, match="empty page 2"):
+        _run_paginator(
+            client=client,
+            object_type="Dataspaces",
+            path="ssot/data-spaces",
+            limit=2,
+            log_warning=MagicMock(),
+        )
+
+
+def test_run_paginator_does_not_re_request_a_not_found_page():
+    # `_get` already retries connection errors through tenacity, and a swallowed
+    # 404 will never become a 200 — the page must be requested exactly once.
+    client = _client(side_effect=SalesforceResourceNotFound("session", 404, "resource", "content"))
+    with pytest.raises(Data360ResponseError, match="No response from Data 360 API"):
+        _run_paginator(
+            client=client,
+            object_type="Dataspaces",
+            path="ssot/data-spaces",
+            limit=50,
+            log_warning=MagicMock(),
+        )
+    assert client.restful.call_count == 1
 
 
 def test_run_paginator_unwraps_calculated_insight_collection():
@@ -156,7 +201,7 @@ def test_run_paginator_unwraps_calculated_insight_collection():
 def test_run_paginator_raises_when_collection_missing_on_first_page():
     client = _client(restful_return_value={"total": 1})
     log_warning = MagicMock()
-    with pytest.raises(RuntimeError, match="Missing 'collection'"):
+    with pytest.raises(Data360ResponseError, match="Missing 'collection'"):
         _run_paginator(
             client=client,
             object_type="CalculatedInsight",
@@ -171,7 +216,7 @@ def test_run_paginator_raises_when_collection_missing_on_later_page():
     client = _client()
     client.restful.side_effect = [page_one, {"total": 2}]
     log_warning = MagicMock()
-    with pytest.raises(RuntimeError, match="Missing 'collection'"):
+    with pytest.raises(Data360ResponseError, match="Missing 'collection'"):
         _run_paginator(
             client=client,
             object_type="CalculatedInsight",

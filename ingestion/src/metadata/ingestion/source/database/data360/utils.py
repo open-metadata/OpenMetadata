@@ -26,6 +26,8 @@ from metadata.ingestion.source.database.data360.constant import (
     MetadataTypesConstant,
     ResponseConstant,
 )
+from metadata.ingestion.source.database.data360.exceptions import Data360ResponseError
+from metadata.ingestion.source.database.data360.models import EndpointPaging
 
 
 def get_metadata_type(schema_name: str) -> str | None:
@@ -77,41 +79,26 @@ def get_schema_name(table_name: str) -> str:
     raise ValueError(f"Cannot infer schema for Data 360 object '{table_name}': unknown suffix")
 
 
-def get_json_config(object_type: str) -> dict | None:
-    """Returns the API response JSON field mapping for the paginator."""
-    res_json_config = {
-        MetadataTypesConstant.CALCULATED_INSIGHT: {
-            ResponseConstant.TOTAL_SIZE: ResponseConstant.TOTAL,
-            ResponseConstant.ITEMS: ResponseConstant.ITEMS,
-            Constant.LIMIT: Constant.BATCH_SIZE,
-            Constant.OFFSET: Constant.OFFSET,
-        },
-        MetadataTypesConstant.DATASPACES: {
-            ResponseConstant.TOTAL_SIZE: ResponseConstant.TOTAL_SIZE,
-            Constant.LIMIT: Constant.LIMIT,
-            Constant.OFFSET: Constant.OFFSET,
-            ResponseConstant.ITEMS: ResponseConstant.DATASPACES,
-        },
-        MetadataTypesConstant.DATASTREAMS: {
-            ResponseConstant.TOTAL_SIZE: ResponseConstant.TOTAL_SIZE,
-            Constant.LIMIT: Constant.LIMIT,
-            Constant.OFFSET: Constant.OFFSET,
-            ResponseConstant.ITEMS: ResponseConstant.DATASTREAMS,
-        },
-        MetadataTypesConstant.DATATRANSFORMS: {
-            ResponseConstant.TOTAL_SIZE: ResponseConstant.TOTAL_SIZE,
-            Constant.LIMIT: Constant.LIMIT,
-            Constant.OFFSET: Constant.OFFSET,
-            ResponseConstant.ITEMS: ResponseConstant.DATATRANSFORMS,
-        },
-        MetadataTypesConstant.METADATA: {
-            ResponseConstant.TOTAL_SIZE: ResponseConstant.TOTAL_SIZE,
-            Constant.LIMIT: Constant.LIMIT,
-            Constant.OFFSET: Constant.OFFSET,
-            ResponseConstant.ITEMS: ResponseConstant.METADATA,
-        },
-    }
-    return res_json_config.get(object_type)
+_ENDPOINT_PAGING: dict[str, EndpointPaging] = {
+    MetadataTypesConstant.CALCULATED_INSIGHT: EndpointPaging(
+        items_field=ResponseConstant.ITEMS,
+        limit_param=Constant.BATCH_SIZE,
+        total_size_field=ResponseConstant.TOTAL,
+        envelope_field=ResponseConstant.COLLECTION,
+    ),
+    MetadataTypesConstant.DATASPACES: EndpointPaging(items_field=ResponseConstant.DATASPACES),
+    MetadataTypesConstant.DATASTREAMS: EndpointPaging(items_field=ResponseConstant.DATASTREAMS),
+    MetadataTypesConstant.DATATRANSFORMS: EndpointPaging(items_field=ResponseConstant.DATATRANSFORMS),
+    MetadataTypesConstant.METADATA: EndpointPaging(items_field=ResponseConstant.METADATA),
+}
+
+
+def get_endpoint_paging(object_type: str) -> EndpointPaging:
+    """Returns the paging contract of a Data 360 listing endpoint."""
+    paging = _ENDPOINT_PAGING.get(object_type)
+    if paging is None:
+        raise Data360ResponseError(f"No Data 360 pagination contract defined for object type '{object_type}'")
+    return paging
 
 
 def add_column_suffix(column: str) -> str:

@@ -20,7 +20,7 @@ from metadata.ingestion.source.pipeline.data360pipeline.operational import (
 from metadata.utils.service_spec import BaseSpec
 
 ServiceSpec = BaseSpec(
-    metadata_source_class=Data360PipelineSource,
-    lineage_source_class=Data360PipelineLineageSource,
-    usage_source_class=Data360PipelineOperationalSource,
+    metadata_source_class=Data360PipelineSource,  # pyright: ignore[reportArgumentType]
+    lineage_source_class=Data360PipelineLineageSource,  # pyright: ignore[reportArgumentType]
+    usage_source_class=Data360PipelineOperationalSource,  # pyright: ignore[reportArgumentType]
 )

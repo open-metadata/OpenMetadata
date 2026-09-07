@@ -1221,4 +1221,4 @@ class TableauSource(DashboardServiceSource):
         """
         if self.config.serviceConnection.root.config.proxyURL:  # pyright: ignore[reportAttributeAccessIssue]
             return str(self.config.serviceConnection.root.config.proxyURL)  # pyright: ignore[reportAttributeAccessIssue]
-        return str(self.config.serviceConnection.root.config.hostPort)
+        return str(self.config.serviceConnection.root.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]

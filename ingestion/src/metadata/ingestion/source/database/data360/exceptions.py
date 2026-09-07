@@ -8,7 +8,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from metadata.ingestion.source.database.data360.metadata import Data360Source
-from metadata.utils.service_spec.default import DefaultDatabaseSpec
+"""
+Exceptions for the Salesforce Data 360 database source.
+"""
 
-ServiceSpec = DefaultDatabaseSpec(metadata_source_class=Data360Source)  # pyright: ignore[reportArgumentType]
+
+class Data360ResponseError(Exception):
+    """Raised when a Data 360 listing cannot be completed: a page failed to fetch,
+    or a response is missing the fields the paginator needs to know how many pages
+    exist. Both must abort the listing rather than return what was collected so
+    far, because callers treat the result as the full set of live entities and
+    soft-delete everything absent from it.
+    """

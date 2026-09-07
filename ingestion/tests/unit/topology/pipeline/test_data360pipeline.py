@@ -74,10 +74,12 @@ def _build_source() -> Data360PipelineSource:
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360PIPELINE_CONFIG)
-        return Data360PipelineSource.create(
+        source = Data360PipelineSource.create(
             MOCK_DATA360PIPELINE_CONFIG["source"],
             OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
         )
+    source.context.get().__dict__["pipeline_service"] = "local_data360pipeline"
+    return source
 
 
 class TestData360PipelineSourceCreate:
@@ -151,7 +153,6 @@ class TestData360PipelineSourceCreate:
 class TestData360PipelineSourceMetadata:
     def test_get_datastreams_yields_active_and_filters_inactive(self):
         source = _build_source()
-        source.pagination_limit = 50
         raw_items = [
             {"name": "active_stream", "status": "ACTIVE", "label": "Active Stream"},
             {"name": "inactive_stream", "status": "INACTIVE", "label": "Inactive Stream"},
@@ -166,7 +167,6 @@ class TestData360PipelineSourceMetadata:
 
     def test_get_calculated_insights_yields_active_and_filters_inactive(self):
         source = _build_source()
-        source.pagination_limit = 50
         raw_items = [
             {"apiName": "active_ci", "calculatedInsightStatus": "ACTIVE"},
             {"apiName": "inactive_ci", "calculatedInsightStatus": "INACTIVE"},
@@ -181,7 +181,6 @@ class TestData360PipelineSourceMetadata:
 
     def test_get_datatransforms_yields_active_and_filters_inactive(self):
         source = _build_source()
-        source.pagination_limit = 50
         raw_items = [
             {"name": "active_dt", "status": "ACTIVE"},
             {"name": "inactive_dt", "status": "INACTIVE"},
@@ -212,6 +211,25 @@ class TestData360PipelineSourceMetadata:
         ):
             pipelines = list(source.get_pipelines_list())
         assert [p.get_name() for p in pipelines] == ["ds1", "ci1", "dt1"]
+
+    def test_pagination_limit_comes_from_the_connection(self):
+        source = _build_source()
+        assert source.pagination_limit == 50
+
+    def test_parse_pipeline_skips_a_record_the_api_returned_without_a_name(self):
+        source = _build_source()
+        raw_items = [
+            {"name": "named_stream", "status": "ACTIVE"},
+            {"status": "ACTIVE", "label": "No name at all"},
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+            return_value=raw_items,
+        ):
+            results = list(source._get_datastreams())
+        # The nameless record is reported and dropped rather than aborting the listing.
+        assert [r.name for r in results] == ["named_stream"]
+        assert len(source.status.warnings) == 1
 
     def test_get_pipeline_name_delegates_to_details_object(self):
         source = _build_source()

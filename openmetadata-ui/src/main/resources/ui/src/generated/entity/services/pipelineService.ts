@@ -552,6 +552,12 @@ export interface Connection {
      */
     data360DbServiceName?: string;
     /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
      * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
      * valid range is 1-200
      */
@@ -563,7 +569,13 @@ export interface Connection {
     /**
      * Domain of Salesforce instance
      */
-    salesforceDomain?:          string;
+    salesforceDomain?: string;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?:            string;
     supportsLineageExtraction?: boolean;
     supportsUsageExtraction?:   boolean;
     /**

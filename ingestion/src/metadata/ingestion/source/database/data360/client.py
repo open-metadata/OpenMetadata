@@ -13,6 +13,7 @@ API client methods for fetching metadata from Salesforce Data 360.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from simple_salesforce.api import Salesforce
@@ -22,9 +23,10 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fi
 from metadata.ingestion.source.database.data360.constant import (
     Constant,
     MetadataTypesConstant,
-    ResponseConstant,
 )
-from metadata.ingestion.source.database.data360.utils import get_json_config
+from metadata.ingestion.source.database.data360.exceptions import Data360ResponseError
+from metadata.ingestion.source.database.data360.models import PaginatedPage
+from metadata.ingestion.source.database.data360.utils import get_endpoint_paging
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -63,79 +65,58 @@ def _run_paginator(
     object_type: str,
     path: str,
     limit: int,
-    log_warning: Callable,
+    log_warning: Callable[[str], None],
     extra_params: dict | None = None,
-) -> list:
-    """Fetches all pages of a paginated Data 360 API endpoint and returns all items."""
-    json_config = get_json_config(object_type=object_type)
-    params = {
-        json_config.get(Constant.LIMIT): limit,
-        json_config.get(Constant.OFFSET): 0,
+) -> list[dict]:
+    """Fetches all pages of a paginated Data 360 API endpoint and returns all items.
+
+    Any page that cannot be fetched or validated aborts the whole listing instead of
+    returning what was collected so far: callers treat the result as the complete set
+    of live entities and soft-delete everything missing from it.
+    """
+    paging = get_endpoint_paging(object_type=object_type)
+    params: dict[str, Any] = {
+        paging.limit_param: limit,
+        paging.offset_param: 0,
         **(extra_params or {}),
     }
 
-    response = None
-    for _ in range(3):
-        if response:
-            break
-        response = _get(
+    items: list[dict] = []
+    fetched_pages = 0
+    total_size: int | None = None
+
+    while total_size is None or fetched_pages * limit < total_size:
+        params[paging.offset_param] = fetched_pages * limit
+        payload = _get(
             client=client,
             path=path,
             params=params,
             metadata_type=object_type,
             log_warning=log_warning,
         )
-
-    if not response:
-        raise RuntimeError(
-            f"No response from Data 360 API for {object_type} at {path}. Aborting to "
-            "avoid returning an empty listing that could be mistaken for the full set "
-            "of live entities."
-        )
-
-    if object_type == MetadataTypesConstant.CALCULATED_INSIGHT:
-        response = response.get(ResponseConstant.COLLECTION)
-        if not response:
-            raise RuntimeError(
-                f"Missing '{ResponseConstant.COLLECTION}' in response for {object_type} "
-                f"at {path}. Aborting to avoid returning an empty listing that could be "
-                "mistaken for the full set of live entities."
+        if payload is None:
+            raise Data360ResponseError(
+                f"No response from Data 360 API for page {fetched_pages + 1} of {object_type} at {path}"
             )
 
-    total_size = response.get(json_config.get(ResponseConstant.TOTAL_SIZE), 0)
-    total_objects = list(response.get(json_config.get(ResponseConstant.ITEMS), []))
-
-    page = 1
-    while (total_size - page * limit) > 0:
-        params[json_config.get(Constant.OFFSET)] = page * limit
-        page_response = _get(
-            client=client,
-            path=path,
-            params=params,
-            metadata_type=object_type,
-            log_warning=log_warning,
+        page = PaginatedPage.from_payload(
+            payload=payload,
+            paging=paging,
+            context=f"page {fetched_pages + 1} of {object_type} at {path}",
         )
-        page += 1
-        if not page_response:
-            raise RuntimeError(
-                f"Failed to fetch page {page} for {object_type} at {path}: "
-                "API returned no response. Aborting to avoid returning a partial "
-                "listing that could be mistaken for the full set of live entities."
+        total_size = page.total_size
+        fetched_pages += 1
+
+        if not page.items and fetched_pages * limit < total_size:
+            raise Data360ResponseError(
+                f"Data 360 reported {total_size} {object_type} at {path} but returned an empty page {fetched_pages}"
             )
-        if object_type == MetadataTypesConstant.CALCULATED_INSIGHT:
-            page_response = page_response.get(ResponseConstant.COLLECTION)
-            if not page_response:
-                raise RuntimeError(
-                    f"Missing '{ResponseConstant.COLLECTION}' in response for page {page} "
-                    f"of {object_type} at {path}. Aborting to avoid returning a partial "
-                    "listing that could be mistaken for the full set of live entities."
-                )
-        total_objects.extend(page_response.get(json_config.get(ResponseConstant.ITEMS), []))
+        items.extend(page.items)
 
-    return total_objects
+    return items
 
 
-def get_dataspaces(client: Salesforce, limit: int, log_warning: Callable) -> list:
+def get_dataspaces(client: Salesforce, limit: int, log_warning: Callable[[str], None]) -> list[dict]:
     """Fetches all data spaces from Data 360."""
     return _run_paginator(
         client=client,
@@ -151,8 +132,8 @@ def get_metadata_by_type(
     entity_type: str,
     dataspace_name: str,
     pagination_limit: int,
-    log_warning: Callable,
-) -> list:
+    log_warning: Callable[[str], None],
+) -> list[dict]:
     """Fetches all metadata objects of the given type within a dataspace, across all pages."""
     return _run_paginator(
         client=client,
@@ -164,7 +145,9 @@ def get_metadata_by_type(
     )
 
 
-def get_calculated_insight_by_name(client: Salesforce, entity_name: str, log_warning: Callable) -> dict | None:
+def get_calculated_insight_by_name(
+    client: Salesforce, entity_name: str, log_warning: Callable[[str], None]
+) -> dict | None:
     """Fetches a single Calculated Insight definition by name."""
     return _get(
         client=client,
@@ -174,7 +157,7 @@ def get_calculated_insight_by_name(client: Salesforce, entity_name: str, log_war
     )
 
 
-def get_datastreams(client: Salesforce, pagination_limit: int, log_warning: Callable) -> list:
+def get_datastreams(client: Salesforce, pagination_limit: int, log_warning: Callable[[str], None]) -> list[dict]:
     """Fetches all data streams (including field mappings) from Data 360."""
     return _run_paginator(
         client=client,
@@ -185,7 +168,9 @@ def get_datastreams(client: Salesforce, pagination_limit: int, log_warning: Call
     )
 
 
-def get_calculated_insights(client: Salesforce, pagination_limit: int, log_warning: Callable) -> list:
+def get_calculated_insights(
+    client: Salesforce, pagination_limit: int, log_warning: Callable[[str], None]
+) -> list[dict]:
     """Fetches all Calculated Insights from Data 360."""
     return _run_paginator(
         client=client,
@@ -196,7 +181,9 @@ def get_calculated_insights(client: Salesforce, pagination_limit: int, log_warni
     )
 
 
-def get_dmo_mappings(client: Salesforce, dataspace_name: str, dmo_name: str, log_warning: Callable) -> dict | None:
+def get_dmo_mappings(
+    client: Salesforce, dataspace_name: str, dmo_name: str, log_warning: Callable[[str], None]
+) -> dict | None:
     """Fetches DataModelObject field mappings for lineage."""
     return _get(
         client=client,
@@ -207,7 +194,7 @@ def get_dmo_mappings(client: Salesforce, dataspace_name: str, dmo_name: str, log
     )
 
 
-def get_datatransforms(client: Salesforce, pagination_limit: int, log_warning: Callable) -> list:
+def get_datatransforms(client: Salesforce, pagination_limit: int, log_warning: Callable[[str], None]) -> list[dict]:
     """Fetches all data transforms from Data 360 (server-side cap of 20 per page)."""
     capped_limit = min(20, pagination_limit)
     return _run_paginator(
@@ -219,7 +206,9 @@ def get_datatransforms(client: Salesforce, pagination_limit: int, log_warning: C
     )
 
 
-def get_data_transform_run_history(client: Salesforce, name: str, limit: int, log_warning: Callable) -> dict | None:
+def get_data_transform_run_history(
+    client: Salesforce, name: str, limit: int, log_warning: Callable[[str], None]
+) -> dict | None:
     """Fetches the run history for a specific data transform."""
     return _get(
         client=client,

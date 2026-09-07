@@ -15,6 +15,9 @@ Salesforce Data 360 pipeline metadata ingestion source
 import traceback
 from collections.abc import Iterable
 from datetime import datetime
+from typing import Any, TypeVar
+
+from pydantic import BaseModel, ValidationError
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -29,6 +32,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Timestamp,
 )
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
@@ -45,6 +53,7 @@ from metadata.ingestion.source.database.data360.constant import (
     Constant as Data360Constant,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
+    DEFAULT_PAGINATION_LIMIT,
     MetadataTypesConstant,
     ResponseConstant,
 )
@@ -60,12 +69,21 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_l
 
 logger = ingestion_logger()
 
+PipelineDetailsT = TypeVar("PipelineDetailsT", bound=BaseModel)
+
 
 class Data360PipelineSource(PipelineServiceSource):
     """
     Extracts pipeline metadata from Salesforce Data 360:
     DataStreams, Calculated Insights, and DataTransforms as pipeline entities.
     """
+
+    service_connection: Data360PipelineConnection
+
+    @property
+    def pagination_limit(self) -> int:
+        """Page size for every Data 360 listing call."""
+        return self.service_connection.paginationLimit or DEFAULT_PAGINATION_LIMIT
 
     @classmethod
     def create(
@@ -74,18 +92,28 @@ class Data360PipelineSource(PipelineServiceSource):
         metadata: OpenMetadata,
         pipeline_name: str | None = None,
     ) -> "Data360PipelineSource":
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: Data360PipelineConnection = config.serviceConnection.root.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection = config.serviceConnection.root.config if config.serviceConnection else None
         if not isinstance(connection, Data360PipelineConnection):
             raise InvalidSourceException(f"Expected Data360PipelineConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _filter_inactive_pipeline(self, name: str, status: str, pipeline_type: str) -> bool:
+    def _filter_inactive_pipeline(self, name: str | None, status: str | None, pipeline_type: str) -> bool:
         if status != "ACTIVE":
             logger.debug(f"Filtering {pipeline_type} {name}. Status: {status}")
-            self.status.filter(name, "Pipeline Filtered Out")
+            self.status.filter(str(name), "Pipeline Filtered Out")
             return True
         return False
+
+    def _parse_pipeline(self, model: type[PipelineDetailsT], item: dict) -> PipelineDetailsT | None:
+        """Validates one raw Data 360 object. A record the API returned without a
+        name cannot become a pipeline — every FQN downstream is built from it — so
+        it is reported and skipped instead of aborting the whole listing."""
+        try:
+            return model(**item)
+        except ValidationError as exc:
+            self.log_warning(f"Skipping malformed Data 360 {model.__name__}: {exc}")
+            return None
 
     def _get_datastreams(self) -> Iterable[DataStreamDetails]:
         for item in get_datastreams(
@@ -99,7 +127,9 @@ class Data360PipelineSource(PipelineServiceSource):
                 pipeline_type=MetadataTypesConstant.DATASTREAM,
             ):
                 continue
-            yield DataStreamDetails(**item)
+            details = self._parse_pipeline(DataStreamDetails, item)
+            if details:
+                yield details
 
     def _get_calculated_insights(self) -> Iterable[CalculatedInsightDetails]:
         for item in get_calculated_insights(
@@ -113,7 +143,9 @@ class Data360PipelineSource(PipelineServiceSource):
                 pipeline_type=MetadataTypesConstant.CALCULATED_INSIGHT,
             ):
                 continue
-            yield CalculatedInsightDetails(**item)
+            details = self._parse_pipeline(CalculatedInsightDetails, item)
+            if details:
+                yield details
 
     def _get_datatransforms(self) -> Iterable[DataTransformDetails]:
         for item in get_datatransforms(
@@ -127,11 +159,12 @@ class Data360PipelineSource(PipelineServiceSource):
                 pipeline_type=MetadataTypesConstant.DATATRANSFORM,
             ):
                 continue
-            yield DataTransformDetails(**item)
+            details = self._parse_pipeline(DataTransformDetails, item)
+            if details:
+                yield details
 
-    def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:
+    def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Yields all Data 360 pipeline objects."""
-        self.pagination_limit = self.config.serviceConnection.root.config.paginationLimit
         yield from self._get_datastreams()
         yield from self._get_calculated_insights()
         yield from self._get_datatransforms()
@@ -139,24 +172,26 @@ class Data360PipelineSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: DataCloudPipelineDetails) -> str:
         return pipeline_details.get_name()
 
-    def _get_life_cycle(self, created_date, updated_date):
-        if created_date and updated_date:
-            return LifeCycle(
-                updated=AccessDetails(timestamp=self.get_timestamp(updated_date)),
-                created=AccessDetails(timestamp=self.get_timestamp(created_date)),
-            )
-        return None
+    def _get_life_cycle(self, created_date: str | None, updated_date: str | None) -> LifeCycle | None:
+        created_at = self.get_timestamp(created_date)
+        updated_at = self.get_timestamp(updated_date)
+        if created_at is None or updated_at is None:
+            return None
+        return LifeCycle(
+            updated=AccessDetails(timestamp=Timestamp(root=updated_at)),
+            created=AccessDetails(timestamp=Timestamp(root=created_at)),
+        )
 
     def _get_create_pipeline_request(self, pipeline_details: DataCloudPipelineDetails) -> CreatePipelineRequest:
-        common_args = {
-            "name": pipeline_details.get_name(),
+        common_args: dict[str, Any] = {
+            "name": EntityName(pipeline_details.get_name()),
             "displayName": pipeline_details.get_display_name(),
-            "service": self.config.serviceName,
+            "service": FullyQualifiedEntityName(self.context.get().pipeline_service),  # pyright: ignore[reportAttributeAccessIssue]
             "tags": get_tag_labels(
                 self.metadata,
                 pipeline_details.get_tags(),
                 Data360Constant.TAG_CLASSIFICATION_NAME,
-                self.source_config.includeTags,
+                bool(self.source_config.includeTags),
             ),
             "tasks": [
                 Task(
@@ -183,10 +218,10 @@ class Data360PipelineSource(PipelineServiceSource):
         """Converts a Data 360 object into a Pipeline entity."""
         try:
             pipeline_request = self._get_create_pipeline_request(pipeline_details)
-            yield Either(right=pipeline_request)
+            yield Either(right=pipeline_request)  # pyright: ignore[reportCallIssue]
             self.register_record(pipeline_request=pipeline_request)
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{pipeline_details.get_name()} Pipeline",
                     error=f"Unexpected error while yielding Pipeline [{pipeline_details.get_name()}]: {exc}",
@@ -194,11 +229,17 @@ class Data360PipelineSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_status(self, _: DataCloudPipelineDetails) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(
+        self, pipeline_details: DataCloudPipelineDetails
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Implemented in the operational ingestion source."""
+        return iter([])
 
-    def yield_pipeline_lineage_details(self, _: DataCloudPipelineDetails) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(
+        self, pipeline_details: DataCloudPipelineDetails
+    ) -> Iterable[Either[AddLineageRequest]]:
         """Implemented in the lineage ingestion source."""
+        return iter([])
 
     def yield_tag(
         self, pipeline_details: DataCloudPipelineDetails, **__
@@ -211,10 +252,10 @@ class Data360PipelineSource(PipelineServiceSource):
                 classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
                 tag_description="Data360 Tags",
                 classification_description="Tags associated with Salesforce Data 360",
-                include_tags=self.source_config.includeTags,
+                include_tags=bool(self.source_config.includeTags),
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{pipeline_details.get_name()} Pipeline Tag",
                     error=f"Unexpected error while yielding tags for {pipeline_details.get_name()}: {exc}",
@@ -240,7 +281,10 @@ class Data360PipelineSource(PipelineServiceSource):
             )
         return None
 
-    def get_timestamp(self, date_time: str) -> int | None:
+    def get_timestamp(self, date_time: str | None) -> int | None:
+        """Converts a Data 360 ISO-8601 timestamp to epoch milliseconds. Absent or
+        literal-"null" values yield None, which callers must treat as "no run
+        recorded" rather than as time zero."""
         if date_time and str(date_time).lower() != "null":
             return int(datetime.fromisoformat(str(date_time).replace("Z", "+00:00")).timestamp()) * 1000
         return None

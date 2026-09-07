@@ -26,6 +26,10 @@ VERSIONS = {
     "airflow": "apache-airflow==3.3.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
+    # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
+    # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
+    # CVE-2026-28802 (alg:none bypass).
+    "authlib": "authlib>=1.6.9",
     "avro": "avro>=1.11.4,<1.12",
     "boto3": "boto3~=1.41.5",
     "cloud-sql-python-connector-pymysql": "cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0",
@@ -62,6 +66,7 @@ VERSIONS = {
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
+    "simple-salesforce": "simple_salesforce~=1.11",
     "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
@@ -128,6 +133,12 @@ COMMONS = {
         VERSIONS["geoalchemy2"],
         VERSIONS["packaging"],
     },  # Adding as Postgres SQL & GreenPlum are using common packages.
+    # Shared by the Salesforce CRM connector and both Data 360 connectors, which all
+    # talk to Salesforce through simple_salesforce's OAuth (authlib) flow.
+    "salesforce": {
+        VERSIONS["simple-salesforce"],
+        VERSIONS["authlib"],
+    },
 }
 
 DATA_DIFF = {
@@ -408,12 +419,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
-    # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
-    # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
-    # CVE-2026-28802 (alg:none bypass).
-    "salesforce": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
-    "data360": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
-    "data360pipeline": {"simple_salesforce~=1.11", "authlib>=1.6.9"},
+    "salesforce": {*COMMONS["salesforce"]},
+    "data360": {*COMMONS["salesforce"]},
+    "data360pipeline": {*COMMONS["salesforce"]},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],

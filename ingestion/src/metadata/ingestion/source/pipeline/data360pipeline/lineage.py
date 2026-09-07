@@ -15,9 +15,9 @@ Salesforce Data 360 pipeline lineage ingestion
 import json
 import traceback
 from collections.abc import Iterable
+from functools import cached_property
 from typing import Any, cast
 
-from cached_property import cached_property
 from collate_sqllineage.core.models import SubQuery
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -29,7 +29,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    Markdown,
+    SqlQuery,
+)
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -69,6 +73,7 @@ from metadata.ingestion.source.pipeline.data360pipeline.models import (
     DataStreamDetails,
     DataTransformDetails,
 )
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineUsage
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.logger import ingestion_logger
@@ -104,9 +109,10 @@ class Data360PipelineLineageSource(Data360PipelineSource):
 
     @cached_property
     def service_mapping(self) -> dict:
-        """Returns the connector-to-service name mapping from pipeline config."""
+        """Maps a Data 360 connector or data source name to the OpenMetadata service
+        holding it, as configured on the service connection."""
         try:
-            return json.loads(self.source_config.serviceMapping)
+            return json.loads(self.service_connection.serviceMapping or "{}")
         except json.JSONDecodeError as exc:
             self.status.failed(
                 error=StackTraceError(
@@ -135,15 +141,20 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     type=ENTITY_REFERENCE_TYPE_MAP[to_entity.__class__.__name__],
                 ),
                 lineageDetails=lineage_details,
-                description=description,
+                description=Markdown(description) if description else None,
             )
         )
+
+    @property
+    def _db_service_name(self) -> str:
+        """`create` refuses to build the source without it, so it is never empty here."""
+        return str(self.service_connection.data360DbServiceName)
 
     def _get_dc_object_table_entity(self, dc_obj_name: str, dataspace_name: str) -> Table:
         object_type = get_schema_name(dc_obj_name)
         table_entity = search_table_entities(
             metadata=self.metadata,
-            service_names=self.service_connection.data360DbServiceName,
+            service_names=self._db_service_name,
             database=dataspace_name,
             database_schema=object_type,
             table=dc_obj_name,
@@ -159,7 +170,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             service_name=self.config.serviceName,
             pipeline_name=pipeline_details.get_name(),
         )
-        pipeline_entity = self.metadata.es_search_from_fqn(entity_type=Pipeline, fqn_search_string=fqn_string)
+        pipeline_entity = self.metadata.es_search_from_fqn(entity_type=Pipeline, fqn_search_string=str(fqn_string))
         if not pipeline_entity:
             raise ResourceNotFoundException(
                 f"Could not find {pipeline_details.get_metadata_type()} pipeline entity for {pipeline_details.get_name()}"
@@ -168,6 +179,10 @@ class Data360PipelineLineageSource(Data360PipelineSource):
 
     def _get_source_entity(self, pipeline_details: DataStreamDetails):
         source_entity = None
+        if not pipeline_details.connectorInfo:
+            raise ResourceNotFoundException(f"Missing 'connectorInfo' for datastream '{pipeline_details.get_name()}'.")
+        connector_details = pipeline_details.connectorInfo.connectorDetails
+        advanced_attributes = pipeline_details.advancedAttributes
         connector_type = pipeline_details.connectorInfo.connectorType
         source_details = {ResponseConstant.CONNECTOR_TYPE: connector_type}
 
@@ -176,32 +191,34 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             ConnectionTypesConstant.AWS_S3,
             ConnectionTypesConstant.SFTP,
         ):
-            connector_name = pipeline_details.connectorInfo.connectorDetails.name
+            connector_name = connector_details.name if connector_details else None
             storage_service_name = self.service_mapping.get(connector_name)
             if not storage_service_name:
                 raise ResourceNotFoundException(
                     f"No service mapping found for connector '{connector_name}' in datastream "
                     f"{pipeline_details.get_name()}. Add it to serviceMapping."
                 )
-            source_details[ResponseConstant.FILE_NAME] = pipeline_details.advancedAttributes.fileName
+            file_name = advanced_attributes.fileName if advanced_attributes else None
+            source_details[ResponseConstant.FILE_NAME] = file_name
             fqn_string = fqn.build(
                 metadata=self.metadata,
                 entity_type=Container,
                 service_name=storage_service_name,
                 parent_container="*",
-                container_name=pipeline_details.advancedAttributes.fileName,
+                container_name=file_name,
             )
-            source_entity = self.metadata.es_search_from_fqn(entity_type=Container, fqn_search_string=fqn_string)
+            source_entity = self.metadata.es_search_from_fqn(entity_type=Container, fqn_search_string=str(fqn_string))
         elif connector_type == ConnectionTypesConstant.SALESFORCE_DOT_COM:
-            connector_name = pipeline_details.connectorInfo.connectorDetails.name
+            connector_name = connector_details.name if connector_details else None
             sfdc_service_name = self.service_mapping.get(connector_name)
-            if sfdc_service_name:
+            source_object = connector_details.sourceObject if connector_details else None
+            if sfdc_service_name and source_object:
                 source_entity = search_table_entities(
                     metadata=self.metadata,
                     service_names=sfdc_service_name,
                     database=None,
                     database_schema="salesforce",
-                    table=pipeline_details.connectorInfo.connectorDetails.sourceObject,
+                    table=source_object,
                 )
         elif connector_type in (
             ConnectionTypesConstant.SNOWFLAKE,
@@ -213,13 +230,15 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     f"No service mapping found for data source '{pipeline_details.dataSource}' "
                     f"in datastream {pipeline_details.get_name()}. Add it to serviceMapping."
                 )
-            source_entity = search_table_entities(
-                metadata=self.metadata,
-                service_names=service_name,
-                database=pipeline_details.advancedAttributes.database or None,
-                database_schema=pipeline_details.advancedAttributes.schema or None,
-                table=pipeline_details.advancedAttributes.object,
-            )
+            source_object = advanced_attributes.object if advanced_attributes else None
+            if source_object:
+                source_entity = search_table_entities(
+                    metadata=self.metadata,
+                    service_names=service_name,
+                    database=(advanced_attributes.database or None) if advanced_attributes else None,
+                    database_schema=(advanced_attributes.source_schema or None) if advanced_attributes else None,
+                    table=source_object,
+                )
 
         if source_entity and len(source_entity) == 1:
             return source_entity[0]
@@ -254,18 +273,14 @@ class Data360PipelineLineageSource(Data360PipelineSource):
     def _get_lineage_parser(self, query: str, name: str) -> LineageParser:
         updated_query = decode_html_entities(query)
         updated_query = f"INSERT INTO {name} {updated_query}"
-        parser = LineageParser(
-            query=updated_query,
-            timeout_seconds=self.source_config.parsingTimeoutLimit,
-            dialect=self.source_config.parsingDialect,
-        )
+        parser = LineageParser(query=updated_query)
         if not parser.parser or not parser.source_tables:
             reason = parser.query_parsing_failure_reason or f"Tables not present in query: {query}"
             raise QueryParseException(f"LineageParser failed to parse query for {name}: {reason}")
         return parser
 
-    def _extract_column_lineage(self, parser: LineageParser, name: str):
-        column_lineage = parser.parser.get_column_lineage(exclude_subquery=False)
+    def _extract_column_lineage(self, parser: LineageParser, name: str) -> list | None:
+        column_lineage = parser.parser.get_column_lineage(exclude_subquery=False)  # pyright: ignore[reportOptionalMemberAccess]
         if column_lineage:
             return column_lineage
         self.log_warning(f"Column lineage not extracted from query for {name}")
@@ -303,16 +318,22 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 )
         return result
 
-    def parse_query(self, pipeline_name: str, query: str):
+    def parse_query(self, pipeline_name: str, query: str) -> tuple[list, dict]:
         parser = self._get_lineage_parser(query=query, name=pipeline_name)
         raw_col_lineage = self._extract_column_lineage(parser=parser, name=pipeline_name)
-        column_lineage_map = self._create_column_lineage_map(raw_col_lineage)
-        return parser.source_tables, column_lineage_map
+        column_lineage_map = self._create_column_lineage_map(raw_col_lineage or [])
+        # `LineageParser.source_tables` is exposed through the third-party
+        # `cached_property`, which type checkers do not read as a descriptor.
+        return cast("list", parser.source_tables), column_lineage_map
 
     def _yield_ci_lineage(self, pipeline_details: CalculatedInsightDetails):
         if not pipeline_details.dataSpace:
             raise ResourceNotFoundException(
                 f"Missing 'dataSpace' in response for {pipeline_details.get_metadata_type()} '{pipeline_details.get_name()}'."
+            )
+        if not pipeline_details.expression:
+            raise ResourceNotFoundException(
+                f"Missing 'expression' for {pipeline_details.get_metadata_type()} '{pipeline_details.get_name()}'."
             )
         ci_table_entity = self._get_dc_object_table_entity(
             dc_obj_name=pipeline_details.get_name(),
@@ -334,23 +355,23 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     source_table=dmo_table_entity,
                     target_table=ci_table_entity,
                 )
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=self._create_add_lineage_request(
                         from_entity=dmo_table_entity,
                         to_entity=ci_table_entity,
                         lineage_details=LineageDetails(
                             pipeline=EntityReference(
-                                id=pipeline.id.root,
+                                id=pipeline.id,
                                 type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
                             ),
                             source=LineageSource.PipelineLineage,
-                            sqlQuery=pipeline_details.expression,
+                            sqlQuery=SqlQuery(pipeline_details.expression),
                             columnsLineage=column_lineage,
                         ),
                     )
                 )
             except ResourceNotFoundException as exc:
-                self.log_warning(exc)
+                self.log_warning(str(exc))
 
     def _yield_datastream_lineage(self, pipeline_details: DataStreamDetails):
         source_entity = self._get_source_entity(pipeline_details)
@@ -363,19 +384,25 @@ class Data360PipelineLineageSource(Data360PipelineSource):
         if not pipeline_details.dataLakeObjectInfo.dataSpaceInfo:
             raise ResourceNotFoundException(f"Missing 'dataSpace' for datastream '{pipeline_details.get_name()}'.")
         for dataspace in pipeline_details.dataLakeObjectInfo.dataSpaceInfo:
+            if not pipeline_details.dataLakeObjectInfo.name or not dataspace.name:
+                self.log_warning(
+                    f"Skipping a data space of datastream '{pipeline_details.get_name()}': "
+                    "the Data Lake Object or data space has no name."
+                )
+                continue
             try:
                 dlo_entity = self._get_dc_object_table_entity(
                     dc_obj_name=pipeline_details.dataLakeObjectInfo.name,
                     dataspace_name=dataspace.name,
                 )
                 col_lineages = self._get_column_lineage(pipeline_details, source_entity, dlo_entity)
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=self._create_add_lineage_request(
                         from_entity=source_entity,
                         to_entity=dlo_entity,
                         lineage_details=LineageDetails(
                             pipeline=EntityReference(
-                                id=pipeline.id.root,
+                                id=pipeline.id,
                                 type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
                             ),
                             source=LineageSource.PipelineLineage,
@@ -385,7 +412,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     )
                 )
             except ResourceNotFoundException as exc:
-                self.log_warning(msg=exc)
+                self.log_warning(msg=str(exc))
 
     def build_batch_data_transform_lineage(self, nodes: dict) -> dict:
         """
@@ -457,13 +484,13 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                             source_table=source_table,
                             target_table=target_table,
                         )
-                        yield Either(
+                        yield Either(  # pyright: ignore[reportCallIssue]
                             right=self._create_add_lineage_request(
                                 from_entity=source_table,
                                 to_entity=target_table,
                                 lineage_details=LineageDetails(
                                     pipeline=EntityReference(
-                                        id=pipeline.id.root,
+                                        id=pipeline.id,
                                         type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
                                     ),
                                     source=LineageSource.PipelineLineage,
@@ -472,18 +499,23 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                             )
                         )
                     except ResourceNotFoundException as exc:
-                        self.log_warning(exc)
+                        self.log_warning(str(exc))
             except ResourceNotFoundException as exc:
-                self.log_warning(exc)
+                self.log_warning(str(exc))
 
     def _process_streaming_data_transform(self, pipeline_details: DataTransformDetails):
+        definition = pipeline_details.definition
+        if not definition or not definition.expression:
+            raise ResourceNotFoundException(
+                f"Missing streaming 'definition.expression' for DataTransform '{pipeline_details.get_name()}'."
+            )
         pipeline = self._get_pipeline_entity(pipeline_details)
         dataspace_name = self._get_data_transform_dataspace_name(pipeline_details)
         source_objects, column_lineage_map = self.parse_query(
             pipeline_name=pipeline_details.get_name(),
-            query=pipeline_details.definition.expression,
+            query=definition.expression,
         )
-        target_objects = pipeline_details.definition.outputDataObjects or []
+        target_objects = definition.outputDataObjects or []
         source_tables, target_tables = self._process_objects(source_objects, target_objects, dataspace_name)
         for source_table in source_tables:
             for target_table in target_tables:
@@ -492,17 +524,17 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     source_table=source_table,
                     target_table=target_table,
                 )
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=self._create_add_lineage_request(
                         from_entity=source_table,
                         to_entity=target_table,
                         lineage_details=LineageDetails(
                             pipeline=EntityReference(
-                                id=pipeline.id.root,
+                                id=pipeline.id,
                                 type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
                             ),
                             source=LineageSource.PipelineLineage,
-                            sqlQuery=pipeline_details.definition.expression,
+                            sqlQuery=SqlQuery(definition.expression),
                             columnsLineage=col_lineage,
                         ),
                     )
@@ -516,14 +548,14 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     self._get_dc_object_table_entity(dc_obj_name=obj.raw_name, dataspace_name=dataspace_name)
                 )
             except ResourceNotFoundException as exc:
-                self.log_warning(exc)
+                self.log_warning(str(exc))
         for obj in target_objects:
             try:
                 target_tables.append(
                     self._get_dc_object_table_entity(dc_obj_name=obj.name, dataspace_name=dataspace_name)
                 )
             except ResourceNotFoundException as exc:
-                self.log_warning(exc)
+                self.log_warning(str(exc))
         return source_tables, target_tables
 
     def _yield_data_transform_lineage(self, pipeline_details: DataTransformDetails):
@@ -531,7 +563,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             "BATCH": self._process_batch_data_transform,
             "STREAMING": self._process_streaming_data_transform,
         }
-        process_fn = dispatch.get(pipeline_details.type)
+        process_fn = dispatch.get(pipeline_details.type or "")
         if process_fn:
             yield from process_fn(pipeline_details=pipeline_details)
 
@@ -553,6 +585,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
 
     def get_dlo_dmo_lineage(self, dmo_table: Table, dataspace_name: str):
         dmo_name = dmo_table.name.root
+        dmo_fqn = dmo_table.fullyQualifiedName.root if dmo_table.fullyQualifiedName else dmo_name
         dmo_mappings = get_dmo_mappings(
             client=self.client,
             dataspace_name=dataspace_name,
@@ -565,17 +598,18 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             try:
                 dlo_name = dmo_mapping.get("sourceEntityDeveloperName")
                 edge_status = dmo_mapping.get("status", "")
+                if not dlo_name:
+                    self.log_warning(f"Skipping a DMO mapping of {dmo_fqn}: no source entity name.")
+                    continue
                 if edge_status != "ACTIVE":
-                    self.log_warning(
-                        f"Lineage between DLO {dlo_name} and DMO {dmo_table.fullyQualifiedName.root} is not ACTIVE ({edge_status})"
-                    )
+                    self.log_warning(f"Lineage between DLO {dlo_name} and DMO {dmo_fqn} is not ACTIVE ({edge_status})")
                     continue
                 dlo_table = self._get_dc_object_table_entity(dc_obj_name=dlo_name, dataspace_name=dataspace_name)
                 col_lineages = self.get_column_lineage(dlo_table, dmo_table, dmo_mapping.get("fieldMappings", []))
                 lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
                 if col_lineages:
                     lineage_details.columnsLineage = col_lineages
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=self._create_add_lineage_request(
                         from_entity=dlo_table,
                         to_entity=dmo_table,
@@ -583,10 +617,10 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     )
                 )
             except ResourceNotFoundException as exc:
-                self.log_warning(msg=exc)
+                self.log_warning(msg=str(exc))
 
     def _yield_dlo_to_dmo_lineage(self):
-        service_name = self.service_connection.data360DbServiceName
+        service_name = self._db_service_name
         params = {"service": service_name}
         for database in self.metadata.list_all_entities(entity=Database, params=params):
             database_fqn = f"{service_name}.{database.name.root}"
@@ -611,9 +645,9 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             if yield_fn:
                 yield from yield_fn(pipeline_details)
         except ResourceNotFoundException as exc:
-            self.log_warning(exc)
+            self.log_warning(str(exc))
         except QueryParseException as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{pipeline_details.get_name()} Pipeline Lineage",
                     error=f"Error parsing SQL query for {pipeline_details.get_name()}: {exc}",
@@ -621,7 +655,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 )
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{pipeline_details.get_name()} Pipeline Lineage",
                     error=f"Unexpected error while yielding lineage: {exc}",
@@ -629,13 +663,13 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                 )
             )
 
-    def yield_pipeline_bulk_lineage_details(self) -> Iterable[AddLineageRequest]:
+    def yield_pipeline_bulk_lineage_details(self) -> Iterable[Either[AddLineageRequest]]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Yields DLO → DMO lineage for all dataspaces when includeBulkLineage is enabled."""
-        if self.source_config.includeBulkLineage:
+        if self.service_connection.includeBulkLineage:
             try:
                 yield from self._yield_dlo_to_dmo_lineage()
             except Exception as exc:
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     left=StackTraceError(
                         name="Bulk Pipeline Lineage",
                         error=f"Unexpected error while yielding bulk lineage: {exc}",
@@ -643,14 +677,22 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                     )
                 )
 
-    def yield_pipeline(self, _: Any) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: DataCloudPipelineDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """Implemented in metadata ingestion."""
+        return iter([])
 
-    def yield_pipeline_status(self, _: Any) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(
+        self, pipeline_details: DataCloudPipelineDetails
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Implemented in operational ingestion."""
+        return iter([])
 
-    def yield_tag(self, _: DataCloudPipelineDetails, **__) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, pipeline_details: DataCloudPipelineDetails, **__
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Implemented in metadata ingestion."""
+        return iter([])
 
-    def yield_pipeline_usage(self, _: Any):
+    def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[Either[PipelineUsage]]:
         """Not implemented."""
+        return iter([])

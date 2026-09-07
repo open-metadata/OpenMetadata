@@ -14,16 +14,25 @@ Salesforce Data 360 metadata ingestion source
 
 import traceback
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Table, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.data360Connection import (
     Data360Connection,
 )
@@ -38,6 +47,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SqlQuery,
 )
+from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -51,6 +61,7 @@ from metadata.ingestion.source.database.data360.client import (
 )
 from metadata.ingestion.source.database.data360.connection import get_connection
 from metadata.ingestion.source.database.data360.constant import (
+    DEFAULT_PAGINATION_LIMIT,
     Constant,
     MetadataTypesConstant,
     ResponseConstant,
@@ -87,12 +98,14 @@ class Data360Source(DatabaseServiceSource):
     dataspaces → databases, DLO/DMO/CIO schemas → schemas, objects → tables.
     """
 
+    service_connection: Data360Connection
+
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.source_config = cast("DatabaseServiceMetadataPipeline", self.config.sourceConfig.config)
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.root.config
+        self.service_connection = self.config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess,reportAttributeAccessIssue]
 
         self.dataspace_map: dict = {}
         self.table_map: dict = {}
@@ -102,26 +115,57 @@ class Data360Source(DatabaseServiceSource):
         # Schemas whose table discovery failed this run. Deletion reconciliation
         # must skip these, otherwise a transient API failure (zero tables seen)
         # would be mistaken for "every table in this schema was removed".
-        self.failed_schema_fqns: set = set()
+        self.failed_schema_fqns: set[str] = set()
         self.test_connection()
 
     @classmethod
     def create(cls, config_dict: Any, metadata: OpenMetadata, pipeline_name: str | None = None) -> "Data360Source":
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: Data360Connection = config.serviceConnection.root.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection = config.serviceConnection.root.config if config.serviceConnection else None
         if not isinstance(connection, Data360Connection):
             raise InvalidSourceException(f"Expected Data360Connection, but got {connection}")
         return cls(config, metadata)
+
+    @property
+    def pagination_limit(self) -> int:
+        """Page size for every Data 360 listing call."""
+        return self.service_connection.paginationLimit or DEFAULT_PAGINATION_LIMIT
+
+    # The topology context holds entity names as attributes created at runtime, so
+    # they are read through these accessors instead of ignoring the diagnostic at
+    # every one of the ~20 call sites below.
+    @property
+    def _service_name(self) -> str:
+        return self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
+
+    @property
+    def _database_name(self) -> str:
+        return self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+
+    @property
+    def _schema_name(self) -> str:
+        return self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+
+    def _build_fqn(self, entity_type: type, **parts: Any) -> str:
+        """`fqn.build` is typed as optional, but every call here supplies all of an
+        entity's parts, so an empty FQN is a bug rather than a state to propagate."""
+        built = fqn.build(self.metadata, entity_type=entity_type, **parts)
+        if not built:
+            raise ValueError(f"Could not build {entity_type.__name__} FQN from {parts}")
+        return built
 
     def get_database_names(self) -> Iterable[str]:
         """Yields dataspace names as database names."""
         dataspaces = get_dataspaces(
             self.client,
-            limit=self.service_connection.paginationLimit,
+            limit=self.pagination_limit,
             log_warning=self.log_warning,
         )
         for dataspace in dataspaces:
             dataspace_name = dataspace.get(ResponseConstant.NAME)
+            if not dataspace_name:
+                self.log_warning(f"Skipping Data 360 dataspace with no name: {dataspace}")
+                continue
             if filter_by_database(self.source_config.databaseFilterPattern, dataspace_name):
                 self.status.filter(dataspace_name, "Database Filtered Out")
                 continue
@@ -131,23 +175,23 @@ class Data360Source(DatabaseServiceSource):
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields classification tags derived from the dataspace status."""
         try:
-            dataspace = self.dataspace_map.get(database_name)
+            dataspace = self.dataspace_map.get(database_name, {})
             status = dataspace.get(ResponseConstant.STATUS)
-            tags = [status] if status else []
             yield from get_ometa_tag_and_classification(
-                tag_fqn=fqn.build(
-                    self.metadata,
-                    Database,
-                    service_name=self.context.get().database_service,
-                    database_name=database_name,
+                tag_fqn=FullyQualifiedEntityName(
+                    self._build_fqn(
+                        Database,
+                        service_name=self._service_name,
+                        database_name=database_name,
+                    )
                 ),
-                tags=tags,
+                tags=[status] if status else [],
                 classification_name=Constant.TAG_CLASSIFICATION_NAME,
                 tag_description=ResponseConstant.STATUS,
                 classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{database_name} Database Tag",
                     error=f"Unexpected error while yielding tags for dataspace {database_name}: {exc}",
@@ -158,24 +202,24 @@ class Data360Source(DatabaseServiceSource):
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """Yields a CreateDatabaseRequest for each dataspace."""
         try:
-            dataspace = self.dataspace_map.get(database_name)
+            dataspace = self.dataspace_map.get(database_name, {})
             status = dataspace.get(ResponseConstant.STATUS)
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 right=CreateDatabaseRequest(
-                    name=database_name,
+                    name=EntityName(database_name),
                     displayName=dataspace.get(ResponseConstant.LABEL),
                     description=dataspace.get(ResponseConstant.DESCRIPTION),
                     tags=get_tag_labels(
                         self.metadata,
                         [status] if status else [],
                         Constant.TAG_CLASSIFICATION_NAME,
-                        self.source_config.includeTags,
+                        bool(self.source_config.includeTags),
                     ),
-                    service=FullyQualifiedEntityName(self.context.get().database_service),
+                    service=FullyQualifiedEntityName(self._service_name),
                 )
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{database_name} Database",
                     error=f"Unexpected error while yielding dataspace {database_name}: {exc}",
@@ -194,21 +238,20 @@ class Data360Source(DatabaseServiceSource):
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """Yields a CreateDatabaseSchemaRequest for each DataCloud object category."""
         try:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 right=CreateDatabaseSchemaRequest(
                     name=EntityName(schema_name),
                     database=FullyQualifiedEntityName(
-                        fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Database,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
+                        self._build_fqn(
+                            Database,
+                            service_name=self._service_name,
+                            database_name=self._database_name,
                         )
                     ),
                 )
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=f"{schema_name} Database Schema",
                     error=f"Unexpected error while yielding schema {schema_name}: {exc}",
@@ -216,17 +259,18 @@ class Data360Source(DatabaseServiceSource):
                 )
             )
 
-    def get_tables_name_and_type(
-        self,
-    ) -> Iterable[tuple[str, str]] | None:
-        """Fetches DataCloud objects and yields (name, metadata_type) tuples."""
-        dataspace_name = self.context.get().database
-        schema_name = self.context.get().database_schema
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
+        """Fetches DataCloud objects for the current schema and yields (name, type)."""
+        dataspace_name = self._database_name
+        schema_name = self._schema_name
         metadata_type = get_metadata_type(schema_name)
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
+        if metadata_type is None:
+            self.log_warning(f"No Data 360 object category maps to schema {schema_name}; skipping its tables")
+            return
+        table_type = DATA360_TABLE_TYPE_MAP.get(metadata_type, TableType.Regular)
+        schema_fqn = self._build_fqn(
+            DatabaseSchema,
+            service_name=self._service_name,
             database_name=dataspace_name,
             schema_name=schema_name,
         )
@@ -235,7 +279,7 @@ class Data360Source(DatabaseServiceSource):
                 client=self.client,
                 entity_type=metadata_type,
                 dataspace_name=dataspace_name,
-                pagination_limit=self.service_connection.paginationLimit,
+                pagination_limit=self.pagination_limit,
                 log_warning=self.log_warning,
             )
         except Exception as exc:
@@ -253,38 +297,42 @@ class Data360Source(DatabaseServiceSource):
 
         for datacloud_object in metadata_items:
             table_name = datacloud_object.get(ResponseConstant.NAME)
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.get().database_service,
+            if not table_name:
+                self.log_warning(f"Skipping Data 360 {metadata_type} with no name in {dataspace_name}.{schema_name}")
+                continue
+            table_fqn = self._build_fqn(
+                Table,
+                service_name=self._service_name,
                 database_name=dataspace_name,
                 schema_name=schema_name,
                 table_name=table_name,
             )
-            filter_value = table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name
-            if filter_by_table(self.config.sourceConfig.config.tableFilterPattern, filter_value):
+            filter_value = table_fqn if self.source_config.useFqnForFiltering else table_name
+            if filter_by_table(self.source_config.tableFilterPattern, filter_value):
                 self.status.filter(table_fqn, "Table Filtered Out")
                 continue
             self.table_map[table_fqn] = datacloud_object
-            yield table_name, metadata_type
+            yield table_name, table_type
 
-    def yield_table(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """Yields a CreateTableRequest for each DataCloud object."""
+        table_name, table_type = table_name_and_type
         try:
-            table_name, table_type = table_name_and_type
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
+            table_fqn = self._build_fqn(
+                Table,
+                service_name=self._service_name,
+                database_name=self._database_name,
+                schema_name=self._schema_name,
                 table_name=table_name,
             )
             table = self.table_map.get(table_fqn)
+            if table is None:
+                self.log_warning(f"No Data 360 object was cached for {table_fqn}; skipping table")
+                return
             ci_expression = None
             description = None
 
-            if table_type == MetadataTypesConstant.CALCULATED_INSIGHT:
+            if get_metadata_type(self._schema_name) == MetadataTypesConstant.CALCULATED_INSIGHT:
                 combine_ci_fields(table)
                 if ResponseConstant.PARTITION_BY in table:
                     table[Constant.TABLE_PARTITION] = get_table_partition(
@@ -292,7 +340,8 @@ class Data360Source(DatabaseServiceSource):
                     )
                 ci_details = get_calculated_insight_by_name(self.client, table_name, self.log_warning)
                 if ci_details:
-                    ci_expression = SqlQuery(root=ci_details.get(ResponseConstant.EXPRESSION))
+                    expression = ci_details.get(ResponseConstant.EXPRESSION)
+                    ci_expression = SqlQuery(root=expression) if expression else None
                     description = ci_details.get(ResponseConstant.DESCRIPTION)
             else:
                 table[Constant.TABLE_CONSTRAINTS] = get_table_constraints(table.get(ResponseConstant.PRIMARY_KEYS, []))
@@ -301,12 +350,12 @@ class Data360Source(DatabaseServiceSource):
                     self.metadata,
                     [category] if category else [],
                     Constant.TAG_CLASSIFICATION_NAME,
-                    self.source_config.includeTags,
+                    bool(self.source_config.includeTags),
                 )
 
             table_request = CreateTableRequest(
-                name=table_name,
-                tableType=DATA360_TABLE_TYPE_MAP.get(table_type, TableType.Regular),
+                name=EntityName(table_name),
+                tableType=table_type,
                 columns=self.get_columns(table.get(ResponseConstant.FIELDS, [])),
                 displayName=table.get(ResponseConstant.DISPLAY_NAME),
                 description=description,
@@ -314,41 +363,40 @@ class Data360Source(DatabaseServiceSource):
                 tableConstraints=table.get(Constant.TABLE_CONSTRAINTS),
                 tags=table.get(Constant.TAGS, []),
                 databaseSchema=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
+                    self._build_fqn(
+                        DatabaseSchema,
+                        service_name=self._service_name,
+                        database_name=self._database_name,
+                        schema_name=self._schema_name,
                     )
                 ),
                 schemaDefinition=ci_expression,
             )
-            yield Either(right=table_request)
+            yield Either(right=table_request)  # pyright: ignore[reportCallIssue]
             self.register_record(table_request)
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
-                    name=f"{table_name_and_type[0]} Table",
+                    name=f"{table_name} Table",
                     error=f"Unexpected error while yielding table {table_name_and_type}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
 
-    def get_columns(self, fields: list) -> list:
+    def get_columns(self, fields: list) -> list[Column]:
         """Builds Column objects from DataCloud field definitions."""
         columns = []
         for ordinal, column in enumerate(fields, start=1):
             columns.append(
                 Column(
-                    name=column[ResponseConstant.NAME],
+                    name=ColumnName(column[ResponseConstant.NAME]),
                     displayName=column[ResponseConstant.DISPLAY_NAME],
-                    dataType=ColumnTypeParser.get_column_type(column[ResponseConstant.TYPE]),
+                    dataType=DataType(ColumnTypeParser.get_column_type(column[ResponseConstant.TYPE])),
                     tags=get_tag_labels(
                         self.metadata,
                         [column.get(Constant.FIELD_TYPE)] if column.get(Constant.FIELD_TYPE) else [],
                         Constant.TAG_CLASSIFICATION_NAME,
-                        self.source_config.includeTags,
+                        bool(self.source_config.includeTags),
                     ),
                     dataTypeDisplay=column[ResponseConstant.BUSINESS_TYPE],
                     ordinalPosition=ordinal,
@@ -356,29 +404,31 @@ class Data360Source(DatabaseServiceSource):
             )
         return columns
 
-    def yield_table_tags(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_table_tags(
+        self, table_name_and_type: tuple[str, TableType]
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields classification tags for non-CIO table types."""
+        table_name, _ = table_name_and_type
         try:
-            table_name, table_type = table_name_and_type
-            if table_type == MetadataTypesConstant.CALCULATED_INSIGHT:
+            if get_metadata_type(self._schema_name) == MetadataTypesConstant.CALCULATED_INSIGHT:
                 return
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
+            table_fqn = self._build_fqn(
+                Table,
+                service_name=self._service_name,
+                database_name=self._database_name,
+                schema_name=self._schema_name,
                 table_name=table_name,
             )
-            table = self.table_map.get(table_fqn)
+            table = self.table_map.get(table_fqn, {})
             category = table.get(ResponseConstant.CATEGORY)
             tags = [t for t in [category, Constant.MEASURE, Constant.DIMENSION] if t]
             yield from get_ometa_tag_and_classification(
-                tag_fqn=fqn.build(
-                    self.metadata,
-                    Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                tag_fqn=FullyQualifiedEntityName(
+                    self._build_fqn(
+                        Database,
+                        service_name=self._service_name,
+                        database_name=self._database_name,
+                    )
                 ),
                 tags=tags,
                 classification_name=Constant.TAG_CLASSIFICATION_NAME,
@@ -386,10 +436,10 @@ class Data360Source(DatabaseServiceSource):
                 classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
-                    name=f"{table_name_and_type[0]} table tags",
-                    error=f"Unexpected error while yielding tags for table {table_name_and_type[0]}: {exc}",
+                    name=f"{table_name} table tags",
+                    error=f"Unexpected error while yielding tags for table {table_name}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -398,29 +448,53 @@ class Data360Source(DatabaseServiceSource):
         logger.warning(msg)
         self.status.warning(msg, reason=msg)
 
-    def _should_skip_schema_deletion(self, schema_fqn: str) -> bool:
-        """Skip deletion reconciliation for any schema whose table discovery
-        failed this run (tracked in `failed_schema_fqns`). Without this, a
-        transient Data 360 API failure would look like "no tables in this
-        schema" and cause every previously ingested table there to be
-        soft-deleted.
+    def mark_tables_as_deleted(self):
+        """Marks tables as deleted, skipping any schema whose table discovery failed
+        this run. For those schemas "no tables fetched" means the Data 360 API call
+        failed, not that every table in the schema was removed, and reconciling
+        against an empty listing would soft-delete the whole schema.
         """
-        return schema_fqn in self.failed_schema_fqns
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
-    def get_stored_procedures(self):
-        """Not implemented for Data Cloud."""
+        if not self.source_config.markDeletedTables:
+            return
 
-    def yield_procedure_lineage_and_queries(self):
-        """Not implemented for Data Cloud."""
+        logger.info(f"Mark Deleted Tables set to True. Processing database [{self._database_name}]")
+        for schema_fqn in self._get_filtered_schema_names(return_fqn=True, add_to_status=False):
+            if schema_fqn in self.failed_schema_fqns:
+                logger.warning(
+                    f"Skipping table deletion for schema [{schema_fqn}]: its table discovery failed "
+                    "this run, so an empty listing is not evidence that its tables were removed."
+                )
+                continue
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Table,
+                entity_source_state=self.database_source_state,
+                recursive=self.source_config.markDeletedTables,
+                params={"databaseSchema": schema_fqn},
+            )
 
-    def yield_stored_procedure(self, stored_procedure):
+    def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented for Data Cloud."""
+        return iter([])
 
-    def yield_tag(self, schema_name):
+    def yield_procedure_lineage_and_queries(self) -> Iterable[Either[Any]]:
         """Not implemented for Data Cloud."""
+        return iter([])
 
-    def yield_view_lineage(self):
+    def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented for Data Cloud."""
+        return iter([])
+
+    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Not implemented for Data Cloud."""
+        return iter([])
+
+    def yield_view_lineage(self) -> Iterable[Either[Any]]:
+        """Not implemented for Data Cloud."""
+        return iter([])
 
     def close(self):
         """Nothing to close."""

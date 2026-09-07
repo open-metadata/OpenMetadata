@@ -49,7 +49,7 @@ def _(
 
     try:
         if hasattr(request.connection.config, "hostPort"):
-            host_port_str = str(request.connection.config.hostPort or "")
+            host_port_str = str(request.connection.config.hostPort or "")  # pyright: ignore[reportAttributeAccessIssue]
             if "localhost" in host_port_str:
                 result = _test_connection(metadata, request.connection.config)
                 raise_test_connection_exception(result)
@@ -60,7 +60,7 @@ def _(
         if not host_port_str or "localhost" not in host_port_str:
             raise error  # noqa: TRY201
 
-        host_port_type = type(request.connection.config.hostPort)
+        host_port_type = type(request.connection.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]
         docker_host_port_str = host_port_str.replace("localhost", "host.docker.internal")
         request.connection.config.hostPort = host_port_type(docker_host_port_str)  # pyright: ignore[reportAttributeAccessIssue]
 
