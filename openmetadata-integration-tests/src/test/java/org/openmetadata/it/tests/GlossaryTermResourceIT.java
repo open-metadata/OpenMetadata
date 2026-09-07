@@ -3705,9 +3705,10 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         200,
         response.statusCode(),
         "A user with EDIT_GLOSSARY_TERMS may apply the glossary term: " + response.body());
-    assertTrue(
-        tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
-        "Glossary term should be applied for an authorized caller");
+    Awaitility.await("Glossary term should be applied to the table for an authorized caller")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .until(() -> tableHasTag(admin, table.getId(), term.getFullyQualifiedName()));
   }
 
   @Test
@@ -3724,9 +3725,10 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         200,
         response.statusCode(),
         "A user with EDIT_GLOSSARY_TERMS may remove the glossary term: " + response.body());
-    assertFalse(
-        tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
-        "Glossary term should be removed for an authorized caller");
+    Awaitility.await("Glossary term should be removed from the table for an authorized caller")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .until(() -> !tableHasTag(admin, table.getId(), term.getFullyQualifiedName()));
   }
 
   @Test
@@ -3748,9 +3750,10 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         response.statusCode(),
         "A user with EDIT_GLOSSARY_TERMS on the table may remove its column's term: "
             + response.body());
-    assertFalse(
-        columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
-        "Glossary term should be removed from the column for an authorized caller");
+    Awaitility.await("Glossary term should be removed from the column for an authorized caller")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .until(() -> !columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()));
   }
 
   @Test
