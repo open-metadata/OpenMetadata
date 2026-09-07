@@ -213,7 +213,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     await queryListResponse;
     await userPage.click('[data-testid="query-btn"]');
     await userPage.click('[data-menu-id*="edit-query"]');
-    await userPage.locator(CODE_EDITOR_LINE).first().click();
+    await userPage.locator(CODE_EDITOR_LINE).click();
     await userPage.keyboard.type('updated');
     const saveQueryResponse = userPage.waitForResponse('/api/v1/queries/*');
     await userPage.click('[data-testid="save-query-btn"]');

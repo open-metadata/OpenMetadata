@@ -345,11 +345,6 @@
       "count": 21
     }
   },
-  "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/MultipleRename.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
@@ -630,7 +625,7 @@
   },
   "playwright/e2e/Pages/CustomProperties.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Pages/DataContractInheritance.spec.ts": {
@@ -973,7 +968,7 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 16
+      "count": 14
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {
@@ -1061,7 +1056,7 @@
   },
   "playwright/utils/metric.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/utils/navbar.ts": {

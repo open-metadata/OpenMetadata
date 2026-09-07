@@ -27,8 +27,11 @@ export const CODE_EDITOR_SCROLLER = '.cm-scroller';
 export const CODE_EDITOR_LINE = '.cm-line';
 export const CODE_EDITOR_PLACEHOLDER = '.cm-placeholder';
 
+// One contenteditable per editor, so a scope holding a single editor resolves
+// without picking by position. Pass a narrower scope (the field, card or panel)
+// when the page shows more than one.
 const resolveContent = (scope: Page | Locator) =>
-  scope.locator(CODE_EDITOR_CONTENT).first();
+  scope.locator(CODE_EDITOR_CONTENT);
 
 /** Focus a code editor by clicking the text it holds. */
 export const clickCodeEditor = async (scope: Page | Locator) => {
