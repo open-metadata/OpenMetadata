@@ -14,7 +14,7 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
@@ -123,6 +123,82 @@ export const OwnerLabel = ({
     );
   }
 
+  // Kept as closures (rather than inlined JSX) so the per-variant branching
+  // stays out of the component's own cyclomatic complexity.
+  const renderNonCompactOwners = () => (
+    <Fragment>
+      <OwnerAvatarStack
+        avatarSize={avatarSize}
+        className={className}
+        maxVisibleOwners={maxVisibleOwners}
+        ownerDisplayName={ownerDisplayName}
+        owners={owners}
+        placement={placement}
+      />
+      {hasPermission && isAssignee && onEditClick && (
+        <button
+          aria-label={t('label.edit-entity', {
+            entity: t('label.assignee-plural'),
+          })}
+          className="owner-avatar-stack-edit"
+          data-testid="edit-assignees"
+          type="button"
+          onClick={onEditClick}>
+          <EditIcon height={14} width={14} />
+        </button>
+      )}
+    </Fragment>
+  );
+
+  const renderCompactOwners = () => (
+    <Fragment>
+      {isMultipleUserAndTeam && (
+        <OwnerUserTeamList
+          avatarSize={avatarSize}
+          className={className}
+          hasPermission={hasPermission}
+          isAssignee={isAssignee}
+          isCompactView={isCompactView}
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+          placement={placement}
+          onEditClick={onEditClick}
+        />
+      )}
+
+      {isMultipleTeam && (
+        <OwnerTeamList
+          avatarSize={avatarSize}
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+        />
+      )}
+
+      {isMultipleUser && (
+        <OwnerUserList
+          avatarSize={avatarSize}
+          className={className}
+          isCompactView={isCompactView}
+          maxVisibleOwners={maxVisibleOwners}
+          ownerDisplayName={ownerDisplayName}
+          ownerLabelClassName={ownerLabelClassName}
+          owners={owners}
+        />
+      )}
+    </Fragment>
+  );
+
+  const renderCompactUpdateControl = () =>
+    isCompactView && onUpdate ? (
+      <UserTeamSelectableList
+        hasPermission={Boolean(hasPermission)}
+        multiple={multiple}
+        owner={owners}
+        tooltipText={tooltipText}
+        onUpdate={onUpdate}
+      />
+    ) : null;
+
   return (
     <div
       className={classNames({
@@ -133,76 +209,9 @@ export const OwnerLabel = ({
       data-testid="owner-label">
       {ownerElementsNonCompactView}
       <div className="tw:flex tw:items-center tw:justify-center tw:max-w-full">
-        {!isCompactView ? (
-          <>
-            <OwnerAvatarStack
-              avatarSize={avatarSize}
-              className={className}
-              maxVisibleOwners={maxVisibleOwners}
-              ownerDisplayName={ownerDisplayName}
-              owners={owners}
-              placement={placement}
-            />
-            {hasPermission && isAssignee && onEditClick && (
-              <button
-                aria-label={t('label.edit-entity', {
-                  entity: t('label.assignee-plural'),
-                })}
-                className="owner-avatar-stack-edit"
-                data-testid="edit-assignees"
-                type="button"
-                onClick={onEditClick}>
-                <EditIcon height={14} width={14} />
-              </button>
-            )}
-          </>
-        ) : (
-          <>
-            {isMultipleUserAndTeam && (
-              <OwnerUserTeamList
-                avatarSize={avatarSize}
-                className={className}
-                hasPermission={hasPermission}
-                isAssignee={isAssignee}
-                isCompactView={isCompactView}
-                ownerDisplayName={ownerDisplayName}
-                owners={owners}
-                placement={placement}
-                onEditClick={onEditClick}
-              />
-            )}
-
-            {isMultipleTeam && (
-              <OwnerTeamList
-                avatarSize={avatarSize}
-                ownerDisplayName={ownerDisplayName}
-                owners={owners}
-              />
-            )}
-
-            {isMultipleUser && (
-              <OwnerUserList
-                avatarSize={avatarSize}
-                className={className}
-                isCompactView={isCompactView}
-                maxVisibleOwners={maxVisibleOwners}
-                ownerDisplayName={ownerDisplayName}
-                ownerLabelClassName={ownerLabelClassName}
-                owners={owners}
-              />
-            )}
-          </>
-        )}
+        {!isCompactView ? renderNonCompactOwners() : renderCompactOwners()}
       </div>
-      {isCompactView && onUpdate && (
-        <UserTeamSelectableList
-          hasPermission={Boolean(hasPermission)}
-          multiple={multiple}
-          owner={owners}
-          tooltipText={tooltipText}
-          onUpdate={onUpdate}
-        />
-      )}
+      {renderCompactUpdateControl()}
     </div>
   );
 };

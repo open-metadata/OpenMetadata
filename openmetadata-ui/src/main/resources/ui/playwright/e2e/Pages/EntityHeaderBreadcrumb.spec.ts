@@ -90,8 +90,6 @@ Object.entries(entities).forEach(([label, EntityClass]) => {
     `Entity header breadcrumb - ${label}`,
     PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
     () => {
-      test.slow(true);
-
       test.beforeAll('Create entity', async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         await entity.create(apiContext);

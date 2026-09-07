@@ -149,8 +149,6 @@ test.describe(
   'Service Creation with isOwner() Permissions',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.slow();
-
     test.beforeAll('Setup prerequisites', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

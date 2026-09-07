@@ -26,7 +26,6 @@ const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
 test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
-  test.slow();
   // eslint-disable-next-line playwright/no-skipped-test -- conditional skip on required env vars; the suite only runs when SSO credentials are provided by CI or the developer
   test.skip(
     !providerType || !username || !password,
@@ -64,6 +63,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should display SSO sign-in button on /signin', async ({ page }) => {
+    test.slow();
     await page.goto('/signin');
 
     await expect(page.getByTestId('login-form-container')).toBeVisible();
@@ -76,6 +76,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should complete full SSO login and verify user session', async () => {
+    test.slow();
     const page = userPage!;
 
     await test.step('Click SSO button and redirect to IdP', async () => {
@@ -131,6 +132,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should keep the session after a page reload', async () => {
+    test.slow();
     const page = userPage!;
 
     await page.reload();
@@ -143,6 +145,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should share the session with a new page in the same context', async () => {
+    test.slow();
     const extraPage = await userContext!.newPage();
 
     try {
@@ -159,6 +162,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should sign out and return to /signin', async () => {
+    test.slow();
     const page = userPage!;
 
     await page.getByRole('menuitem', { name: /logout/i }).click();
@@ -175,6 +179,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should stay signed-out after refreshing', async () => {
+    test.slow();
     const page = userPage!;
 
     await page.reload();

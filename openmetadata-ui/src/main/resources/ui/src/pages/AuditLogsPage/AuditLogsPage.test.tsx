@@ -144,6 +144,11 @@ jest.mock('../../rest/auditLogAPI', () => ({
 
 // The real range picker cannot be driven from jsdom, so expose a button that
 // hands the page a valid range and lets the export flow run end to end.
+const mockRangeDay = {
+  startOf: () => ({ valueOf: () => 1 }),
+  endOf: () => ({ valueOf: () => 2 }),
+};
+
 jest.mock('../../components/common/DatePicker/DatePicker', () => ({
   __esModule: true,
   default: {
@@ -155,13 +160,7 @@ jest.mock('../../components/common/DatePicker/DatePicker', () => ({
       <button
         data-testid="export-date-range-picker"
         type="button"
-        onClick={() => {
-          const day = {
-            startOf: () => ({ valueOf: () => 1 }),
-            endOf: () => ({ valueOf: () => 2 }),
-          };
-          onChange([day, day]);
-        }}>
+        onClick={() => onChange([mockRangeDay, mockRangeDay])}>
         range
       </button>
     ),
