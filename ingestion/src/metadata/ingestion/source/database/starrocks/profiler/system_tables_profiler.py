@@ -17,7 +17,7 @@ Uses StarRocks system tables for efficient statistics gathering:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Type  # noqa: UP035
+from typing import Any
 
 from sqlalchemy import text
 
@@ -40,23 +40,23 @@ logger = profiler_logger()
 class StarRocksColumnStats(BaseModel):
     """Column statistics from _statistics_.column_statistics"""
 
-    column_name: Optional[str] = None  # noqa: UP045
-    row_count: Optional[int] = None  # noqa: UP045
-    data_size: Optional[int] = None  # noqa: UP045
-    distinct_count: Optional[int] = None  # noqa: UP045
-    null_count: Optional[int] = None  # noqa: UP045
-    min_value: Optional[str] = None  # noqa: UP045
-    max_value: Optional[str] = None  # noqa: UP045
+    column_name: str | None = None
+    row_count: int | None = None
+    data_size: int | None = None
+    distinct_count: int | None = None
+    null_count: int | None = None
+    min_value: str | None = None
+    max_value: str | None = None
 
 
 class StarRocksTableStats(BaseModel):
     """Table statistics from information_schema.tables"""
 
-    row_count: Optional[int] = None  # noqa: UP045
-    data_size: Optional[int] = None  # noqa: UP045
-    create_time: Optional[datetime] = None  # noqa: UP045
-    update_time: Optional[datetime] = None  # noqa: UP045
-    columns: Dict[str, StarRocksColumnStats] = {}  # noqa: RUF012, UP006
+    row_count: int | None = None
+    data_size: int | None = None
+    create_time: datetime | None = None
+    update_time: datetime | None = None
+    columns: dict[str, StarRocksColumnStats] = {}  # noqa: RUF012
 
 
 # Query to get table statistics from information_schema
@@ -92,10 +92,10 @@ WHERE table_name = :full_table_name
 class StarRocksStoredStatisticsSource(StoredStatisticsSource):
     """StarRocks system profile source using stored statistics"""
 
-    metrics: Inject[Type[MetricRegistry]]  # noqa: UP006
+    metrics: Inject[type[MetricRegistry]]
 
     @classmethod
-    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:  # noqa: UP006
+    def get_metric_stats_map(cls) -> dict[MetricRegistry, str]:
         """Map OpenMetadata metrics to StarRocks statistics column names"""
         return {
             cls.metrics.rowCount: "row_count",
@@ -106,17 +106,17 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
         }
 
     @classmethod
-    def get_metric_stats_by_name(cls) -> Dict[str, str]:  # noqa: UP006
+    def get_metric_stats_by_name(cls) -> dict[str, str]:
         return {k.name: v for k, v in cls.get_metric_stats_map().items()}
 
-    def get_statistics_metrics(self) -> Set[MetricRegistry]:  # noqa: UP006
+    def get_statistics_metrics(self) -> set[MetricRegistry]:
         return set(self.get_metric_stats_map().keys())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.stats_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
-    def get_column_statistics(self, metric: List[Metric], schema: str, table_name: str, column: str) -> Dict[str, Any]:  # noqa: UP006
+    def get_column_statistics(self, metric: list[Metric], schema: str, table_name: str, column: str) -> dict[str, Any]:
         """Get column-level statistics from _statistics_.column_statistics"""
         table_stats = self._get_cached_stats(schema, table_name)
 
@@ -138,7 +138,7 @@ class StarRocksStoredStatisticsSource(StoredStatisticsSource):
 
         return result
 
-    def get_table_statistics(self, metric: List[Metric], schema: str, table_name: str) -> Dict[str, Any]:  # noqa: UP006
+    def get_table_statistics(self, metric: list[Metric], schema: str, table_name: str) -> dict[str, Any]:
         """Get table-level statistics from information_schema.tables"""
         table_stats = self._get_cached_stats(schema, table_name)
         result = {}

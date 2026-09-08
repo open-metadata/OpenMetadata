@@ -15,7 +15,6 @@ OpenMetadata Airflow Lineage Operator
 
 import logging
 import traceback
-from typing import List  # noqa: UP035
 
 from airflow.models.baseoperator import BaseOperator
 from airflow.sdk.definitions.context import Context
@@ -65,7 +64,7 @@ class OpenMetadataLineageOperator(BaseOperator):
         and push it to OpenMetadata using the Python Client.
         """
         try:
-            xlet_list: List[XLets] = get_xlets_from_dag(self.dag)  # noqa: UP006
+            xlet_list: list[XLets] = get_xlets_from_dag(self.dag)
 
             logger.info(f"Extracted the following XLet data from the DAG: {xlet_list}")
 

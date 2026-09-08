@@ -14,16 +14,10 @@ Classifier for PII detection and sensitivity tagging.
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import (  # noqa: UP035
+from collections.abc import Hashable, Mapping, Sequence
+from typing import (
     Any,
-    DefaultDict,
-    Dict,
     Generic,
-    Hashable,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
     TypeVar,
     final,
 )
@@ -38,7 +32,7 @@ from metadata.pii.algorithms.feature_extraction import (
     is_non_pii_datatype,
     split_column_name,
 )
-from metadata.pii.algorithms.preprocessing import preprocess_values
+from metadata.pii.algorithms.preprocessing import ner_normalize_values, preprocess_values
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
     combine_patchers,
@@ -50,6 +44,12 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
+
+# Tags detected by spaCy NER (not pattern recognisers) that benefit from
+# mixed-case input.  The NER second-pass union is restricted to these to avoid
+# false positives from title-casing status-enum values ("ACTIVE" → "Active")
+# which pattern recognisers never flag but spaCy NER might mis-classify as PERSON.
+_NER_BASED_TAGS: frozenset[PIITag] = frozenset({PIITag.PERSON, PIITag.LOCATION, PIITag.NRP})
 
 T = TypeVar("T", bound=Hashable)
 
@@ -65,8 +65,8 @@ class ColumnClassifier(ABC, Generic[T]):
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,  # noqa: UP045
-        column_data_type: Optional[DataType] = None,  # noqa: UP045
+        column_name: str | None = None,
+        column_data_type: DataType | None = None,
     ) -> Mapping[T, float]:
         """
         Predict the scores for the given column and sample data of the column.
@@ -92,7 +92,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         column_name_contribution: float = 0.5,
         score_cutoff: float = 0.1,
         relative_cardinality_cutoff: float = 0.01,
-        extra_patchers: Optional[Sequence[PresidioRecognizerResultPatcher]] = None,  # noqa: UP045
+        extra_patchers: Sequence[PresidioRecognizerResultPatcher] | None = None,
     ):
         set_presidio_logger_level()
         self._presidio_analyzer: AnalyzerEngine = build_analyzer_engine()
@@ -106,8 +106,8 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,  # noqa: UP045
-        column_data_type: Optional[DataType] = None,  # noqa: UP045
+        column_name: str | None = None,
+        column_data_type: DataType | None = None,
     ) -> Mapping[PIITag, float]:
         if column_data_type is not None and is_non_pii_datatype(column_data_type):
             return {}
@@ -124,23 +124,44 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             return {}
         context = split_column_name(column_name) if column_name else None
 
-        content_results = extract_pii_tags(
-            self._presidio_analyzer,
-            str_values,
-            context=context,
-            recognizer_result_patcher=combine_patchers(
-                date_time_patcher,
-                url_patcher,
-                *self._extra_patchers,
-            ),
+        patcher = combine_patchers(date_time_patcher, url_patcher, *self._extra_patchers)
+
+        # First pass: original values — pattern recognisers (IBAN, CRYPTO, …) need the
+        # original casing and must not receive title-cased input.
+        content_results: dict[PIITag, float] = dict(
+            extract_pii_tags(
+                self._presidio_analyzer,
+                str_values,
+                context=context,
+                recognizer_result_patcher=patcher,
+            )
         )
 
-        column_name_matches: Set[PIITag] = set()  # noqa: UP006
+        # Second pass: NER-normalised values — purely alphabetic ALL-CAPS tokens are
+        # title-cased so spaCy NER (trained on mixed-case text) can detect names like
+        # "SERGE".  We union by taking the max score per tag, but ONLY for NER-based
+        # tags (PERSON, LOCATION, NRP).  Pattern recognisers (IBAN, CRYPTO, …) already
+        # see the correct original casing from the first pass; restricting the union
+        # prevents status-enum values like "ACTIVE" → "Active" from introducing
+        # spurious PERSON hits that pattern recognisers would never produce.
+        ner_values = ner_normalize_values(str_values)
+        if ner_values != str_values:
+            ner_results = extract_pii_tags(
+                self._presidio_analyzer,
+                ner_values,
+                context=context,
+                recognizer_result_patcher=patcher,
+            )
+            for tag, score in ner_results.items():
+                if tag in _NER_BASED_TAGS and score > content_results.get(tag, 0.0):
+                    content_results[tag] = score
+
+        column_name_matches: set[PIITag] = set()
 
         if column_name is not None:
             column_name_matches = extract_pii_from_column_names(column_name, patterns=self._column_name_patterns)
 
-        final_results: Dict[PIITag, float] = {}  # noqa: UP006
+        final_results: dict[PIITag, float] = {}
 
         for tag, score in content_results.items():
             final_score = score
@@ -160,18 +181,18 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
     using the HeuristicPIIColumnClassifier.
     """
 
-    def __init__(self, classifier: Optional[ColumnClassifier[PIITag]] = None):  # noqa: UP045
+    def __init__(self, classifier: ColumnClassifier[PIITag] | None = None):
         self.classifier: ColumnClassifier[PIITag] = classifier or HeuristicPIIClassifier()
 
     def predict_scores(
         self,
         sample_data: Sequence[Any],
-        column_name: Optional[str] = None,  # noqa: UP045
-        column_data_type: Optional[DataType] = None,  # noqa: UP045
+        column_name: str | None = None,
+        column_data_type: DataType | None = None,
     ) -> Mapping[PIISensitivityTag, float]:
         pii_tags = self.classifier.predict_scores(sample_data, column_name, column_data_type)
-        results: DefaultDict[PIISensitivityTag, float] = defaultdict(float)  # noqa: UP006
-        counts: DefaultDict[PIISensitivityTag, int] = defaultdict(int)  # noqa: UP006
+        results: defaultdict[PIISensitivityTag, float] = defaultdict(float)
+        counts: defaultdict[PIISensitivityTag, int] = defaultdict(int)
 
         for tag, score in pii_tags.items():
             # Convert PIITag to PIISensitivityTag

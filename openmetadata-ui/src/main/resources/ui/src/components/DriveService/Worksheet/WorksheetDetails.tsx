@@ -163,6 +163,8 @@ function WorksheetDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -170,6 +172,8 @@ function WorksheetDetails({
           entity: t('label.worksheet'),
         })
       );
+
+      return false;
     }
   };
 

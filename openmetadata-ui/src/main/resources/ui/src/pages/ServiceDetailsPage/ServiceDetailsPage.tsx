@@ -1417,6 +1417,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -1424,6 +1426,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
           entity: t('label.service'),
         })
       );
+
+      return false;
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
@@ -1500,6 +1504,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   useEffect(() => {
+    const loadInitialFiles = () => {
+      if (!isEmpty(fileSearchValue)) {
+        return;
+      }
+      const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
+        filesPagingInfo?.pagingCursor ?? {};
+      fetchFiles({
+        limit: filesPageSize,
+        ...(fileCursorType &&
+          activeTab === EntityTabs.FILES && {
+            [fileCursorType]: fileCursorValue,
+          }),
+      });
+    };
+
+    const loadInitialSpreadsheets = () => {
+      if (!isEmpty(spreadSheetSearchValue)) {
+        return;
+      }
+      const {
+        cursorType: spreadSheetCursorType,
+        cursorValue: spreadSheetCursorValue,
+      } = spreadsheetsPagingInfo?.pagingCursor ?? {};
+      fetchSpreadsheets({
+        limit: spreadsheetsPageSize,
+        ...(spreadSheetCursorType &&
+          activeTab === EntityTabs.SPREADSHEETS && {
+            [spreadSheetCursorType]: spreadSheetCursorValue,
+          }),
+      });
+    };
+
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
@@ -1508,30 +1544,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       serviceCategory === ServiceCategory.DRIVE_SERVICES &&
       isInitialLoadRef.current
     ) {
-      if (isEmpty(fileSearchValue)) {
-        const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
-          filesPagingInfo?.pagingCursor ?? {};
-        fetchFiles({
-          limit: filesPageSize,
-          ...(fileCursorType &&
-            activeTab === EntityTabs.FILES && {
-              [fileCursorType]: fileCursorValue,
-            }),
-        });
-      }
-      if (isEmpty(spreadSheetSearchValue)) {
-        const {
-          cursorType: spreadSheetCursorType,
-          cursorValue: spreadSheetCursorValue,
-        } = spreadsheetsPagingInfo?.pagingCursor ?? {};
-        fetchSpreadsheets({
-          limit: spreadsheetsPageSize,
-          ...(spreadSheetCursorType &&
-            activeTab === EntityTabs.SPREADSHEETS && {
-              [spreadSheetCursorType]: spreadSheetCursorValue,
-            }),
-        });
-      }
+      loadInitialFiles();
+      loadInitialSpreadsheets();
       isInitialLoadRef.current = false;
     }
   }, [

@@ -6,9 +6,8 @@ import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
-import org.openmetadata.schema.api.data.OntologyStudioAsset;
-import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
-import org.openmetadata.schema.api.data.OntologyStudioSummary;
+import org.openmetadata.schema.api.data.OntologyDataGraph;
+import org.openmetadata.schema.api.data.OntologySummary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
@@ -115,20 +114,20 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
     return deserialize(response, new TypeReference<List<RelationshipTypeUsage>>() {});
   }
 
-  /** Return the bounded health and isolation summary used by Ontology Studio. */
-  public OntologyStudioSummary studioSummary(String parent, int limit, int offset)
+  /** Return the bounded ontology health and isolation summary. */
+  public OntologySummary ontologySummary(String parent, int limit, int offset)
       throws OpenMetadataException {
     return httpClient.execute(
         HttpMethod.GET,
-        basePath + "/studio/summary",
+        basePath + "/ontology/summary",
         null,
-        OntologyStudioSummary.class,
-        studioPageOptions(parent, limit, offset));
+        OntologySummary.class,
+        ontologyPageOptions(parent, limit, offset));
   }
 
-  /** Return one bounded page of term-to-asset clusters used by Ontology Studio data mode. */
-  public OntologyStudioDataGraph studioData(
-      String parent, int limit, int offset, int assetPreviewSize) throws OpenMetadataException {
+  /** Return one bounded page of ontology term-to-asset clusters. */
+  public OntologyDataGraph ontologyData(String parent, int limit, int offset, int assetPreviewSize)
+      throws OpenMetadataException {
     RequestOptions.Builder options =
         RequestOptions.builder()
             .queryParam("assetPreviewSize", String.valueOf(assetPreviewSize))
@@ -139,24 +138,24 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
     }
     return httpClient.execute(
         HttpMethod.GET,
-        basePath + "/studio/data",
+        basePath + "/ontology/data",
         null,
-        OntologyStudioDataGraph.class,
+        OntologyDataGraph.class,
         options.build());
   }
 
-  /** Return one bounded page of detailed assets for a term card. */
-  public ResultList<OntologyStudioAsset> studioAssets(UUID id, int limit, int offset)
+  /** Return one bounded page of assets assigned to a glossary term. */
+  public ResultList<EntityReference> assets(UUID id, int limit, int offset)
       throws OpenMetadataException {
     String response =
         httpClient.executeForString(
             HttpMethod.GET,
-            basePath + "/" + id + "/studioAssets",
+            basePath + "/" + id + "/assets",
             RequestOptions.builder()
                 .queryParam("limit", String.valueOf(limit))
                 .queryParam("offset", String.valueOf(offset))
                 .build());
-    return deserialize(response, new TypeReference<ResultList<OntologyStudioAsset>>() {});
+    return deserialize(response, new TypeReference<ResultList<EntityReference>>() {});
   }
 
   private <R> R deserialize(String json, TypeReference<R> type) throws OpenMetadataException {
@@ -183,7 +182,7 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
     return builder.build();
   }
 
-  private static RequestOptions studioPageOptions(String parent, int limit, int offset) {
+  private static RequestOptions ontologyPageOptions(String parent, int limit, int offset) {
     RequestOptions.Builder options =
         RequestOptions.builder()
             .queryParam("limit", String.valueOf(limit))

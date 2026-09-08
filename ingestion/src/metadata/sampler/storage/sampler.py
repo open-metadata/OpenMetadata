@@ -13,7 +13,7 @@ Base sampler for storage services (S3, GCS, etc.)
 """
 
 from abc import abstractmethod
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import TableData
@@ -41,7 +41,7 @@ class StorageSampler(SamplerInterface):
         service_connection_config: StorageConnection,
         ometa_client: OpenMetadata,
         entity: Container,
-        config: Optional[StorageSamplerConfig] = None,  # noqa: UP045
+        config: StorageSamplerConfig | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -64,7 +64,7 @@ class StorageSampler(SamplerInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
+    def _get_sample_file_path(self) -> str | None:
         """Get a sample file path from the container"""
         raise NotImplementedError
 
@@ -90,7 +90,7 @@ class StorageSampler(SamplerInterface):
         """Not used for storage samplers"""
         return None  # noqa: RET501
 
-    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+    def get_columns(self) -> list[SQALikeColumn]:
         """Get columns from container's data model"""
         if self._columns:
             return self._columns
@@ -102,7 +102,7 @@ class StorageSampler(SamplerInterface):
         self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]  # pyright: ignore[reportAttributeAccessIssue]
         return self._columns
 
-    def _get_file_format(self) -> Optional[SupportedTypes]:  # noqa: UP045
+    def _get_file_format(self) -> SupportedTypes | None:
         """Extract file format from container"""
         if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:  # pyright: ignore[reportAttributeAccessIssue]
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")
@@ -115,7 +115,7 @@ class StorageSampler(SamplerInterface):
             logger.warning(f"Unsupported file format: {file_format}")
             return None
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[SQALikeColumn] | None) -> TableData:
         """Fetch sample data from storage container"""
         sample_file_path = self._get_sample_file_path()
         if not sample_file_path:

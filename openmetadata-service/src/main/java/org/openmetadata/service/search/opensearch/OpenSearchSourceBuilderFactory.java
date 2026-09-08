@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.HighlightFieldClassifier;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -60,11 +61,6 @@ public class OpenSearchSourceBuilderFactory
   private static final String INDEX_ALL = "all";
   private static final String INDEX_DATA_ASSET = "dataAsset";
 
-  // OpenSearch maps the `extension` custom-properties object as flat_object (OsUtils transforms
-  // flattened -> flat_object). flat_object has no analyzer, so asking the highlighter to highlight
-  // `extension` or any `extension.*` subfield throws "no associated analyzer" and fails the whole
-  // shard (a 500 on the search). Elasticsearch tolerates it, so this guard is OpenSearch-only.
-  private static final String FLATTENED_EXTENSION_FIELD = "extension";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
@@ -771,22 +767,18 @@ public class OpenSearchSourceBuilderFactory
     OpenSearchHighlightBuilder hb = new OpenSearchHighlightBuilder();
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
+    // A mapped field with no analyzer (flat_object, which OsUtils rewrites `flattened` to) fails
+    // the
+    // highlight shard with "no associated analyzer" — a 500 on the search — unlike an unmapped
+    // field,
+    // which the highlighter silently skips. Elasticsearch tolerates it, so this guard is
+    // OpenSearch-only; the save-time check in SearchSettingsHandler is the engine-independent one.
     for (String field : listOrEmpty(fields)) {
-      if (!isFlattenedExtensionField(field)) {
+      if (!HighlightFieldClassifier.isHighlightUnsafeField(field)) {
         hb.field(field, org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET);
       }
     }
     return hb.build();
-  }
-
-  // The flat_object `extension` field (and its `extension.*` subfields) has no analyzer on
-  // OpenSearch; a mapped no-analyzer field fails the highlight shard, unlike an unmapped field
-  // which
-  // the highlighter silently skips. Drop it so a configured extension highlight field never 500s.
-  private static boolean isFlattenedExtensionField(String field) {
-    return field != null
-        && (field.equals(FLATTENED_EXTENSION_FIELD)
-            || field.startsWith(FLATTENED_EXTENSION_FIELD + "."));
   }
 
   public OpenSearchRequestBuilder getSearchSourceBuilderV2(

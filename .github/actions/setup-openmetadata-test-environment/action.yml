@@ -99,9 +99,26 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    # enable-cache is gated off for merge_group. A queue run's cache is scoped
+    # to its gh-readonly-queue ref, which GitHub deletes the moment the entry
+    # merges or is dequeued, so the entry is unreachable by every later run
+    # while still charged against the repo's 10 GB LRU budget — where it evicts
+    # the main-scoped copies runs do restore from. setup-uv's `auto` default
+    # skips non-hosted runners, tag pushes, pull_request_target, workflow_run
+    # and release, but not merge_group (upstream src/utils/inputs.ts
+    # getEnableCache).
+    #
+    # Nothing is lost by not writing: no setup-uv entry is main-scoped, so queue
+    # runs already miss and install from scratch. Measured 2026-09-04, this was
+    # 3.3 GB across 19 dead queue-ref entries — 35% of the budget — and it was
+    # evicting the assets populate-playwright-caches.yml warms 6-hourly within
+    # 15 minutes of them being written. Same reasoning as the merge_group save
+    # gates in playwright-e2e-reusable.yml; see #32613.
     - name: Install uv
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: ${{ github.event_name != 'merge_group' }}
 
     # Cache the ingestion Python venv across runs. Key on the *resolved*
     # Python patch version (setup-python may resolve "3.10" to a different
@@ -113,13 +130,21 @@ runs:
     # import undeclared packages. Cache miss = fresh install, always.
     # Skipped in fast-mode / lightweight-ingestion — those consumers restore
     # a pre-seeded fixture and never touch the venv.
-    - name: Cache ingestion Python venv
+    # Restore and save are separate steps so the fork guard below can gate the
+    # write without also denying forks the read.
+    - name: Compute ingestion venv cache key
+      id: venv-cache-key
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      run: echo "key=${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Restore ingestion Python venv
       id: cache-python-venv
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: env
-        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
+        key: ${{ steps.venv-cache-key.outputs.key }}
 
     - name: Generate Models
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
@@ -146,6 +171,21 @@ runs:
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
       shell: bash
+
+    # Saved here rather than at job end so a later failure (server startup,
+    # tests) still leaves the venv cached. Fork PRs under pull_request_target
+    # skip the save — actions/cache-poisoning; their restore above still runs.
+    - name: Save ingestion Python venv
+      if: >-
+        ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
+        steps.cache-python-venv.outputs.cache-hit != 'true' &&
+        !(github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository) }}
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: env
+        key: ${{ steps.venv-cache-key.outputs.key }}
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------

@@ -14,9 +14,9 @@ Metadata DAG common functions
 
 import json
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Optional, Union  # noqa: UP035
 
 from airflow import DAG
 from airflow.utils import timezone
@@ -48,13 +48,7 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from croniter import croniter  # noqa: I001
-from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
-from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
-from openmetadata_managed_apis.utils.parser import (
-    parse_service_connection,
-    parse_validation_err,
-)
+from croniter import croniter
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -63,17 +57,23 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.workflow.metadata import MetadataWorkflow
+from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
 
 logger = workflow_logger()
 
@@ -236,7 +236,7 @@ def build_workflow_config_property(
     )
 
 
-def clean_name_tag(tag: str) -> Optional[str]:  # noqa: UP045
+def clean_name_tag(tag: str) -> str | None:
     """
     Clean the tag to be used in Airflow.
     Airflow supports 100 characters. We'll keep just 90
@@ -386,9 +386,9 @@ class CustomPythonOperator(PythonOperator):
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],  # noqa: UP007
+    workflow_config: OpenMetadataWorkflowConfig | OpenMetadataApplicationConfig,
     workflow_fn: Callable,
-    params: Optional[dict] = None,  # noqa: UP045
+    params: dict | None = None,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG

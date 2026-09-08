@@ -54,7 +54,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
 
 /**
- * Integration tests for the renewable Ontology Studio authoring leases exposed under
+ * Integration tests for the renewable Ontology authoring leases exposed under
  * {@code /v1/ontologyEditLocks} (acquire / renew / get / release). Exercises first-acquire, cross
  * session contention, lease renewal and release semantics, and the {@code EDIT_GLOSSARY_TERMS}
  * authorization guard on every verb.

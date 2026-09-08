@@ -13,9 +13,10 @@ Python SSE Client wrapper and helpers
 """
 
 import time
+from collections.abc import Generator
 from datetime import datetime, timezone
 from logging import Logger  # noqa: TC003
-from typing import Any, Generator  # noqa: UP035
+from typing import Any
 
 import requests
 

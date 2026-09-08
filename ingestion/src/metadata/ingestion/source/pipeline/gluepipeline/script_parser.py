@@ -18,7 +18,6 @@ source and target entities (S3 paths, Glue Catalog tables, JDBC tables).
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional  # noqa: UP035
 
 from metadata.utils.logger import ingestion_logger
 
@@ -124,7 +123,7 @@ SPARK_WRITE_INSERTINTO_PATTERN = re.compile(
 S3_PATH_PATTERN = re.compile(r"s3[an]?://[^\s\"',\]\}]+")
 
 
-def _extract_kwarg(block: str, key: str) -> Optional[str]:  # noqa: UP045
+def _extract_kwarg(block: str, key: str) -> str | None:
     pattern = re.compile(
         rf'{key}\s*=\s*["\']([^"\']+)["\']',
     )
@@ -132,7 +131,7 @@ def _extract_kwarg(block: str, key: str) -> Optional[str]:  # noqa: UP045
     return match.group(1) if match else None
 
 
-def _extract_dict_value(block: str, key: str) -> Optional[str]:  # noqa: UP045
+def _extract_dict_value(block: str, key: str) -> str | None:
     pattern = re.compile(
         rf'["\']?{key}["\']?\s*:\s*["\']([^"\']+)["\']',
     )
@@ -140,7 +139,7 @@ def _extract_dict_value(block: str, key: str) -> Optional[str]:  # noqa: UP045
     return match.group(1) if match else None
 
 
-def _extract_s3_paths(block: str) -> List[str]:  # noqa: UP006
+def _extract_s3_paths(block: str) -> list[str]:
     return list(set(S3_PATH_PATTERN.findall(block)))
 
 
@@ -152,20 +151,20 @@ class CatalogRef:
 
 @dataclass
 class JDBCRef:
-    connection_name: Optional[str] = None  # noqa: UP045
-    jdbc_url: Optional[str] = None  # noqa: UP045
-    database: Optional[str] = None  # noqa: UP045
-    table: Optional[str] = None  # noqa: UP045
+    connection_name: str | None = None
+    jdbc_url: str | None = None
+    database: str | None = None
+    table: str | None = None
 
 
 @dataclass
 class ScriptLineageResult:
-    s3_sources: List[str] = field(default_factory=list)  # noqa: UP006
-    s3_targets: List[str] = field(default_factory=list)  # noqa: UP006
-    catalog_sources: List[CatalogRef] = field(default_factory=list)  # noqa: UP006
-    catalog_targets: List[CatalogRef] = field(default_factory=list)  # noqa: UP006
-    jdbc_sources: List[JDBCRef] = field(default_factory=list)  # noqa: UP006
-    jdbc_targets: List[JDBCRef] = field(default_factory=list)  # noqa: UP006
+    s3_sources: list[str] = field(default_factory=list)
+    s3_targets: list[str] = field(default_factory=list)
+    catalog_sources: list[CatalogRef] = field(default_factory=list)
+    catalog_targets: list[CatalogRef] = field(default_factory=list)
+    jdbc_sources: list[JDBCRef] = field(default_factory=list)
+    jdbc_targets: list[JDBCRef] = field(default_factory=list)
 
     @property
     def has_lineage(self) -> bool:

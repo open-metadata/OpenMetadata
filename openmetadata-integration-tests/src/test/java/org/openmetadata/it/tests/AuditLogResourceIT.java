@@ -2288,6 +2288,14 @@ public class AuditLogResourceIT {
   // ==================== Full-Text Search Tests ====================
   // These tests verify the search_text column and full-text search behavior
 
+  /**
+   * {@code q} is a full-text search over the whole audit row - the acting user, the entity type and
+   * FQN, the event type and the names and values of the fields that changed - so a hit is not
+   * necessarily a row the searched-for user wrote. Restricting results to one user is what the
+   * {@code userName} filter is for. What the search does promise is that every row it returns
+   * mentions the term, and since everything the server indexes is derived from the change event,
+   * the serialized entry covers every way a row can match.
+   */
   @Test
   void test_search_returnsRelevantResults() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2306,8 +2314,15 @@ public class AuditLogResourceIT {
     assertFalse(data == null || data.isEmpty(), "Search for 'admin' should return results");
 
     for (Map<String, Object> entry : data) {
-      String userName = (String) entry.get("userName");
-      assertEquals("admin", userName, "Search for 'admin' should return entries by admin user");
+      String entryJson = MAPPER.writeValueAsString(entry).toLowerCase(java.util.Locale.ROOT);
+      assertTrue(
+          entryJson.contains("admin"),
+          "Search for 'admin' returned an entry that does not mention it: changeEventId="
+              + entry.get("changeEventId")
+              + " userName="
+              + entry.get("userName")
+              + " entityFQN="
+              + entry.get("entityFQN"));
     }
   }
 

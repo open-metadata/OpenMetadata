@@ -15,6 +15,7 @@ import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ColumnBulkIcon } from '../assets/svg/entity/column.svg';
@@ -26,7 +27,6 @@ import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketp
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
@@ -42,7 +42,7 @@ import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/doc
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke } from '../utils/IconUtils';
+import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
 import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
@@ -61,6 +61,7 @@ export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_AI_CONTEXT]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
 };
 
@@ -186,7 +187,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.ONTOLOGY_EXPLORER,
         title: 'label.ontology-studio',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
-        icon: LineageIcon,
+        icon: OntologyStudioIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
@@ -232,6 +233,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.CONTEXT_CENTER_OVERVIEW,
         icon: DashboardIcon,
         dataTestId: `app-bar-item-${SidebarItem.OVERVIEW}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        title: 'label.ai-context',
+        redirect_url: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        icon: PersonaIcon,
+        dataTestId: `app-bar-item-${SidebarItem.AI_CONTEXT}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,

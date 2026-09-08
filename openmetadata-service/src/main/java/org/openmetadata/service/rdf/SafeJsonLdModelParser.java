@@ -83,7 +83,7 @@ public final class SafeJsonLdModelParser {
     final Dataset dataset = DatasetFactory.createTxnMem();
     final Model model = ModelFactory.createDefaultModel();
     try {
-      RDFParser.fromString(nQuads).lang(Lang.NQUADS).parse(dataset.asDatasetGraph());
+      RDFParser.fromString(nQuads, Lang.NQUADS).parse(dataset.asDatasetGraph());
       model.add(dataset.getDefaultModel());
       dataset.listNames().forEachRemaining(name -> model.add(dataset.getNamedModel(name)));
     } finally {

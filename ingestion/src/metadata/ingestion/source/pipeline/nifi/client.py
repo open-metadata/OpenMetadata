@@ -13,7 +13,8 @@ Client to interact with Nifi apis
 """
 
 import traceback
-from typing import TYPE_CHECKING, Dict, Iterable, List, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
     NifiBasicAuth,
@@ -131,7 +132,7 @@ class NifiClient:
         return self._token
 
     @property
-    def resources(self) -> List[dict]:  # noqa: UP006
+    def resources(self) -> list[dict]:
         """
         This can be expensive. Only query it once.
         """
@@ -144,17 +145,17 @@ class NifiClient:
         except AttributeError:
             return []
 
-    def _get_process_group_ids(self) -> List[str]:  # noqa: UP006
+    def _get_process_group_ids(self) -> list[str]:
         return [
             elem.get(IDENTIFIER).replace(PROCESS_GROUPS_STARTER, "")
             for elem in self.resources
             if elem.get(IDENTIFIER).startswith(PROCESS_GROUPS_STARTER)
         ]
 
-    def get_process_group(self, id_: str) -> Dict:  # noqa: UP006
+    def get_process_group(self, id_: str) -> dict:
         return self.client.get(f"flow/process-groups/{id_}")
 
-    def list_process_groups(self) -> Iterable[Dict]:  # noqa: UP006
+    def list_process_groups(self) -> Iterable[dict]:
         """
         This will call the API endpoints
         one at a time.

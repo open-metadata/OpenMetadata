@@ -1,7 +1,5 @@
 """Models for the TableDiff test case"""
 
-from typing import List, Optional, Union  # noqa: UP035
-
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import make_url
 
@@ -20,18 +18,18 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
 class TableParameter(BaseModel):
-    serviceUrl: Union[str, dict]  # noqa: N815, UP007
+    serviceUrl: str | dict  # noqa: N815
     path: str
-    fullyQualifiedName: Optional[str] = None  # noqa: N815, UP045
-    columns: List[Column]  # noqa: UP006
+    fullyQualifiedName: str | None = None  # noqa: N815
+    columns: list[Column]
     database_service_type: DatabaseServiceType
-    privateKey: Optional[CustomSecretStr]  # noqa: N815, UP045
-    passPhrase: Optional[CustomSecretStr]  # noqa: N815, UP045
-    key_columns: Optional[list[str]] = None  # noqa: UP045
-    extra_columns: Optional[list[str]] = None  # noqa: UP045
+    privateKey: CustomSecretStr | None  # noqa: N815
+    passPhrase: CustomSecretStr | None  # noqa: N815
+    key_columns: list[str] | None = None
+    extra_columns: list[str] | None = None
 
     @property
-    def data_diff_service_url(self) -> Union[str, dict]:  # noqa: UP007
+    def data_diff_service_url(self) -> str | dict:
         """`serviceUrl` rendered for data-diff's own URI parser.
 
         `serviceUrl` is a canonical SQLAlchemy URL, which encodes more than data-diff decodes.
@@ -45,10 +43,10 @@ class TableParameter(BaseModel):
 class TableDiffRuntimeParameters(BaseModel):
     table1: TableParameter
     table2: TableParameter
-    keyColumns: Optional[List[str]] = Field(..., deprecated="Please use `tableX.key_columns` instead")  # noqa: N815, UP006, UP045
-    extraColumns: Optional[List[str]] = Field(..., deprecated="Please use `tableX.extra_columns` instead")  # noqa: N815, UP006, UP045
-    whereClause: Optional[str]  # noqa: N815, UP045
-    table_profile_config: Optional[TableProfilerConfig]  # noqa: UP045
+    keyColumns: list[str] | None = Field(..., deprecated="Please use `tableX.key_columns` instead")  # noqa: N815
+    extraColumns: list[str] | None = Field(..., deprecated="Please use `tableX.extra_columns` instead")  # noqa: N815
+    whereClause: str | None  # noqa: N815
+    table_profile_config: TableProfilerConfig | None
 
 
 class TableCustomSQLQueryRuntimeParameters(BaseModel):
