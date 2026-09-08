@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "显示/隐藏列",
     "show-property-plural": "显示属性",
     "show-raw-logs": "显示原始日志",
-    "show-relationship-label-plural": "显示关系标签",
     "showing-count-of-total-assets": "显示 {{total}} 个资产中的 {{count}} 个",
     "showing-count-of-total-nested-terms": "正在显示 {{total}} 个嵌套术语中的 {{current}} 个",
     "showing-total-failure-plural": "总共 {{total}} 次失败",

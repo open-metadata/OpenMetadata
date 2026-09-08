@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "顯示/隱藏欄位",
     "show-property-plural": "顯示屬性",
     "show-raw-logs": "顯示原始日誌",
-    "show-relationship-label-plural": "顯示關係標籤",
     "showing-count-of-total-assets": "顯示 {{total}} 個資產中的 {{count}} 個",
     "showing-count-of-total-nested-terms": "正在顯示 {{total}} 個巢狀術語中的 {{current}} 個",
     "showing-total-failure-plural": "共 {{total}} 次失敗",

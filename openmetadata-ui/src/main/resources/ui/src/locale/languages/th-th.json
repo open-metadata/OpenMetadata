@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "แสดง / ซ่อนคอลัมน์",
     "show-property-plural": "แสดงคุณลักษณะ",
     "show-raw-logs": "แสดงล็อกดิบ",
-    "show-relationship-label-plural": "แสดงป้ายกำกับความสัมพันธ์",
     "showing-count-of-total-assets": "แสดง {{count}} จาก {{total}} สินทรัพย์",
     "showing-count-of-total-nested-terms": "กำลังแสดง {{current}} จาก {{total}} คำศัพท์ที่ซ้อนกัน",
     "showing-total-failure-plural": "ความล้มเหลวทั้งหมด {{total}} รายการ",

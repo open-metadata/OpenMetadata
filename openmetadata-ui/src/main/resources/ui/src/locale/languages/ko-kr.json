@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "열 표시/숨기기",
     "show-property-plural": "속성 표시",
     "show-raw-logs": "원시 로그 표시",
-    "show-relationship-label-plural": "관계 레이블 표시",
     "showing-count-of-total-assets": "{{total}}개 중 {{count}}개 자산 표시 중",
     "showing-count-of-total-nested-terms": "중첩된 용어 {{total}}개 중 {{current}}개 표시 중",
     "showing-total-failure-plural": "총 {{total}}건 실패",

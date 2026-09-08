@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "Mostrar / Ocultar columnas",
     "show-property-plural": "Mostrar propiedades",
     "show-raw-logs": "Mostrar registros sin procesar",
-    "show-relationship-label-plural": "Mostrar Etiquetas de Relación",
     "showing-count-of-total-assets": "Mostrando {{count}} de {{total}} activos",
     "showing-count-of-total-nested-terms": "Mostrando {{current}} de {{total}} términos anidados",
     "showing-total-failure-plural": "Total de {{total}} fallas",

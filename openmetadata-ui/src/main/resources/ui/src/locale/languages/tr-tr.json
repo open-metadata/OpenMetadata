@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "Sütunları göster/gizle",
     "show-property-plural": "Özellikleri Göster",
     "show-raw-logs": "Ham günlükleri göster",
-    "show-relationship-label-plural": "İlişki Etiketlerini Göster",
     "showing-count-of-total-assets": "{{total}} varlıktan {{count}} tanesi gösteriliyor",
     "showing-count-of-total-nested-terms": "{{total}} iç içe terimden {{current}} tanesi gösteriliyor",
     "showing-total-failure-plural": "Toplam {{total}} hata",

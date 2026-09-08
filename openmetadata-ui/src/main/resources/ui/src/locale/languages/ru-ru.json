@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "Показать / скрыть столбцы",
     "show-property-plural": "Показать свойства",
     "show-raw-logs": "Показать необработанные логи",
-    "show-relationship-label-plural": "Показать подписи связей",
     "showing-count-of-total-assets": "Показано {{count}} из {{total}} активов",
     "showing-count-of-total-nested-terms": "Показано {{current}} из {{total}} вложенных терминов",
     "showing-total-failure-plural": "Всего ошибок {{total}}",

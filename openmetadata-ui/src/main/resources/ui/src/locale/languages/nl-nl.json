@@ -2622,7 +2622,6 @@
     "show-or-hide-column-plural": "Kolommen tonen/verbergen",
     "show-property-plural": "Eigenschappen tonen",
     "show-raw-logs": "Onbewerkte logs tonen",
-    "show-relationship-label-plural": "Relatielabels tonen",
     "showing-count-of-total-assets": "{{count}} van {{total}} assets weergegeven",
     "showing-count-of-total-nested-terms": "{{current}} van {{total}} geneste termen worden weergegeven",
     "showing-total-failure-plural": "Totaal {{total}} fouten",
