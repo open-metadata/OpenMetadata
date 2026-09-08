@@ -261,13 +261,26 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
 
 export const editTags = async (page: Page, tagName: string) => {
   const editIcon = page.locator('[data-testid="edit-icon-tags"]');
+  // Fallback for ML Model, which uses an 'Add' chip instead of the edit icon.
+  const addTagChip = page.locator(
+    '[data-testid="entity-tags"] [data-testid="add-tag"]'
+  );
+
+  // isVisible() resolves immediately, so gate on whichever affordance renders
+  // before discriminating -- otherwise a slow render picks the wrong branch
+  // and the click waits out the test.
+  // Counted, not unioned: a combined locator would be ambiguous under strict
+  // mode on any page carrying more than one of either affordance.
+  await expect
+    .poll(async () => (await editIcon.count()) + (await addTagChip.count()), {
+      timeout: 15000,
+    })
+    .toBeGreaterThan(0);
+
   if (await editIcon.isVisible()) {
     await editIcon.click();
   } else {
-    // Fallback for ML Model which uses an 'Add' chip
-    await page
-      .locator('[data-testid="entity-tags"] [data-testid="add-tag"]')
-      .click();
+    await addTagChip.click();
   }
 
   await page
@@ -319,13 +332,23 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     });
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
+  // Fallback for ML Model, which uses an 'Add' chip instead of the edit icon.
+  const addTermChip = page.locator(
+    '[data-testid="glossary-container"] [data-testid="add-tag"]'
+  );
+
+  // Counted, not unioned: a combined locator would be ambiguous under strict
+  // mode on any page carrying more than one of either affordance.
+  await expect
+    .poll(async () => (await editIcon.count()) + (await addTermChip.count()), {
+      timeout: 15000,
+    })
+    .toBeGreaterThan(0);
+
   if (await editIcon.isVisible()) {
     await editIcon.click();
   } else {
-    // Fallback for ML Model which uses an 'Add' chip
-    await page
-      .locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
-      .click();
+    await addTermChip.click();
   }
 
   await page
@@ -542,20 +565,17 @@ export const removeOwnerFromPanel = async (
         ? 'owner-select-users-search-bar'
         : 'owner-select-teams-search-bar';
     const searchBar = page.getByTestId(searchBarDataTestId);
+    // The search bar is absent for some owner widgets; filling it is the only
+    // part that differs, so keep one selection path for both shapes.
     if (await searchBar.isVisible()) {
       await searchBar.fill(ownerName);
-      const ownerItem = page
-        .locator('.ant-list-item')
-        .filter({ hasText: ownerName });
-      await ownerItem.waitFor({ state: 'visible' });
-      await ownerItem.click();
-    } else {
-      const ownerItem = page
-        .locator('.ant-list-item')
-        .filter({ hasText: ownerName });
-      await ownerItem.waitFor({ state: 'visible' });
-      await ownerItem.click();
     }
+
+    const ownerItem = page
+      .locator('.ant-list-item')
+      .filter({ hasText: ownerName });
+    await ownerItem.waitFor({ state: 'visible' });
+    await ownerItem.click();
   }
 
   const updateButton = page.getByTestId('selectable-list-update-btn');

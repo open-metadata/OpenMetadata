@@ -515,7 +515,7 @@
   },
   "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/Topic.spec.ts": {
@@ -648,7 +648,7 @@
   },
   "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/DataProducts.spec.ts": {
