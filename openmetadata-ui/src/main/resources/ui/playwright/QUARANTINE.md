@@ -27,13 +27,12 @@ coverage, a retried one looks green.
 
 ## Entries
 
-9 tests. Evidence is failures observed across 11 merge_group runs sampled on
+8 tests. Evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
-| `e2e/Pages/Lineage/LineageInteraction.spec.ts` | Verify node panel opens on click | 11/11 | `clickLineageNode` → `entity-header-display-name` never visible (15s). The topic node is not in the graph the `beforeEach` renders. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 11/11 | `entity-summary-panel-container` → owner chip not found (10s). Regressed around #31853, which removed the welcome-banner dismiss helpers. |
 | `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | 7/11 | Test timeout. |
 | `e2e/Pages/Domains.spec.ts` | Verify domain tags and glossary terms | 6/11 | Fails both attempts more often than it flakes — likely a real defect, not timing. |
@@ -58,6 +57,7 @@ These were failing their first attempt in ~every run and are root-caused, so
 they were repaired rather than parked:
 
 | Spec | Root cause |
+| `e2e/Pages/Lineage/LineageInteraction.spec.ts` — Verify node panel opens on click | Two causes, and the symptom recorded here was only the second. (1) `fitToScreen` returned before its menu popover finished its exit animation, leaving a second `[role="dialog"]` in the DOM, so the test's unscoped `[role="dialog"]` assertion tripped strict mode. (2) `Verify edge delete button in drawer` deletes the shared `table1 → topic` edge and never restores it, so every later test in the file saw a graph without the topic — that is the "node is not in the graph" symptom. Fixed by having `fitToScreen` wait for the menu to detach, scoping the assertion to `lineage-entity-panel`, and restoring the edge in a `finally`. |
 |---|---|
 | `e2e/Pages/Glossary.spec.ts` 128 / 198 / 421 | `utils/glossary.ts` used `page.textContent()` — waits for the element, not its text — so a cold first attempt read `""`. #32333 (a revert of #30896) had reintroduced this after it was already fixed. Restored to `toContainText`. |
 | `e2e/Features/ContextCenterArticles.spec.ts:670` | #32283 removed a `waitForTimeout(500)` that was covering the zustand → localStorage flush of `recentlyViewed`. Navigating away before the flush meant the Recently Viewed panel had no entry to render, so the trailing assertion had nothing to auto-wait for. Replaced with `waitForRecentlyViewed`, which polls the persisted store. |

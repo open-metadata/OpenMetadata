@@ -261,8 +261,15 @@ export const rearrangeNodes = async (page: Page) => {
 };
 
 export const fitToScreen = async (page: Page) => {
+  const fitToScreenItem = page.getByRole('menuitem', { name: 'Fit to screen' });
+
   await page.getByTestId('fit-screen').click();
-  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+  await fitToScreenItem.click();
+
+  // The menu closes with an exit animation, so without this it lingers in the
+  // DOM as a second [role="dialog"] -- and any caller that later asserts on a
+  // dialog trips strict mode against a popover already on its way out.
+  await fitToScreenItem.waitFor({ state: 'detached' });
 };
 
 export const connectEdgeBetweenNodes = async (

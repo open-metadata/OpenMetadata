@@ -166,29 +166,44 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('Verify edge delete button in drawer', async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
       const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
       const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
 
-      await editLineage(page);
+      try {
+        await editLineage(page);
 
-      await clickEdgeBetweenNodes(page, table1, topic, false);
+        await clickEdgeBetweenNodes(page, table1, topic, false);
 
-      const deleteBtn = page.getByTestId('add-pipeline');
-      await expect(deleteBtn).toBeVisible();
+        const deleteBtn = page.getByTestId('add-pipeline');
+        await expect(deleteBtn).toBeVisible();
 
-      await deleteBtn.click();
+        await deleteBtn.click();
 
-      await page.getByTestId('remove-edge-button').click();
+        await page.getByTestId('remove-edge-button').click();
 
-      await page.getByRole('button', { name: /confirm/i }).waitFor();
-      await page.getByRole('button', { name: /confirm/i }).click();
+        await page.getByRole('button', { name: /confirm/i }).waitFor();
+        await page.getByRole('button', { name: /confirm/i }).click();
 
-      await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-      await editLineageClick(page);
+        await editLineageClick(page);
 
-      const edgeDiv = page.getByTestId(`edge-${table1Fqn}-${topicFqn}`);
-      await expect(edgeDiv).not.toBeVisible();
+        const edgeDiv = page.getByTestId(`edge-${table1Fqn}-${topicFqn}`);
+        await expect(edgeDiv).not.toBeVisible();
+      } finally {
+        // This edge is shared fixture state seeded in beforeAll, and deleting
+        // it is the point of the test -- but leaving it deleted takes the topic
+        // out of table1's graph for every later test in this file. That is why
+        // "Verify node panel opens on click" was quarantined at 11/11: it looked
+        // for a node this test had removed. Put the edge back.
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: table1.entityResponseData.id, type: 'table' },
+          { id: topic.entityResponseData.id, type: 'topic' }
+        );
+        await afterAction();
+      }
     });
 
     test('Verify function data in edge drawer', async ({ page }) => {
@@ -362,31 +377,30 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await fitToScreen(page);
     });
 
-    test(
-      'Verify node panel opens on click',
-      { tag: '@quarantine' },
-      async ({ page }) => {
-        const topicFqn = get(
-          topic,
-          'entityResponseData.fullyQualifiedName',
-          ''
-        );
+    test('Verify node panel opens on click', async ({ page }) => {
+      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName', '');
 
-        await clickLineageNode(page, topicFqn);
+      await clickLineageNode(page, topicFqn);
 
-        await expect(page.locator('[role="dialog"]')).toBeVisible();
+      // Scope to the panel under test: the page carries other dialogs (the
+      // lineage view-options popover among them), so a bare [role="dialog"]
+      // is ambiguous under strict mode.
+      const nodePanel = page
+        .getByTestId('lineage-entity-panel')
+        .getByRole('dialog');
 
-        await expect(
-          page
-            .getByTestId('entity-summary-panel-container')
-            .getByTestId('entity-header-title')
-        ).toHaveText(topic.entityResponseData.displayName ?? '');
+      await expect(nodePanel).toBeVisible();
 
-        await page.getByLabel('Close').first().click();
+      await expect(
+        page
+          .getByTestId('entity-summary-panel-container')
+          .getByTestId('entity-header-title')
+      ).toHaveText(topic.entityResponseData.displayName ?? '');
 
-        await expect(page.locator('[role="dialog"]')).not.toBeVisible();
-      }
-    );
+      await page.getByLabel('Close').first().click();
+
+      await expect(nodePanel).not.toBeVisible();
+    });
 
     test('Verify node full path is present as breadcrumb in lineage node', async ({
       page,
