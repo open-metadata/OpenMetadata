@@ -282,20 +282,18 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   /**
    * Row-level-filter path (metadataStatus / hasConflicts / hasMissingMetadata, no tag filter). The
    * filter acts on the aggregate status of a grouped column, which is only known after grouping all
-   * of its occurrences — so we enumerate every candidate name (respecting any column-name pattern
-   * and scope filters), fetch their occurrences, group them, then filter + paginate the items in
-   * memory. This keeps the page count and per-page size consistent with the filtered result set.
+   * of a column's occurrences. We read {@code _source} for the scoped entities in one scan per
+   * field-path group (the same mechanism the tag path uses), restricting {@code _source} to the
+   * column and identity fields, then group every column and filter + paginate the items in memory.
+   * This keeps the page count and per-page size consistent with the filtered result set, reads all
+   * occurrences (no top_hits sampling gap), and avoids one query per name.
    */
   private ColumnGridResponse aggregateColumnsWithRowFilters(
       ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
 
     Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
-    String regex =
-        !nullOrEmpty(request.getColumnNamePattern())
-            ? ColumnAggregator.toCaseInsensitiveRegex(request.getColumnNamePattern())
-            : MATCH_ALL_NAMES_REGEX;
-
-    Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
+    Map<String, List<ColumnWithContext>> allColumnsByName =
+        new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
       String columnNameKeyword = entry.getKey();
@@ -304,17 +302,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
-        List<String> names = executeNamesQuery(query, indexes, columnNameKeyword, regex).names();
-        for (int i = 0; i < names.size(); i += ROW_FILTER_DATA_BATCH) {
-          List<String> batch = names.subList(i, Math.min(i + ROW_FILTER_DATA_BATCH, names.size()));
-          Map<String, List<ColumnWithContext>> columnsByName =
-              executePageDataQuery(query, indexes, columnNameKeyword, columnFieldPath, batch);
-          for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
-            allColumnsByName
-                .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
-                .addAll(colEntry.getValue());
-          }
-        }
+        fetchColumnsFromSource(indexes, query, columnFieldPath, allColumnsByName);
       } catch (ElasticsearchException e) {
         if (!isIndexNotFoundException(e)) {
           logShardFailureDetails(e, indexes, query);
@@ -325,6 +313,46 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
     return ColumnAggregator.paginateFilteredItems(gridItems, request);
+  }
+
+  /** {@code _source} fields needed to build grid items: entity identity + the whole column tree. */
+  private List<String> statusScanSourceIncludes(String columnFieldPath) {
+    return List.of(
+        "fullyQualifiedName",
+        "entityType",
+        "displayName",
+        "service.name",
+        "database.name",
+        "databaseSchema.name",
+        columnFieldPath);
+  }
+
+  private void fetchColumnsFromSource(
+      List<String> indexes,
+      Query query,
+      String columnFieldPath,
+      Map<String, List<ColumnWithContext>> columnsByName)
+      throws IOException {
+
+    List<String> includes = statusScanSourceIncludes(columnFieldPath);
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(indexes)
+                    .query(query)
+                    .source(src -> src.filter(f -> f.includes(includes)))
+                    .size(10000));
+
+    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;
+    if (totalHits > 10000) {
+      LOG.warn(
+          "Metadata-status source-fetch matched {} entities; only first 10000 scanned.", totalHits);
+    }
+
+    for (Hit<JsonData> hit : response.hits().hits()) {
+      extractMatchingColumnsFromHit(hit, columnFieldPath, Set.of(), true, columnsByName);
+    }
   }
 
   /**
@@ -427,7 +455,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     }
 
     for (Hit<JsonData> hit : response.hits().hits()) {
-      extractMatchingColumnsFromHit(hit, columnFieldPath, targetTags, columnsByName);
+      extractMatchingColumnsFromHit(hit, columnFieldPath, targetTags, false, columnsByName);
     }
   }
 
@@ -435,6 +463,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Hit<JsonData> hit,
       String columnFieldPath,
       Set<String> targetTags,
+      boolean includeAllColumns,
       Map<String, List<ColumnWithContext>> columnsByName) {
     if (hit.source() == null) {
       return;
@@ -457,7 +486,8 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       if (columnsData != null && columnsData.isArray()) {
         for (JsonNode columnData : columnsData) {
           String colName = getTextField(columnData, "name");
-          if (colName != null && columnHasTargetTag(columnData, targetTags)) {
+          if (colName != null
+              && (includeAllColumns || columnHasTargetTag(columnData, targetTags))) {
             Column column = parseColumn(columnData, entityFQN);
             columnsByName
                 .computeIfAbsent(colName, k -> new ArrayList<>())

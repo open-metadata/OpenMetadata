@@ -34,15 +34,6 @@ public interface ColumnAggregator {
   /** Max column names to retrieve in the names-only query during pattern search. */
   int MAX_PATTERN_SEARCH_NAMES = 10000;
 
-  /** Terms include array matching every column name (row-level-filter path has no name pattern). */
-  String MATCH_ALL_NAMES_REGEX = ".*";
-
-  /**
-   * Batch size for fetching occurrence data by column name in the row-level-filter path. Bounds the
-   * terms-include array and top_hits fan-out per query when many names must be materialized.
-   */
-  int ROW_FILTER_DATA_BATCH = 1000;
-
   /**
    * Number of sample docs pulled per column-name bucket to populate occurrences. Caps
    * {@code ColumnGridItem.totalOccurrences}; columns appearing in more entities than this

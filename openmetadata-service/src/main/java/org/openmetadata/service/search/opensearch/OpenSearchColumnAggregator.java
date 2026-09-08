@@ -211,25 +211,11 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       throws IOException {
 
     Query query = buildFilters(request, null);
-    String regex =
-        !nullOrEmpty(request.getColumnNamePattern())
-            ? ColumnAggregator.toCaseInsensitiveRegex(request.getColumnNamePattern())
-            : ColumnAggregator.MATCH_ALL_NAMES_REGEX;
+    Map<String, List<ColumnWithContext>> allColumnsByName =
+        new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     try {
-      List<String> names = executeNamesQuery(query, regex).names();
-      Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
-      for (int i = 0; i < names.size(); i += ColumnAggregator.ROW_FILTER_DATA_BATCH) {
-        List<String> batch =
-            names.subList(i, Math.min(i + ColumnAggregator.ROW_FILTER_DATA_BATCH, names.size()));
-        Map<String, List<ColumnWithContext>> columnsByName = executePageDataQuery(query, batch);
-        for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
-          allColumnsByName
-              .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
-              .addAll(colEntry.getValue());
-        }
-      }
-
+      fetchColumnsFromSource(query, allColumnsByName);
       List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
       return ColumnAggregator.paginateFilteredItems(gridItems, request);
     } catch (OpenSearchException e) {
@@ -238,6 +224,47 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
         return buildResponse(new ArrayList<>(), null, false, 0, 0);
       }
       throw e;
+    }
+  }
+
+  /**
+   * Read {@code _source} for the scoped entities in one scan, restricted to the column and identity
+   * fields, and extract every column. Backs the row-level-filter path (status / conflicts / missing
+   * metadata), which must group all of a column's occurrences before it can filter on the aggregate
+   * status.
+   */
+  private void fetchColumnsFromSource(
+      Query query, Map<String, List<ColumnWithContext>> columnsByName) throws IOException {
+
+    List<String> resolvedIndexes = resolveIndexNames();
+    List<String> includes =
+        List.of(
+            "fullyQualifiedName",
+            "entityType",
+            "displayName",
+            "service.name",
+            "database.name",
+            "databaseSchema.name",
+            "columns");
+
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(resolvedIndexes)
+                    .query(query)
+                    .source(src -> src.filter(f -> f.includes(includes)))
+                    .size(10000));
+
+    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;
+    if (totalHits > 10000) {
+      LOG.warn(
+          "Metadata-status source-fetch matched {} entities; only first 10000 scanned.", totalHits);
+    }
+
+    for (os.org.opensearch.client.opensearch.core.search.Hit<JsonData> hit :
+        response.hits().hits()) {
+      extractMatchingColumnsFromHit(hit, Set.of(), true, columnsByName);
     }
   }
 
@@ -337,13 +364,14 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
     for (os.org.opensearch.client.opensearch.core.search.Hit<JsonData> hit :
         response.hits().hits()) {
-      extractMatchingColumnsFromHit(hit, targetTags, columnsByName);
+      extractMatchingColumnsFromHit(hit, targetTags, false, columnsByName);
     }
   }
 
   private void extractMatchingColumnsFromHit(
       os.org.opensearch.client.opensearch.core.search.Hit<JsonData> hit,
       Set<String> targetTags,
+      boolean includeAllColumns,
       Map<String, List<ColumnWithContext>> columnsByName) {
     if (hit.source() == null) {
       return;
@@ -366,7 +394,8 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       if (columnsData != null && columnsData.isArray()) {
         for (JsonNode columnData : columnsData) {
           String colName = getTextField(columnData, "name");
-          if (colName != null && columnHasTargetTag(columnData, targetTags)) {
+          if (colName != null
+              && (includeAllColumns || columnHasTargetTag(columnData, targetTags))) {
             Column column = parseColumn(columnData, entityFQN);
             columnsByName
                 .computeIfAbsent(colName, k -> new ArrayList<>())
