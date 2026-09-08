@@ -120,6 +120,13 @@ export const openEntitySummaryPanel = async ({
     // only renders under its tab, so the poll's visibility check must run after the
     // tab is selected — not once, after the poll.
     if (exploreTab) {
+      // The left panel only becomes an entity-type Menu once the URL carries a
+      // search query -- ExploreV1 renders <ExploreTree> otherwise, whose items
+      // are plain divs with no menuitem role. Waiting for the query first turns
+      // "no menuitem ever appears" into a fast, legible failure instead of a
+      // callback that hangs until the whole test times out.
+      await page.waitForURL(/[?&]search=[^&]+/, { timeout: 30_000 });
+
       const tab = page
         .getByTestId('explore-left-panel')
         .getByRole('menuitem', { name: exploreTab });
@@ -171,7 +178,10 @@ export const openEntitySummaryPanel = async ({
 
           return entityResultCard.isVisible();
         },
-        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
+        // Deliberately under the 60s default test budget: a poll sized at or
+        // above it can never finish, so the test dies on its own timeout and
+        // reports nothing instead of this poll's message.
+        { timeout: 45_000, intervals: [2_000, 3_000, 5_000, 5_000] }
       )
       .toBe(true);
   }
