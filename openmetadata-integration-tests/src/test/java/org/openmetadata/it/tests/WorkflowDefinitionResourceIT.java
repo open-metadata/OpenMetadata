@@ -1929,15 +1929,6 @@ public class WorkflowDefinitionResourceIT {
                     .withDescription("DP with assets")
                     .withDomains(List.of(domain.getFullyQualifiedName())));
 
-    org.openmetadata.schema.entity.domains.DataProduct dpWithoutAssets =
-        client
-            .dataProducts()
-            .create(
-                new org.openmetadata.schema.api.domains.CreateDataProduct()
-                    .withName(ns.prefix("dp_without_assets"))
-                    .withDescription("DP without assets")
-                    .withDomains(List.of(domain.getFullyQualifiedName())));
-
     // Create a table and add it as an asset to dpWithAssets
     DatabaseService service =
         client.databaseServices().create(createDatabaseServiceRequest(ns.prefix("dpac_svc")));
@@ -2032,6 +2023,8 @@ public class WorkflowDefinitionResourceIT {
 
     try {
       waitForWorkflowDeployment(client, workflowName);
+      waitForEntityIndexedInSearch(
+          client, "dataproduct_search_index", dpWithAssets.getFullyQualifiedName());
 
       String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
       client
@@ -2039,16 +2032,44 @@ public class WorkflowDefinitionResourceIT {
           .executeForString(
               HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
 
+      // Wait for workflow instances to finish and verify the check result
       await()
           .atMost(Duration.ofSeconds(120))
           .pollInterval(Duration.ofSeconds(3))
           .untilAsserted(
               () -> {
-                ListResponse<Map> instances =
-                    client.workflowDefinitions().listInstances(workflowName, null);
-                assertNotNull(instances);
-                assertFalse(
-                    instances.getData().isEmpty(), "Workflow should have at least one instance");
+                long now = System.currentTimeMillis();
+                String instancesPath =
+                    "/v1/governance/workflowInstances?workflowDefinitionName="
+                        + workflowName
+                        + "&startTs=0&endTs="
+                        + now
+                        + "&limit=100";
+                String instancesJson =
+                    client
+                        .getHttpClient()
+                        .executeForString(
+                            HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
+                JsonNode instancesNode = MAPPER.readTree(instancesJson);
+                JsonNode data = instancesNode.get("data");
+                assertNotNull(data, "Instances data should not be null");
+                assertTrue(data.size() > 0, "Workflow should have at least one instance");
+
+                boolean foundFinishedWithTrueResult = false;
+                for (JsonNode instance : data) {
+                  String status = instance.has("status") ? instance.get("status").asText() : "";
+                  if ("FINISHED".equals(status) && instance.has("variables")) {
+                    JsonNode vars = instance.get("variables");
+                    if (vars.has("checkAssets_result")
+                        && vars.get("checkAssets_result").asBoolean()) {
+                      foundFinishedWithTrueResult = true;
+                    }
+                  }
+                }
+                assertTrue(
+                    foundFinishedWithTrueResult,
+                    "At least one FINISHED instance should have checkAssets_result=true "
+                        + "(DP with assets)");
               });
     } finally {
       safeDeleteWorkflow(client, workflowName);
@@ -2174,6 +2195,8 @@ public class WorkflowDefinitionResourceIT {
 
     try {
       waitForWorkflowDeployment(client, workflowName);
+      waitForEntityIndexedInSearch(
+          client, "dataproduct_search_index", dpWithPorts.getFullyQualifiedName());
 
       String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
       client
@@ -2186,11 +2209,38 @@ public class WorkflowDefinitionResourceIT {
           .pollInterval(Duration.ofSeconds(3))
           .untilAsserted(
               () -> {
-                ListResponse<Map> instances =
-                    client.workflowDefinitions().listInstances(workflowName, null);
-                assertNotNull(instances);
-                assertFalse(
-                    instances.getData().isEmpty(), "Workflow should have at least one instance");
+                long now = System.currentTimeMillis();
+                String instancesPath =
+                    "/v1/governance/workflowInstances?workflowDefinitionName="
+                        + workflowName
+                        + "&startTs=0&endTs="
+                        + now
+                        + "&limit=100";
+                String instancesJson =
+                    client
+                        .getHttpClient()
+                        .executeForString(
+                            HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
+                JsonNode instancesNode = MAPPER.readTree(instancesJson);
+                JsonNode data = instancesNode.get("data");
+                assertNotNull(data, "Instances data should not be null");
+                assertTrue(data.size() > 0, "Workflow should have at least one instance");
+
+                boolean foundFinishedWithTrueResult = false;
+                for (JsonNode instance : data) {
+                  String status = instance.has("status") ? instance.get("status").asText() : "";
+                  if ("FINISHED".equals(status) && instance.has("variables")) {
+                    JsonNode vars = instance.get("variables");
+                    if (vars.has("checkOutputPorts_result")
+                        && vars.get("checkOutputPorts_result").asBoolean()) {
+                      foundFinishedWithTrueResult = true;
+                    }
+                  }
+                }
+                assertTrue(
+                    foundFinishedWithTrueResult,
+                    "At least one FINISHED instance should have checkOutputPorts_result=true "
+                        + "(DP with output ports)");
               });
     } finally {
       safeDeleteWorkflow(client, workflowName);
