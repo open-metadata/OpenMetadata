@@ -1022,13 +1022,7 @@ public class LineageRepository {
     if (!nullOrEmpty(relationshipObject)) {
       // Finally, delete lineage relationship
       boolean result =
-          dao.relationshipDAO()
-                  .delete(
-                      from.getId(),
-                      from.getType(),
-                      to.getId(),
-                      to.getType(),
-                      Relationship.UPSTREAM.ordinal())
+          deleteLineageRelationshipWithRetry(from.getId(), from.getType(), to.getId(), to.getType())
               > 0;
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
@@ -1092,13 +1086,7 @@ public class LineageRepository {
     if (!nullOrEmpty(relationshipObject)) {
       // Finally, delete lineage relationship
       boolean result =
-          dao.relationshipDAO()
-                  .delete(
-                      from.getId(),
-                      from.getType(),
-                      to.getId(),
-                      to.getType(),
-                      Relationship.UPSTREAM.ordinal())
+          deleteLineageRelationshipWithRetry(from.getId(), from.getType(), to.getId(), to.getType())
               > 0;
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
@@ -1227,13 +1215,8 @@ public class LineageRepository {
 
     LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
     if (lineageDetails.getAssetEdges() - 1 < 1) {
-      dao.relationshipDAO()
-          .delete(
-              fromRef.getId(),
-              fromRef.getType(),
-              toRef.getId(),
-              toRef.getType(),
-              Relationship.UPSTREAM.ordinal());
+      deleteLineageRelationshipWithRetry(
+          fromRef.getId(), fromRef.getType(), toRef.getId(), toRef.getType());
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
       lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
@@ -1636,5 +1619,17 @@ public class LineageRepository {
       throw CSVExportException.byMessage(
           "Failed to export entity count lineage data to CSV", e.getMessage());
     }
+  }
+
+  /**
+   * Lineage relationship deletes lose deadlock races on hot rows under concurrent writes. Retry the
+   * whole statement, matching main's LineageRepository.
+   */
+  private int deleteLineageRelationshipWithRetry(
+      UUID fromId, String fromEntity, UUID toId, String toEntity) {
+    return DeadlockRetry.execute(
+        () ->
+            dao.relationshipDAO()
+                .delete(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal()));
   }
 }

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, Response } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -25,17 +25,22 @@ export const openODCSImportDropdown = async (page: Page) => {
   const addButton = page.getByTestId('add-contract-button');
   const manageButton = page.getByTestId('manage-contract-actions');
 
-  const addButtonVisible = await addButton.isVisible().catch(() => false);
-  const manageButtonVisible = await manageButton.isVisible().catch(() => false);
+  // Contract actions can render after the page loader disappears, so wait for
+  // either valid entry point instead of making a one-shot visibility decision.
+  await expect(addButton.or(manageButton)).toBeVisible({ timeout: 15000 });
 
-  if (addButtonVisible) {
+  if (await addButton.isVisible()) {
     await addButton.click();
     await page.getByTestId('add-contract-menu').waitFor({
       state: 'visible',
       timeout: 10000,
     });
-  } else if (manageButtonVisible) {
+  } else {
     await manageButton.click();
+    await page.locator('.contract-action-dropdown').waitFor({
+      state: 'visible',
+      timeout: 10000,
+    });
   }
 };
 

@@ -24,6 +24,7 @@ import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 
 import { EntityTags } from 'Models';
 import { useParams } from 'react-router-dom';
@@ -105,6 +106,7 @@ const TestCaseResultTab = () => {
   const isVersionPage = !isUndefined(version);
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const [testDefinition, setTestDefinition] = useState<TestDefinition>();
 
@@ -637,6 +639,9 @@ const TestCaseResultTab = () => {
                 activeDomains={testCaseData?.domains ?? []}
                 dataProducts={testCaseData?.dataProducts ?? []}
                 hasPermission={!isVersionPage && (hasEditPermission ?? false)}
+                requireDomainForDataProduct={
+                  !isRulesLoaded || entityRules.requireDomainForDataProduct
+                }
                 onSave={handleDataProductsSave}
               />
             </div>

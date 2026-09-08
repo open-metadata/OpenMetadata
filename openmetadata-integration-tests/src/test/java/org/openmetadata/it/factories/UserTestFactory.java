@@ -40,19 +40,27 @@ public class UserTestFactory {
     }
   }
 
+  private static final int HTTP_NOT_FOUND = 404;
+  private static final int HTTP_CONFLICT = 409;
+
   /**
    * Get or create a user by email using fluent API.
    */
   public static User getOrCreateUser(String email) {
+    String name = email.split("@")[0];
     try {
-      return Users.findByName(email).fetch().get();
-    } catch (OpenMetadataException e) {
-      // User doesn't exist, create it
-      String name = email.split("@")[0];
+      return Users.findByName(name).fetch().get();
+    } catch (OpenMetadataException notFound) {
+      if (notFound.getStatusCode() != HTTP_NOT_FOUND) {
+        throw notFound;
+      }
       try {
         return Users.create().name(name).withEmail(email).withDescription("Test user").execute();
-      } catch (OpenMetadataException ex) {
-        throw new RuntimeException("Failed to create user: " + email, ex);
+      } catch (OpenMetadataException conflict) {
+        if (conflict.getStatusCode() != HTTP_CONFLICT) {
+          throw conflict;
+        }
+        return Users.findByName(name).fetch().get();
       }
     }
   }

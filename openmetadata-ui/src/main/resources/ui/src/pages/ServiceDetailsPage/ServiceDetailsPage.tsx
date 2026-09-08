@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
@@ -1944,7 +1944,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {

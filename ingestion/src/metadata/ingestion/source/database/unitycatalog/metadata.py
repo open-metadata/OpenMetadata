@@ -370,9 +370,14 @@ class UnitycatalogSource(
         if self.incremental.enabled and self.incremental_table_processor:
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
+            # max_results=0 makes the server paginate with its configured page
+            # size; leaving it unset asks for every table of the schema in one
+            # response, which OOMs the pod on schemas with many wide tables and
+            # is rejected outright (#UC-PGRQD) once the result set is too large.
             for table in self.client.tables.list(
                 catalog_name=catalog_name,
                 schema_name=schema_name,
+                max_results=0,
             ):
                 yield from self._process_table(table, catalog_name, schema_name)
 

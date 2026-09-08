@@ -31,6 +31,7 @@ import {
   acknowledgeTask,
   addAssigneeFromPopoverWidget,
   assignIncident,
+  seedFailedIncidents,
   triggerTestSuitePipelineAndWaitForSuccess,
   visitProfilerTab,
 } from '../../utils/incidentManager';
@@ -44,6 +45,7 @@ let user3: UserClass;
 let users: UserClass[] = [];
 let table1: TableClass;
 let tablePagination: TableClass;
+// Exceed the default 15-row page size so both pagination directions are exercised.
 const PAGINATION_INCIDENT_COUNT = 22;
 
 test.describe.configure({ mode: 'serial' });
@@ -80,7 +82,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     user3 = new UserClass();
     users = [user1, user2, user3];
     table1 = new TableClass();
-    tablePagination = new TableClass();
 
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
@@ -710,117 +711,98 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       ).toBeVisible();
     }
   });
+});
 
-  /**
-   * Incident Manager pagination
-   * @description Uses a dedicated table with 20+ test cases to ensure multiple pages of incidents.
-   * Verifies Next/Previous and page indicator when pagination is shown.
-   */
-  test.describe('Incident Manager pagination', () => {
-    test.beforeAll(async ({ browser }) => {
-      test.slow();
-      const { afterAction, apiContext, page } = await performAdminLogin(
-        browser
-      );
-
-      if (!process.env.PLAYWRIGHT_IS_OSS) {
-        await resetTokenFromBotPage(page, 'testsuite-bot');
-      }
-
-      for (let i = 0; i < PAGINATION_INCIDENT_COUNT; i++) {
-        await tablePagination.createTestCase(apiContext, {
-          parameterValues: [
-            { name: 'minColValue', value: 12 },
-            { name: 'maxColValue', value: 24 },
-          ],
-          testDefinition: 'tableColumnCountToBeBetween',
-        });
-      }
-
-      const pipeline = await tablePagination.createTestSuitePipeline(
-        apiContext
-      );
-
-      await makeRetryRequest({
-        page,
-        fn: () =>
-          apiContext.post(
-            `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-          ),
-      });
-
-      await triggerTestSuitePipelineAndWaitForSuccess({
-        page,
-        pipeline,
-        apiContext,
-      });
-
-      await afterAction();
+/**
+ * Incident Manager pagination
+ * @description Uses a dedicated table with 20+ test cases to ensure multiple pages of incidents.
+ * Verifies Next/Previous and page indicator when pagination is shown.
+ */
+test.describe('Incident Manager pagination', () => {
+  test.beforeAll(async ({ browser }) => {
+    // These tests only need enough incidents to paginate. Creating failed results
+    // directly avoids coupling their setup to Airflow scheduling and execution.
+    test.setTimeout(3 * 60 * 1000);
+    tablePagination = new TableClass();
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await seedFailedIncidents({
+      apiContext,
+      table: tablePagination,
+      count: PAGINATION_INCIDENT_COUNT,
     });
+    await afterAction();
+  });
 
-    test('Next, Previous and page indicator', async ({ page }) => {
-      test.slow();
-      const listUrl =
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
+  test.afterAll(async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await tablePagination.delete(apiContext);
+    await afterAction();
+  });
 
-      const initialListRes = page.waitForResponse((res) =>
-        res.url().includes(listUrl)
-      );
-      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-      await initialListRes;
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-      await expect(
-        page.getByTestId('test-case-incident-manager-table')
-      ).toBeVisible();
-      await expect(page.getByTestId('pagination')).toBeVisible();
-      await expect(page.getByTestId('page-indicator')).toContainText('1');
+  test('Next, Previous and page indicator', async ({ page }) => {
+    const listUrl =
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
 
-      const nextListRes = page.waitForResponse(
-        (res) => res.url().includes(listUrl) && res.url().includes('offset=15')
-      );
-      await page.getByTestId('next').click();
-      await nextListRes;
+    const initialListRes = page.waitForResponse((res) =>
+      res.url().includes(listUrl)
+    );
+    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+    await initialListRes;
 
-      await expect(page.getByTestId('page-indicator')).toContainText('2');
+    await expect(
+      page.getByTestId('test-case-incident-manager-table')
+    ).toBeVisible();
+    await expect(page.getByTestId('pagination')).toBeVisible();
+    await expect(page.getByTestId('page-indicator')).toContainText('1');
 
-      const prevListRes = page.waitForResponse(
-        (res) => res.url().includes(listUrl) && res.url().includes('offset=0')
-      );
-      await page.getByTestId('previous').click();
-      await prevListRes;
+    const nextListRes = page.waitForResponse(
+      (res) => res.url().includes(listUrl) && res.url().includes('offset=15')
+    );
+    await page.getByTestId('next').click();
+    await nextListRes;
 
-      await expect(page.getByTestId('page-indicator')).toContainText('1');
-    });
+    await expect(page.getByTestId('page-indicator')).toContainText('2');
 
-    test('Page size dropdown updates list limit and resets to page 1', async ({
-      page,
-    }) => {
-      test.slow();
-      const listUrl =
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
+    const prevListRes = page.waitForResponse(
+      (res) => res.url().includes(listUrl) && res.url().includes('offset=0')
+    );
+    await page.getByTestId('previous').click();
+    await prevListRes;
 
-      const initialListRes = page.waitForResponse((res) =>
-        res.url().includes(listUrl)
-      );
-      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-      await initialListRes;
+    await expect(page.getByTestId('page-indicator')).toContainText('1');
+  });
 
-      await expect(page.getByTestId('pagination')).toBeVisible();
-      await expect(
-        page.getByTestId('page-size-selection-dropdown')
-      ).toBeVisible();
+  test('Page size dropdown updates list limit and resets to page 1', async ({
+    page,
+  }) => {
+    const listUrl =
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
 
-      await page.getByTestId('page-size-selection-dropdown').click();
-      const listWithLimit50 = page.waitForResponse(
-        (res) => res.url().includes(listUrl) && res.url().includes('limit=50')
-      );
-      await page.getByRole('menuitem', { name: /50.*page/i }).click();
-      await listWithLimit50;
+    const initialListRes = page.waitForResponse((res) =>
+      res.url().includes(listUrl)
+    );
+    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+    await initialListRes;
 
-      await expect(page.getByTestId('page-indicator')).toContainText('1');
-      await expect(
-        page.getByTestId('page-size-selection-dropdown')
-      ).toContainText('50');
-    });
+    await expect(page.getByTestId('pagination')).toBeVisible();
+    await expect(
+      page.getByTestId('page-size-selection-dropdown')
+    ).toBeVisible();
+
+    await page.getByTestId('page-size-selection-dropdown').click();
+    const listWithLimit50 = page.waitForResponse(
+      (res) => res.url().includes(listUrl) && res.url().includes('limit=50')
+    );
+    await page.getByRole('menuitem', { name: /50.*page/i }).click();
+    await listWithLimit50;
+
+    await expect(page.getByTestId('page-indicator')).toContainText('1');
+    await expect(
+      page.getByTestId('page-size-selection-dropdown')
+    ).toContainText('50');
   });
 });

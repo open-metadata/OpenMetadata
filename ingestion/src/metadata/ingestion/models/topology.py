@@ -11,6 +11,7 @@
 """
 Defines the topology for ingesting sources
 """
+
 import queue
 import threading
 from functools import cache, singledispatchmethod
@@ -156,8 +157,8 @@ class TopologyContext(BaseModel):
         :return: TopologyContext
         """
         nodes = get_topology_nodes(topology)
-        ctx_fields = {
-            stage.context: (Optional[stage.type_], None)
+        ctx_fields: dict[str, Any] = {
+            stage.context: (Optional[stage.type_], None)  # noqa: UP045
             for node in nodes
             for stage in node.stages
             if stage.context

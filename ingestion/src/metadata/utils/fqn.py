@@ -98,6 +98,42 @@ def split(str_: str) -> List[str]:
     return splitter.split()
 
 
+def split_raw_name(name: str) -> List[str]:  # noqa: UP006
+    """
+    Split a partially-qualified raw name on the FQN separator, ignoring separators
+    that sit inside a quoted identifier.
+
+    Unlike :func:`split`, this is tolerant: it never raises, and for input without
+    quotes it is byte-for-byte equivalent to ``name.split(".")``. That matters because
+    callers feed it names harvested from parsed SQL, which may be unbalanced or
+    otherwise malformed -- those must degrade gracefully rather than blow up.
+
+    A quoted segment is returned with its quotes intact, so it can be handed straight
+    back to :func:`quote_name`:
+
+        >>> split_raw_name('"folder.subfolder".my_view')
+        ['"folder.subfolder"', 'my_view']
+        >>> split_raw_name("db.schema.table")
+        ['db', 'schema', 'table']
+    """
+    parts: List[str] = []  # noqa: UP006
+    current: List[str] = []  # noqa: UP006
+    within_quotes = False
+
+    for char in name:
+        if char == '"':
+            within_quotes = not within_quotes
+            current.append(char)
+        elif char == FQN_SEPARATOR and not within_quotes:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+
+    parts.append("".join(current))
+    return parts
+
+
 def _build(*args, quote: bool = True) -> str:
     """
     Equivalent of Java's FullyQualifiedName#build

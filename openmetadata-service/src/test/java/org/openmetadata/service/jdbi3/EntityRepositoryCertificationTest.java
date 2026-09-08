@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -185,6 +186,33 @@ class EntityRepositoryCertificationTest {
             nullable(String.class),
             nullable(String.class),
             nullable(String.class));
+  }
+
+  @Test
+  void updateCertificationDoesNotDeleteWhenCertificationRemainsNull() throws Exception {
+    Pipeline original =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("my-pipeline")
+            .withFullyQualifiedName("service.my-pipeline")
+            .withUpdatedBy("admin")
+            .withCertification(null);
+    Pipeline updated =
+        new Pipeline()
+            .withId(original.getId())
+            .withName(original.getName())
+            .withFullyQualifiedName(original.getFullyQualifiedName())
+            .withUpdatedBy("admin")
+            .withCertification(null);
+
+    EntityRepository<Pipeline>.EntityUpdater updater =
+        repo.new EntityUpdater(original, updated, EntityRepository.Operation.PATCH, null, false);
+    Method updateCertification = updater.getClass().getDeclaredMethod("updateCertification");
+    updateCertification.setAccessible(true);
+
+    updateCertification.invoke(updater);
+
+    verify(tagUsageDAO, never()).deleteTagsByPrefixAndTarget(anyInt(), anyString(), anyString());
   }
 
   @Test

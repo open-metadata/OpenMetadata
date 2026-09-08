@@ -22,10 +22,8 @@ import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Chart } from '../generated/entity/data/chart';
 import type { Dashboard } from '../generated/entity/data/dashboard';
-import type {
-  Metric,
-  UnitOfMeasurement,
-} from '../generated/entity/data/metric';
+import type { Metric } from '../generated/entity/data/metric';
+import { UnitOfMeasurement } from '../generated/entity/data/metric';
 import type { Pipeline } from '../generated/entity/data/pipeline';
 import type { Topic } from '../generated/entity/data/topic';
 import type { ChangeDescription } from '../generated/entity/type';
@@ -58,13 +56,15 @@ export const VersionExtraInfoLink = ({
 export const VersionExtraInfoLabel = ({
   label,
   value,
+  dataTestId,
 }: {
   label: string;
   value: string;
+  dataTestId?: string;
 }) => (
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
-    <Space align="center">
+    <Space align="center" data-testid={dataTestId}>
       <Typography.Text className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
@@ -219,18 +219,21 @@ export const getDataAssetsVersionHeaderInfo = (
         <>
           {!isEmpty(metricType) && (
             <VersionExtraInfoLabel
+              dataTestId="metric-type-version-info"
               label={t('label.metric-type')}
               value={metricType}
             />
           )}
           {!isEmpty(displayUnitOfMeasurement) && (
             <VersionExtraInfoLabel
+              dataTestId="unit-of-measurement-version-info"
               label={t('label.unit-of-measurement')}
               value={displayUnitOfMeasurement}
             />
           )}
           {!isEmpty(granularity) && (
             <VersionExtraInfoLabel
+              dataTestId="granularity-version-info"
               label={t('label.granularity')}
               value={granularity}
             />

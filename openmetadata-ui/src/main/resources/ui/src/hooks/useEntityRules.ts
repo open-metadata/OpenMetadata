@@ -36,6 +36,11 @@ export const useEntityRules = (entityType: EntityType) => {
     [allEntityRules, entityType]
   );
 
+  const isRulesLoaded = useMemo(
+    () => Boolean(allEntityRules?.[entityType]),
+    [allEntityRules, entityType]
+  );
+
   useEffect(() => {
     if (entityType) {
       fetchRulesForEntity(entityType);
@@ -45,6 +50,7 @@ export const useEntityRules = (entityType: EntityType) => {
   return {
     rules,
     entityRules,
+    isRulesLoaded,
     isLoading,
   };
 };

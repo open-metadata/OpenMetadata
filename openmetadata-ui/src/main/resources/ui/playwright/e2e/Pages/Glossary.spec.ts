@@ -1258,11 +1258,11 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
-      );
-
-      expect(viewerContainerText).toContain('Updated description');
+      // The description renders after the term page finishes loading, so assert
+      // on the locator rather than reading textContent once.
+      await expect(
+        page.locator('[data-testid="viewer-container"]')
+      ).toContainText('Updated description');
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);

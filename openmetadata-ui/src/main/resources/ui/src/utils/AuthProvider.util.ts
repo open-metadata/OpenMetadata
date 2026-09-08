@@ -63,11 +63,21 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
+    // Forward the server-configured response type; without it the oidc-client
+    // UserManager silently drops the field and every provider requests the
+    // implicit 'id_token' flow regardless of configuration (#29597).
+    response_type: responseType ?? 'id_token',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -154,7 +164,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType: 'code',
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,

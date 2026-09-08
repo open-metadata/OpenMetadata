@@ -26,7 +26,7 @@ import { LabelType, TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/ColorUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { renderIcon } from '../../../utils/IconUtils';
+import { Icon } from '../../common/Icon/Icon';
 import {
   getClassificationTagPath,
   getGlossaryPath,
@@ -146,14 +146,14 @@ const TagsV1 = ({
       return null;
     }
 
-    if (tag.style?.iconURL) {
-      return renderIcon(tag.style.iconURL, {
-        size: 12,
-        style: { marginRight: 4, flexShrink: 0 },
-      });
-    }
-
-    return startIcon;
+    return (
+      <Icon
+        fallback={startIcon}
+        iconValue={tag.style?.iconURL}
+        size={12}
+        wrapperStyle={{ marginRight: 4 }}
+      />
+    );
   }, [hideIcon, tag.style?.iconURL, startIcon]);
 
   const tagContent = useMemo(

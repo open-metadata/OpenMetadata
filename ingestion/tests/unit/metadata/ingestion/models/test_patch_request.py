@@ -12,12 +12,22 @@
 """
 Check the JSONPatch operations work as expected
 """
+
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import jsonpatch
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.basic import Markdown
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagFQN,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
 
 
@@ -251,3 +261,180 @@ class BuildPatchTest(TestCase):
 
             self.assertIn("JsonPatchUpdater exception", str(context.exception))
             self.assertIn("Failed to build patch", str(context.exception))
+
+
+def test_build_patch_preserves_nested_column_metadata():
+    class TableModel(BaseModel):
+        columns: list[Column]
+
+    historical_tag = TagLabel(
+        tagFQN=TagFQN("PII.Personal"),
+        source=TagSource.Classification,
+        labelType=LabelType.Manual,
+        state=State.Confirmed,
+    )
+    source = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                children=[
+                    Column(
+                        name="email",
+                        dataType=DataType.STRING,
+                        description=Markdown("Historical email"),
+                        tags=[historical_tag],
+                    )
+                ],
+            )
+        ]
+    )
+    destination = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                children=[Column(name="email", dataType=DataType.STRING)],
+            )
+        ]
+    )
+
+    patch = build_patch(
+        source=source,
+        destination=destination,
+        restrict_update_fields=["description", "tags"],
+        array_entity_fields=["columns"],
+    )
+
+    assert patch is not None
+    columns_operation = next(
+        operation for operation in patch.patch if operation["path"] == "/columns"
+    )
+    nested_column = columns_operation["value"][0]["children"][0]
+    assert nested_column["description"] == "Historical email"
+    assert nested_column["tags"][0]["tagFQN"] == "PII.Personal"
+
+
+def test_build_patch_allows_nested_column_metadata_override():
+    class TableModel(BaseModel):
+        columns: list[Column]
+
+    source = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                children=[
+                    Column(
+                        name="email",
+                        dataType=DataType.STRING,
+                        description=Markdown("Historical email"),
+                    )
+                ],
+            )
+        ]
+    )
+    destination = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                children=[
+                    Column(
+                        name="email",
+                        dataType=DataType.STRING,
+                        description=Markdown("Current email"),
+                    )
+                ],
+            )
+        ]
+    )
+
+    patch = build_patch(
+        source=source,
+        destination=destination,
+        restrict_update_fields=["description", "tags"],
+        array_entity_fields=["columns"],
+        override_metadata=True,
+    )
+
+    assert patch is not None
+    columns_operation = next(
+        operation for operation in patch.patch if operation["path"] == "/columns"
+    )
+    nested_column = columns_operation["value"][0]["children"][0]
+    assert nested_column["description"] == "Current email"
+
+
+def test_build_patch_preserves_children_when_struct_children_are_omitted():
+    class TableModel(BaseModel):
+        columns: list[Column]
+
+    source = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                dataTypeDisplay="struct<email:string>",
+                children=[
+                    Column(
+                        name="email",
+                        dataType=DataType.STRING,
+                        description=Markdown("Historical email"),
+                    )
+                ],
+            )
+        ]
+    )
+    destination = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                dataTypeDisplay="struct",
+            )
+        ]
+    )
+
+    patch = build_patch(
+        source=source,
+        destination=destination,
+        restrict_update_fields=["description", "tags"],
+        array_entity_fields=["columns"],
+    )
+
+    assert patch is not None
+    columns_operation = next(
+        operation for operation in patch.patch if operation["path"] == "/columns"
+    )
+    nested_column = columns_operation["value"][0]["children"][0]
+    assert nested_column["name"] == "email"
+    assert nested_column["description"] == "Historical email"
+
+
+def test_build_patch_drops_nested_children_when_column_becomes_scalar():
+    class TableModel(BaseModel):
+        columns: list[Column]
+
+    source = TableModel(
+        columns=[
+            Column(
+                name="payload",
+                dataType=DataType.STRUCT,
+                children=[Column(name="email", dataType=DataType.STRING)],
+            )
+        ]
+    )
+    destination = TableModel(columns=[Column(name="payload", dataType=DataType.STRING)])
+
+    patch = build_patch(
+        source=source,
+        destination=destination,
+        array_entity_fields=["columns"],
+    )
+
+    assert patch is not None
+    columns_operation = next(
+        operation for operation in patch.patch if operation["path"] == "/columns"
+    )
+    assert "children" not in columns_operation["value"][0]

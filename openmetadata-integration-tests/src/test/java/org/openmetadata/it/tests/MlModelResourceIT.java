@@ -140,6 +140,13 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   }
 
   @Override
+  protected String getEntityServiceFqn(MlModel entity) {
+    return entity == null || entity.getService() == null
+        ? null
+        : entity.getService().getFullyQualifiedName();
+  }
+
+  @Override
   protected MlModel getEntityWithFields(String id, String fields) {
     return SdkClients.adminClient().mlModels().get(id, fields);
   }

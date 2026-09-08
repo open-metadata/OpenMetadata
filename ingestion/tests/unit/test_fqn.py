@@ -487,3 +487,68 @@ class TestFqn(TestCase):
             "database_schema": "d",
             "table": "e",
         }
+
+    def test_split_raw_name_matches_str_split_without_quotes(self):
+        """
+        The quote-aware split must be a drop-in replacement for `str.split(".")`
+        on unquoted input, empty components included.
+        """
+        for raw in [
+            "db.schema.table",
+            "schema.table",
+            "table",
+            "",
+            "a..b",
+            ".a",
+            "a.",
+            "..",
+            "a.b.c.d.e",
+        ]:
+            assert fqn.split_raw_name(raw) == raw.split(".")
+
+    def test_split_raw_name_keeps_quoted_components_whole(self):
+        """
+        A `.` inside a quoted identifier is part of the name, not a separator (issue #31481).
+        Quotes are retained so the component can be fed straight back to quote_name.
+        """
+        assert fqn.split_raw_name('"folder.subfolder".my_view') == [
+            '"folder.subfolder"',
+            "my_view",
+        ]
+        assert fqn.split_raw_name('db."folder.subfolder".my_view') == [
+            "db",
+            '"folder.subfolder"',
+            "my_view",
+        ]
+        assert fqn.split_raw_name('"a.b.c.d"') == ['"a.b.c.d"']
+        assert fqn.split_raw_name('"a.b"."c.d"') == ['"a.b"', '"c.d"']
+
+    def test_split_raw_name_tolerates_malformed_input(self):
+        """Names come from parsed SQL, so unbalanced quotes must not raise."""
+        assert fqn.split_raw_name('"unbalanced') == ['"unbalanced']
+        assert fqn.split_raw_name('"unbalanced.name') == ['"unbalanced.name']
+        assert fqn.split_raw_name('a."b') == ["a", '"b']
+
+    def test_split_raw_name_output_is_quote_name_safe(self):
+        """
+        The whole point of the quote-aware split: every component it returns must be
+        acceptable to quote_name, so downstream FQN building cannot blow up.
+        """
+        for raw in [
+            '"folder.subfolder".my_view',
+            'db."folder.subfolder".my_view',
+            "db.schema.table",
+            '"a.b"."c.d"',
+        ]:
+            for part in fqn.split_raw_name(raw):
+                fqn.quote_name(part)
+
+    def test_dotted_schema_survives_fqn_round_trip(self):
+        """
+        Regression for Dremio view lineage (issue #31481): the FQN rebuilt from a split
+        component must equal the FQN that was ingested, for any folder nesting depth.
+        """
+        for folders in (["f1"], ["f1", "f2"], ["f1", "f2", "f3"]):
+            ingested = fqn._build("svc", "db", ".".join(folders), "vw")
+            _, database, schema, table = fqn.split(ingested)
+            assert fqn._build("svc", database, schema, table) == ingested

@@ -13,6 +13,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -22,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -125,6 +129,14 @@ import org.openmetadata.sdk.network.HttpMethod;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
+
+  private static final RetryConfig LINEAGE_DEADLOCK_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .intervalFunction(IntervalFunction.ofExponentialBackoff(250, 2.0))
+          .retryOnException(TableResourceIT::isTransientDeadlock)
+          .failAfterMaxAttempts(true)
+          .build();
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
@@ -3247,7 +3259,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                             .withType("table")
                             .withFullyQualifiedName(downstreamTable.getFullyQualifiedName())));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = addLineageWithDeadlockRetry(client, addLineage);
 
     // Verify lineage was created
     assertNotNull(result);
@@ -3304,7 +3316,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                                                 + "."
                                                 + targetTable.getColumns().get(0).getName())))));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = addLineageWithDeadlockRetry(client, addLineage);
 
     // Verify lineage was created
     assertNotNull(result);
@@ -3317,6 +3329,22 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertNotNull(lineageJson);
     assertTrue(lineageJson.contains("columnsLineage"));
+  }
+
+  private String addLineageWithDeadlockRetry(OpenMetadataClient client, AddLineage addLineage) {
+    Retry retry = Retry.of("table-lineage-" + UUID.randomUUID(), LINEAGE_DEADLOCK_RETRY_CONFIG);
+    Supplier<String> addLineageOperation = () -> client.lineage().addLineage(addLineage);
+    return Retry.decorateSupplier(retry, addLineageOperation).get();
+  }
+
+  private static boolean isTransientDeadlock(Throwable throwable) {
+    for (Throwable current = throwable; current != null; current = current.getCause()) {
+      String message = current.getMessage();
+      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // ===================================================================

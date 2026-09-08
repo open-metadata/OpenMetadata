@@ -57,17 +57,19 @@ from metadata.ingestion.source.database.oracle.queries import (
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
-    _get_constraint_data,
     denormalize_name,
     get_all_view_definitions,
     get_columns,
+    get_foreign_keys,
     get_indexes_preserve_case,
     get_mview_names,
     get_mview_names_dialect,
+    get_pk_constraint,
     get_table_comment,
     get_table_comment_preserve_case,
     get_table_names,
     get_table_prefix_from_connection,
+    get_unique_constraints,
     get_view_definition,
     get_view_definition_preserve_case,
     get_view_names,
@@ -108,7 +110,9 @@ OracleDialect.get_view_names = get_view_names_dialect
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
-OracleDialect._get_constraint_data = _get_constraint_data
+OracleDialect.get_pk_constraint = get_pk_constraint
+OracleDialect.get_unique_constraints = get_unique_constraints
+OracleDialect.get_foreign_keys = get_foreign_keys
 
 
 class OracleSource(CommonDbSourceService):

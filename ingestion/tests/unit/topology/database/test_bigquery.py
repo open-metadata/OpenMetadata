@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -57,6 +60,10 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
+)
 from metadata.utils.lru_cache import LRUCache
 
 mock_bq_config = {
@@ -456,6 +463,23 @@ class BigqueryUnitTest(TestCase):
             EXPECTED_URL,
         )
 
+    def test_region_life_cycle_query_selects_last_modified(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+            database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME, region="EU"
+        )
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertIn("storage_last_modified_time as updated_at", query)
+        self.assertIn("`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE", query)
+
+    def test_dataset_life_cycle_query_is_created_only(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY.format(
+            database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME
+        )
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertNotIn("TABLE_STORAGE", query)
+
     @patch(
         "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels"
     )
@@ -673,9 +697,6 @@ class BigqueryUnitTest(TestCase):
         """
         from google.auth.credentials import Credentials
 
-        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-            BigQueryConnection,
-        )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
@@ -710,6 +731,36 @@ class BigqueryUnitTest(TestCase):
         )
         assert "location=eu" not in str(result_null.engine.url)
         assert result_null.client._location is None
+
+    @patch("metadata.utils.credentials.auth.default")
+    def test_inspector_scopes_adc_and_path_credentials(self, mock_auth_default):
+        from google.auth.credentials import Credentials
+
+        from metadata.ingestion.source.database.bigquery.helper import (
+            get_inspector_details,
+        )
+
+        mock_auth_default.return_value = (Mock(spec=Credentials), "project-one")
+
+        for gcp_config in (
+            {"type": "gcp_adc", "projectId": ["project-one", "project-two"]},
+            {
+                "type": "gcp_credential_path",
+                "path": "credentials.json",
+                "projectId": ["project-one", "project-two"],
+            },
+        ):
+            config = deepcopy(mock_bq_config["source"]["serviceConnection"]["config"])
+            config["credentials"]["gcpConfig"] = gcp_config
+            service_connection = BigQueryConnection.model_validate(config)
+
+            result = get_inspector_details("project-two", service_connection)
+
+            assert str(result.engine.url).startswith("bigquery://project-two")
+            assert service_connection.credentials.gcpConfig.projectId.root == [
+                "project-one",
+                "project-two",
+            ]
 
 
 class BigqueryLineageSourceTest(TestCase):
@@ -979,6 +1030,37 @@ class TestBigqueryRegionAwareQueries:
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
         assert self.bq_source._table_ddl_cache == {}
+
+    # --- get_life_cycle_query ---
+
+    def test_life_cycle_query_uses_region_aware_query(self):
+        """Region-scoped query (with TABLE_STORAGE) is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE" in query
+        assert "storage_last_modified_time as updated_at" in query
+
+    def test_life_cycle_query_falls_back_without_location(self):
+        """Dataset-scoped created-only query is used when dataset location is None."""
+        self._set_dataset_location(None)
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "region-" not in query
+        assert "TABLE_STORAGE" not in query
+        assert "creation_time as created_at" in query
+
+    def test_life_cycle_query_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to the dataset-scoped created-only query."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._dataset_obj_cache.clear()
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "TABLE_STORAGE" not in query
+        assert "creation_time as created_at" in query
 
 
 class _EvictedOnReadCache(LRUCache):

@@ -15,6 +15,7 @@ import { TableProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactNode } from 'react';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
@@ -61,6 +62,14 @@ export interface IngestionListTableProps {
   ) => ReactNode;
   tableClassName?: string;
   searchText?: string;
+  /**
+   * Opt into server-side ordering of the Name column. When `onSortChange` is provided the column
+   * stops comparing rows locally — which can only ever reorder the loaded page — and the caller is
+   * expected to refetch with `sortField=displayName` and this order. Omit both to keep the
+   * client-side comparator.
+   */
+  sortOrder?: SORT_ORDER;
+  onSortChange?: (sortOrder?: SORT_ORDER) => void;
 }
 
 export interface ModifiedIngestionPipeline extends IngestionPipeline {

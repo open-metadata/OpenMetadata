@@ -96,11 +96,20 @@ export default defineConfig({
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
+        // Toggles the global enableAccessControl search setting in beforeAll/afterAll —
+        // same reason SearchRBAC.spec.ts is isolated below; runs in the SearchRBAC
+        // project instead so it never races other chromium tests on that setting.
+        '**/DomainIncidentIsolation.spec.ts',
         '**/SSOLogin.spec.ts',
         // Runs in its own post-chromium project to prevent IntakeForm.spec.ts's
         // per-test beforeEach (which deletes all intake forms) from racing against
         // the domain intake form this spec creates in beforeAll.
         '**/IntakeFormCustomPropertyFields.spec.ts',
+        // IntakeForm.spec.ts sets required intake-form fields that cause other
+        // chromium tests (e.g. DomainDataProductsWidgets) to fail with 400 when
+        // they create domains or data products. Isolate it post-chromium so those
+        // parallel tests never see active required fields.
+        '**/IntakeForm.spec.ts',
       ],
     },
     {
@@ -155,11 +164,20 @@ export default defineConfig({
       fullyParallel: true,
     },
     {
+      // Also runs DomainIncidentIsolation.spec.ts (1.13 backport of the #31740 domain-RBAC
+      // fix) — it toggles the same global enableAccessControl setting in beforeAll/afterAll,
+      // so it needs the same isolation from chromium. workers:1 serializes the two spec
+      // files against each other too (a second file here would otherwise be free to run
+      // on a separate worker and race the same setting within this one project).
       name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
+      testMatch: [
+        '**/SearchRBAC.spec.ts',
+        '**/DomainIncidentIsolation.spec.ts',
+      ],
       dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
+      workers: 1,
     },
     // Compatibility shim for PR workflows that still pass --project=DomainIsolation.
     // The DomainIsolation E2E suite is not backported to 1.13, so this project intentionally
@@ -184,16 +202,42 @@ export default defineConfig({
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
     },
-    // IntakeFormCustomPropertyFields creates a domain intake form in beforeAll and
-    // relies on it persisting across two serial tests. IntakeForm.spec.ts (in the
-    // main chromium project) has a beforeEach that deletes ALL intake forms, so the
-    // two specs interfere when run in parallel. Running this file after chromium
-    // completes eliminates the race entirely.
+    // IntakeFormCustomPropertyFields creates a domain intake form in beforeAll
+    // and relies on it persisting across its serial tests. IntakeForm.spec.ts
+    // has a per-test beforeEach that deletes ALL intake forms, so the two specs
+    // race if they run concurrently.
+    //
+    // We deliberately do NOT declare the chromium project as a dependency here:
+    // forcing the entire chromium suite to run before this single file is huge
+    // wasted work (blows the CI job timeout, and no one wants to wait 40+ min
+    // locally either). Instead, run this project by itself with
+    // `--project=IntakeFormCustomPropertyFields` — or with `--project=IntakeForm`,
+    // which pulls this in as its dep.
+    //
+    // DO NOT run `--project=chromium --project=IntakeFormCustomPropertyFields`
+    // (or the full suite with no filter) concurrently — it will race with
+    // chromium tests that create domains/data-products and fail with 400s.
     {
       name: 'IntakeFormCustomPropertyFields',
       testMatch: '**/IntakeFormCustomPropertyFields.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'chromium'],
+      dependencies: ['setup'],
+      fullyParallel: false,
+    },
+    // IntakeForm.spec.ts has a per-test beforeEach that deletes ALL intake forms.
+    // While active, its required fields also break parallel chromium tests that
+    // create domains or data products (400 errors).
+    //
+    // Same rule as IntakeFormCustomPropertyFields above — the chromium project
+    // is NOT declared as a dep. Run only `--project=IntakeForm` (which chains
+    // IntakeFormCustomPropertyFields via its dep) on a dedicated shard.
+    //
+    // DO NOT run this project concurrently with the chromium project.
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'IntakeFormCustomPropertyFields'],
       fullyParallel: false,
     },
   ],

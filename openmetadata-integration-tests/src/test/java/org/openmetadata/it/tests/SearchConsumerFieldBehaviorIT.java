@@ -128,6 +128,16 @@ class SearchConsumerFieldBehaviorIT {
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
             .setMapper(new JacksonJsonpMapper())
+            .setHttpClientConfigCallback(
+                httpClientBuilder -> {
+                  // httpclient5 5.6.0 enables automatic gzip decompression by default; the
+                  // opensearch-java transport also decompresses the response body, so leaving
+                  // both on runs the second pass over already-inflated bytes and throws
+                  // "java.util.zip.ZipException: Not in GZIP format". Let opensearch-java own
+                  // decompression. Mirrors the production OpenSearchClient fix.
+                  httpClientBuilder.disableContentCompression();
+                  return httpClientBuilder;
+                })
             .build();
     openSearchClient = new OpenSearchClient(transport);
     mapper = new ObjectMapper();

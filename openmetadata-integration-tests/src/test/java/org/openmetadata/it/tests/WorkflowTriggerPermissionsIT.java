@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -9,17 +10,23 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -27,6 +34,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
@@ -53,6 +62,15 @@ public class WorkflowTriggerPermissionsIT {
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String TRIGGER_PATH = "/v1/automations/workflows/trigger/";
   private static final long TOKEN_TTL_SECONDS = 3600;
+
+  // dataConsumer JWT tests hit SubjectCache.getUserContext during authorization; if that user
+  // hasn't been created in this JVM session the lookup throws EntityNotFoundException (→404)
+  // and short-circuits the authorizer before it can return the expected 403. Pin the user up
+  // front so the result is deterministic regardless of suite ordering.
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
 
   @Test
   void test_triggerWorkflow_noAuth_returns401(TestNamespace ns) throws Exception {
@@ -190,6 +208,72 @@ public class WorkflowTriggerPermissionsIT {
         response,
         "non-TEST_CONNECTION triggers are intentionally out of scope for the test-connection "
             + "authorizer (issue #26760) and must not be blocked by it");
+  }
+
+  @Test
+  void test_triggerTestConnection_impersonatingBotWithoutGrant_returns403(TestNamespace ns)
+      throws Exception {
+    // Advisory PoC: a bot without the impersonation grant attaches X-Impersonate-User to reach a
+    // gated trigger. authorizeWorkflowTrigger -> authorizeRequests must resolve the effective
+    // subject through impersonation validation and deny it, not trust the header.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService service = createMysqlService(admin, ns.prefix("svc-impbot"), null);
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(testConnectionRequest(ns.prefix("impbot-trig"), service.getName()));
+
+    String botToken = createImpersonationBotToken(ns, "nogrant", false);
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), botToken, "admin");
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "Impersonating bot without the grant must be denied on the trigger endpoint: "
+            + response.body());
+    assertTrue(
+        response.body().contains("impersonation"),
+        "Denial must come from impersonation validation: " + response.body());
+  }
+
+  private String createImpersonationBotToken(
+      TestNamespace ns, String suffix, boolean allowImpersonation) {
+    String localPart = "trigbot" + suffix + ns.shortPrefix();
+    OpenMetadataClient admin = SdkClients.adminClient();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    User botUser =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(localPart)
+                    .withEmail(localPart + "@test.com")
+                    .withIsBot(true)
+                    .withAuthenticationMechanism(authMechanism));
+    admin
+        .bots()
+        .create(
+            new CreateBot()
+                .withName(ns.prefix("trig_" + suffix + "_bot"))
+                .withBotUser(botUser.getName())
+                .withAllowImpersonation(allowImpersonation));
+    return admin.users().generateToken(botUser.getId(), JWTTokenExpiry.Seven).getJWTToken();
+  }
+
+  private HttpResponse<String> triggerWorkflow(
+      UUID workflowId, String token, String impersonateUser) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + TRIGGER_PATH + workflowId))
+            .header("Authorization", "Bearer " + token)
+            .header("X-Impersonate-User", impersonateUser)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private CreateWorkflow testConnectionRequest(String name, String serviceName) {

@@ -484,7 +484,10 @@ export const getPropertyValues = (
 
 export const createCustomPropertyForEntity = async (
   apiContext: APIRequestContext,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  propertyTypes: readonly CustomPropertyTypeByName[] = Object.values(
+    CustomPropertyTypeByName
+  )
 ) => {
   const propertiesResponse = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
@@ -492,7 +495,7 @@ export const createCustomPropertyForEntity = async (
   const properties = await propertiesResponse.json();
   const propertyList = properties.data.filter(
     (item: { name: CustomPropertyTypeByName }) =>
-      Object.values(CustomPropertyTypeByName).includes(item.name)
+      propertyTypes.includes(item.name)
   );
 
   const entitySchemaResponse = await apiContext.get(
@@ -1539,4 +1542,13 @@ export const updateCustomPropertyInRightPanel = async (data: {
     await expect(container.getByTestId('property-value')).toBeVisible();
     await expect(container.getByTestId('no-data')).not.toBeVisible();
   }
+};
+
+export const createTable = async (page: Page) => {
+  await page.keyboard.type('/table');
+  await page
+    .locator('#editor-commands-viewport')
+    .getByText('Table')
+    .first()
+    .click();
 };

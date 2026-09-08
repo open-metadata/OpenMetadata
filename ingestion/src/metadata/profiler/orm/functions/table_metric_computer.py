@@ -1103,6 +1103,8 @@ class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Extract numRecords from DESCRIBE DETAIL."""
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return super().compute()
         query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
         result = self.runner._session.execute(query).first()
         if result:

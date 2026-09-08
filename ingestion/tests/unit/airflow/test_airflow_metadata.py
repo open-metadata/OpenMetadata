@@ -16,6 +16,7 @@ The Airflow SDK is always v3.x (which has DagRun.logical_date), but we may
 connect to Airflow 2.x databases (which have execution_date column).
 """
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
@@ -336,13 +337,14 @@ class TestYieldPipelineStatus:
         return AirflowSource.__new__(AirflowSource)
 
     def _make_dag_run(self, logical_date, start_date):
-        dag_run = MagicMock(spec=DagRun)
-        dag_run.run_id = "manual__2024-01-01"
-        dag_run.dag_id = "test_dag"
-        dag_run.state = "success"
-        dag_run.logical_date = logical_date
-        dag_run.start_date = start_date
-        return dag_run
+        # Avoid configuring Airflow's shared SQLAlchemy mapper registry while building this double.
+        return SimpleNamespace(
+            run_id="manual__2024-01-01",
+            dag_id="test_dag",
+            state="success",
+            logical_date=logical_date,
+            start_date=start_date,
+        )
 
     @patch(
         "metadata.ingestion.source.pipeline.airflow.metadata.AirflowSource.__init__",

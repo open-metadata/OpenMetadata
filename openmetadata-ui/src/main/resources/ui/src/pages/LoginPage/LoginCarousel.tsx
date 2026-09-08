@@ -13,14 +13,37 @@
 
 import { Carousel, Typography } from 'antd';
 import { uniqueId } from 'lodash';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselContent = loginClassBase.getLoginCarouselContent();
+  const loginVideo = loginClassBase.getLoginVideo();
   const { t } = useTranslation();
+
+  const prefersReducedMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches),
+    []
+  );
+
+  if (loginVideo) {
+    return (
+      <video
+        aria-hidden
+        muted
+        playsInline
+        autoPlay={!prefersReducedMotion}
+        className="tw:absolute tw:inset-0 tw:h-full tw:w-full tw:object-cover"
+        data-testid="login-video"
+        loop={!prefersReducedMotion}
+        src={loginVideo}
+      />
+    );
+  }
 
   return (
     <Carousel

@@ -36,7 +36,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-HEADERS = {"Content-Type": "application/json"}
+DEFAULT_HEADERS = {"Content-Type": "application/json"}
 WORKFLOW_URL = "dataprocessing/v1/dataflows"
 
 
@@ -103,7 +103,11 @@ class DomoClient:
         ],
     ):
         self.config = config
-        HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
+        self.headers = DEFAULT_HEADERS.copy()
+        if self.config.accessToken:
+            self.headers[
+                "X-DOMO-Developer-Token"
+            ] = self.config.accessToken.get_secret_value()
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.instanceDomain),
             api_version="api/",
@@ -121,7 +125,7 @@ class DomoClient:
             f"metadataOverrides,owners,problems,properties,slicers,subscriptions&includeFiltered=true"
         )
         try:
-            response = self.client.get(path=url, headers=HEADERS)
+            response = self.client.get(path=url, headers=self.headers)
 
             if isinstance(response, list) and len(response) > 0:
                 return DomoChartDetails(
@@ -141,7 +145,7 @@ class DomoClient:
 
     def get_pipelines(self):
         try:
-            response = self.client.get(path=WORKFLOW_URL, headers=HEADERS)
+            response = self.client.get(path=WORKFLOW_URL, headers=self.headers)
             return response
         except Exception as exc:
             logger.error(f"Error while getting pipelines - {exc}")
@@ -151,7 +155,7 @@ class DomoClient:
     def get_runs(self, workflow_id):
         try:
             url = f"dataprocessing/v1/dataflows/{workflow_id}/executions?limit=100&offset=0"
-            response = self.client.get(path=url, headers=HEADERS)
+            response = self.client.get(path=url, headers=self.headers)
             return response
         except Exception as exc:
             logger.warning(
@@ -167,7 +171,7 @@ class DomoClient:
         This helps us validate that the provided Access Token is correct for Domo Dashboard.
         """
         try:
-            self.client.get(path="content/v1/cards", headers=HEADERS)
+            self.client.get(path="content/v1/cards", headers=self.headers)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error listing cards due to [{exc}]")

@@ -242,6 +242,29 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_nonAdminRole_deniesAdminTargetOnAdminOnlyEndpoint(TestNamespace ns) {
+    // GET /v1/system/settings is guarded by authorizeAdmin, which resolves the effective subject
+    // rather than the bot, so the bot's impersonation policy still decides the outcome.
+    User botUser = createBotUser(ns, "adminguard");
+    createBot(ns.prefix("imp_adminguard_bot"), botUser, true);
+    swapImpersonationRole(botUser, BOT_NON_ADMIN_IMPERSONATION_ROLE);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asAdmin = impersonationClient(botToken, "admin");
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/system/settings", null),
+            "Admin-only endpoints must enforce the bot's impersonation policy");
+    assertTrue(
+        denied.getMessage().contains("not authorized to impersonate"),
+        "Error should state the target is not allowed: " + denied.getMessage());
+  }
+
+  @Test
   void test_applicationBotRole_impersonatesIncludingAdmin(TestNamespace ns) {
     // Backward compatibility: existing application bots use ApplicationBotImpersonationRole
     // (ApplicationBotImpersonationPolicy = allow Impersonate on All, no deny rules). The new
@@ -361,6 +384,83 @@ public class BotImpersonationIT {
     assertTrue(
         Boolean.TRUE.equals(refreshed.getAllowImpersonation()),
         "Rejected non-admin revoke must leave the grant intact");
+  }
+
+  @Test
+  void test_getPersonalAccessToken_whileImpersonating_rejected(TestNamespace ns) {
+    // Listing returns the raw jwtToken; an impersonating bot could otherwise exfiltrate the
+    // target's PAT and authenticate as them outside the impersonation flow.
+    User target = createRegularUser(ns, "listtarget");
+    User botUser = createBotUser(ns, "listpat");
+    createBot(ns.prefix("imp_listpat_bot"), botUser, true);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asTarget = impersonationClient(botToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asTarget
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/security/token", null),
+            "Listing personal access tokens while impersonating must be rejected");
+    assertTrue(
+        denied.getMessage().contains("while impersonated by"),
+        "List must be blocked by the impersonation guard: " + denied.getMessage());
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_whileImpersonating_rejected(TestNamespace ns) {
+    // The create path already blocks minting a PAT under impersonation; revoke is the same
+    // self-scoped operation and must be blocked too, even for a bot otherwise allowed to
+    // impersonate the target (the default policy permits regular users).
+    User target = createRegularUser(ns, "revoketarget");
+    User botUser = createBotUser(ns, "revokepat");
+    createBot(ns.prefix("imp_revokepat_bot"), botUser, true);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asTarget = impersonationClient(botToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asTarget
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users/security/token/revoke?removeAll=false",
+                        "{\"tokenIds\":[\"" + UUID.randomUUID() + "\"]}"),
+            "Revoking a personal access token while impersonating must be rejected");
+    assertTrue(
+        denied.getMessage().contains("while impersonated by"),
+        "Revoke must be blocked by the impersonation guard: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_withRotatedBotToken_rejected(TestNamespace ns) {
+    // Bot tokens are revoked by rotation (the stored token changes). A leaked, since-rotated token
+    // must not keep working just because an X-Impersonate-User header is attached.
+    User target = createRegularUser(ns, "rotatetarget");
+    User botUser = createBotUser(ns, "rotate");
+    createBot(ns.prefix("imp_rotate_bot"), botUser, true);
+
+    String oldToken =
+        SdkClients.adminClient()
+            .users()
+            .generateToken(botUser.getId(), JWTTokenExpiry.Seven)
+            .getJWTToken();
+    // Rotate: the previously issued token is now stale.
+    SdkClients.adminClient().users().generateToken(botUser.getId(), JWTTokenExpiry.Ninety);
+
+    OpenMetadataClient asTarget = impersonationClient(oldToken, target.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () -> asTarget.users().getByName(target.getName()),
+            "A rotated bot token must not authenticate even with an impersonation header");
+    assertTrue(
+        denied.getMessage().contains("does not match the current bot's token"),
+        "Rotated bot token must be rejected by bot-token validation: " + denied.getMessage());
   }
 
   private Bot putBot(

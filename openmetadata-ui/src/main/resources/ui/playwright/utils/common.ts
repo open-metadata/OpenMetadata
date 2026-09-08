@@ -499,10 +499,8 @@ export const assignDataProduct = async (
     );
 
     await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
+      const searchDataProduct = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
       await page.locator('[data-testid="data-product-selector"] input').clear();
       await page
@@ -630,7 +628,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -923,13 +922,15 @@ export const testPaginationNavigation = async (
     if (validateRowCount) {
       expect(initialRowCount).toBeLessThanOrEqual(15);
     }
+    await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await pageSizeDropdown.hover();
-    const isMenuVisibleAfterHover = await menuItem.isVisible();
-    if (!isMenuVisibleAfterHover) {
-      await pageSizeDropdown.click();
-    }
-    await menuItem.waitFor({ state: 'visible' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await menuItem.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
     const pageSizeChangePromise = page.waitForResponse((response) =>
       response.url().includes(apiEndpointPattern)
@@ -999,11 +1000,13 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  if (!(await menuItem.isVisible())) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
+  await expect(async () => {
+    await pageSizeDropdown.hover();
+    if (!(await menuItem.isVisible())) {
+      await pageSizeDropdown.click();
+    }
+    await expect(menuItem).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
   await menuItem.click();
   await waitForAllLoadersToDisappear(page);
 

@@ -7,7 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +34,7 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.EntityHistory;
@@ -1725,6 +1736,116 @@ public class EventSubscriptionResourceIT
                     .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
                     .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
                     .withConfig(webhookConfig)));
+  }
+
+  /**
+   * The testDestination endpoint must never echo the submitted destination config back: it carries
+   * webhook credentials in plaintext. It must also report destinations whose delivery threw, rather
+   * than silently dropping them, so the response stays aligned with the request.
+   */
+  @Test
+  void test_testDestinationRedactsConfigAndReportsFailures(TestNamespace ns) throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/oauth/token",
+        exchange -> sendJson(exchange, "{\"access_token\":\"test-token\",\"expires_in\":3600}"));
+    server.createContext("/webhook", exchange -> sendJson(exchange, "{}"));
+    server.start();
+    int port = server.getAddress().getPort();
+    String clientSecret = ns.prefix("client-secret");
+
+    try {
+      WebhookOAuth2Config oauth2 =
+          new WebhookOAuth2Config()
+              .withType(WebhookOAuth2Config.Type.OAUTH_2)
+              .withTokenUrl(URI.create("http://localhost:" + port + "/oauth/token"))
+              .withClientId(ns.prefix("client-id"))
+              .withClientSecret(clientSecret);
+      String queryToken = ns.prefix("query-token");
+      SubscriptionDestination reachable =
+          webhookDestination("http://localhost:" + port + "/webhook", oauth2, null);
+      SubscriptionDestination unreachable =
+          webhookDestination(
+              "http://localhost:" + closedPort() + "/webhook", null, Map.of("token", queryToken));
+
+      HttpResponse<String> response = postTestDestination(List.of(reachable, unreachable));
+
+      assertEquals(200, response.statusCode(), response.body());
+      assertFalse(
+          response.body().contains(clientSecret), "Response echoed the webhook client secret");
+      assertFalse(response.body().contains("clientSecret"), "Response echoed the auth config");
+      assertFalse(response.body().contains("authType"), "Response echoed the auth config");
+      assertFalse(
+          response.body().contains(queryToken),
+          "Response echoed a credential carried in the endpoint query string");
+
+      List<SubscriptionDestination> results =
+          JsonUtils.readObjects(response.body(), SubscriptionDestination.class);
+      assertEquals(2, results.size(), "Every requested destination must be reported");
+      assertNull(results.get(0).getConfig(), "Destination config must be redacted");
+      assertNull(results.get(1).getConfig(), "Destination config must be redacted");
+      assertEquals(TestDestinationStatus.Status.SUCCESS, testStatus(results.get(0)));
+      assertEquals(TestDestinationStatus.Status.FAILED, testStatus(results.get(1)));
+      assertNotNull(testReason(results.get(1)), "A failed destination must carry a reason");
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  private SubscriptionDestination webhookDestination(
+      String endpoint, WebhookOAuth2Config authType, Map<String, String> queryParams) {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create(endpoint))
+            .withAuthType(authType)
+            .withQueryParams(queryParams);
+
+    return new SubscriptionDestination()
+        .withId(UUID.randomUUID())
+        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(webhook);
+  }
+
+  private HttpResponse<String> postTestDestination(List<SubscriptionDestination> destinations)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/events/subscriptions/testDestination"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(Map.of("destinations", destinations))))
+            .build();
+
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private TestDestinationStatus.Status testStatus(SubscriptionDestination destination) {
+    return JsonUtils.convertValue(destination.getStatusDetails(), TestDestinationStatus.class)
+        .getStatus();
+  }
+
+  private String testReason(SubscriptionDestination destination) {
+    return JsonUtils.convertValue(destination.getStatusDetails(), TestDestinationStatus.class)
+        .getReason();
+  }
+
+  private static void sendJson(HttpExchange exchange, String body) throws IOException {
+    byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().add("Content-Type", "application/json");
+    exchange.sendResponseHeaders(200, payload.length);
+    try (OutputStream out = exchange.getResponseBody()) {
+      out.write(payload);
+    }
+  }
+
+  /** A port that nothing is listening on, so delivery fails at connect time. */
+  private static int closedPort() throws IOException {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      return socket.getLocalPort();
+    }
   }
 
   private org.openmetadata.schema.entity.events.NotificationTemplate getSystemTemplate(

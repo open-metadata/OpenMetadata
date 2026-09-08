@@ -13,7 +13,9 @@
 
 import { get } from 'lodash';
 import { lazy } from 'react';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -40,7 +42,8 @@ const GenericTab = withSuspenseFallback(
     import('../components/Customization/GenericTab/GenericTab').then(
       (module) => ({ default: module.GenericTab })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const CommonWidgets = withSuspenseFallback(
@@ -59,7 +62,8 @@ const ContractTab = withSuspenseFallback(
   )
 );
 const TopicSchemaFields = withSuspenseFallback(
-  lazy(() => import('../components/Topic/TopicSchema/TopicSchema'))
+  lazy(() => import('../components/Topic/TopicSchema/TopicSchema')),
+  TAB_CONTENT_FALLBACK
 );
 
 export const getTopicDetailsPageTabs = ({

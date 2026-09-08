@@ -124,6 +124,12 @@ class UnitycatalogLineageSource(Source):
                     )
                 )
                 for row in rows:
+                    # A table never derives from itself. The system tables record
+                    # access rather than derivation, so a streaming or CDC write
+                    # legitimately names its target as its own source. Kept as
+                    # lineage it renders as a loop on the node and says nothing.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     self.table_lineage_map[row.target_table_full_name].add(
                         row.source_table_full_name
                     )
@@ -145,6 +151,10 @@ class UnitycatalogLineageSource(Source):
                     )
                 )
                 for row in rows:
+                    # The table pair this belongs to is dropped above, so caching the
+                    # columns only grows the map with entries nothing can read.
+                    if row.source_table_full_name == row.target_table_full_name:
+                        continue
                     table_key = (
                         row.source_table_full_name,
                         row.target_table_full_name,

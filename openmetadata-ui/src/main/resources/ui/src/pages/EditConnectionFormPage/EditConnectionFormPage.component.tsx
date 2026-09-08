@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -293,11 +293,13 @@ function EditConnectionFormPage() {
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
         children: (
-          <ServiceDocPanel
-            activeField={activeField}
-            serviceName={serviceDetails?.serviceType ?? ''}
-            serviceType={getServiceType(serviceCategory as ServiceCategory)}
-          />
+          <Suspense fallback={null}>
+            <ServiceDocPanel
+              activeField={activeField}
+              serviceName={serviceDetails?.serviceType ?? ''}
+              serviceType={getServiceType(serviceCategory as ServiceCategory)}
+            />
+          </Suspense>
         ),
         className: 'service-doc-panel content-resizable-panel-container',
         minWidth: 400,

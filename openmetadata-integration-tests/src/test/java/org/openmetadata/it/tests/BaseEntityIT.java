@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
@@ -33,10 +34,21 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -46,6 +58,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.policies.PolicyService;
+import org.openmetadata.sdk.services.teams.RoleService;
+import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.TestUtils;
@@ -974,10 +989,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityListWithPagination_200(TestNamespace ns) {
     // Create a few entities
-    for (int i = 0; i < 3; i++) {
+    T firstEntity = createEntity(createRequest(ns.prefix("list0"), ns));
+    for (int i = 1; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("list" + i), ns);
       createEntity(createRequest);
     }
+    String scopeService = getEntityServiceFqn(firstEntity);
 
     Awaitility.await("Wait for entities to be listable")
         .pollDelay(Duration.ofMillis(500))
@@ -988,6 +1005,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               org.openmetadata.sdk.models.ListParams params =
                   new org.openmetadata.sdk.models.ListParams();
               params.setLimit(10);
+              if (scopeService != null) {
+                params.setService(scopeService);
+              }
               org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
               assertNotNull(response, "List response should not be null");
@@ -1066,6 +1086,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   protected abstract org.openmetadata.sdk.models.ListResponse<T> listEntities(
       org.openmetadata.sdk.models.ListParams params);
+
+  /**
+   * Return the parent service FQN of an entity for scoping unqualified list calls, or null if the
+   * entity type has no parent service. Service-backed entity ITs (MlModel, SearchIndex, …) create
+   * a fresh service per entity, so under parallel execution an unscoped {@code listEntities}
+   * returns rows whose services are being hard-deleted by sibling {@code @AfterEach} cleanup —
+   * server-side hydration of those refs then throws "Api &lt;entityService&gt; instance for
+   * &lt;uuid&gt; not found". Overriding this returns a specific service FQN so the list call is
+   * pinned to it and never sees foreign rows.
+   */
+  protected String getEntityServiceFqn(T entity) {
+    return null;
+  }
 
   // ===================================================================
   // PHASE 3: TAGS OPERATIONS
@@ -1412,7 +1445,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // response returns. Polling matches the same pattern FolderResourceIT uses
     // for its async-delete override and keeps the assertion intent unchanged.
     Awaitility.await("Hard deleted entity should not be retrievable")
-        .atMost(Duration.ofSeconds(15))
+        // Bumped from 15s: pg-es-redis parallel lane needs more headroom for the change-event
+        // pipeline.
+        .atMost(Duration.ofSeconds(45))
         .pollInterval(Duration.ofMillis(250))
         .untilAsserted(
             () ->
@@ -2879,10 +2914,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Create multiple entities
     int count = 3;
     List<UUID> createdIds = new ArrayList<>();
+    T firstEntity = null;
     for (int i = 0; i < count; i++) {
       K createRequest = createRequest(ns.prefix("bulk" + i), ns);
       T entity = createEntity(createRequest);
       createdIds.add(entity.getId());
+      if (firstEntity == null) {
+        firstEntity = entity;
+      }
     }
 
     // Verify all entities can be fetched individually
@@ -2894,6 +2933,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Basic list test - just verify list works
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
+    // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
+    // mid-list otherwise.
+    String scopeService = getEntityServiceFqn(firstEntity);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
     assertNotNull(response, "List response should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities");
@@ -3324,14 +3369,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void testListFluentAPI(TestNamespace ns) {
     // Create a few entities
+    T firstEntity = null;
     for (int i = 0; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("list" + i), ns);
-      createEntity(createRequest);
+      T created = createEntity(createRequest);
+      if (firstEntity == null) {
+        firstEntity = created;
+      }
     }
 
     // Basic list test - just verify list API works
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
+    // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
+    // mid-list otherwise.
+    String scopeService = getEntityServiceFqn(firstEntity);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
     assertNotNull(response, "List response should not be null");
@@ -3347,14 +3402,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void testAutoPaginationFluentAPI(TestNamespace ns) {
     // Create a few entities
+    T firstEntity = null;
     for (int i = 0; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("page" + i), ns);
-      createEntity(createRequest);
+      T created = createEntity(createRequest);
+      if (firstEntity == null) {
+        firstEntity = created;
+      }
     }
 
     // Basic pagination test - verify pagination works
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(2);
+    // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
+    // mid-list otherwise.
+    String scopeService = getEntityServiceFqn(firstEntity);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
 
     org.openmetadata.sdk.models.ListResponse<T> page = listEntities(params);
     assertNotNull(page, "Page should not be null");
@@ -3734,6 +3799,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    awaitAsyncBulkEntitiesPersisted(result);
   }
 
   /**
@@ -4460,6 +4526,29 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
+    awaitAsyncBulkEntitiesPersisted(result);
+  }
+
+  private void awaitAsyncBulkEntitiesPersisted(BulkOperationResult result) {
+    if (result.getSuccessRequest() == null || result.getSuccessRequest().isEmpty()) {
+      return;
+    }
+    for (BulkResponse accepted : result.getSuccessRequest()) {
+      Object request = accepted.getRequest();
+      if (!(request instanceof String fqn) || fqn.isEmpty()) {
+        continue;
+      }
+      Awaitility.await("Async bulk-created entity " + fqn + " visible by name")
+          .pollDelay(Duration.ofMillis(200))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                getEntityByName(fqn);
+                return true;
+              });
+    }
   }
 
   /**
@@ -4679,6 +4768,205 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return requests;
   }
 
+  /**
+   * Test: A bot whose policy DENIES {@code EditDisplayName} (the ingestion bot, via
+   * {@code IngestionBotPolicy}/{@code DefaultBotPolicy}) must NOT overwrite a user-curated
+   * {@code displayName} through a single-entity PUT.
+   *
+   * <p>A per-entity PUT authorizes with the coarse {@code EDIT_ALL} operation, which does not
+   * intersect the field-level {@code EditDisplayName} deny - so the bot reaches the repository,
+   * where {@code EntityRepository#updateDisplayName} re-applies that field-level deny and preserves
+   * the user value. This is the regression guard for tag ingestion blanking a curated displayName:
+   * the connector PUTs a CreateTag whose displayName is null.
+   */
+  @Test
+  void test_singleEntityPut_ingestionBot_preservesUserDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K request = createRequest(ns.prefix("put_denydn_"), ns);
+    if (!hasSetter(request, "setDisplayName", String.class)) return;
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    setFieldViaReflection(request, "setDisplayName", String.class, null);
+    HttpResponse<String> response = putAs(request, getBotToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        userDisplayName,
+        result.getDisplayName(),
+        "Ingestion bot (EditDisplayName denied) must NOT blank a user displayName via PUT: " + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditDisplayName} (modeling the SCIM bot, whose
+   * {@code ScimBotPolicy} carries no {@code DisplayName-Deny}) CAN still update {@code displayName}
+   * through a single-entity PUT.
+   *
+   * <p>Contrast with {@link #test_singleEntityPut_ingestionBot_preservesUserDisplayName}: the
+   * difference is purely the bot's policy, which is exactly what the in-code guard keys on. Without
+   * this, the guard would re-break SCIM displayName sync (#21879).
+   */
+  @Test
+  void test_singleEntityPut_displayNameAllowedBot_updatesDisplayName(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K request = createRequest(ns.prefix("put_allowdn_"), ns);
+    if (!hasSetter(request, "setDisplayName", String.class)) return;
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    String userDisplayName = "User Curated Display Name";
+    T entity = getEntityByName(fqn);
+    entity.setDisplayName(userDisplayName);
+    patchEntity(entity.getId().toString(), entity);
+
+    String botDisplayName = "SCIM-like Bot Display Name";
+    setFieldViaReflection(request, "setDisplayName", String.class, botDisplayName);
+    HttpResponse<String> response = putAs(request, displayNameAllowedBotToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Allowed-bot single-entity PUT should succeed: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByName(fqn);
+    assertEquals(
+        botDisplayName,
+        result.getDisplayName(),
+        "Bot allowed EditDisplayName (SCIM-like) must update displayName via PUT: " + fqn);
+  }
+
+  /** Whether this entity's create request exposes {@code setterName}, so the test can skip. */
+  private boolean hasSetter(K createRequest, String setterName, Class<?> paramType) {
+    try {
+      createRequest.getClass().getMethod(setterName, paramType);
+      return true;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
+
+  /**
+   * Single-entity createOrUpdate (PUT) over raw HTTP using the given bearer token. The SDK fluent
+   * clients always authenticate as admin, so the raw call is how a test drives a per-entity PUT as
+   * a specific bot identity.
+   */
+  protected HttpResponse<String> putAs(K request, String token) {
+    try {
+      String url = SdkClients.getServerUrl() + getResourcePath();
+      if (url.endsWith("/")) {
+        url = url.substring(0, url.length() - 1);
+      }
+      java.net.http.HttpRequest httpRequest =
+          java.net.http.HttpRequest.newBuilder()
+              .uri(java.net.URI.create(url))
+              .header("Authorization", "Bearer " + token)
+              .header("Content-Type", "application/json")
+              .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+              .build();
+      return java.net.http.HttpClient.newHttpClient()
+          .send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      throw new RuntimeException("Single-entity PUT failed: " + e.getMessage(), e);
+    }
+  }
+
+  // Lazily provisioned (once per session) bot whose policy allows EditAll and does NOT deny
+  // EditDisplayName, modeling the SCIM bot. API-created bots are force-assigned DefaultBotRole
+  // (which denies EditDisplayName), so that role is stripped via a raw JSON-Patch after creation.
+  private static volatile String displayNameAllowedBotToken;
+
+  protected static synchronized String displayNameAllowedBotToken() {
+    if (displayNameAllowedBotToken == null) {
+      displayNameAllowedBotToken = provisionDisplayNameAllowedBot();
+    }
+    return displayNameAllowedBotToken;
+  }
+
+  private static String provisionDisplayNameAllowedBot() {
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      String suffix = UUID.randomUUID().toString().substring(0, 8);
+      Policy policy =
+          new PolicyService(admin.getHttpClient())
+              .create(
+                  new CreatePolicy()
+                      .withName("displayNameAllowedBotPolicy_" + suffix)
+                      .withRules(
+                          List.of(
+                              new Rule()
+                                  .withName("AllowEditAll")
+                                  .withResources(List.of("All"))
+                                  .withOperations(
+                                      List.of(
+                                          MetadataOperation.EDIT_ALL,
+                                          MetadataOperation.VIEW_ALL,
+                                          MetadataOperation.CREATE))
+                                  .withEffect(Rule.Effect.ALLOW))));
+      Role role =
+          new RoleService(admin.getHttpClient())
+              .create(
+                  new CreateRole()
+                      .withName("displayNameAllowedBotRole_" + suffix)
+                      .withPolicies(List.of(policy.getName())));
+      String email = "displayname-allowed-bot-" + suffix + "@open-metadata.org";
+      User bot =
+          new UserService(admin.getHttpClient())
+              .create(
+                  new CreateUser()
+                      .withName("displayname-allowed-bot-" + suffix)
+                      .withEmail(email)
+                      .withIsBot(true)
+                      .withAuthenticationMechanism(
+                          new AuthenticationMechanism()
+                              .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                              .withConfig(
+                                  new JWTAuthMechanism()
+                                      .withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+                      .withRoles(List.of(role.getId())));
+      stripDefaultBotRole(bot.getId().toString(), role.getId().toString());
+      return JwtAuthProvider.tokenFor(email, email, new String[] {role.getName()}, 86400);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to provision displayName-allowed bot: " + e.getMessage(), e);
+    }
+  }
+
+  // Replace the bot's roles (auto-assigned DefaultBotRole + the custom role) with ONLY the custom
+  // role via a raw JSON-Patch, so its effective policy no longer denies EditDisplayName.
+  private static void stripDefaultBotRole(String botId, String roleId) throws Exception {
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/roles\",\"value\":[{\"id\":\""
+            + roleId
+            + "\",\"type\":\"role\"}]}]";
+    java.net.http.HttpRequest req =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(SdkClients.getServerUrl() + "/v1/users/" + botId))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", java.net.http.HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+    HttpResponse<String> resp =
+        java.net.http.HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+    if (resp.statusCode() != 200) {
+      throw new IllegalStateException(
+          "Failed to strip DefaultBotRole: " + resp.statusCode() + " " + resp.body());
+    }
+  }
+
   private String getBotToken() {
     return org.openmetadata.it.auth.JwtAuthProvider.tokenFor(
         "ingestion-bot@open-metadata.org",
@@ -4778,7 +5066,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_sdkOnlyListEntities(TestNamespace ns) {
     // Create a few entities
-    for (int i = 0; i < 3; i++) {
+    T firstEntity = createEntity(createRequest(ns.prefix("sdk_list_0"), ns));
+    for (int i = 1; i < 3; i++) {
       K createRequest = createRequest(ns.prefix("sdk_list_" + i), ns);
       createEntity(createRequest);
     }
@@ -4786,6 +5075,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Basic list test
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
+    String scopeService = getEntityServiceFqn(firstEntity);
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
     assertNotNull(response, "List response should not be null");
@@ -5338,6 +5631,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Basic list test
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
+    // Scope to this test's namespace — parallel-lane sibling tests can hard-delete their services
+    // mid-list otherwise.
+    String scopeService = entities.isEmpty() ? null : getEntityServiceFqn(entities.get(0));
+    if (scopeService != null) {
+      params.setService(scopeService);
+    }
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
     assertNotNull(response, "List response should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities");
