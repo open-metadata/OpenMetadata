@@ -2495,44 +2495,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return JsonUtils.readObjects(jsons, GlossaryTerm.class);
   }
 
-  protected void updateTaskWithNewReviewers(GlossaryTerm term) {
-    term =
-        Entity.getEntityByName(
-            Entity.GLOSSARY_TERM,
-            term.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers,parent,glossary",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        term.getFullyQualifiedName(),
-        new ArrayList<>(resolveEffectiveReviewers(term)),
-        term.getUpdatedBy());
-  }
-
-  private List<EntityReference> resolveEffectiveReviewers(GlossaryTerm term) {
-    if (!nullOrEmpty(term.getReviewers())) {
-      return term.getReviewers();
-    }
-
-    if (term.getParent() != null) {
-      GlossaryTerm parentTerm =
-          Entity.getEntity(
-              term.getParent().withType(GLOSSARY_TERM), "reviewers", Include.NON_DELETED);
-      if (!nullOrEmpty(parentTerm.getReviewers())) {
-        return parentTerm.getReviewers();
-      }
-    }
-
-    if (term.getGlossary() != null) {
-      Glossary glossary = Entity.getEntity(term.getGlossary(), "reviewers", Include.NON_DELETED);
-      if (!nullOrEmpty(glossary.getReviewers())) {
-        return glossary.getReviewers();
-      }
-    }
-
-    return List.of();
-  }
-
   private void fetchAndSetRelatedTerms(List<GlossaryTerm> entities, Fields fields) {
     if (!fields.contains("relatedTerms") || entities.isEmpty()) {
       return;
@@ -2777,16 +2739,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     protected void resetForRetryAttempt() {
       renameProcessed = false;
-    }
-
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
     }
 
     @Transaction

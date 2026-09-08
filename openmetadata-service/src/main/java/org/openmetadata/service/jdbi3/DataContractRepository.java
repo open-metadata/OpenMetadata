@@ -1504,16 +1504,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
-    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
       compareAndUpdate(
@@ -1910,19 +1900,5 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataContract dataContract) {
-    dataContract =
-        Entity.getEntityByName(
-            Entity.DATA_CONTRACT,
-            dataContract.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataContract.getFullyQualifiedName(),
-        new ArrayList<>(dataContract.getReviewers()),
-        dataContract.getUpdatedBy());
   }
 }
