@@ -1107,11 +1107,6 @@
       "count": 1
     }
   },
-  "playwright/utils/serviceFormUtils.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/utils/sidebar.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
