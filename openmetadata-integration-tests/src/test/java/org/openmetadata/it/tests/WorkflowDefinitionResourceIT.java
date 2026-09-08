@@ -1918,7 +1918,7 @@ public class WorkflowDefinitionResourceIT {
                 new CreateDomain()
                     .withName(ns.prefix("dpac_domain"))
                     .withDescription("Domain for asset count test")
-                    .withDomainType(Domain.DomainType.AGGREGATE));
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
 
     org.openmetadata.schema.entity.domains.DataProduct dpWithAssets =
         client
@@ -2091,7 +2091,7 @@ public class WorkflowDefinitionResourceIT {
                 new CreateDomain()
                     .withName(ns.prefix("dpop_domain"))
                     .withDescription("Domain for output port count test")
-                    .withDomainType(Domain.DomainType.AGGREGATE));
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
 
     org.openmetadata.schema.entity.domains.DataProduct dpWithPorts =
         client
