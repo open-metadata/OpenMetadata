@@ -379,14 +379,12 @@ jobs:
           args: ${{ inputs.compose-args }}
 
       - name: Download spaCy model
-        if: matrix.shard.name == 'shard-1'
         uses: actions/download-artifact@v7
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
 
       - name: Install and verify spaCy model
-        if: matrix.shard.name == 'shard-1'
         run: |
           source env/bin/activate
           uv pip install --no-deps /tmp/spacy-model/*.whl
