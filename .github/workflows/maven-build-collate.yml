@@ -141,10 +141,20 @@ jobs:
       # the Collate change is backported to the live release branches.
       - name: Skip — suite not wired on this release branch
         if: ${{ matrix.main_only && (github.event.pull_request.base.ref || github.ref_name) != 'main' }}
+        env:
+          SUITE: ${{ matrix.suite }}
         run: |
-          echo "::notice::${{ matrix.suite }} runs for main PRs only — the Collate branch this PR targets does not accept the OpenMetadata sha input yet."
+          echo "::notice::${SUITE} runs for main PRs only — the Collate branch this PR targets does not accept the OpenMetadata sha input yet."
+          {
+            echo "### ${SUITE} — not run"
+            echo ""
+            echo "Dispatched for \`main\` PRs only: the Collate branch this PR targets does not"
+            echo "accept the OpenMetadata \`sha\` input yet, and the dispatch API rejects the whole"
+            echo "call when an input is undeclared."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Dispatch ${{ matrix.file }} & wait
+        id: dispatch
         if: ${{ !matrix.main_only || (github.event.pull_request.base.ref || github.ref_name) == 'main' }}
         uses: benc-uk/workflow-dispatch@v1.3.2
         timeout-minutes: ${{ matrix.timeout_minutes }}
@@ -165,3 +175,43 @@ jobs:
           wait-timeout-seconds: ${{ matrix.wait_seconds }}
           wait-interval-seconds: 60
           inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'
+
+      # Two reasons this step exists rather than trusting `sync-status`:
+      #
+      #   It fails the dispatch step only on a `failure` or `cancelled` conclusion.
+      #   When the wait budget expires the action logs a warning and re-reads a
+      #   conclusion that is still `null`, which lands in its success branch — so
+      #   the leg went green while the Collate run was still going. A false pass on
+      #   exactly the suites this fan-out exists to surface.
+      #
+      #   openmetadata-collate is private, so a contributor cannot open the run
+      #   URL. Naming the jobs that failed here puts them in this repo's run
+      #   summary, which anyone reading the red check can see.
+      - name: Report the Collate run's conclusion
+        if: ${{ always() && steps.dispatch.outputs.runId != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
+          COLLATE_REPO: open-metadata/openmetadata-collate
+          RUN_ID: ${{ steps.dispatch.outputs.runId }}
+          RUN_URL: ${{ steps.dispatch.outputs.runUrlHtml }}
+          SUITE: ${{ matrix.suite }}
+        run: |
+          conclusion=$(gh api "repos/${COLLATE_REPO}/actions/runs/${RUN_ID}" \
+            --jq '.conclusion // "still running (wait budget expired)"')
+          failed=$(gh api --paginate "repos/${COLLATE_REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.conclusion != "success" and .conclusion != "skipped")
+                  | "- `\(.name)` — \(.conclusion // "still running")"' || true)
+          {
+            echo "### ${SUITE} — ${conclusion}"
+            echo ""
+            if [ -n "$failed" ]; then
+              echo "$failed"
+              echo ""
+            fi
+            echo "[Collate run ${RUN_ID}](${RUN_URL}) · needs openmetadata-collate access"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::${SUITE} did not pass on the Collate side (${conclusion}). The run summary lists the jobs that failed."
+            exit 1
+          fi
