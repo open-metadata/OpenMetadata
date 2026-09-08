@@ -1188,8 +1188,10 @@ test.describe('Domains', () => {
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
       });
 
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
+      // Go straight to /domain — sidebarClick can leave us on the glossary
+      // term page opened by addTagsAndGlossaryToDomain, so selectDomain then
+      // searches the wrong page.
+      await page.goto('/domain');
       await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain.data);
 
