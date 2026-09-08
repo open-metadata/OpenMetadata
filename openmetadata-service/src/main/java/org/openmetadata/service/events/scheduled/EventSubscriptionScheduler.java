@@ -51,6 +51,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.DIContainer;
@@ -69,6 +70,7 @@ import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
 import org.quartz.spi.TriggerFiredBundle;
+import org.quartz.utils.DBConnectionManager;
 
 @Slf4j
 public class EventSubscriptionScheduler {
@@ -79,6 +81,17 @@ public class EventSubscriptionScheduler {
   @Getter private final Scheduler alertsScheduler;
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
+
+  // Derived from the scheduler's instance name, which Quartz already requires to be unique per
+  // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
+  // map put, so two schedulers sharing a datasource name silently discard the first pool; keying
+  // off a name that is unique by construction makes that collision unrepresentable.
+  private static final String DATA_SOURCE_NAME = SCHEDULER_NAME + "DS";
+  private static final String POOL_NAME = SCHEDULER_NAME + "-pool";
+
+  // One connection per worker thread that may be doing job-store work, plus the misfire handler
+  // and the cluster manager, which each hold one while they run.
+  private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 2;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
@@ -112,15 +125,9 @@ public class EventSubscriptionScheduler {
     properties.put("org.quartz.jobStore.useProperties", "true");
     properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
     properties.put("org.quartz.jobStore.isClustered", "true");
-    properties.put("org.quartz.jobStore.dataSource", "myDS");
-    properties.put("org.quartz.dataSource.myDS.maxConnections", "5");
-    properties.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
-    properties.put(
-        "org.quartz.dataSource.myDS.driver", config.getDataSourceFactory().getDriverClass());
-    properties.put("org.quartz.dataSource.myDS.URL", config.getDataSourceFactory().getUrl());
-    properties.put("org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
-    properties.put(
-        "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
+    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
+    // captured static password. The pool is registered against this name below.
+    properties.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       properties.put(
           "org.quartz.jobStore.driverDelegateClass",
@@ -133,6 +140,12 @@ public class EventSubscriptionScheduler {
 
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
+    // Must precede getScheduler(): that is where the job store resolves its datasource name.
+    DBConnectionManager.getInstance()
+        .addConnectionProvider(
+            DATA_SOURCE_NAME,
+            new QuartzConnectionProvider(
+                config.getDataSourceFactory().buildSubsystemPool(POOL_NAME, POOL_MAX_SIZE, null)));
     this.alertsScheduler = factory.getScheduler();
 
     DIContainer di = new DIContainer();

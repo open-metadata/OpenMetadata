@@ -34,6 +34,7 @@ import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -51,19 +52,35 @@ import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.utils.DBConnectionManager;
 
 @Slf4j
 public class AppScheduler {
+  private static final int SCHEDULER_THREAD_COUNT = 10;
+  private static final String SCHEDULER_INSTANCE_NAME = "AppScheduler";
+
+  // Derived from the scheduler's instance name, which Quartz already requires to be unique per
+  // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
+  // map put, so two schedulers sharing a datasource name silently discard the first pool; keying
+  // off a name that is unique by construction makes that collision unrepresentable.
+  private static final String DATA_SOURCE_NAME = SCHEDULER_INSTANCE_NAME + "DS";
+  private static final String POOL_NAME = SCHEDULER_INSTANCE_NAME + "-pool";
+
+  // One connection per worker thread that may be doing job-store work, plus the misfire handler
+  // and the cluster manager, which each hold one while they run.
+  private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 2;
+
   private static final Map<String, String> defaultAppScheduleConfig = new HashMap<>();
   public static final String ON_DEMAND_JOB = "OnDemandJob";
 
   static {
-    defaultAppScheduleConfig.put("org.quartz.scheduler.instanceName", "AppScheduler");
+    defaultAppScheduleConfig.put("org.quartz.scheduler.instanceName", SCHEDULER_INSTANCE_NAME);
     defaultAppScheduleConfig.put("org.quartz.scheduler.instanceId", "AUTO");
     defaultAppScheduleConfig.put("org.quartz.scheduler.skipUpdateCheck", "true");
     defaultAppScheduleConfig.put(
         "org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
-    defaultAppScheduleConfig.put("org.quartz.threadPool.threadCount", "10");
+    defaultAppScheduleConfig.put(
+        "org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
     defaultAppScheduleConfig.put("org.quartz.threadPool.threadPriority", "5");
     defaultAppScheduleConfig.put("org.quartz.jobStore.misfireThreshold", "60000");
     defaultAppScheduleConfig.put(
@@ -71,9 +88,9 @@ public class AppScheduler {
     defaultAppScheduleConfig.put("org.quartz.jobStore.useProperties", "false");
     defaultAppScheduleConfig.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
     defaultAppScheduleConfig.put("org.quartz.jobStore.isClustered", "true");
-    defaultAppScheduleConfig.put("org.quartz.jobStore.dataSource", "myDS");
-    defaultAppScheduleConfig.put("org.quartz.dataSource.myDS.maxConnections", "5");
-    defaultAppScheduleConfig.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
+    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
+    // captured static password. The pool is registered against this name in the constructor.
+    defaultAppScheduleConfig.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
   }
 
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
@@ -100,6 +117,12 @@ public class AppScheduler {
     properties.putAll(defaultAppScheduleConfig);
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
+    // Must precede getScheduler(): that is where the job store resolves its datasource name.
+    DBConnectionManager.getInstance()
+        .addConnectionProvider(
+            DATA_SOURCE_NAME,
+            new QuartzConnectionProvider(
+                config.getDataSourceFactory().buildSubsystemPool(POOL_NAME, POOL_MAX_SIZE, null)));
     this.scheduler = factory.getScheduler();
 
     this.scheduler.setJobFactory(new CustomJobFactory(dao, searchClient));
@@ -159,14 +182,6 @@ public class AppScheduler {
   }
 
   private void overrideDefaultConfig(OpenMetadataApplicationConfig config) {
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.driver", config.getDataSourceFactory().getDriverClass());
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.URL", config.getDataSourceFactory().getUrl());
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
-    defaultAppScheduleConfig.put(
-        "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       defaultAppScheduleConfig.put(
           "org.quartz.jobStore.driverDelegateClass",

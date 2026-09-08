@@ -1320,6 +1320,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
+      WorkflowHandler.shutDown();
       LOG.info("Stopping the application");
     }
   }

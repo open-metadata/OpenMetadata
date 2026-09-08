@@ -10,9 +10,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_IN
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import java.sql.Connection;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +44,6 @@ import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -90,16 +87,14 @@ import org.openmetadata.service.util.FreshReadScope;
 public class WorkflowHandler {
   private ProcessEngine processEngine;
   private HikariDataSource migrationPool;
+  private HikariDataSource runtimePool;
   private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
   private final boolean isMigrationContext;
-  // Sourced from the yaml-bound HikariCPDataSourceFactory so the migration pool honours
-  // DB_CONNECTION_TIMEOUT overrides just like the main runtime pool. Nullable — falls back
-  // to MIGRATION_POOL_CONNECTION_TIMEOUT_MS when yaml leaves it unset.
-  private final Long yamlConnectionTimeoutMs;
-
-  private static final String CONNECTION_VALIDATION_QUERY = "SELECT 1";
+  // Both engine pools are built from the yaml-bound factory so they inherit driver tuning,
+  // timeouts and AWS RDS IAM per-connection token minting from the request pool's configuration.
+  private final HikariCPDataSourceFactory dataSourceFactory;
 
   // Bounded pool for Flowable's migration ProcessEngine. Flowable opens a fresh connection per
   // command in migration context; without a pool that becomes one physical TCP+auth per command,
@@ -108,8 +103,16 @@ public class WorkflowHandler {
   // reuse them across commands. Kept small — migration runs single-threaded and the async executor
   // is disabled in this context (see setAsyncExecutorActivate(!isMigrationContext) below).
   private static final int MIGRATION_POOL_MAX_SIZE = 10;
-  private static final long MIGRATION_POOL_CONNECTION_TIMEOUT_MS = 30_000L;
   private static final String MIGRATION_POOL_NAME = "flowable-migration-pool";
+
+  private static final String RUNTIME_POOL_NAME = "flowable-runtime-pool";
+
+  // Headroom above the async executor's worker pool for Flowable's three standing background
+  // threads (async job acquisition, timer job acquisition, reset-expired-jobs) plus the history
+  // cleanup job. Under-sizing here is what MAX_CONCURRENT_TASK_RESOLUTIONS below had to defend
+  // against: Flowable's own default is 10 connections for a 20-worker executor, so a burst blocked
+  // in MyBatis popConnection past the client timeout and stranded tasks in review.
+  private static final int RUNTIME_POOL_HEADROOM = 4;
 
   // Page size for draining stale ACT_RE_PROCDEF versions during runtime redeploy. Each
   // save-workflow
@@ -131,11 +134,6 @@ public class WorkflowHandler {
    */
   public static final String POLICY_AGENT_RESULT_MESSAGE = "policyAgentResult";
 
-  // Validate any pooled connection idle longer than this before reuse. Kept below Flowable's
-  // 60s reset-expired-jobs interval so the periodic async-executor threads always re-validate,
-  // while connections in active sub-second use skip the check and pay no overhead.
-  private static final int CONNECTION_PING_NOT_USED_FOR_MILLIS = 30000;
-
   // Admission control for synchronous task resolutions. Flowable runs its own bounded connection
   // pool; an unbounded approval burst calling taskService.complete() concurrently stampedes that
   // pool — excess threads block in MyBatis popConnection past the client timeout and strand tasks
@@ -152,18 +150,11 @@ public class WorkflowHandler {
 
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
-    this.yamlConnectionTimeoutMs = resolveYamlConnectionTimeout(config.getDataSourceFactory());
+    this.dataSourceFactory = config.getDataSourceFactory();
+    // Carries only the database dialect: initializeNewProcessEngine builds every other setting
+    // itself, and takes the connection from a pool rather than from raw JDBC settings.
     StandaloneProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration();
-    processEngineConfiguration.setJdbcUrl(config.getDataSourceFactory().getUrl());
-    processEngineConfiguration.setJdbcUsername(config.getDataSourceFactory().getUser());
-    processEngineConfiguration.setJdbcPassword(config.getDataSourceFactory().getPassword());
-    processEngineConfiguration.setJdbcDriver(config.getDataSourceFactory().getDriverClass());
-    processEngineConfiguration.setDatabaseSchemaUpdate(
-        isMigrationContext
-            ? ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE
-            : ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
-
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
     } else {
@@ -190,61 +181,91 @@ public class WorkflowHandler {
       result = config.getDataSource();
     } else {
       closeMigrationPool();
-      HikariConfig hikariConfig = new HikariConfig();
-      hikariConfig.setJdbcUrl(config.getJdbcUrl());
-      hikariConfig.setUsername(config.getJdbcUsername());
-      hikariConfig.setPassword(config.getJdbcPassword());
-      hikariConfig.setDriverClassName(config.getJdbcDriver());
-      hikariConfig.setMaximumPoolSize(MIGRATION_POOL_MAX_SIZE);
-      hikariConfig.setMinimumIdle(1);
-      long connectionTimeoutMs =
-          yamlConnectionTimeoutMs != null
-              ? yamlConnectionTimeoutMs
-              : MIGRATION_POOL_CONNECTION_TIMEOUT_MS;
-      hikariConfig.setConnectionTimeout(connectionTimeoutMs);
-      hikariConfig.setPoolName(MIGRATION_POOL_NAME);
-      LOG.info(
-          "Creating migration pool '{}' with maxSize={} connectionTimeoutMs={} (source: {})",
-          MIGRATION_POOL_NAME,
-          MIGRATION_POOL_MAX_SIZE,
-          connectionTimeoutMs,
-          yamlConnectionTimeoutMs != null
-              ? "yaml database.connectionTimeout"
-              : "hardcoded default");
-      // Defer real DB connect to first getConnection() rather than pool construction: Flowable
-      // engine init issues its own SELECTs immediately, so fast-fail on unreachable DB is
-      // preserved through the very next call — and this keeps unit tests (which never open a
-      // real socket) from paying for eager validation.
-      hikariConfig.setInitializationFailTimeout(-1);
-      migrationPool = new HikariDataSource(hikariConfig);
+      migrationPool =
+          dataSourceFactory.buildSubsystemPool(MIGRATION_POOL_NAME, MIGRATION_POOL_MAX_SIZE, null);
       result = migrationPool;
     }
     return result;
   }
 
-  // Mirrors HikariCPDataSourceFactory#buildHikariConfig: yaml can set connectionTimeout either as
-  // a top-level `database.connectionTimeout` field or nested under `database.properties.
-  // connectionTimeout`. The main runtime pool honours both, so the migration pool must too or
-  // ops-side tuning silently doesn't apply.
-  private static Long resolveYamlConnectionTimeout(HikariCPDataSourceFactory factory) {
-    Long result = factory.getConnectionTimeout();
-    Map<String, String> properties = factory.getProperties();
-    if (result == null && properties != null && properties.containsKey("connectionTimeout")) {
-      result = Long.parseLong(properties.get("connectionTimeout"));
+  /**
+   * Bounded pool for the runtime engine, replacing the MyBatis {@code PooledDataSource} Flowable
+   * would otherwise build from raw JDBC settings. That default pool captured a static password
+   * (fatal once an AWS RDS IAM token expires), reported no metrics, was never closed on shutdown,
+   * and defaulted to 10 connections regardless of how many workers the executor was configured to
+   * run.
+   */
+  private DataSource runtimeDataSource(String databaseType, int asyncExecutorMaxPoolSize) {
+    closeRuntimePool();
+    runtimePool =
+        dataSourceFactory.buildSubsystemPool(
+            RUNTIME_POOL_NAME,
+            asyncExecutorMaxPoolSize + RUNTIME_POOL_HEADROOM,
+            mysqlIsolationLevel(databaseType));
+    return runtimePool;
+  }
+
+  /**
+   * MySQL defaults to REPEATABLE_READ, whose gap / next-key locks deadlock Flowable's concurrent
+   * ACT_RU_* runtime writes — insert-intention locks (timer/variable inserts on a workflow advance)
+   * against range locks from PROC_INST_ID_ cleanup deletes and timer-job sweeps. READ_COMMITTED
+   * drops those gap locks (record locks on non-matching rows are released after the WHERE),
+   * removing the cycle. It is Flowable's recommended level for MySQL and Postgres's default (which
+   * this stack already runs deadlock-free); Flowable's concurrency control is optimistic (REV_
+   * version columns), so it is correct at READ_COMMITTED.
+   *
+   * <p>Set on the pool rather than via {@code setJdbcDefaultTransactionIsolationLevel}, which
+   * Flowable only applies to a pool of its own making and ignores once handed a DataSource.
+   */
+  private static String mysqlIsolationLevel(String databaseType) {
+    return ProcessEngineConfiguration.DATABASE_TYPE_MYSQL.equals(databaseType)
+        ? "TRANSACTION_READ_COMMITTED"
+        : null;
+  }
+
+  /**
+   * Shut the engine down, stopping its async job and async history executors.
+   *
+   * <p>{@code ProcessEngines.destroy()} cannot do this. It is guarded by {@code
+   * ProcessEngines.isInitialized()}, which only becomes true via {@code ProcessEngines.init()};
+   * these engines are built straight from a {@link StandaloneProcessEngineConfiguration}, so the
+   * static registry never considers itself initialized and {@code destroy()} returns having
+   * touched nothing. Closing the engine explicitly is what stops the acquisition threads — leave
+   * them running and they keep polling a pool that has already been closed, logging a
+   * "HikariDataSource has been closed" stack trace on every cycle.
+   *
+   * <p>Engine close only force-closes a MyBatis {@code PooledDataSource}, so the pool handed to it
+   * here outlives this call and stays ours to close.
+   */
+  private void closeProcessEngine() {
+    if (processEngine != null) {
+      try {
+        processEngine.close();
+      } catch (Exception e) {
+        LOG.warn("Failed to close the Flowable process engine cleanly", e);
+      }
+      processEngine = null;
     }
-    return result;
   }
 
   private void closeMigrationPool() {
-    if (migrationPool != null && !migrationPool.isClosed()) {
-      migrationPool.close();
+    migrationPool = closePool(migrationPool);
+  }
+
+  private void closeRuntimePool() {
+    runtimePool = closePool(runtimePool);
+  }
+
+  private static HikariDataSource closePool(HikariDataSource pool) {
+    if (pool != null && !pool.isClosed()) {
+      pool.close();
     }
-    migrationPool = null;
+    return null;
   }
 
   public void initializeNewProcessEngine(
       ProcessEngineConfiguration currentProcessEngineConfiguration) {
-    ProcessEngines.destroy();
+    closeProcessEngine();
     SystemRepository systemRepository = Entity.getSystemRepository();
     WorkflowSettings workflowSettings = systemRepository.getWorkflowSettingsOrDefault();
 
@@ -255,27 +276,10 @@ public class WorkflowHandler {
       processEngineConfiguration.setDataSource(
           new IdempotentDdlDataSource(migrationDataSource(currentProcessEngineConfiguration)));
     } else {
-      processEngineConfiguration.setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl());
-      processEngineConfiguration.setJdbcUsername(
-          currentProcessEngineConfiguration.getJdbcUsername());
-      processEngineConfiguration.setJdbcPassword(
-          currentProcessEngineConfiguration.getJdbcPassword());
-      processEngineConfiguration.setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver());
-      if (ProcessEngineConfiguration.DATABASE_TYPE_MYSQL.equals(
-          currentProcessEngineConfiguration.getDatabaseType())) {
-        // MySQL defaults to REPEATABLE_READ, whose gap / next-key locks deadlock Flowable's
-        // concurrent ACT_RU_* runtime writes — insert-intention locks (timer/variable inserts on a
-        // workflow advance) against range locks from PROC_INST_ID_ cleanup deletes and timer-job
-        // sweeps. READ_COMMITTED drops those gap locks (record locks on non-matching rows are
-        // released after the WHERE), removing the cycle. It is Flowable's recommended level for
-        // MySQL and Postgres's default (which this stack already runs deadlock-free); Flowable's
-        // concurrency control is optimistic (REV_ version columns), so it is correct at RC. Set on
-        // this jdbcUrl path only — the branch where Flowable builds its own pooled datasource and
-        // honours the knob; the migration branch supplies a DataSource and ignores it.
-        processEngineConfiguration.setJdbcDefaultTransactionIsolationLevel(
-            Connection.TRANSACTION_READ_COMMITTED);
-      }
-      configureConnectionPoolHealthChecks(processEngineConfiguration);
+      processEngineConfiguration.setDataSource(
+          runtimeDataSource(
+              currentProcessEngineConfiguration.getDatabaseType(),
+              workflowSettings.getExecutorConfiguration().getMaxPoolSize()));
     }
     processEngineConfiguration.setDatabaseType(currentProcessEngineConfiguration.getDatabaseType());
     processEngineConfiguration.setDatabaseSchemaUpdate(
@@ -335,6 +339,7 @@ public class WorkflowHandler {
       // propagates so a failed migrate CLI does not linger with open sessions.
       if (!engineBuilt) {
         closeMigrationPool();
+        closeRuntimePool();
       }
     }
 
@@ -345,25 +350,6 @@ public class WorkflowHandler {
         .getSqlSessionFactory()
         .getConfiguration()
         .addMapper(SqlMapper.class);
-  }
-
-  /**
-   * Enable connection-pool health checks on the runtime engine's MyBatis pool.
-   *
-   * <p>Unlike the application's HikariCP pool, the Flowable runtime engine builds its own MyBatis
-   * {@code PooledDataSource} from the raw JDBC settings and does not validate pooled connections.
-   * When the database drops a connection out from under the pool — an Aurora/RDS failover, a
-   * maintenance restart, or an idle-connection reaper, all of which surface as {@code
-   * PSQLException: terminating connection due to administrator command} — the async executor's
-   * polling threads (e.g. {@code ResetExpiredJobsRunnable}) keep borrowing the dead connection and
-   * failing until the pool happens to recycle it. Pool ping runs a lightweight validation query on
-   * any connection idle past the threshold and transparently replaces it before handing it out.
-   */
-  private static void configureConnectionPoolHealthChecks(
-      StandaloneProcessEngineConfiguration processEngineConfiguration) {
-    processEngineConfiguration.setJdbcPingEnabled(true);
-    processEngineConfiguration.setJdbcPingQuery(CONNECTION_VALIDATION_QUERY);
-    processEngineConfiguration.setJdbcPingConnectionNotUsedFor(CONNECTION_PING_NOT_USED_FOR_MILLIS);
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -378,8 +364,9 @@ public class WorkflowHandler {
     } else if (initialized && instance.isMigrationContext && !isMigrationContext) {
       // Transitioning from migration mode to runtime mode
       LOG.info("Transitioning WorkflowHandler from migration mode to runtime mode");
-      ProcessEngines.destroy();
+      instance.closeProcessEngine();
       instance.closeMigrationPool();
+      instance.closeRuntimePool();
       instance = new WorkflowHandler(config, false);
     } else {
       LOG.info("WorkflowHandler already initialized in correct mode.");
@@ -391,6 +378,22 @@ public class WorkflowHandler {
       return instance;
     }
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
+  }
+
+  /**
+   * Stop the engine and release its connection pool. Without this the async executor's threads and
+   * every connection the engine holds outlive a graceful shutdown, which leaks a pool per restart
+   * in embedded and test contexts and holds database sessions open past the point the process
+   * claims to have stopped.
+   */
+  public static synchronized void shutDown() {
+    if (instance != null) {
+      instance.closeProcessEngine();
+      instance.closeMigrationPool();
+      instance.closeRuntimePool();
+      instance = null;
+      initialized = false;
+    }
   }
 
   public ProcessEngineConfiguration getProcessEngineConfiguration() {

@@ -117,6 +117,44 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     return buildHikariConfig(poolName);
   }
 
+  /**
+   * Build an additional connection pool from this same configuration, sized independently of the
+   * request-serving pool.
+   *
+   * <p>Subsystems that own their JDBC work — the Quartz job stores, the Flowable engine — need
+   * their own connections: API traffic must not be able to starve a Quartz cluster check-in, and a
+   * Flowable command holding a connection across a REST call must not be able to starve API
+   * traffic. Left to themselves those subsystems each build a pool from raw JDBC settings, which
+   * silently drops everything configured here — driver tuning, timeouts, metrics, and, under AWS
+   * RDS IAM, the per-connection token minting that a captured static password cannot replicate
+   * once the 15-minute token expires.
+   *
+   * @param transactionIsolation a {@code Connection.TRANSACTION_*} constant name, or null for the
+   *     driver default. Belongs on the pool because an engine handed a ready-made DataSource
+   *     ignores the isolation knobs it would have applied to a pool of its own making.
+   */
+  public HikariDataSource buildSubsystemPool(
+      String poolName, int maxPoolSize, String transactionIsolation) {
+    initializeAwsRdsIamAuth();
+    HikariConfig config = buildHikariConfig(poolName);
+    config.setMaximumPoolSize(maxPoolSize);
+    config.setMinimumIdle(1);
+    if (transactionIsolation != null) {
+      config.setTransactionIsolation(transactionIsolation);
+    }
+    // Defer the first physical connect to first getConnection() rather than to pool construction.
+    // These pools are built during startup, after the request pool has already proven the database
+    // reachable, and every subsystem issues its own query immediately — so fast-fail survives to
+    // the very next call, while unit tests that never open a socket pay nothing for it.
+    config.setInitializationFailTimeout(-1);
+    LOG.info(
+        "Creating subsystem connection pool '{}' with maxPoolSize={} transactionIsolation={}",
+        poolName,
+        maxPoolSize,
+        transactionIsolation != null ? transactionIsolation : "driver default");
+    return new HikariDataSource(config);
+  }
+
   private HikariConfig buildHikariConfig(String poolNameToUse) {
     HikariConfig config = new HikariConfig();
 
