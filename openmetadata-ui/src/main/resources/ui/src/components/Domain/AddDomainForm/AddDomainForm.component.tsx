@@ -1073,9 +1073,7 @@ const AddDomainForm = ({
 
       <div>{getField(ownersField)}</div>
       <div>{getField(expertsField)}</div>
-      {isDataProduct && reviewersField && (
-        <div>{getField(reviewersField)}</div>
-      )}
+      {isDataProduct && reviewersField && <div>{getField(reviewersField)}</div>}
 
       {customPropertiesLoaded && (
         <AddDomainFormExtensionFields
