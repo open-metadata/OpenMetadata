@@ -170,6 +170,45 @@ class OidcIdentityResolverTest {
             .email());
   }
 
+  @Test
+  void testResolveRejectsUnverifiedEmailOnLegacyFallbackAndLegacyFlow() {
+    // emailClaim is configured but absent from the token, so resolution degrades to the legacy
+    // claims. The provider still says the address is unverified, which must not become a way to
+    // reach an account by dropping the email-first guard.
+    OidcIdentityResolver fallbackResolver =
+        new OidcIdentityResolver(
+            authConfig(true, List.of("preferred_username"), new ArrayList<>(), "email", "name"),
+            authzConfig(Set.of(), Set.of(), false),
+            Map.of(),
+            List.of("preferred_username"),
+            "openmetadata.org");
+
+    org.openmetadata.service.security.AuthenticationException fallbackException =
+        assertThrows(
+            org.openmetadata.service.security.AuthenticationException.class,
+            () ->
+                fallbackResolver.resolve(
+                    Map.of("preferred_username", "legacy-user", "email_verified", Boolean.FALSE)));
+    assertTrue(fallbackException.getMessage().contains("not verified"));
+
+    // Same guard for a deployment that never opted in to email-first at all.
+    OidcIdentityResolver legacyResolver =
+        new OidcIdentityResolver(
+            authConfig(true, List.of("preferred_username"), new ArrayList<>(), null, "name"),
+            authzConfig(Set.of(), Set.of(), false),
+            Map.of(),
+            List.of("preferred_username"),
+            "openmetadata.org");
+
+    org.openmetadata.service.security.AuthenticationException legacyException =
+        assertThrows(
+            org.openmetadata.service.security.AuthenticationException.class,
+            () ->
+                legacyResolver.resolve(
+                    Map.of("preferred_username", "legacy-user", "email_verified", Boolean.FALSE)));
+    assertTrue(legacyException.getMessage().contains("not verified"));
+  }
+
   private static AuthenticationConfiguration authConfig(
       boolean enableSelfSignup,
       List<String> principalClaims,

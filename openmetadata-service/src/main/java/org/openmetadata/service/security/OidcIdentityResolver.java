@@ -78,6 +78,11 @@ public class OidcIdentityResolver {
 
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
+    // The legacy path resolves identity from the claims too, so it needs the same guard: a
+    // provider that says the address is unverified must not reach an account through it either.
+    // Reached both by a legacy-configured deployment and by the fallback above, which leaves
+    // email null and would otherwise drop the check the email-first branch performs.
+    validateEmailVerifiedClaim(claims, email);
     validateConfiguredEmailDomain(
         email,
         getAllowedEmailDomains(),
