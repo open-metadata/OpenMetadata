@@ -834,6 +834,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (lineageBatchSize != null) {
       rdfConfig.setBulkLineageEdgeBatchSize(lineageBatchSize);
     }
+    final Integer appendPayloadBytes = Integer.getInteger("rdfAppendPayloadBytes");
+    if (appendPayloadBytes != null) {
+      rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
+    }
+    final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
+    if (appendEntityBatchSize != null) {
+      rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);
+    }
 
     LOG.info("RDF configuration complete");
   }

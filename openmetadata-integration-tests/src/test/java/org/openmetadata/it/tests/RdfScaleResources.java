@@ -78,7 +78,10 @@ final class RdfScaleResources implements AutoCloseable {
   }
 
   void check() {
-    if (failure.get() != null) throw failure.get();
+    final RuntimeException samplingFailure = failure.get();
+    if (samplingFailure != null) {
+      throw new IllegalStateException("RDF scale resource sampling failed", samplingFailure);
+    }
   }
 
   private void sampleSafely() {

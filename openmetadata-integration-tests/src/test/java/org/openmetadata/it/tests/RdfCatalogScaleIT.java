@@ -121,12 +121,26 @@ public class RdfCatalogScaleIT {
         new RdfScaleResources(fuseki, TestSuiteBootstrap.getDatabaseContainer(), output)) {
       resources = monitor;
       validateRebuilds(catalog);
+    } catch (RuntimeException | Error failure) {
+      recordFailure(failure);
+      throw failure;
     }
     resources = null;
     restartAndVerify(fuseki, catalog);
     report.put("completedAt", Instant.now().toString());
     checkpoint();
     System.out.println("RDF_SCALE report " + output.resolve("report.json").toAbsolutePath());
+  }
+
+  private void recordFailure(final Throwable failure) throws IOException {
+    final ObjectNode result = report.putObject("failure");
+    result.put("observedAt", Instant.now().toString());
+    result.put("type", failure.getClass().getName());
+    result.put("message", failure.getMessage());
+    if (failure.getCause() != null) {
+      result.put("cause", failure.getCause().toString());
+    }
+    checkpoint();
   }
 
   private void seedCatalog(final RdfScaleCatalog catalog) throws IOException, SQLException {
@@ -168,9 +182,16 @@ public class RdfCatalogScaleIT {
     report.put("resourceSampleSeconds", 2);
     report.put("querySamplesPerType", samples);
     report.put("concurrentQueryIntervalSeconds", 5);
+    report.put("indexingBatchSize", Integer.getInteger("rdfScaleBatchSize", 1000));
     report.put(
         "bulkLineageEdgeBatchSize",
         TestSuiteBootstrap.getRdfConfiguration().getBulkLineageEdgeBatchSize());
+    report.put(
+        "maxAppendPayloadBytes",
+        TestSuiteBootstrap.getRdfConfiguration().getMaxAppendPayloadBytes());
+    report.put(
+        "bulkAppendEntityBatchSize",
+        TestSuiteBootstrap.getRdfConfiguration().getBulkAppendEntityBatchSize());
     report.put("scheduledRdfJobsPaused", true);
     report.put("schema", catalog.schemaFqn());
     record("workload", catalog.settings());

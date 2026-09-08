@@ -112,8 +112,12 @@ resource limits.
 `RDF_SCALE_BATCH_SIZE` overrides the indexing batch size. `RDF_SCALE_LINEAGE_EDGE_BATCH_SIZE`
 sets the server's existing `bulkLineageEdgeBatchSize` configuration, also to 1,000 by default for
 this workload. Lineage transactions have their own limit; increasing the application batch size
-alone leaves the server's default 50-edge chunks unchanged. Larger batches reduce TDB2 transaction
-churn; the storage layer still splits appends at its entity-count and payload limits. The first
+alone leaves the server's default 50-edge chunks unchanged. `RDF_SCALE_APPEND_PAYLOAD_BYTES`
+and `RDF_SCALE_APPEND_ENTITY_BATCH_SIZE` override the server's existing append limits (defaults:
+16 MiB and 1,000 entities). The report records these effective settings even if a run fails before
+promotion. The shipped Fuseki extension additionally enforces a 64 MiB upload cap and a write
+deadline. Larger batches reduce TDB2 transaction churn; the storage layer still splits appends
+at its entity-count and payload limits. The first
 200,000-table attempt used batches of 100 and was stopped for persistent index growth before
 exhausting the host disk. That attempt is not a completed scale result. See
 [Jena's storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html) for the copy-on-write
