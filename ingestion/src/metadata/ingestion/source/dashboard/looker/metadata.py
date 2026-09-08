@@ -219,20 +219,9 @@ class LookerSource(DashboardServiceSource):
         self._added_lineage: dict | None = {}
 
     @property
-    def _ui_base(self) -> str:
-        """
-        Base URL for human-facing "View in Looker" links.
-
-        ``hostPort`` configures the Looker connection and may be an API
-        endpoint rather than the browser UI host. Reusing it for ``sourceUrl``
-        then produces links that point at the API instead of the Looker UI.
-        Set the ``LOOKER_UI_BASE`` environment variable to the UI base URL to
-        build those links from it; falls back to ``hostPort`` when unset, so
-        behavior is unchanged.
-        """
-        return clean_uri(
-            os.environ.get("LOOKER_UI_BASE") or str(self.service_connection.hostPort)
-        )
+    def _display_url(self) -> str:
+        """Return the configured browser URL, falling back to the API URL."""
+        return clean_uri(str(self.service_connection.displayUrl or self.service_connection.hostPort))
 
     @classmethod
     def create(
@@ -560,9 +549,7 @@ class LookerSource(DashboardServiceSource):
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     project=first_project,
-                    sourceUrl=SourceUrl(
-                        f"{clean_uri(self.service_connection.hostPort)}/projects/{first_project}/files/{view.source_file}"
-                    )
+                    sourceUrl=SourceUrl(f"{self._display_url}/projects/{first_project}/files/{view.source_file}")
                     if view.source_file and first_project
                     else None,
                 )
@@ -659,9 +646,7 @@ class LookerSource(DashboardServiceSource):
                     sql=self._get_explore_sql(model),
                     # In Looker, you need to create Explores and Views within a Project
                     project=model.project_name,
-                    sourceUrl=SourceUrl(
-                        f"{self._ui_base}/explore/{model.model_name}/{model.name}"
-                    ),
+                    sourceUrl=SourceUrl(f"{self._display_url}/explore/{model.model_name}/{model.name}"),
                 )
                 yield Either(right=explore_datamodel)
                 self.progress_tracking.manual.track(DashboardDataModel.__name__)
@@ -787,9 +772,7 @@ class LookerSource(DashboardServiceSource):
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
                     # In Looker, you need to create Explores and Views within a Project
                     project=explore.project_name,
-                    sourceUrl=SourceUrl(
-                        f"{clean_uri(self.service_connection.hostPort)}/projects/{explore.project_name}/files/{view.source_file}"
-                    )
+                    sourceUrl=SourceUrl(f"{self._display_url}/projects/{explore.project_name}/files/{view.source_file}")
                     if view.source_file and explore.project_name
                     else None,
                 )
@@ -1306,7 +1289,7 @@ class LookerSource(DashboardServiceSource):
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.
             project=self.get_project_name(dashboard_details),
-            sourceUrl=SourceUrl(f"{self._ui_base}/dashboards/{dashboard_details.id}"),
+            sourceUrl=SourceUrl(f"{self._display_url}/dashboards/{dashboard_details.id}"),
             service=self.context.get().dashboard_service,
             owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
@@ -1666,17 +1649,9 @@ class LookerSource(DashboardServiceSource):
                 elif getattr(chart.result_maker, "query", None) is not None:
                     source_url = chart.result_maker.query.share_url
                 elif chart.merge_result_id is not None:
-                    source_url = f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}"
+                    source_url = f"{self._display_url}/merge?mid={chart.merge_result_id}"
                 else:
-                    # No query, no result-maker query, and no merge result: this
-                    # is a data-less tile (e.g. a text/markdown tile). Skip it
-                    # instead of emitting a dead {host}/merge?mid=None sourceUrl.
-                    logger.info(
-                        f"Skipping data-less Looker tile id={chart.id} "
-                        f"title={chart.title!r} type={chart.type}: "
-                        "no query, no result-maker query, no merge result"
-                    )
-                    continue
+                    source_url = f"{self._display_url}/dashboards/{dashboard_details.id}"
                 chart_request = CreateChartRequest(
                     name=EntityName(chart.id),
                     displayName=chart.title or chart.id,

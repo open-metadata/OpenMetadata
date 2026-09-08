@@ -12,7 +12,6 @@
 Test looker source
 """
 
-import os
 import uuid
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -29,6 +28,7 @@ from looker_sdk.sdk.api40.models import (
     Query,
     User,
 )
+from pydantic import AnyUrl
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -296,29 +296,13 @@ class LookerUnitTest(TestCase):
                 create_dashboard_request,
             )
 
-    def test_ui_base_defaults_to_host_port(self):
-        """
-        Without LOOKER_UI_BASE set, _ui_base falls back to hostPort so the
-        source URLs are unchanged.
-        """
-        with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(self.looker._ui_base, "https://my-looker.com")
+    def test_display_url_defaults_to_host_port(self):
+        assert self.looker._display_url == "https://my-looker.com"
 
-    def test_ui_base_uses_env_var(self):
-        """
-        When LOOKER_UI_BASE is set, _ui_base uses it (trailing slash trimmed)
-        instead of the API hostPort.
-        """
-        with patch.dict(os.environ, {"LOOKER_UI_BASE": "https://ui.example.com/"}):
-            self.assertEqual(self.looker._ui_base, "https://ui.example.com")
+    def test_yield_dashboard_uses_display_url(self):
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
 
-    def test_yield_dashboard_uses_ui_base_env(self):
-        """
-        The dashboard sourceUrl is built from LOOKER_UI_BASE when set.
-        """
-        with patch.object(LookerSource, "get_owner_ref", return_value=None), patch.dict(
-            os.environ, {"LOOKER_UI_BASE": "https://ui.example.com"}
-        ):
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
             create_dashboard_request = CreateDashboardRequest(
                 name="1",
                 displayName="title1",
@@ -329,10 +313,7 @@ class LookerUnitTest(TestCase):
                 owners=None,
             )
 
-            self.assertEqual(
-                next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)).right,
-                create_dashboard_request,
-            )
+            assert next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)).right == create_dashboard_request
 
     def test_clean_table_name(self):
         """
@@ -558,48 +539,35 @@ class LookerUnitTest(TestCase):
 
         # We don't blow up if the chart cannot be built.
         # Let's mock a random function exploding
-        def something_bad():
+        def something_bad(_):
             raise Exception("something bad")  # noqa: TRY002
 
         with patch.object(LookerSource, "build_chart_description", side_effect=something_bad):
-            self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)
+            result = next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
 
-    def test_yield_dashboard_chart_skips_dataless_tile(self):
-        """
-        A tile with no query, no result-maker query and no merge result is a
-        data-less tile (these often have title=None and type="text"). It is
-        skipped instead of producing a chart with a dead /merge?mid=None
-        sourceUrl, and the skip is logged.
-        """
+        assert result.left is not None
+        assert "something bad" in result.left.error
+
+    def test_yield_dashboard_chart_keeps_text_tile(self):
         dashboard = LookerDashboard(
             id="1",
             title="title1",
-            dashboard_elements=[DashboardElement(id="4977", type="text")],
+            dashboard_elements=[DashboardElement(id="4977", type="text", body_text="Searchable text")],
             description="description",
         )
 
-        with self.assertLogs(level="INFO") as captured:
-            charts = list(self.looker.yield_dashboard_chart(dashboard))
+        result = next(self.looker.yield_dashboard_chart(dashboard)).right
 
-        self.assertEqual(charts, [])
-        self.assertTrue(
-            any(
-                "Skipping data-less Looker tile id=4977" in message and "type=text" in message
-                for message in captured.output
-            )
-        )
+        assert result is not None
+        assert result.description.root == "Searchable text"
+        assert result.sourceUrl.root == "https://my-looker.com/dashboards/1"
 
     def test_yield_dashboard_chart_merge_tile(self):
-        """
-        A merge-results tile (no query, but a merge_result_id) still produces a
-        chart with the /merge?mid=<id> sourceUrl.
-        """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         dashboard = LookerDashboard(
             id="1",
             title="title1",
-            dashboard_elements=[
-                DashboardElement(id="merge_1", title="Merged", type="table", merge_result_id="abc123")
-            ],
+            dashboard_elements=[DashboardElement(id="merge_1", title="Merged", type="table", merge_result_id="abc123")],
             description="description",
         )
 
@@ -607,14 +575,11 @@ class LookerUnitTest(TestCase):
             name="merge_1",
             displayName="Merged",
             chartType=ChartType.Table,
-            sourceUrl="https://my-looker.com/merge?mid=abc123",
+            sourceUrl="https://ui.example.com/merge?mid=abc123",
             service=self.looker.context.get().dashboard_service,
         )
 
-        self.assertEqual(
-            next(self.looker.yield_dashboard_chart(dashboard)).right,
-            create_chart_request,
-        )
+        assert next(self.looker.yield_dashboard_chart(dashboard)).right == create_chart_request
 
     def test_yield_dashboard_usage(self):
         """
@@ -818,6 +783,7 @@ class LookerUnitTest(TestCase):
         """
         Check that sourceUrl is set for LookMlExplore data models
         """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         mock_explore = LookmlModelExplore(
             name="my_explore",
             model_name="my_model",
@@ -844,15 +810,13 @@ class LookerUnitTest(TestCase):
         ):
             results = [r for r in self.looker.yield_bulk_datamodel(mock_explore) if r.right]
             explore_result = results[0].right
-            self.assertEqual(
-                explore_result.sourceUrl.root,
-                "https://my-looker.com/explore/my_model/my_explore",
-            )
+            assert explore_result.sourceUrl.root == "https://ui.example.com/explore/my_model/my_explore"
 
     def test_view_source_url(self):
         """
         Check that sourceUrl is set for LookMlView data models
         """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         from unittest.mock import MagicMock
 
         from metadata.ingestion.source.dashboard.looker.models import LookMlView
@@ -891,9 +855,8 @@ class LookerUnitTest(TestCase):
         ):
             results = list(self.looker._process_view(view_name="my_view", explore=mock_explore))
             view_result = results[0].right
-            self.assertEqual(
-                view_result.sourceUrl.root,
-                "https://my-looker.com/projects/my_project/files/views/my_view.view.lkml",
+            assert (
+                view_result.sourceUrl.root == "https://ui.example.com/projects/my_project/files/views/my_view.view.lkml"
             )
 
     def test_view_source_url_none_when_no_source_file(self):
@@ -944,8 +907,9 @@ class LookerUnitTest(TestCase):
         """
         Check that sourceUrl uses query share_url for charts
         """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         result = next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)).right
-        self.assertEqual(result.sourceUrl.root, "https://my-looker.com/hello")
+        assert result.sourceUrl.root == "https://my-looker.com/hello"
 
     def test_chart_source_url_fallback_to_merge(self):
         """
@@ -1156,16 +1120,21 @@ class LookerUnitTest(TestCase):
         self.looker._project_parsers = {"my_project": mock_parser}
         self.looker._views_cache = {}
         self.looker._all_lookml_models = [SimpleNamespace(name="my_model")]
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
 
         with (
             patch.object(LookerSource, "register_record_datamodel", return_value=None),
             patch.object(LookerSource, "_build_data_model", return_value=None),
             patch.object(LookerSource, "_add_standalone_view_lineage", return_value=iter([])),
         ):
-            list(self.looker.yield_standalone_datamodels())
+            results = list(self.looker.yield_standalone_datamodels())
 
         counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
         self.assertGreaterEqual(counter.done, 1)
+        assert (
+            results[0].right.sourceUrl.root
+            == "https://ui.example.com/projects/my_project/files/views/my_view.view.lkml"
+        )
 
     def test_yield_dashboard_tracks_progress(self):
         """
