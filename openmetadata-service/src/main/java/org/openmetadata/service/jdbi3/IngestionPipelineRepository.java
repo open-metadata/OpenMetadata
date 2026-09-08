@@ -100,6 +100,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
   private static final String PATCH_FIELDS =
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
+  private static final String SOURCE_CONFIG_TYPE = "type";
+  private static final String SOURCE_CONFIG_TYPE_REQUIRED = "sourceConfig.config.type is required";
+  private static final String SOURCE_CONFIG_OBJECT_REQUIRED =
+      "sourceConfig.config must be an object with type";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
@@ -511,6 +515,37 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
+    validateSourceConfigHasType(ingestionPipeline);
+  }
+
+  static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
+    Object config = getRequiredSourceConfig(ingestionPipeline);
+    Map<?, ?> configMap = getSourceConfigMap(config);
+    if (!hasSourceConfigType(config, configMap)) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+  }
+
+  private static Object getRequiredSourceConfig(IngestionPipeline ingestionPipeline) {
+    if (ingestionPipeline.getSourceConfig() == null
+        || ingestionPipeline.getSourceConfig().getConfig() == null) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+    return ingestionPipeline.getSourceConfig().getConfig();
+  }
+
+  private static Map<?, ?> getSourceConfigMap(Object config) {
+    try {
+      return config instanceof Map<?, ?> map ? map : JsonUtils.getMap(config);
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException(SOURCE_CONFIG_OBJECT_REQUIRED);
+    }
+  }
+
+  private static boolean hasSourceConfigType(Object config, Map<?, ?> configMap) {
+    Object type = configMap.get(SOURCE_CONFIG_TYPE);
+    return type instanceof String typeValue && !typeValue.isBlank()
+        || !(config instanceof Map<?, ?>) && type instanceof Enum<?>;
   }
 
   @Override
@@ -1603,6 +1638,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
