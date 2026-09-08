@@ -136,7 +136,9 @@ function TestCaseSidePanel({
   handleDataProductsSave,
 }: Readonly<TestCaseSidePanelProps>) {
   return (
-    <div className="transition-all-200ms tw:col-span-3">
+    <div
+      className="transition-all-200ms tw:col-span-3"
+      data-testid="test-case-rail">
       <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
         <div className="tw:w-full">
           <TagsContainerV2
