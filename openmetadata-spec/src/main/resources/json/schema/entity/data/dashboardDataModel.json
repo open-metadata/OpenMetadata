@@ -22,6 +22,7 @@
         "TableauEmbeddedDatasource",
         "SupersetDataModel",
         "MetabaseDataModel",
+        "ModeDataModel",
         "LookMlView",
         "LookMlExplore",
         "PowerBIDataModel",
@@ -51,6 +52,9 @@
         },
         {
           "name": "MetabaseDataModel"
+        },
+        {
+          "name": "ModeDataModel"
         },
         {
           "name": "LookMlView"
