@@ -13,6 +13,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -92,11 +93,19 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         // keep working: system dimension names are exactly the values the enum used to hold. The
         // test case dimension overrides the test definition one; test cases created before
         // dimensions could be set on them have none, so they still fall back to the definition.
+        String dimensionName = null;
+        if (testCase.getDataQualityDimension() != null) {
+          dimensionName = testCase.getDataQualityDimension().getName();
+        } else if (testDefinition.getDataQualityDimension() != null) {
+          dimensionName = testDefinition.getDataQualityDimension().value();
+        }
+        // The "No Dimension" filter is a must_not-exists on this field, so an effective
+        // NoDimension has to stay unset in the document instead of being indexed by name.
         doc.put(
             "dataQualityDimension",
-            testCase.getDataQualityDimension() != null
-                ? testCase.getDataQualityDimension().getName()
-                : testDefinition.getDataQualityDimension());
+            DataQualityDimensions.NO_DIMENSION.value().equals(dimensionName)
+                ? null
+                : dimensionName);
         doc.put("testCaseType", testDefinition.getEntityType());
       } catch (EntityNotFoundException ex) {
         LOG.warn(

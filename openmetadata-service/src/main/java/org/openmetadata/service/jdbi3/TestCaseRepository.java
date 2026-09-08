@@ -73,6 +73,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
@@ -1064,10 +1065,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   static void setDataQualityDimension(TestCase test, TestDefinition testDefinition) {
     EntityReference dimension = test.getDataQualityDimension();
-    if (dimension == null && testDefinition.getDataQualityDimension() != null) {
-      dimension =
-          EntityUtil.getEntityReference(
-              Entity.DATA_QUALITY_DIMENSION, testDefinition.getDataQualityDimension().value());
+    if (dimension == null) {
+      DataQualityDimensions defaultDimension = testDefinition.getDataQualityDimension();
+      // NoDimension is the enum's "unset" member and has no dimension entity seeded for it, so it
+      // means the test case has no dimension rather than a reference to resolve.
+      if (defaultDimension != null && defaultDimension != DataQualityDimensions.NO_DIMENSION) {
+        dimension =
+            EntityUtil.getEntityReference(Entity.DATA_QUALITY_DIMENSION, defaultDimension.value());
+      }
     }
     // Resolves the name/FQN the caller (or the test definition default) supplied into a full
     // reference, and rejects a dimension that does not exist.

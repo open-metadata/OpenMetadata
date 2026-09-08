@@ -393,17 +393,13 @@ const DataQualitySettingsPage = () => {
             ]}>
             {/* The name is referenced by the API and by every test case relationship, so it is
                 read-only once the dimension exists. */}
-            <Input
-              data-testid="dimension-name"
-              disabled={Boolean(editing)}
-              placeholder="freshness"
-            />
+            <Input data-testid="dimension-name" disabled={Boolean(editing)} />
           </Form.Item>
           <Form.Item
             extra={t('message.dimension-display-name-help')}
             label={t('label.display-name')}
             name="displayName">
-            <Input data-testid="dimension-display-name" placeholder="Freshness" />
+            <Input data-testid="dimension-display-name" />
           </Form.Item>
           <Form.Item label={t('label.description')} name="description">
             <Input.TextArea
@@ -412,7 +408,7 @@ const DataQualitySettingsPage = () => {
               rows={4}
             />
           </Form.Item>
-          <Form.Item label={t('label.colour')}>
+          <Form.Item label={t('label.color')}>
             <Space size={8} wrap>
               {DIMENSION_COLOR_PALETTE.map((color) => (
                 <button
