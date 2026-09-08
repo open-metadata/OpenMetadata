@@ -27,7 +27,6 @@ import {
 import {
   BLUE_1,
   GREEN_4,
-  GREY_100,
   RED_3,
   YELLOW_3,
 } from '../../../constants/Color.constants';
@@ -36,6 +35,7 @@ import { DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS } from '../../../constants/D
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
+import { useChartColors } from '../../../hooks/useChartColors';
 import { getAllContractResults } from '../../../rest/contractAPI';
 import {
   createContractExecutionCustomScale,
@@ -56,6 +56,7 @@ import ContractExecutionChartTooltip from './ContractExecutionChartTooltip.compo
 
 const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   const { t } = useTranslation();
+  const { grid } = useChartColors();
   const defaultRange = useMemo(
     () => ({
       initialRange: {
@@ -139,11 +140,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       ) : (
         <ResponsiveContainer className="contract-execution-chart">
           <BarChart data={processedChartData}>
-            <CartesianGrid
-              stroke={GREY_100}
-              strokeDasharray="0"
-              vertical={false}
-            />
+            <CartesianGrid stroke={grid} strokeDasharray="0" vertical={false} />
             <Tooltip
               content={<ContractExecutionChartTooltip />}
               position={{ y: 100 }}
