@@ -404,6 +404,15 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
+export const waitForAntdPopupToSettle = async (page: Page) => {
+  await expect(
+    page.locator(
+      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
+        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
+    )
+  ).toHaveCount(0);
+};
+
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
