@@ -18,6 +18,53 @@ import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 
+const DeprecatedBadge = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Badge className="sso-deprecated-tag" color="warning" size="sm">
+      {t('label.deprecated')}
+    </Badge>
+  );
+};
+
+const SSOFieldLabel = ({
+  id,
+  isDeprecated,
+  label,
+  required,
+}: Pick<FieldTemplateProps, 'id' | 'label' | 'required'> & {
+  isDeprecated: boolean;
+}) => (
+  // The rjsf-rendered control carries this id, so htmlFor is the association;
+  // the deprecated rule additionally demands DOM nesting of the control.
+  // eslint-disable-next-line jsx-a11y/label-has-for -- associated via htmlFor
+  <label
+    className={classNames('control-label', {
+      'sso-deprecated-field-label': isDeprecated,
+    })}
+    htmlFor={id}>
+    {label}
+    {required && <span className="required">*</span>}
+    {isDeprecated && <DeprecatedBadge />}
+  </label>
+);
+
+const SSOFieldControl = ({
+  children,
+  isDeprecatedBoolean,
+}: Pick<FieldTemplateProps, 'children'> & {
+  isDeprecatedBoolean: boolean;
+}) =>
+  isDeprecatedBoolean ? (
+    <div className="sso-deprecated-boolean-wrapper">
+      {children}
+      <DeprecatedBadge />
+    </div>
+  ) : (
+    children
+  );
+
 export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
   props
 ) => {
@@ -34,7 +81,6 @@ export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
     schema,
     classNames: fieldClassNames,
   } = props;
-  const { t } = useTranslation();
 
   if (hidden) {
     return <div className="hidden">{children}</div>;
@@ -43,39 +89,22 @@ export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
   const fieldName = id.split('/').pop() ?? '';
   const isDeprecated =
     Boolean(schema.deprecated) || DEPRECATED_SSO_PROPERTIES.includes(fieldName);
-  const isBooleanField = schema.type === 'boolean';
 
   return (
     <div className={classNames('form-group', fieldClassNames)}>
       {displayLabel && label ? (
-        // The rjsf-rendered control carries this id, so htmlFor is the association;
-        // the deprecated rule additionally demands DOM nesting of the control.
-        // eslint-disable-next-line jsx-a11y/label-has-for -- associated via htmlFor
-        <label
-          className={classNames('control-label', {
-            'sso-deprecated-field-label': isDeprecated,
-          })}
-          htmlFor={id}>
-          {label}
-          {required && <span className="required">*</span>}
-          {isDeprecated && (
-            <Badge className="sso-deprecated-tag" color="warning" size="sm">
-              {t('label.deprecated')}
-            </Badge>
-          )}
-        </label>
+        <SSOFieldLabel
+          id={id}
+          isDeprecated={isDeprecated}
+          label={label}
+          required={required}
+        />
       ) : null}
       {displayLabel && description ? description : null}
-      {isBooleanField && isDeprecated ? (
-        <div className="sso-deprecated-boolean-wrapper">
-          {children}
-          <Badge className="sso-deprecated-tag" color="warning" size="sm">
-            {t('label.deprecated')}
-          </Badge>
-        </div>
-      ) : (
-        children
-      )}
+      <SSOFieldControl
+        isDeprecatedBoolean={schema.type === 'boolean' && isDeprecated}>
+        {children}
+      </SSOFieldControl>
       {errors}
       {help}
     </div>
