@@ -71,13 +71,109 @@ const getOwnerInitials = (owner: NonNullable<Metric['owners']>[number]) => {
   ).toUpperCase();
 };
 
+const MetricTreeMetadata = ({
+  metric,
+  testId,
+}: Pick<MetricTreeRowProps, 'metric' | 'testId'>) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:mt-1 tw:flex-wrap" gap={2}>
+      {metric.metricType && (
+        <Badge
+          className={METRIC_TYPE_BADGE_CLASS_NAME}
+          color={getMetricTypeBadgeColor(metric.metricType)}
+          data-testid={`${testId}-metric-type`}
+          size="xs"
+          type="color">
+          {getMetricEnumLabel(t, metric.metricType)}
+        </Badge>
+      )}
+      {metric.granularity && (
+        <>
+          {metric.metricType && (
+            <span
+              aria-hidden="true"
+              className="tw:size-0.5 tw:rounded-full tw:bg-border-primary"
+              data-testid={`${testId}-separator`}
+            />
+          )}
+          <Typography
+            as="span"
+            className={`${METRIC_GRANULARITY_CLASS_NAME} tw:font-semibold`}
+            data-testid={`${testId}-granularity`}
+            size="text-xs">
+            {getMetricEnumLabel(t, metric.granularity)}
+          </Typography>
+        </>
+      )}
+      {metric.entityStatus && (
+        <>
+          {(metric.metricType || metric.granularity) && (
+            <span
+              aria-hidden="true"
+              className="tw:size-0.5 tw:rounded-full tw:bg-border-primary"
+              data-testid={`${testId}-separator`}
+            />
+          )}
+          <Typography
+            as="span"
+            className="tw:text-tertiary"
+            data-testid={`${testId}-status`}
+            size="text-xs">
+            {getMetricEnumLabel(t, metric.entityStatus)}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+};
+
+const MetricTreeRowTrailing = ({
+  isCurrent,
+  metric,
+}: Pick<MetricTreeRowProps, 'isCurrent' | 'metric'>) => {
+  const { t } = useTranslation();
+  if (isCurrent) {
+    return (
+      <Badge className="tw:shrink-0" color="brand" size="sm" type="pill-color">
+        {t('label.you-are-here')}
+      </Badge>
+    );
+  }
+
+  return (
+    <Box align="center" className="tw:shrink-0" gap={2}>
+      {metric.owners && metric.owners.length > 0 && (
+        <Box align="center" gap={1}>
+          {metric.owners.slice(0, 3).map((owner) => (
+            <span
+              aria-label={getEntityName(owner)}
+              data-testid={`metric-tree-owner-${metric.id}-${owner.id}`}
+              key={owner.id}
+              role="img"
+              title={getEntityName(owner)}>
+              <Avatar initials={getOwnerInitials(owner)} size="xs" />
+            </span>
+          ))}
+          {metric.owners.length > 3 && (
+            <Typography as="span" className="tw:text-tertiary" size="text-xs">
+              +{metric.owners.length - 3}
+            </Typography>
+          )}
+        </Box>
+      )}
+      <MetricListHealth metricId={metric.id} />
+    </Box>
+  );
+};
+
 const MetricTreeRow = ({
   metric,
   testId,
   isCurrent = false,
   isNested = false,
 }: MetricTreeRowProps) => {
-  const { t } = useTranslation();
   const content = (
     <>
       <span
@@ -96,90 +192,9 @@ const MetricTreeRow = ({
           weight="semibold">
           {getEntityName(metric)}
         </Typography>
-        <Box align="center" className="tw:mt-1 tw:flex-wrap" gap={2}>
-          {metric.metricType && (
-            <Badge
-              className={METRIC_TYPE_BADGE_CLASS_NAME}
-              color={getMetricTypeBadgeColor(metric.metricType)}
-              data-testid={`${testId}-metric-type`}
-              size="xs"
-              type="color">
-              {getMetricEnumLabel(t, metric.metricType)}
-            </Badge>
-          )}
-          {metric.granularity && (
-            <>
-              {metric.metricType && (
-                <span
-                  aria-hidden="true"
-                  className="tw:size-0.5 tw:rounded-full tw:bg-border-primary"
-                  data-testid={`${testId}-separator`}
-                />
-              )}
-              <Typography
-                as="span"
-                className={`${METRIC_GRANULARITY_CLASS_NAME} tw:font-semibold`}
-                data-testid={`${testId}-granularity`}
-                size="text-xs">
-                {getMetricEnumLabel(t, metric.granularity)}
-              </Typography>
-            </>
-          )}
-          {metric.entityStatus && (
-            <>
-              {(metric.metricType || metric.granularity) && (
-                <span
-                  aria-hidden="true"
-                  className="tw:size-0.5 tw:rounded-full tw:bg-border-primary"
-                  data-testid={`${testId}-separator`}
-                />
-              )}
-              <Typography
-                as="span"
-                className="tw:text-tertiary"
-                data-testid={`${testId}-status`}
-                size="text-xs">
-                {getMetricEnumLabel(t, metric.entityStatus)}
-              </Typography>
-            </>
-          )}
-        </Box>
+        <MetricTreeMetadata metric={metric} testId={testId} />
       </span>
-      {isCurrent ? (
-        <Badge
-          className="tw:shrink-0"
-          color="brand"
-          size="sm"
-          type="pill-color">
-          {t('label.you-are-here')}
-        </Badge>
-      ) : (
-        <Box align="center" className="tw:shrink-0" gap={2}>
-          {metric.owners && metric.owners.length > 0 && (
-            <Box align="center" gap={1}>
-              {metric.owners.slice(0, 3).map((owner) => (
-                <span
-                  aria-label={getEntityName(owner)}
-                  data-testid={`metric-tree-owner-${metric.id}-${owner.id}`}
-                  key={owner.id}
-                  role="img"
-                  title={getEntityName(owner)}>
-                  <Avatar initials={getOwnerInitials(owner)} size="xs" />
-                </span>
-              ))}
-              {metric.owners.length > 3 && (
-                <Typography
-                  as="span"
-                  className="tw:text-tertiary"
-                  size="text-xs">
-                  +{metric.owners.length - 3}
-                </Typography>
-              )}
-            </Box>
-          )}
-          <MetricListHealth metricId={metric.id} />
-        </Box>
-      )}
+      <MetricTreeRowTrailing isCurrent={isCurrent} metric={metric} />
     </>
   );
   const className = `tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:px-3 tw:py-2.5 ${
@@ -242,6 +257,124 @@ const GroupRow = ({ group }: { group: MetricGroup }) => {
   );
 };
 
+interface MetricHierarchyContentProps {
+  hierarchy: ReturnType<typeof useMetricHierarchyCard>;
+  metric: Metric;
+}
+
+const MetricHierarchyContent = ({
+  hierarchy,
+  metric,
+}: MetricHierarchyContentProps) => {
+  const { t } = useTranslation();
+  if (hierarchy.isPending) {
+    return (
+      <Box
+        aria-label={t('label.loading')}
+        className="tw:p-2"
+        direction="col"
+        gap={2}
+        role="status">
+        <Skeleton height={52} variant="rounded" />
+        <Skeleton height={52} variant="rounded" />
+      </Box>
+    );
+  }
+
+  if (hierarchy.error) {
+    return (
+      <Alert
+        title={t('server.entity-fetch-error', {
+          entity: t('label.metric-hierarchy'),
+        })}
+        variant="error">
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => void hierarchy.refetch()}>
+          {t('label.try-again')}
+        </Button>
+      </Alert>
+    );
+  }
+
+  const isStandalone =
+    !hierarchy.group &&
+    hierarchy.ancestors.length === 0 &&
+    hierarchy.siblings.length === 0 &&
+    hierarchy.children.length === 0;
+
+  return (
+    <Box direction="col">
+      {isStandalone && (
+        <Typography
+          className="tw:px-3 tw:py-2 tw:text-tertiary"
+          data-testid="metric-tree-empty"
+          size="text-sm">
+          {t('message.metric-not-in-hierarchy')}
+        </Typography>
+      )}
+      {hierarchy.group && <GroupRow group={hierarchy.group} />}
+      {hierarchy.ancestors.map((ancestor) => (
+        <MetricTreeRow
+          isNested
+          key={ancestor.id}
+          metric={ancestor}
+          testId={`metric-tree-ancestor-${ancestor.id}`}
+        />
+      ))}
+      {hierarchy.siblings.map((sibling) => (
+        <MetricTreeRow
+          isNested={Boolean(hierarchy.group)}
+          key={sibling.id}
+          metric={sibling}
+          testId={`metric-tree-peer-${sibling.id}`}
+        />
+      ))}
+      {hierarchy.hasMoreSiblings && (
+        <Button
+          className="tw:self-start tw:ml-8"
+          color="link-color"
+          data-testid="metric-tree-more-peers"
+          isDisabled={hierarchy.isLoadingSiblings}
+          size="sm"
+          onPress={hierarchy.loadMoreSiblings}>
+          {t('label.show-more-entity', {
+            entity: t('label.metric-plural'),
+          })}
+        </Button>
+      )}
+      <MetricTreeRow
+        isCurrent
+        isNested={Boolean(hierarchy.group)}
+        metric={metric}
+        testId="metric-tree-current"
+      />
+      {hierarchy.children.map((child) => (
+        <MetricTreeRow
+          isNested
+          key={child.id}
+          metric={child}
+          testId={`metric-tree-child-${child.id}`}
+        />
+      ))}
+      {hierarchy.hasMoreChildren && (
+        <Button
+          className="tw:self-start tw:ml-8"
+          color="link-color"
+          data-testid="metric-tree-more-children"
+          isDisabled={hierarchy.isLoadingChildren}
+          size="sm"
+          onPress={hierarchy.loadMoreChildren}>
+          {t('label.show-more-entity', {
+            entity: t('label.variant-plural'),
+          })}
+        </Button>
+      )}
+    </Box>
+  );
+};
+
 const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
   metric: metricProp,
   canAddChild,
@@ -256,11 +389,6 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
   const allowAddChild =
     canAddChild ?? Boolean(permissions.Create && !isVersionView);
   const hierarchy = useMetricHierarchyCard(metric);
-  const isStandalone =
-    !hierarchy.group &&
-    hierarchy.ancestors.length === 0 &&
-    hierarchy.siblings.length === 0 &&
-    hierarchy.children.length === 0;
 
   return (
     <Card className="tw:shadow-xs" data-testid="metric-hierarchy-card">
@@ -293,100 +421,7 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
         }
       />
       <Card.Content className="tw:p-2">
-        {hierarchy.isPending && (
-          <Box
-            aria-label={t('label.loading')}
-            className="tw:p-2"
-            direction="col"
-            gap={2}
-            role="status">
-            <Skeleton height={52} variant="rounded" />
-            <Skeleton height={52} variant="rounded" />
-          </Box>
-        )}
-        {!hierarchy.isPending && hierarchy.error && (
-          <Alert
-            title={t('server.entity-fetch-error', {
-              entity: t('label.metric-hierarchy'),
-            })}
-            variant="error">
-            <Button
-              color="secondary"
-              size="sm"
-              onPress={() => hierarchy.refetch()}>
-              {t('label.try-again')}
-            </Button>
-          </Alert>
-        )}
-        {!hierarchy.isPending && !hierarchy.error && (
-          <Box direction="col">
-            {isStandalone && (
-              <Typography
-                className="tw:px-3 tw:py-2 tw:text-tertiary"
-                data-testid="metric-tree-empty"
-                size="text-sm">
-                {t('message.metric-not-in-hierarchy')}
-              </Typography>
-            )}
-            {hierarchy.group && <GroupRow group={hierarchy.group} />}
-            {hierarchy.ancestors.map((ancestor) => (
-              <MetricTreeRow
-                isNested
-                key={ancestor.id}
-                metric={ancestor}
-                testId={`metric-tree-ancestor-${ancestor.id}`}
-              />
-            ))}
-            {hierarchy.siblings.map((sibling) => (
-              <MetricTreeRow
-                isNested={Boolean(hierarchy.group)}
-                key={sibling.id}
-                metric={sibling}
-                testId={`metric-tree-peer-${sibling.id}`}
-              />
-            ))}
-            {hierarchy.hasMoreSiblings && (
-              <Button
-                className="tw:self-start tw:ml-8"
-                color="link-color"
-                data-testid="metric-tree-more-peers"
-                isDisabled={hierarchy.isLoadingSiblings}
-                size="sm"
-                onPress={hierarchy.loadMoreSiblings}>
-                {t('label.show-more-entity', {
-                  entity: t('label.metric-plural'),
-                })}
-              </Button>
-            )}
-            <MetricTreeRow
-              isCurrent
-              isNested={Boolean(hierarchy.group)}
-              metric={metric}
-              testId="metric-tree-current"
-            />
-            {hierarchy.children.map((child) => (
-              <MetricTreeRow
-                isNested
-                key={child.id}
-                metric={child}
-                testId={`metric-tree-child-${child.id}`}
-              />
-            ))}
-            {hierarchy.hasMoreChildren && (
-              <Button
-                className="tw:self-start tw:ml-8"
-                color="link-color"
-                data-testid="metric-tree-more-children"
-                isDisabled={hierarchy.isLoadingChildren}
-                size="sm"
-                onPress={hierarchy.loadMoreChildren}>
-                {t('label.show-more-entity', {
-                  entity: t('label.variant-plural'),
-                })}
-              </Button>
-            )}
-          </Box>
-        )}
+        <MetricHierarchyContent hierarchy={hierarchy} metric={metric} />
       </Card.Content>
     </Card>
   );

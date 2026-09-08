@@ -22,6 +22,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
+import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -32,6 +33,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
+  MetricActivityListItem,
   MetricActivitySelection,
   MetricActivityTabKey,
   MetricTaskStatusFilter,
@@ -55,6 +57,415 @@ export interface MetricActivityTabProps {
   onUpdateEntityDetails?: () => void;
   onUpdateFeedCount?: (counts: FeedCounts) => void;
 }
+
+type MetricActivityState = ReturnType<typeof useMetricActivity>;
+type TaskResolutionPermission = ReturnType<
+  typeof useMetricTaskResolutionPermission
+>;
+
+const getActivitySelection = (
+  item: MetricActivityListItem
+): MetricActivitySelection =>
+  item.kind === 'activity'
+    ? { kind: 'activity', value: item.value }
+    : { kind: 'thread', value: item.value };
+
+const LoadingItems = () => (
+  <>
+    {Array.from({ length: 5 }, (_, index) => (
+      <li key={index}>
+        <Skeleton height={112} variant="rounded" />
+      </li>
+    ))}
+  </>
+);
+
+interface TaskItemsProps {
+  selection?: MetricActivitySelection;
+  state: MetricActivityState;
+  taskStatus: MetricTaskStatusFilter;
+  onReviewApproval: () => void;
+  onSelect: (selection: MetricActivitySelection) => void;
+}
+
+const TaskItems = ({
+  selection,
+  state,
+  taskStatus,
+  onReviewApproval,
+  onSelect,
+}: TaskItemsProps) => {
+  const { t } = useTranslation();
+
+  if (state.tasks.length === 0) {
+    const isOpen = taskStatus === 'open';
+
+    return (
+      <li>
+        <EmptyPlaceholder
+          description={
+            isOpen
+              ? t('message.no-open-tasks-description')
+              : t('message.no-closed-tasks-description')
+          }
+          title={
+            isOpen
+              ? t('message.no-open-tasks-title')
+              : t('message.no-closed-tasks-title')
+          }
+        />
+      </li>
+    );
+  }
+
+  return (
+    <>
+      {state.tasks.map((task) => (
+        <li key={task.id}>
+          <MetricTaskItem
+            isActive={
+              selection?.kind === 'task' && selection.value.id === task.id
+            }
+            task={task}
+            onReviewApproval={onReviewApproval}
+            onSelect={() => onSelect({ kind: 'task', value: task })}
+          />
+        </li>
+      ))}
+    </>
+  );
+};
+
+interface ActivityItemsProps {
+  selection?: MetricActivitySelection;
+  state: MetricActivityState;
+  onSelect: (selection: MetricActivitySelection) => void;
+}
+
+const ActivityItems = ({ selection, state, onSelect }: ActivityItemsProps) => {
+  const { t } = useTranslation();
+
+  if (state.activity.length === 0) {
+    return (
+      <li>
+        <EmptyPlaceholder
+          description={t('message.no-activity-feed-description')}
+          title={t('message.no-activity-feed-title')}
+        />
+      </li>
+    );
+  }
+
+  return (
+    <>
+      {state.activity.map((item) => (
+        <li key={`${item.kind}-${item.id}`}>
+          <MetricActivityItem
+            isActive={
+              selection?.kind === item.kind &&
+              selection.value.id === item.value.id
+            }
+            item={item}
+            onSelect={() => onSelect(getActivitySelection(item))}
+          />
+        </li>
+      ))}
+    </>
+  );
+};
+
+interface ActivityListItemsProps {
+  error: unknown;
+  isLoading: boolean;
+  selection?: MetricActivitySelection;
+  state: MetricActivityState;
+  tab: MetricActivityTabKey;
+  taskStatus: MetricTaskStatusFilter;
+  onReviewApproval: () => void;
+  onSelect: (selection: MetricActivitySelection) => void;
+}
+
+const ActivityListItems = ({
+  error,
+  isLoading,
+  selection,
+  state,
+  tab,
+  taskStatus,
+  onReviewApproval,
+  onSelect,
+}: ActivityListItemsProps) => {
+  const { t } = useTranslation();
+
+  if (isLoading) {
+    return <LoadingItems />;
+  }
+  if (error) {
+    const retry = tab === 'tasks' ? state.refetchTasks : state.refetchActivity;
+
+    return (
+      <li>
+        <EmptyPlaceholder
+          actions={[
+            {
+              key: 'retry',
+              label: t('label.try-again'),
+              onClick: () => retry(),
+            },
+          ]}
+          description={t('server.entity-feed-fetch-error')}
+          title={t('label.error')}
+        />
+      </li>
+    );
+  }
+  if (tab === 'tasks') {
+    return (
+      <TaskItems
+        selection={selection}
+        state={state}
+        taskStatus={taskStatus}
+        onReviewApproval={onReviewApproval}
+        onSelect={onSelect}
+      />
+    );
+  }
+
+  return (
+    <ActivityItems selection={selection} state={state} onSelect={onSelect} />
+  );
+};
+
+const LoadMoreItem = ({
+  state,
+  tab,
+}: {
+  state: MetricActivityState;
+  tab: MetricActivityTabKey;
+}) => {
+  const { t } = useTranslation();
+  const isTasksTab = tab === 'tasks';
+  const hasMore = isTasksTab ? state.hasMoreTasks : state.hasMoreActivity;
+
+  if (!hasMore) {
+    return null;
+  }
+
+  return (
+    <li>
+      <Box justify="center">
+        <Button
+          color="secondary"
+          data-testid="metric-activity-load-more"
+          isLoading={
+            isTasksTab ? state.isLoadingMoreTasks : state.isLoadingMoreActivity
+          }
+          size="sm"
+          onPress={isTasksTab ? state.loadMoreTasks : state.loadMoreActivity}>
+          {t('label.load-more')}
+        </Button>
+      </Box>
+    </li>
+  );
+};
+
+interface ActivityControlsProps {
+  canCreateTasks: boolean;
+  canCreateThread: boolean;
+  state: MetricActivityState;
+  tab: MetricActivityTabKey;
+  taskStatus: MetricTaskStatusFilter;
+  afterMutation: (request: Promise<unknown>) => Promise<unknown>;
+  onCreateTask: () => void;
+  onSelectionClear: () => void;
+  onTaskStatusChange: (status: MetricTaskStatusFilter) => void;
+}
+
+const ActivityControls = ({
+  canCreateTasks,
+  canCreateThread,
+  state,
+  tab,
+  taskStatus,
+  afterMutation,
+  onCreateTask,
+  onSelectionClear,
+  onTaskStatusChange,
+}: ActivityControlsProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {state.mutationError && (
+        <Alert
+          data-testid="metric-activity-mutation-error"
+          title={t('server.api-error')}
+          variant="error"
+        />
+      )}
+
+      {tab !== 'tasks' && canCreateThread && (
+        <Card data-testid="metric-activity-new-comment">
+          <Card.Content>
+            <MetricCommentComposer
+              isLoading={state.isCommenting}
+              onSubmit={(message) =>
+                afterMutation(state.createComment(undefined, message))
+              }
+            />
+          </Card.Content>
+        </Card>
+      )}
+
+      {tab === 'tasks' && (
+        <Box align="center" gap={3} justify="between">
+          <Typography size="text-sm" weight="semibold">
+            {t('label.task-plural')}
+          </Typography>
+          <Box align="center" gap={2}>
+            <Select
+              aria-label={t('label.status')}
+              className="tw:w-44"
+              value={taskStatus}
+              onChange={(value) => {
+                onTaskStatusChange(value as MetricTaskStatusFilter);
+                onSelectionClear();
+              }}>
+              <Select.Item id="open" label={t('label.open')} />
+              <Select.Item id="closed" label={t('label.closed')} />
+            </Select>
+            {canCreateTasks && (
+              <Button
+                color="primary"
+                data-testid="metric-task-create"
+                iconLeading={Plus}
+                size="sm"
+                onPress={onCreateTask}>
+                {t('label.create-entity', { entity: t('label.task') })}
+              </Button>
+            )}
+          </Box>
+        </Box>
+      )}
+    </>
+  );
+};
+
+interface ActivityContentProps {
+  canCreateThread: boolean;
+  error: unknown;
+  isLoading: boolean;
+  selection?: MetricActivitySelection;
+  state: MetricActivityState;
+  tab: MetricActivityTabKey;
+  taskResolutionPermission: TaskResolutionPermission;
+  taskStatus: MetricTaskStatusFilter;
+  afterMutation: (request: Promise<unknown>) => Promise<unknown>;
+  onReviewApproval: () => void;
+  onSelectionChange: Dispatch<
+    SetStateAction<MetricActivitySelection | undefined>
+  >;
+  onUpdateEntityDetails?: () => void;
+}
+
+const ActivityContent = ({
+  canCreateThread,
+  error,
+  isLoading,
+  selection,
+  state,
+  tab,
+  taskResolutionPermission,
+  taskStatus,
+  afterMutation,
+  onReviewApproval,
+  onSelectionChange,
+  onUpdateEntityDetails,
+}: ActivityContentProps) => {
+  const { t } = useTranslation();
+  const listLabel =
+    tab === 'tasks' ? t('label.task-plural') : t('label.activity');
+
+  return (
+    <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:xl:grid-cols-[minmax(0,1fr)_400px]">
+      <section
+        aria-busy={isLoading}
+        aria-label={listLabel}
+        className="tw:relative tw:min-h-80">
+        <ul
+          aria-label={listLabel}
+          className="tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
+          <ActivityListItems
+            error={error}
+            isLoading={isLoading}
+            selection={selection}
+            state={state}
+            tab={tab}
+            taskStatus={taskStatus}
+            onReviewApproval={onReviewApproval}
+            onSelect={onSelectionChange}
+          />
+          <LoadMoreItem state={state} tab={tab} />
+        </ul>
+      </section>
+
+      {selection && (
+        <MetricActivityDetail
+          canComment={canCreateThread}
+          canResolveTasks={taskResolutionPermission.canResolve}
+          isCommenting={state.isCommenting}
+          isResolvePermissionLoading={taskResolutionPermission.isLoading}
+          isResolvingTask={state.isResolvingTask}
+          resolvePermissionError={taskResolutionPermission.error}
+          selection={selection}
+          onClose={() => onSelectionChange(undefined)}
+          onCreateComment={(about, message) =>
+            afterMutation(state.createComment(about, message))
+          }
+          onReply={(threadId, message) =>
+            afterMutation(state.replyToThread(threadId, message))
+          }
+          onResolveTask={(taskId, transitionId, comment) =>
+            afterMutation(
+              state
+                .resolveTask(taskId, transitionId, comment)
+                .then((result) => {
+                  onUpdateEntityDetails?.();
+
+                  return result;
+                })
+            )
+          }
+          onRetryResolvePermission={() => taskResolutionPermission.refetch()}
+          onTaskComment={(taskId, message) =>
+            afterMutation(state.addTaskComment(taskId, message))
+          }
+        />
+      )}
+    </Box>
+  );
+};
+
+const ActivityLiveStatus = ({
+  state,
+  taskResolutionPermission,
+}: {
+  state: MetricActivityState;
+  taskResolutionPermission: TaskResolutionPermission;
+}) => {
+  const { t } = useTranslation();
+  const isLoading = [
+    state.isCommenting,
+    state.isResolvingTask,
+    taskResolutionPermission.isLoading,
+  ].some(Boolean);
+
+  return (
+    <span aria-live="polite" className="tw:sr-only">
+      {isLoading ? t('label.loading') : ''}
+    </span>
+  );
+};
 
 const MetricActivityTab = ({
   canCreateThread = true,
@@ -108,8 +519,6 @@ const MetricActivityTab = ({
   const isLoading =
     tab === 'tasks' ? state.isTasksLoading : state.isActivityLoading;
   const error = tab === 'tasks' ? state.tasksError : state.activityError;
-  const listLabel =
-    tab === 'tasks' ? t('label.task-plural') : t('label.activity');
 
   return (
     <Box
@@ -137,209 +546,31 @@ const MetricActivityTab = ({
         </Tabs.List>
       </Tabs>
 
-      {state.mutationError && (
-        <Alert
-          data-testid="metric-activity-mutation-error"
-          title={t('server.api-error')}
-          variant="error"
-        />
-      )}
-
-      {tab !== 'tasks' && canCreateThread && (
-        <Card data-testid="metric-activity-new-comment">
-          <Card.Content>
-            <MetricCommentComposer
-              isLoading={state.isCommenting}
-              onSubmit={(message) =>
-                afterMutation(state.createComment(undefined, message))
-              }
-            />
-          </Card.Content>
-        </Card>
-      )}
-
-      {tab === 'tasks' && (
-        <Box align="center" gap={3} justify="between">
-          <Typography size="text-sm" weight="semibold">
-            {t('label.task-plural')}
-          </Typography>
-          <Box align="center" gap={2}>
-            <Select
-              aria-label={t('label.status')}
-              className="tw:w-44"
-              value={taskStatus}
-              onChange={(value) => {
-                setTaskStatus(value as MetricTaskStatusFilter);
-                setSelection(undefined);
-              }}>
-              <Select.Item id="open" label={t('label.open')} />
-              <Select.Item id="closed" label={t('label.closed')} />
-            </Select>
-            {canCreateTasks && (
-              <Button
-                color="primary"
-                data-testid="metric-task-create"
-                iconLeading={Plus}
-                size="sm"
-                onPress={() => setIsCreateTaskOpen(true)}>
-                {t('label.create-entity', { entity: t('label.task') })}
-              </Button>
-            )}
-          </Box>
-        </Box>
-      )}
-
-      <Box className="tw:grid tw:grid-cols-1 tw:gap-4 tw:xl:grid-cols-[minmax(0,1fr)_400px]">
-        <section
-          aria-busy={isLoading}
-          aria-label={listLabel}
-          className="tw:relative tw:min-h-80">
-          <ul
-            aria-label={listLabel}
-            className="tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-            {isLoading ? (
-              Array.from({ length: 5 }, (_, index) => (
-                <li key={index}>
-                  <Skeleton height={112} variant="rounded" />
-                </li>
-              ))
-            ) : error ? (
-              <li>
-                <EmptyPlaceholder
-                  actions={[
-                    {
-                      key: 'retry',
-                      label: t('label.try-again'),
-                      onClick: () =>
-                        tab === 'tasks'
-                          ? state.refetchTasks()
-                          : state.refetchActivity(),
-                    },
-                  ]}
-                  description={t('server.entity-feed-fetch-error')}
-                  title={t('label.error')}
-                />
-              </li>
-            ) : tab === 'tasks' ? (
-              state.tasks.length === 0 ? (
-                <li>
-                  <EmptyPlaceholder
-                    description={
-                      taskStatus === 'open'
-                        ? t('message.no-open-tasks-description')
-                        : t('message.no-closed-tasks-description')
-                    }
-                    title={
-                      taskStatus === 'open'
-                        ? t('message.no-open-tasks-title')
-                        : t('message.no-closed-tasks-title')
-                    }
-                  />
-                </li>
-              ) : (
-                state.tasks.map((task) => (
-                  <li key={task.id}>
-                    <MetricTaskItem
-                      isActive={
-                        selection?.kind === 'task' &&
-                        selection.value.id === task.id
-                      }
-                      task={task}
-                      onReviewApproval={handleReviewApproval}
-                      onSelect={() =>
-                        setSelection({ kind: 'task', value: task })
-                      }
-                    />
-                  </li>
-                ))
-              )
-            ) : state.activity.length === 0 ? (
-              <li>
-                <EmptyPlaceholder
-                  description={t('message.no-activity-feed-description')}
-                  title={t('message.no-activity-feed-title')}
-                />
-              </li>
-            ) : (
-              state.activity.map((item) => (
-                <li key={`${item.kind}-${item.id}`}>
-                  <MetricActivityItem
-                    isActive={
-                      selection?.kind === item.kind &&
-                      selection.value.id === item.value.id
-                    }
-                    item={item}
-                    onSelect={() =>
-                      setSelection(
-                        item.kind === 'activity'
-                          ? { kind: 'activity', value: item.value }
-                          : { kind: 'thread', value: item.value }
-                      )
-                    }
-                  />
-                </li>
-              ))
-            )}
-            {((tab === 'tasks' && state.hasMoreTasks) ||
-              (tab !== 'tasks' && state.hasMoreActivity)) && (
-              <li>
-                <Box justify="center">
-                  <Button
-                    color="secondary"
-                    data-testid="metric-activity-load-more"
-                    isLoading={
-                      tab === 'tasks'
-                        ? state.isLoadingMoreTasks
-                        : state.isLoadingMoreActivity
-                    }
-                    size="sm"
-                    onPress={
-                      tab === 'tasks'
-                        ? state.loadMoreTasks
-                        : state.loadMoreActivity
-                    }>
-                    {t('label.load-more')}
-                  </Button>
-                </Box>
-              </li>
-            )}
-          </ul>
-        </section>
-
-        {selection && (
-          <MetricActivityDetail
-            canComment={canCreateThread}
-            canResolveTasks={taskResolutionPermission.canResolve}
-            isCommenting={state.isCommenting}
-            isResolvePermissionLoading={taskResolutionPermission.isLoading}
-            isResolvingTask={state.isResolvingTask}
-            resolvePermissionError={taskResolutionPermission.error}
-            selection={selection}
-            onClose={() => setSelection(undefined)}
-            onCreateComment={(about, message) =>
-              afterMutation(state.createComment(about, message))
-            }
-            onReply={(threadId, message) =>
-              afterMutation(state.replyToThread(threadId, message))
-            }
-            onResolveTask={(taskId, transitionId, comment) =>
-              afterMutation(
-                state
-                  .resolveTask(taskId, transitionId, comment)
-                  .then((result) => {
-                    onUpdateEntityDetails?.();
-
-                    return result;
-                  })
-              )
-            }
-            onRetryResolvePermission={() => taskResolutionPermission.refetch()}
-            onTaskComment={(taskId, message) =>
-              afterMutation(state.addTaskComment(taskId, message))
-            }
-          />
-        )}
-      </Box>
+      <ActivityControls
+        afterMutation={afterMutation}
+        canCreateTasks={canCreateTasks}
+        canCreateThread={canCreateThread}
+        state={state}
+        tab={tab}
+        taskStatus={taskStatus}
+        onCreateTask={() => setIsCreateTaskOpen(true)}
+        onSelectionClear={() => setSelection(undefined)}
+        onTaskStatusChange={setTaskStatus}
+      />
+      <ActivityContent
+        afterMutation={afterMutation}
+        canCreateThread={canCreateThread}
+        error={error}
+        isLoading={isLoading}
+        selection={selection}
+        state={state}
+        tab={tab}
+        taskResolutionPermission={taskResolutionPermission}
+        taskStatus={taskStatus}
+        onReviewApproval={handleReviewApproval}
+        onSelectionChange={setSelection}
+        onUpdateEntityDetails={onUpdateEntityDetails}
+      />
       <MetricTaskCreateDialog
         error={state.createTaskError}
         isLoading={state.isCreatingTask}
@@ -348,13 +579,10 @@ const MetricActivityTab = ({
         onClose={() => setIsCreateTaskOpen(false)}
         onCreate={(task) => afterMutation(state.createTask(task))}
       />
-      <span aria-live="polite" className="tw:sr-only">
-        {state.isCommenting ||
-        state.isResolvingTask ||
-        taskResolutionPermission.isLoading
-          ? t('label.loading')
-          : ''}
-      </span>
+      <ActivityLiveStatus
+        state={state}
+        taskResolutionPermission={taskResolutionPermission}
+      />
     </Box>
   );
 };

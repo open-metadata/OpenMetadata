@@ -25,7 +25,10 @@ import type { FC } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityTabs } from '../../../enums/entity.enum';
-import type { ChangeDescription } from '../../../generated/entity/data/metric';
+import type {
+  ChangeDescription,
+  Metric,
+} from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
@@ -38,6 +41,29 @@ import {
   getMetricVersionMetadata,
   getMetricVersionTags,
 } from './MetricVersion.utils';
+
+const MetricVersionBadges = ({
+  metric,
+}: {
+  metric: Pick<Metric, 'entityStatus' | 'metricType'>;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {metric.metricType && (
+        <Badge color="gray" size="sm">
+          {getMetricEnumLabel(t, metric.metricType)}
+        </Badge>
+      )}
+      {metric.entityStatus && (
+        <Badge color="gray" size="sm">
+          {getMetricEnumLabel(t, metric.entityStatus)}
+        </Badge>
+      )}
+    </>
+  );
+};
 
 const MetricVersion: FC<MetricVersionProp> = ({
   version,
@@ -147,16 +173,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                 <Badge color="brand" size="sm">
                   {t('label.version')} {version}
                 </Badge>
-                {currentVersionData.metricType && (
-                  <Badge color="gray" size="sm">
-                    {getMetricEnumLabel(t, currentVersionData.metricType)}
-                  </Badge>
-                )}
-                {currentVersionData.entityStatus && (
-                  <Badge color="gray" size="sm">
-                    {getMetricEnumLabel(t, currentVersionData.entityStatus)}
-                  </Badge>
-                )}
+                <MetricVersionBadges metric={currentVersionData} />
               </Box>
             </Box>
           </Box>

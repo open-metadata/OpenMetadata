@@ -84,6 +84,82 @@ const INITIAL_FORM: MetricFormState = {
   relatedMetrics: [],
 };
 
+const optionalProperty = <K extends string, V>(
+  key: K,
+  value: V | undefined
+): Partial<Record<K, V>> =>
+  value === undefined ? {} : ({ [key]: value } as Record<K, V>);
+
+const nonEmptyString = (value: string) => value.trim() || undefined;
+
+const nonEmptyArray = <T,>(values: T[]) =>
+  values.length > 0 ? values : undefined;
+
+const referenceNames = (references: EntityReference[]) =>
+  references.map(
+    ({ fullyQualifiedName, name }) => fullyQualifiedName ?? name ?? ''
+  );
+
+const getRequiredFieldError = (value: string, error: string) =>
+  value ? undefined : error;
+
+const getCustomUnitError = (values: MetricFormState, error: string) => {
+  if (values.unitOfMeasurement !== UnitOfMeasurement.Other) {
+    return undefined;
+  }
+
+  return values.customUnitOfMeasurement.trim() ? undefined : error;
+};
+
+const buildCreateMetricPayload = ({
+  expressionCode,
+  metricGroup,
+  name,
+  parentMetricFqn,
+  values,
+}: {
+  expressionCode: string;
+  metricGroup?: string;
+  name: string;
+  parentMetricFqn?: string;
+  values: MetricFormState;
+}): CreateMetric => {
+  const customUnit =
+    values.unitOfMeasurement === UnitOfMeasurement.Other
+      ? nonEmptyString(values.customUnitOfMeasurement)
+      : undefined;
+
+  return {
+    name,
+    ...optionalProperty('displayName', nonEmptyString(values.displayName)),
+    ...optionalProperty('description', nonEmptyString(values.description)),
+    ...optionalProperty('granularity', values.granularity),
+    ...optionalProperty('metricType', values.metricType),
+    ...optionalProperty('unitOfMeasurement', values.unitOfMeasurement),
+    ...optionalProperty('customUnitOfMeasurement', customUnit),
+    ...optionalProperty('metricGroup', metricGroup),
+    ...optionalProperty('parent', parentMetricFqn),
+    ...optionalProperty('owners', nonEmptyArray(values.owners)),
+    ...optionalProperty('reviewers', nonEmptyArray(values.reviewers)),
+    ...optionalProperty(
+      'experts',
+      nonEmptyArray(referenceNames(values.experts))
+    ),
+    ...optionalProperty(
+      'domains',
+      nonEmptyArray(referenceNames(values.domains))
+    ),
+    ...optionalProperty(
+      'relatedMetrics',
+      nonEmptyArray(referenceNames(values.relatedMetrics))
+    ),
+    metricExpression: {
+      language: values.language,
+      code: expressionCode,
+    },
+  };
+};
+
 interface AddMetricPageProps {
   pageTitle?: string;
 }
@@ -128,27 +204,28 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
     event.preventDefault();
     const name = values.name.trim();
     const expressionCode = values.code.trim();
-    const requiredNameError = name
-      ? undefined
-      : t('label.field-required', {
-          field: t('label.name'),
-        });
-    const requiredCodeError = expressionCode
-      ? undefined
-      : t('label.field-required', {
-          field: t('label.code'),
-        });
-    const requiredCustomUnitError =
-      values.unitOfMeasurement === UnitOfMeasurement.Other &&
-      !values.customUnitOfMeasurement.trim()
-        ? t('label.field-required', {
-            field: t('label.unit-of-measurement'),
-          })
-        : undefined;
+    const requiredNameError = getRequiredFieldError(
+      name,
+      t('label.field-required', { field: t('label.name') })
+    );
+    const requiredCodeError = getRequiredFieldError(
+      expressionCode,
+      t('label.field-required', { field: t('label.code') })
+    );
+    const requiredCustomUnitError = getCustomUnitError(
+      values,
+      t('label.field-required', {
+        field: t('label.unit-of-measurement'),
+      })
+    );
     setNameError(requiredNameError);
     setCodeError(requiredCodeError);
     setCustomUnitError(requiredCustomUnitError);
-    if (requiredNameError || requiredCodeError || requiredCustomUnitError) {
+    if (
+      [requiredNameError, requiredCodeError, requiredCustomUnitError].some(
+        Boolean
+      )
+    ) {
       return;
     }
 
@@ -162,56 +239,13 @@ const AddMetricPage = ({ pageTitle }: AddMetricPageProps) => {
         metricGroup = group.fullyQualifiedName ?? group.name;
       }
 
-      const payload: CreateMetric = {
+      const payload = buildCreateMetricPayload({
+        expressionCode,
+        metricGroup,
         name,
-        ...(values.displayName.trim()
-          ? { displayName: values.displayName.trim() }
-          : {}),
-        ...(values.description.trim()
-          ? { description: values.description.trim() }
-          : {}),
-        ...(values.granularity ? { granularity: values.granularity } : {}),
-        ...(values.metricType ? { metricType: values.metricType } : {}),
-        ...(values.unitOfMeasurement
-          ? { unitOfMeasurement: values.unitOfMeasurement }
-          : {}),
-        ...(values.unitOfMeasurement === UnitOfMeasurement.Other &&
-        values.customUnitOfMeasurement.trim()
-          ? { customUnitOfMeasurement: values.customUnitOfMeasurement.trim() }
-          : {}),
-        ...(metricGroup ? { metricGroup } : {}),
-        ...(parentMetricFqn ? { parent: parentMetricFqn } : {}),
-        ...(values.owners.length ? { owners: values.owners } : {}),
-        ...(values.reviewers.length ? { reviewers: values.reviewers } : {}),
-        ...(values.experts.length
-          ? {
-              experts: values.experts.map(
-                ({ fullyQualifiedName, name }) =>
-                  fullyQualifiedName ?? name ?? ''
-              ),
-            }
-          : {}),
-        ...(values.domains.length
-          ? {
-              domains: values.domains.map(
-                ({ fullyQualifiedName, name }) =>
-                  fullyQualifiedName ?? name ?? ''
-              ),
-            }
-          : {}),
-        ...(values.relatedMetrics.length
-          ? {
-              relatedMetrics: values.relatedMetrics.map(
-                ({ fullyQualifiedName, name }) =>
-                  fullyQualifiedName ?? name ?? ''
-              ),
-            }
-          : {}),
-        metricExpression: {
-          language: values.language,
-          code: expressionCode,
-        },
-      };
+        parentMetricFqn,
+        values,
+      });
       const metric = await createMetric(payload);
       navigate(
         getEntityDetailsPath(

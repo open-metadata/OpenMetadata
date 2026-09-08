@@ -29,6 +29,9 @@ import {
   AssetRollup,
   DimensionRollup,
   Health,
+  Incident,
+  MetricObservability,
+  SourceCoverage,
   StatusCounts,
   TestResult,
 } from '../../../generated/api/data/metricObservability';
@@ -83,126 +86,93 @@ const MetricObservabilityLoading = ({ label }: { label: string }) => (
   </Box>
 );
 
-const MetricObservabilityTab: FC<MetricObservabilityTabProps> = ({
-  metric,
+const ObservabilityError = ({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
 }) => {
   const { t } = useTranslation();
-  const query = useMetricObservability(metric.id);
-  const observability = query.observability;
-  const rollupByAssetId = useMemo(
-    () =>
-      new Map<string, AssetRollup>(
-        (observability?.assets ?? []).map((asset) => [asset.asset.id, asset])
-      ),
-    [observability?.assets]
-  );
-  const sourceRollups = observability?.assets ?? [];
-  const sourceCoverage = observability?.sourceCoverage;
-  const hasRedactedAssets =
-    (sourceCoverage?.restrictedTables ?? 0) > 0 ||
-    sourceRollups.some(
-      ({ asset, redacted }) => redacted || isRedactedMetricAsset(asset)
-    );
-  const hasPartialCoverage =
-    observability?.partial === true ||
-    sourceCoverage?.partial === true ||
-    (sourceCoverage?.restrictedTables ?? 0) > 0;
-
-  if (query.isPending) {
-    return <MetricObservabilityLoading label={t('label.loading')} />;
-  }
-
-  if (query.error) {
-    const isPermissionError = isMetricObservabilityPermissionError(query.error);
-
-    return (
-      <Box
-        className="tw:relative tw:min-h-80 tw:px-4 tw:py-6 tw:md:px-8"
-        data-testid="metric-observability-error">
-        <EmptyPlaceholder
-          actions={
-            isPermissionError
-              ? undefined
-              : [
-                  {
-                    key: 'retry',
-                    label: t('label.try-again'),
-                    onClick: () => query.refetch(),
-                  },
-                ]
-          }
-          description={
-            isPermissionError
-              ? t('message.no-permission-to-view')
-              : t('message.temporary-error-try-reloading')
-          }
-          title={
-            isPermissionError ? t('label.access-denied') : t('label.error')
-          }
-        />
-      </Box>
-    );
-  }
-
-  if (!observability) {
-    return (
-      <Box
-        className="tw:relative tw:min-h-80 tw:px-4 tw:py-6 tw:md:px-8"
-        data-testid="metric-observability-empty">
-        <EmptyPlaceholder
-          description={t('message.only-upstream-assets-scored')}
-          title={t('label.no-data-found')}
-        />
-      </Box>
-    );
-  }
-
-  const health = observability.health ?? Health.Unknown;
-  const dimensions = observability.dimensions ?? [];
-  const visibleSourceIds = new Set(
-    sourceRollups
-      .filter(
-        ({ asset, redacted }) => !redacted && !isRedactedMetricAsset(asset)
-      )
-      .map(({ asset }) => asset.id)
-  );
-  const restrictDetails = hasPartialCoverage || hasRedactedAssets;
-  const tests = (observability.tests ?? []).filter(
-    (test) =>
-      !restrictDetails ||
-      (Boolean(test.asset) && visibleSourceIds.has(test.asset?.id ?? ''))
-  );
-  const incidents = (observability.incidents ?? []).filter(
-    (incident) =>
-      !restrictDetails ||
-      (Boolean(incident.asset) &&
-        visibleSourceIds.has(incident.asset?.id ?? ''))
-  );
-  const statusCounts: StatusCounts = observability.statusCounts ?? {
-    aborted: 0,
-    failed: 0,
-    missing: 0,
-    passed: 0,
-    queued: 0,
-    terminal: tests.length,
-  };
-  const reasonLabelKey = getMetricObservabilityReasonLabelKey(
-    observability.reasonCode
-  );
-  const healthLabel =
-    health === Health.Healthy
-      ? t('label.healthy')
-      : health === Health.AtRisk
-      ? t('label.at-risk')
-      : health === Health.Degraded
-      ? t('label.degraded')
-      : t('label.unknown');
+  const isPermissionError = isMetricObservabilityPermissionError(error);
 
   return (
     <Box
-      aria-busy={query.isFetching}
-      className="tw:flex tw:flex-col tw:gap-4 tw:px-4 tw:py-6 tw:md:px-8"
-      data-testid="metric-observability-tab">
+      className="tw:relative tw:min-h-80 tw:px-4 tw:py-6 tw:md:px-8"
+      data-testid="metric-observability-error">
+      <EmptyPlaceholder
+        actions={
+          isPermissionError
+            ? undefined
+            : [
+                {
+                  key: 'retry',
+                  label: t('label.try-again'),
+                  onClick: onRetry,
+                },
+              ]
+        }
+        description={
+          isPermissionError
+            ? t('message.no-permission-to-view')
+            : t('message.temporary-error-try-reloading')
+        }
+        title={isPermissionError ? t('label.access-denied') : t('label.error')}
+      />
+    </Box>
+  );
+};
+
+const hasRestrictedAssets = (
+  sourceCoverage: SourceCoverage | undefined,
+  sourceRollups: AssetRollup[]
+) =>
+  Number(sourceCoverage?.restrictedTables) > 0 ||
+  sourceRollups.some(
+    ({ asset, redacted }) => redacted || isRedactedMetricAsset(asset)
+  );
+
+const hasIncompleteCoverage = (
+  observability: MetricObservability,
+  sourceCoverage?: SourceCoverage
+) =>
+  [
+    observability.partial === true,
+    sourceCoverage?.partial === true,
+    Number(sourceCoverage?.restrictedTables) > 0,
+  ].some(Boolean);
+
+const filterVisibleResults = <T extends { asset?: { id: string } }>(
+  results: T[],
+  restrictDetails: boolean,
+  visibleSourceIds: Set<string>
+) =>
+  results.filter(
+    (result) =>
+      !restrictDetails ||
+      (Boolean(result.asset) && visibleSourceIds.has(result.asset?.id ?? ''))
+  );
+
+const getHealthLabel = (health: Health, labels: Record<Health, string>) =>
+  labels[health] ?? labels[Health.Unknown];
+
+const itemsOrEmpty = <T,>(items?: T[]) => items ?? [];
+
+const CoverageAlerts = ({
+  hasPartialCoverage,
+  hasRedactedAssets,
+  observability,
+  sourceCoverage,
+}: {
+  hasPartialCoverage: boolean;
+  hasRedactedAssets: boolean;
+  observability: MetricObservability;
+  sourceCoverage?: SourceCoverage;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
       {hasRedactedAssets && (
         <Alert
           data-testid="metric-observability-redacted"
@@ -222,76 +192,550 @@ const MetricObservabilityTab: FC<MetricObservabilityTabProps> = ({
           {t('label.source-plural')}
         </Alert>
       )}
+    </>
+  );
+};
 
-      <Card data-testid="metric-health-summary">
-        <Card.Content className="tw:grid tw:grid-cols-1 tw:items-center tw:gap-6 tw:md:grid-cols-[220px_1fr]">
-          <Box align="center" direction="col" gap={3}>
-            {observability.score === undefined ? (
-              <Box
-                align="center"
-                className="tw:size-24 tw:justify-center tw:rounded-full tw:border-8 tw:border-secondary"
-                data-testid="metric-health-score-unknown">
-                <Typography size="text-sm" weight="semibold">
-                  {t('label.unknown')}
-                </Typography>
-              </Box>
-            ) : (
-              <Box
-                aria-label={t('label.health')}
-                aria-valuemax={100}
-                aria-valuemin={0}
-                aria-valuenow={observability.score}
-                role="progressbar">
-                <span aria-hidden="true">
-                  <ProgressBarCircle
-                    label={t('label.health')}
-                    size="xs"
-                    value={observability.score}
-                  />
-                </span>
-              </Box>
-            )}
-            <MetricHealthPill health={health} score={observability.score} />
-          </Box>
-          <Box direction="col" gap={2}>
-            <Typography size="text-lg" weight="semibold">
-              {t('label.summary')}
-            </Typography>
-            <Typography
-              className="tw:text-tertiary"
-              data-testid="metric-rollup-reason"
-              size="text-sm">
-              {observability.score !== undefined
-                ? t('message.metric-observability-score-explanation', {
-                    aborted: statusCounts.aborted,
-                    failed: statusCounts.failed,
-                    health: healthLabel,
-                    passed: statusCounts.passed,
-                    score: Math.round(observability.score),
-                  })
-                : reasonLabelKey
-                ? t(reasonLabelKey)
-                : observability.rollupReason ??
-                  t('message.metric-health-unavailable')}
-            </Typography>
-            <Typography className="tw:text-tertiary" size="text-xs">
-              {t('label.last-run')}:{' '}
-              {observability.latestRunTime
-                ? formatDateTime(observability.latestRunTime)
-                : t('label.unknown')}
-            </Typography>
-            <Typography
-              className="tw:text-tertiary"
-              data-testid="metric-observability-evaluated-at"
-              size="text-xs">
-              {t('label.updated-at')}:{' '}
-              {observability.evaluatedAt
-                ? formatDateTime(observability.evaluatedAt)
-                : t('label.unknown')}
-            </Typography>
-          </Box>
+const MetricHealthSummary = ({
+  health,
+  observability,
+  statusCounts,
+}: {
+  health: Health;
+  observability: MetricObservability;
+  statusCounts: StatusCounts;
+}) => {
+  const { t } = useTranslation();
+  const reasonLabelKey = getMetricObservabilityReasonLabelKey(
+    observability.reasonCode
+  );
+  const healthLabel = getHealthLabel(health, {
+    [Health.Healthy]: t('label.healthy'),
+    [Health.AtRisk]: t('label.at-risk'),
+    [Health.Degraded]: t('label.degraded'),
+    [Health.Unknown]: t('label.unknown'),
+  });
+  let reason =
+    observability.rollupReason ?? t('message.metric-health-unavailable');
+  if (reasonLabelKey) {
+    reason = t(reasonLabelKey);
+  }
+  if (observability.score !== undefined) {
+    reason = t('message.metric-observability-score-explanation', {
+      aborted: statusCounts.aborted,
+      failed: statusCounts.failed,
+      health: healthLabel,
+      passed: statusCounts.passed,
+      score: Math.round(observability.score),
+    });
+  }
+
+  return (
+    <Card data-testid="metric-health-summary">
+      <Card.Content className="tw:grid tw:grid-cols-1 tw:items-center tw:gap-6 tw:md:grid-cols-[220px_1fr]">
+        <Box align="center" direction="col" gap={3}>
+          {observability.score === undefined ? (
+            <Box
+              align="center"
+              className="tw:size-24 tw:justify-center tw:rounded-full tw:border-8 tw:border-secondary"
+              data-testid="metric-health-score-unknown">
+              <Typography size="text-sm" weight="semibold">
+                {t('label.unknown')}
+              </Typography>
+            </Box>
+          ) : (
+            <Box
+              aria-label={t('label.health')}
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={observability.score}
+              role="progressbar">
+              <span aria-hidden="true">
+                <ProgressBarCircle
+                  label={t('label.health')}
+                  size="xs"
+                  value={observability.score}
+                />
+              </span>
+            </Box>
+          )}
+          <MetricHealthPill health={health} score={observability.score} />
+        </Box>
+        <Box direction="col" gap={2}>
+          <Typography size="text-lg" weight="semibold">
+            {t('label.summary')}
+          </Typography>
+          <Typography
+            className="tw:text-tertiary"
+            data-testid="metric-rollup-reason"
+            size="text-sm">
+            {reason}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {t('label.last-run')}:{' '}
+            {observability.latestRunTime
+              ? formatDateTime(observability.latestRunTime)
+              : t('label.unknown')}
+          </Typography>
+          <Typography
+            className="tw:text-tertiary"
+            data-testid="metric-observability-evaluated-at"
+            size="text-xs">
+            {t('label.updated-at')}:{' '}
+            {observability.evaluatedAt
+              ? formatDateTime(observability.evaluatedAt)
+              : t('label.unknown')}
+          </Typography>
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const SourceCoverageCard = ({
+  sourceCoverage,
+}: {
+  sourceCoverage?: SourceCoverage;
+}) => {
+  const { t } = useTranslation();
+
+  if (!sourceCoverage) {
+    return null;
+  }
+
+  return (
+    <Card data-testid="metric-source-coverage">
+      <Card.Header
+        title={t('label.entity-coverage', {
+          entity: t('label.source-plural'),
+        })}
+      />
+      <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+        <Box align="center" gap={3} justify="between">
+          <Typography size="text-sm" weight="medium">
+            {sourceCoverage.testedTables}/{sourceCoverage.upstreamTables}{' '}
+            {t('label.source-plural')}
+          </Typography>
+          <Typography className="tw:tabular-nums" size="text-sm">
+            {Math.round(sourceCoverage.coveragePercent)}%
+          </Typography>
+        </Box>
+        <ProgressBar value={sourceCoverage.coveragePercent} />
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {sourceCoverage.visibleTables} {t('label.visible-result-plural')} ·{' '}
+          {sourceCoverage.restrictedTables} {t('label.access-denied')}
+        </Typography>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const AssetRollupsCard = ({
+  hasRedactedAssets,
+  rollupByAssetId,
+  sourceRollups,
+}: {
+  hasRedactedAssets: boolean;
+  rollupByAssetId: Map<string, AssetRollup>;
+  sourceRollups: AssetRollup[];
+}) => {
+  const { t } = useTranslation();
+
+  if (sourceRollups.length === 0) {
+    return (
+      <Card data-testid="metric-asset-rollups">
+        <Card.Header
+          title={t('label.data-health-by-entity', {
+            entity: t('label.asset-plural'),
+          })}
+        />
+        <Card.Content className="tw:relative tw:flex tw:min-h-48 tw:flex-col tw:gap-4">
+          <EmptyPlaceholder
+            description={
+              hasRedactedAssets
+                ? t('message.no-permission-to-view')
+                : t('message.no-data-available')
+            }
+            title={t('label.no-data-found')}
+          />
         </Card.Content>
       </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="metric-asset-rollups">
+      <Card.Header
+        title={t('label.data-health-by-entity', {
+          entity: t('label.asset-plural'),
+        })}
+      />
+      <Card.Content className="tw:relative tw:flex tw:min-h-48 tw:flex-col tw:gap-4">
+        {sourceRollups.map((sourceRollup) => {
+          const asset = sourceRollup.asset;
+          const assetRollup = rollupByAssetId.get(asset.id) ?? sourceRollup;
+          const isRedacted =
+            sourceRollup.redacted || isRedactedMetricAsset(asset);
+
+          return (
+            <Box direction="col" gap={2} key={asset.id}>
+              <Box align="center" gap={2} justify="between">
+                <Box align="center" className="tw:min-w-0" gap={2}>
+                  <Database01
+                    aria-hidden="true"
+                    className="tw:shrink-0 tw:text-fg-quaternary"
+                    size={18}
+                  />
+                  <Typography ellipsis size="text-sm" weight="medium">
+                    {isRedacted
+                      ? t('label.access-denied')
+                      : getEntityName(asset)}
+                  </Typography>
+                </Box>
+                <MetricHealthPill
+                  data-testid={`metric-rollup-health-${asset.id}`}
+                  health={assetRollup.health ?? Health.Unknown}
+                  score={assetRollup.score}
+                />
+              </Box>
+              {assetRollup.score === undefined ? (
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {t('message.metric-observability-reason-no-terminal-results')}
+                </Typography>
+              ) : (
+                <ProgressBar labelPosition="right" value={assetRollup.score} />
+              )}
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {t('label.passed')}: {assetRollup.passed ?? 0} ·{' '}
+                {t('label.failed')}: {assetRollup.failed ?? 0} ·{' '}
+                {t('label.aborted')}: {assetRollup.aborted ?? 0}
+              </Typography>
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {t('label.last-run')}:{' '}
+                {assetRollup.latestRunTime
+                  ? formatDateTime(assetRollup.latestRunTime)
+                  : t('label.unknown')}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Card.Content>
+    </Card>
+  );
+};
+
+const DimensionRollupsCard = ({
+  dimensions,
+}: {
+  dimensions: DimensionRollup[];
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Card data-testid="metric-dimension-rollup">
+      <Card.Header
+        title={t('label.entity-distribution', {
+          entity: t('label.dimension'),
+        })}
+      />
+      <Card.Content className="tw:relative tw:min-h-40">
+        {dimensions.length === 0 ? (
+          <EmptyPlaceholder
+            description={t('message.no-data-available')}
+            title={t('label.no-data-found')}
+          />
+        ) : (
+          <Box className="tw:grid tw:grid-cols-1 tw:gap-3 tw:sm:grid-cols-2 tw:xl:grid-cols-3">
+            {dimensions.map((dimension) => {
+              const labelKey = getMetricDimensionLabelKey(dimension.dimension);
+
+              return (
+                <Card
+                  data-testid={`metric-dimension-${dimension.dimension}`}
+                  key={dimension.dimension}
+                  size="sm">
+                  <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+                    <Box align="center" gap={2} justify="between">
+                      <Typography size="text-sm" weight="semibold">
+                        {labelKey ? t(labelKey) : dimension.dimension}
+                      </Typography>
+                      <Typography
+                        className="tw:tabular-nums"
+                        size="text-sm"
+                        weight="semibold">
+                        {Math.round(dimension.score)}%
+                      </Typography>
+                    </Box>
+                    <ProgressBar value={dimension.score} />
+                    <Typography className="tw:text-tertiary" size="text-xs">
+                      {dimension.passed}/{dimension.total} {t('label.passed')}
+                    </Typography>
+                  </Card.Content>
+                </Card>
+              );
+            })}
+          </Box>
+        )}
+      </Card.Content>
+    </Card>
+  );
+};
+
+const MetricTestsCard = ({ tests }: { tests: TestResult[] }) => {
+  const { t } = useTranslation();
+
+  if (tests.length === 0) {
+    return (
+      <Card data-testid="metric-tests">
+        <Card.Header
+          extra={
+            <Badge color="gray" size="sm">
+              0
+            </Badge>
+          }
+          title={t('label.test-case-plural')}
+        />
+        <Card.Content className="tw:relative tw:min-h-40 tw:p-0">
+          <EmptyPlaceholder
+            description={t('message.no-data-available')}
+            title={t('label.no-data-found')}
+          />
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="metric-tests">
+      <Card.Header
+        extra={
+          <Badge color="gray" size="sm">
+            {tests.length}
+          </Badge>
+        }
+        title={t('label.test-case-plural')}
+      />
+      <Card.Content className="tw:relative tw:min-h-40 tw:p-0">
+        <Table aria-label={t('label.test-case-plural')} size="sm">
+          <Table.Header>
+            <Table.Head isRowHeader id="test" label={t('label.test')} />
+            <Table.Head id="asset" label={t('label.asset')} />
+            <Table.Head id="dimension" label={t('label.dimension')} />
+            <Table.Head id="status" label={t('label.status')} />
+            <Table.Head id="lastRun" label={t('label.last-run')} />
+          </Table.Header>
+          <Table.Body items={tests}>
+            {(test: TestResult) => {
+              const dimensionLabelKey = test.dimension
+                ? getMetricDimensionLabelKey(test.dimension)
+                : undefined;
+
+              return (
+                <Table.Row id={test.testCase.id}>
+                  <Table.Cell>{getEntityName(test.testCase)}</Table.Cell>
+                  <Table.Cell>
+                    {test.asset
+                      ? getEntityName(test.asset)
+                      : t('label.access-denied')}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {dimensionLabelKey
+                      ? t(dimensionLabelKey)
+                      : test.dimension ?? t('label.no-dimension')}
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Badge
+                      color={getMetricResultBadgeColor(test.status)}
+                      size="sm">
+                      {t(
+                        getMetricResultLabelKey(test.status) ?? 'label.unknown'
+                      )}
+                    </Badge>
+                  </Table.Cell>
+                  <Table.Cell>
+                    {test.timestamp
+                      ? formatDateTime(test.timestamp)
+                      : t('label.unknown')}
+                  </Table.Cell>
+                </Table.Row>
+              );
+            }}
+          </Table.Body>
+        </Table>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const MetricIncidentsCard = ({ incidents }: { incidents: Incident[] }) => {
+  const { t } = useTranslation();
+
+  if (incidents.length === 0) {
+    return (
+      <Card data-testid="metric-incidents">
+        <Card.Header
+          extra={
+            <Badge color="gray" size="sm">
+              0
+            </Badge>
+          }
+          title={t('label.incident-plural')}
+        />
+        <Card.Content className="tw:relative tw:min-h-40">
+          <EmptyPlaceholder
+            description={t('message.no-metric-incidents')}
+            icon={AlertCircle}
+            title={t('label.no-data-found')}
+          />
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="metric-incidents">
+      <Card.Header
+        extra={
+          <Badge color="gray" size="sm">
+            {incidents.length}
+          </Badge>
+        }
+        title={t('label.incident-plural')}
+      />
+      <Card.Content className="tw:relative tw:min-h-40">
+        <ul className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary">
+          {incidents.map((incident, index) => (
+            <li
+              className="tw:flex tw:items-start tw:gap-3 tw:py-3"
+              key={incident.id ?? `${incident.testCase.id}-${index}`}>
+              <Box
+                align="center"
+                className="tw:size-9 tw:shrink-0 tw:justify-center tw:rounded-lg tw:bg-utility-error-50 tw:text-fg-error-primary">
+                <Beaker01 aria-hidden="true" size={18} />
+              </Box>
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                <Typography size="text-sm" weight="semibold">
+                  {getEntityName(incident.testCase)}
+                </Typography>
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {incident.asset
+                    ? getEntityName(incident.asset)
+                    : t('label.access-denied')}
+                </Typography>
+                <Box align="center" className="tw:flex-wrap" gap={2}>
+                  <Badge color="error" size="xs">
+                    {t(
+                      getMetricResultLabelKey(incident.status) ??
+                        'label.unknown'
+                    )}
+                  </Badge>
+                  {incident.severity && (
+                    <Badge color="warning" size="xs">
+                      {getMetricIncidentSeverityLabel(t, incident.severity)}
+                    </Badge>
+                  )}
+                  <Typography className="tw:text-tertiary" size="text-xs">
+                    {incident.timestamp
+                      ? formatDateTime(incident.timestamp)
+                      : t('label.unknown')}
+                  </Typography>
+                </Box>
+              </Box>
+            </li>
+          ))}
+        </ul>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const MetricObservabilityTab: FC<MetricObservabilityTabProps> = ({
+  metric,
+}) => {
+  const { t } = useTranslation();
+  const query = useMetricObservability(metric.id);
+  const observability = query.observability;
+  const rollupByAssetId = useMemo(
+    () =>
+      new Map<string, AssetRollup>(
+        (observability?.assets ?? []).map((asset) => [asset.asset.id, asset])
+      ),
+    [observability?.assets]
+  );
+  const sourceRollups = itemsOrEmpty(observability?.assets);
+  const sourceCoverage = observability?.sourceCoverage;
+  const hasRedactedAssets = hasRestrictedAssets(sourceCoverage, sourceRollups);
+  const hasPartialCoverage = observability
+    ? hasIncompleteCoverage(observability, sourceCoverage)
+    : false;
+
+  if (query.isPending) {
+    return <MetricObservabilityLoading label={t('label.loading')} />;
+  }
+
+  if (query.error) {
+    return <ObservabilityError error={query.error} onRetry={query.refetch} />;
+  }
+
+  if (!observability) {
+    return (
+      <Box
+        className="tw:relative tw:min-h-80 tw:px-4 tw:py-6 tw:md:px-8"
+        data-testid="metric-observability-empty">
+        <EmptyPlaceholder
+          description={t('message.only-upstream-assets-scored')}
+          title={t('label.no-data-found')}
+        />
+      </Box>
+    );
+  }
+
+  const health = observability.health ?? Health.Unknown;
+  const dimensions = itemsOrEmpty(observability.dimensions);
+  const visibleSourceIds = new Set(
+    sourceRollups
+      .filter(
+        ({ asset, redacted }) => !redacted && !isRedactedMetricAsset(asset)
+      )
+      .map(({ asset }) => asset.id)
+  );
+  const restrictDetails = hasPartialCoverage || hasRedactedAssets;
+  const tests = filterVisibleResults(
+    itemsOrEmpty(observability.tests),
+    restrictDetails,
+    visibleSourceIds
+  );
+  const incidents = filterVisibleResults(
+    itemsOrEmpty(observability.incidents),
+    restrictDetails,
+    visibleSourceIds
+  );
+  const statusCounts: StatusCounts = observability.statusCounts ?? {
+    aborted: 0,
+    failed: 0,
+    missing: 0,
+    passed: 0,
+    queued: 0,
+    terminal: tests.length,
+  };
+
+  return (
+    <Box
+      aria-busy={query.isFetching}
+      className="tw:flex tw:flex-col tw:gap-4 tw:px-4 tw:py-6 tw:md:px-8"
+      data-testid="metric-observability-tab">
+      <CoverageAlerts
+        hasPartialCoverage={hasPartialCoverage}
+        hasRedactedAssets={hasRedactedAssets}
+        observability={observability}
+        sourceCoverage={sourceCoverage}
+      />
+
+      <MetricHealthSummary
+        health={health}
+        observability={observability}
+        statusCounts={statusCounts}
+      />
 
       <Box
         className="tw:grid tw:grid-cols-2 tw:gap-3 tw:md:grid-cols-3 tw:xl:grid-cols-5"
@@ -303,283 +747,19 @@ const MetricObservabilityTab: FC<MetricObservabilityTabProps> = ({
         <SummaryTile label={t('label.missing')} value={statusCounts.missing} />
       </Box>
 
-      {sourceCoverage && (
-        <Card data-testid="metric-source-coverage">
-          <Card.Header
-            title={t('label.entity-coverage', {
-              entity: t('label.source-plural'),
-            })}
-          />
-          <Card.Content className="tw:flex tw:flex-col tw:gap-3">
-            <Box align="center" gap={3} justify="between">
-              <Typography size="text-sm" weight="medium">
-                {sourceCoverage.testedTables}/{sourceCoverage.upstreamTables}{' '}
-                {t('label.source-plural')}
-              </Typography>
-              <Typography className="tw:tabular-nums" size="text-sm">
-                {Math.round(sourceCoverage.coveragePercent)}%
-              </Typography>
-            </Box>
-            <ProgressBar value={sourceCoverage.coveragePercent} />
-            <Typography className="tw:text-tertiary" size="text-xs">
-              {sourceCoverage.visibleTables} {t('label.visible-result-plural')}{' '}
-              · {sourceCoverage.restrictedTables} {t('label.access-denied')}
-            </Typography>
-          </Card.Content>
-        </Card>
-      )}
+      <SourceCoverageCard sourceCoverage={sourceCoverage} />
 
-      <Card data-testid="metric-asset-rollups">
-        <Card.Header
-          title={t('label.data-health-by-entity', {
-            entity: t('label.asset-plural'),
-          })}
-        />
-        <Card.Content className="tw:relative tw:flex tw:min-h-48 tw:flex-col tw:gap-4">
-          {sourceRollups.length === 0 ? (
-            <EmptyPlaceholder
-              description={
-                hasRedactedAssets
-                  ? t('message.no-permission-to-view')
-                  : t('message.no-data-available')
-              }
-              title={t('label.no-data-found')}
-            />
-          ) : (
-            sourceRollups.map((sourceRollup) => {
-              const asset = sourceRollup.asset;
-              const assetRollup = rollupByAssetId.get(asset.id) ?? sourceRollup;
-              const isRedacted =
-                sourceRollup.redacted || isRedactedMetricAsset(asset);
+      <AssetRollupsCard
+        hasRedactedAssets={hasRedactedAssets}
+        rollupByAssetId={rollupByAssetId}
+        sourceRollups={sourceRollups}
+      />
 
-              return (
-                <Box direction="col" gap={2} key={asset.id}>
-                  <Box align="center" gap={2} justify="between">
-                    <Box align="center" className="tw:min-w-0" gap={2}>
-                      <Database01
-                        aria-hidden="true"
-                        className="tw:shrink-0 tw:text-fg-quaternary"
-                        size={18}
-                      />
-                      <Typography ellipsis size="text-sm" weight="medium">
-                        {isRedacted
-                          ? t('label.access-denied')
-                          : getEntityName(asset)}
-                      </Typography>
-                    </Box>
-                    <MetricHealthPill
-                      data-testid={`metric-rollup-health-${asset.id}`}
-                      health={assetRollup?.health ?? Health.Unknown}
-                      score={assetRollup?.score}
-                    />
-                  </Box>
-                  {assetRollup.score === undefined ? (
-                    <Typography className="tw:text-tertiary" size="text-xs">
-                      {t(
-                        'message.metric-observability-reason-no-terminal-results'
-                      )}
-                    </Typography>
-                  ) : (
-                    <ProgressBar
-                      labelPosition="right"
-                      value={assetRollup.score}
-                    />
-                  )}
-                  <Typography className="tw:text-tertiary" size="text-xs">
-                    {t('label.passed')}: {assetRollup.passed ?? 0} ·{' '}
-                    {t('label.failed')}: {assetRollup.failed ?? 0} ·{' '}
-                    {t('label.aborted')}: {assetRollup.aborted ?? 0}
-                  </Typography>
-                  <Typography className="tw:text-tertiary" size="text-xs">
-                    {t('label.last-run')}:{' '}
-                    {assetRollup.latestRunTime
-                      ? formatDateTime(assetRollup.latestRunTime)
-                      : t('label.unknown')}
-                  </Typography>
-                </Box>
-              );
-            })
-          )}
-        </Card.Content>
-      </Card>
+      <DimensionRollupsCard dimensions={dimensions} />
 
-      <Card data-testid="metric-dimension-rollup">
-        <Card.Header
-          title={t('label.entity-distribution', {
-            entity: t('label.dimension'),
-          })}
-        />
-        <Card.Content className="tw:relative tw:min-h-40">
-          {dimensions.length === 0 ? (
-            <EmptyPlaceholder
-              description={t('message.no-data-available')}
-              title={t('label.no-data-found')}
-            />
-          ) : (
-            <Box className="tw:grid tw:grid-cols-1 tw:gap-3 tw:sm:grid-cols-2 tw:xl:grid-cols-3">
-              {dimensions.map((dimension: DimensionRollup) => {
-                const labelKey = getMetricDimensionLabelKey(
-                  dimension.dimension
-                );
+      <MetricTestsCard tests={tests} />
 
-                return (
-                  <Card
-                    data-testid={`metric-dimension-${dimension.dimension}`}
-                    key={dimension.dimension}
-                    size="sm">
-                    <Card.Content className="tw:flex tw:flex-col tw:gap-3">
-                      <Box align="center" gap={2} justify="between">
-                        <Typography size="text-sm" weight="semibold">
-                          {labelKey ? t(labelKey) : dimension.dimension}
-                        </Typography>
-                        <Typography
-                          className="tw:tabular-nums"
-                          size="text-sm"
-                          weight="semibold">
-                          {Math.round(dimension.score)}%
-                        </Typography>
-                      </Box>
-                      <ProgressBar value={dimension.score} />
-                      <Typography className="tw:text-tertiary" size="text-xs">
-                        {dimension.passed}/{dimension.total} {t('label.passed')}
-                      </Typography>
-                    </Card.Content>
-                  </Card>
-                );
-              })}
-            </Box>
-          )}
-        </Card.Content>
-      </Card>
-
-      <Card data-testid="metric-tests">
-        <Card.Header
-          extra={
-            <Badge color="gray" size="sm">
-              {tests.length}
-            </Badge>
-          }
-          title={t('label.test-case-plural')}
-        />
-        <Card.Content className="tw:relative tw:min-h-40 tw:p-0">
-          {tests.length === 0 ? (
-            <EmptyPlaceholder
-              description={t('message.no-data-available')}
-              title={t('label.no-data-found')}
-            />
-          ) : (
-            <Table aria-label={t('label.test-case-plural')} size="sm">
-              <Table.Header>
-                <Table.Head isRowHeader id="test" label={t('label.test')} />
-                <Table.Head id="asset" label={t('label.asset')} />
-                <Table.Head id="dimension" label={t('label.dimension')} />
-                <Table.Head id="status" label={t('label.status')} />
-                <Table.Head id="lastRun" label={t('label.last-run')} />
-              </Table.Header>
-              <Table.Body items={tests}>
-                {(test: TestResult) => {
-                  const dimensionLabelKey = test.dimension
-                    ? getMetricDimensionLabelKey(test.dimension)
-                    : undefined;
-
-                  return (
-                    <Table.Row id={test.testCase.id}>
-                      <Table.Cell>{getEntityName(test.testCase)}</Table.Cell>
-                      <Table.Cell>
-                        {test.asset
-                          ? getEntityName(test.asset)
-                          : t('label.access-denied')}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {dimensionLabelKey
-                          ? t(dimensionLabelKey)
-                          : test.dimension ?? t('label.no-dimension')}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Badge
-                          color={getMetricResultBadgeColor(test.status)}
-                          size="sm">
-                          {t(
-                            getMetricResultLabelKey(test.status) ??
-                              'label.unknown'
-                          )}
-                        </Badge>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {test.timestamp
-                          ? formatDateTime(test.timestamp)
-                          : t('label.unknown')}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                }}
-              </Table.Body>
-            </Table>
-          )}
-        </Card.Content>
-      </Card>
-
-      <Card data-testid="metric-incidents">
-        <Card.Header
-          extra={
-            <Badge color="gray" size="sm">
-              {incidents.length}
-            </Badge>
-          }
-          title={t('label.incident-plural')}
-        />
-        <Card.Content className="tw:relative tw:min-h-40">
-          {incidents.length === 0 ? (
-            <EmptyPlaceholder
-              description={t('message.no-metric-incidents')}
-              icon={AlertCircle}
-              title={t('label.no-data-found')}
-            />
-          ) : (
-            <ul className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary">
-              {incidents.map((incident, index) => (
-                <li
-                  className="tw:flex tw:items-start tw:gap-3 tw:py-3"
-                  key={incident.id ?? `${incident.testCase.id}-${index}`}>
-                  <Box
-                    align="center"
-                    className="tw:size-9 tw:shrink-0 tw:justify-center tw:rounded-lg tw:bg-utility-error-50 tw:text-fg-error-primary">
-                    <Beaker01 aria-hidden="true" size={18} />
-                  </Box>
-                  <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                    <Typography size="text-sm" weight="semibold">
-                      {getEntityName(incident.testCase)}
-                    </Typography>
-                    <Typography className="tw:text-tertiary" size="text-xs">
-                      {incident.asset
-                        ? getEntityName(incident.asset)
-                        : t('label.access-denied')}
-                    </Typography>
-                    <Box align="center" className="tw:flex-wrap" gap={2}>
-                      <Badge color="error" size="xs">
-                        {t(
-                          getMetricResultLabelKey(incident.status) ??
-                            'label.unknown'
-                        )}
-                      </Badge>
-                      {incident.severity && (
-                        <Badge color="warning" size="xs">
-                          {getMetricIncidentSeverityLabel(t, incident.severity)}
-                        </Badge>
-                      )}
-                      <Typography className="tw:text-tertiary" size="text-xs">
-                        {incident.timestamp
-                          ? formatDateTime(incident.timestamp)
-                          : t('label.unknown')}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card.Content>
-      </Card>
+      <MetricIncidentsCard incidents={incidents} />
     </Box>
   );
 };

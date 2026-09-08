@@ -25,6 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Calendar, Edit03, Percent01, Variable } from '@untitledui/icons';
+import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -74,6 +75,17 @@ const DefinitionField = ({ children, label, testId }: DefinitionFieldProps) => (
     </Box>
   </Box>
 );
+
+const getOptionalMetricEnumLabel = (t: TFunction, value?: string): string =>
+  value ? getMetricEnumLabel(t, value) : t('label.empty-dash');
+
+const getMetricUnitLabel = (t: TFunction, metric: Metric): string => {
+  if (metric.customUnitOfMeasurement) {
+    return metric.customUnitOfMeasurement;
+  }
+
+  return getOptionalMetricEnumLabel(t, metric.unitOfMeasurement);
+};
 
 interface MetricDefinitionEditDialogProps {
   metric: Metric;
@@ -380,9 +392,7 @@ const MetricDefinitionCard = ({
                 color={getMetricTypeBadgeColor(metric.metricType)}
                 size="xs"
                 type="color">
-                {metric.metricType
-                  ? getMetricEnumLabel(t, metric.metricType)
-                  : t('label.empty-dash')}
+                {getOptionalMetricEnumLabel(t, metric.metricType)}
               </Badge>
             </DefinitionField>
             <DefinitionField
@@ -396,10 +406,7 @@ const MetricDefinitionCard = ({
                 className="tw:font-mono tw:uppercase tw:tracking-wide"
                 size="text-sm"
                 weight="semibold">
-                {metric.customUnitOfMeasurement ??
-                  (metric.unitOfMeasurement
-                    ? getMetricEnumLabel(t, metric.unitOfMeasurement)
-                    : t('label.empty-dash'))}
+                {getMetricUnitLabel(t, metric)}
               </Typography>
             </DefinitionField>
             <DefinitionField
@@ -413,9 +420,7 @@ const MetricDefinitionCard = ({
                 className="tw:font-mono tw:uppercase tw:tracking-wide"
                 size="text-sm"
                 weight="semibold">
-                {metric.granularity
-                  ? getMetricEnumLabel(t, metric.granularity)
-                  : t('label.empty-dash')}
+                {getOptionalMetricEnumLabel(t, metric.granularity)}
               </Typography>
             </DefinitionField>
             <DefinitionField

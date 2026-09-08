@@ -51,6 +51,232 @@ export interface MetricApprovalTabProps {
   onStatusChange: () => void;
 }
 
+type ApprovalTaskQuery = ReturnType<typeof useEntityApprovalTask>;
+
+const ApprovalStatusAlerts = ({
+  entityStatus,
+  hasWorkflow,
+  isRollbackOutcome,
+}: {
+  entityStatus?: EntityStatus;
+  hasWorkflow: boolean;
+  isRollbackOutcome: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {!hasWorkflow && (
+        <Alert
+          data-testid="metric-approval-not-required"
+          title={t('message.metric-approval-not-required')}
+          variant="gray"
+        />
+      )}
+      {hasWorkflow && entityStatus === EntityStatus.Draft && (
+        <Alert
+          data-testid="metric-approval-draft"
+          title={t('label.draft')}
+          variant="brand"
+        />
+      )}
+      {entityStatus === EntityStatus.Approved && !isRollbackOutcome && (
+        <Alert
+          data-testid="metric-approval-approved"
+          title={t('label.approved')}
+          variant="success"
+        />
+      )}
+      {entityStatus === EntityStatus.Rejected && (
+        <Alert
+          data-testid="metric-approval-rejected"
+          title={t('label.rejected')}
+          variant="error"
+        />
+      )}
+      {isRollbackOutcome && (
+        <Alert
+          data-testid="metric-approval-rollback"
+          title={t('label.rolled-back')}
+          variant="warning"
+        />
+      )}
+    </>
+  );
+};
+
+const ApprovalActionResult = ({
+  actionResult,
+  onClose,
+}: {
+  actionResult?: 'error' | 'success';
+  onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (!actionResult) {
+    return null;
+  }
+
+  const isSuccess = actionResult === 'success';
+
+  return (
+    <Alert
+      closable
+      data-testid={`metric-approval-action-${actionResult}`}
+      title={
+        isSuccess
+          ? t('server.task-resolved-successfully')
+          : t('server.api-error')
+      }
+      variant={isSuccess ? 'success' : 'error'}
+      onClose={onClose}
+    />
+  );
+};
+
+interface ApprovalTaskStateProps {
+  hasWorkflow: boolean;
+  note: string;
+  showActions: boolean;
+  status?: EntityStatus;
+  taskQuery: ApprovalTaskQuery;
+  onApprove: () => void;
+  onNoteChange: (note: string) => void;
+  onReject: () => void;
+}
+
+const ApprovalTaskState = ({
+  hasWorkflow,
+  note,
+  showActions,
+  status,
+  taskQuery,
+  onApprove,
+  onNoteChange,
+  onReject,
+}: ApprovalTaskStateProps) => {
+  const { t } = useTranslation();
+  const showWaiting = [
+    !taskQuery.isPending,
+    !taskQuery.error,
+    status === EntityStatus.InReview,
+    !showActions,
+  ].every(Boolean);
+
+  return (
+    <>
+      {taskQuery.isPending && hasWorkflow && (
+        <Box direction="col" gap={3}>
+          <Skeleton height={48} variant="rounded" />
+          <Skeleton height={92} variant="rounded" />
+        </Box>
+      )}
+      {taskQuery.error && (
+        <Alert
+          data-testid="metric-approval-task-error"
+          rightContent={
+            <Button
+              color="link-gray"
+              size="sm"
+              onPress={() => taskQuery.refetch()}>
+              {t('label.try-again')}
+            </Button>
+          }
+          title={t('message.temporary-error-try-reloading')}
+          variant="error"
+        />
+      )}
+      {showWaiting && (
+        <Alert
+          data-testid="metric-approval-waiting"
+          title={t('label.in-review')}
+          variant="warning"
+        />
+      )}
+      {showActions && (
+        <MetricStatusAction
+          dataTestId="metric-approval"
+          isLoading={taskQuery.isResolving}
+          note={note}
+          onApprove={onApprove}
+          onNoteChange={onNoteChange}
+          onReject={onReject}
+        />
+      )}
+    </>
+  );
+};
+
+const ApprovalReviewers = ({
+  hasWorkflow,
+  metric,
+}: {
+  hasWorkflow: boolean;
+  metric: Metric;
+}) => {
+  const { t } = useTranslation();
+  const reviewers = metric.reviewers ?? [];
+
+  if (!hasWorkflow || reviewers.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card data-testid="metric-approval-reviewers">
+      <Card.Header
+        extra={
+          <Badge color="gray" size="sm">
+            {reviewers.length}
+          </Badge>
+        }
+        title={t('label.reviewer-plural')}
+      />
+      <Card.Content>
+        <ul className="tw:grid tw:grid-cols-1 tw:gap-3 tw:sm:grid-cols-2">
+          {reviewers.map((reviewer) => {
+            const name = getEntityName(reviewer);
+
+            return (
+              <li
+                className="tw:flex tw:items-center tw:gap-3"
+                key={reviewer.id}>
+                <Avatar
+                  alt={name}
+                  placeholder={name.slice(0, 1).toLocaleUpperCase()}
+                  size="sm"
+                />
+                <Box className="tw:min-w-0" direction="col">
+                  <Typography ellipsis size="text-sm" weight="medium">
+                    {name}
+                  </Typography>
+                  <Typography className="tw:text-tertiary" size="text-xs">
+                    {getEntityNameLabel(reviewer.type)}
+                  </Typography>
+                </Box>
+              </li>
+            );
+          })}
+        </ul>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const ApprovalHistorySection = ({
+  hasWorkflow,
+  metricFqn,
+}: {
+  hasWorkflow: boolean;
+  metricFqn?: string;
+}) => {
+  if (!hasWorkflow) {
+    return null;
+  }
+
+  return <MetricApprovalHistory metricFqn={metricFqn} />;
+};
+
 const MetricApprovalTab: FC<MetricApprovalTabProps> = ({
   currentUser,
   metric,
@@ -107,13 +333,15 @@ const MetricApprovalTab: FC<MetricApprovalTabProps> = ({
       };
     }
 
+    let currentStep = 0;
+    if (metric.entityStatus === EntityStatus.Approved) {
+      currentStep = 2;
+    } else if (metric.entityStatus === EntityStatus.InReview) {
+      currentStep = 1;
+    }
+
     return {
-      currentStep:
-        metric.entityStatus === EntityStatus.Approved
-          ? 2
-          : metric.entityStatus === EntityStatus.InReview
-          ? 1
-          : 0,
+      currentStep,
       steps: [
         { id: 'draft', title: t('label.draft') },
         { id: 'review', title: t('label.in-review') },
@@ -182,142 +410,33 @@ const MetricApprovalTab: FC<MetricApprovalTabProps> = ({
             type="number"
           />
 
-          {!hasWorkflow && (
-            <Alert
-              data-testid="metric-approval-not-required"
-              title={t('message.metric-approval-not-required')}
-              variant="gray"
-            />
-          )}
-          {hasWorkflow && metric.entityStatus === EntityStatus.Draft && (
-            <Alert
-              data-testid="metric-approval-draft"
-              title={t('label.draft')}
-              variant="brand"
-            />
-          )}
-          {metric.entityStatus === EntityStatus.Approved &&
-            !isRollbackOutcome && (
-              <Alert
-                data-testid="metric-approval-approved"
-                title={t('label.approved')}
-                variant="success"
-              />
-            )}
-          {metric.entityStatus === EntityStatus.Rejected && (
-            <Alert
-              data-testid="metric-approval-rejected"
-              title={t('label.rejected')}
-              variant="error"
-            />
-          )}
-          {isRollbackOutcome && (
-            <Alert
-              data-testid="metric-approval-rollback"
-              title={t('label.rolled-back')}
-              variant="warning"
-            />
-          )}
-          {actionResult && (
-            <Alert
-              closable
-              data-testid={`metric-approval-action-${actionResult}`}
-              title={
-                actionResult === 'success'
-                  ? t('server.task-resolved-successfully')
-                  : t('server.api-error')
-              }
-              variant={actionResult === 'success' ? 'success' : 'error'}
-              onClose={() => setActionResult(undefined)}
-            />
-          )}
-          {taskQuery.isPending && hasWorkflow && (
-            <Box direction="col" gap={3}>
-              <Skeleton height={48} variant="rounded" />
-              <Skeleton height={92} variant="rounded" />
-            </Box>
-          )}
-          {taskQuery.error && (
-            <Alert
-              data-testid="metric-approval-task-error"
-              rightContent={
-                <Button
-                  color="link-gray"
-                  size="sm"
-                  onPress={() => taskQuery.refetch()}>
-                  {t('label.try-again')}
-                </Button>
-              }
-              title={t('message.temporary-error-try-reloading')}
-              variant="error"
-            />
-          )}
-          {!taskQuery.isPending &&
-            !taskQuery.error &&
-            metric.entityStatus === EntityStatus.InReview &&
-            !showActions && (
-              <Alert
-                data-testid="metric-approval-waiting"
-                title={t('label.in-review')}
-                variant="warning"
-              />
-            )}
-          {showActions && (
-            <MetricStatusAction
-              dataTestId="metric-approval"
-              isLoading={taskQuery.isResolving}
-              note={note}
-              onApprove={handleApprove}
-              onNoteChange={setNote}
-              onReject={handleReject}
-            />
-          )}
+          <ApprovalStatusAlerts
+            entityStatus={metric.entityStatus}
+            hasWorkflow={hasWorkflow}
+            isRollbackOutcome={isRollbackOutcome}
+          />
+          <ApprovalActionResult
+            actionResult={actionResult}
+            onClose={() => setActionResult(undefined)}
+          />
+          <ApprovalTaskState
+            hasWorkflow={hasWorkflow}
+            note={note}
+            showActions={showActions}
+            status={metric.entityStatus}
+            taskQuery={taskQuery}
+            onApprove={handleApprove}
+            onNoteChange={setNote}
+            onReject={handleReject}
+          />
         </Card.Content>
       </Card>
 
-      {hasWorkflow && (metric.reviewers?.length ?? 0) > 0 && (
-        <Card data-testid="metric-approval-reviewers">
-          <Card.Header
-            extra={
-              <Badge color="gray" size="sm">
-                {metric.reviewers?.length ?? 0}
-              </Badge>
-            }
-            title={t('label.reviewer-plural')}
-          />
-          <Card.Content>
-            <ul className="tw:grid tw:grid-cols-1 tw:gap-3 tw:sm:grid-cols-2">
-              {metric.reviewers?.map((reviewer) => {
-                const name = getEntityName(reviewer);
-
-                return (
-                  <li
-                    className="tw:flex tw:items-center tw:gap-3"
-                    key={reviewer.id}>
-                    <Avatar
-                      alt={name}
-                      placeholder={name.slice(0, 1).toLocaleUpperCase()}
-                      size="sm"
-                    />
-                    <Box className="tw:min-w-0" direction="col">
-                      <Typography ellipsis size="text-sm" weight="medium">
-                        {name}
-                      </Typography>
-                      <Typography className="tw:text-tertiary" size="text-xs">
-                        {getEntityNameLabel(reviewer.type)}
-                      </Typography>
-                    </Box>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card.Content>
-        </Card>
-      )}
-
-      {hasWorkflow && (
-        <MetricApprovalHistory metricFqn={metric.fullyQualifiedName} />
-      )}
+      <ApprovalReviewers hasWorkflow={hasWorkflow} metric={metric} />
+      <ApprovalHistorySection
+        hasWorkflow={hasWorkflow}
+        metricFqn={metric.fullyQualifiedName}
+      />
       <span aria-live="polite" className="tw:sr-only">
         {taskQuery.isResolving ? t('label.loading') : ''}
       </span>

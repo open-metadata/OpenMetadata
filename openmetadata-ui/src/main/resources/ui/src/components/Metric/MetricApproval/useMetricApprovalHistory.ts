@@ -48,6 +48,9 @@ export const metricApprovalHistoryQueryKey = (metricFqn: string) => [
   metricFqn,
 ];
 
+const firstDefined = <T>(...values: Array<T | undefined>) =>
+  values.find((value) => value !== undefined);
+
 const getWorkflowOutcome = (
   name?: string
 ): MetricApprovalHistoryItem['outcome'] => {
@@ -144,6 +147,72 @@ const getAllApprovalTasks = async (metricFqn: string) => {
   return data;
 };
 
+const getWorkflowHistoryItem = (
+  state: WorkflowInstanceState,
+  index: number
+): MetricApprovalHistoryItem => {
+  const workflowId = firstDefined(state.workflowInstanceId, 'workflow');
+  const timestamp = firstDefined(state.timestamp, index);
+
+  return {
+    id: firstDefined(state.id, `${workflowId}-${timestamp}`) as string,
+    isAutomatic: !state.stage?.tasks?.length,
+    label: firstDefined(
+      state.stage?.displayName,
+      state.stage?.name,
+      state.status,
+      ''
+    ) as string,
+    outcome: getWorkflowOutcome(
+      firstDefined(state.stage?.name, state.stage?.displayName)
+    ),
+    status: firstDefined(state.status, WorkflowStatus.Running) as string,
+    timestamp: firstDefined(
+      state.timestamp,
+      state.stage?.startedAt,
+      0
+    ) as number,
+  };
+};
+
+const TASK_OUTCOMES: Partial<
+  Record<ResolutionType, MetricApprovalHistoryItem['outcome']>
+> = {
+  [ResolutionType.Approved]: 'approved',
+  [ResolutionType.Rejected]: 'rejected',
+};
+
+const getTaskHistoryItem = (task: Task): MetricApprovalHistoryItem => ({
+  actor: firstDefined(
+    task.resolution?.resolvedBy?.displayName,
+    task.resolution?.resolvedBy?.name,
+    task.createdBy.displayName,
+    task.createdBy.name
+  ),
+  id: `task-${task.id}`,
+  isAutomatic: [
+    ResolutionType.AutoApproved,
+    ResolutionType.AutoRejected,
+  ].includes(
+    firstDefined(
+      task.resolution?.type,
+      ResolutionType.Completed
+    ) as ResolutionType
+  ),
+  label: firstDefined(task.displayName, task.name, '') as string,
+  note: task.resolution?.comment,
+  outcome: task.resolution?.type
+    ? TASK_OUTCOMES[task.resolution.type]
+    : undefined,
+  status: task.resolution?.type ?? task.status,
+  timestamp: firstDefined(
+    task.resolution?.resolvedAt,
+    task.updatedAt,
+    task.createdAt,
+    0
+  ) as number,
+});
+
 export const useMetricApprovalHistory = (metricFqn?: string) =>
   useQuery({
     queryKey: metricApprovalHistoryQueryKey(metricFqn ?? ''),
@@ -163,45 +232,9 @@ export const useMetricApprovalHistory = (metricFqn?: string) =>
         )
       );
       const workflowItems = stateResponses.flatMap((states) =>
-        states.map((state, index) => ({
-          id:
-            state.id ??
-            `${state.workflowInstanceId ?? 'workflow'}-${
-              state.timestamp ?? index
-            }`,
-          isAutomatic: (state.stage?.tasks?.length ?? 0) === 0,
-          label:
-            state.stage?.displayName ?? state.stage?.name ?? state.status ?? '',
-          outcome: getWorkflowOutcome(
-            state.stage?.name ?? state.stage?.displayName
-          ),
-          status: state.status ?? WorkflowStatus.Running,
-          timestamp: state.timestamp ?? state.stage?.startedAt ?? 0,
-        }))
+        states.map(getWorkflowHistoryItem)
       );
-      const taskItems = tasks.map((task) => ({
-        actor:
-          task.resolution?.resolvedBy?.displayName ??
-          task.resolution?.resolvedBy?.name ??
-          task.createdBy.displayName ??
-          task.createdBy.name,
-        id: `task-${task.id}`,
-        isAutomatic: [
-          ResolutionType.AutoApproved,
-          ResolutionType.AutoRejected,
-        ].includes(task.resolution?.type ?? ResolutionType.Completed),
-        label: task.displayName ?? task.name,
-        note: task.resolution?.comment,
-        outcome:
-          task.resolution?.type === ResolutionType.Approved
-            ? ('approved' as const)
-            : task.resolution?.type === ResolutionType.Rejected
-            ? ('rejected' as const)
-            : undefined,
-        status: task.resolution?.type ?? task.status,
-        timestamp:
-          task.resolution?.resolvedAt ?? task.updatedAt ?? task.createdAt ?? 0,
-      }));
+      const taskItems = tasks.map(getTaskHistoryItem);
 
       return [...workflowItems, ...taskItems].sort(
         (left, right) => right.timestamp - left.timestamp

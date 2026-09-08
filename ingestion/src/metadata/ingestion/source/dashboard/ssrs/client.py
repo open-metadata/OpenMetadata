@@ -77,7 +77,8 @@ class SsrsClient:
             raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry)
-        self.session.mount("http://", adapter)
+        # On-premises SSRS may intentionally expose HTTP; mounting an adapter does not select the protocol.
+        self.session.mount("http://", adapter)  # NOSONAR(S5332)
         self.session.mount("https://", adapter)
 
     def close(self) -> None:

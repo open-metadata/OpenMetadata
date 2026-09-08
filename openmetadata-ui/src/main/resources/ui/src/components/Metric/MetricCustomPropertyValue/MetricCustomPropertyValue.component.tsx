@@ -17,17 +17,20 @@ interface MetricCustomPropertyValueProps {
   value: unknown;
 }
 
+const isEmptyCustomPropertyValue = (value: unknown) => {
+  const hasNoScalarValue =
+    value === null || value === undefined || value === '';
+  const hasNoArrayValue = Array.isArray(value) && value.length === 0;
+
+  return hasNoScalarValue || hasNoArrayValue;
+};
+
 const MetricCustomPropertyValue = ({
   value,
 }: MetricCustomPropertyValueProps) => {
   const { t } = useTranslation();
 
-  if (
-    value === null ||
-    value === undefined ||
-    value === '' ||
-    (Array.isArray(value) && value.length === 0)
-  ) {
+  if (isEmptyCustomPropertyValue(value)) {
     return (
       <Typography className="tw:text-tertiary" size="text-sm">
         {t('label.empty-dash')}

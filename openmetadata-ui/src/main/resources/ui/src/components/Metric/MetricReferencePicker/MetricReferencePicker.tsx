@@ -22,6 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { SearchLg } from '@untitledui/icons';
+import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SearchIndex } from '../../../enums/search.enum';
@@ -87,6 +88,127 @@ const getReferenceType = (
   }
 
   return fallback ?? 'entity';
+};
+
+interface MetricReferenceResultsProps {
+  error: unknown;
+  isDisabled: boolean;
+  isPending: boolean;
+  label: string;
+  onRetry: () => void;
+  onToggle: (reference: EntityReference, isSelected: boolean) => void;
+  options: EntityReference[];
+  selectedIds: Set<string>;
+  t: TFunction;
+}
+
+const MetricReferenceResults = ({
+  error,
+  isDisabled,
+  isPending,
+  label,
+  onRetry,
+  onToggle,
+  options,
+  selectedIds,
+  t,
+}: MetricReferenceResultsProps) => {
+  if (isPending) {
+    return (
+      <Box
+        aria-label={t('label.loading')}
+        direction="col"
+        gap={2}
+        role="status">
+        <Skeleton height={32} variant="rounded" />
+        <Skeleton height={32} variant="rounded" />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert
+        title={t('server.entity-fetch-error', { entity: label })}
+        variant="error">
+        <Button color="secondary" size="sm" onPress={onRetry}>
+          {String(t('label.try-again'))}
+        </Button>
+      </Alert>
+    );
+  }
+
+  if (!options.length) {
+    return (
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {String(t('label.no-data'))}
+      </Typography>
+    );
+  }
+
+  return (
+    <Box className="tw:max-h-44 tw:overflow-y-auto" direction="col" gap={2}>
+      {options.map((reference) => (
+        <Checkbox
+          isDisabled={isDisabled}
+          isSelected={selectedIds.has(reference.id)}
+          key={reference.id}
+          label={getEntityName(reference)}
+          onChange={(isSelected) => onToggle(reference, isSelected)}
+        />
+      ))}
+    </Box>
+  );
+};
+
+interface MetricReferencePaginationProps {
+  error: unknown;
+  isDisabled: boolean;
+  isFetching: boolean;
+  isPending: boolean;
+  onPageChange: (page: number) => void;
+  page: number;
+  t: TFunction;
+  totalPages: number;
+}
+
+const MetricReferencePagination = ({
+  error,
+  isDisabled,
+  isFetching,
+  isPending,
+  onPageChange,
+  page,
+  t,
+  totalPages,
+}: MetricReferencePaginationProps) => {
+  if (isPending || error || totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <Box align="center" justify="between">
+      <Button
+        color="secondary"
+        data-testid="metric-reference-previous"
+        isDisabled={isDisabled || page === 1 || isFetching}
+        size="sm"
+        onPress={() => onPageChange(page - 1)}>
+        {String(t('label.previous'))}
+      </Button>
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {String(t('label.page'))} {page} / {totalPages}
+      </Typography>
+      <Button
+        color="secondary"
+        data-testid="metric-reference-next"
+        isDisabled={isDisabled || page === totalPages || isFetching}
+        size="sm"
+        onPress={() => onPageChange(page + 1)}>
+        {String(t('label.next'))}
+      </Button>
+    </Box>
+  );
 };
 
 const MetricReferencePicker = ({
@@ -218,63 +340,27 @@ const MetricReferencePicker = ({
           ))}
         </Box>
       )}
-      {query.isPending ? (
-        <Box
-          aria-label={t('label.loading')}
-          direction="col"
-          gap={2}
-          role="status">
-          <Skeleton height={32} variant="rounded" />
-          <Skeleton height={32} variant="rounded" />
-        </Box>
-      ) : query.error ? (
-        <Alert
-          title={t('server.entity-fetch-error', { entity: label })}
-          variant="error">
-          <Button color="secondary" size="sm" onPress={() => query.refetch()}>
-            {t('label.try-again')}
-          </Button>
-        </Alert>
-      ) : options.length ? (
-        <Box className="tw:max-h-44 tw:overflow-y-auto" direction="col" gap={2}>
-          {options.map((reference) => (
-            <Checkbox
-              isDisabled={isDisabled}
-              isSelected={selectedIds.has(reference.id)}
-              key={reference.id}
-              label={getEntityName(reference)}
-              onChange={(isSelected) => toggle(reference, isSelected)}
-            />
-          ))}
-        </Box>
-      ) : (
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {t('label.no-data')}
-        </Typography>
-      )}
-      {!query.isPending && !query.error && totalPages > 1 && (
-        <Box align="center" justify="between">
-          <Button
-            color="secondary"
-            data-testid="metric-reference-previous"
-            isDisabled={isDisabled || page === 1 || query.isFetching}
-            size="sm"
-            onPress={() => setPage((current) => current - 1)}>
-            {t('label.previous')}
-          </Button>
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.page')} {page} / {totalPages}
-          </Typography>
-          <Button
-            color="secondary"
-            data-testid="metric-reference-next"
-            isDisabled={isDisabled || page === totalPages || query.isFetching}
-            size="sm"
-            onPress={() => setPage((current) => current + 1)}>
-            {t('label.next')}
-          </Button>
-        </Box>
-      )}
+      <MetricReferenceResults
+        error={query.error}
+        isDisabled={isDisabled}
+        isPending={query.isPending}
+        label={label}
+        options={options}
+        selectedIds={selectedIds}
+        t={t}
+        onRetry={() => query.refetch()}
+        onToggle={toggle}
+      />
+      <MetricReferencePagination
+        error={query.error}
+        isDisabled={isDisabled}
+        isFetching={query.isFetching}
+        isPending={query.isPending}
+        page={page}
+        t={t}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </Box>
   );
 };

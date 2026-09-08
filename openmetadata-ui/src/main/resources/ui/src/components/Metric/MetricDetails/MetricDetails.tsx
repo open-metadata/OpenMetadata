@@ -47,7 +47,7 @@ import {
 } from '@untitledui/icons';
 import type { AxiosError } from 'axios';
 import startCase from 'lodash/startCase';
-import type { FC, Key, ReactNode } from 'react';
+import type { ElementType, FC, Key, ReactNode } from 'react';
 import {
   lazy,
   Suspense,
@@ -282,7 +282,7 @@ const HeaderMetadataItem = ({
   );
 };
 
-const MetricMetadataRail = ({
+const MetricPeopleCard = ({
   metric,
   onUpdate,
   permissions,
@@ -292,172 +292,232 @@ const MetricMetadataRail = ({
   permissions: MetricDetailsProps['metricPermissions'];
 }) => {
   const { t } = useTranslation();
+
+  return (
+    <Card data-testid="metric-metadata-people-card" size="sm">
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <MetadataItem
+            action={
+              <MetricMetadataEditor
+                metric={metric}
+                permissions={permissions}
+                onUpdate={onUpdate}
+              />
+            }
+            label={t('label.owner-plural')}>
+            <ReferenceValues
+              appearance="avatar-list"
+              references={metric.owners}
+            />
+          </MetadataItem>
+          <MetadataItem label={t('label.expert-plural')}>
+            <ReferenceValues
+              appearance="avatar-list"
+              references={metric.experts}
+            />
+          </MetadataItem>
+          <MetadataItem label={t('label.reviewer-plural')}>
+            <ReferenceValues
+              appearance="avatar-stack"
+              references={metric.reviewers}
+            />
+          </MetadataItem>
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const getTierReferences = (metric: Metric): Metric['owners'] => {
   const tier = getMetricTierTag(metric.tags ?? []);
-  const glossaryTerms = (metric.tags ?? []).filter(
+  if (!tier) {
+    return undefined;
+  }
+
+  return [
+    {
+      id: tier.tagFQN,
+      name: tier.displayName ?? tier.name ?? tier.tagFQN,
+      type: EntityType.TAG,
+    },
+  ];
+};
+
+const getMetricUnitLabel = (
+  metric: Metric,
+  translateUnit: (unit: NonNullable<Metric['unitOfMeasurement']>) => string
+) => {
+  if (metric.customUnitOfMeasurement) {
+    return metric.customUnitOfMeasurement;
+  }
+  if (metric.unitOfMeasurement) {
+    return translateUnit(metric.unitOfMeasurement);
+  }
+
+  return undefined;
+};
+
+const MetricGovernanceCard = ({ metric }: { metric: Metric }) => {
+  const { t } = useTranslation();
+  const unitLabel = getMetricUnitLabel(metric, (unit) =>
+    getMetricEnumLabel(t, unit)
+  );
+
+  return (
+    <Card data-testid="metric-metadata-governance-card" size="sm">
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <MetadataItem label={t('label.domain-plural')}>
+            <ReferenceValues appearance="plain" references={metric.domains} />
+          </MetadataItem>
+          <MetadataItem label={t('label.tier')}>
+            <ReferenceValues
+              appearance="tier"
+              references={getTierReferences(metric)}
+            />
+          </MetadataItem>
+          <MetadataItem
+            label={`${t('label.granularity')} & ${t('label.unit')}`}>
+            {metric.granularity ? (
+              <Badge
+                className="tw:font-mono tw:uppercase"
+                color="gray"
+                size="sm"
+                type="pill-color">
+                {getMetricEnumLabel(t, metric.granularity)}
+              </Badge>
+            ) : (
+              <EmptyMetadataValue />
+            )}
+            {unitLabel ? (
+              <Badge
+                className="tw:font-mono tw:uppercase"
+                color="gray"
+                size="sm"
+                type="pill-color">
+                {unitLabel}
+              </Badge>
+            ) : (
+              <EmptyMetadataValue />
+            )}
+          </MetadataItem>
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const MetricTaxonomyCard = ({ metric }: { metric: Metric }) => {
+  const { t } = useTranslation();
+  const tags = metric.tags ?? [];
+  const glossaryTerms = tags.filter(
     ({ source }) => source === TagSource.Glossary
   );
-  const tags = (metric.tags ?? []).filter(
+  const classificationTags = tags.filter(
     ({ source, tagFQN }) =>
       source !== TagSource.Glossary && !isMetricTierTag(tagFQN)
   );
-  const unitLabel =
-    metric.customUnitOfMeasurement ??
-    (metric.unitOfMeasurement
-      ? getMetricEnumLabel(t, metric.unitOfMeasurement)
-      : undefined);
-  const extensionEntries = Object.entries(metric.extension ?? {});
-  const hasAdditionalMetadata =
-    Boolean(metric.dataProducts?.length) || extensionEntries.length > 0;
 
+  return (
+    <Card data-testid="metric-metadata-taxonomy-card" size="sm">
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <MetadataItem label={t('label.glossary-term-plural')}>
+            {glossaryTerms.length ? (
+              glossaryTerms.map((term) => (
+                <BadgeWithIcon
+                  color="blue"
+                  iconLeading={BookOpen01}
+                  key={term.tagFQN}
+                  size="sm"
+                  type="pill-color">
+                  {term.displayName ?? term.name ?? term.tagFQN}
+                </BadgeWithIcon>
+              ))
+            ) : (
+              <EmptyMetadataValue />
+            )}
+          </MetadataItem>
+          <MetadataItem label={t('label.tag-plural')}>
+            {classificationTags.length ? (
+              classificationTags.map((tag) => (
+                <BadgeWithIcon
+                  color="purple"
+                  iconLeading={Tag01}
+                  key={tag.tagFQN}
+                  size="sm"
+                  type="pill-color">
+                  {tag.displayName ?? tag.name ?? tag.tagFQN}
+                </BadgeWithIcon>
+              ))
+            ) : (
+              <EmptyMetadataValue />
+            )}
+          </MetadataItem>
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const MetricAdditionalMetadataCard = ({ metric }: { metric: Metric }) => {
+  const { t } = useTranslation();
+  const extensionEntries = Object.entries(metric.extension ?? {});
+  const hasDataProducts = Boolean(metric.dataProducts?.length);
+
+  if (!hasDataProducts && extensionEntries.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card data-testid="metric-metadata-additional-card" size="sm">
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          {hasDataProducts && (
+            <MetadataItem label={t('label.data-product-plural')}>
+              <ReferenceValues references={metric.dataProducts} />
+            </MetadataItem>
+          )}
+          {extensionEntries.map(([name, value]) => (
+            <MetadataItem key={name} label={name}>
+              <Box
+                className="tw:w-full tw:min-w-0"
+                data-testid={`metric-custom-property-${name}`}
+                direction="col">
+                <MetricCustomPropertyValue value={value} />
+              </Box>
+            </MetadataItem>
+          ))}
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
+
+const MetricMetadataRail = ({
+  metric,
+  onUpdate,
+  permissions,
+}: {
+  metric: Metric;
+  onUpdate: MetricDetailsProps['onMetricUpdate'];
+  permissions: MetricDetailsProps['metricPermissions'];
+}) => {
   return (
     <Box
       className="tw:static tw:min-w-0 tw:xl:sticky tw:xl:top-4 tw:xl:self-start"
       data-testid="metric-metadata-rail"
       direction="col"
       gap={3}>
-      <Card data-testid="metric-metadata-people-card" size="sm">
-        <Card.Content>
-          <Box direction="col" gap={3}>
-            <MetadataItem
-              action={
-                <MetricMetadataEditor
-                  metric={metric}
-                  permissions={permissions}
-                  onUpdate={onUpdate}
-                />
-              }
-              label={t('label.owner-plural')}>
-              <ReferenceValues
-                appearance="avatar-list"
-                references={metric.owners}
-              />
-            </MetadataItem>
-            <MetadataItem label={t('label.expert-plural')}>
-              <ReferenceValues
-                appearance="avatar-list"
-                references={metric.experts}
-              />
-            </MetadataItem>
-            <MetadataItem label={t('label.reviewer-plural')}>
-              <ReferenceValues
-                appearance="avatar-stack"
-                references={metric.reviewers}
-              />
-            </MetadataItem>
-          </Box>
-        </Card.Content>
-      </Card>
-      <Card data-testid="metric-metadata-governance-card" size="sm">
-        <Card.Content>
-          <Box direction="col" gap={3}>
-            <MetadataItem label={t('label.domain-plural')}>
-              <ReferenceValues appearance="plain" references={metric.domains} />
-            </MetadataItem>
-            <MetadataItem label={t('label.tier')}>
-              <ReferenceValues
-                appearance="tier"
-                references={
-                  tier
-                    ? [
-                        {
-                          id: tier.tagFQN,
-                          name: tier.displayName ?? tier.name ?? tier.tagFQN,
-                          type: EntityType.TAG,
-                        },
-                      ]
-                    : undefined
-                }
-              />
-            </MetadataItem>
-            <MetadataItem
-              label={`${t('label.granularity')} & ${t('label.unit')}`}>
-              {metric.granularity ? (
-                <Badge
-                  className="tw:font-mono tw:uppercase"
-                  color="gray"
-                  size="sm"
-                  type="pill-color">
-                  {getMetricEnumLabel(t, metric.granularity)}
-                </Badge>
-              ) : (
-                <EmptyMetadataValue />
-              )}
-              {unitLabel ? (
-                <Badge
-                  className="tw:font-mono tw:uppercase"
-                  color="gray"
-                  size="sm"
-                  type="pill-color">
-                  {unitLabel}
-                </Badge>
-              ) : (
-                <EmptyMetadataValue />
-              )}
-            </MetadataItem>
-          </Box>
-        </Card.Content>
-      </Card>
-      <Card data-testid="metric-metadata-taxonomy-card" size="sm">
-        <Card.Content>
-          <Box direction="col" gap={3}>
-            <MetadataItem label={t('label.glossary-term-plural')}>
-              {glossaryTerms.length ? (
-                glossaryTerms.map((term) => (
-                  <BadgeWithIcon
-                    color="blue"
-                    iconLeading={BookOpen01}
-                    key={term.tagFQN}
-                    size="sm"
-                    type="pill-color">
-                    {term.displayName ?? term.name ?? term.tagFQN}
-                  </BadgeWithIcon>
-                ))
-              ) : (
-                <EmptyMetadataValue />
-              )}
-            </MetadataItem>
-            <MetadataItem label={t('label.tag-plural')}>
-              {tags.length ? (
-                tags.map((tag) => (
-                  <BadgeWithIcon
-                    color="purple"
-                    iconLeading={Tag01}
-                    key={tag.tagFQN}
-                    size="sm"
-                    type="pill-color">
-                    {tag.displayName ?? tag.name ?? tag.tagFQN}
-                  </BadgeWithIcon>
-                ))
-              ) : (
-                <EmptyMetadataValue />
-              )}
-            </MetadataItem>
-          </Box>
-        </Card.Content>
-      </Card>
-      {hasAdditionalMetadata && (
-        <Card data-testid="metric-metadata-additional-card" size="sm">
-          <Card.Content>
-            <Box direction="col" gap={3}>
-              {Boolean(metric.dataProducts?.length) && (
-                <MetadataItem label={t('label.data-product-plural')}>
-                  <ReferenceValues references={metric.dataProducts} />
-                </MetadataItem>
-              )}
-              {extensionEntries.map(([name, value]) => (
-                <MetadataItem key={name} label={name}>
-                  <Box
-                    className="tw:w-full tw:min-w-0"
-                    data-testid={`metric-custom-property-${name}`}
-                    direction="col">
-                    <MetricCustomPropertyValue value={value} />
-                  </Box>
-                </MetadataItem>
-              ))}
-            </Box>
-          </Card.Content>
-        </Card>
-      )}
+      <MetricPeopleCard
+        metric={metric}
+        permissions={permissions}
+        onUpdate={onUpdate}
+      />
+      <MetricGovernanceCard metric={metric} />
+      <MetricTaxonomyCard metric={metric} />
+      <MetricAdditionalMetadataCard metric={metric} />
     </Box>
   );
 };
@@ -546,6 +606,448 @@ const MetricManagementMenu = ({
   );
 };
 
+type MetricHierarchyState = ReturnType<typeof useMetricHierarchyCard>;
+
+interface MetricTabItem {
+  badge?: number;
+  icon: ElementType;
+  key: EntityTabs;
+  label: string;
+}
+
+const MetricBreadcrumbs = ({
+  hierarchy,
+  metric,
+}: {
+  hierarchy: MetricHierarchyState;
+  metric: Metric;
+}) => {
+  const { t } = useTranslation();
+  const group = hierarchy.group ?? metric.metricGroup;
+  const groupName = group ? getEntityName(group) : undefined;
+  const groupItems = groupName
+    ? [
+        {
+          id: 'group',
+          label: groupName,
+          href: `${ROUTES.METRICS}?highlight=${encodeURIComponent(
+            group?.fullyQualifiedName ?? ''
+          )}`,
+        },
+      ]
+    : [];
+
+  return (
+    <Breadcrumbs
+      autoCollapse
+      className="tw:[&>li:not(:first-child):not(:last-child)]:hidden tw:sm:[&>li:not(:first-child):not(:last-child)]:flex"
+      data-testid="metric-breadcrumbs"
+      items={[
+        {
+          id: 'governance',
+          label: t('label.governance'),
+          href: ROUTES.METRICS,
+        },
+        {
+          id: 'metrics',
+          label: t('label.metric-plural'),
+          href: ROUTES.METRICS,
+        },
+        ...groupItems,
+        ...hierarchy.ancestors.map((ancestor) => ({
+          id: ancestor.id,
+          label: getEntityName(ancestor),
+          href: getEntityDetailsPath(
+            EntityType.METRIC,
+            ancestor.fullyQualifiedName ?? ''
+          ),
+        })),
+        { id: metric.id, label: getEntityName(metric) },
+      ]}
+      size="sm"
+    />
+  );
+};
+
+interface MetricTitleHeaderProps {
+  isFollowing?: boolean;
+  metric: Metric;
+  permissions: MetricDetailsProps['metricPermissions'];
+  onDelete: () => void;
+  onFollow: () => void;
+  onRestore: () => void;
+  onShare: () => void;
+  onVersion: () => void;
+}
+
+const MetricTitleHeader = ({
+  isFollowing,
+  metric,
+  permissions,
+  onDelete,
+  onFollow,
+  onRestore,
+  onShare,
+  onVersion,
+}: MetricTitleHeaderProps) => {
+  const { t } = useTranslation();
+  const followLabel = isFollowing ? t('label.following') : t('label.follow');
+
+  return (
+    <Box
+      className="tw:min-w-0 tw:flex-col tw:sm:flex-row tw:sm:flex-wrap"
+      data-testid="metric-detail-header"
+      gap={4}
+      justify="between">
+      <Box
+        className="tw:w-full tw:min-w-0 tw:items-start tw:sm:flex-1"
+        data-testid="metric-header-primary"
+        gap={3}>
+        <FeaturedIcon
+          outlined
+          bgColor="white"
+          className="tw:shrink-0"
+          color="brand"
+          data-testid="metric-type-icon"
+          icon={Activity}
+          radius="lg"
+          shape="square"
+          size="lg"
+          theme="light"
+        />
+        <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+          <Box
+            align="center"
+            className="tw:min-w-0 tw:flex-nowrap"
+            data-testid="metric-header-fqn"
+            gap={1}>
+            <Typography
+              as="span"
+              className="tw:min-w-0 tw:break-words tw:font-mono tw:text-tertiary"
+              size="text-xs">
+              {metric.fullyQualifiedName}
+            </Typography>
+          </Box>
+          <Box
+            align="center"
+            className="tw:min-w-0 tw:flex-wrap"
+            data-testid="metric-title-row"
+            gap={2}>
+            <Typography
+              as="h1"
+              className="tw:min-w-0 tw:break-words tw:text-balance tw:text-primary"
+              size="display-xs"
+              weight="bold">
+              {getEntityName(metric)}
+            </Typography>
+            <MetricHeaderInfo
+              metricDetails={metric}
+              status={<MetricStatusPill status={metric.entityStatus} />}
+            />
+            {metric.deleted && (
+              <Badge
+                color="error"
+                data-testid="deleted-badge"
+                size="sm"
+                type="pill-color">
+                {t('label.deleted')}
+              </Badge>
+            )}
+          </Box>
+          <Typography
+            as="p"
+            className="tw:max-w-4xl tw:text-pretty tw:text-secondary"
+            data-testid="metric-header-description"
+            size="text-sm">
+            {metric.description ?? t('label.no-description')}
+          </Typography>
+        </Box>
+      </Box>
+      <Box
+        align="center"
+        className="tw:w-full tw:flex-nowrap tw:sm:w-auto tw:sm:flex-wrap"
+        data-testid="metric-header-actions"
+        gap={2}>
+        {!metric.deleted && (
+          <Button
+            aria-label={followLabel}
+            color={isFollowing ? 'secondary-brand' : 'secondary'}
+            iconLeading={Star01}
+            size="sm"
+            onPress={onFollow}>
+            <span className="tw:hidden tw:sm:inline">{followLabel}</span>
+          </Button>
+        )}
+        <Button
+          aria-label={t('label.share')}
+          color="secondary"
+          iconLeading={Share07}
+          size="sm"
+          onPress={onShare}
+        />
+        <MetricManagementMenu
+          canDelete={Boolean(permissions.Delete)}
+          isDeleted={Boolean(metric.deleted)}
+          onDelete={onDelete}
+          onRestore={onRestore}
+          onVersion={onVersion}
+        />
+      </Box>
+    </Box>
+  );
+};
+
+const UpdatedMetricMetadata = ({ metric }: { metric: Metric }) => {
+  const { t } = useTranslation();
+  const updatedTime = metric.updatedAt
+    ? getShortRelativeTime(metric.updatedAt)
+    : undefined;
+  const updatedByInitials = metric.updatedBy
+    ? getInitials(metric.updatedBy)
+    : undefined;
+
+  if (!updatedTime && !metric.updatedBy) {
+    return null;
+  }
+
+  return (
+    <Box align="center" data-testid="metric-header-updated" gap={1}>
+      <Clock
+        aria-hidden="true"
+        className="tw:size-4 tw:text-fg-quaternary"
+        data-testid="metric-header-updated-icon"
+      />
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t('label.updated')}
+        {updatedTime ? ` ${updatedTime}` : ''}
+        {metric.updatedBy ? ` ${t('label.by-lowercase')}` : ''}
+      </Typography>
+      {updatedByInitials && (
+        <span
+          aria-label={metric.updatedBy}
+          data-testid="metric-header-updater-avatar">
+          <Avatar initials={updatedByInitials} size="xxs" />
+        </span>
+      )}
+    </Box>
+  );
+};
+
+const MetricSecondaryMetadata = ({ metric }: { metric: Metric }) => {
+  const { t } = useTranslation();
+  const headerTier = getMetricTierTag(metric.tags ?? []);
+  const primaryOwnerName = metric.owners?.[0]
+    ? getEntityName(metric.owners[0])
+    : undefined;
+  const primaryOwnerInitials = primaryOwnerName
+    ? getInitials(primaryOwnerName)
+    : undefined;
+
+  return (
+    <Box
+      align="center"
+      className="tw:flex tw:min-w-0 tw:flex-wrap"
+      data-testid="metric-header-secondary-metadata"
+      gap={4}>
+      <HeaderMetadataItem
+        label={t('label.owner')}
+        leading={
+          primaryOwnerInitials ? (
+            <span aria-hidden="true" data-testid="metric-header-owner-avatar">
+              <Avatar initials={primaryOwnerInitials} size="xxs" />
+            </span>
+          ) : (
+            <User01
+              aria-hidden="true"
+              className="tw:size-4 tw:text-fg-quaternary"
+              data-testid="metric-header-owner-icon"
+            />
+          )
+        }
+        testId="metric-header-owner"
+        value={metric.owners?.map(getEntityName).join(', ')}
+      />
+      <HeaderMetadataItem
+        label={t('label.domain')}
+        leading={
+          <Cube01
+            aria-hidden="true"
+            className="tw:size-4 tw:text-fg-quaternary"
+            data-testid="metric-header-domain-icon"
+          />
+        }
+        testId="metric-header-domain"
+        value={metric.domains?.map(getEntityName).join(', ')}
+      />
+      <HeaderMetadataItem
+        label={t('label.tier')}
+        leading={
+          <Shield01
+            aria-hidden="true"
+            className="tw:size-4 tw:text-fg-quaternary"
+            data-testid="metric-header-tier-icon"
+          />
+        }
+        testId="metric-header-tier"
+        value={
+          headerTier?.displayName ?? headerTier?.name ?? headerTier?.tagFQN
+        }
+      />
+      <UpdatedMetricMetadata metric={metric} />
+    </Box>
+  );
+};
+
+const MetricDetailTabs = ({
+  activeTab,
+  tabs,
+  onTabChange,
+}: {
+  activeTab: EntityTabs;
+  tabs: MetricTabItem[];
+  onTabChange: (key: Key | null) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tabs selectedKey={activeTab} onSelectionChange={onTabChange}>
+      <Tabs.List
+        aria-label={t('label.metric')}
+        className="tw:flex tw:w-full tw:min-w-0 tw:overflow-x-auto"
+        data-testid="metric-detail-tabs"
+        type="underline">
+        {tabs.map((tab) => {
+          const TabIcon = tab.icon;
+
+          return (
+            <Tabs.Item
+              badge={tab.badge}
+              className="tw:w-auto tw:min-w-0 tw:shrink-0 tw:whitespace-nowrap tw:px-3 tw:text-center tw:font-semibold"
+              data-testid={tab.key}
+              id={tab.key}
+              key={tab.key}>
+              <TabIcon
+                aria-hidden="true"
+                className="tw:size-4 tw:shrink-0"
+                data-testid={`metric-tab-icon-${tab.key}`}
+              />
+              <span>{tab.label}</span>
+            </Tabs.Item>
+          );
+        })}
+      </Tabs.List>
+    </Tabs>
+  );
+};
+
+const MetricDetailsHeader = ({
+  activeTab,
+  hierarchy,
+  isFollowing,
+  metric,
+  permissions,
+  tabs,
+  onDelete,
+  onFollow,
+  onRestore,
+  onShare,
+  onTabChange,
+  onVersion,
+}: MetricTitleHeaderProps & {
+  activeTab: EntityTabs;
+  hierarchy: MetricHierarchyState;
+  tabs: MetricTabItem[];
+  onTabChange: (key: Key | null) => void;
+}) => (
+  <Box
+    className="tw:min-w-0 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:pt-4 tw:md:px-8"
+    data-testid="metric-header-shell"
+    direction="col"
+    gap={3}>
+    <MetricBreadcrumbs hierarchy={hierarchy} metric={metric} />
+    <MetricTitleHeader
+      isFollowing={isFollowing}
+      metric={metric}
+      permissions={permissions}
+      onDelete={onDelete}
+      onFollow={onFollow}
+      onRestore={onRestore}
+      onShare={onShare}
+      onVersion={onVersion}
+    />
+    <MetricSecondaryMetadata metric={metric} />
+    <MetricDetailTabs
+      activeTab={activeTab}
+      tabs={tabs}
+      onTabChange={onTabChange}
+    />
+  </Box>
+);
+
+const MetricRestoreDialog = ({
+  isOpen,
+  isRestoring,
+  metric,
+  onClose,
+  onRestore,
+}: {
+  isOpen: boolean;
+  isRestoring: boolean;
+  metric: Metric;
+  onClose: () => void;
+  onRestore: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleClose = () => {
+    if (!isRestoring) {
+      onClose();
+    }
+  };
+
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable={!isRestoring}
+      onOpenChange={handleClose}>
+      <Modal>
+        <Dialog
+          data-testid="restore-asset-modal"
+          showCloseButton={!isRestoring}
+          title={t('label.restore-entity', { entity: t('label.metric') })}
+          width={480}
+          onClose={handleClose}>
+          <Dialog.Content>
+            <Typography
+              className="tw:text-secondary"
+              data-testid="restore-modal-body"
+              size="text-sm">
+              {t('message.are-you-want-to-restore', {
+                entity: getEntityName(metric),
+              })}
+            </Typography>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              isDisabled={isRestoring}
+              onPress={onClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button color="primary" isLoading={isRestoring} onPress={onRestore}>
+              {t('label.restore')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
+
 const MetricDetails: FC<MetricDetailsProps> = ({
   currentUser,
   metricDetails,
@@ -582,13 +1084,6 @@ const MetricDetails: FC<MetricDetailsProps> = ({
   const canEditLineage =
     getPrioritizedEditPermission(metricPermissions, Operation.EditLineage) &&
     !metricDetails.deleted;
-  const headerTier = getMetricTierTag(metricDetails.tags ?? []);
-  const updatedTime = metricDetails.updatedAt
-    ? getShortRelativeTime(metricDetails.updatedAt)
-    : undefined;
-  const updatedByInitials = metricDetails.updatedBy
-    ? getInitials(metricDetails.updatedBy)
-    : undefined;
 
   const fetchFeedCount = useCallback(async () => {
     if (!decodedMetricFqn) {
@@ -811,273 +1306,24 @@ const MetricDetails: FC<MetricDetailsProps> = ({
     }
   })();
 
-  const title = getEntityName(metricDetails);
-  const breadcrumbGroup =
-    breadcrumbHierarchy.group ?? metricDetails.metricGroup;
-  const groupName = breadcrumbGroup
-    ? getEntityName(breadcrumbGroup)
-    : undefined;
-  const primaryOwnerName = metricDetails.owners?.[0]
-    ? getEntityName(metricDetails.owners[0])
-    : undefined;
-  const primaryOwnerInitials = primaryOwnerName
-    ? getInitials(primaryOwnerName)
-    : undefined;
-
   return (
     <main
       className="tw:min-h-full tw:min-w-0 tw:w-full tw:overflow-x-hidden tw:bg-secondary"
       data-testid="metric-details-page">
-      <Box
-        className="tw:min-w-0 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:pt-4 tw:md:px-8"
-        data-testid="metric-header-shell"
-        direction="col"
-        gap={3}>
-        <Breadcrumbs
-          autoCollapse
-          className="tw:[&>li:not(:first-child):not(:last-child)]:hidden tw:sm:[&>li:not(:first-child):not(:last-child)]:flex"
-          data-testid="metric-breadcrumbs"
-          items={[
-            {
-              id: 'governance',
-              label: t('label.governance'),
-              href: ROUTES.METRICS,
-            },
-            {
-              id: 'metrics',
-              label: t('label.metric-plural'),
-              href: ROUTES.METRICS,
-            },
-            ...(groupName
-              ? [
-                  {
-                    id: 'group',
-                    label: groupName,
-                    href: `${ROUTES.METRICS}?highlight=${encodeURIComponent(
-                      breadcrumbGroup?.fullyQualifiedName ?? ''
-                    )}`,
-                  },
-                ]
-              : []),
-            ...breadcrumbHierarchy.ancestors.map((ancestor) => ({
-              id: ancestor.id,
-              label: getEntityName(ancestor),
-              href: getEntityDetailsPath(
-                EntityType.METRIC,
-                ancestor.fullyQualifiedName ?? ''
-              ),
-            })),
-            { id: metricDetails.id, label: title },
-          ]}
-          size="sm"
-        />
-        <Box
-          className="tw:min-w-0 tw:flex-col tw:sm:flex-row tw:sm:flex-wrap"
-          data-testid="metric-detail-header"
-          gap={4}
-          justify="between">
-          <Box
-            className="tw:w-full tw:min-w-0 tw:items-start tw:sm:flex-1"
-            data-testid="metric-header-primary"
-            gap={3}>
-            <FeaturedIcon
-              outlined
-              bgColor="white"
-              className="tw:shrink-0"
-              color="brand"
-              data-testid="metric-type-icon"
-              icon={Activity}
-              radius="lg"
-              shape="square"
-              size="lg"
-              theme="light"
-            />
-            <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-              <Box
-                align="center"
-                className="tw:min-w-0 tw:flex-nowrap"
-                data-testid="metric-header-fqn"
-                gap={1}>
-                <Typography
-                  as="span"
-                  className="tw:min-w-0 tw:break-words tw:font-mono tw:text-tertiary"
-                  size="text-xs">
-                  {metricDetails.fullyQualifiedName}
-                </Typography>
-              </Box>
-              <Box
-                align="center"
-                className="tw:min-w-0 tw:flex-wrap"
-                data-testid="metric-title-row"
-                gap={2}>
-                <Typography
-                  as="h1"
-                  className="tw:min-w-0 tw:break-words tw:text-balance tw:text-primary"
-                  size="display-xs"
-                  weight="bold">
-                  {title}
-                </Typography>
-                <MetricHeaderInfo
-                  metricDetails={metricDetails}
-                  status={
-                    <MetricStatusPill status={metricDetails.entityStatus} />
-                  }
-                />
-                {metricDetails.deleted && (
-                  <Badge
-                    color="error"
-                    data-testid="deleted-badge"
-                    size="sm"
-                    type="pill-color">
-                    {t('label.deleted')}
-                  </Badge>
-                )}
-              </Box>
-              <Typography
-                as="p"
-                className="tw:max-w-4xl tw:text-pretty tw:text-secondary"
-                data-testid="metric-header-description"
-                size="text-sm">
-                {metricDetails.description ?? t('label.no-description')}
-              </Typography>
-            </Box>
-          </Box>
-          <Box
-            align="center"
-            className="tw:w-full tw:flex-nowrap tw:sm:w-auto tw:sm:flex-wrap"
-            data-testid="metric-header-actions"
-            gap={2}>
-            {!metricDetails.deleted && (
-              <Button
-                aria-label={
-                  isFollowing ? t('label.following') : t('label.follow')
-                }
-                color={isFollowing ? 'secondary-brand' : 'secondary'}
-                iconLeading={Star01}
-                size="sm"
-                onPress={handleFollow}>
-                <span className="tw:hidden tw:sm:inline">
-                  {isFollowing ? t('label.following') : t('label.follow')}
-                </span>
-              </Button>
-            )}
-            <Button
-              aria-label={t('label.share')}
-              color="secondary"
-              iconLeading={Share07}
-              size="sm"
-              onPress={handleShare}
-            />
-            <MetricManagementMenu
-              canDelete={Boolean(metricPermissions.Delete)}
-              isDeleted={Boolean(metricDetails.deleted)}
-              onDelete={() => setIsDeleteOpen(true)}
-              onRestore={() => setIsRestoreOpen(true)}
-              onVersion={onVersionChange}
-            />
-          </Box>
-        </Box>
-        <Box
-          align="center"
-          className="tw:flex tw:min-w-0 tw:flex-wrap"
-          data-testid="metric-header-secondary-metadata"
-          gap={4}>
-          <HeaderMetadataItem
-            label={t('label.owner')}
-            leading={
-              primaryOwnerInitials ? (
-                <span
-                  aria-hidden="true"
-                  data-testid="metric-header-owner-avatar">
-                  <Avatar initials={primaryOwnerInitials} size="xxs" />
-                </span>
-              ) : (
-                <User01
-                  aria-hidden="true"
-                  className="tw:size-4 tw:text-fg-quaternary"
-                  data-testid="metric-header-owner-icon"
-                />
-              )
-            }
-            testId="metric-header-owner"
-            value={metricDetails.owners?.map(getEntityName).join(', ')}
-          />
-          <HeaderMetadataItem
-            label={t('label.domain')}
-            leading={
-              <Cube01
-                aria-hidden="true"
-                className="tw:size-4 tw:text-fg-quaternary"
-                data-testid="metric-header-domain-icon"
-              />
-            }
-            testId="metric-header-domain"
-            value={metricDetails.domains?.map(getEntityName).join(', ')}
-          />
-          <HeaderMetadataItem
-            label={t('label.tier')}
-            leading={
-              <Shield01
-                aria-hidden="true"
-                className="tw:size-4 tw:text-fg-quaternary"
-                data-testid="metric-header-tier-icon"
-              />
-            }
-            testId="metric-header-tier"
-            value={
-              headerTier?.displayName ?? headerTier?.name ?? headerTier?.tagFQN
-            }
-          />
-          {(updatedTime || metricDetails.updatedBy) && (
-            <Box align="center" data-testid="metric-header-updated" gap={1}>
-              <Clock
-                aria-hidden="true"
-                className="tw:size-4 tw:text-fg-quaternary"
-                data-testid="metric-header-updated-icon"
-              />
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {t('label.updated')}
-                {updatedTime ? ` ${updatedTime}` : ''}
-                {metricDetails.updatedBy ? ` ${t('label.by-lowercase')}` : ''}
-              </Typography>
-              {updatedByInitials && (
-                <span
-                  aria-label={metricDetails.updatedBy}
-                  data-testid="metric-header-updater-avatar">
-                  <Avatar initials={updatedByInitials} size="xxs" />
-                </span>
-              )}
-            </Box>
-          )}
-        </Box>
-        <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>
-          <Tabs.List
-            aria-label={t('label.metric')}
-            className="tw:flex tw:w-full tw:min-w-0 tw:overflow-x-auto"
-            data-testid="metric-detail-tabs"
-            type="underline">
-            {tabs.map((tab) => {
-              const TabIcon = tab.icon;
-
-              return (
-                <Tabs.Item
-                  badge={tab.badge}
-                  className="tw:w-auto tw:min-w-0 tw:shrink-0 tw:whitespace-nowrap tw:px-3 tw:text-center tw:font-semibold"
-                  data-testid={tab.key}
-                  id={tab.key}
-                  key={tab.key}>
-                  <TabIcon
-                    aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0"
-                    data-testid={`metric-tab-icon-${tab.key}`}
-                  />
-                  <span>{tab.label}</span>
-                </Tabs.Item>
-              );
-            })}
-          </Tabs.List>
-        </Tabs>
-      </Box>
+      <MetricDetailsHeader
+        activeTab={activeTab}
+        hierarchy={breadcrumbHierarchy}
+        isFollowing={isFollowing}
+        metric={metricDetails}
+        permissions={metricPermissions}
+        tabs={tabs}
+        onDelete={() => setIsDeleteOpen(true)}
+        onFollow={handleFollow}
+        onRestore={() => setIsRestoreOpen(true)}
+        onShare={handleShare}
+        onTabChange={handleTabChange}
+        onVersion={onVersionChange}
+      />
       <Box
         className="tw:w-full tw:min-w-0"
         data-testid="metric-detail-content"
@@ -1091,48 +1337,13 @@ const MetricDetails: FC<MetricDetailsProps> = ({
         onCancel={() => setIsDeleteOpen(false)}
         onConfirm={handleDelete}
       />
-      {isRestoreOpen && (
-        <ModalOverlay
-          isOpen
-          isDismissable={!isRestoring}
-          onOpenChange={(open) =>
-            !open && !isRestoring && setIsRestoreOpen(false)
-          }>
-          <Modal>
-            <Dialog
-              data-testid="restore-asset-modal"
-              showCloseButton={!isRestoring}
-              title={t('label.restore-entity', { entity: t('label.metric') })}
-              width={480}
-              onClose={() => !isRestoring && setIsRestoreOpen(false)}>
-              <Dialog.Content>
-                <Typography
-                  className="tw:text-secondary"
-                  data-testid="restore-modal-body"
-                  size="text-sm">
-                  {t('message.are-you-want-to-restore', {
-                    entity: getEntityName(metricDetails),
-                  })}
-                </Typography>
-              </Dialog.Content>
-              <Dialog.Footer>
-                <Button
-                  color="secondary"
-                  isDisabled={isRestoring}
-                  onPress={() => setIsRestoreOpen(false)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary"
-                  isLoading={isRestoring}
-                  onPress={handleRestore}>
-                  {t('label.restore')}
-                </Button>
-              </Dialog.Footer>
-            </Dialog>
-          </Modal>
-        </ModalOverlay>
-      )}
+      <MetricRestoreDialog
+        isOpen={isRestoreOpen}
+        isRestoring={isRestoring}
+        metric={metricDetails}
+        onClose={() => setIsRestoreOpen(false)}
+        onRestore={handleRestore}
+      />
     </main>
   );
 };

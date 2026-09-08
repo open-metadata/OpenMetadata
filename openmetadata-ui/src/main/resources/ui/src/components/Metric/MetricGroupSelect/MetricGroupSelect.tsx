@@ -45,6 +45,54 @@ export const metricGroupResolutionQueryKey = (name: string) => [
 const METRIC_GROUP_OPTIONS_LIMIT = 50;
 const METRIC_GROUP_RESOLUTION_DEBOUNCE_MS = 300;
 
+const resolveCurrentGroup = <T,>(
+  isCurrentResolution: boolean,
+  group: T | null | undefined
+) => (isCurrentResolution && group ? group : undefined);
+
+const canCreateMetricGroup = (
+  trimmedInput: string,
+  hasExactMatch: boolean,
+  isCurrentResolution: boolean,
+  isResolutionSuccessful: boolean
+) => {
+  const hasAvailableName = Boolean(trimmedInput) && !hasExactMatch;
+
+  return hasAvailableName && isCurrentResolution && isResolutionSuccessful;
+};
+
+interface ResolvedGroupSelection {
+  isNew: boolean;
+  selected?: string;
+}
+
+const resolveEmptyGroupSelection = (
+  trimmedInput: string,
+  hasExactMatch: boolean,
+  canCreateGroup: boolean
+): ResolvedGroupSelection | undefined => {
+  if (trimmedInput && !hasExactMatch) {
+    return canCreateGroup ? { isNew: true, selected: trimmedInput } : undefined;
+  }
+
+  return { isNew: false };
+};
+
+const resolveNamedGroupSelection = (
+  selected: string,
+  trimmedInput: string,
+  canCreateGroup: boolean,
+  existingOptionIds: Set<string>
+): ResolvedGroupSelection | undefined => {
+  const isExisting = existingOptionIds.has(selected);
+  const isNew = canCreateGroup && selected === trimmedInput;
+  if (!isExisting && !isNew) {
+    return;
+  }
+
+  return { isNew, selected };
+};
+
 /**
  * Picks the group a metric belongs to, or names one that does not exist yet.
  *
@@ -122,10 +170,10 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
     retry: false,
   });
   const isCurrentResolution = resolvedInput === trimmedInput;
-  const resolvedGroup =
-    isCurrentResolution && resolutionQuery.data
-      ? resolutionQuery.data
-      : undefined;
+  const resolvedGroup = resolveCurrentGroup(
+    isCurrentResolution,
+    resolutionQuery.data
+  );
   const options = useMemo(() => {
     if (
       !resolvedGroup ||
@@ -144,11 +192,12 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
     ];
   }, [initialOptions, resolvedGroup]);
   const hasExactMatch = options.some((option) => option.id === trimmedInput);
-  const canCreateGroup =
-    Boolean(trimmedInput) &&
-    !hasExactMatch &&
-    isCurrentResolution &&
-    resolutionQuery.isSuccess;
+  const canCreateGroup = canCreateMetricGroup(
+    trimmedInput,
+    hasExactMatch,
+    isCurrentResolution,
+    resolutionQuery.isSuccess
+  );
 
   /**
    * The typed name becomes a selectable option so a new group is created by the same gesture as
@@ -170,28 +219,26 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
   );
 
   const handleSelectionChange = (key: Key | null) => {
-    if (key === null && trimmedInput && !hasExactMatch) {
-      if (canCreateGroup) {
-        setInputValue(trimmedInput);
-        onChange?.(trimmedInput, true);
-      }
-
+    const existingOptionIds = new Set(options.map(({ id }) => id));
+    const selection =
+      key === null
+        ? resolveEmptyGroupSelection(
+            trimmedInput,
+            hasExactMatch,
+            canCreateGroup
+          )
+        : resolveNamedGroupSelection(
+            String(key),
+            trimmedInput,
+            canCreateGroup,
+            existingOptionIds
+          );
+    if (!selection) {
       return;
     }
 
-    const selected = key === null ? undefined : String(key);
-    const isExisting = Boolean(
-      selected && options.some((option) => option.id === selected)
-    );
-    if (
-      selected &&
-      !isExisting &&
-      !(canCreateGroup && selected === trimmedInput)
-    ) {
-      return;
-    }
-    setInputValue(selected ?? '');
-    onChange?.(selected, Boolean(selected) && !isExisting);
+    setInputValue(selection.selected ?? '');
+    onChange?.(selection.selected, selection.isNew);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -204,29 +251,7 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
     }
   };
 
-  if (isPending) {
-    return (
-      <span aria-label={t('label.loading')} role="status">
-        <Skeleton height={40} variant="rounded" />
-      </span>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert
-        title={t('server.entity-fetch-error', {
-          entity: t('label.metric-group'),
-        })}
-        variant="error">
-        <Button color="secondary" onPress={() => refetch()}>
-          {t('label.try-again')}
-        </Button>
-      </Alert>
-    );
-  }
-
-  return (
+  const renderMetricGroupSelect = () => (
     <Box direction="col" gap={2}>
       <ComboBox
         allowsCustomValue
@@ -269,6 +294,30 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
       )}
     </Box>
   );
+
+  if (isPending) {
+    return (
+      <span aria-label={t('label.loading')} role="status">
+        <Skeleton height={40} variant="rounded" />
+      </span>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert
+        title={t('server.entity-fetch-error', {
+          entity: t('label.metric-group'),
+        })}
+        variant="error">
+        <Button color="secondary" onPress={() => refetch()}>
+          {t('label.try-again')}
+        </Button>
+      </Alert>
+    );
+  }
+
+  return renderMetricGroupSelect();
 };
 
 export default MetricGroupSelect;

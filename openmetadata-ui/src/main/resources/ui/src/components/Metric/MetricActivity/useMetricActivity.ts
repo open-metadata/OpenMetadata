@@ -64,6 +64,17 @@ export interface UseMetricActivityParams {
   onUpdateFeedCount?: (counts: FeedCounts) => void;
 }
 
+const valueOr = <T>(value: T | undefined, fallback: T): T => value ?? fallback;
+
+const isLoadingMore = (isFetching: boolean, isPending: boolean) =>
+  isFetching && !isPending;
+
+const firstAvailable = <T>(...values: Array<T | null | undefined>) =>
+  values.find((value): value is T => value !== null && value !== undefined);
+
+const hasMoreResults = (total?: number, current?: number) =>
+  valueOr(total, 0) > valueOr(current, 0);
+
 export const useMetricActivity = ({
   currentUserId,
   metricFqn,
@@ -230,31 +241,40 @@ export const useMetricActivity = ({
   });
 
   return {
-    activity: activityQuery.data?.data ?? [],
+    activity: valueOr(activityQuery.data?.data, []),
     activityError: activityQuery.error,
     counts: countsQuery.data,
     createTaskError: createTaskMutation.error,
     isActivityLoading: activityQuery.isPending,
-    isCommenting:
-      createThreadMutation.isPending ||
-      replyMutation.isPending ||
+    isCommenting: [
+      createThreadMutation.isPending,
+      replyMutation.isPending,
       taskCommentMutation.isPending,
+    ].some(Boolean),
     isCreatingTask: createTaskMutation.isPending,
-    isLoadingMoreActivity: activityQuery.isFetching && !activityQuery.isPending,
-    isLoadingMoreTasks: tasksQuery.isFetching && !tasksQuery.isPending,
+    isLoadingMoreActivity: isLoadingMore(
+      activityQuery.isFetching,
+      activityQuery.isPending
+    ),
+    isLoadingMoreTasks: isLoadingMore(
+      tasksQuery.isFetching,
+      tasksQuery.isPending
+    ),
     isResolvingTask: taskTransitionMutation.isPending,
     isTasksLoading: tasksQuery.isPending,
-    mutationError:
-      createThreadMutation.error ??
-      replyMutation.error ??
-      taskCommentMutation.error ??
-      taskTransitionMutation.error ??
-      createTaskMutation.error,
-    hasMoreActivity: activityQuery.data?.hasMore ?? false,
-    hasMoreTasks:
-      (tasksQuery.data?.paging.total ?? 0) >
-      (tasksQuery.data?.data.length ?? 0),
-    tasks: tasksQuery.data?.data ?? [],
+    mutationError: firstAvailable(
+      createThreadMutation.error,
+      replyMutation.error,
+      taskCommentMutation.error,
+      taskTransitionMutation.error,
+      createTaskMutation.error
+    ),
+    hasMoreActivity: valueOr(activityQuery.data?.hasMore, false),
+    hasMoreTasks: hasMoreResults(
+      tasksQuery.data?.paging.total,
+      tasksQuery.data?.data.length
+    ),
+    tasks: valueOr(tasksQuery.data?.data, []),
     tasksError: tasksQuery.error,
     addTaskComment: (taskId: string, message: string) =>
       taskCommentMutation.mutateAsync({ message, taskId }),

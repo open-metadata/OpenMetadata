@@ -29,6 +29,20 @@ export interface MetricActivityItemProps {
   onSelect: () => void;
 }
 
+const getActivityActor = (
+  item: MetricActivityListItem,
+  systemLabel: string,
+  unknownLabel: string
+) => {
+  if (item.kind === 'activity') {
+    return item.value.actor ? getEntityName(item.value.actor) : systemLabel;
+  }
+
+  return item.value.createdBy
+    ? getEntityName(item.value.createdBy)
+    : unknownLabel;
+};
+
 const MetricActivityItem = ({
   isActive,
   item,
@@ -39,13 +53,7 @@ const MetricActivityItem = ({
   const title = isEvent
     ? item.value.summary ?? getMetricActivityEventLabel(t, item.value.eventType)
     : item.value.message ?? t('label.conversation');
-  const actor = isEvent
-    ? item.value.actor
-      ? getEntityName(item.value.actor)
-      : t('label.system')
-    : item.value.createdBy
-    ? getEntityName(item.value.createdBy)
-    : t('label.unknown');
+  const actor = getActivityActor(item, t('label.system'), t('label.unknown'));
 
   return (
     <Card isSelected={isActive}>

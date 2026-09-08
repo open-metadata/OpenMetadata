@@ -69,6 +69,277 @@ const METRIC_ASSET_TYPES = [
   EntityType.API_ENDPOINT,
 ];
 
+type MetricAssetsState = ReturnType<typeof useMetricAssetsTab>;
+type MetricObservabilityState = ReturnType<typeof useMetricObservability>;
+
+const BulkResultAlert = ({
+  result,
+  onClose,
+}: {
+  result?: ReturnType<typeof useMetricAssetsTab>['bulkResult'];
+  onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (!result) {
+    return null;
+  }
+
+  const failureCount = getBulkFailureCount(result);
+
+  return (
+    <Alert
+      closable
+      data-testid="metric-assets-bulk-result"
+      title={
+        result.status === Status.PartialSuccess
+          ? t('label.partial-success')
+          : t('label.success')
+      }
+      variant={failureCount > 0 ? 'warning' : 'success'}
+      onClose={onClose}>
+      {failureCount > 0 ? `${failureCount} ${t('label.failed')}` : undefined}
+    </Alert>
+  );
+};
+
+const AssetSelectionToolbar = ({
+  canEditRelationships,
+  state,
+  onUnlink,
+}: {
+  canEditRelationships: boolean;
+  state: MetricAssetsState;
+  onUnlink: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (!canEditRelationships || state.pageAssets.length === 0) {
+    return null;
+  }
+
+  const isUnlinkDisabled = [
+    state.selectedIds.size === 0,
+    state.isRefetching,
+    state.isUnlinking,
+  ].some(Boolean);
+
+  return (
+    <Box
+      align="center"
+      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2"
+      gap={3}>
+      <Checkbox
+        aria-label={t('label.select-all')}
+        isDisabled={state.isRefetching}
+        isIndeterminate={
+          state.selectedIds.size > 0 && !state.areAllPageAssetsSelected
+        }
+        isSelected={state.areAllPageAssetsSelected}
+        onChange={state.togglePage}
+      />
+      <Typography className="tw:flex-1" size="text-sm" weight="medium">
+        {state.selectedIds.size} {t('label.items-selected-lowercase')}
+      </Typography>
+      <Button
+        color="secondary-destructive"
+        data-testid="metric-assets-bulk-unlink"
+        iconLeading={Trash01}
+        isDisabled={isUnlinkDisabled}
+        isLoading={state.isUnlinking}
+        size="sm"
+        onPress={onUnlink}>
+        {t('label.remove')}
+      </Button>
+    </Box>
+  );
+};
+
+interface LoadedAssetResultsProps {
+  canEditRelationships: boolean;
+  healthByAssetId: Map<string, AssetRollup>;
+  metricFqn: string;
+  observability: MetricObservabilityState;
+  state: MetricAssetsState;
+}
+
+const LoadedAssetResults = ({
+  canEditRelationships,
+  healthByAssetId,
+  metricFqn,
+  observability,
+  state,
+}: LoadedAssetResultsProps) => {
+  const { t } = useTranslation();
+  const activeRelation = state.pageAssets.find(
+    ({ asset }) => asset.id === state.activeAssetId
+  );
+  const activeDetails = activeRelation
+    ? state.detailsById.get(activeRelation.asset.id)
+    : undefined;
+  const summary =
+    activeRelation && activeDetails ? (
+      <MetricAssetSummary
+        details={activeDetails}
+        health={healthByAssetId.get(activeRelation.asset.id)}
+        isLoading={state.isActiveDetailsLoading}
+        metricFqn={metricFqn}
+        relation={activeRelation}
+        onClose={() => state.setActiveAssetId(undefined)}
+      />
+    ) : undefined;
+
+  return (
+    <MetricAssetResizableLayout
+      isSummaryOpen={Boolean(activeRelation && activeDetails)}
+      resizeLabel={t('label.resize-entity', {
+        entity: t('label.summary'),
+      })}
+      summary={summary}
+      summaryLabel={t('label.summary')}
+      onCloseSummary={() => state.setActiveAssetId(undefined)}>
+      <Box direction="col" gap={3}>
+        <ul
+          aria-label={t('label.asset-plural')}
+          className="tw:grid tw:list-none tw:grid-cols-1 tw:gap-3 tw:p-0 tw:lg:grid-cols-2">
+          {state.pageAssets.map((relation) => (
+            <li key={relation.asset.id}>
+              <MetricAssetCard
+                details={
+                  state.detailsById.get(relation.asset.id) ?? {
+                    asset: relation.asset,
+                    columns: [],
+                    containment: [],
+                    domains: [],
+                    glossaryTerms: [],
+                    owners: [],
+                    tags: [],
+                  }
+                }
+                hasDetailsError={state.detailErrorIds.has(relation.asset.id)}
+                health={healthByAssetId.get(relation.asset.id)}
+                isActive={state.activeAssetId === relation.asset.id}
+                isDetailsLoading={state.detailLoadingIds.has(relation.asset.id)}
+                isHealthLoading={observability.isPending}
+                isSelected={state.selectedIds.has(relation.asset.id)}
+                relation={relation}
+                showSelection={canEditRelationships}
+                onActivate={() => state.setActiveAssetId(relation.asset.id)}
+                onRetryDetails={() =>
+                  state.refetchAssetDetails(relation.asset.id)
+                }
+                onToggle={() => state.toggleAsset(relation)}
+              />
+            </li>
+          ))}
+        </ul>
+        <Box align="center" justify="between">
+          <Button
+            color="secondary"
+            isDisabled={state.page === 1}
+            size="sm"
+            onPress={() => state.setPage(state.page - 1)}>
+            {t('label.previous')}
+          </Button>
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('label.page')} {state.page} / {state.totalPages}
+          </Typography>
+          <Button
+            color="secondary"
+            isDisabled={state.page === state.totalPages}
+            size="sm"
+            onPress={() => state.setPage(state.page + 1)}>
+            {t('label.next')}
+          </Button>
+        </Box>
+      </Box>
+    </MetricAssetResizableLayout>
+  );
+};
+
+interface MetricAssetsResultsProps extends LoadedAssetResultsProps {
+  hasFilters: boolean;
+  onAdd: () => void;
+}
+
+const MetricAssetsResults = ({
+  canEditRelationships,
+  hasFilters,
+  healthByAssetId,
+  metricFqn,
+  observability,
+  state,
+  onAdd,
+}: MetricAssetsResultsProps) => {
+  const { t } = useTranslation();
+
+  if (state.isLoading || state.isRefetching) {
+    return (
+      <Box className="tw:grid tw:grid-cols-1 tw:gap-3 tw:lg:grid-cols-2">
+        {Array.from({ length: 6 }, (_, index) => (
+          <Skeleton height={138} key={index} variant="rounded" />
+        ))}
+      </Box>
+    );
+  }
+  if (state.error) {
+    return (
+      <EmptyPlaceholder
+        actions={[
+          {
+            key: 'retry',
+            label: t('label.try-again'),
+            onClick: () => state.refetch(),
+          },
+        ]}
+        description={t('server.entity-fetch-error', {
+          entity: t('label.asset-plural'),
+        })}
+        title={t('label.error')}
+      />
+    );
+  }
+  if (state.totalAssets === 0 && !hasFilters) {
+    const actions = canEditRelationships
+      ? [
+          {
+            key: 'add-assets',
+            label: t('label.add-entity', {
+              entity: t('label.asset-plural'),
+            }),
+            onClick: onAdd,
+          },
+        ]
+      : undefined;
+
+    return (
+      <EmptyPlaceholder
+        actions={actions}
+        description={t('message.no-metric-assets')}
+        title={t('label.no-data-found')}
+      />
+    );
+  }
+  if (state.pageAssets.length === 0) {
+    return (
+      <EmptyPlaceholder
+        description={t('message.no-data-available')}
+        title={t('label.no-data-found')}
+      />
+    );
+  }
+
+  return (
+    <LoadedAssetResults
+      canEditRelationships={canEditRelationships}
+      healthByAssetId={healthByAssetId}
+      metricFqn={metricFqn}
+      observability={observability}
+      state={state}
+    />
+  );
+};
+
 const MetricAssetsTab: FC<MetricAssetsTabProps> = ({
   metric,
   permissions,
@@ -97,12 +368,6 @@ const MetricAssetsTab: FC<MetricAssetsTabProps> = ({
       ),
     [observability.observability?.assets]
   );
-  const activeRelation = state.pageAssets.find(
-    ({ asset }) => asset.id === state.activeAssetId
-  );
-  const activeDetails = activeRelation
-    ? state.detailsById.get(activeRelation.asset.id)
-    : undefined;
   const existingAssetIds = useMemo(
     () => new Set(state.assets.map(({ asset }) => asset.id)),
     [state.assets]
@@ -195,24 +460,10 @@ const MetricAssetsTab: FC<MetricAssetsTabProps> = ({
         )}
       </Box>
 
-      {state.bulkResult && (
-        <Alert
-          closable
-          data-testid="metric-assets-bulk-result"
-          title={
-            state.bulkResult.status === Status.PartialSuccess
-              ? t('label.partial-success')
-              : t('label.success')
-          }
-          variant={
-            getBulkFailureCount(state.bulkResult) > 0 ? 'warning' : 'success'
-          }
-          onClose={state.clearBulkResult}>
-          {getBulkFailureCount(state.bulkResult) > 0
-            ? `${getBulkFailureCount(state.bulkResult)} ${t('label.failed')}`
-            : undefined}
-        </Alert>
-      )}
+      <BulkResultAlert
+        result={state.bulkResult}
+        onClose={state.clearBulkResult}
+      />
       {state.unlinkError && (
         <Alert
           title={t('server.entity-removing-error', {
@@ -222,169 +473,24 @@ const MetricAssetsTab: FC<MetricAssetsTabProps> = ({
         />
       )}
 
-      {canEditRelationships && state.pageAssets.length > 0 && (
-        <Box
-          align="center"
-          className="tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2"
-          gap={3}>
-          <Checkbox
-            aria-label={t('label.select-all')}
-            isDisabled={state.isRefetching}
-            isIndeterminate={
-              state.selectedIds.size > 0 && !state.areAllPageAssetsSelected
-            }
-            isSelected={state.areAllPageAssetsSelected}
-            onChange={state.togglePage}
-          />
-          <Typography className="tw:flex-1" size="text-sm" weight="medium">
-            {state.selectedIds.size} {t('label.items-selected-lowercase')}
-          </Typography>
-          <Button
-            color="secondary-destructive"
-            data-testid="metric-assets-bulk-unlink"
-            iconLeading={Trash01}
-            isDisabled={
-              state.selectedIds.size === 0 ||
-              state.isRefetching ||
-              state.isUnlinking
-            }
-            isLoading={state.isUnlinking}
-            size="sm"
-            onPress={handleUnlink}>
-            {t('label.remove')}
-          </Button>
-        </Box>
-      )}
+      <AssetSelectionToolbar
+        canEditRelationships={canEditRelationships}
+        state={state}
+        onUnlink={handleUnlink}
+      />
 
       <Box
         className="tw:relative tw:min-h-80"
         data-testid="metric-assets-results">
-        {state.isLoading || state.isRefetching ? (
-          <Box className="tw:grid tw:grid-cols-1 tw:gap-3 tw:lg:grid-cols-2">
-            {Array.from({ length: 6 }, (_, index) => (
-              <Skeleton height={138} key={index} variant="rounded" />
-            ))}
-          </Box>
-        ) : state.error ? (
-          <EmptyPlaceholder
-            actions={[
-              {
-                key: 'retry',
-                label: t('label.try-again'),
-                onClick: () => state.refetch(),
-              },
-            ]}
-            description={t('server.entity-fetch-error', {
-              entity: t('label.asset-plural'),
-            })}
-            title={t('label.error')}
-          />
-        ) : state.totalAssets === 0 && !hasFilters ? (
-          <EmptyPlaceholder
-            actions={
-              canEditRelationships
-                ? [
-                    {
-                      key: 'add-assets',
-                      label: t('label.add-entity', {
-                        entity: t('label.asset-plural'),
-                      }),
-                      onClick: () => setIsAddDialogOpen(true),
-                    },
-                  ]
-                : undefined
-            }
-            description={t('message.no-metric-assets')}
-            title={t('label.no-data-found')}
-          />
-        ) : state.pageAssets.length === 0 ? (
-          <EmptyPlaceholder
-            description={t('message.no-data-available')}
-            title={t('label.no-data-found')}
-          />
-        ) : (
-          <MetricAssetResizableLayout
-            isSummaryOpen={Boolean(activeRelation && activeDetails)}
-            resizeLabel={t('label.resize-entity', {
-              entity: t('label.summary'),
-            })}
-            summary={
-              activeRelation && activeDetails ? (
-                <MetricAssetSummary
-                  details={activeDetails}
-                  health={healthByAssetId.get(activeRelation.asset.id)}
-                  isLoading={state.isActiveDetailsLoading}
-                  metricFqn={metricFqn}
-                  relation={activeRelation}
-                  onClose={() => state.setActiveAssetId(undefined)}
-                />
-              ) : undefined
-            }
-            summaryLabel={t('label.summary')}
-            onCloseSummary={() => state.setActiveAssetId(undefined)}>
-            <Box direction="col" gap={3}>
-              <ul
-                aria-label={t('label.asset-plural')}
-                className="tw:grid tw:list-none tw:grid-cols-1 tw:gap-3 tw:p-0 tw:lg:grid-cols-2">
-                {state.pageAssets.map((relation) => (
-                  <li key={relation.asset.id}>
-                    <MetricAssetCard
-                      details={
-                        state.detailsById.get(relation.asset.id) ?? {
-                          asset: relation.asset,
-                          columns: [],
-                          containment: [],
-                          domains: [],
-                          glossaryTerms: [],
-                          owners: [],
-                          tags: [],
-                        }
-                      }
-                      hasDetailsError={state.detailErrorIds.has(
-                        relation.asset.id
-                      )}
-                      health={healthByAssetId.get(relation.asset.id)}
-                      isActive={state.activeAssetId === relation.asset.id}
-                      isDetailsLoading={state.detailLoadingIds.has(
-                        relation.asset.id
-                      )}
-                      isHealthLoading={observability.isPending}
-                      isSelected={state.selectedIds.has(relation.asset.id)}
-                      relation={relation}
-                      showSelection={canEditRelationships}
-                      onActivate={() =>
-                        state.setActiveAssetId(relation.asset.id)
-                      }
-                      onRetryDetails={() =>
-                        state.refetchAssetDetails(relation.asset.id)
-                      }
-                      onToggle={() => state.toggleAsset(relation)}
-                    />
-                  </li>
-                ))}
-              </ul>
-              <Box align="center" justify="between">
-                <Button
-                  color="secondary"
-                  isDisabled={state.page === 1}
-                  size="sm"
-                  onPress={() => state.setPage(state.page - 1)}>
-                  {t('label.previous')}
-                </Button>
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('label.page')} {state.page} / {state.totalPages}
-                </Typography>
-                <Button
-                  color="secondary"
-                  isDisabled={state.page === state.totalPages}
-                  size="sm"
-                  onPress={() => state.setPage(state.page + 1)}>
-                  {t('label.next')}
-                </Button>
-              </Box>
-            </Box>
-          </MetricAssetResizableLayout>
-        )}
+        <MetricAssetsResults
+          canEditRelationships={canEditRelationships}
+          hasFilters={hasFilters}
+          healthByAssetId={healthByAssetId}
+          metricFqn={metricFqn}
+          observability={observability}
+          state={state}
+          onAdd={() => setIsAddDialogOpen(true)}
+        />
       </Box>
 
       <MetricAssetAddDialog

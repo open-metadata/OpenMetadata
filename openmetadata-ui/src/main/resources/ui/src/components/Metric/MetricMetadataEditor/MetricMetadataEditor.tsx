@@ -84,6 +84,363 @@ const isTierReference = (reference: EntityReference) =>
 const finiteSelectionLimit = (limit: number) =>
   Number.isFinite(limit) ? limit : undefined;
 
+const referencesOrEmpty = (references?: EntityReference[]) => references ?? [];
+
+interface MetricEditorPermissions {
+  canEditCustomProperties: boolean;
+  canEditDataProducts: boolean;
+  canEditDomains: boolean;
+  canEditGlossaryTerms: boolean;
+  canEditOwners: boolean;
+  canEditTags: boolean;
+  canEditTier: boolean;
+}
+
+const getMetricEditorPermissions = (
+  permissions: OperationPermission
+): MetricEditorPermissions => ({
+  canEditOwners: Boolean(
+    permissions.EditAll || permissions[Operation.EditOwners]
+  ),
+  canEditDomains: Boolean(permissions.EditAll),
+  canEditDataProducts: Boolean(permissions.EditAll),
+  canEditTier: Boolean(permissions.EditAll || permissions[Operation.EditTier]),
+  canEditGlossaryTerms: Boolean(
+    permissions.EditAll || permissions[Operation.EditGlossaryTerms]
+  ),
+  canEditTags: Boolean(permissions.EditAll || permissions[Operation.EditTags]),
+  canEditCustomProperties: Boolean(
+    permissions.EditAll || permissions[Operation.EditCustomFields]
+  ),
+});
+
+const parseMetricExtension = (
+  canEdit: boolean,
+  extensionJson: string,
+  currentExtension: Metric['extension'],
+  invalidMessage: string
+) => {
+  if (!canEdit) {
+    return currentExtension;
+  }
+
+  const extension = JSON.parse(extensionJson);
+  if (
+    [
+      extension === null,
+      typeof extension !== 'object',
+      Array.isArray(extension),
+    ].some(Boolean)
+  ) {
+    throw new Error(invalidMessage);
+  }
+
+  return extension;
+};
+
+interface MetricEditorValues {
+  classificationTags: EntityReference[];
+  dataProducts: EntityReference[];
+  domains: EntityReference[];
+  experts: EntityReference[];
+  extension: Metric['extension'];
+  glossaryTerms: EntityReference[];
+  owners: EntityReference[];
+  reviewers: EntityReference[];
+  tier: EntityReference[];
+}
+
+const buildMetricUpdate = (
+  metric: Metric,
+  editorPermissions: MetricEditorPermissions,
+  values: MetricEditorValues,
+  initialValues: Pick<
+    MetricEditorValues,
+    'classificationTags' | 'glossaryTerms' | 'tier'
+  >,
+  existingTags: TagLabel[]
+): Metric => ({
+  ...metric,
+  dataProducts: editorPermissions.canEditDataProducts
+    ? values.dataProducts
+    : metric.dataProducts,
+  domains: editorPermissions.canEditDomains ? values.domains : metric.domains,
+  experts: editorPermissions.canEditOwners ? values.experts : metric.experts,
+  extension: values.extension,
+  owners: editorPermissions.canEditOwners ? values.owners : metric.owners,
+  reviewers: editorPermissions.canEditOwners
+    ? values.reviewers
+    : metric.reviewers,
+  tags: [
+    ...referencesToTags(
+      editorPermissions.canEditTier ? values.tier : initialValues.tier,
+      TagSource.Classification,
+      existingTags
+    ),
+    ...referencesToTags(
+      editorPermissions.canEditGlossaryTerms
+        ? values.glossaryTerms
+        : initialValues.glossaryTerms,
+      TagSource.Glossary,
+      existingTags
+    ),
+    ...referencesToTags(
+      editorPermissions.canEditTags
+        ? values.classificationTags
+        : initialValues.classificationTags,
+      TagSource.Classification,
+      existingTags
+    ),
+  ],
+});
+
+interface OwnerPickersProps {
+  areEntityRulesLoading: boolean;
+  canEdit: boolean;
+  experts: EntityReference[];
+  isSaving: boolean;
+  owners: EntityReference[];
+  reviewers: EntityReference[];
+  selectionResolver: (
+    currentOwners: EntityReference[],
+    reference: EntityReference,
+    isSelected: boolean
+  ) => EntityReference[];
+  onExpertsChange: (experts: EntityReference[]) => void;
+  onOwnersChange: (owners: EntityReference[]) => void;
+  onReviewersChange: (reviewers: EntityReference[]) => void;
+}
+
+const OwnerPickers = ({
+  areEntityRulesLoading,
+  canEdit,
+  experts,
+  isSaving,
+  owners,
+  reviewers,
+  selectionResolver,
+  onExpertsChange,
+  onOwnersChange,
+  onReviewersChange,
+}: OwnerPickersProps) => {
+  const { t } = useTranslation();
+
+  if (!canEdit) {
+    return null;
+  }
+
+  return (
+    <>
+      <MetricReferencePicker
+        isDisabled={isSaving || areEntityRulesLoading}
+        label={t('label.owner-plural')}
+        searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
+        selected={owners}
+        selectionResolver={selectionResolver}
+        onChange={onOwnersChange}
+      />
+      <MetricReferencePicker
+        isDisabled={isSaving}
+        label={t('label.expert-plural')}
+        searchIndexes={[SearchIndex.USER]}
+        selected={experts}
+        onChange={onExpertsChange}
+      />
+      <MetricReferencePicker
+        isDisabled={isSaving}
+        label={t('label.reviewer-plural')}
+        searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
+        selected={reviewers}
+        onChange={onReviewersChange}
+      />
+    </>
+  );
+};
+
+interface DomainPickersProps {
+  areEntityRulesLoading: boolean;
+  canEditDataProducts: boolean;
+  canEditDomains: boolean;
+  dataProductDomainFqns: string[];
+  dataProductQueryFilter?: Record<string, unknown>;
+  dataProducts: EntityReference[];
+  domains: EntityReference[];
+  isDataProductPickerDisabled: boolean;
+  isSaving: boolean;
+  maxDataProducts: number;
+  maxDomains: number;
+  requireDomainForDataProduct: boolean;
+  onDataProductsChange: (dataProducts: EntityReference[]) => void;
+  onDomainsChange: (domains: EntityReference[]) => void;
+}
+
+const DomainPickers = ({
+  areEntityRulesLoading,
+  canEditDataProducts,
+  canEditDomains,
+  dataProductDomainFqns,
+  dataProductQueryFilter,
+  dataProducts,
+  domains,
+  isDataProductPickerDisabled,
+  isSaving,
+  maxDataProducts,
+  maxDomains,
+  requireDomainForDataProduct,
+  onDataProductsChange,
+  onDomainsChange,
+}: DomainPickersProps) => {
+  const { t } = useTranslation();
+  const showDomainRequirement =
+    requireDomainForDataProduct && dataProductDomainFqns.length === 0;
+
+  return (
+    <>
+      {canEditDomains && (
+        <MetricReferencePicker
+          isDisabled={isSaving || areEntityRulesLoading}
+          label={t('label.domain-plural')}
+          maxSelections={finiteSelectionLimit(maxDomains)}
+          searchIndexes={[SearchIndex.DOMAIN]}
+          selected={domains}
+          onChange={onDomainsChange}
+        />
+      )}
+      {canEditDataProducts && (
+        <>
+          {showDomainRequirement && (
+            <Alert
+              title={t('message.select-domain-to-add-data-product')}
+              variant="warning"
+            />
+          )}
+          <MetricReferencePicker
+            isDisabled={isDataProductPickerDisabled}
+            label={t('label.data-product-plural')}
+            maxSelections={finiteSelectionLimit(maxDataProducts)}
+            queryFilter={dataProductQueryFilter}
+            searchIndexes={[SearchIndex.DATA_PRODUCT]}
+            selected={dataProducts}
+            onChange={onDataProductsChange}
+          />
+        </>
+      )}
+    </>
+  );
+};
+
+interface TaxonomyPickersProps {
+  areEntityRulesLoading: boolean;
+  canAddMultipleGlossaryTerm: boolean;
+  canEditGlossaryTerms: boolean;
+  canEditTags: boolean;
+  canEditTier: boolean;
+  classificationTags: EntityReference[];
+  glossaryTerms: EntityReference[];
+  isSaving: boolean;
+  tier: EntityReference[];
+  onClassificationTagsChange: (tags: EntityReference[]) => void;
+  onGlossaryTermsChange: (terms: EntityReference[]) => void;
+  onTierChange: (tier: EntityReference[]) => void;
+}
+
+const TaxonomyPickers = ({
+  areEntityRulesLoading,
+  canAddMultipleGlossaryTerm,
+  canEditGlossaryTerms,
+  canEditTags,
+  canEditTier,
+  classificationTags,
+  glossaryTerms,
+  isSaving,
+  tier,
+  onClassificationTagsChange,
+  onGlossaryTermsChange,
+  onTierChange,
+}: TaxonomyPickersProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {canEditTier && (
+        <MetricReferencePicker
+          identityField="fullyQualifiedName"
+          initialSearch="Tier"
+          isDisabled={isSaving}
+          label={t('label.tier')}
+          maxSelections={1}
+          optionFilter={isTierReference}
+          searchIndexes={[SearchIndex.TAG]}
+          selected={tier}
+          onChange={onTierChange}
+        />
+      )}
+      {canEditGlossaryTerms && (
+        <MetricReferencePicker
+          identityField="fullyQualifiedName"
+          isDisabled={isSaving || areEntityRulesLoading}
+          label={t('label.glossary-term-plural')}
+          maxSelections={canAddMultipleGlossaryTerm ? undefined : 1}
+          searchIndexes={[SearchIndex.GLOSSARY_TERM]}
+          selected={glossaryTerms}
+          onChange={onGlossaryTermsChange}
+        />
+      )}
+      {canEditTags && (
+        <MetricReferencePicker
+          identityField="fullyQualifiedName"
+          isDisabled={isSaving}
+          label={t('label.tag-plural')}
+          optionFilter={(reference) => !isTierReference(reference)}
+          searchIndexes={[SearchIndex.TAG]}
+          selected={classificationTags}
+          onChange={onClassificationTagsChange}
+        />
+      )}
+    </>
+  );
+};
+
+interface CustomPropertiesEditorProps {
+  canEdit: boolean;
+  extensionError?: string;
+  extensionJson: string;
+  isSaving: boolean;
+  onChange: (value: string) => void;
+}
+
+const CustomPropertiesEditor = ({
+  canEdit,
+  extensionError,
+  extensionJson,
+  isSaving,
+  onChange,
+}: CustomPropertiesEditorProps) => {
+  const { t } = useTranslation();
+
+  if (!canEdit) {
+    return null;
+  }
+
+  return (
+    <Box direction="col" gap={2}>
+      <Typography size="text-sm" weight="medium">
+        {t('label.custom-property-plural')}
+      </Typography>
+      <TextArea
+        aria-label={t('label.custom-property-plural')}
+        data-testid="metric-extension-json"
+        hint={extensionError}
+        isDisabled={isSaving}
+        isInvalid={Boolean(extensionError)}
+        rows={10}
+        value={extensionJson}
+        onChange={onChange}
+      />
+    </Box>
+  );
+};
+
 const MetricMetadataEditor = ({
   metric,
   onUpdate,
@@ -94,32 +451,18 @@ const MetricMetadataEditor = ({
     EntityType.METRIC
   );
   const existingTags = useMemo(() => metric.tags ?? [], [metric.tags]);
-  const canEditOwners = Boolean(
-    permissions.EditAll || permissions[Operation.EditOwners]
-  );
-  const canEditDomains = Boolean(permissions.EditAll);
-  const canEditDataProducts = Boolean(permissions.EditAll);
-  const canEditTier = Boolean(
-    permissions.EditAll || permissions[Operation.EditTier]
-  );
-  const canEditGlossaryTerms = Boolean(
-    permissions.EditAll || permissions[Operation.EditGlossaryTerms]
-  );
-  const canEditTags = Boolean(
-    permissions.EditAll || permissions[Operation.EditTags]
-  );
-  const canEditCustomProperties = Boolean(
-    permissions.EditAll || permissions[Operation.EditCustomFields]
-  );
+  const editorPermissions = getMetricEditorPermissions(permissions);
+  const {
+    canEditCustomProperties,
+    canEditDataProducts,
+    canEditDomains,
+    canEditGlossaryTerms,
+    canEditOwners,
+    canEditTags,
+    canEditTier,
+  } = editorPermissions;
   const canEdit =
-    !metric.deleted &&
-    (canEditOwners ||
-      canEditDomains ||
-      canEditDataProducts ||
-      canEditTier ||
-      canEditGlossaryTerms ||
-      canEditTags ||
-      canEditCustomProperties);
+    !metric.deleted && Object.values(editorPermissions).some(Boolean);
   const initialTier = useMemo(
     () =>
       existingTags
@@ -148,11 +491,15 @@ const MetricMetadataEditor = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [extensionError, setExtensionError] = useState<string>();
-  const [owners, setOwners] = useState(metric.owners ?? []);
-  const [experts, setExperts] = useState(metric.experts ?? []);
-  const [reviewers, setReviewers] = useState(metric.reviewers ?? []);
-  const [domains, setDomains] = useState(metric.domains ?? []);
-  const [dataProducts, setDataProducts] = useState(metric.dataProducts ?? []);
+  const [owners, setOwners] = useState(referencesOrEmpty(metric.owners));
+  const [experts, setExperts] = useState(referencesOrEmpty(metric.experts));
+  const [reviewers, setReviewers] = useState(
+    referencesOrEmpty(metric.reviewers)
+  );
+  const [domains, setDomains] = useState(referencesOrEmpty(metric.domains));
+  const [dataProducts, setDataProducts] = useState(
+    referencesOrEmpty(metric.dataProducts)
+  );
   const [tier, setTier] = useState(initialTier);
   const [glossaryTerms, setGlossaryTerms] = useState(initialGlossaryTerms);
   const [classificationTags, setClassificationTags] = useState(
@@ -264,57 +611,50 @@ const MetricMetadataEditor = ({
       dataProductDomainFqns.length === 0);
 
   const handleSave = async () => {
-    let extension = metric.extension;
-    if (canEditCustomProperties) {
-      try {
-        extension = JSON.parse(extensionJson);
-        if (
-          extension === null ||
-          typeof extension !== 'object' ||
-          Array.isArray(extension)
-        ) {
-          throw new Error(t('label.invalid'));
-        }
-      } catch (error) {
-        setExtensionError(
-          t('message.manifest-invalid-json', {
-            error: error instanceof Error ? error.message : String(error),
-          })
-        );
+    let extension: Metric['extension'];
+    try {
+      extension = parseMetricExtension(
+        canEditCustomProperties,
+        extensionJson,
+        metric.extension,
+        t('label.invalid')
+      );
+    } catch (error) {
+      setExtensionError(
+        t('message.manifest-invalid-json', {
+          error: error instanceof Error ? error.message : String(error),
+        })
+      );
 
-        return;
-      }
+      return;
     }
 
     setIsSaving(true);
     setSaveError(false);
     try {
-      await onUpdate({
-        ...metric,
-        dataProducts: canEditDataProducts ? dataProducts : metric.dataProducts,
-        domains: canEditDomains ? domains : metric.domains,
-        experts: canEditOwners ? experts : metric.experts,
-        extension,
-        owners: canEditOwners ? owners : metric.owners,
-        reviewers: canEditOwners ? reviewers : metric.reviewers,
-        tags: [
-          ...referencesToTags(
-            canEditTier ? tier : initialTier,
-            TagSource.Classification,
-            existingTags
-          ),
-          ...referencesToTags(
-            canEditGlossaryTerms ? glossaryTerms : initialGlossaryTerms,
-            TagSource.Glossary,
-            existingTags
-          ),
-          ...referencesToTags(
-            canEditTags ? classificationTags : initialClassificationTags,
-            TagSource.Classification,
-            existingTags
-          ),
-        ],
-      });
+      await onUpdate(
+        buildMetricUpdate(
+          metric,
+          editorPermissions,
+          {
+            classificationTags,
+            dataProducts,
+            domains,
+            experts,
+            extension,
+            glossaryTerms,
+            owners,
+            reviewers,
+            tier,
+          },
+          {
+            classificationTags: initialClassificationTags,
+            glossaryTerms: initialGlossaryTerms,
+            tier: initialTier,
+          },
+          existingTags
+        )
+      );
       setIsOpen(false);
     } catch {
       setSaveError(true);
@@ -359,125 +699,62 @@ const MetricMetadataEditor = ({
                       variant="error"
                     />
                   )}
-                  {canEditOwners && (
-                    <>
-                      <MetricReferencePicker
-                        isDisabled={isSaving || areEntityRulesLoading}
-                        label={t('label.owner-plural')}
-                        searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
-                        selected={owners}
-                        selectionResolver={ownerSelectionResolver}
-                        onChange={setOwners}
-                      />
-                      <MetricReferencePicker
-                        isDisabled={isSaving}
-                        label={t('label.expert-plural')}
-                        searchIndexes={[SearchIndex.USER]}
-                        selected={experts}
-                        onChange={setExperts}
-                      />
-                      <MetricReferencePicker
-                        isDisabled={isSaving}
-                        label={t('label.reviewer-plural')}
-                        searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
-                        selected={reviewers}
-                        onChange={setReviewers}
-                      />
-                    </>
-                  )}
-                  {canEditDomains && (
-                    <MetricReferencePicker
-                      isDisabled={isSaving || areEntityRulesLoading}
-                      label={t('label.domain-plural')}
-                      maxSelections={finiteSelectionLimit(
-                        entityRules.maxDomains
-                      )}
-                      searchIndexes={[SearchIndex.DOMAIN]}
-                      selected={domains}
-                      onChange={handleDomainsChange}
-                    />
-                  )}
-                  {canEditDataProducts && (
-                    <>
-                      {entityRules.requireDomainForDataProduct &&
-                        dataProductDomainFqns.length === 0 && (
-                          <Alert
-                            title={t(
-                              'message.select-domain-to-add-data-product'
-                            )}
-                            variant="warning"
-                          />
-                        )}
-                      <MetricReferencePicker
-                        isDisabled={isDataProductPickerDisabled}
-                        label={t('label.data-product-plural')}
-                        maxSelections={finiteSelectionLimit(
-                          entityRules.maxDataProducts
-                        )}
-                        queryFilter={dataProductQueryFilter}
-                        searchIndexes={[SearchIndex.DATA_PRODUCT]}
-                        selected={dataProducts}
-                        onChange={setDataProducts}
-                      />
-                    </>
-                  )}
-                  {canEditTier && (
-                    <MetricReferencePicker
-                      identityField="fullyQualifiedName"
-                      initialSearch="Tier"
-                      isDisabled={isSaving}
-                      label={t('label.tier')}
-                      maxSelections={1}
-                      optionFilter={isTierReference}
-                      searchIndexes={[SearchIndex.TAG]}
-                      selected={tier}
-                      onChange={setTier}
-                    />
-                  )}
-                  {canEditGlossaryTerms && (
-                    <MetricReferencePicker
-                      identityField="fullyQualifiedName"
-                      isDisabled={isSaving || areEntityRulesLoading}
-                      label={t('label.glossary-term-plural')}
-                      maxSelections={
-                        entityRules.canAddMultipleGlossaryTerm ? undefined : 1
-                      }
-                      searchIndexes={[SearchIndex.GLOSSARY_TERM]}
-                      selected={glossaryTerms}
-                      onChange={setGlossaryTerms}
-                    />
-                  )}
-                  {canEditTags && (
-                    <MetricReferencePicker
-                      identityField="fullyQualifiedName"
-                      isDisabled={isSaving}
-                      label={t('label.tag-plural')}
-                      optionFilter={(reference) => !isTierReference(reference)}
-                      searchIndexes={[SearchIndex.TAG]}
-                      selected={classificationTags}
-                      onChange={setClassificationTags}
-                    />
-                  )}
-                  {canEditCustomProperties && (
-                    <Box direction="col" gap={2}>
-                      <Typography size="text-sm" weight="medium">
-                        {t('label.custom-property-plural')}
-                      </Typography>
-                      <TextArea
-                        aria-label={t('label.custom-property-plural')}
-                        data-testid="metric-extension-json"
-                        hint={extensionError}
-                        isDisabled={isSaving}
-                        isInvalid={Boolean(extensionError)}
-                        rows={10}
-                        value={extensionJson}
-                        onChange={(value) => {
-                          setExtensionJson(value);
-                          setExtensionError(undefined);
-                        }}
-                      />
-                    </Box>
-                  )}
+                  <OwnerPickers
+                    areEntityRulesLoading={areEntityRulesLoading}
+                    canEdit={canEditOwners}
+                    experts={experts}
+                    isSaving={isSaving}
+                    owners={owners}
+                    reviewers={reviewers}
+                    selectionResolver={ownerSelectionResolver}
+                    onExpertsChange={setExperts}
+                    onOwnersChange={setOwners}
+                    onReviewersChange={setReviewers}
+                  />
+                  <DomainPickers
+                    areEntityRulesLoading={areEntityRulesLoading}
+                    canEditDataProducts={canEditDataProducts}
+                    canEditDomains={canEditDomains}
+                    dataProductDomainFqns={dataProductDomainFqns}
+                    dataProductQueryFilter={dataProductQueryFilter}
+                    dataProducts={dataProducts}
+                    domains={domains}
+                    isDataProductPickerDisabled={isDataProductPickerDisabled}
+                    isSaving={isSaving}
+                    maxDataProducts={entityRules.maxDataProducts}
+                    maxDomains={entityRules.maxDomains}
+                    requireDomainForDataProduct={
+                      entityRules.requireDomainForDataProduct
+                    }
+                    onDataProductsChange={setDataProducts}
+                    onDomainsChange={handleDomainsChange}
+                  />
+                  <TaxonomyPickers
+                    areEntityRulesLoading={areEntityRulesLoading}
+                    canAddMultipleGlossaryTerm={
+                      entityRules.canAddMultipleGlossaryTerm
+                    }
+                    canEditGlossaryTerms={canEditGlossaryTerms}
+                    canEditTags={canEditTags}
+                    canEditTier={canEditTier}
+                    classificationTags={classificationTags}
+                    glossaryTerms={glossaryTerms}
+                    isSaving={isSaving}
+                    tier={tier}
+                    onClassificationTagsChange={setClassificationTags}
+                    onGlossaryTermsChange={setGlossaryTerms}
+                    onTierChange={setTier}
+                  />
+                  <CustomPropertiesEditor
+                    canEdit={canEditCustomProperties}
+                    extensionError={extensionError}
+                    extensionJson={extensionJson}
+                    isSaving={isSaving}
+                    onChange={(value) => {
+                      setExtensionJson(value);
+                      setExtensionError(undefined);
+                    }}
+                  />
                 </Box>
               </Dialog.Content>
               <Dialog.Footer>

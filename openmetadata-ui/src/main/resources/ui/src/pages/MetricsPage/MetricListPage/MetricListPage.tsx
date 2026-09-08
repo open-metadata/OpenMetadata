@@ -217,6 +217,12 @@ const getDepthClassName = (depth: number) => {
   return '';
 };
 
+const updateMetricSelection = (
+  ids: string[],
+  metricId: string,
+  isSelected: boolean
+) => (isSelected ? [...ids, metricId] : ids.filter((id) => id !== metricId));
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -254,7 +260,9 @@ const MetricListPage = () => {
     queryFn: () => getResourcePermission(ResourceEntity.METRIC),
   });
 
-  const hasViewPermission = permission.ViewAll || permission.ViewBasic;
+  const hasViewPermission = [permission.ViewAll, permission.ViewBasic].some(
+    Boolean
+  );
   const isTreeMode = !statusFilter;
 
   const {
@@ -284,7 +292,7 @@ const MetricListPage = () => {
           ? getTermQuery({ entityStatus: statusFilter })
           : undefined,
       }),
-    enabled: hasViewPermission && !isTreeMode,
+    enabled: [hasViewPermission, !isTreeMode].every(Boolean),
     placeholderData: keepPreviousData,
   });
 
@@ -308,7 +316,7 @@ const MetricListPage = () => {
     collapseAll,
     reset: resetHierarchy,
   } = useMetricHierarchy({
-    enabled: hasViewPermission && isTreeMode,
+    enabled: [hasViewPermission, isTreeMode].every(Boolean),
     page,
     pageSize: METRIC_PAGE_SIZE,
     query: debouncedSearch,
@@ -787,6 +795,100 @@ const MetricListPage = () => {
 
   const fullWidthTableColumnCount = 2 + visibleColumns.length;
 
+  const renderPrimaryTableCells = (metric: MetricTreeNode) => (
+    <>
+      {visibleColumns.includes('description') && (
+        <Table.Cell>{metric.description ?? t('label.empty-dash')}</Table.Cell>
+      )}
+      {visibleColumns.includes('glossary') && (
+        <Table.Cell>
+          {renderTagBadges(getGlossaryTerms(metric.tags))}
+        </Table.Cell>
+      )}
+      {visibleColumns.includes('entityStatus') && (
+        <Table.Cell>
+          <MetricStatusPill status={metric.entityStatus} />
+        </Table.Cell>
+      )}
+      {visibleColumns.includes('health') && (
+        <Table.Cell>
+          <MetricListHealth metricId={metric.id} />
+        </Table.Cell>
+      )}
+    </>
+  );
+
+  const renderSecondaryTableCells = (metric: MetricTreeNode) => (
+    <>
+      {visibleColumns.includes('owners') && (
+        <Table.Cell>{renderOwners(metric.owners)}</Table.Cell>
+      )}
+      {visibleColumns.includes('tags') && (
+        <Table.Cell>{renderTagBadges(getTags(metric.tags))}</Table.Cell>
+      )}
+      {visibleColumns.includes('domains') && (
+        <Table.Cell>
+          {renderTagBadges(
+            (metric.domains ?? []).map((domain) => ({
+              tagFQN: domain.fullyQualifiedName ?? domain.id,
+              name:
+                domain.displayName ?? domain.name ?? domain.fullyQualifiedName,
+              source: TagSource.Classification,
+            }))
+          )}
+        </Table.Cell>
+      )}
+      {visibleColumns.includes('updatedAt') && (
+        <Table.Cell>
+          {metric.updatedAt
+            ? getShortRelativeTime(metric.updatedAt)
+            : t('label.empty-dash')}
+        </Table.Cell>
+      )}
+    </>
+  );
+
+  const renderTableRow = ({ row, depth }: (typeof visibleRows)[number]) => {
+    if (isGroupRow(row)) {
+      return (
+        <Table.Row
+          hideSelectionCell
+          className="tw:h-auto tw:bg-secondary tw:hover:bg-secondary"
+          data-testid={`metric-group-row-${row.group.id}`}
+          id={row.id}
+          key={row.id}>
+          <Table.Cell className="tw:p-0" colSpan={fullWidthTableColumnCount}>
+            {renderGroupName(row)}
+          </Table.Cell>
+        </Table.Row>
+      );
+    }
+
+    if (isLoadMoreRow(row)) {
+      return (
+        <Table.Row
+          hideSelectionCell
+          className="tw:h-auto"
+          id={row.id}
+          key={row.id}>
+          <Table.Cell colSpan={fullWidthTableColumnCount}>
+            <Box className="tw:py-1" justify="center">
+              {renderLoadMore(row, depth)}
+            </Box>
+          </Table.Cell>
+        </Table.Row>
+      );
+    }
+
+    return (
+      <Table.Row className="tw:cursor-pointer" id={row.id} key={row.id}>
+        <Table.Cell>{renderMetricName(row, depth)}</Table.Cell>
+        {renderPrimaryTableCells(row)}
+        {renderSecondaryTableCells(row)}
+      </Table.Row>
+    );
+  };
+
   const renderTable = () => (
     <Table
       aria-label={t('label.metric-plural')}
@@ -838,185 +940,98 @@ const MetricListPage = () => {
           <Table.Head label={t('label.last-updated')} />
         )}
       </Table.Header>
-      <Table.Body>
-        {visibleRows.map(({ row, depth }) => {
-          if (isGroupRow(row)) {
-            return (
-              <Table.Row
-                hideSelectionCell
-                className="tw:h-auto tw:bg-secondary tw:hover:bg-secondary"
-                data-testid={`metric-group-row-${row.group.id}`}
-                id={row.id}
-                key={row.id}>
-                <Table.Cell
-                  className="tw:p-0"
-                  colSpan={fullWidthTableColumnCount}>
-                  {renderGroupName(row)}
-                </Table.Cell>
-              </Table.Row>
-            );
-          }
-
-          if (isLoadMoreRow(row)) {
-            return (
-              <Table.Row
-                hideSelectionCell
-                className="tw:h-auto"
-                id={row.id}
-                key={row.id}>
-                <Table.Cell colSpan={fullWidthTableColumnCount}>
-                  <Box className="tw:py-1" justify="center">
-                    {renderLoadMore(row, depth)}
-                  </Box>
-                </Table.Cell>
-              </Table.Row>
-            );
-          }
-
-          const metric = row;
-
-          return (
-            <Table.Row className="tw:cursor-pointer" id={row.id} key={row.id}>
-              <Table.Cell>{renderMetricName(metric, depth)}</Table.Cell>
-              {visibleColumns.includes('description') && (
-                <Table.Cell>
-                  {metric.description ?? t('label.empty-dash')}
-                </Table.Cell>
-              )}
-              {visibleColumns.includes('glossary') && (
-                <Table.Cell>
-                  {renderTagBadges(getGlossaryTerms(metric.tags))}
-                </Table.Cell>
-              )}
-              {visibleColumns.includes('entityStatus') && (
-                <Table.Cell>
-                  <MetricStatusPill status={metric.entityStatus} />
-                </Table.Cell>
-              )}
-              {visibleColumns.includes('health') && (
-                <Table.Cell>
-                  <MetricListHealth metricId={metric.id} />
-                </Table.Cell>
-              )}
-              {visibleColumns.includes('owners') && (
-                <Table.Cell>{renderOwners(metric.owners)}</Table.Cell>
-              )}
-              {visibleColumns.includes('tags') && (
-                <Table.Cell>{renderTagBadges(getTags(metric.tags))}</Table.Cell>
-              )}
-              {visibleColumns.includes('domains') && (
-                <Table.Cell>
-                  {renderTagBadges(
-                    (metric.domains ?? []).map((domain) => ({
-                      tagFQN: domain.fullyQualifiedName ?? domain.id,
-                      name:
-                        domain.displayName ??
-                        domain.name ??
-                        domain.fullyQualifiedName,
-                      source: TagSource.Classification,
-                    }))
-                  )}
-                </Table.Cell>
-              )}
-              {visibleColumns.includes('updatedAt') && (
-                <Table.Cell>
-                  {metric.updatedAt
-                    ? getShortRelativeTime(metric.updatedAt)
-                    : t('label.empty-dash')}
-                </Table.Cell>
-              )}
-            </Table.Row>
-          );
-        })}
-      </Table.Body>
+      <Table.Body>{visibleRows.map(renderTableRow)}</Table.Body>
     </Table>
   );
+
+  const renderMetricCardMetadata = (metric: MetricTreeNode) => (
+    <>
+      {visibleColumns.includes('description') && (
+        <Typography className="tw:text-secondary" size="text-sm">
+          {metric.description ?? t('label.empty-dash')}
+        </Typography>
+      )}
+      <Box className="tw:flex-wrap" gap={3}>
+        {visibleColumns.includes('entityStatus') && (
+          <MetricStatusPill status={metric.entityStatus} />
+        )}
+        {visibleColumns.includes('health') && (
+          <MetricListHealth metricId={metric.id} />
+        )}
+        {visibleColumns.includes('owners') && renderOwners(metric.owners)}
+      </Box>
+      {visibleColumns.includes('glossary') &&
+        renderTagBadges(getGlossaryTerms(metric.tags))}
+      {visibleColumns.includes('tags') && renderTagBadges(getTags(metric.tags))}
+      {visibleColumns.includes('updatedAt') && (
+        <span className="tw:text-xs tw:text-tertiary">
+          {metric.updatedAt
+            ? getShortRelativeTime(metric.updatedAt)
+            : t('label.empty-dash')}
+        </span>
+      )}
+    </>
+  );
+
+  const renderMetricCard = (metric: MetricTreeNode, depth: number) => (
+    <Card
+      className={depth > 0 ? 'tw:border-l-4 tw:border-l-brand' : ''}
+      data-metric-fqn={metric.fullyQualifiedName}
+      data-testid={`metric-card-${metric.id}`}
+      isSelected={selectedMetricIds.includes(metric.id)}
+      key={metric.id}
+      size="sm">
+      <Card.Content>
+        <Box direction="col" gap={4}>
+          <Box align="start" gap={3} justify="between">
+            <Box className="tw:min-w-0" gap={2}>
+              <Checkbox
+                aria-label={`${t('label.select')} ${getEntityName(metric)}`}
+                isSelected={selectedMetricIds.includes(metric.id)}
+                onChange={(isSelected) =>
+                  setSelectedMetricIds((ids) =>
+                    updateMetricSelection(ids, metric.id, isSelected)
+                  )
+                }
+              />
+              {renderMetricName(metric, depth)}
+            </Box>
+          </Box>
+          {renderMetricCardMetadata(metric)}
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+
+  const renderCardRow = ({ row, depth }: (typeof visibleRows)[number]) => {
+    if (isGroupRow(row)) {
+      return (
+        <Card
+          className="tw:lg:col-span-2"
+          data-testid={`metric-group-card-${row.group.name}`}
+          key={row.id}
+          size="sm">
+          <Card.Content>{renderGroupName(row)}</Card.Content>
+        </Card>
+      );
+    }
+
+    if (isLoadMoreRow(row)) {
+      return (
+        <Box className="tw:lg:col-span-2 tw:py-2" justify="center" key={row.id}>
+          {renderLoadMore(row, depth)}
+        </Box>
+      );
+    }
+
+    return renderMetricCard(row, depth);
+  };
 
   const renderCards = () => (
     <Box
       className="tw:grid tw:grid-cols-1 tw:gap-3 tw:p-4 tw:lg:grid-cols-2"
       data-testid="metric-card-view">
-      {visibleRows.map(({ row, depth }) => {
-        if (isGroupRow(row)) {
-          return (
-            <Card
-              className="tw:lg:col-span-2"
-              data-testid={`metric-group-card-${row.group.name}`}
-              key={row.id}
-              size="sm">
-              <Card.Content>{renderGroupName(row)}</Card.Content>
-            </Card>
-          );
-        }
-
-        if (isLoadMoreRow(row)) {
-          return (
-            <Box
-              className="tw:lg:col-span-2 tw:py-2"
-              justify="center"
-              key={row.id}>
-              {renderLoadMore(row, depth)}
-            </Box>
-          );
-        }
-
-        return (
-          <Card
-            className={depth > 0 ? 'tw:border-l-4 tw:border-l-brand' : ''}
-            data-metric-fqn={row.fullyQualifiedName}
-            data-testid={`metric-card-${row.id}`}
-            isSelected={selectedMetricIds.includes(row.id)}
-            key={row.id}
-            size="sm">
-            <Card.Content>
-              <Box direction="col" gap={4}>
-                <Box align="start" gap={3} justify="between">
-                  <Box className="tw:min-w-0" gap={2}>
-                    <Checkbox
-                      aria-label={`${t('label.select')} ${getEntityName(row)}`}
-                      isSelected={selectedMetricIds.includes(row.id)}
-                      onChange={(isSelected) =>
-                        setSelectedMetricIds((ids) =>
-                          isSelected
-                            ? [...ids, row.id]
-                            : ids.filter((id) => id !== row.id)
-                        )
-                      }
-                    />
-                    {renderMetricName(row, depth)}
-                  </Box>
-                </Box>
-                {visibleColumns.includes('description') && (
-                  <Typography className="tw:text-secondary" size="text-sm">
-                    {row.description ?? t('label.empty-dash')}
-                  </Typography>
-                )}
-                <Box className="tw:flex-wrap" gap={3}>
-                  {visibleColumns.includes('entityStatus') && (
-                    <MetricStatusPill status={row.entityStatus} />
-                  )}
-                  {visibleColumns.includes('health') && (
-                    <MetricListHealth metricId={row.id} />
-                  )}
-                  {visibleColumns.includes('owners') &&
-                    renderOwners(row.owners)}
-                </Box>
-                {visibleColumns.includes('glossary') &&
-                  renderTagBadges(getGlossaryTerms(row.tags))}
-                {visibleColumns.includes('tags') &&
-                  renderTagBadges(getTags(row.tags))}
-                {visibleColumns.includes('updatedAt') && (
-                  <span className="tw:text-xs tw:text-tertiary">
-                    {row.updatedAt
-                      ? getShortRelativeTime(row.updatedAt)
-                      : t('label.empty-dash')}
-                  </span>
-                )}
-              </Box>
-            </Card.Content>
-          </Card>
-        );
-      })}
+      {visibleRows.map(renderCardRow)}
     </Box>
   );
 
@@ -1141,7 +1156,7 @@ const MetricListPage = () => {
     </Box>
   );
 
-  const metricActions = (
+  const renderMetricActions = () => (
     <Box align="center" gap={2}>
       {permission.Create && (
         <LimitWrapper resource="metric">
@@ -1189,6 +1204,270 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const renderSelectionOrSearch = () => {
+    if (selectedMetricIds.length === 0) {
+      return (
+        <Input
+          className="tw:w-full tw:sm:max-w-84"
+          data-testid="metric-search"
+          icon={SearchLg}
+          placeholder={t('label.search-entity', {
+            entity: t('label.metric-plural'),
+          })}
+          value={searchText}
+          wrapperClassName="tw:w-full tw:sm:max-w-84"
+          onChange={handleSearchTextChange}
+        />
+      );
+    }
+
+    return (
+      <Box align="center" className="tw:w-full tw:flex-wrap" gap={3}>
+        <Badge color="brand" size="sm">
+          {selectedMetricIds.length} {t('label.selected-lowercase')}
+        </Badge>
+        <Button
+          color="link-gray"
+          data-testid="clear-metric-selection"
+          iconLeading={XClose}
+          onPress={() => setSelectedMetricIds([])}>
+          {t('label.clear')}
+        </Button>
+        {permission.EditAll && (
+          <Button
+            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
+            color="link-color"
+            data-testid="bulk-edit-metric"
+            iconLeading={Edit03}
+            onPress={handleBulkEdit}>
+            {t('label.bulk-edit-count', {
+              count: selectedMetricIds.length,
+            })}
+          </Button>
+        )}
+        {permission.Delete && (
+          <Button
+            color="link-destructive"
+            data-testid="bulk-delete-metric"
+            iconLeading={Trash01}
+            onPress={() => setIsDeleteDialogOpen(true)}>
+            {t('label.delete')}
+          </Button>
+        )}
+      </Box>
+    );
+  };
+
+  const renderUnselectedFilters = () => {
+    if (selectedMetricIds.length > 0) {
+      return null;
+    }
+
+    const statusLabel = statusFilter
+      ? getStatusLabel(statusFilter)
+      : t('label.status');
+    const expandAction = areAllGroupsExpanded ? collapseAll : expandAll;
+    const expandLabel = areAllGroupsExpanded
+      ? t('label.collapse-all')
+      : t('label.expand-all');
+
+    return (
+      <>
+        <Dropdown.Root>
+          <Button color="link-color" iconTrailing={ChevronDown}>
+            {statusLabel}
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              selectedKeys={new Set([statusFilter ?? 'all'])}
+              onAction={(key) =>
+                handleStatusFilterChange(
+                  key === 'all' ? undefined : (key as EntityStatus)
+                )
+              }>
+              <Dropdown.Item id="all" label={t('label.all')} />
+              {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
+                <Dropdown.Item
+                  id={status}
+                  key={status}
+                  label={getStatusLabel(status)}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+        {permission.EditAll && (
+          <Button
+            className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
+            color="link-color"
+            data-testid="bulk-edit-metric"
+            iconLeading={Edit03}
+            onPress={handleBulkEdit}>
+            {t('label.bulk-edit-all')}
+          </Button>
+        )}
+        <span
+          aria-hidden="true"
+          className="tw:h-5 tw:w-px tw:bg-border-secondary"
+        />
+        {isTreeMode && hasGroups && (
+          <>
+            <Button
+              color="link-gray"
+              data-testid="toggle-expand-all"
+              iconLeading={Rows03}
+              onPress={expandAction}>
+              {expandLabel}
+            </Button>
+            <span
+              aria-hidden="true"
+              className="tw:h-5 tw:w-px tw:bg-border-secondary"
+            />
+          </>
+        )}
+      </>
+    );
+  };
+
+  const renderViewModeControl = () => (
+    <ButtonGroup
+      aria-label={t('label.view')}
+      selectedKeys={new Set([viewMode])}
+      size="sm"
+      onSelectionChange={(keys) => {
+        const nextMode = Array.from(keys)[0];
+        if (nextMode === 'card' || nextMode === 'table') {
+          handleViewModeChange(nextMode);
+        }
+      }}>
+      <ButtonGroupItem
+        aria-label={t('label.table')}
+        data-testid="metric-table-view-button"
+        iconLeading={Rows03}
+        id="table"
+      />
+      <ButtonGroupItem
+        aria-label={t('label.card')}
+        data-testid="metric-card-view-button"
+        iconLeading={Grid01}
+        id="card"
+      />
+    </ButtonGroup>
+  );
+
+  const renderColumnControl = () => {
+    if (selectedMetricIds.length > 0) {
+      return null;
+    }
+
+    const areAllColumnsVisible =
+      visibleColumns.length === METRIC_COLUMN_ORDER.length;
+
+    return (
+      <>
+        <span
+          aria-hidden="true"
+          className="tw:h-5 tw:w-px tw:bg-border-secondary"
+        />
+        <Dropdown.Root>
+          <Button
+            className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
+            color="link-color"
+            iconLeading={Settings01}>
+            {t('label.customize')}
+          </Button>
+          <Dropdown.Popover>
+            <Box className="tw:p-2" direction="col" gap={1}>
+              <Button
+                color="link-color"
+                onPress={() =>
+                  persistVisibleColumns(
+                    areAllColumnsVisible ? [] : METRIC_COLUMN_ORDER
+                  )
+                }>
+                {areAllColumnsVisible
+                  ? t('label.hide-all')
+                  : t('label.view-all')}
+              </Button>
+              {METRIC_COLUMN_ORDER.map((columnId) => (
+                <Button
+                  color="tertiary"
+                  iconLeading={visibleColumns.includes(columnId) ? Eye : EyeOff}
+                  key={columnId}
+                  onPress={() => handleToggleColumn(columnId)}>
+                  {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
+                </Button>
+              ))}
+            </Box>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </>
+    );
+  };
+
+  const renderToolbar = () => (
+    <Box
+      align="center"
+      className="tw:flex-col tw:border-b tw:border-secondary tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:flex-nowrap"
+      data-testid="metric-list-toolbar"
+      gap={3}
+      justify="between">
+      {renderSelectionOrSearch()}
+      <Box
+        align="center"
+        className="tw:w-full tw:flex-wrap tw:sm:w-auto tw:sm:flex-nowrap"
+        gap={3}
+        justify="end">
+        {renderUnselectedFilters()}
+        {renderViewModeControl()}
+        {renderColumnControl()}
+      </Box>
+    </Box>
+  );
+
+  const renderListingContent = () => {
+    if (listingError) {
+      return renderError();
+    }
+    if (isMetricsPending || isSearchTextPending) {
+      return renderLoading();
+    }
+    if (rows.length === 0) {
+      return renderEmpty();
+    }
+
+    return viewMode === 'table' ? renderTable() : renderCards();
+  };
+
+  const renderListCard = () => (
+    <Card size="sm">
+      {renderToolbar()}
+      <span aria-live="polite" className="tw:sr-only">
+        {isMetricsBusy || isSearchTextPending
+          ? t('label.loading')
+          : `${totalMetrics} ${t('label.result-plural')}`}
+      </span>
+      {renderListingContent()}
+      {!listingError && !isMetricsPending && renderPagination()}
+    </Card>
+  );
+
+  const renderAccessibleList = () => {
+    if (!hasViewPermission && !listingError) {
+      return (
+        <Card>
+          <Card.Content>
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {t('message.no-permission-to-view')}
+            </Typography>
+          </Card.Content>
+        </Card>
+      );
+    }
+
+    return renderListCard();
+  };
+
   if (isPermissionPending) {
     return (
       <main className="tw:min-h-full tw:bg-primary tw:px-4 tw:py-7 tw:md:px-8">
@@ -1217,230 +1496,10 @@ const MetricListPage = () => {
             {t('message.metric-description')}
           </Typography>
         </Box>
-        {metricActions}
+        {renderMetricActions()}
       </Box>
 
-      {!hasViewPermission && !listingError ? (
-        <Card>
-          <Card.Content>
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {t('message.no-permission-to-view')}
-            </Typography>
-          </Card.Content>
-        </Card>
-      ) : (
-        <Card size="sm">
-          <Box
-            align="center"
-            className="tw:flex-col tw:border-b tw:border-secondary tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:flex-nowrap"
-            data-testid="metric-list-toolbar"
-            gap={3}
-            justify="between">
-            {selectedMetricIds.length ? (
-              <Box align="center" className="tw:w-full tw:flex-wrap" gap={3}>
-                <Badge color="brand" size="sm">
-                  {selectedMetricIds.length} {t('label.selected-lowercase')}
-                </Badge>
-                <Button
-                  color="link-gray"
-                  data-testid="clear-metric-selection"
-                  iconLeading={XClose}
-                  onPress={() => setSelectedMetricIds([])}>
-                  {t('label.clear')}
-                </Button>
-                {permission.EditAll && (
-                  <Button
-                    className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
-                    color="link-color"
-                    data-testid="bulk-edit-metric"
-                    iconLeading={Edit03}
-                    onPress={handleBulkEdit}>
-                    {t('label.bulk-edit-count', {
-                      count: selectedMetricIds.length,
-                    })}
-                  </Button>
-                )}
-                {permission.Delete && (
-                  <Button
-                    color="link-destructive"
-                    data-testid="bulk-delete-metric"
-                    iconLeading={Trash01}
-                    onPress={() => setIsDeleteDialogOpen(true)}>
-                    {t('label.delete')}
-                  </Button>
-                )}
-              </Box>
-            ) : (
-              <Input
-                className="tw:w-full tw:sm:max-w-84"
-                data-testid="metric-search"
-                icon={SearchLg}
-                placeholder={t('label.search-entity', {
-                  entity: t('label.metric-plural'),
-                })}
-                value={searchText}
-                wrapperClassName="tw:w-full tw:sm:max-w-84"
-                onChange={handleSearchTextChange}
-              />
-            )}
-
-            <Box
-              align="center"
-              className="tw:w-full tw:flex-wrap tw:sm:w-auto tw:sm:flex-nowrap"
-              gap={3}
-              justify="end">
-              {!selectedMetricIds.length && (
-                <>
-                  <Dropdown.Root>
-                    <Button color="link-color" iconTrailing={ChevronDown}>
-                      {statusFilter
-                        ? getStatusLabel(statusFilter)
-                        : t('label.status')}
-                    </Button>
-                    <Dropdown.Popover>
-                      <Dropdown.Menu
-                        selectedKeys={new Set([statusFilter ?? 'all'])}
-                        onAction={(key) =>
-                          handleStatusFilterChange(
-                            key === 'all' ? undefined : (key as EntityStatus)
-                          )
-                        }>
-                        <Dropdown.Item id="all" label={t('label.all')} />
-                        {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
-                          <Dropdown.Item
-                            id={status}
-                            key={status}
-                            label={getStatusLabel(status)}
-                          />
-                        ))}
-                      </Dropdown.Menu>
-                    </Dropdown.Popover>
-                  </Dropdown.Root>
-                  {permission.EditAll && (
-                    <Button
-                      className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
-                      color="link-color"
-                      data-testid="bulk-edit-metric"
-                      iconLeading={Edit03}
-                      onPress={handleBulkEdit}>
-                      {t('label.bulk-edit-all')}
-                    </Button>
-                  )}
-                  <span
-                    aria-hidden="true"
-                    className="tw:h-5 tw:w-px tw:bg-border-secondary"
-                  />
-                  {isTreeMode && hasGroups && (
-                    <>
-                      <Button
-                        color="link-gray"
-                        data-testid="toggle-expand-all"
-                        iconLeading={Rows03}
-                        onPress={
-                          areAllGroupsExpanded ? collapseAll : expandAll
-                        }>
-                        {areAllGroupsExpanded
-                          ? t('label.collapse-all')
-                          : t('label.expand-all')}
-                      </Button>
-                      <span
-                        aria-hidden="true"
-                        className="tw:h-5 tw:w-px tw:bg-border-secondary"
-                      />
-                    </>
-                  )}
-                </>
-              )}
-              <ButtonGroup
-                aria-label={t('label.view')}
-                selectedKeys={new Set([viewMode])}
-                size="sm"
-                onSelectionChange={(keys) => {
-                  const nextMode = Array.from(keys)[0];
-                  if (nextMode === 'card' || nextMode === 'table') {
-                    handleViewModeChange(nextMode);
-                  }
-                }}>
-                <ButtonGroupItem
-                  aria-label={t('label.table')}
-                  data-testid="metric-table-view-button"
-                  iconLeading={Rows03}
-                  id="table"
-                />
-                <ButtonGroupItem
-                  aria-label={t('label.card')}
-                  data-testid="metric-card-view-button"
-                  iconLeading={Grid01}
-                  id="card"
-                />
-              </ButtonGroup>
-              {!selectedMetricIds.length && (
-                <>
-                  <span
-                    aria-hidden="true"
-                    className="tw:h-5 tw:w-px tw:bg-border-secondary"
-                  />
-                  <Dropdown.Root>
-                    <Button
-                      className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
-                      color="link-color"
-                      iconLeading={Settings01}>
-                      {t('label.customize')}
-                    </Button>
-                    <Dropdown.Popover>
-                      <Box className="tw:p-2" direction="col" gap={1}>
-                        <Button
-                          color="link-color"
-                          onPress={() =>
-                            persistVisibleColumns(
-                              visibleColumns.length ===
-                                METRIC_COLUMN_ORDER.length
-                                ? []
-                                : METRIC_COLUMN_ORDER
-                            )
-                          }>
-                          {visibleColumns.length === METRIC_COLUMN_ORDER.length
-                            ? t('label.hide-all')
-                            : t('label.view-all')}
-                        </Button>
-                        {METRIC_COLUMN_ORDER.map((columnId) => (
-                          <Button
-                            color="tertiary"
-                            iconLeading={
-                              visibleColumns.includes(columnId) ? Eye : EyeOff
-                            }
-                            key={columnId}
-                            onPress={() => handleToggleColumn(columnId)}>
-                            {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
-                          </Button>
-                        ))}
-                      </Box>
-                    </Dropdown.Popover>
-                  </Dropdown.Root>
-                </>
-              )}
-            </Box>
-          </Box>
-
-          <span aria-live="polite" className="tw:sr-only">
-            {isMetricsBusy || isSearchTextPending
-              ? t('label.loading')
-              : `${totalMetrics} ${t('label.result-plural')}`}
-          </span>
-
-          {listingError
-            ? renderError()
-            : isMetricsPending || isSearchTextPending
-            ? renderLoading()
-            : rows.length === 0
-            ? renderEmpty()
-            : viewMode === 'table'
-            ? renderTable()
-            : renderCards()}
-          {!listingError && !isMetricsPending && renderPagination()}
-        </Card>
-      )}
-
+      {renderAccessibleList()}
       <ModalOverlay
         isDismissable
         isOpen={isDeleteDialogOpen}

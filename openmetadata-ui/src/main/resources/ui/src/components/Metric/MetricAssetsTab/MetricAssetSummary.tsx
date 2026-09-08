@@ -70,6 +70,101 @@ const SummaryList = ({ emptyText, label, values }: SummaryListProps) => (
   </Box>
 );
 
+const MetricAssetHealthSummary = ({
+  affectsHealth,
+  health,
+}: {
+  affectsHealth: boolean;
+  health?: AssetRollup;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <Box direction="col" gap={1}>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('label.health')}
+        </Typography>
+        {affectsHealth ? (
+          <MetricHealthPill
+            data-testid="metric-asset-summary-health"
+            health={health?.health}
+            score={health?.score}
+          />
+        ) : (
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.metric-asset-not-health-relevant')}
+          </Typography>
+        )}
+      </Box>
+      {affectsHealth && (
+        <Box direction="col" gap={1}>
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {t('label.test-plural')}
+          </Typography>
+          <Typography size="text-sm" weight="medium">
+            {health?.total ?? 0} / {health?.failed ?? 0}{' '}
+            {t('label.failed-lowercase')}
+          </Typography>
+        </Box>
+      )}
+    </>
+  );
+};
+
+const MetricAssetLineageSummary = ({
+  lineage,
+}: {
+  lineage: ReturnType<typeof useMetricAssetLineage>;
+}) => {
+  const { t } = useTranslation();
+  if (lineage.isLoading) {
+    return <Skeleton height={36} variant="rounded" />;
+  }
+
+  if (lineage.error) {
+    return (
+      <Alert
+        rightContent={
+          <Button
+            color="link-gray"
+            size="sm"
+            onPress={() => void lineage.refetch()}>
+            {t('label.try-again')}
+          </Button>
+        }
+        title={t('server.entity-fetch-error', {
+          entity: t('label.column-plural'),
+        })}
+        variant="warning"
+      />
+    );
+  }
+
+  if (lineage.columns.length === 0) {
+    return (
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t('message.no-data-available')}
+      </Typography>
+    );
+  }
+
+  return (
+    <ul className="tw:flex tw:flex-col tw:gap-2">
+      {lineage.columns.map((column) => (
+        <li
+          className="tw:text-sm tw:text-secondary"
+          key={`${column.fromColumns.join('|')}::${
+            column.toColumn ?? 'unmapped'
+          }`}>
+          {column.fromColumns.join(', ')} →{' '}
+          {column.toColumn ?? t('label.empty-dash')}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 export interface MetricAssetSummaryProps {
   details: MetricAssetDetails;
   health?: AssetRollup;
@@ -138,33 +233,10 @@ const MetricAssetSummary = ({
                   {details.usageCount ?? t('label.empty-dash')}
                 </Typography>
               </Box>
-              <Box direction="col" gap={1}>
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.health')}
-                </Typography>
-                {affectsHealth ? (
-                  <MetricHealthPill
-                    data-testid="metric-asset-summary-health"
-                    health={health?.health}
-                    score={health?.score}
-                  />
-                ) : (
-                  <Typography className="tw:text-tertiary" size="text-sm">
-                    {t('message.metric-asset-not-health-relevant')}
-                  </Typography>
-                )}
-              </Box>
-              {affectsHealth && (
-                <Box direction="col" gap={1}>
-                  <Typography className="tw:text-tertiary" size="text-xs">
-                    {t('label.test-plural')}
-                  </Typography>
-                  <Typography size="text-sm" weight="medium">
-                    {health?.total ?? 0} / {health?.failed ?? 0}{' '}
-                    {t('label.failed-lowercase')}
-                  </Typography>
-                </Box>
-              )}
+              <MetricAssetHealthSummary
+                affectsHealth={affectsHealth}
+                health={health}
+              />
             </Box>
             <Divider />
             <SummaryList
@@ -209,41 +281,7 @@ const MetricAssetSummary = ({
                 weight="semibold">
                 {t('label.columns-feeding-metric')}
               </Typography>
-              {lineage.isLoading ? (
-                <Skeleton height={36} variant="rounded" />
-              ) : lineage.error ? (
-                <Alert
-                  rightContent={
-                    <Button
-                      color="link-gray"
-                      size="sm"
-                      onPress={() => lineage.refetch()}>
-                      {t('label.try-again')}
-                    </Button>
-                  }
-                  title={t('server.entity-fetch-error', {
-                    entity: t('label.column-plural'),
-                  })}
-                  variant="warning"
-                />
-              ) : lineage.columns.length === 0 ? (
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('message.no-data-available')}
-                </Typography>
-              ) : (
-                <ul className="tw:flex tw:flex-col tw:gap-2">
-                  {lineage.columns.map((column) => (
-                    <li
-                      className="tw:text-sm tw:text-secondary"
-                      key={`${column.fromColumns.join('|')}::${
-                        column.toColumn ?? 'unmapped'
-                      }`}>
-                      {column.fromColumns.join(', ')} →{' '}
-                      {column.toColumn ?? t('label.empty-dash')}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <MetricAssetLineageSummary lineage={lineage} />
             </Box>
             {assetPath && (
               <Button

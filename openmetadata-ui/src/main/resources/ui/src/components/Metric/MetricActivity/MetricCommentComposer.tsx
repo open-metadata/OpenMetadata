@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { Send01 } from '@untitledui/icons';
+import type { TFunction } from 'i18next';
 import { KeyboardEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -40,6 +41,72 @@ export interface MetricCommentComposerProps {
   labelKey?: string;
   onSubmit: (message: string) => Promise<unknown>;
 }
+
+interface MetricMentionSuggestionsProps {
+  activeSuggestion: number;
+  denotation: '@' | '#';
+  error: unknown;
+  isPending: boolean;
+  onSelect: (option: MetricMentionOption) => void;
+  suggestions: MetricMentionOption[];
+  t: TFunction;
+}
+
+const MetricMentionSuggestions = ({
+  activeSuggestion,
+  denotation,
+  error,
+  isPending,
+  onSelect,
+  suggestions,
+  t,
+}: MetricMentionSuggestionsProps) => {
+  if (isPending) {
+    return Array.from({ length: 3 }, (_, index) => (
+      <li key={index}>
+        <Skeleton height={36} variant="rounded" />
+      </li>
+    ));
+  }
+
+  if (error) {
+    return (
+      <li>
+        <Alert
+          title={t('server.entity-fetch-error', {
+            entity: t('label.suggestion-lowercase-plural'),
+          })}
+          variant="error"
+        />
+      </li>
+    );
+  }
+
+  if (suggestions.length === 0) {
+    return (
+      <li>
+        <Typography className="tw:px-3 tw:py-2 tw:text-tertiary" size="text-sm">
+          {String(t('label.no-data-found'))}
+        </Typography>
+      </li>
+    );
+  }
+
+  return suggestions.map((option, index) => (
+    <li key={option.id}>
+      <Button
+        aria-current={activeSuggestion === index}
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
+        data-testid={`metric-mention-suggestion-${option.id}`}
+        size="sm"
+        onPress={() => onSelect(option)}>
+        {denotation}
+        {option.displayName} · {getEntityNameLabel(option.type)}
+      </Button>
+    </li>
+  ));
+};
 
 const MetricCommentComposer = ({
   isDisabled,
@@ -146,45 +213,15 @@ const MetricCommentComposer = ({
           aria-label={t('label.suggestion-lowercase-plural')}
           className="tw:flex tw:max-h-56 tw:list-none tw:flex-col tw:overflow-y-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-1 tw:shadow-lg"
           data-testid="metric-mention-suggestions">
-          {suggestionQuery.isPending ? (
-            Array.from({ length: 3 }, (_, index) => (
-              <li key={index}>
-                <Skeleton height={36} variant="rounded" />
-              </li>
-            ))
-          ) : suggestionQuery.error ? (
-            <li>
-              <Alert
-                title={t('server.entity-fetch-error', {
-                  entity: t('label.suggestion-lowercase-plural'),
-                })}
-                variant="error"
-              />
-            </li>
-          ) : suggestions.length === 0 ? (
-            <li>
-              <Typography
-                className="tw:px-3 tw:py-2 tw:text-tertiary"
-                size="text-sm">
-                {t('label.no-data-found')}
-              </Typography>
-            </li>
-          ) : (
-            suggestions.map((option, index) => (
-              <li key={option.id}>
-                <Button
-                  aria-current={activeSuggestion === index}
-                  className="tw:w-full tw:justify-start"
-                  color="tertiary"
-                  data-testid={`metric-mention-suggestion-${option.id}`}
-                  size="sm"
-                  onPress={() => selectSuggestion(option)}>
-                  {mentionQuery.denotation}
-                  {option.displayName} · {getEntityNameLabel(option.type)}
-                </Button>
-              </li>
-            ))
-          )}
+          <MetricMentionSuggestions
+            activeSuggestion={activeSuggestion}
+            denotation={mentionQuery.denotation}
+            error={suggestionQuery.error}
+            isPending={suggestionQuery.isPending}
+            suggestions={suggestions}
+            t={t}
+            onSelect={selectSuggestion}
+          />
         </ul>
       )}
       <Box justify="end">

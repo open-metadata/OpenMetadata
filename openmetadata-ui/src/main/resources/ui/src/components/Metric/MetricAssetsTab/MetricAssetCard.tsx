@@ -65,6 +65,108 @@ export interface MetricAssetCardProps {
   onToggle: () => void;
 }
 
+const MetricAssetCardDetails = ({
+  details,
+  hasError,
+  isLoading,
+  onRetry,
+}: {
+  details: MetricAssetDetails;
+  hasError?: boolean;
+  isLoading?: boolean;
+  onRetry?: () => void;
+}) => {
+  const { t } = useTranslation();
+  if (isLoading) {
+    return (
+      <Box
+        aria-label={t('label.loading')}
+        direction="col"
+        gap={2}
+        role="status">
+        <Skeleton height={18} variant="rounded" width="75%" />
+        <Skeleton height={18} variant="rounded" width="90%" />
+      </Box>
+    );
+  }
+
+  const ownerNames = details.owners.map(getEntityName).join(', ');
+  const domainNames = details.domains.map(getEntityName).join(', ');
+  const tierName = details.tier ? Fqn.split(details.tier).at(-1) : undefined;
+
+  return (
+    <>
+      {hasError ? (
+        <Box align="center" gap={2} role="alert">
+          <Typography className="tw:text-error-primary" size="text-xs">
+            {t('server.entity-fetch-error', {
+              entity: t('label.asset'),
+            })}
+          </Typography>
+          <Button
+            aria-label={t('label.try-again')}
+            color="link-gray"
+            data-testid={`metric-asset-details-retry-${details.asset.id}`}
+            iconLeading={RefreshCw01}
+            size="sm"
+            onPress={onRetry}
+          />
+        </Box>
+      ) : (
+        <Typography className="tw:line-clamp-2 tw:text-tertiary" size="text-xs">
+          {details.description || t('label.no-description')}
+        </Typography>
+      )}
+      <Box className="tw:grid tw:grid-cols-1 tw:gap-1 tw:sm:grid-cols-3">
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('label.owner-plural')}: {ownerNames || t('label.empty-dash')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('label.domain-plural')}: {domainNames || t('label.empty-dash')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('label.tier')}: {tierName || t('label.empty-dash')}
+        </Typography>
+      </Box>
+    </>
+  );
+};
+
+const MetricAssetCardHealth = ({
+  affectsHealth,
+  assetId,
+  health,
+  isLoading,
+}: {
+  affectsHealth: boolean;
+  assetId: string;
+  health?: AssetRollup;
+  isLoading?: boolean;
+}) => {
+  const { t } = useTranslation();
+  if (!affectsHealth) {
+    return (
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t('message.metric-asset-not-health-relevant')}
+      </Typography>
+    );
+  }
+
+  return (
+    <>
+      <MetricHealthPill
+        data-testid={`metric-asset-health-${assetId}`}
+        health={health?.health}
+        isLoading={isLoading}
+        score={health?.score}
+      />
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t('label.test-plural')}: {health?.total ?? 0}
+      </Typography>
+    </>
+  );
+};
+
 const MetricAssetCard = ({
   details,
   health,
@@ -85,9 +187,6 @@ const MetricAssetCard = ({
   const assetPath = asset.fullyQualifiedName
     ? getEntityDetailsPath(asset.type as EntityType, asset.fullyQualifiedName)
     : undefined;
-  const ownerNames = details.owners.map(getEntityName).join(', ');
-  const domainNames = details.domains.map(getEntityName).join(', ');
-  const tierName = details.tier ? Fqn.split(details.tier).at(-1) : undefined;
 
   return (
     <Card data-testid={`metric-asset-card-${asset.id}`} isSelected={isActive}>
@@ -126,73 +225,19 @@ const MetricAssetCard = ({
               {t(DIRECTION_LABEL_KEYS[relation.direction])}
             </Badge>
           </Box>
-          {isDetailsLoading ? (
-            <Box
-              aria-label={t('label.loading')}
-              direction="col"
-              gap={2}
-              role="status">
-              <Skeleton height={18} variant="rounded" width="75%" />
-              <Skeleton height={18} variant="rounded" width="90%" />
-            </Box>
-          ) : (
-            <>
-              {hasDetailsError ? (
-                <Box align="center" gap={2} role="alert">
-                  <Typography className="tw:text-error-primary" size="text-xs">
-                    {t('server.entity-fetch-error', {
-                      entity: t('label.asset'),
-                    })}
-                  </Typography>
-                  <Button
-                    aria-label={t('label.try-again')}
-                    color="link-gray"
-                    data-testid={`metric-asset-details-retry-${asset.id}`}
-                    iconLeading={RefreshCw01}
-                    size="sm"
-                    onPress={onRetryDetails}
-                  />
-                </Box>
-              ) : (
-                <Typography
-                  className="tw:line-clamp-2 tw:text-tertiary"
-                  size="text-xs">
-                  {details.description || t('label.no-description')}
-                </Typography>
-              )}
-              <Box className="tw:grid tw:grid-cols-1 tw:gap-1 tw:sm:grid-cols-3">
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.owner-plural')}:{' '}
-                  {ownerNames || t('label.empty-dash')}
-                </Typography>
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.domain-plural')}:{' '}
-                  {domainNames || t('label.empty-dash')}
-                </Typography>
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.tier')}: {tierName || t('label.empty-dash')}
-                </Typography>
-              </Box>
-            </>
-          )}
+          <MetricAssetCardDetails
+            details={details}
+            hasError={hasDetailsError}
+            isLoading={isDetailsLoading}
+            onRetry={onRetryDetails}
+          />
           <Box align="center" className="tw:flex-wrap" gap={3}>
-            {affectsHealth ? (
-              <MetricHealthPill
-                data-testid={`metric-asset-health-${asset.id}`}
-                health={health?.health}
-                isLoading={isHealthLoading}
-                score={health?.score}
-              />
-            ) : (
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {t('message.metric-asset-not-health-relevant')}
-              </Typography>
-            )}
-            {affectsHealth && (
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {t('label.test-plural')}: {health?.total ?? 0}
-              </Typography>
-            )}
+            <MetricAssetCardHealth
+              affectsHealth={affectsHealth}
+              assetId={asset.id}
+              health={health}
+              isLoading={isHealthLoading}
+            />
             <Typography className="tw:text-tertiary" size="text-xs">
               {t('label.usage')}:{' '}
               {details.usageCount === undefined

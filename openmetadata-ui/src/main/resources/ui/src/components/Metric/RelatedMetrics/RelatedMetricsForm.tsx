@@ -46,6 +46,21 @@ interface RelatedMetricsFormProps {
   showActions?: boolean;
 }
 
+const updateSelectedIds = (
+  selectedIds: Set<string>,
+  optionId: string,
+  selected: boolean
+) => {
+  const next = new Set(selectedIds);
+  if (selected) {
+    next.add(optionId);
+  } else {
+    next.delete(optionId);
+  }
+
+  return next;
+};
+
 export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
   defaultValue = [],
   initialOptions = [],
@@ -176,19 +191,17 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
                   isSelected={selectedIds.has(option.value)}
                   key={option.value}
                   label={option.label}
-                  onChange={(selected) =>
-                    setSelectedIds((current) => {
-                      const next = new Set(current);
+                  onChange={(selected) => {
+                    const next = updateSelectedIds(
+                      selectedIds,
+                      option.value,
                       selected
-                        ? next.add(option.value)
-                        : next.delete(option.value);
-                      onSelectionChange?.(
-                        options.filter(({ value }) => next.has(value))
-                      );
-
-                      return next;
-                    })
-                  }
+                    );
+                    setSelectedIds(next);
+                    onSelectionChange?.(
+                      options.filter(({ value }) => next.has(value))
+                    );
+                  }}
                 />
               ))
             ) : (

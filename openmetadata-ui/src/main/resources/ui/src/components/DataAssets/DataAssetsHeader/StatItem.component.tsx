@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,36 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
+
+type StatItemLabelProps = Pick<
+  StatItemProps,
+  'icon' | 'iconNode' | 'iconClassName' | 'count' | 'countTestId' | 'srLabel'
+>;
+
+const StatItemLabel = ({
+  icon: Icon,
+  iconNode,
+  iconClassName,
+  count,
+  countTestId,
+  srLabel,
+}: StatItemLabelProps) => (
+  <>
+    {iconNode ??
+      (Icon && (
+        <Icon className={classNames(iconClassName, 'tw:text-current')} />
+      ))}
+    {count !== undefined && (
+      <span className="tw:text-quaternary tw:text-sm" data-testid={countTestId}>
+        {count}
+      </span>
+    )}
+    {srLabel && <span className="tw:sr-only">{srLabel}</span>}
+  </>
+);
 
 export const StatItem = ({
   icon: Icon,
@@ -29,7 +56,7 @@ export const StatItem = ({
   isActive,
   srLabel,
 }: StatItemProps) => {
-  const isDisabled = disabled || loading || !onClick;
+  const isDisabled = disabled || loading;
   const labelClassName = classNames(
     'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
     isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
@@ -39,33 +66,28 @@ export const StatItem = ({
   );
 
   const label = (
-    <>
-      {iconNode ??
-        (Icon && (
-          <Icon className={classNames(iconClassName, 'tw:text-current')} />
-        ))}
-      {count !== undefined && (
-        <span
-          className="tw:text-quaternary tw:text-sm"
-          data-testid={countTestId}>
-          {count}
-        </span>
-      )}
-      {srLabel && <span className="tw:sr-only">{srLabel}</span>}
-    </>
+    <StatItemLabel
+      count={count}
+      countTestId={countTestId}
+      icon={Icon}
+      iconClassName={iconClassName}
+      iconNode={iconNode}
+      srLabel={srLabel}
+    />
   );
 
   return (
-    <Tooltip placement="top" title={tooltip}>
-      <TooltipTrigger
-        aria-busy={loading || undefined}
-        aria-label={srLabel ?? tooltip}
-        className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
-        data-testid={testId}
-        isDisabled={isDisabled}
-        onPress={onClick}>
-        <span className={labelClassName}>{label}</span>
-      </TooltipTrigger>
-    </Tooltip>
+    <Button
+      aria-busy={loading || undefined}
+      aria-label={srLabel ?? tooltip}
+      className="tw:rounded tw:p-0 tw:hover:bg-transparent"
+      color="tertiary"
+      data-testid={testId}
+      isDisabled={!onClick || isDisabled}
+      tooltip={onClick ? tooltip : undefined}
+      tooltipPlacement="top"
+      onClick={onClick}>
+      <span className={labelClassName}>{label}</span>
+    </Button>
   );
 };

@@ -84,6 +84,7 @@ describe('MetricActivity utilities', () => {
         totalTaskCount: 6,
       })
     ).toEqual({
+      activityCount: 8,
       closedTaskCount: 2,
       conversationCount: 13,
       mentionCount: 3,

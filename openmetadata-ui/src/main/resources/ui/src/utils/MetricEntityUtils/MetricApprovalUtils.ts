@@ -78,8 +78,12 @@ export const isMetricAwaitingApproval = (status?: EntityStatus): boolean =>
  */
 export const metricHasApprovalWorkflow = (
   metric: Pick<Metric, 'reviewers' | 'entityStatus'>
-): boolean =>
-  (metric.reviewers?.length ?? 0) > 0 ||
-  (metric.entityStatus !== undefined &&
-    metric.entityStatus !== EntityStatus.Unprocessed &&
-    metric.entityStatus !== EntityStatus.Approved);
+): boolean => {
+  const hasReviewers = (metric.reviewers?.length ?? 0) > 0;
+  const workflowStatuses = [EntityStatus.Draft, EntityStatus.InReview];
+  const hasWorkflowStatus =
+    metric.entityStatus !== undefined &&
+    workflowStatuses.includes(metric.entityStatus);
+
+  return hasReviewers || hasWorkflowStatus;
+};

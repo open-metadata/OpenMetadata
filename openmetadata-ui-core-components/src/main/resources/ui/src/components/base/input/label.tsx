@@ -2,7 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import { HelpCircle } from '@untitledui/icons';
 import type { LabelProps as AriaLabelProps } from 'react-aria-components';
 import { Label as AriaLabel } from 'react-aria-components';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 
 interface LabelProps extends AriaLabelProps {
@@ -47,15 +47,12 @@ export const Label = ({
         <Tooltip
           description={tooltipDescription}
           placement="top"
-          title={tooltip}>
-          <TooltipTrigger
-            // `TooltipTrigger` inherits the disabled state from the parent form field
-            // but we don't that. We want the tooltip be enabled even if the parent
-            // field is disabled.
-            className="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
-            isDisabled={false}>
-            <HelpCircle className="tw:size-4" />
-          </TooltipTrigger>
+          title={tooltip}
+          // triggerIsDisabled={false} keeps the help-icon wrapper interactive
+          // even when the parent form field is disabled.
+          triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+          triggerIsDisabled={false}>
+          <HelpCircle className="tw:size-4" />
         </Tooltip>
       )}
     </AriaLabel>

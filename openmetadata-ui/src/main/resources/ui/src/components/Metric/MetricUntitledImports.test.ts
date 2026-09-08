@@ -103,37 +103,54 @@ const isRuntimeImport = (node: ts.ImportDeclaration) => {
   );
 };
 
+const getImportModuleReference = (node: ts.Node) => {
+  if (!ts.isImportDeclaration(node)) {
+    return;
+  }
+  if (!ts.isStringLiteralLike(node.moduleSpecifier)) {
+    return;
+  }
+
+  return isRuntimeImport(node) ? node.moduleSpecifier.text : undefined;
+};
+
+const getExportModuleReference = (node: ts.Node) => {
+  if (!ts.isExportDeclaration(node) || node.isTypeOnly) {
+    return;
+  }
+
+  return node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)
+    ? node.moduleSpecifier.text
+    : undefined;
+};
+
+const getCallModuleReference = (node: ts.Node) => {
+  if (!ts.isCallExpression(node) || node.arguments.length !== 1) {
+    return;
+  }
+  const [argument] = node.arguments;
+  if (!ts.isStringLiteralLike(argument)) {
+    return;
+  }
+
+  const isRequireCall =
+    ts.isIdentifier(node.expression) && node.expression.text === 'require';
+  const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+
+  return isRequireCall || isDynamicImport ? argument.text : undefined;
+};
+
 const visitRuntimeModuleReferences = (
   sourceFile: ts.SourceFile,
   recordModule: (moduleName: string) => void
 ) => {
   const visit = (node: ts.Node) => {
-    if (
-      ts.isImportDeclaration(node) &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      isRuntimeImport(node)
-    ) {
-      recordModule(node.moduleSpecifier.text);
-    }
-
-    if (
-      ts.isExportDeclaration(node) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      !node.isTypeOnly
-    ) {
-      recordModule(node.moduleSpecifier.text);
-    }
-
-    if (
-      ts.isCallExpression(node) &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteralLike(node.arguments[0]) &&
-      ((ts.isIdentifier(node.expression) &&
-        node.expression.text === 'require') ||
-        node.expression.kind === ts.SyntaxKind.ImportKeyword)
-    ) {
-      recordModule(node.arguments[0].text);
+    const moduleReference =
+      getImportModuleReference(node) ??
+      getExportModuleReference(node) ??
+      getCallModuleReference(node);
+    if (moduleReference) {
+      recordModule(moduleReference);
     }
 
     ts.forEachChild(node, visit);
@@ -142,12 +159,19 @@ const visitRuntimeModuleReferences = (
   visit(sourceFile);
 };
 
+const getSourceImportPath = (filePath: string, moduleName: string) => {
+  if (moduleName.startsWith('.')) {
+    return path.resolve(path.dirname(filePath), moduleName);
+  }
+  if (moduleName.startsWith('@/')) {
+    return path.resolve(SOURCE_ROOT, moduleName.slice(2));
+  }
+
+  return path.resolve(SOURCE_ROOT, moduleName);
+};
+
 const resolveSourceDependency = (filePath: string, moduleName: string) => {
-  const importPath = moduleName.startsWith('.')
-    ? path.resolve(path.dirname(filePath), moduleName)
-    : moduleName.startsWith('@/')
-    ? path.resolve(SOURCE_ROOT, moduleName.slice(2))
-    : path.resolve(SOURCE_ROOT, moduleName);
+  const importPath = getSourceImportPath(filePath, moduleName);
 
   return SOURCE_CANDIDATE_SUFFIXES.map(
     (suffix) => `${importPath}${suffix}`

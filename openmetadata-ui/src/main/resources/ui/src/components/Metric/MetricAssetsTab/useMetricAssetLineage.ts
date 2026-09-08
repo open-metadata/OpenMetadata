@@ -63,6 +63,8 @@ const getCurrentMetricId = (
       return getEntityId(entity);
     }
   }
+
+  return undefined;
 };
 
 const getUpstreamEdges = (lineage: unknown): unknown[] => {

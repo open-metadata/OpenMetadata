@@ -81,6 +81,19 @@ interface TaskOptionPickerProps {
   onToggle: (option: TaskPickerOption) => void;
 }
 
+const getOptionTagSource = (includeTagSource: boolean, type: string) => {
+  if (!includeTagSource) {
+    return undefined;
+  }
+
+  return type === EntityType.GLOSSARY_TERM
+    ? TagSource.Glossary
+    : TagSource.Classification;
+};
+
+const hasMoreResults = (total: number | undefined, loaded: number) =>
+  Number(total) > loaded;
+
 const TaskOptionPicker = ({
   dataTestId,
   hasMore,
@@ -244,11 +257,7 @@ const MetricTaskCreateDialog = ({
         {
           id: hit._id,
           label: source.displayName ?? source.name ?? value,
-          source: includeTagSource
-            ? type === EntityType.GLOSSARY_TERM
-              ? TagSource.Glossary
-              : TagSource.Classification
-            : undefined,
+          source: getOptionTagSource(includeTagSource, type),
           type,
           value,
         },
@@ -256,10 +265,14 @@ const MetricTaskCreateDialog = ({
     });
   const assigneeOptions = toOptions(assigneeResult.data, false);
   const tagOptions = toOptions(tagResult.data, true);
-  const hasMoreAssignees =
-    (assigneeResult.data?.hits.total?.value ?? 0) > assigneeOptions.length;
-  const hasMoreTags =
-    (tagResult.data?.hits.total?.value ?? 0) > tagOptions.length;
+  const hasMoreAssignees = hasMoreResults(
+    assigneeResult.data?.hits.total?.value,
+    assigneeOptions.length
+  );
+  const hasMoreTags = hasMoreResults(
+    tagResult.data?.hits.total?.value,
+    tagOptions.length
+  );
   const canSubmit =
     Boolean(title.trim()) &&
     selectedAssignees.size > 0 &&

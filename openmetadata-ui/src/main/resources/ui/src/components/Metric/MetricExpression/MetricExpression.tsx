@@ -34,6 +34,12 @@ export interface MetricExpressionProps {
   isEmbedded?: boolean;
 }
 
+const canEditMetricExpression = (
+  canEdit: boolean,
+  metric: Metric,
+  onUpdate?: MetricExpressionProps['onUpdate']
+) => canEdit && Boolean(onUpdate) && !metric.deleted;
+
 const MetricExpression = ({
   metric,
   onUpdate,
@@ -159,7 +165,7 @@ const MetricExpression = ({
             </Typography>
           ) : null}
         </Box>
-        {canEdit && onUpdate && !metric.deleted ? (
+        {canEditMetricExpression(canEdit, metric, onUpdate) ? (
           <Button
             color="secondary"
             iconLeading={Edit03}

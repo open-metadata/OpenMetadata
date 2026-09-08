@@ -10,50 +10,65 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- */
 import type { TFunction } from 'i18next';
 import type { MetricApprovalHistoryItem } from './useMetricApprovalHistory';
 
 const normalize = (value: string): string =>
   value.replace(/[\s_'"():-]/g, '').toLocaleLowerCase();
 
+const OUTCOME_LABELS: Partial<
+  Record<NonNullable<MetricApprovalHistoryItem['outcome']>, string>
+> = {
+  approved: 'label.approved',
+  rejected: 'label.rejected',
+  rollback: 'label.rolled-back',
+};
+
+const HISTORY_LABEL_RULES = [
+  { labels: ['approved', 'approve'], key: 'label.approved' },
+  { labels: ['rejected', 'reject'], key: 'label.rejected' },
+  { labels: ['rollback', 'rolledback'], key: 'label.rolled-back' },
+  { labels: ['draft'], key: 'label.draft' },
+  { labels: ['review', 'approval'], key: 'label.in-review' },
+];
+
+const STATUS_LABEL_RULES = [
+  { labels: ['approved'], key: 'label.approved' },
+  { labels: ['rejected'], key: 'label.rejected' },
+  { labels: ['failed'], key: 'label.failed' },
+  { labels: ['finished', 'completed'], key: 'label.completed' },
+  { labels: ['running', 'inprogress'], key: 'label.running' },
+  { labels: ['open'], key: 'label.open' },
+  { labels: ['pending'], key: 'label.pending-task' },
+  { labels: ['cancelled', 'revoked'], key: 'label.cancelled' },
+];
+
+const findLabelKey = (
+  normalizedValue: string,
+  rules: Array<{ key: string; labels: string[] }>
+) =>
+  rules.find(({ labels }) =>
+    labels.some((label) => normalizedValue.includes(label))
+  )?.key;
+
 export const getMetricApprovalHistoryLabel = (
   t: TFunction,
   item: MetricApprovalHistoryItem
 ): string => {
-  if (item.outcome === 'approved') {
-    return t('label.approved');
-  }
-  if (item.outcome === 'rejected') {
-    return t('label.rejected');
-  }
-  if (item.outcome === 'rollback') {
-    return t('label.rolled-back');
+  const outcomeLabel = item.outcome && OUTCOME_LABELS[item.outcome];
+  if (outcomeLabel) {
+    return t(outcomeLabel);
   }
 
   const label = normalize(item.label);
-  if (label.includes('approved') || label.includes('approve')) {
-    return t('label.approved');
+  const historyLabel = findLabelKey(label, HISTORY_LABEL_RULES);
+  if (historyLabel) {
+    return t(historyLabel);
   }
-  if (label.includes('rejected') || label.includes('reject')) {
-    return t('label.rejected');
-  }
-  if (label.includes('rollback') || label.includes('rolledback')) {
-    return t('label.rolled-back');
-  }
-  if (label.includes('draft')) {
-    return t('label.draft');
-  }
-  if (label.includes('review') || label.includes('approval')) {
-    return t('label.in-review');
-  }
-  if (label.includes('metriccreated') || label.includes('metricupdated')) {
+  const isMetricChange = ['metriccreated', 'metricupdated'].some((value) =>
+    label.includes(value)
+  );
+  if (isMetricChange) {
     return `${t('label.metric')} · ${t('label.updated')}`;
   }
 
@@ -65,39 +80,7 @@ export const getMetricApprovalHistoryStatusLabel = (
   status: string
 ): string => {
   const normalizedStatus = normalize(status);
-  if (normalizedStatus.includes('approved')) {
-    return t('label.approved');
-  }
-  if (normalizedStatus.includes('rejected')) {
-    return t('label.rejected');
-  }
-  if (normalizedStatus.includes('failed')) {
-    return t('label.failed');
-  }
-  if (
-    normalizedStatus.includes('finished') ||
-    normalizedStatus.includes('completed')
-  ) {
-    return t('label.completed');
-  }
-  if (
-    normalizedStatus.includes('running') ||
-    normalizedStatus.includes('inprogress')
-  ) {
-    return t('label.running');
-  }
-  if (normalizedStatus.includes('open')) {
-    return t('label.open');
-  }
-  if (normalizedStatus.includes('pending')) {
-    return t('label.pending-task');
-  }
-  if (
-    normalizedStatus.includes('cancelled') ||
-    normalizedStatus.includes('revoked')
-  ) {
-    return t('label.cancelled');
-  }
+  const labelKey = findLabelKey(normalizedStatus, STATUS_LABEL_RULES);
 
-  return t('label.unknown');
+  return t(labelKey ?? 'label.unknown');
 };

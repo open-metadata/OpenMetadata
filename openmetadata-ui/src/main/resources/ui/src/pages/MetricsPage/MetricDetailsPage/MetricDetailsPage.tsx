@@ -59,6 +59,12 @@ import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 
+const MetricDocumentTitle = ({ entityName }: { entityName: string }) => {
+  const { t } = useTranslation();
+
+  return <DocumentTitle title={entityName || t('label.metric')} />;
+};
+
 const MetricDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -85,6 +91,11 @@ const MetricDetailsPage = () => {
     [metricFqn]
   );
 
+  const isMetricQueryEnabled = useMemo(
+    () => Boolean(metricFqn && canViewMetric && !permissionsLoading),
+    [metricFqn, canViewMetric, permissionsLoading]
+  );
+
   const {
     data: metricDetails,
     isLoading: metricLoading,
@@ -93,7 +104,7 @@ const MetricDetailsPage = () => {
   } = useQuery({
     queryKey: metricCacheKey,
     queryFn: metricQueryFn(metricFqn, METRIC_DEFAULT_FIELDS),
-    enabled: Boolean(metricFqn && canViewMetric && !permissionsLoading),
+    enabled: isMetricQueryEnabled,
   });
 
   const isError = useMemo(
@@ -331,9 +342,7 @@ const MetricDetailsPage = () => {
     fetchResourcePermission(metricFqn);
   }, [metricFqn]);
 
-  const documentTitle = (
-    <DocumentTitle title={entityName || t('label.metric')} />
-  );
+  const documentTitle = <MetricDocumentTitle entityName={entityName} />;
 
   if (permissionsLoading || metricLoading) {
     return (

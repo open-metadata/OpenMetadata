@@ -13,6 +13,8 @@
 
 import { BASE_COLORS } from '../constants/DataInsight.constants';
 
+const TW_TEXT_FG_WHITE = 'tw:text-fg-white';
+
 export const getFirstAlphanumeric = (name: string): string => {
   /**
    * \p{L} → matches any kind of letter from any language (Latin, Cyrillic, Chinese, etc.).
@@ -54,21 +56,21 @@ interface AvatarColorEntry {
 
 const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
   {
-    solid: { container: 'tw:bg-utility-blue-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-blue-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container: 'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200',
       text: 'tw:text-utility-blue-700',
     },
   },
   {
-    solid: { container: 'tw:bg-utility-pink-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-pink-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container: 'tw:bg-utility-pink-50 tw:border tw:border-utility-pink-200',
       text: 'tw:text-utility-pink-700',
     },
   },
   {
-    solid: { container: 'tw:bg-utility-purple-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-purple-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
         'tw:bg-utility-purple-50 tw:border tw:border-utility-purple-200',
@@ -76,7 +78,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     },
   },
   {
-    solid: { container: 'tw:bg-utility-indigo-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-indigo-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
         'tw:bg-utility-indigo-50 tw:border tw:border-utility-indigo-200',
@@ -84,7 +86,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     },
   },
   {
-    solid: { container: 'tw:bg-utility-orange-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-orange-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
         'tw:bg-utility-orange-50 tw:border tw:border-utility-orange-200',
@@ -92,14 +94,14 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     },
   },
   {
-    solid: { container: 'tw:bg-utility-green-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-green-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container: 'tw:bg-utility-green-50 tw:border tw:border-utility-green-200',
       text: 'tw:text-utility-green-700',
     },
   },
   {
-    solid: { container: 'tw:bg-utility-fuchsia-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-fuchsia-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
         'tw:bg-utility-fuchsia-50 tw:border tw:border-utility-fuchsia-200',
@@ -107,7 +109,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     },
   },
   {
-    solid: { container: 'tw:bg-utility-yellow-500', text: 'tw:text-fg-white' },
+    solid: { container: 'tw:bg-utility-yellow-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
         'tw:bg-utility-yellow-50 tw:border tw:border-utility-yellow-200',

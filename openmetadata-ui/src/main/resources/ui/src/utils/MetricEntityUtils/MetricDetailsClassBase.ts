@@ -277,30 +277,7 @@ class MetricDetailsClassBase {
   }
 
   public getWidgetHeight(widgetName: string) {
-    switch (widgetName) {
-      case DetailPageWidgetKeys.DESCRIPTION:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
-      case DetailPageWidgetKeys.DATA_PRODUCTS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
-      case DetailPageWidgetKeys.TAGS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
-      case DetailPageWidgetKeys.GLOSSARY_TERMS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
-      case DetailPageWidgetKeys.RELATED_METRICS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.RELATED_METRICS];
-      case DetailPageWidgetKeys.METRIC_HIERARCHY:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY];
-      case DetailPageWidgetKeys.METRIC_DEFINITION:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DEFINITION];
-      case DetailPageWidgetKeys.METRIC_DIMENSIONS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DIMENSIONS];
-      case DetailPageWidgetKeys.METRIC_MEASURES:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_MEASURES];
-      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
-      default:
-        return 1;
-    }
+    return this.defaultWidgetHeight[widgetName as MetricWidgetKeys] ?? 1;
   }
 }
 

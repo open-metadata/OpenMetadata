@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle, Clock, RefreshCw01, XCircle } from '@untitledui/icons';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import {
@@ -71,6 +72,117 @@ export interface MetricApprovalHistoryProps {
   metricFqn?: string;
 }
 
+interface MetricApprovalHistoryContentProps {
+  data?: MetricApprovalHistoryItem[];
+  error: unknown;
+  isPending: boolean;
+  onRetry: () => void;
+  t: TFunction;
+}
+
+const MetricApprovalHistoryContent = ({
+  data,
+  error,
+  isPending,
+  onRetry,
+  t,
+}: MetricApprovalHistoryContentProps) => {
+  if (isPending) {
+    return (
+      <Box direction="col" gap={3}>
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton height={64} key={index} variant="rounded" />
+        ))}
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <EmptyPlaceholder
+        actions={[
+          {
+            key: 'retry',
+            label: String(t('label.try-again')),
+            onClick: onRetry,
+          },
+        ]}
+        description={String(t('message.temporary-error-try-reloading'))}
+        title={String(t('label.error'))}
+      />
+    );
+  }
+
+  if (!data?.length) {
+    return (
+      <EmptyPlaceholder
+        description={String(
+          t('label.no-entity-available', {
+            entity: t('label.workflow-history'),
+          })
+        )}
+        title={String(t('label.workflow-history'))}
+      />
+    );
+  }
+
+  return (
+    <ol className="tw:flex tw:flex-col">
+      {data.map((item, index) => {
+        const tone = getHistoryTone(item);
+        const Icon = tone.icon;
+
+        return (
+          <li
+            className="tw:grid tw:grid-cols-[32px_1fr] tw:gap-3"
+            data-testid={`metric-approval-history-${item.id}`}
+            key={item.id}>
+            <Box align="center" direction="col">
+              <Box
+                align="center"
+                className={`tw:size-8 tw:justify-center tw:rounded-full ${tone.className}`}>
+                <Icon aria-hidden="true" size={16} />
+              </Box>
+              {index < data.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className="tw:min-h-8 tw:w-px tw:flex-1 tw:bg-border-secondary"
+                />
+              )}
+            </Box>
+            <Box className="tw:pb-5" direction="col" gap={1}>
+              <Box align="center" className="tw:flex-wrap" gap={2}>
+                <Typography size="text-sm" weight="semibold">
+                  {getMetricApprovalHistoryLabel(t, item)}
+                </Typography>
+                <Badge color={tone.color} size="xs">
+                  {getMetricApprovalHistoryStatusLabel(t, item.status)}
+                </Badge>
+                {item.isAutomatic && (
+                  <Badge color="brand" size="xs">
+                    {String(t('label.automated'))}
+                  </Badge>
+                )}
+              </Box>
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {item.actor ? `${item.actor} · ` : ''}
+                {formatDateTime(item.timestamp)}
+              </Typography>
+              {item.note && (
+                <Typography
+                  className="tw:whitespace-pre-wrap tw:text-secondary"
+                  size="text-sm">
+                  {item.note}
+                </Typography>
+              )}
+            </Box>
+          </li>
+        );
+      })}
+    </ol>
+  );
+};
+
 const MetricApprovalHistory = ({ metricFqn }: MetricApprovalHistoryProps) => {
   const { t } = useTranslation();
   const history = useMetricApprovalHistory(metricFqn);
@@ -86,86 +198,13 @@ const MetricApprovalHistory = ({ metricFqn }: MetricApprovalHistoryProps) => {
         title={t('label.workflow-history')}
       />
       <Card.Content className="tw:relative tw:min-h-64">
-        {history.isPending ? (
-          <Box direction="col" gap={3}>
-            {Array.from({ length: 4 }, (_, index) => (
-              <Skeleton height={64} key={index} variant="rounded" />
-            ))}
-          </Box>
-        ) : history.error ? (
-          <EmptyPlaceholder
-            actions={[
-              {
-                key: 'retry',
-                label: t('label.try-again'),
-                onClick: () => history.refetch(),
-              },
-            ]}
-            description={t('message.temporary-error-try-reloading')}
-            title={t('label.error')}
-          />
-        ) : (history.data?.length ?? 0) === 0 ? (
-          <EmptyPlaceholder
-            description={t('label.no-entity-available', {
-              entity: t('label.workflow-history'),
-            })}
-            title={t('label.workflow-history')}
-          />
-        ) : (
-          <ol className="tw:flex tw:flex-col">
-            {history.data?.map((item, index) => {
-              const tone = getHistoryTone(item);
-              const Icon = tone.icon;
-
-              return (
-                <li
-                  className="tw:grid tw:grid-cols-[32px_1fr] tw:gap-3"
-                  data-testid={`metric-approval-history-${item.id}`}
-                  key={item.id}>
-                  <Box align="center" direction="col">
-                    <Box
-                      align="center"
-                      className={`tw:size-8 tw:justify-center tw:rounded-full ${tone.className}`}>
-                      <Icon aria-hidden="true" size={16} />
-                    </Box>
-                    {index < (history.data?.length ?? 0) - 1 && (
-                      <span
-                        aria-hidden="true"
-                        className="tw:min-h-8 tw:w-px tw:flex-1 tw:bg-border-secondary"
-                      />
-                    )}
-                  </Box>
-                  <Box className="tw:pb-5" direction="col" gap={1}>
-                    <Box align="center" className="tw:flex-wrap" gap={2}>
-                      <Typography size="text-sm" weight="semibold">
-                        {getMetricApprovalHistoryLabel(t, item)}
-                      </Typography>
-                      <Badge color={tone.color} size="xs">
-                        {getMetricApprovalHistoryStatusLabel(t, item.status)}
-                      </Badge>
-                      {item.isAutomatic && (
-                        <Badge color="brand" size="xs">
-                          {t('label.automated')}
-                        </Badge>
-                      )}
-                    </Box>
-                    <Typography className="tw:text-tertiary" size="text-xs">
-                      {item.actor ? `${item.actor} · ` : ''}
-                      {formatDateTime(item.timestamp)}
-                    </Typography>
-                    {item.note && (
-                      <Typography
-                        className="tw:whitespace-pre-wrap tw:text-secondary"
-                        size="text-sm">
-                        {item.note}
-                      </Typography>
-                    )}
-                  </Box>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+        <MetricApprovalHistoryContent
+          data={history.data}
+          error={history.error}
+          isPending={history.isPending}
+          t={t}
+          onRetry={() => history.refetch()}
+        />
       </Card.Content>
     </Card>
   );

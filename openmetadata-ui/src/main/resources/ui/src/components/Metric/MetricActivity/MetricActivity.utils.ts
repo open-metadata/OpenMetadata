@@ -66,6 +66,7 @@ export const createMetricFeedCounts = ({
   const conversationCount = activityEventCount + conversationThreadCount;
 
   return {
+    activityCount: activityEventCount,
     closedTaskCount,
     conversationCount,
     mentionCount,
@@ -120,39 +121,37 @@ export const getMetricTaskStatusLabel = (
   status: TaskStatus
 ): string => t(TASK_STATUS_LABELS[status]);
 
+const TASK_TYPE_ENTITY_LABELS: Partial<Record<TaskType, string>> = {
+  [TaskType.DomainUpdate]: 'label.domain',
+  [TaskType.OwnershipUpdate]: 'label.owner',
+  [TaskType.TagUpdate]: 'label.tag-plural',
+  [TaskType.TierUpdate]: 'label.tier',
+};
+
+const TASK_TYPE_LABELS: Partial<Record<TaskType, string>> = {
+  [TaskType.CustomTask]: 'label.task',
+  [TaskType.DataAccessRequest]: 'label.data-access-request',
+  [TaskType.DataQualityReview]: 'label.task',
+  [TaskType.DescriptionUpdate]: 'label.update-description',
+  [TaskType.GlossaryApproval]: 'label.approval',
+  [TaskType.IncidentResolution]: 'label.incident',
+  [TaskType.PipelineReview]: 'label.task',
+  [TaskType.RecognizerFeedbackApproval]: 'label.approval',
+  [TaskType.RequestApproval]: 'label.approval',
+  [TaskType.Suggestion]: 'label.suggestion',
+  [TaskType.TestCaseResolution]: 'label.incident',
+};
+
 export const getMetricTaskTypeLabel = (
   t: TFunction,
   type?: TaskType
 ): string => {
-  switch (type) {
-    case TaskType.DescriptionUpdate:
-      return t('label.update-description');
-    case TaskType.DomainUpdate:
-      return t('label.update-entity', { entity: t('label.domain') });
-    case TaskType.OwnershipUpdate:
-      return t('label.update-entity', { entity: t('label.owner') });
-    case TaskType.TagUpdate:
-      return t('label.update-entity', { entity: t('label.tag-plural') });
-    case TaskType.TierUpdate:
-      return t('label.update-entity', { entity: t('label.tier') });
-    case TaskType.GlossaryApproval:
-    case TaskType.RecognizerFeedbackApproval:
-    case TaskType.RequestApproval:
-      return t('label.approval');
-    case TaskType.IncidentResolution:
-    case TaskType.TestCaseResolution:
-      return t('label.incident');
-    case TaskType.DataQualityReview:
-    case TaskType.PipelineReview:
-      return t('label.task');
-    case TaskType.DataAccessRequest:
-      return t('label.data-access-request');
-    case TaskType.Suggestion:
-      return t('label.suggestion');
-    case TaskType.CustomTask:
-    default:
-      return t('label.task');
+  const entityLabelKey = type && TASK_TYPE_ENTITY_LABELS[type];
+  if (entityLabelKey) {
+    return t('label.update-entity', { entity: t(entityLabelKey) });
   }
+
+  return t((type && TASK_TYPE_LABELS[type]) ?? 'label.task');
 };
 
 export const getMetricTaskTransitionLabel = (
@@ -213,6 +212,51 @@ const WORKFLOW_LABELS: Record<string, string> = {
   running: 'label.running',
 };
 
+const ACTIVITY_EVENT_LABELS: Partial<Record<ActivityEventType, string[]>> = {
+  [ActivityEventType.ColumnDescriptionUpdated]: [
+    'label.column-description',
+    'label.updated',
+  ],
+  [ActivityEventType.ColumnTagsUpdated]: [
+    'label.column',
+    'label.tag-plural',
+    'label.updated',
+  ],
+  [ActivityEventType.CustomPropertyUpdated]: [
+    'label.custom-property',
+    'label.updated',
+  ],
+  [ActivityEventType.DescriptionUpdated]: [
+    'label.description',
+    'label.updated',
+  ],
+  [ActivityEventType.DomainUpdated]: ['label.domain', 'label.updated'],
+  [ActivityEventType.EntityCreated]: [
+    'label.entity',
+    'label.created-lowercase',
+  ],
+  [ActivityEventType.EntityDeleted]: [
+    'label.entity',
+    'label.deleted-lowercase',
+  ],
+  [ActivityEventType.EntityRestored]: [
+    'label.entity',
+    'label.restored-lowercase',
+  ],
+  [ActivityEventType.EntitySoftDeleted]: [
+    'label.entity',
+    'label.soft-deleted-lowercase',
+  ],
+  [ActivityEventType.OwnerUpdated]: ['label.owner', 'label.updated'],
+  [ActivityEventType.PipelineStatusChanged]: ['label.pipeline-status-changed'],
+  [ActivityEventType.TagsUpdated]: ['label.tag-plural', 'label.updated'],
+  [ActivityEventType.TestCaseStatusChanged]: [
+    'label.test-case-status',
+    'label.updated',
+  ],
+  [ActivityEventType.TierUpdated]: ['label.tier', 'label.updated'],
+};
+
 export const getMetricWorkflowLabel = (t: TFunction, label: string): string => {
   const labelKey = WORKFLOW_LABELS[label.replace(/[\s_-]/g, '').toLowerCase()];
 
@@ -222,42 +266,10 @@ export const getMetricWorkflowLabel = (t: TFunction, label: string): string => {
 export const getMetricActivityEventLabel = (
   t: TFunction,
   eventType: ActivityEventType
-): string => {
-  const updated = t('label.updated');
-  switch (eventType) {
-    case ActivityEventType.ColumnDescriptionUpdated:
-      return `${t('label.column-description')} · ${updated}`;
-    case ActivityEventType.ColumnTagsUpdated:
-      return `${t('label.column')} · ${t('label.tag-plural')} · ${updated}`;
-    case ActivityEventType.CustomPropertyUpdated:
-      return `${t('label.custom-property')} · ${updated}`;
-    case ActivityEventType.DescriptionUpdated:
-      return `${t('label.description')} · ${updated}`;
-    case ActivityEventType.DomainUpdated:
-      return `${t('label.domain')} · ${updated}`;
-    case ActivityEventType.EntityCreated:
-      return `${t('label.entity')} · ${t('label.created-lowercase')}`;
-    case ActivityEventType.EntityDeleted:
-      return `${t('label.entity')} · ${t('label.deleted-lowercase')}`;
-    case ActivityEventType.EntityRestored:
-      return `${t('label.entity')} · ${t('label.restored-lowercase')}`;
-    case ActivityEventType.EntitySoftDeleted:
-      return `${t('label.entity')} · ${t('label.soft-deleted-lowercase')}`;
-    case ActivityEventType.OwnerUpdated:
-      return `${t('label.owner')} · ${updated}`;
-    case ActivityEventType.PipelineStatusChanged:
-      return t('label.pipeline-status-changed');
-    case ActivityEventType.TagsUpdated:
-      return `${t('label.tag-plural')} · ${updated}`;
-    case ActivityEventType.TestCaseStatusChanged:
-      return `${t('label.test-case-status')} · ${updated}`;
-    case ActivityEventType.TierUpdated:
-      return `${t('label.tier')} · ${updated}`;
-    case ActivityEventType.EntityUpdated:
-    default:
-      return `${t('label.entity')} · ${updated}`;
-  }
-};
+): string =>
+  (ACTIVITY_EVENT_LABELS[eventType] ?? ['label.entity', 'label.updated'])
+    .map((labelKey) => t(labelKey))
+    .join(' · ');
 
 const FIELD_LABELS: Record<string, string> = {
   customproperties: 'label.custom-property-plural',

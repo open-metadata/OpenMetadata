@@ -8,6 +8,15 @@ OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Bus
 
 You can find further information on the Mode connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/mode" target="_blank">docs</a>.
 
+## Metadata Mapping
+
+- Mode reports are ingested as dashboards.
+- Report visualizations are ingested as charts.
+- Each query associated with a report is ingested as a dashboard data model. The data model includes the query name, SQL text, and a link to the query in Mode. Mode's query response does not include result-column metadata, so query data models have an empty column list.
+- When the query SQL can be parsed and its source tables can be resolved, lineage is created from the tables to the query data model and then to the report dashboard. If data model ingestion is disabled or a query data model is filtered out, lineage is created directly from the tables to the dashboard.
+
+The connector can only ingest spaces, reports, queries, charts, and data sources visible to the API token. Ensure the token's workspace member has access to every space and report that should be cataloged. See Mode's <a href="https://mode.com/developer/api-cookbook/management/get-all-reports/" target="_blank">report API guide</a> and <a href="https://mode.com/developer/api-reference/analytics/queries/" target="_blank">query API reference</a> for the source API behavior.
+
 ## Connection Details
 
 $$section
@@ -46,10 +55,7 @@ $$
 $$section
 ### Filter Query Param $(id="filterQueryParam")
 
-This value is the `filter` query parameter that is passed to the Mode API. Different API
-calls use different types of acceptable values. Currently this parameter is only implemented
-to <a href="https://mode.com/developer/api-reference/management/collections/#listCollections" target="_blank">list all collections</a>. 
-The valid values that is currently supported are: `all`
-and `custom`. If this field is left empty, `all` will be used.
+This value is the `filter` query parameter passed to Mode's spaces API when discovering reports.
+The supported values are `all` and `custom`. If this field is left empty, `all` will be used.
 
 $$

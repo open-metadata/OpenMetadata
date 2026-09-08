@@ -35,6 +35,21 @@ export interface MetricTaskItemProps {
   onSelect: () => void;
 }
 
+const getTaskStatusColor = (status: TaskStatus) => {
+  const pendingStatuses = [
+    TaskStatus.Open,
+    TaskStatus.InProgress,
+    TaskStatus.Pending,
+  ];
+  if (pendingStatuses.includes(status)) {
+    return 'warning';
+  }
+
+  const errorStatuses = [TaskStatus.Rejected, TaskStatus.Failed];
+
+  return errorStatuses.includes(status) ? 'error' : 'success';
+};
+
 const MetricTaskItem = ({
   isActive,
   task,
@@ -43,15 +58,7 @@ const MetricTaskItem = ({
 }: MetricTaskItemProps) => {
   const { t } = useTranslation();
   const isApprovalTask = task.type === TaskType.RequestApproval;
-  const statusColor = [
-    TaskStatus.Open,
-    TaskStatus.InProgress,
-    TaskStatus.Pending,
-  ].includes(task.status)
-    ? 'warning'
-    : task.status === TaskStatus.Rejected || task.status === TaskStatus.Failed
-    ? 'error'
-    : 'success';
+  const statusColor = getTaskStatusColor(task.status);
 
   return (
     <Card isSelected={isActive}>

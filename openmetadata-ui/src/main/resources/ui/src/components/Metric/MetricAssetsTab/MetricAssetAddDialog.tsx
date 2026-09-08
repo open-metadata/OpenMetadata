@@ -108,6 +108,102 @@ export interface MetricAssetAddDialogProps {
   onComplete: (result: BulkOperationResult) => void;
 }
 
+interface AssetSearchResultsProps {
+  checkingIds: Set<string>;
+  error: unknown;
+  existingAssetIds: Set<string>;
+  isPending: boolean;
+  options: EntityReference[];
+  selected: Map<string, EntityReference>;
+  verifiedExistingIds: Set<string>;
+  onRetry: () => void;
+  onToggle: (asset: EntityReference) => void;
+}
+
+const AssetSearchResults = ({
+  checkingIds,
+  error,
+  existingAssetIds,
+  isPending,
+  options,
+  selected,
+  verifiedExistingIds,
+  onRetry,
+  onToggle,
+}: AssetSearchResultsProps) => {
+  const { t } = useTranslation();
+
+  if (isPending) {
+    return (
+      <Box className="tw:flex tw:flex-col tw:gap-3">
+        {Array.from({ length: 5 }, (_, index) => (
+          <Skeleton height={56} key={index} variant="rounded" />
+        ))}
+      </Box>
+    );
+  }
+  if (error) {
+    return (
+      <EmptyPlaceholder
+        actions={[
+          {
+            key: 'retry',
+            label: t('label.try-again'),
+            onClick: onRetry,
+          },
+        ]}
+        description={t('server.entity-fetch-error', {
+          entity: t('label.asset-plural'),
+        })}
+        title={t('label.error')}
+      />
+    );
+  }
+  if (options.length === 0) {
+    return (
+      <EmptyPlaceholder
+        description={t('message.no-data-available')}
+        title={t('label.no-data-found')}
+      />
+    );
+  }
+
+  return (
+    <Box className="tw:flex tw:flex-col tw:gap-1">
+      {options.map((asset) => {
+        const isExisting =
+          existingAssetIds.has(asset.id) || verifiedExistingIds.has(asset.id);
+        const isChecking = checkingIds.has(asset.id);
+
+        return (
+          <Box
+            className="tw:flex tw:items-start tw:gap-3 tw:rounded-lg tw:px-3 tw:py-2 tw:hover:bg-primary_hover"
+            key={asset.id}
+            role="listitem">
+            <Checkbox
+              aria-label={getEntityName(asset)}
+              isDisabled={isExisting || isChecking}
+              isSelected={selected.has(asset.id)}
+              onChange={() => onToggle(asset)}
+            />
+            <Box className="tw:min-w-0 tw:flex-1" direction="col">
+              <Typography ellipsis size="text-sm" weight="medium">
+                {getEntityName(asset)}
+              </Typography>
+              <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+                {asset.fullyQualifiedName}
+              </Typography>
+            </Box>
+            <Badge color="gray" size="sm">
+              {isExisting ? t('label.added') : getEntityNameLabel(asset.type)}
+            </Badge>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+};
+
 const MetricAssetAddDialog: FC<MetricAssetAddDialogProps> = ({
   existingAssetIds,
   metricId,
@@ -336,71 +432,17 @@ const MetricAssetAddDialog: FC<MetricAssetAddDialogProps> = ({
               aria-label={t('label.asset-plural')}
               className="tw:relative tw:min-h-64 tw:overflow-y-auto"
               role="list">
-              {searchResult.isPending ? (
-                <Box className="tw:flex tw:flex-col tw:gap-3">
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <Skeleton height={56} key={index} variant="rounded" />
-                  ))}
-                </Box>
-              ) : searchResult.error ? (
-                <EmptyPlaceholder
-                  actions={[
-                    {
-                      key: 'retry',
-                      label: t('label.try-again'),
-                      onClick: () => searchResult.refetch(),
-                    },
-                  ]}
-                  description={t('server.entity-fetch-error', {
-                    entity: t('label.asset-plural'),
-                  })}
-                  title={t('label.error')}
-                />
-              ) : options.length === 0 ? (
-                <EmptyPlaceholder
-                  description={t('message.no-data-available')}
-                  title={t('label.no-data-found')}
-                />
-              ) : (
-                <Box className="tw:flex tw:flex-col tw:gap-1">
-                  {options.map((asset) => {
-                    const isExisting =
-                      existingAssetIds.has(asset.id) ||
-                      verifiedExistingIds.has(asset.id);
-                    const isChecking = checkingIds.has(asset.id);
-
-                    return (
-                      <Box
-                        className="tw:flex tw:items-start tw:gap-3 tw:rounded-lg tw:px-3 tw:py-2 tw:hover:bg-primary_hover"
-                        key={asset.id}
-                        role="listitem">
-                        <Checkbox
-                          aria-label={getEntityName(asset)}
-                          isDisabled={isExisting || isChecking}
-                          isSelected={selected.has(asset.id)}
-                          onChange={() => toggleAsset(asset)}
-                        />
-                        <Box className="tw:min-w-0 tw:flex-1" direction="col">
-                          <Typography ellipsis size="text-sm" weight="medium">
-                            {getEntityName(asset)}
-                          </Typography>
-                          <Typography
-                            ellipsis
-                            className="tw:text-tertiary"
-                            size="text-xs">
-                            {asset.fullyQualifiedName}
-                          </Typography>
-                        </Box>
-                        <Badge color="gray" size="sm">
-                          {isExisting
-                            ? t('label.added')
-                            : getEntityNameLabel(asset.type)}
-                        </Badge>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )}
+              <AssetSearchResults
+                checkingIds={checkingIds}
+                error={searchResult.error}
+                existingAssetIds={existingAssetIds}
+                isPending={searchResult.isPending}
+                options={options}
+                selected={selected}
+                verifiedExistingIds={verifiedExistingIds}
+                onRetry={() => searchResult.refetch()}
+                onToggle={toggleAsset}
+              />
             </Box>
 
             <Box align="center" justify="between">

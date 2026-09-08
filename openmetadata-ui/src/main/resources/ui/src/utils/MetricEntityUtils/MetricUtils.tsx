@@ -104,6 +104,12 @@ const EntityLineageTab = lazy(() =>
   )
 );
 
+const getMetricTabLabel = (
+  labelMap: Record<EntityTabs, string>,
+  tab: EntityTabs,
+  fallback: string
+) => labelMap[tab] ?? fallback;
+
 export const getMetricDetailsPageTabs = ({
   feedCount,
   activeTab,
@@ -120,7 +126,11 @@ export const getMetricDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.OVERVIEW}
-          name={labelMap[EntityTabs.OVERVIEW] ?? i18n.t('label.overview')}
+          name={getMetricTabLabel(
+            labelMap,
+            EntityTabs.OVERVIEW,
+            i18n.t('label.overview')
+          )}
         />
       ),
       key: EntityTabs.OVERVIEW,
@@ -130,7 +140,11 @@ export const getMetricDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.LINEAGE}
-          name={labelMap[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
+          name={getMetricTabLabel(
+            labelMap,
+            EntityTabs.LINEAGE,
+            i18n.t('label.lineage')
+          )}
         />
       ),
       key: EntityTabs.LINEAGE,
@@ -151,7 +165,11 @@ export const getMetricDetailsPageTabs = ({
           count={metricDetails?.assets?.length ?? 0}
           id={EntityTabs.ASSETS}
           isActive={activeTab === EntityTabs.ASSETS}
-          name={labelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
+          name={getMetricTabLabel(
+            labelMap,
+            EntityTabs.ASSETS,
+            i18n.t('label.asset-plural')
+          )}
         />
       ),
       key: EntityTabs.ASSETS,
@@ -169,10 +187,11 @@ export const getMetricDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DATA_OBSERVABILITY}
-          name={
-            labelMap[EntityTabs.DATA_OBSERVABILITY] ??
+          name={getMetricTabLabel(
+            labelMap,
+            EntityTabs.DATA_OBSERVABILITY,
             i18n.t('label.data-observability')
-          }
+          )}
         />
       ),
       key: EntityTabs.DATA_OBSERVABILITY,
@@ -188,10 +207,11 @@ export const getMetricDetailsPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={
-            labelMap[EntityTabs.ACTIVITY_FEED] ??
+          name={getMetricTabLabel(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
             i18n.t('label.activity-and-task-plural')
-          }
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -212,7 +232,11 @@ export const getMetricDetailsPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.APPROVAL}
-          name={labelMap[EntityTabs.APPROVAL] ?? i18n.t('label.approval')}
+          name={getMetricTabLabel(
+            labelMap,
+            EntityTabs.APPROVAL,
+            i18n.t('label.approval')
+          )}
         />
       ),
       key: EntityTabs.APPROVAL,
