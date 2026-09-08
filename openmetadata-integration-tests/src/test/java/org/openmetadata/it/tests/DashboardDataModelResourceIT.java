@@ -838,4 +838,85 @@ public class DashboardDataModelResourceIT
     request.setName(ns.prefix("invalid_data_model"));
     return request;
   }
+
+  /**
+   * Issue #30639: a column whose dataType changes is recorded as deleted + re-added rather than
+   * updated, because EntityUtil.columnMatch compares dataType. updateColumns then removes the
+   * deleted column's tag_usage rows, so the carry-forward must move user-applied tags onto the
+   * re-added column, which occupies the same FQN. The Tableau connector hits this when it promotes
+   * a physical column's type onto the field it mirrors (RECORD -> STRING).
+   */
+  @Test
+  void test_columnTagsSurviveDataTypeChange(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName("cls_" + shortId)
+                    .withDescription("Test classification"));
+    Tag columnTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ct_" + shortId)
+                    .withClassification(classification.getName())
+                    .withDescription("Column level tag"));
+    TagLabel columnTagLabel =
+        new TagLabel()
+            .withTagFQN(columnTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+    String name = ns.prefix("dm_coltype");
+
+    DashboardDataModel created =
+        createEntity(
+            new CreateDashboardDataModel()
+                .withName(name)
+                .withService(service.getFullyQualifiedName())
+                .withDataModelType(DataModelType.LookMlView)
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName("customer_name")
+                            .withDataType(ColumnDataType.RECORD)
+                            .withTags(List.of(columnTagLabel)))));
+
+    String entityId = created.getId().toString();
+    DashboardDataModel tagged = getEntityWithFields(entityId, "columns,tags");
+    assertEquals(
+        1,
+        tagged.getColumns().get(0).getTags().size(),
+        "Column tag should be present after create");
+
+    // Re-ingest the same column with the physical type promoted onto it and no tags in the
+    // payload, which is what a connector sends.
+    BulkOperationResult result =
+        executeBulkAsBot(
+            List.of(
+                new CreateDashboardDataModel()
+                    .withName(name)
+                    .withService(service.getFullyQualifiedName())
+                    .withDataModelType(DataModelType.LookMlView)
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("customer_name")
+                                .withDataType(ColumnDataType.STRING)))),
+            false);
+    assertNotNull(result);
+
+    DashboardDataModel afterTypeChange = getEntityWithFields(entityId, "columns,tags");
+    Column column = afterTypeChange.getColumns().get(0);
+    assertEquals(ColumnDataType.STRING, column.getDataType(), "dataType should have changed");
+    assertNotNull(column.getTags(), "Column tags must survive a dataType change");
+    assertEquals(
+        1, column.getTags().size(), "User-applied column tag must survive a dataType change");
+    assertEquals(columnTag.getFullyQualifiedName(), column.getTags().get(0).getTagFQN());
+  }
 }
