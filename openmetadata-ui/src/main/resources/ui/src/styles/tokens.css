@@ -198,6 +198,104 @@
   --om-color-fg-warning: var(--color-fg-warning-primary, #dc6803);
   --om-color-fg-success: var(--color-fg-success-primary, #079455);
 
+  /* Categorical utility pairs preserve distinct status hues while their
+     lightness follows the active theme. */
+  --om-color-utility-blue-light-100: var(
+    --color-utility-blue-light-100,
+    #e0f2fe
+  );
+  --om-color-utility-blue-light-700: var(
+    --color-utility-blue-light-700,
+    #026aa2
+  );
+  --om-color-utility-error-100: var(--color-utility-error-100, #fee4e2);
+  --om-color-utility-error-700: var(--color-utility-error-700, #b42318);
+  --om-color-utility-gray-100: var(--color-utility-gray-100, #f5f5f5);
+  --om-color-utility-gray-700: var(--color-utility-gray-700, #414651);
+  --om-color-utility-green-100: var(--color-utility-green-100, #d3f8df);
+  --om-color-utility-green-700: var(--color-utility-green-700, #087443);
+  --om-color-utility-orange-100: var(--color-utility-orange-100, #ffead5);
+  --om-color-utility-orange-700: var(--color-utility-orange-700, #c4320a);
+  --om-color-utility-purple-100: var(--color-utility-purple-100, #ebe9fe);
+  --om-color-utility-purple-700: var(--color-utility-purple-700, #5925dc);
+  --om-color-utility-success-100: var(--color-utility-success-100, #dcfae6);
+  --om-color-utility-success-700: var(--color-utility-success-700, #067647);
+  --om-color-utility-warning-100: var(--color-utility-warning-100, #fef0c7);
+  --om-color-utility-warning-700: var(--color-utility-warning-700, #b54708);
+  --om-color-utility-yellow-100: var(--color-utility-yellow-100, #fef7c3);
+  --om-color-utility-yellow-700: var(--color-utility-yellow-700, #a15c07);
+
+  /* Fixed visualization hues are tokenized without changing their existing
+     categorical identity across themes. */
+  --om-color-visualization-test-success: var(
+    --color-visualization-test-success,
+    #12b76a
+  );
+  --om-color-visualization-green-3: var(--color-visualization-green-3, #48ca9e);
+  --om-color-visualization-green-4: var(--color-visualization-green-4, #039855);
+  --om-color-visualization-green-3-translucent: var(
+    --color-visualization-green-3-translucent,
+    #48ca9e30
+  );
+  --om-color-visualization-yellow-2: var(
+    --color-visualization-yellow-2,
+    #ffbe0e
+  );
+  --om-color-visualization-red-3: var(--color-visualization-red-3, #f24822);
+  --om-color-visualization-red-3-translucent: var(
+    --color-visualization-red-3-translucent,
+    #ff7c501a
+  );
+  --om-color-visualization-purple-2: var(
+    --color-visualization-purple-2,
+    #7147e8
+  );
+  --om-color-visualization-gray-1: var(--color-visualization-gray-1, #a1a1aa);
+  --om-color-visualization-blue-2: var(--color-visualization-blue-2, #3ca2f4);
+  --om-color-visualization-chart-blue-1: var(
+    --color-visualization-chart-blue-1,
+    #4689ff
+  );
+  --om-color-visualization-blue-600: var(
+    --color-visualization-blue-600,
+    #1677ff
+  );
+  --om-color-visualization-riptide: var(--color-visualization-riptide, #76e9c6);
+  --om-color-visualization-my-sin: var(--color-visualization-my-sin, #feb019);
+  --om-color-visualization-san-marino: var(
+    --color-visualization-san-marino,
+    #416bb3
+  );
+  --om-color-visualization-silver-tree: var(
+    --color-visualization-silver-tree,
+    #5cae95
+  );
+  --om-color-visualization-desert: var(--color-visualization-desert, #b56727);
+  --om-color-visualization-pink-salmon: var(
+    --color-visualization-pink-salmon,
+    #ff92ae
+  );
+  --om-color-visualization-electric-violet: var(
+    --color-visualization-electric-violet,
+    #9747ff
+  );
+  --om-color-visualization-lemon-zest: var(
+    --color-visualization-lemon-zest,
+    #ffd700
+  );
+  --om-color-visualization-gray-400: var(
+    --color-visualization-gray-400,
+    #98a2b3
+  );
+  --om-color-visualization-gray-300: var(
+    --color-visualization-gray-300,
+    #d0d5dd
+  );
+  --om-color-visualization-dq-failed: var(
+    --color-visualization-dq-failed,
+    #cb5a50
+  );
+
   /* Link + interactive states */
   --om-color-link: var(--color-text-brand-tertiary, #1570ef);
   --om-color-link-hover: var(--color-text-brand-secondary, #175cd3);
@@ -588,15 +686,12 @@
   --om-legacy-color-101828: #101828;
   --om-legacy-color-102a72: #102a72;
   --om-legacy-color-107-114-128-0-15: rgba(107, 114, 128, 0.15);
-  --om-legacy-color-11-16-33-0-96: rgba(11, 16, 33, 0.96);
   --om-legacy-color-111827: #111827;
   --om-legacy-color-113-71-232-0-102: #7147e81a;
   --om-legacy-color-113-71-232-0-35: rgba(113, 71, 232, 0.35);
   --om-legacy-color-113-71-232-0-6: #7147e899;
   --om-legacy-color-117-117-117-0-2: #75757533;
   --om-legacy-color-117-117-117-0-3: rgba(117, 117, 117, 0.3);
-  --om-legacy-color-13-18-38-0-72: rgba(13, 18, 38, 0.72);
-  --om-legacy-color-13-18-38-0-85: rgba(13, 18, 38, 0.85);
   --om-legacy-color-13c2c2: #13c2c2;
   --om-legacy-color-15-15-15-0-1: rgba(15, 15, 15, 0.1);
   --om-legacy-color-15-23-42-0-06: rgba(15, 23, 42, 0.06);
@@ -622,10 +717,7 @@
   --om-legacy-color-255-193-67-0-15: rgba(255, 193, 67, 0.15);
   --om-legacy-color-255-243-205-0-867: #fff3cddd;
   --om-legacy-color-255-255-255-0: rgba(255, 255, 255, 0);
-  --om-legacy-color-255-255-255-0-07: rgba(255, 255, 255, 0.07);
-  --om-legacy-color-255-255-255-0-08: rgba(255, 255, 255, 0.08);
   --om-legacy-color-255-255-255-0-1: rgba(255, 255, 255, 0.1);
-  --om-legacy-color-255-255-255-0-14: rgba(255, 255, 255, 0.14);
   --om-legacy-color-255-255-255-0-302: #ffffff4d;
   --om-legacy-color-255-255-255-0-4: rgba(255, 255, 255, 0.4);
   --om-legacy-color-255-255-255-0-7: rgba(255, 255, 255, 0.7);
@@ -678,10 +770,8 @@
   --om-legacy-color-82-196-26-0-05: rgba(82, 196, 26, 0.05);
   --om-legacy-color-85-155-238-0-2: rgba(85, 155, 238, 0.2);
   --om-legacy-color-856404: #856404;
-  --om-legacy-color-8a93a8: #8a93a8;
   --om-legacy-color-8c8c8c: #8c8c8c;
   --om-legacy-color-9-80-197-0-05: rgba(9, 80, 197, 0.05);
-  --om-legacy-color-94a3b8: #94a3b8;
   --om-legacy-color-96-167-251-0-2: rgba(96, 167, 251, 0.2);
   --om-legacy-color-9933ff: #93f;
   --om-legacy-color-a84c3d: #a84c3d;
@@ -694,7 +784,6 @@
   --om-legacy-color-b4d5ff: #b4d5ff;
   --om-legacy-color-bbbbbb: #bbb;
   --om-legacy-color-bee5eb: #bee5eb;
-  --om-legacy-color-c2c9d6: #c2c9d6;
   --om-legacy-color-c3e6cb: #c3e6cb;
   --om-legacy-color-c45296: #c45296;
   --om-legacy-color-c6b5f6: #c6b5f6;
@@ -733,7 +822,6 @@
   --om-legacy-color-e8e8ed: #e8e8ed;
   --om-legacy-color-e8ecf5: #e8ecf5;
   --om-legacy-color-eaecf0: #eaecf0;
-  --om-legacy-color-eaf0fb: #eaf0fb;
   --om-legacy-color-ebeef1: #ebeef1;
   --om-legacy-color-ecedee: #ecedee;
   --om-legacy-color-eeeeee: #eeeeee;
@@ -753,7 +841,6 @@
   --om-legacy-color-f44336: #f44336;
   --om-legacy-color-f4f0fd: #f4f0fd;
   --om-legacy-color-f4f7f9: #f4f7f9;
-  --om-legacy-color-f4f7fc: #f4f7fc;
   --om-legacy-color-f4f7ff: #f4f7ff;
   --om-legacy-color-f4fbf7: #f4fbf7;
   --om-legacy-color-f59638: #f59638;

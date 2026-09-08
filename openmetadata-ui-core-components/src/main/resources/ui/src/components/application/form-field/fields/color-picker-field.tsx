@@ -13,7 +13,10 @@
 
 import { Check } from '@untitledui/icons';
 import { normalizeHexColor } from '@/colors/colorValidation';
-import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
+import {
+  ENTITY_PALETTE_HEX,
+  getEntityPalettePresentationColor,
+} from '@/colors/entityPalette';
 import { Box } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
 import { Typography } from '@/components/foundations/typography';
@@ -90,7 +93,7 @@ export const ColorPickerField = ({
             key={color}
             size="sm"
             style={{
-              backgroundColor: color,
+              backgroundColor: getEntityPalettePresentationColor(color),
               boxShadow: isSelected
                 ? '0 0 0 1px rgba(16, 24, 40, 0.08)'
                 : undefined,
