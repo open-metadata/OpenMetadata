@@ -4,8 +4,10 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntPredicate;
@@ -501,6 +503,10 @@ public class DataRetention extends AbstractNativeApplication {
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
     AtomicInteger deletedThisRun = new AtomicInteger();
+    // Ids this run could not delete. Held so a failing row is attempted once instead of again at
+    // the head of every batch - each attempt can be a secrets-manager call - and charged to the
+    // failed count once instead of once per batch. Bounded by MAX_WORKFLOW_DELETES_PER_RUN.
+    Set<String> failedIds = new HashSet<>();
 
     // Drains on zero progress rather than on a short batch, unlike the bulk-SQL steps. A batch here
     // can come back full and still delete fewer rows than it fetched, because a workflow that fails
@@ -509,9 +515,15 @@ public class DataRetention extends AbstractNativeApplication {
     // head every batch of every run.
     drainInBatches(
         "automation_workflows",
-        () -> deleteExpiredWorkflows(cutoffMillis, deletedThisRun),
+        () -> deleteExpiredWorkflows(cutoffMillis, deletedThisRun, failedIds),
         deleted -> deleted == 0);
 
+    if (!failedIds.isEmpty()) {
+      LOG.warn(
+          "Automation workflow cleanup skipped {} workflow(s) it could not delete; the next run "
+              + "retries them.",
+          failedIds.size());
+    }
     LOG.info("Automation workflows cleanup complete. Deleted {}.", deletedThisRun.get());
   }
 
@@ -524,6 +536,12 @@ public class DataRetention extends AbstractNativeApplication {
    * rethrown. Batches are ordered oldest first, so letting one bad row abort the drain would stop
    * this cleanup from ever getting past it.
    *
+   * <p>One such row does not fail the run either. The sibling entity cleanups report per-item
+   * failures through stats alone, and since the same undeletable row heads every batch, flipping
+   * the run's status here would mark every future run FAILED and bury real failures. The run is
+   * escalated only when a batch had rows to attempt and deleted none of them, which means nothing
+   * is getting through rather than one row being bad.
+   *
    * <p>Deletes non-recursively: a Workflow has no children, and {@code recursive} is what makes
    * {@code EntityRepository.delete} take a deletion lock, which would be a wasted round-trip per
    * row.
@@ -532,7 +550,8 @@ public class DataRetention extends AbstractNativeApplication {
    *     - every row failed, or the per-run cap is spent - so there is no point asking for the same
    *     rows again.
    */
-  private int deleteExpiredWorkflows(long cutoffMillis, AtomicInteger deletedThisRun) {
+  private int deleteExpiredWorkflows(
+      long cutoffMillis, AtomicInteger deletedThisRun, Set<String> failedIds) {
     int budget = MAX_WORKFLOW_DELETES_PER_RUN - deletedThisRun.get();
     if (budget <= 0) {
       LOG.info(
@@ -543,18 +562,29 @@ public class DataRetention extends AbstractNativeApplication {
 
     List<String> ids = workflowDAO.listIdsBeforeCutoff(cutoffMillis, Math.min(BATCH_SIZE, budget));
     int deleted = 0;
+    int attempted = 0;
+    Exception lastFailure = null;
 
     for (String id : ids) {
+      if (failedIds.contains(id)) {
+        continue;
+      }
+      attempted++;
       try {
         Entity.deleteEntity(
             Entity.ADMIN_USER_NAME, Entity.WORKFLOW, UUID.fromString(id), false, true);
         deleted++;
       } catch (Exception ex) {
         LOG.error("Failed to delete automation workflow {}", id, ex);
+        failedIds.add(id);
         updateStats("automation_workflows", 0, 1);
-        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-        recordFirstFailure(ex);
+        lastFailure = ex;
       }
+    }
+
+    if (attempted > 0 && deleted == 0 && lastFailure != null) {
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      recordFirstFailure(lastFailure);
     }
 
     deletedThisRun.addAndGet(deleted);
