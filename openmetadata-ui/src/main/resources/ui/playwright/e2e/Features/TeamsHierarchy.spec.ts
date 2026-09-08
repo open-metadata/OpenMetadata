@@ -13,7 +13,8 @@
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { TeamClass } from '../../support/team/TeamClass';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import {
   addTeamHierarchy,
@@ -95,6 +96,78 @@ test.describe(
         await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
           teamName
         );
+      }
+    });
+
+    test('Only Group teams are selectable in Add User team dropdown', async ({
+      page,
+    }) => {
+      const childlessDepartmentName = `pw-childless-department-${uuid()}`;
+      const childlessDepartment = new TeamClass({
+        name: childlessDepartmentName,
+        displayName: childlessDepartmentName,
+        description: 'playwright childless department team',
+        teamType: 'Department',
+      });
+      const { apiContext, afterAction } = await getApiContext(page);
+      await childlessDepartment.create(apiContext);
+
+      try {
+        await settingClick(page, GlobalSettingOptions.USERS);
+
+        const teamHierarchyResponse = page.waitForResponse(
+          '/api/v1/teams/hierarchy?isJoinable=false'
+        );
+        await page.locator('[data-testid="add-user"]').click();
+        await teamHierarchyResponse;
+
+        const teamSelect = page.getByTestId('team-select');
+        const teamSelectInput = teamSelect.getByRole('combobox');
+        const dropdown = page.locator('.ant-tree-select-dropdown');
+        const selectedTeamChips = teamSelect.locator(
+          '.ant-select-selection-item'
+        );
+
+        await test.step(
+          'Non-Group team with children is visible but not selectable',
+          async () => {
+            await teamSelect.click();
+            await teamSelectInput.fill(departmentTeamName);
+
+            const departmentOption = dropdown.getByText(departmentTeamName);
+
+            await expect(departmentOption).toBeVisible();
+
+            await departmentOption.click();
+
+            await expect(selectedTeamChips).toHaveCount(0);
+          }
+        );
+
+        await test.step(
+          'Non-Group team without children is hidden',
+          async () => {
+            await teamSelectInput.fill(childlessDepartmentName);
+
+            await expect(dropdown).not.toContainText(childlessDepartmentName);
+          }
+        );
+
+        await test.step('Group team is selectable', async () => {
+          await teamSelectInput.fill(groupTeamName);
+
+          const groupOption = dropdown.getByText(groupTeamName);
+
+          await expect(groupOption).toBeVisible();
+
+          await groupOption.click();
+
+          await expect(selectedTeamChips).toHaveCount(1);
+          await expect(selectedTeamChips).toContainText(groupTeamName);
+        });
+      } finally {
+        await childlessDepartment.delete(apiContext);
+        await afterAction();
       }
     });
 
