@@ -831,6 +831,45 @@
           }
         }
       },
+      "columns": {
+        "properties": {
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "dataType": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean",
+            "term_vector": "with_positions_offsets"
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
+          }
+        }
+      },
       "fingerprint": {
         "type": "keyword"
       },
@@ -860,6 +899,13 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "columnNames": {
+        "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       }
     }
   }
