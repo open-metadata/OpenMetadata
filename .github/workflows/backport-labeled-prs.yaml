@@ -62,17 +62,18 @@ jobs:
       release_branches: ${{ steps.resolve.outputs.release_branches }}
     steps:
       # `To release` is what causes code to reach a release branch, and GitHub
-      # has no per-label permission — anyone with triage access can apply it.
-      # So authorise it here: find who actually applied the label and require
-      # them to be a member of the organisation. Every outcome that is not a
-      # confirmed member stops the backport; "we could not tell" is never
+      # has no per-label permission — triage access is enough to apply one. So
+      # authorise it here: find who actually applied the label, and require them
+      # to have write access to this repository. On a private repo that is the
+      # team; on the public one it is the maintainers, and every other GitHub
+      # user reports `read`, which this rejects. Every outcome that is not a
+      # confirmed writer stops the backport; "we could not tell" is never
       # treated as a pass.
       - name: Authorise the label
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
-          ORG: ${{ github.repository_owner }}
         run: |
           set -uo pipefail
           ACTOR=$(gh api "repos/$REPO/issues/$PR/timeline" --paginate \
@@ -84,16 +85,20 @@ jobs:
           fi
           echo "Label applied by: $ACTOR"
 
-          CODE=$(gh api "orgs/$ORG/members/$ACTOR" --silent -i 2>/dev/null | head -1 | grep -oE '[0-9]{3}' | head -1)
-          case "${CODE:-000}" in
-            204)
-              echo "$ACTOR is a member of $ORG; proceeding." ;;
-            404)
-              gh pr comment "$PR" --repo "$REPO" --body "🤖 The \`To release\` label was applied by @$ACTOR, who is not a member of the \`$ORG\` organisation, so this PR was **not** backported. Backports are restricted to the team. Ask a maintainer to re-apply the label if this change should ship in a release."
-              echo "::error::'To release' was applied by $ACTOR, who is not an $ORG member. No backport was attempted."
+          PERM=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" \
+                   --jq '.permission' 2>/dev/null || true)
+          case "$PERM" in
+            admin|maintain|write)
+              echo "$ACTOR has $PERM access; proceeding." ;;
+            read|triage|none)
+              # Read and triage are listed explicitly: triage is enough to apply
+              # a label but not to be trusted with a release branch, and on a
+              # public repository every GitHub user reports read.
+              gh pr comment "$PR" --repo "$REPO" --body "🤖 The \`To release\` label was applied by @$ACTOR, whose access to this repository is \`$PERM\` — not write — so this PR was **not** backported. Backports are restricted to the team. Ask a maintainer to re-apply the label if this change should ship in a release."
+              echo "::error::'To release' was applied by $ACTOR, whose access is '$PERM'. No backport was attempted."
               exit 1 ;;
             *)
-              echo "::error::Could not verify $ACTOR's membership of $ORG (HTTP ${CODE:-none}). Refusing to backport rather than guessing. The token needs the organisation 'members: read' permission."
+              echo "::error::Could not read $ACTOR's access to $REPO (got '${PERM:-nothing}'). Refusing to backport rather than guessing."
               exit 1 ;;
           esac
 
