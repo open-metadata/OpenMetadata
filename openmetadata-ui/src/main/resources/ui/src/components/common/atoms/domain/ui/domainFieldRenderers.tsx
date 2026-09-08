@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  Avatar,
-  Box,
-  Owner,
-  Typography,
-} from '@openmetadata/ui-core-components';
 import type { OwnerRef } from '@openmetadata/ui-core-components';
+import {
+    Avatar,
+    Box,
+    Owner,
+    Typography
+} from '@openmetadata/ui-core-components';
 import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
@@ -27,8 +27,8 @@ import { TagLabel } from '../../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import {
-  getClassificationTags,
-  getGlossaryTags,
+    getClassificationTags,
+    getGlossaryTags
 } from '../../../../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';

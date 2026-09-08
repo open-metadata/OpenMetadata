@@ -22,21 +22,21 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
+    ERROR_PLACEHOLDER_TYPE,
+    SORT_ORDER
 } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
+    TestCaseResolutionStatus,
+    TestCaseResolutionStatusTypes
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
 import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
+    getCurrentMillis,
+    getEpochMillisForPastDays
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
@@ -54,13 +54,13 @@ import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import {
-  DataQualityTabProps,
-  DetailItemProps,
-  FilterStatus,
-  IncidentFilterStatus,
-  IncidentStatusCounts,
-  TestCaseCardProps,
-  TestCaseStatusCounts,
+    DataQualityTabProps,
+    DetailItemProps,
+    FilterStatus,
+    IncidentFilterStatus,
+    IncidentStatusCounts,
+    TestCaseCardProps,
+    TestCaseStatusCounts
 } from './DataQualityTab.interface';
 import './DataQualityTab.less';
 

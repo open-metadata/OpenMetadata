@@ -12,10 +12,10 @@
  */
 
 import {
-  findByTestId,
-  findByText,
-  render,
-  screen,
+    findByTestId,
+    findByText,
+    render,
+    screen
 } from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';

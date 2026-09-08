@@ -13,7 +13,6 @@
 
 import { Avatar } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
-import { ImageShape } from 'Models';
 import { ComponentProps, useMemo } from 'react';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -41,27 +40,11 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
   48: 'lg',
   56: 'xl',
   64: '2xl',
-};
-
-// Font size for initials — Avatar renders `placeholder` raw without sizing it,
-// so we must size the text explicitly to match the circle.
-const INITIALS_FONT_SIZE: Partial<Record<number, number>> = {
-  16: 8,
-  18: 8,
-  20: 10,
-  24: 10,
-  28: 11,
-  32: 12,
-  36: 13,
-  40: 14,
-  48: 16,
-  56: 18,
-  64: 22,
+  80: '2xl',
 };
 
 interface Props extends UserData {
   width?: string;
-  type?: ImageShape;
   className?: string;
   height?: string;
   isTeam?: boolean;
@@ -82,8 +65,6 @@ const ProfilePicture = ({
   const avatarSize: CoreAvatarSize = WIDTH_TO_SIZE[numericWidth] ?? 'sm';
   const { color, character, backgroundColor } = getRandomColor(avatarName);
   const isSolid = avatarType === 'solid';
-  const initialsSize =
-    INITIALS_FONT_SIZE[numericWidth] ?? Math.round(numericWidth * 0.38);
 
   const viewUserPermission = useMemo(() => {
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
@@ -95,27 +76,7 @@ const ProfilePicture = ({
     isTeam,
   });
 
-  const getPlaceholder = () => {
-    if (isPicLoading && !profileURL) {
-      return (
-        <Loader
-          size={numericWidth <= 24 ? 'x-small' : 'small'}
-          type={isSolid ? 'white' : 'default'}
-        />
-      );
-    }
-
-    return (
-      <span
-        style={{
-          color: isSolid ? '#fff' : color,
-          fontSize: initialsSize,
-          fontWeight: isSolid ? 400 : 500,
-        }}>
-        {character}
-      </span>
-    );
-  };
+  const isLoadingWithoutUrl = isPicLoading && !profileURL;
 
   if (isTeam) {
     return (
@@ -136,11 +97,20 @@ const ProfilePicture = ({
       className={className}
       contrastBorder={!isSolid}
       data-testid="profile-avatar"
-      placeholder={getPlaceholder()}
+      initials={isLoadingWithoutUrl ? undefined : character}
+      placeholder={
+        isLoadingWithoutUrl ? (
+          <Loader
+            size={numericWidth <= 24 ? 'x-small' : 'small'}
+            type={isSolid ? 'white' : 'default'}
+          />
+        ) : undefined
+      }
       size={avatarSize}
       src={profileURL || undefined}
       style={{
         backgroundColor: isSolid ? color : backgroundColor,
+        color: isSolid ? '#fff' : color,
       }}
     />
   );

@@ -15,9 +15,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
 import {
-  LabelType,
-  State,
-  TagSource,
+    LabelType,
+    State,
+    TagSource
 } from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';

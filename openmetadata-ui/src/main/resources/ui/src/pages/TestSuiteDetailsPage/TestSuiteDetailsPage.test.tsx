@@ -16,10 +16,10 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
-  addTestCasesToLogicalTestSuiteBulk,
-  getListTestCaseBySearch,
-  getTestSuiteByName,
-  updateTestSuiteById,
+    addTestCasesToLogicalTestSuiteBulk,
+    getListTestCaseBySearch,
+    getTestSuiteByName,
+    updateTestSuiteById
 } from '../../rest/testAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';

@@ -12,10 +12,10 @@
  */
 
 import {
-  Box,
-  ButtonUtility,
-  Owner,
-  Tabs,
+    Box,
+    ButtonUtility,
+    Owner,
+    Tabs
 } from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -30,7 +30,6 @@ import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/Header
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -40,6 +39,7 @@ import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAl
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';

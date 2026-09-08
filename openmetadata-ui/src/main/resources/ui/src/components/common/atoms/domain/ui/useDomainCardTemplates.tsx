@@ -12,27 +12,27 @@
  */
 
 import {
-  Avatar,
-  Box,
-  Grid,
-  Owner,
-  Typography,
+    Avatar,
+    Box,
+    Grid,
+    Owner,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
-import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import {
-  CARD_NAME_CLIP_CLASS,
-  CLIPPED_NAME_CLASS,
-  renderDomainClassificationTagsCell,
-  renderDomainGlossaryTagsCell,
-  renderDomainOwnersCell,
-  renderDomainTypeCell,
+    CARD_NAME_CLIP_CLASS,
+    CLIPPED_NAME_CLASS,
+    renderDomainClassificationTagsCell,
+    renderDomainGlossaryTagsCell,
+    renderDomainOwnersCell,
+    renderDomainTypeCell
 } from './domainFieldRenderers';
 
 export const useDomainCardTemplates = () => {

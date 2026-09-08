@@ -12,19 +12,19 @@
  */
 
 import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Dot,
-  Dropdown,
-  Owner,
-  Skeleton,
-  Tabs,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Badge,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Dot,
+    Dropdown,
+    Owner,
+    Skeleton,
+    Tabs,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -62,9 +62,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
-  ContentChangeState,
-  RecentlyViewedQuickLinks,
+    ContentChangeState,
+    RecentlyViewedQuickLinks
 } from '../../../interface/knowledge-center.interface';
 import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
@@ -73,7 +74,6 @@ import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';

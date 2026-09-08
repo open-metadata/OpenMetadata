@@ -17,15 +17,15 @@ import * as reactRouterDom from 'react-router-dom';
 import type { TestCase } from '../../../../generated/tests/testCase';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
-  MOCK_TASK_DATA,
-  MOCK_TEST_CASE_DATA,
-  MOCK_TEST_CASE_INCIDENT,
-  MOCK_TEST_CASE_RESOLUTION_STATUS,
+    MOCK_TASK_DATA,
+    MOCK_TEST_CASE_DATA,
+    MOCK_TEST_CASE_INCIDENT,
+    MOCK_TEST_CASE_RESOLUTION_STATUS
 } from '../../../../mocks/TestCase.mock';
 import {
-  getIncidentTaskByStateId,
-  getListTestCaseIncidentByStateId,
-  updateTestCaseIncidentById,
+    getIncidentTaskByStateId,
+    getListTestCaseIncidentByStateId,
+    updateTestCaseIncidentById
 } from '../../../../rest/incidentManagerAPI';
 import IncidentManagerPageHeaderView from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';

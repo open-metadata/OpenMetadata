@@ -17,8 +17,8 @@ import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import {
-  ColumnsType,
-  ColumnType,
+    ColumnsType,
+    ColumnType
 } from '../components/common/Table/Table.interface';
 import { TAG_LIST_SIZE } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -29,10 +29,10 @@ import { TagLabel } from '../generated/type/tagLabel';
 import i18n from './i18next/LocalUtil';
 import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import {
-  getCertificationTag,
-  getTagsWithoutCertification,
-  getTagsWithoutTier,
-  getTierTags,
+    getCertificationTag,
+    getTagsWithoutCertification,
+    getTagsWithoutTier,
+    getTierTags
 } from './TablePureUtils';
 
 const DomainLabel = withSuspenseFallback(

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import {
-  Button,
-  Owner,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Button,
+    Owner,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
-  File02,
-  RefreshCcw01,
-  ThumbsDown,
-  ThumbsUp,
+    Copy01,
+    File02,
+    RefreshCcw01,
+    ThumbsDown,
+    ThumbsUp
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -33,25 +33,23 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
-import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { getOwnerPath } from '../../../utils/ownerUtils';
 import TierCard from '../../../components/common/TierCard/TierCard';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
-  CustomizeEntityType,
-  ENTITY_PAGE_TYPE_MAP,
+    CustomizeEntityType,
+    ENTITY_PAGE_TYPE_MAP
 } from '../../../constants/Customize.constants';
 import {
-  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
-  SERVICE_TYPES,
+    EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
+    SERVICE_TYPES
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -60,8 +58,8 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
-  ContractExecutionStatus,
-  DataContract,
+    ContractExecutionStatus,
+    DataContract
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
@@ -73,16 +71,16 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
-  AnnouncementEntity,
-  getActiveAnnouncements,
+    AnnouncementEntity,
+    getActiveAnnouncements
 } from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
-  getDataAssetsHeaderInfo,
-  HeaderDotSeparator,
+    getDataAssetsHeaderInfo,
+    HeaderDotSeparator
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
@@ -90,6 +88,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
@@ -100,13 +100,13 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
@@ -119,10 +119,10 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
-  DataAssetHeaderInfo,
-  DataAssetsHeaderProps,
-  DataAssetsWithFollowersField,
-  EntitiesWithDomainField,
+    DataAssetHeaderInfo,
+    DataAssetsHeaderProps,
+    DataAssetsWithFollowersField,
+    EntitiesWithDomainField
 } from './DataAssetsHeader.interface';
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';

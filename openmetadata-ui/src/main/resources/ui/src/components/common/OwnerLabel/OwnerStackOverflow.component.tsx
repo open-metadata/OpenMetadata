@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Avatar,
-  Button,
-  Divider,
-  Typography,
+    Avatar,
+    Button,
+    Divider,
+    Typography
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import {
-  Tooltip as AriaTooltip,
-  TooltipTrigger as AriaTooltipTrigger,
+    Tooltip as AriaTooltip,
+    TooltipTrigger as AriaTooltipTrigger
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -30,8 +30,8 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import {
-  AVATAR_FONT_SIZE_MAP,
-  AVATAR_SIZE_NAME_MAP,
+    AVATAR_FONT_SIZE_MAP,
+    AVATAR_SIZE_NAME_MAP
 } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerStackOverflowProps } from './OwnerAvatarStack.interface';

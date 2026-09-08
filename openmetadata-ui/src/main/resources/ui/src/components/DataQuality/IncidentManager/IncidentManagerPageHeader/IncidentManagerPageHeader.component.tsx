@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  Owner,
-  Skeleton,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Owner,
+    Skeleton,
+    Tooltip,
+    TooltipTrigger,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
@@ -23,10 +23,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';

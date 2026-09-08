@@ -18,15 +18,15 @@ import { useTranslation } from 'react-i18next';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import {
-  WidgetEditButton,
-  WidgetPlusButton,
+    WidgetEditButton,
+    WidgetPlusButton
 } from '../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../components/Customization/GenericProvider/GenericContext';
 import { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/type';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { useOwnerDisplayProps } from '../hooks/useOwnerDisplayProps';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
 const CommonWidgets = lazy(() =>
   import('../components/DataAssets/CommonWidgets/CommonWidgets').then((m) => ({

@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { useFqn } from '../../hooks/useFqn';
 import {
-  mockAlertDetails,
-  mockAlertEventDiagnosticCounts,
+    mockAlertDetails,
+    mockAlertEventDiagnosticCounts
 } from '../../mocks/Alerts.mock';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import * as AlertsAPIs from '../../rest/alertsAPI';

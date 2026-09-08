@@ -17,11 +17,11 @@ import { Domain } from '../../../../../generated/entity/domains/domain';
 import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
 import {
-  renderDomainClassificationTagsCell,
-  renderDomainGlossaryTagsCell,
-  renderDomainNameCell,
-  renderDomainOwnersCell,
-  renderDomainTypeCell,
+    renderDomainClassificationTagsCell,
+    renderDomainGlossaryTagsCell,
+    renderDomainNameCell,
+    renderDomainOwnersCell,
+    renderDomainTypeCell
 } from './domainFieldRenderers';
 
 interface UseDomainTableColumnsOptions {

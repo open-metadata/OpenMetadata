@@ -24,22 +24,22 @@ import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
-  CustomProperty,
-  EntityReference,
+    CustomProperty,
+    EntityReference
 } from '../../../generated/entity/type';
 import {
-  FieldKind,
-  IntakeForm,
-  IntakeFormField,
-  TargetEntityType,
+    FieldKind,
+    IntakeForm,
+    IntakeFormField,
+    TargetEntityType
 } from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-  HelperTextType,
+    FieldProp,
+    FieldTypes,
+    FormItemLayout,
+    HelperTextType
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
@@ -50,17 +50,17 @@ import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-  AddGlossaryTermFormProps,
-  IntakeFieldsSectionProps,
-  OwnersBadgeProps,
+    AddGlossaryTermFormProps,
+    IntakeFieldsSectionProps,
+    OwnersBadgeProps
 } from './AddGlossaryTermForm.interface';
 import {
-  getGlossaryTermFqn,
-  getInitialDescription,
-  toEntityReferenceArray,
+    getGlossaryTermFqn,
+    getInitialDescription,
+    toEntityReferenceArray
 } from './AddGlossaryTermForm.utils';
 import GlossaryTermIntakeFields, {
-  GlossaryTermIntakeFieldsHandle,
+    GlossaryTermIntakeFieldsHandle
 } from './GlossaryTermIntakeFields.component';
 
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);

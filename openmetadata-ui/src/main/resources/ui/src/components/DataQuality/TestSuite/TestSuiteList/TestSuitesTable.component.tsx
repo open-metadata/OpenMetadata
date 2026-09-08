@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  EmptyPlaceholder,
-  EmptyPlaceholderAction,
-  Owner,
-  Skeleton,
-  Table,
+    Box,
+    EmptyPlaceholder,
+    EmptyPlaceholderAction,
+    Owner,
+    Skeleton,
+    Table
 } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
@@ -28,13 +28,13 @@ import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import {
-  DataQualityPageTabs,
-  DataQualitySubTabs,
+    DataQualityPageTabs,
+    DataQualitySubTabs
 } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
