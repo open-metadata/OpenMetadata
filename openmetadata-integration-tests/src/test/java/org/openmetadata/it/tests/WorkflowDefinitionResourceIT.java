@@ -1904,13 +1904,14 @@ public class WorkflowDefinitionResourceIT {
 
   /**
    * #28433: Verify the checkEntityAttributesTask evaluates {@code assetsCount > 0} as true for a
-   * DataProduct that has at least one asset, and false for one that has none.
+   * DataProduct that has at least one asset.
    */
   @Test
   void test_CheckEntityAttributes_DataProductAssetCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
 
-    // Create domain and two data products
+    // Create domain and a data product
     Domain domain =
         client
             .domains()
@@ -1971,8 +1972,9 @@ public class WorkflowDefinitionResourceIT {
             new org.openmetadata.schema.type.api.BulkAssets()
                 .withAssets(List.of(table.getEntityReference())));
 
-    // Build workflow: checkEntityAttributes with assetsCount > 0
-    String workflowName = ns.prefix("dpAssetCountWF");
+    // Build workflow: checkEntityAttributes with assetsCount > 0. The workflow is created AFTER
+    // the DP has its asset so the Updated event fired below evaluates against assetsCount = 1.
+    String workflowName = "dpAssetWF_" + ns.uniqueShortId();
     String workflowJson =
         String.format(
             """
@@ -1981,11 +1983,10 @@ public class WorkflowDefinitionResourceIT {
           "displayName": "DP Asset Count Check",
           "description": "Tests assetsCount enrichment on DataProduct",
           "trigger": {
-            "type": "periodicBatchEntity",
+            "type": "eventBasedEntity",
             "config": {
               "entityTypes": ["dataProduct"],
-              "schedule": {"scheduleTimeline": "None"},
-              "batchSize": 100
+              "events": ["Updated"]
             },
             "output": ["relatedEntity", "updatedBy"]
           },
@@ -2009,7 +2010,8 @@ public class WorkflowDefinitionResourceIT {
             {"from": "start", "to": "checkAssets"},
             {"from": "checkAssets", "to": "endTrue", "condition": "true"},
             {"from": "checkAssets", "to": "endFalse", "condition": "false"}
-          ]
+          ],
+          "config": {"storeStageStatus": true}
         }
         """,
             workflowName);
@@ -2025,54 +2027,16 @@ public class WorkflowDefinitionResourceIT {
 
     try {
       waitForWorkflowDeployment(client, workflowName);
-      waitForEntityIndexedInSearch(
-          client, "data_product_search_index", dpWithAssets.getFullyQualifiedName());
 
-      String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
-      client
-          .getHttpClient()
-          .executeForString(
-              HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
+      // Fire the Updated event on the DP (which already has an asset) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with assets - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithAssets.getId(), dpPatch);
 
-      // Wait for workflow instances to finish and verify the check result
-      await()
-          .atMost(Duration.ofSeconds(120))
-          .pollInterval(Duration.ofSeconds(3))
-          .untilAsserted(
-              () -> {
-                long now = System.currentTimeMillis();
-                String instancesPath =
-                    "/v1/governance/workflowInstances?workflowDefinitionName="
-                        + workflowName
-                        + "&startTs=0&endTs="
-                        + now
-                        + "&limit=100";
-                String instancesJson =
-                    client
-                        .getHttpClient()
-                        .executeForString(
-                            HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
-                JsonNode instancesNode = MAPPER.readTree(instancesJson);
-                JsonNode data = instancesNode.get("data");
-                assertNotNull(data, "Instances data should not be null");
-                assertTrue(data.size() > 0, "Workflow should have at least one instance");
-
-                boolean foundFinishedWithTrueResult = false;
-                for (JsonNode instance : data) {
-                  String status = instance.has("status") ? instance.get("status").asText() : "";
-                  if ("FINISHED".equals(status) && instance.has("variables")) {
-                    JsonNode vars = instance.get("variables");
-                    if (vars.has("checkAssets_result")
-                        && vars.get("checkAssets_result").asBoolean()) {
-                      foundFinishedWithTrueResult = true;
-                    }
-                  }
-                }
-                assertTrue(
-                    foundFinishedWithTrueResult,
-                    "At least one FINISHED instance should have checkAssets_result=true "
-                        + "(DP with assets)");
-              });
+      // Wait for the workflow run and verify the checkAssets node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkAssets_result");
     } finally {
       safeDeleteWorkflow(client, workflowName);
     }
@@ -2085,6 +2049,7 @@ public class WorkflowDefinitionResourceIT {
   @Test
   void test_CheckEntityAttributes_DataProductOutputPortCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
 
     Domain domain =
         client
@@ -2145,7 +2110,9 @@ public class WorkflowDefinitionResourceIT {
     client.dataProducts().bulkAddAssets(dpWithPorts.getFullyQualifiedName(), bulkAssets);
     client.dataProducts().bulkAddOutputPorts(dpWithPorts.getFullyQualifiedName(), bulkAssets);
 
-    String workflowName = ns.prefix("dpOutputPortCountWF");
+    // The workflow is created AFTER the DP has its output port so the Updated event fired
+    // below evaluates against outputPortsCount = 1.
+    String workflowName = "dpOpWF_" + ns.uniqueShortId();
     String workflowJson =
         String.format(
             """
@@ -2154,11 +2121,10 @@ public class WorkflowDefinitionResourceIT {
           "displayName": "DP Output Port Count Check",
           "description": "Tests outputPortsCount enrichment on DataProduct",
           "trigger": {
-            "type": "periodicBatchEntity",
+            "type": "eventBasedEntity",
             "config": {
               "entityTypes": ["dataProduct"],
-              "schedule": {"scheduleTimeline": "None"},
-              "batchSize": 100
+              "events": ["Updated"]
             },
             "output": ["relatedEntity", "updatedBy"]
           },
@@ -2182,7 +2148,8 @@ public class WorkflowDefinitionResourceIT {
             {"from": "start", "to": "checkOutputPorts"},
             {"from": "checkOutputPorts", "to": "endTrue", "condition": "true"},
             {"from": "checkOutputPorts", "to": "endFalse", "condition": "false"}
-          ]
+          ],
+          "config": {"storeStageStatus": true}
         }
         """,
             workflowName);
@@ -2198,56 +2165,83 @@ public class WorkflowDefinitionResourceIT {
 
     try {
       waitForWorkflowDeployment(client, workflowName);
-      waitForEntityIndexedInSearch(
-          client, "data_product_search_index", dpWithPorts.getFullyQualifiedName());
 
-      String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
-      client
-          .getHttpClient()
-          .executeForString(
-              HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
+      // Fire the Updated event on the DP (which already has an output port) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with output ports - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithPorts.getId(), dpPatch);
 
-      await()
-          .atMost(Duration.ofSeconds(120))
-          .pollInterval(Duration.ofSeconds(3))
-          .untilAsserted(
-              () -> {
-                long now = System.currentTimeMillis();
-                String instancesPath =
-                    "/v1/governance/workflowInstances?workflowDefinitionName="
-                        + workflowName
-                        + "&startTs=0&endTs="
-                        + now
-                        + "&limit=100";
-                String instancesJson =
-                    client
-                        .getHttpClient()
-                        .executeForString(
-                            HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
-                JsonNode instancesNode = MAPPER.readTree(instancesJson);
-                JsonNode data = instancesNode.get("data");
-                assertNotNull(data, "Instances data should not be null");
-                assertTrue(data.size() > 0, "Workflow should have at least one instance");
-
-                boolean foundFinishedWithTrueResult = false;
-                for (JsonNode instance : data) {
-                  String status = instance.has("status") ? instance.get("status").asText() : "";
-                  if ("FINISHED".equals(status) && instance.has("variables")) {
-                    JsonNode vars = instance.get("variables");
-                    if (vars.has("checkOutputPorts_result")
-                        && vars.get("checkOutputPorts_result").asBoolean()) {
-                      foundFinishedWithTrueResult = true;
-                    }
-                  }
-                }
-                assertTrue(
-                    foundFinishedWithTrueResult,
-                    "At least one FINISHED instance should have checkOutputPorts_result=true "
-                        + "(DP with output ports)");
-              });
+      // Wait for the workflow run and verify the checkOutputPorts node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkOutputPorts_result");
     } finally {
       safeDeleteWorkflow(client, workflowName);
     }
+  }
+
+  /**
+   * Polls until the given workflow has at least one instance whose recorded stage carries {@code
+   * <nodeName>_result = true} (written by the node's stage listeners when storeStageStatus=true).
+   */
+  private void awaitStageResultTrue(
+      OpenMetadataClient client, String workflowDefinitionName, String resultKey) {
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(3))
+        .untilAsserted(
+            () -> {
+              String instancesPath =
+                  "/v1/governance/workflowInstances?workflowDefinitionName="
+                      + workflowDefinitionName
+                      + "&startTs=0&endTs="
+                      + System.currentTimeMillis()
+                      + "&limit=100";
+              String instancesJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
+              JsonNode instances = MAPPER.readTree(instancesJson).path("data");
+              assertTrue(instances.size() > 0, "Workflow should have at least one instance");
+              assertTrue(
+                  anyInstanceStageHasTrueResult(
+                      client, workflowDefinitionName, instances, resultKey),
+                  "At least one workflow instance should have a stage with " + resultKey + "=true");
+            });
+  }
+
+  private boolean anyInstanceStageHasTrueResult(
+      OpenMetadataClient client,
+      String workflowDefinitionName,
+      JsonNode instances,
+      String resultKey)
+      throws Exception {
+    boolean found = false;
+    for (JsonNode instance : instances) {
+      String instanceId = instance.path("id").asText(null);
+      if (instanceId == null) {
+        continue;
+      }
+      String statesPath =
+          "/v1/governance/workflowInstanceStates/"
+              + workflowDefinitionName
+              + "/"
+              + instanceId
+              + "?startTs=0&endTs="
+              + System.currentTimeMillis()
+              + "&limit=100";
+      String statesJson =
+          client
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, statesPath, null, RequestOptions.builder().build());
+      for (JsonNode state : MAPPER.readTree(statesJson).path("data")) {
+        if (state.path("stage").path("variables").path(resultKey).asBoolean(false)) {
+          found = true;
+        }
+      }
+    }
+    return found;
   }
 
   private void safeDeleteWorkflow(OpenMetadataClient client, String workflowName) {
