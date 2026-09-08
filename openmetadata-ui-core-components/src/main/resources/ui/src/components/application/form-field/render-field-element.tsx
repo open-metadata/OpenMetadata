@@ -57,7 +57,7 @@ const MULTIPLE_SELECTION_FIELD_TYPES = new Set<FieldTypes>([
 const isMultipleSelection = (
   type: FieldTypes,
   value: string | string[],
-  props: FieldPropsMap
+  props: FieldPropsMap,
 ) => {
   if (MULTIPLE_SELECTION_FIELD_TYPES.has(type)) {
     return true;
@@ -74,11 +74,26 @@ const isMultipleSelection = (
   return Array.isArray(value);
 };
 
+// Hoisted, not inline: react-aria builds a Select's collection from `items`
+// AND `children`, so a children function with a fresh identity on every render
+// rebuilds the collection and detaches whichever option is under the cursor.
+// It closes over nothing but its argument, so module scope is enough.
+const renderSelectItem = (item: FormSelectItem) => (
+  <Select.Item
+    avatarUrl={item.avatarUrl}
+    icon={item.icon}
+    id={item.id}
+    isDisabled={item.isDisabled}
+    supportingText={item.supportingText}>
+    {item.label}
+  </Select.Item>
+);
+
 const getItems = (props: FieldPropsMap): FormSelectItem[] =>
   props.items ?? props.options ?? [];
 
 const getSelectedItems = (
-  value: FormSelectItem | FormSelectItem[]
+  value: FormSelectItem | FormSelectItem[],
 ): FormSelectItem[] => {
   if (!Array.isArray(value)) {
     return value ? [value] : [];
@@ -102,7 +117,7 @@ const getDefaultAutocompleteItems = (items: FormSelectItem[]) =>
 
 export const renderFieldElement = (
   controller: UseControllerReturn,
-  fieldConfig: FieldProp
+  fieldConfig: FieldProp,
 ): ReactNode => {
   const { field, fieldState } = controller;
   const { type, id, label, placeholder, props = {} } = fieldConfig;
@@ -154,7 +169,7 @@ export const renderFieldElement = (
 
     const handleClear = (key: Key) => {
       const nextItems = selectedAutocompleteItems.filter(
-        (item) => item.id !== String(key)
+        (item) => item.id !== String(key),
       );
 
       field.onChange(multiple ? nextItems : null);
@@ -433,7 +448,7 @@ export const renderFieldElement = (
           }}
           onChange={(event) => {
             const nextItem = selectItems.find(
-              (item) => item.id === event.target.value
+              (item) => item.id === event.target.value,
             );
 
             field.onChange(nextItem ?? null);
@@ -459,22 +474,13 @@ export const renderFieldElement = (
           onFocus={onFocus}
           onSelectionChange={(key) => {
             const nextItem = selectItems.find(
-              (item) => item.id === String(key)
+              (item) => item.id === String(key),
             );
 
             field.onChange(nextItem ?? null);
             onSelectionChange?.(key);
           }}>
-          {(item) => (
-            <Select.Item
-              avatarUrl={item.avatarUrl}
-              icon={item.icon}
-              id={item.id}
-              isDisabled={item.isDisabled}
-              supportingText={item.supportingText}>
-              {item.label}
-            </Select.Item>
-          )}
+          {renderSelectItem}
         </Select>
       );
     }
