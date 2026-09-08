@@ -511,8 +511,14 @@ export class TableClass extends EntityClass {
       await this.create(apiContext);
     }
 
-    const testCase = await apiContext
-      .post('/api/v1/dataQuality/testCases', {
+    // Checked, not bare .json(): a failed create used to be pushed onto
+    // testCasesResponseData as an error body, so callers read `undefined` for
+    // the name and failed much later somewhere unrelated -- a search that waits
+    // for `q === undefined` simply never resolves.
+    const testCase = await okJson<
+      ResponseDataType & { testSuite?: ResponseDataType }
+    >(
+      await apiContext.post('/api/v1/dataQuality/testCases', {
         data: {
           name: `pw_test_case_${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.fullyQualifiedName}>`,
@@ -523,11 +529,14 @@ export class TableClass extends EntityClass {
           ],
           ...testCaseData,
         },
-      })
-      .then((res) => res.json());
+      }),
+      'TableClass.createTestCase'
+    );
 
-    if (isEmpty(this.testSuiteResponseData)) {
-      this.testSuiteResponseData = testCase?.testSuite;
+    // okJson guarantees testCase now, so only the optional testSuite needs a
+    // guard -- assigning undefined here used to be masked by the untyped read.
+    if (isEmpty(this.testSuiteResponseData) && testCase.testSuite) {
+      this.testSuiteResponseData = testCase.testSuite;
     }
 
     this.testCasesResponseData.push(testCase);
