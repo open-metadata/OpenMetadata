@@ -130,34 +130,26 @@ test.describe(
         const teamSelectInput = teamSelect.getByRole('combobox');
         const dropdown = page.getByRole('tree');
 
-        await test.step(
-          'Non-Group team with children is visible but not selectable',
-          async () => {
-            await teamSelect.click();
-            await teamSelectInput.fill(departmentTeamName);
+        await test.step('Non-Group team with children is visible but not selectable', async () => {
+          await teamSelect.click();
+          await teamSelectInput.fill(departmentTeamName);
 
-            const departmentOption = dropdown.getByText(departmentTeamName);
+          const departmentOption = dropdown.getByText(departmentTeamName);
 
-            await expect(departmentOption).toBeVisible();
+          await expect(departmentOption).toBeVisible();
 
-            await departmentOption.click();
+          await departmentOption.click();
 
-            // A selection would render the team name as a chip inside the
-            // select control; the search input value is not text content.
-            await expect(
-              teamSelect.getByText(departmentTeamName)
-            ).toHaveCount(0);
-          }
-        );
+          // A selection would render the team name as a chip inside the
+          // select control; the search input value is not text content.
+          await expect(teamSelect.getByText(departmentTeamName)).toHaveCount(0);
+        });
 
-        await test.step(
-          'Non-Group team without children is hidden',
-          async () => {
-            await teamSelectInput.fill(childlessDepartmentName);
+        await test.step('Non-Group team without children is hidden', async () => {
+          await teamSelectInput.fill(childlessDepartmentName);
 
-            await expect(dropdown).not.toContainText(childlessDepartmentName);
-          }
-        );
+          await expect(dropdown).not.toContainText(childlessDepartmentName);
+        });
 
         await test.step('Group team is selectable', async () => {
           await teamSelectInput.fill(groupTeamName);
@@ -215,31 +207,25 @@ test.describe(
           '.ant-select-tree-treenode-selected'
         );
 
-        await test.step(
-          'Non-Group team with children is visible but not selectable',
-          async () => {
-            await teamSelectInput.fill(departmentTeamName);
+        await test.step('Non-Group team with children is visible but not selectable', async () => {
+          await teamSelectInput.fill(departmentTeamName);
 
-            const departmentOption = dropdown.getByText(departmentTeamName);
+          const departmentOption = dropdown.getByText(departmentTeamName);
 
-            await expect(departmentOption).toBeVisible();
+          await expect(departmentOption).toBeVisible();
 
-            await departmentOption.click();
+          await departmentOption.click();
 
-            await expect(
-              selectedTreeNodes.filter({ hasText: departmentTeamName })
-            ).toHaveCount(0);
-          }
-        );
+          await expect(
+            selectedTreeNodes.filter({ hasText: departmentTeamName })
+          ).toHaveCount(0);
+        });
 
-        await test.step(
-          'Non-Group team without children is hidden',
-          async () => {
-            await teamSelectInput.fill(childlessDivisionName);
+        await test.step('Non-Group team without children is hidden', async () => {
+          await teamSelectInput.fill(childlessDivisionName);
 
-            await expect(dropdown).not.toContainText(childlessDivisionName);
-          }
-        );
+          await expect(dropdown).not.toContainText(childlessDivisionName);
+        });
 
         await test.step('Group team is selectable', async () => {
           await teamSelectInput.fill(groupTeamName);
