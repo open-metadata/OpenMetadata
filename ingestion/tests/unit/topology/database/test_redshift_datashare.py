@@ -18,6 +18,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy.sql import sqltypes
+
 from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -32,6 +34,10 @@ from metadata.ingestion.source.database.redshift.metadata import (
 )
 from metadata.ingestion.source.database.redshift.metadata import (
     logger as metadata_logger,
+)
+from metadata.ingestion.source.database.redshift.strategy import (
+    BaseStrategy,
+    DatashareStrategy,
 )
 
 LOCAL_DATABASE = "dev"
@@ -68,7 +74,10 @@ DATABASE_ROWS = [
     SimpleNamespace(database_name=SHARED_DATABASE, database_type="auto mounted catalog"),
 ]
 
-SCHEMA_ROWS = [("public",), ("sales",)]
+SCHEMA_ROWS = [
+    SimpleNamespace(database_name=SHARED_DATABASE, schema_name="public"),
+    SimpleNamespace(database_name=SHARED_DATABASE, schema_name="sales"),
+]
 
 TABLE_ROWS = [
     SimpleNamespace(table_name="orders", table_type="SHARED TABLE", remarks="Shared orders"),
@@ -101,8 +110,8 @@ COLUMN_ROWS = [
 ]
 
 
-class RedshiftDatashareTest(unittest.TestCase):
-    """Datashare databases are read from SVV_ALL_* instead of a connection"""
+class RedshiftSourceFixture:
+    """A Redshift source whose only connection answers the catalog views."""
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def setUp(self, mock_test_connection):
@@ -160,11 +169,29 @@ class RedshiftDatashareTest(unittest.TestCase):
         ):
             return list(self.redshift_source.get_database_names())
 
+    def _enter_datashare_mode(self):
+        """Walk the databases so that the datashare strategy is chosen the way a
+        real run chooses it, rather than by assigning it here."""
+        self._database_names({SHARED_DATABASE})
+        self.assertIsInstance(self.redshift_source.strategy, DatashareStrategy)
+
+    def assertDatashareStrategy(self, database_name):  # noqa: N802
+        strategy = self.redshift_source.strategy
+        self.assertIsInstance(strategy, DatashareStrategy)
+        self.assertEqual(strategy.database_name, database_name)
+
+    def assertBaseStrategy(self):  # noqa: N802
+        self.assertIsInstance(self.redshift_source.strategy, BaseStrategy)
+
+
+class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
+    """Datashare databases are read from SVV_ALL_* instead of a connection"""
+
     def test_unreachable_shared_database_is_still_ingested(self):
         """The database that refused the connection is yielded in datashare mode"""
         with self.assertLogs(metadata_logger, level="INFO") as logs:
             self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertEqual(self.redshift_source.datashare_database, SHARED_DATABASE)
+        self.assertDatashareStrategy(SHARED_DATABASE)
         # The connection error stays visible, so a genuine failure is diagnosable
         self.assertTrue(
             any(f'Cannot connect to shared database "{SHARED_DATABASE}"' in line for line in logs.output),
@@ -174,7 +201,7 @@ class RedshiftDatashareTest(unittest.TestCase):
     def test_connectable_databases_are_untouched(self):
         """Nothing changes for a cluster whose databases all accept connections"""
         self.assertEqual(self._database_names(set()), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertIsNone(self.redshift_source.datashare_database)
+        self.assertBaseStrategy()
         # Only the probe that classifies the databases reached the connection
         self.assertEqual(self.connection.execute.call_count, 1)
 
@@ -196,14 +223,14 @@ class RedshiftDatashareTest(unittest.TestCase):
             patch.object(RedshiftSource, "set_external_location_map", side_effect=failing_location_map),
         ):
             self.assertEqual(list(self.redshift_source.get_database_names()), [])
-        self.assertIsNone(self.redshift_source.datashare_database)
+        self.assertBaseStrategy()
         # Only the classification probe ran; no catalog view was consulted
         self.assertEqual(self.connection.execute.call_count, 1)
 
     def test_unreachable_local_database_is_reported(self):
         """A database that is not shared keeps failing as it does today"""
         self.assertEqual(self._database_names({LOCAL_DATABASE}), [SHARED_DATABASE])
-        self.assertIsNone(self.redshift_source.datashare_database)
+        self.assertBaseStrategy()
 
     def test_database_without_a_reported_type_is_treated_as_local(self):
         """An empty `database_type` must not read as non-local"""
@@ -214,7 +241,7 @@ class RedshiftDatashareTest(unittest.TestCase):
         ]
         try:
             self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
-            self.assertIsNone(self.redshift_source.datashare_database)
+            self.assertBaseStrategy()
         finally:
             DATABASE_ROWS = original
 
@@ -222,7 +249,7 @@ class RedshiftDatashareTest(unittest.TestCase):
         """Clusters predating SHOW DATABASES still classify through the SVV view"""
         self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
         self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertEqual(self.redshift_source.datashare_database, SHARED_DATABASE)
+        self.assertDatashareStrategy(SHARED_DATABASE)
 
     def test_shared_database_with_no_readable_schemas_is_skipped(self):
         """A database the catalog cannot see into is skipped, not registered empty.
@@ -232,21 +259,21 @@ class RedshiftDatashareTest(unittest.TestCase):
         """
         self.schema_rows = []
         self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
-        self.assertIsNone(self.redshift_source.datashare_database)
+        self.assertBaseStrategy()
 
     def test_no_classification_source_keeps_current_behaviour(self):
         """With neither source readable, no database is classified as shared"""
         self.show_databases_error = RuntimeError("permission denied")
         self.svv_databases_error = RuntimeError("permission denied for view svv_redshift_databases")
         self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
-        self.assertIsNone(self.redshift_source.datashare_database)
+        self.assertBaseStrategy()
 
     def test_schema_names_come_from_the_catalog(self):
         self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
         self.assertEqual(list(self.redshift_source.get_raw_database_schema_names()), ["public", "sales"])
 
     def test_table_names_and_types_come_from_the_catalog(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         self.redshift_source.source_config.includeViews = True
         tables = self.redshift_source.query_table_names_and_types("public")
         self.assertEqual(
@@ -257,13 +284,13 @@ class RedshiftDatashareTest(unittest.TestCase):
         self.assertEqual(self.redshift_source._get_columns_with_constraints("public", "orders"), ([], [], []))
 
     def test_views_are_skipped_when_not_requested(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         self.redshift_source.source_config.includeViews = False
         tables = self.redshift_source.query_table_names_and_types("public")
         self.assertEqual([table.name for table in tables], ["orders"])
 
     def test_table_description_comes_from_the_catalog(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         self.redshift_source.query_table_names_and_types("public")
         self.assertEqual(
             self.redshift_source.get_table_description("public", "orders", MagicMock()),
@@ -272,7 +299,7 @@ class RedshiftDatashareTest(unittest.TestCase):
 
     def test_table_descriptions_of_two_schemas_do_not_overwrite_each_other(self):
         """Remarks are keyed by schema, so schemas walked in parallel keep their own"""
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         self.redshift_source.query_table_names_and_types("public")
         self.redshift_source.query_table_names_and_types("sales")
         self.assertEqual(
@@ -281,7 +308,7 @@ class RedshiftDatashareTest(unittest.TestCase):
         )
 
     def test_columns_are_built_from_the_catalog(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         columns, constraints, foreign_columns = self.redshift_source.get_columns_and_constraints(
             schema_name="public",
             table_name="orders",
@@ -301,15 +328,63 @@ class RedshiftDatashareTest(unittest.TestCase):
         self.assertEqual(columns[1].description.root, "Customer name")
 
     def test_stored_procedures_are_not_read_from_the_local_database(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         self.redshift_source.source_config.includeStoredProcedures = True
         self.assertEqual(list(self.redshift_source.get_stored_procedures()), [])
 
     def test_schema_definition_is_not_read_from_the_local_database(self):
-        self.redshift_source.datashare_database = SHARED_DATABASE
+        self._enter_datashare_mode()
         self.assertIsNone(
             self.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", MagicMock())
         )
+
+
+class RedshiftBaseStrategyTest(RedshiftSourceFixture, unittest.TestCase):
+    """A connectable database keeps being read through reflection.
+
+    The datashare work moved these reads behind a strategy, so each one needs a
+    guard proving the connected path still lands on the inspector rather than on
+    a catalog view.
+    """
+
+    def test_a_connectable_database_keeps_the_base_strategy(self):
+        self._database_names(set())
+        self.assertBaseStrategy()
+
+    def test_schema_names_come_from_the_inspector(self):
+        inspector = MagicMock()
+        inspector.get_schema_names.return_value = ["public", "staging"]
+        self.redshift_source._inspector_map[self.redshift_source.context.get_current_thread_id()] = inspector
+        self.assertEqual(list(self.redshift_source.get_raw_database_schema_names()), ["public", "staging"])
+
+    def test_table_description_comes_from_the_inspector(self):
+        inspector = MagicMock()
+        inspector.get_table_comment.return_value = {"text": "Reflected comment"}
+        self.assertEqual(
+            self.redshift_source.get_table_description("public", "orders", inspector),
+            "Reflected comment",
+        )
+        inspector.get_table_comment.assert_called_once_with("orders", "public")
+
+    def test_schema_definition_comes_from_the_inspector(self):
+        inspector = MagicMock()
+        inspector.get_view_definition.return_value = "SELECT 1"
+        self.assertEqual(
+            self.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", inspector),
+            "SELECT 1",
+        )
+        inspector.get_view_definition.assert_called_once_with("orders_view", "public")
+
+    def test_columns_come_from_the_inspector(self):
+        inspector = MagicMock()
+        inspector.get_columns.return_value = [{"name": "order_id", "type": sqltypes.INTEGER()}]
+        columns = self.redshift_source._get_columns_internal(
+            "public", "orders", LOCAL_DATABASE, inspector, TableType.Regular
+        )
+        self.assertEqual([column["name"] for column in columns], ["order_id"])
+
+    def test_stored_procedures_are_read_from_a_connectable_database(self):
+        self.assertTrue(self.redshift_source.strategy.supports_stored_procedures)
 
 
 class RedshiftDatashareHelpersTest(unittest.TestCase):

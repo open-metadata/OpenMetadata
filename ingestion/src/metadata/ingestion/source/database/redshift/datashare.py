@@ -30,8 +30,8 @@ from metadata.ingestion.source.database.redshift.models import RedshiftDatashare
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_TYPES,
     REDSHIFT_GET_DATASHARE_COLUMNS,
-    REDSHIFT_GET_DATASHARE_SCHEMAS,
     REDSHIFT_GET_DATASHARE_TABLES,
+    REDSHIFT_GET_SCHEMAS_FOR_DATABASE,
     REDSHIFT_SHOW_DATABASES,
 )
 from metadata.ingestion.source.database.redshift.utils import ischema_names
@@ -148,8 +148,8 @@ class RedshiftDatashareCatalog:
         return set()
 
     def get_schema_names(self, database_name: str) -> list[str]:
-        rows = self._connection_provider().execute(text(REDSHIFT_GET_DATASHARE_SCHEMAS), {"database": database_name})
-        return [str(row[0]) for row in rows if row[0] is not None]
+        rows = self._connection_provider().execute(text(REDSHIFT_GET_SCHEMAS_FOR_DATABASE), {"database": database_name})
+        return [str(row.schema_name) for row in rows if row.schema_name is not None]
 
     def get_tables(self, database_name: str, schema_name: str) -> list[RedshiftDatashareTable]:
         rows = self._connection_provider().execute(

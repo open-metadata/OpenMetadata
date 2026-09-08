@@ -297,6 +297,14 @@ REDSHIFT_GET_ALL_SCHEMAS = """
 SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
 """
 
+# Same view, narrowed to one database - derived from the query above so that the
+# two cannot drift apart.
+REDSHIFT_GET_SCHEMAS_FOR_DATABASE = (
+    REDSHIFT_GET_ALL_SCHEMAS
+    + """WHERE database_name = :database
+"""
+)
+
 # Databases the cluster does not hold locally show up in `pg_database`, but the
 # server refuses a connection to them, so their metadata has to be read through
 # the cross-database SVV_ALL_* catalog views below.
@@ -309,10 +317,6 @@ REDSHIFT_SHOW_DATABASES = "SHOW DATABASES"
 
 REDSHIFT_GET_DATABASE_TYPES = """
 SELECT database_name, database_type FROM SVV_REDSHIFT_DATABASES
-"""
-
-REDSHIFT_GET_DATASHARE_SCHEMAS = """
-SELECT schema_name FROM SVV_ALL_SCHEMAS WHERE database_name = :database
 """
 
 REDSHIFT_GET_DATASHARE_TABLES = """
