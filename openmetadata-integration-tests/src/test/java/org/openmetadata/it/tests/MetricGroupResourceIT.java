@@ -87,7 +87,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * a HAS relationship rather than CONTAINS, and it is the thing most likely to regress.
  */
 @Execution(ExecutionMode.SAME_THREAD)
-@Isolated("Rollback coverage temporarily installs entity_relationship CHECK constraints")
+@Isolated("Rollback coverage temporarily installs entity_relationship write guards")
 @ExtendWith(TestNamespaceExtension.class)
 public class MetricGroupResourceIT {
   private static final String ALL_RESOURCES = "All";
@@ -780,10 +780,10 @@ public class MetricGroupResourceIT {
     BulkAssets request = new BulkAssets().withAssets(List.of(root.getEntityReference()));
     ConnectionType connectionType = currentConnectionType();
     String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-    String constraint = "metric_membership_fail_" + suffix;
+    String guardName = "metric_membership_fail_" + suffix;
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
 
-    createMembershipFailureConstraint(jdbi, constraint, group.getId(), child.getId());
+    createMembershipFailureGuard(jdbi, connectionType, guardName, group.getId(), child.getId());
     try {
       assertThrows(
           RuntimeException.class,
@@ -796,7 +796,7 @@ public class MetricGroupResourceIT {
                       request,
                       Object.class));
     } finally {
-      dropMembershipFailureConstraint(jdbi, connectionType, constraint);
+      dropMembershipFailureGuard(jdbi, connectionType, guardName);
     }
 
     assertEquals(0, membershipCount(jdbi, group.getId(), root.getId()));
@@ -812,18 +812,18 @@ public class MetricGroupResourceIT {
         createGroup(new CreateMetricGroup().withName(ns.prefix("patch_rollback_group")));
     ConnectionType connectionType = currentConnectionType();
     String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-    String constraint = "metric_patch_membership_fail_" + suffix;
+    String guardName = "metric_patch_membership_fail_" + suffix;
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
     Metric update = SdkClients.adminClient().metrics().get(root.getId().toString(), "metricGroup");
     update.setMetricGroup(group.getEntityReference());
 
-    createMembershipFailureConstraint(jdbi, constraint, group.getId(), child.getId());
+    createMembershipFailureGuard(jdbi, connectionType, guardName, group.getId(), child.getId());
     try {
       assertThrows(
           RuntimeException.class,
           () -> SdkClients.adminClient().metrics().update(root.getId().toString(), update));
     } finally {
-      dropMembershipFailureConstraint(jdbi, connectionType, constraint);
+      dropMembershipFailureGuard(jdbi, connectionType, guardName);
     }
 
     assertEquals(0, membershipCount(jdbi, group.getId(), root.getId()));
@@ -1304,36 +1304,64 @@ public class MetricGroupResourceIT {
         : ConnectionType.POSTGRES;
   }
 
-  private static void createMembershipFailureConstraint(
-      Jdbi jdbi, String constraint, UUID groupId, UUID metricId) {
+  private static void createMembershipFailureGuard(
+      Jdbi jdbi, ConnectionType connectionType, String guardName, UUID groupId, UUID metricId) {
+    if (connectionType == ConnectionType.MYSQL) {
+      jdbi.useHandle(
+          handle -> {
+            // An enforced CHECK copies this high-volume table, while a trigger needs SUPER when
+            // binary logging is enabled. An updatable view rejects only the target row immediately.
+            handle.execute("RENAME TABLE entity_relationship TO " + guardName);
+            try {
+              handle.execute(mysqlMembershipFailureView(guardName, groupId, metricId));
+            } catch (RuntimeException failure) {
+              handle.execute("RENAME TABLE " + guardName + " TO entity_relationship");
+              throw failure;
+            }
+          });
+      return;
+    }
     jdbi.useHandle(
         handle ->
-            handle.execute(
-                "ALTER TABLE entity_relationship ADD CONSTRAINT "
-                    + constraint
-                    + " CHECK (NOT (fromId = '"
-                    + groupId
-                    + "' AND toId = '"
-                    + metricId
-                    + "' AND fromEntity = '"
-                    + METRIC_GROUP
-                    + "' AND toEntity = '"
-                    + METRIC
-                    + "' AND relation = "
-                    + Relationship.HAS.ordinal()
-                    + "))"));
+            handle.execute(postgresMembershipFailureConstraint(guardName, groupId, metricId)));
   }
 
-  private static void dropMembershipFailureConstraint(
-      Jdbi jdbi, ConnectionType connectionType, String constraint) {
+  private static String mysqlMembershipFailureView(
+      String backingTable, UUID groupId, UUID metricId) {
+    return """
+        CREATE VIEW entity_relationship AS
+        SELECT * FROM %s
+        WHERE NOT (fromId = '%s' AND toId = '%s' AND fromEntity = '%s'
+          AND toEntity = '%s' AND relation = %d)
+        WITH CASCADED CHECK OPTION
+        """
+        .formatted(
+            backingTable, groupId, metricId, METRIC_GROUP, METRIC, Relationship.HAS.ordinal());
+  }
+
+  private static String postgresMembershipFailureConstraint(
+      String constraintName, UUID groupId, UUID metricId) {
+    return """
+        ALTER TABLE entity_relationship ADD CONSTRAINT %s
+        CHECK (NOT (fromId = '%s' AND toId = '%s' AND fromEntity = '%s'
+          AND toEntity = '%s' AND relation = %d))
+        """
+        .formatted(
+            constraintName, groupId, metricId, METRIC_GROUP, METRIC, Relationship.HAS.ordinal());
+  }
+
+  private static void dropMembershipFailureGuard(
+      Jdbi jdbi, ConnectionType connectionType, String guardName) {
+    if (connectionType == ConnectionType.MYSQL) {
+      jdbi.useHandle(
+          handle -> {
+            handle.execute("DROP VIEW entity_relationship");
+            handle.execute("RENAME TABLE " + guardName + " TO entity_relationship");
+          });
+      return;
+    }
     jdbi.useHandle(
-        handle -> {
-          if (connectionType == ConnectionType.MYSQL) {
-            handle.execute("ALTER TABLE entity_relationship DROP CHECK " + constraint);
-          } else {
-            handle.execute("ALTER TABLE entity_relationship DROP CONSTRAINT " + constraint);
-          }
-        });
+        handle -> handle.execute("ALTER TABLE entity_relationship DROP CONSTRAINT " + guardName));
   }
 
   private static int membershipCount(Jdbi jdbi, UUID groupId, UUID metricId) {
