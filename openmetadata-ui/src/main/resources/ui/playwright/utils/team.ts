@@ -22,6 +22,7 @@ import {
   descriptionBox,
   redirectToHomePage,
   uuid,
+  waitForAntdPopupToSettle,
 } from './common';
 import {
   addMultiOwner,
@@ -692,4 +693,43 @@ export const executionOnOwnerGroupTeam = async (
   await addEmailTeam(page, data.email);
 
   await addUserTeam(page, data.user, data.userName);
+};
+
+/**
+ * Wait for the team assets listing search call. The team id appears in the
+ * encoded query_filter (owners.id term), so the match cannot collide with
+ * other search/query requests on the page.
+ */
+export const waitForTeamAssetsSearchResponse = (page: Page, teamId: string) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=all') &&
+      response.url().includes(teamId)
+  );
+
+export const selectAssetsFilterFromDropdown = async (
+  page: Page,
+  filterLabel: string
+) => {
+  await page.getByTestId('asset-filter-button').click();
+  const menuItem = page.getByRole('menuitem', { name: filterLabel });
+  await expect(menuItem).toBeVisible();
+  await waitForAntdPopupToSettle(page);
+  await menuItem.click();
+};
+
+export const applyEntityTypeFilterValue = async (
+  page: Page,
+  teamId: string,
+  entityTypeCheckboxTestId: string
+) => {
+  await page.getByRole('button', { name: 'Entity Type' }).click();
+  await page.getByTestId(entityTypeCheckboxTestId).check();
+  const filterResponse = waitForTeamAssetsSearchResponse(page, teamId);
+  await page.getByTestId('update-btn').click();
+  const response = await filterResponse;
+
+  expect(response.status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
 };
