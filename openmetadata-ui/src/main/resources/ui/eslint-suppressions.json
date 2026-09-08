@@ -897,7 +897,7 @@
   },
   "playwright/support/entity/ingestion/ServiceBaseClass.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/support/team/TeamClass.ts": {
