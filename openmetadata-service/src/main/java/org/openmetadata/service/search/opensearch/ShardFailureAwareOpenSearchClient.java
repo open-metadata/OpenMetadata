@@ -39,25 +39,36 @@ public class ShardFailureAwareOpenSearchClient extends OpenSearchClient {
       throws IOException, OpenSearchException {
     SearchResponse<T> response = super.search(request, documentClass);
     ShardStatistics shards = response.shards();
-    if (shards != null) {
+    // Healthy searches are the hot path and must not pay for the diagnostic: nothing below is
+    // computed until the engine has already said a shard failed.
+    if (shards != null && shards.failed() > 0) {
       SearchShardFailures.check(
-          shards.failed(), shards.total(), matchedHits(response), describe(shards.failures()));
+          shards.failed(),
+          shards.total(),
+          returnedNoDocuments(request, response),
+          describe(shards.failures()));
     }
     return response;
   }
 
   /**
-   * Documents the query matched, which is what decides whether an empty answer is trustworthy. Falls
-   * back to the returned page when the caller turned off {@code track_total_hits} and the engine
-   * therefore reports no total.
+   * Whether this response asked for documents and verifiably came back without any — the only
+   * outcome {@link SearchShardFailures} refuses.
+   *
+   * <p>Two responses look empty without being untrustworthy. An aggregation-only request ({@code
+   * size: 0}, as every aggregation and data-insight query here issues) carries its payload in the
+   * buckets, so its hit count measures nothing. And a response that reports no total at all cannot
+   * distinguish an empty page — a deep offset past the end of the result set — from an empty result
+   * set. Neither is evidence that results went missing, so neither is rejected.
    */
-  private static long matchedHits(SearchResponse<?> response) {
-    HitsMetadata<?> hits = response.hits();
-    if (hits == null) {
-      return 0L;
+  private static boolean returnedNoDocuments(SearchRequest request, SearchResponse<?> response) {
+    Integer requestedSize = request.size();
+    if (requestedSize != null && requestedSize == 0) {
+      return false;
     }
-    TotalHits total = hits.total();
-    return total != null ? total.value() : listOrEmpty(hits.hits()).size();
+    HitsMetadata<?> hits = response.hits();
+    TotalHits total = hits == null ? null : hits.total();
+    return total != null && total.value() == 0;
   }
 
   static List<String> describe(List<ShardFailure> failures) {

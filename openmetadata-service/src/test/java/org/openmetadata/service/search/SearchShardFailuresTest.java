@@ -1,10 +1,12 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.sdk.exception.SearchException;
 
@@ -15,20 +17,21 @@ class SearchShardFailuresTest {
 
   @Test
   void healthySearchIsUntouched() {
-    assertDoesNotThrow(() -> SearchShardFailures.check(0, 24, 0L, List.of()));
+    assertDoesNotThrow(() -> SearchShardFailures.check(0, 24, true, List.of()));
   }
 
   @Test
-  void degradedSearchThatStillFoundSomethingIsAllowedThrough() {
-    assertDoesNotThrow(() -> SearchShardFailures.check(5, 24, 12L, NPE_ON_TABLE_INDEX));
+  void degradedSearchThatStillReturnedDocumentsIsAllowedThrough() {
+    assertDoesNotThrow(() -> SearchShardFailures.check(5, 24, false, NPE_ON_TABLE_INDEX));
   }
 
   /** The #32255 shape: shards threw, every match was on one of them, engine still answered 200. */
   @Test
-  void partialFailureWithNoHitsIsRejected() {
+  void partialFailureWithNoDocumentsIsRejected() {
     SearchException thrown =
         assertThrows(
-            SearchException.class, () -> SearchShardFailures.check(5, 24, 0L, NPE_ON_TABLE_INDEX));
+            SearchException.class,
+            () -> SearchShardFailures.check(5, 24, true, NPE_ON_TABLE_INDEX));
 
     assertTrue(
         thrown.getMessage().contains("null_pointer_exception"),
@@ -41,7 +44,29 @@ class SearchShardFailuresTest {
 
   @Test
   void failureCountWithoutDetailStillRejectsAnEmptyResult() {
-    assertThrows(SearchException.class, () -> SearchShardFailures.check(1, 3, 0L, List.of()));
-    assertThrows(SearchException.class, () -> SearchShardFailures.check(1, 3, 0L, null));
+    assertThrows(SearchException.class, () -> SearchShardFailures.check(1, 3, true, List.of()));
+    assertThrows(SearchException.class, () -> SearchShardFailures.check(1, 3, true, null));
+  }
+
+  /**
+   * A wide cluster can fail enough shards to turn the message into kilobytes of near-identical
+   * text, and it is echoed into an HTTP 500 body as well as the log.
+   */
+  @Test
+  void longFailureListIsTruncatedInTheMessage() {
+    List<String> manyFailures =
+        IntStream.range(0, 40)
+            .mapToObj(shard -> "idx[" + shard + "]: circuit_breaking_exception")
+            .toList();
+
+    SearchException thrown =
+        assertThrows(
+            SearchException.class, () -> SearchShardFailures.check(40, 40, true, manyFailures));
+
+    assertTrue(thrown.getMessage().contains("... (35 more)"), thrown.getMessage());
+    assertTrue(
+        thrown.getMessage().contains("idx[4]"), "first entries kept: " + thrown.getMessage());
+    assertFalse(
+        thrown.getMessage().contains("idx[39]"), "tail must be summarised: " + thrown.getMessage());
   }
 }

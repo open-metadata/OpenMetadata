@@ -63,23 +63,31 @@ class ShardFailureAwareElasticsearchClientTest {
     ShardFailureAwareElasticsearchClient client = clientReturning(response(24, 19, 5, 0L));
 
     assertThrows(
-        SearchException.class, () -> client.search(builder -> builder.index(INDEX), Object.class));
+        SearchException.class,
+        () -> client.search(builder -> builder.index(INDEX).size(10), Object.class));
   }
 
   /**
-   * {@code track_total_hits} is caller-controlled (see {@code SearchResource}), and with it off the
-   * engine reports no total at all. Judging that absent total as zero would fail every degraded
-   * search that did in fact return rows, so the returned page stands in for it.
+   * Every aggregation and data-insight query issues {@code size: 0} and carries its payload in the
+   * buckets, so a zero hit count there says nothing about trustworthiness.
    */
   @Test
-  void degradedSearchWithoutTotalHitsFallsBackToTheReturnedPage() {
-    ShardFailureAwareElasticsearchClient withRows =
-        clientReturning(responseWithoutTotal(List.of(Hit.of(h -> h.index(INDEX).id("1")))));
-    assertDoesNotThrow(() -> withRows.search(request(), Object.class));
+  void aggregationOnlyRequestIsNotRejectedForHavingNoHits() {
+    ShardFailureAwareElasticsearchClient client = clientReturning(response(24, 19, 5, 0L));
 
-    ShardFailureAwareElasticsearchClient withoutRows =
-        clientReturning(responseWithoutTotal(List.of()));
-    assertThrows(SearchException.class, () -> withoutRows.search(request(), Object.class));
+    assertDoesNotThrow(
+        () -> client.search(SearchRequest.of(b -> b.index(INDEX).size(0)), Object.class));
+  }
+
+  /**
+   * With no total reported, an empty page at a deep offset is indistinguishable from an empty
+   * result set.
+   */
+  @Test
+  void responseWithoutTotalHitsIsNotRejected() {
+    ShardFailureAwareElasticsearchClient client = clientReturning(responseWithoutTotal(List.of()));
+
+    assertDoesNotThrow(() -> client.search(request(), Object.class));
   }
 
   private static SearchResponse<Object> responseWithoutTotal(List<Hit<Object>> hits) {
@@ -89,7 +97,7 @@ class ShardFailureAwareElasticsearchClientTest {
   }
 
   private static SearchRequest request() {
-    return SearchRequest.of(builder -> builder.index(INDEX));
+    return SearchRequest.of(builder -> builder.index(INDEX).size(10));
   }
 
   private static SearchResponse<Object> response(
