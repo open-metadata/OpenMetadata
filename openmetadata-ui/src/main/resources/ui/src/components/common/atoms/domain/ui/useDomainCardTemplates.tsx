@@ -37,12 +37,6 @@ import {
   renderDomainTypeCell,
 } from './domainFieldRenderers';
 
-// The one color change on this card: labels render in the primary (darker) text
-// color instead of the lighter default. Typography's `color` prop only covers
-// 'secondary' | 'success' | 'warning' | 'danger' (no 'primary'), so this goes
-// through className directly.
-const DATA_PRODUCT_LABEL_CLASS = 'tw:text-primary';
-
 /**
  * Description field for the Data Product grid card: a 2-line-clamped
  * markdown-rendered preview, with a "View more" affordance shown only when
@@ -100,7 +94,7 @@ const DataProductDescriptionField = ({
   return (
     <Box direction="col" gap={1}>
       <div
-        className="tw:[&_.markdown-parser]:line-clamp-2 tw:[&_.markdown-parser]:text-sm tw:[&_.markdown-parser]:break-words"
+        className="tw:text-sm tw:break-words tw:[&_.markdown-parser]:line-clamp-2"
         ref={containerRef}>
         <RichTextEditorPreviewerV1
           enableSeeMoreVariant={false}
@@ -212,7 +206,7 @@ export const useDomainCardTemplates = () => {
             <Grid.Item span={24}>
               <Box direction="col" gap={1}>
                 <Typography
-                  className={DATA_PRODUCT_LABEL_CLASS}
+                  className="tw:text-primary"
                   size="text-xs"
                   weight="medium">
                   {t('label.description')}
@@ -226,7 +220,7 @@ export const useDomainCardTemplates = () => {
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
                 <Typography
-                  className={DATA_PRODUCT_LABEL_CLASS}
+                  className="tw:text-primary"
                   size="text-xs"
                   weight="medium">
                   {t('label.owner-plural')}
@@ -237,7 +231,7 @@ export const useDomainCardTemplates = () => {
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
                 <Typography
-                  className={DATA_PRODUCT_LABEL_CLASS}
+                  className="tw:text-primary"
                   size="text-xs"
                   weight="medium">
                   {t('label.expert-plural')}
@@ -257,7 +251,7 @@ export const useDomainCardTemplates = () => {
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
                 <Typography
-                  className={DATA_PRODUCT_LABEL_CLASS}
+                  className="tw:text-primary"
                   size="text-xs"
                   weight="medium">
                   {t('label.glossary-term-plural')}
@@ -270,7 +264,7 @@ export const useDomainCardTemplates = () => {
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
                 <Typography
-                  className={DATA_PRODUCT_LABEL_CLASS}
+                  className="tw:text-primary"
                   size="text-xs"
                   weight="medium">
                   {t('label.tag-plural')}
