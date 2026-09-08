@@ -2779,6 +2779,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       renameProcessed = false;
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
