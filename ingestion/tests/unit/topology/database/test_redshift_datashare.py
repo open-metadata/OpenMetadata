@@ -84,6 +84,12 @@ TABLE_ROWS = [
     SimpleNamespace(table_name="orders_view", table_type="view", remarks=None),
 ]
 
+STORED_PROCEDURE_ROWS = [
+    SimpleNamespace(
+        _asdict=lambda: {"name": "refresh_orders", "owner": "admin", "definition": "BEGIN END;"},
+    )
+]
+
 COLUMN_ROWS = [
     SimpleNamespace(
         column_name="order_id",
@@ -152,6 +158,8 @@ class RedshiftSourceFixture:
         if "SVV_ALL_COLUMNS" in query:
             self.assertEqual(params["database"], SHARED_DATABASE)
             return COLUMN_ROWS
+        if "PG_PROC_INFO" in query:
+            return MagicMock(all=lambda: STORED_PROCEDURE_ROWS)
         raise AssertionError(f"Unexpected query on the local connection: {statement}")
 
     def _database_names(self, unreachable_databases):
@@ -328,6 +336,7 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self.assertEqual(columns[1].description.root, "Customer name")
 
     def test_stored_procedures_are_not_read_from_the_local_database(self):
+        """The catalog views carry none, and the local connection's would be wrong"""
         self._enter_datashare_mode()
         self.redshift_source.source_config.includeStoredProcedures = True
         self.assertEqual(list(self.redshift_source.get_stored_procedures()), [])
@@ -384,7 +393,9 @@ class RedshiftBaseStrategyTest(RedshiftSourceFixture, unittest.TestCase):
         self.assertEqual([column["name"] for column in columns], ["order_id"])
 
     def test_stored_procedures_are_read_from_a_connectable_database(self):
-        self.assertTrue(self.redshift_source.strategy.supports_stored_procedures)
+        self.redshift_source.source_config.includeStoredProcedures = True
+        procedures = list(self.redshift_source.get_stored_procedures())
+        self.assertEqual([procedure.name for procedure in procedures], ["refresh_orders"])
 
 
 class RedshiftDatashareHelpersTest(unittest.TestCase):

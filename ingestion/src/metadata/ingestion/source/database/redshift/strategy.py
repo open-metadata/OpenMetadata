@@ -41,7 +41,6 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
-from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
     from sqlalchemy.engine.interfaces import ReflectedColumn
@@ -50,8 +49,6 @@ if TYPE_CHECKING:
         RedshiftIncrementalTableProcessor,
     )
     from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
-
-logger = ingestion_logger()
 
 STANDARD_TABLE_TYPES = {
     "r": TableType.Regular,

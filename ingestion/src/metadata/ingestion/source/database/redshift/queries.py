@@ -293,17 +293,15 @@ REDSHIFT_GET_DATABASE_NAMES = """
 SELECT datname FROM pg_database
 """
 
+# Used as a prefix by the query below, so it must stay clause-free: a WHERE or an
+# ORDER BY added here has to be added to both.
 REDSHIFT_GET_ALL_SCHEMAS = """
 SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
 """
 
-# Same view, narrowed to one database - derived from the query above so that the
-# two cannot drift apart.
-REDSHIFT_GET_SCHEMAS_FOR_DATABASE = (
-    REDSHIFT_GET_ALL_SCHEMAS
-    + """WHERE database_name = :database
-"""
-)
+# The same view narrowed to one database, derived from the query above so the two
+# cannot drift apart.
+REDSHIFT_GET_SCHEMAS_FOR_DATABASE = REDSHIFT_GET_ALL_SCHEMAS + "WHERE database_name = :database\n"
 
 # Databases the cluster does not hold locally show up in `pg_database`, but the
 # server refuses a connection to them, so their metadata has to be read through
