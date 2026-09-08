@@ -231,8 +231,8 @@ public interface CoreRelationshipDAOs {
     // the same (id, updatedAt) cannot appear in both.
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM ("
-                + "(SELECT id, updatedAt, json FROM entity_extension "
+            "SELECT id, updatedAt, json, source FROM ("
+                + "(SELECT id, updatedAt, json, 'snapshot' AS source FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
@@ -240,7 +240,7 @@ public interface CoreRelationshipDAOs {
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
                 + "UNION ALL "
-                + "(SELECT id, updatedAt, json FROM <table> "
+                + "(SELECT id, updatedAt, json, 'current' AS source FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
                 + "<cursorCondition> "
@@ -252,8 +252,8 @@ public interface CoreRelationshipDAOs {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM ("
-                + "(SELECT id, updatedAt, json FROM entity_extension "
+            "SELECT id, updatedAt, json, source FROM ("
+                + "(SELECT id, updatedAt, json, 'snapshot' AS source FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
@@ -261,7 +261,7 @@ public interface CoreRelationshipDAOs {
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
                 + "UNION ALL "
-                + "(SELECT id, updatedAt, json::jsonb FROM <table> "
+                + "(SELECT id, updatedAt, json::jsonb, 'current' AS source FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
                 + "<cursorCondition> "
@@ -271,8 +271,8 @@ public interface CoreRelationshipDAOs {
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
-    @RegisterRowMapper(ExtensionMapper.class)
-    List<String> getEntityHistoryByTimestampRange(
+    @RegisterRowMapper(HistoryPageRowMapper.class)
+    List<HistoryPageRow> getEntityHistoryByTimestampRange(
         @Define("table") String table,
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,
@@ -357,10 +357,23 @@ public interface CoreRelationshipDAOs {
 
   record ExtensionRecordWithId(UUID id, String extensionName, String extensionJson) {}
 
+  record HistoryPageRow(UUID id, long updatedAt, String json, String source) {}
+
   class ExtensionMapper implements RowMapper<ExtensionRecord> {
     @Override
     public ExtensionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new ExtensionRecord(rs.getString("extension"), rs.getString("json"));
+    }
+  }
+
+  class HistoryPageRowMapper implements RowMapper<HistoryPageRow> {
+    @Override
+    public HistoryPageRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new HistoryPageRow(
+          UUID.fromString(rs.getString("id")),
+          rs.getLong("updatedAt"),
+          rs.getString("json"),
+          rs.getString("source"));
     }
   }
 

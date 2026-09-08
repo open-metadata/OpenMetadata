@@ -1702,7 +1702,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       summary = "List all entity versions within a time range",
       description =
           "Get a paginated list of all entity versions within a given time range "
-              + "specified by `startTs` and `endTs` in milliseconds since epoch. ",
+              + "specified by `startTs` and `endTs` in milliseconds since epoch. Historical "
+              + "versions are returned as recorded at the time of their change, while the "
+              + "current version is rendered as `GET /v1/<entities>/<id>` would render it. "
+              + "Versions whose entities were hard-deleted concurrently are skipped rather "
+              + "than failing the request.",
       responses = {
         @ApiResponse(
             responseCode = "200",
