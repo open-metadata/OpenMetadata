@@ -145,7 +145,9 @@ test.describe(
 
             await departmentOption.click();
 
-            await expect(selectedTeamChips).toHaveCount(0);
+            await expect(
+              selectedTeamChips.filter({ hasText: departmentTeamName })
+            ).toHaveCount(0);
           }
         );
 
@@ -167,8 +169,9 @@ test.describe(
 
           await groupOption.click();
 
-          await expect(selectedTeamChips).toHaveCount(1);
-          await expect(selectedTeamChips).toContainText(groupTeamName);
+          await expect(
+            selectedTeamChips.filter({ hasText: groupTeamName })
+          ).toHaveCount(1);
         });
       } finally {
         await childlessDepartment.delete(apiContext);
@@ -205,8 +208,10 @@ test.describe(
         const teamSelect = popover.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
         const dropdown = page.locator('.teams-custom-dropdown-class');
-        const selectedTeamChips = teamSelect.locator(
-          '.ant-select-selection-item'
+        // Chips truncate long labels, so selection is asserted on the tree
+        // node's selected state where the full team name is rendered.
+        const selectedTreeNodes = dropdown.locator(
+          '.ant-select-tree-treenode-selected'
         );
 
         await test.step(
@@ -220,7 +225,9 @@ test.describe(
 
             await departmentOption.click();
 
-            await expect(selectedTeamChips).toHaveCount(0);
+            await expect(
+              selectedTreeNodes.filter({ hasText: departmentTeamName })
+            ).toHaveCount(0);
           }
         );
 
@@ -242,8 +249,9 @@ test.describe(
 
           await groupOption.click();
 
-          await expect(selectedTeamChips).toHaveCount(1);
-          await expect(selectedTeamChips).toContainText(groupTeamName);
+          await expect(
+            selectedTreeNodes.filter({ hasText: groupTeamName })
+          ).toHaveCount(1);
         });
 
         // Close without saving so the admin's team memberships stay untouched
