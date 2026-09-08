@@ -154,7 +154,12 @@ test.describe(
         await test.step('Non-Group team without children is hidden', async () => {
           await teamSelectInput.fill(childlessDepartmentName);
 
-          await expect(dropdown).not.toContainText(childlessDepartmentName);
+          // With every option pruned antd unmounts the tree ("No data"), so a
+          // count assertion is used — not.toContainText fails on a missing
+          // element instead of passing.
+          await expect(
+            dropdown.getByText(childlessDepartmentName)
+          ).toHaveCount(0);
         });
 
         await test.step('Group team is selectable', async () => {
@@ -232,7 +237,11 @@ test.describe(
         await test.step('Non-Group team without children is hidden', async () => {
           await teamSelectInput.fill(childlessDivisionName);
 
-          await expect(dropdown).not.toContainText(childlessDivisionName);
+          // Count assertion: not.toContainText fails when antd unmounts the
+          // emptied dropdown content instead of passing.
+          await expect(
+            dropdown.getByText(childlessDivisionName)
+          ).toHaveCount(0);
         });
 
         await test.step('Group team is selectable', async () => {
