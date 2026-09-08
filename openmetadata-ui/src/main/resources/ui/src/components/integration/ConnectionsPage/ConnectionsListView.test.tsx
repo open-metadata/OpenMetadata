@@ -867,13 +867,39 @@ describe('ConnectionsListView', () => {
     const ONBOARDING_CONTRIBUTION = 'onboarding-checklist-card';
     const FIRST_RUN_PLACEHOLDER = 'connections-list-empty-first-run';
 
+    // Mirrors the real contribution: it decides visibility from the estate props the page passes
+    // and reports it back through `onActiveChange`; the page — not the contribution — then hides the
+    // browse chrome/list. Active only on a settled, unnarrowed, empty estate (a first-run admin, in
+    // the real slot — admin state is the slot's own concern and not modelled here).
+    const OnboardingContributionMock = ({
+      estateTotal,
+      isEstateLoading,
+      isNarrowed,
+      onActiveChange,
+    }: {
+      estateTotal: number;
+      isEstateLoading: boolean;
+      isNarrowed: boolean;
+      onActiveChange: (active: boolean) => void;
+    }) => {
+      const active = estateTotal === 0 && !isEstateLoading && !isNarrowed;
+
+      React.useEffect(() => {
+        onActiveChange(active);
+
+        return () => onActiveChange(false);
+      }, [active, onActiveChange]);
+
+      return active ? <div data-testid={ONBOARDING_CONTRIBUTION} /> : null;
+    };
+
     const contributeOnboarding = () => {
       mockGetContributions.mockImplementation((extensionPointId: string) =>
         extensionPointId === EXTENSION_POINTS.CONNECTIONS_LIST_ONBOARDING
           ? [
               {
                 key: 'onboarding',
-                component: () => <div data-testid={ONBOARDING_CONTRIBUTION} />,
+                component: OnboardingContributionMock,
               },
             ]
           : []
@@ -881,7 +907,11 @@ describe('ConnectionsListView', () => {
     };
 
     const renderEmptyEstate = (searchTerm = '') => {
-      mockUseConnectionsData.mockReturnValue({ ...defaultData, rows: [] });
+      mockUseConnectionsData.mockReturnValue({
+        ...defaultData,
+        rows: [],
+        totalConnections: 0,
+      });
 
       return render(
         <ConnectionsListView

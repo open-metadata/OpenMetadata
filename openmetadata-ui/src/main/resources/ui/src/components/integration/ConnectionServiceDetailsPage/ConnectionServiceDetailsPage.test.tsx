@@ -641,6 +641,36 @@ describe('ConnectionServiceDetailsPage', () => {
       );
     });
 
+    it('renders a self-rendered action component (with the page context) instead of the default button', async () => {
+      const onClick = jest.fn();
+      contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_ACTIONS] = [
+        {
+          key: 'trigger-autopilot',
+          label: 'Trigger AutoPilot',
+          onClick,
+          component: (context: { serviceCategory?: string }) => (
+            <div data-testid="autopilot-action-slot">
+              {context.serviceCategory}
+            </div>
+          ),
+        },
+      ];
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      const slot = await screen.findByTestId('autopilot-action-slot');
+
+      // The component renders with the page context…
+      expect(slot).toHaveTextContent('databaseServices');
+      // …and the default label/onClick button is not rendered alongside it.
+      expect(
+        screen.queryByRole('button', { name: 'Trigger AutoPilot' })
+      ).not.toBeInTheDocument();
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
     it('does not render a contributed action whose condition fails', async () => {
       contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_ACTIONS] = [
         {

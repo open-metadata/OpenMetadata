@@ -19,7 +19,13 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, {
+  ComponentType,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SERVICE_EMPTY_STATE_ICON_CLASS } from '../../../constants/ServiceEmptyState.constant';
@@ -29,6 +35,7 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
+  ConnectionsOnboardingSlotProps,
   EXTENSION_POINTS,
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
@@ -438,16 +445,34 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       EXTENSION_POINTS.CONNECTIONS_LIST_ONBOARDING
     );
 
-  // Settled data only, so the chrome cannot flicker out mid-load or vanish behind a failed fetch.
-  const isEmptyUnnarrowedEstate =
-    !isNarrowed && !isLoading && !isError && rows.length === 0;
+  // The contributed onboarding experience owns its own first-run decision (who is a first-run
+  // admin, whether the estate is set up) and reports back whether it is showing. The page hides the
+  // browse chrome and the list behind it while it is, and shows them — with the generic empty-state
+  // placeholder for an empty estate — while it is not. Kept in state, not derived, because only the
+  // contribution can make that call, and it is mounted on every load so it can (see below).
+  const [isOnboardingActive, setIsOnboardingActive] = useState(false);
 
-  // An empty estate is the one case where the page can hand the region to a contributed onboarding
-  // experience — it stands in for the whole browse view, since a zero count and filters over
-  // nothing are noise in front of it. Narrowed views keep the placeholder: they are empty by the
-  // user's own choice.
-  const hasOnboardingContribution =
-    isEmptyUnnarrowedEstate && onboardingContributions.length > 0;
+  // Mounted unconditionally — not only on an empty estate — so it can read the estate count the
+  // page already fetched (no second /services/overview) and run its gate even when services exist,
+  // then report visibility through `onActiveChange`. It renders its own UI only when it decides to.
+  const onboardingSlot = useMemo(
+    () =>
+      onboardingContributions.map((contribution) => {
+        const OnboardingComponent =
+          contribution.component as ComponentType<ConnectionsOnboardingSlotProps>;
+
+        return (
+          <OnboardingComponent
+            estateTotal={totalConnections}
+            isEstateLoading={isLoading}
+            isNarrowed={isNarrowed}
+            key={contribution.key}
+            onActiveChange={setIsOnboardingActive}
+          />
+        );
+      }),
+    [onboardingContributions, totalConnections, isLoading, isNarrowed]
+  );
 
   const serviceList = useMemo(() => {
     if (isLoading) {
@@ -466,20 +491,6 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
             title={t('message.something-went-wrong')}
             variant="blank"
           />
-        </div>
-      );
-    }
-
-    if (hasOnboardingContribution) {
-      return (
-        <div
-          className="tw:flex tw:justify-center tw:px-4 tw:py-8"
-          data-testid="connections-list-onboarding-wrapper">
-          <div className="tw:w-full tw:max-w-175">
-            {onboardingContributions.map((contribution) => (
-              <contribution.component key={contribution.key} />
-            ))}
-          </div>
         </div>
       );
     }
@@ -643,15 +654,17 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
     setPageSize,
     category,
     isAllTab,
-    hasOnboardingContribution,
-    onboardingContributions,
   ]);
 
   return (
     <div
       className="tw:flex tw:h-full tw:w-full tw:overflow-hidden"
       data-testid="connections-browse-view">
-      {!hasOnboardingContribution && (
+      {/* Mounted on every load so it can run its own first-run gate and report visibility; it
+          renders its own UI only while active. */}
+      {onboardingSlot}
+
+      {!isOnboardingActive && (
         <ConnectionsSecondaryNav
           category={category}
           categoryCounts={categoryCounts}
@@ -661,8 +674,8 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         />
       )}
 
-      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
-        {!hasOnboardingContribution && (
+      {!isOnboardingActive && (
+        <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
           <>
             <div className="tw:mb-[18px]">
               <Typography
@@ -726,18 +739,18 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               </div>
             </div>
           </>
-        )}
 
-        <div
-          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-4"
-          data-testid="connections-scroll-container"
-          ref={scrollContainerRef}
-          // Reserve the contributed footer's measured height so the pagination bar can be
-          // scrolled clear of it.
-          style={{ paddingBottom: bottomInset || undefined }}>
-          {serviceList}
-        </div>
-      </main>
+          <div
+            className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-4"
+            data-testid="connections-scroll-container"
+            ref={scrollContainerRef}
+            // Reserve the contributed footer's measured height so the pagination bar can be
+            // scrolled clear of it.
+            style={{ paddingBottom: bottomInset || undefined }}>
+            {serviceList}
+          </div>
+        </main>
+      )}
     </div>
   );
 };

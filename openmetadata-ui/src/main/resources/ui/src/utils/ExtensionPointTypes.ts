@@ -164,6 +164,17 @@ export interface TabContribution {
   /** Optional count badge to display on tab */
   count?: number;
 
+  /**
+   * Optional self-rendered live badge, shown next to the tab label. The consuming
+   * page renders it (with the page context) inside every contributed tab's
+   * trigger — not just the active one — so the badge can reflect data the
+   * contribution fetches itself and stay in sync while another tab is active
+   * (e.g. a live agents count driven by a stream). Takes precedence over the
+   * static `count`. Provide it as a lazily-loaded component so its data layer is
+   * not pulled onto the plugin's boot path.
+   */
+  badgeComponent?: ComponentType<PluginEntityDetailsContext>;
+
   /** Optional sort order (ascending) among contributed tabs; unset sorts last/insertion order. */
   order?: number;
 
@@ -200,8 +211,18 @@ export interface ActionContribution {
   /** Optional icon component */
   icon?: ComponentType;
 
-  /** Click handler */
-  onClick: (context: PluginEntityDetailsContext) => void;
+  /** Click handler. Ignored when `component` is set. */
+  onClick?: (context: PluginEntityDetailsContext) => void;
+
+  /**
+   * Optional self-rendered action. When set, the consumer renders this
+   * component in the action region (passing it the page context) instead of the
+   * default `label` + `onClick` button, so the component can own its own
+   * disabled/loading/tooltip state — e.g. a trigger whose disabled state tracks
+   * a live status the static `label`/`onClick` shape cannot express. `label`,
+   * `icon`, `onClick`, `type`, and `danger` are ignored when `component` is set.
+   */
+  component?: ComponentType<PluginEntityDetailsContext>;
 
   /** Condition function to determine if action should be shown */
   condition?: (context: PluginEntityDetailsContext) => boolean;
@@ -221,6 +242,30 @@ export interface ActionContribution {
 export interface SlotContribution {
   key: string;
   component: ComponentType<PluginEntityDetailsContext>;
+}
+
+/**
+ * Props the connections list page passes to a `CONNECTIONS_LIST_ONBOARDING`
+ * contribution. The page owns the estate query and the browse chrome; the
+ * contribution owns the first-run decision (who is a first-run admin, what the
+ * checklist is), which OSS core has no notion of.
+ *
+ * The contribution is mounted on every load — not only on an empty estate — so
+ * it can read `estateTotal` (avoiding a second `/services/overview`) and drive
+ * its own gate, then report through `onActiveChange` whether it is showing its
+ * onboarding UI. The page hides the browse chrome and the list behind it while
+ * it is active, and shows them (with the generic empty-state placeholder for an
+ * empty estate) while it is not.
+ */
+export interface ConnectionsOnboardingSlotProps {
+  /** Unfiltered estate size from the page's own overview query. */
+  estateTotal: number;
+  /** True while that estate query is still loading — hold, do not decide yet. */
+  isEstateLoading: boolean;
+  /** True when a search/filter narrows the list — never onboard over a user-narrowed view. */
+  isNarrowed: boolean;
+  /** Report whether the onboarding UI is showing, so the page can hide/show the browse view. */
+  onActiveChange: (active: boolean) => void;
 }
 
 /**

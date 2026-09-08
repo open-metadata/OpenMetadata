@@ -112,6 +112,7 @@ interface DetailsTab {
   label: ReactNode;
   order: number;
   badge?: number;
+  badgeComponent?: FC<PluginEntityDetailsContext>;
 }
 
 // OSS built-in tabs. A plugin (e.g. Collate's summary/insights/agents) contributes the rest via
@@ -633,6 +634,9 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       label: pluginTab.label,
       order: pluginTab.order ?? Number.MAX_SAFE_INTEGER,
       badge: pluginTab.count,
+      badgeComponent: pluginTab.badgeComponent as
+        | FC<PluginEntityDetailsContext>
+        | undefined,
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
@@ -684,18 +688,22 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         <HeaderShell
           actions={
             <>
-              {pluginActions.map((action) => (
-                <Button
-                  color={getActionButtonColor(action)}
-                  iconLeading={
-                    action.icon as FC<{ className?: string }> | undefined
-                  }
-                  key={action.key}
-                  size="sm"
-                  onPress={() => action.onClick(extensionContext)}>
-                  {action.label}
-                </Button>
-              ))}
+              {pluginActions.map((action) =>
+                action.component ? (
+                  <action.component key={action.key} {...extensionContext} />
+                ) : (
+                  <Button
+                    color={getActionButtonColor(action)}
+                    iconLeading={
+                      action.icon as FC<{ className?: string }> | undefined
+                    }
+                    key={action.key}
+                    size="sm"
+                    onPress={() => action.onClick?.(extensionContext)}>
+                    {action.label}
+                  </Button>
+                )
+              )}
               <Dropdown.Root>
                 <Button color="secondary" iconLeading={Settings01} size="sm">
                   {t('label.setting-plural')}
@@ -799,7 +807,16 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                     data-testid={`${detailsTab.key}-tab`}
                     id={detailsTab.key}
                     key={detailsTab.key}
-                    label={detailsTab.label}
+                    label={
+                      detailsTab.badgeComponent ? (
+                        <span className="tw:inline-flex tw:items-center tw:gap-2">
+                          {detailsTab.label}
+                          <detailsTab.badgeComponent {...extensionContext} />
+                        </span>
+                      ) : (
+                        detailsTab.label
+                      )
+                    }
                   />
                 ))}
               </Tabs.List>
