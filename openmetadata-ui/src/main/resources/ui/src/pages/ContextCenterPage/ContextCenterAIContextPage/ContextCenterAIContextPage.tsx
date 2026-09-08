@@ -104,7 +104,8 @@ const ContextCenterAIContextPage = () => {
               {getEntityName(persona)}
             </Typography>
             <Typography ellipsis className="tw:text-tertiary" size="text-sm">
-              {stripMarkdown(persona.description || '') || t('label.no-description')}
+              {stripMarkdown(persona.description || '') ||
+                t('label.no-description')}
             </Typography>
           </Box>
           <Box align="center" className="tw:shrink-0" gap={2}>
