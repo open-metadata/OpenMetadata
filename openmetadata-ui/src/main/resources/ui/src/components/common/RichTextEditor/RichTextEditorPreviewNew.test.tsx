@@ -320,6 +320,34 @@ describe('RichTextEditorPreviewNew', () => {
     });
   });
 
+  it('applies viewMoreButtonClassName to the View more button when provided', async () => {
+    render(
+      <RichTextEditorPreviewNew
+        {...mockProp}
+        viewMoreButtonClassName="tw:!text-xs"
+      />
+    );
+
+    const contentElement = screen.getByTestId('markdown-parser');
+
+    Object.defineProperty(contentElement, 'scrollHeight', {
+      configurable: true,
+      value: 200,
+    });
+    Object.defineProperty(contentElement, 'clientHeight', {
+      configurable: true,
+      value: 100,
+    });
+
+    act(() => {
+      resizeCallback([], mockResizeObserver.mock.results[0].value);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('read-more-button')).toHaveClass('tw:!text-xs');
+    });
+  });
+
   it('re-measures overflow once BlockEditor actually mutates the DOM, hiding View more when content no longer overflows even without a new React render', async () => {
     // BlockEditor.tsx applies a changed `content` prop imperatively and
     // asynchronously: its own content-sync effect defers the real

@@ -13,7 +13,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { Domain } from '../../../../../generated/entity/domains/domain';
-import { renderDomainNameCell } from './domainFieldRenderers';
+import {
+  renderDomainClassificationTagsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainNameCell,
+  renderDomainOwnersCell,
+} from './domainFieldRenderers';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
@@ -35,6 +40,25 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('../../../../../utils/TooltipUtils', () => ({
   renderBreakableTooltip: (value: string) => value,
+}));
+
+jest.mock('../../../OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: (props: Record<string, unknown>) => (
+    <div
+      data-show-dash={String(props.showDashPlaceholder)}
+      data-testid="owner-label"
+    />
+  ),
+}));
+
+jest.mock('../../../TagBadgeList/TagBadgeList.component', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => (
+    <div
+      data-empty-placeholder={String(props.emptyPlaceholder)}
+      data-testid="tag-badge-list"
+    />
+  ),
 }));
 
 const DOMAIN = {
@@ -81,5 +105,53 @@ describe('renderDomainNameCell', () => {
 
     // With no cell handler the click falls through to the row unchanged.
     expect(rowClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('renderDomainOwnersCell', () => {
+  it('forwards showDashPlaceholder to OwnerLabel when passed', () => {
+    render(
+      <>
+        {renderDomainOwnersCell({ owners: [] }, { showDashPlaceholder: true })}
+      </>
+    );
+
+    expect(screen.getByTestId('owner-label')).toHaveAttribute(
+      'data-show-dash',
+      'true'
+    );
+  });
+
+  it('leaves showDashPlaceholder unset when no options are passed', () => {
+    render(<>{renderDomainOwnersCell({ owners: [] })}</>);
+
+    expect(screen.getByTestId('owner-label')).toHaveAttribute(
+      'data-show-dash',
+      'undefined'
+    );
+  });
+});
+
+describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', () => {
+  it('forwards emptyPlaceholder to TagBadgeList when passed', () => {
+    render(
+      <>
+        {renderDomainGlossaryTagsCell({ tags: [] }, { emptyPlaceholder: '--' })}
+      </>
+    );
+
+    expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
+      'data-empty-placeholder',
+      '--'
+    );
+  });
+
+  it('leaves emptyPlaceholder unset when no options are passed', () => {
+    render(<>{renderDomainClassificationTagsCell({ tags: [] })}</>);
+
+    expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
+      'data-empty-placeholder',
+      'undefined'
+    );
   });
 });
