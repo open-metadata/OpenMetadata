@@ -373,17 +373,21 @@ Promotion is gated twice:
   previous dataset keeps serving and the run fails visibly.
 
 Deleting a dataset through the Fuseki admin API removes its registration but **not** its TDB2 files;
-the alternation reuses and clears the same two directories, so disk stays bounded. To reclaim the
+the alternation reuses and clears the same two directory names. Allow disk for both datasets and
+compaction's replacement generation. To reclaim the
 idle dataset's disk entirely, stop Fuseki and remove the unused
 `{FUSEKI_BASE}/databases/<dataset>_a|_b` directory of the dataset that is not the active pointer.
 
 ## Compaction and disk growth
 
-OpenMetadata requests Fuseki compaction after clearing a recreate run and after every successful
-incremental indexing run. Recreate runs skip the post-run compaction: the store was compacted while
-empty right after the clear, and insert-only writes leave nothing to reclaim, while compaction
-would block writers for up to ten minutes. Compaction is best-effort: an indexing run can succeed
-even if disk reclamation fails.
+OpenMetadata requests Fuseki compaction after clearing a recreate run and after indexing its
+records. Blue/green runs compact the target before promotion so live writers can continue using
+the serving dataset. In-place runs compact after reporting completion. TDB2 copies index pages
+even during insert-only writes; clearing and compacting an
+empty target does not reclaim the obsolete pages created during its subsequent rebuild. Larger
+bounded batches reduce transaction churn, but the volume must still accommodate peak usage before
+compaction. See the [scale validation](rdf-scale-validation.md) for measurements and workload settings.
+Compaction is best-effort: an indexing run can succeed even if disk reclamation fails.
 
 To compact manually:
 
@@ -393,9 +397,9 @@ curl -u admin:<password> -X POST \
 ```
 
 Fuseki returns an asynchronous task identifier. Inspect active and completed tasks at `/$/tasks`
-and confirm the data volume has enough space for both the old and replacement datasets. Unexpected
-journal growth usually indicates failed or skipped compaction, a write-heavy incremental workload,
-or a volume that filled before compaction completed.
+and confirm the data volume has enough space for both the old and replacement datasets. TDB2 index
+growth can reflect small transactions, failed or skipped compaction, or a volume that filled before
+compaction completed. [Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html).
 
 ## Configuration reference
 

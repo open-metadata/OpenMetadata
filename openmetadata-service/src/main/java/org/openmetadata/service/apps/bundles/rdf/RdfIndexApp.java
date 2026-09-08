@@ -276,17 +276,12 @@ public class RdfIndexApp extends AbstractNativeApplication {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
         abandonBuildDataset();
       } else {
-        promoteBuildDataset(indexingRepository);
-        // Mark the job COMPLETED BEFORE compacting. compactStorage is a
-        // blocking call (up to COMPACT_MAX_WAIT_MS = 10 min while it polls
-        // /$/tasks/{id}); doing it before the status update would delay the
-        // websocket "done" notification by however long compaction takes,
-        // and a misbehaving Fuseki could leave the run looking RUNNING for
-        // up to 10 minutes after the reindex actually finished. Compaction
-        // is best-effort hygiene; surface job-completion to the UI first
-        // and run compaction as the very last step.
+        final boolean promoted = promoteBuildDataset(indexingRepository);
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
-        compactAfterSuccessfulRun();
+        if (!promoted) {
+          // In-place indexing reports completion before potentially lengthy disk maintenance.
+          compactStorageBestEffort(indexingRepository);
+        }
       }
 
       LOG.info("RDF Index Job Completed for Entities: {}", jobData.getEntities());
@@ -366,35 +361,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
     sendUpdates(jobExecutionContext, true);
   }
 
-  /**
-   * Post-run compaction policy. Incremental runs must compact: weeks of DELETE+INSERT
-   * reconciliation pile the TDB2 free-list and journal up to tens of GB even though the live
-   * triple count stays bounded. Recreate runs skip it: clearRdfData() already compacted the empty
-   * post-clearAll store and INSERT_ONLY appends leave nothing to reclaim, while TDB2 compaction
-   * blocks writers for up to COMPACT_MAX_WAIT_MS — delaying resumed live traffic for no benefit.
-   *
-   * <p>Defensive try/catch: JenaFusekiStorage.compactStorage() already catches its own exceptions,
-   * but RdfRepository.compactStorage() is a thin pass-through and a future storage backend (QLever,
-   * etc.) may not honor the same swallow-failures contract. Worse, a race between isEnabled() and
-   * storageService.compactStorage() could surface an NPE. Catch here so any unexpected runtime
-   * failure can NEVER demote a job that's already COMPLETED to FAILED via the outer catch's
-   * handleJobFailure().
-   */
-  private void compactAfterSuccessfulRun() {
-    if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-      LOG.info(
-          "Skipping post-run compaction: recreate runs compact the empty store up front "
-              + "and only append after");
-    } else {
-      try {
-        rdf().compactStorage();
-      } catch (RuntimeException compactFailure) {
-        LOG.warn(
-            "Post-run compaction failed for this RDF reindex job; disk reclamation "
-                + "skipped, but the job itself completed successfully. Reason: {}",
-            compactFailure.getMessage(),
-            compactFailure);
-      }
+  private void compactStorageBestEffort(final RdfRepository repository) {
+    // TDB2 copies index pages on every write transaction, including append-only rebuilds.
+    // Failure to reclaim obsolete pages does not invalidate the indexed graph.
+    try {
+      repository.compactStorage();
+    } catch (RuntimeException compactFailure) {
+      LOG.warn(
+          "RDF index compaction failed; disk reclamation skipped. Reason: {}",
+          compactFailure.getMessage(),
+          compactFailure);
     }
   }
 
@@ -518,13 +494,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   /** Validate the rebuild before replaying live changes and atomically switching serving. */
-  private void promoteBuildDataset(RdfRepository indexingRepository) {
+  private boolean promoteBuildDataset(RdfRepository indexingRepository) {
     if (buildDataset == null) {
-      return;
+      return false;
     }
-    if (rebuildLeaseFailure != null) {
-      throw new IllegalStateException("RDF rebuild lost its dataset lease", rebuildLeaseFailure);
-    }
+    checkBuildCanPromote();
     long triples = indexingRepository.getTripleCount();
     long successRecords = successRecordsSoFar();
     if (successRecords > 0 && triples <= 0) {
@@ -535,6 +509,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
               buildDataset, successRecords, triples));
     }
     requirePromotionSuccessRatio(successRecords);
+    // Compact the target while live writers still use the serving dataset.
+    compactStorageBestEffort(indexingRepository);
+    checkBuildCanPromote();
     rdf()
         .activateDataset(
             buildDataset,
@@ -545,6 +522,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
         buildDataset,
         triples);
     buildDataset = null;
+    return true;
+  }
+
+  private void checkBuildCanPromote() {
+    if (stopped) {
+      throw new CancellationException("RDF rebuild was stopped before promotion");
+    }
+    if (rebuildLeaseFailure != null) {
+      throw new IllegalStateException("RDF rebuild lost its dataset lease", rebuildLeaseFailure);
+    }
   }
 
   /**

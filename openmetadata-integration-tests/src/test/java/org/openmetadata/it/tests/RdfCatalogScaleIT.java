@@ -168,6 +168,9 @@ public class RdfCatalogScaleIT {
     report.put("resourceSampleSeconds", 2);
     report.put("querySamplesPerType", samples);
     report.put("concurrentQueryIntervalSeconds", 5);
+    report.put(
+        "bulkLineageEdgeBatchSize",
+        TestSuiteBootstrap.getRdfConfiguration().getBulkLineageEdgeBatchSize());
     report.put("scheduledRdfJobsPaused", true);
     report.put("schema", catalog.schemaFqn());
     record("workload", catalog.settings());
@@ -197,6 +200,8 @@ public class RdfCatalogScaleIT {
     final long start = System.nanoTime();
     trigger(distributed);
     final AppRunRecord run = awaitRun(previous);
+    report.withObject("/" + label).put("terminalObservedSeconds", secondsSince(start));
+    awaitIndexingWorkerShutdown(Duration.ofMinutes(12));
     recordRun(label, start, run);
     if (run.getStatus() == AppRunRecord.Status.FAILED) {
       assertEquals(serving, activeDataset(), "A failed rebuild must not promote its partial graph");
@@ -251,33 +256,35 @@ public class RdfCatalogScaleIT {
     client.execute(HttpMethod.POST, "/v1/apps/stop/RdfIndexApp", null, Void.class);
     final AppRunRecord stopped = awaitRun(previous);
     assertEquals(AppRunRecord.Status.STOPPED, stopped.getStatus());
-    awaitIndexingWorkerShutdown();
+    awaitIndexingWorkerShutdown(Duration.ofMinutes(2));
     assertEquals(
         serving, activeDataset(), "Interrupted builds must retain the complete serving dataset");
     assertEquals(snapshot, queries.snapshot(), "Interruption changed the served graph");
     recordInterruption(serving, start, stopped);
   }
 
-  private static void awaitIndexingWorkerShutdown() {
-    // The stop API acknowledges cancellation before Quartz finishes releasing the build lease.
-    Awaitility.await("Cancelled RDF workers release their rebuild lease")
-        .atMost(Duration.ofMinutes(2))
+  private void awaitIndexingWorkerShutdown(final Duration timeout) {
+    // Terminal status can precede compaction and release of the build lease.
+    Awaitility.await("RDF workers finish and release their rebuild lease")
+        .atMost(timeout)
         .pollInterval(Duration.ofSeconds(1))
         .until(
-            () ->
-                AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().stream()
-                    .noneMatch(
-                        context ->
-                            context
-                                    .getJobDetail()
-                                    .getKey()
-                                    .getGroup()
-                                    .equals(AppScheduler.APPS_JOB_GROUP)
-                                && context
-                                    .getJobDetail()
-                                    .getKey()
-                                    .getName()
-                                    .startsWith("RdfIndexApp")));
+            () -> {
+              resources.check();
+              return AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().stream()
+                  .noneMatch(
+                      context ->
+                          context
+                                  .getJobDetail()
+                                  .getKey()
+                                  .getGroup()
+                                  .equals(AppScheduler.APPS_JOB_GROUP)
+                              && context
+                                  .getJobDetail()
+                                  .getKey()
+                                  .getName()
+                                  .startsWith("RdfIndexApp"));
+            });
   }
 
   private void awaitPartialRebuild(final Long previous) {
@@ -371,7 +378,7 @@ public class RdfCatalogScaleIT {
             "blueGreenRebuild",
             true,
             "batchSize",
-            100,
+            Integer.getInteger("rdfScaleBatchSize", 1000),
             "producerThreads",
             Integer.getInteger("rdfScaleProducerThreads", 2),
             "consumerThreads",

@@ -38,6 +38,8 @@ fi
   "-DrdfScaleDetailedEvery=${RDF_SCALE_DETAILED_EVERY:-100}" \
   "-DrdfScaleQuerySamples=${RDF_SCALE_QUERY_SAMPLES:-100}" \
   "-DrdfScaleDiagnostics=${RDF_SCALE_DIAGNOSTICS:-false}" \
+  "-DrdfScaleBatchSize=${RDF_SCALE_BATCH_SIZE:-1000}" \
+  "-DrdfLineageEdgeBatchSize=${RDF_SCALE_LINEAGE_EDGE_BATCH_SIZE:-1000}" \
   "-DrdfScalePartitionSize=${RDF_SCALE_PARTITION_SIZE:-10000}" \
   "-DrdfScaleProducerThreads=${RDF_SCALE_PRODUCER_THREADS:-2}" \
   "-DrdfScaleOutput=$rdf_scale_output" \

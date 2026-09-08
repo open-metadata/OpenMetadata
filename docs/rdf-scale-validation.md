@@ -73,8 +73,26 @@ disk under both data directories, remaining host disk and memory, swap usage, an
 Cgroup memory includes page cache.
 Reported peaks are sampled peaks, not instantaneous high-water marks. Sampling covers target
 clearing/compaction, rebuilds, cancellation, and coexistence of serving and target datasets.
-Recreate runs skip post-run compaction because the empty target is compacted before loading.
+Observed rebuild time includes waiting for compaction and worker shutdown. The report
+also records when the application first reported a terminal status. TDB2 copies index pages even
+during append-only transactions, so full rebuilds compact after loading as well as after clearing
+the previous generation. Blue/green runs compact the target before promotion while the previous
+dataset continues serving live writes.
 The sampler fails the run if host free disk falls below 12 GiB.
+
+## Correctness checks added during validation
+
+The pilot exposed differences between live projection and batch rebuilding. The tested revision
+uses stable custom-property definition IDs and removes owned definition triples during replacement
+and deletion. Batch reads now include role members, team children and inherited roles, and type
+custom-property definitions. Existing stores require a full rebuild to remove already orphaned
+definition nodes.
+
+`RdfCustomPropertyProjectionTest` exercises real Jena updates, repeated projection, legacy linked
+nodes, and isolation between types. `RdfBatchFieldsIT` and the custom-property case in
+`TypeResourceIT` compare database-backed batch reads with entity API responses. The catalog
+scenario additionally requires identical table, lineage, extension, and total-triple counts after
+local rebuilding, distributed recovery, and Fuseki restart.
 
 ## Runtime configuration and scope
 
@@ -84,12 +102,22 @@ not tmpfs. PostgreSQL durability is enabled (`fsync`, `synchronous_commit`, `ful
 The integration bootstrap retains its other PostgreSQL settings, including 128 MiB shared
 buffers, 32 MiB work memory, minimal WAL, and a 30-second checkpoint timeout.
 
-Indexing uses batch size 100, two producer threads, three consumer threads, queue size 5,000, and
+Indexing uses batch size 1,000, two producer threads, three consumer threads, queue size 5,000, and
 10,000-record distributed partitions. All entity types are requested, including the system
 entities created at startup. Scheduled RDF indexing and inference jobs are paused during the
 scenario so their independent writes do not alter the workload. On-demand rebuilds remain enabled.
 The report records image identity, source revision, settings, job statistics, timestamps, and
 resource limits.
+
+`RDF_SCALE_BATCH_SIZE` overrides the indexing batch size. `RDF_SCALE_LINEAGE_EDGE_BATCH_SIZE`
+sets the server's existing `bulkLineageEdgeBatchSize` configuration, also to 1,000 by default for
+this workload. Lineage transactions have their own limit; increasing the application batch size
+alone leaves the server's default 50-edge chunks unchanged. Larger batches reduce TDB2 transaction
+churn; the storage layer still splits appends at its entity-count and payload limits. The first
+200,000-table attempt used batches of 100 and was stopped for persistent index growth before
+exhausting the host disk. That attempt is not a completed scale result. See
+[Jena's storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html) for the copy-on-write
+storage model and the extra disk space required during compaction.
 
 This is a synthetic table-heavy catalog on one application process, one metadata database, and
 one Fuseki instance. Distributed mode exercises the partition coordinator and workers within that
