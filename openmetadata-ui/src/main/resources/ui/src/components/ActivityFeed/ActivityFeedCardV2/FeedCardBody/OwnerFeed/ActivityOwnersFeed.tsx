@@ -20,8 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
 import {
-    MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
-    MAX_VISIBLE_OWNERS_FOR_FEED_TAB
+  MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
+  MAX_VISIBLE_OWNERS_FOR_FEED_TAB,
 } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';

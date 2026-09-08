@@ -12,11 +12,11 @@
  */
 
 import {
-    cleanup,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { act } from 'react';
@@ -33,8 +33,8 @@ import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
-    getCurrentMillis,
-    getEpochMillisForPastDays
+  getCurrentMillis,
+  getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { generateEntityLink } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';

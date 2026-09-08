@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-    CheckOutlined,
-    CloseOutlined,
-    InfoCircleOutlined
+  CheckOutlined,
+  CloseOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
@@ -24,10 +24,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-    DE_ACTIVE_COLOR,
-    GRAYED_OUT_COLOR,
-    ICON_DIMENSION,
-    NO_DATA_PLACEHOLDER
+  DE_ACTIVE_COLOR,
+  GRAYED_OUT_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -41,8 +41,8 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';

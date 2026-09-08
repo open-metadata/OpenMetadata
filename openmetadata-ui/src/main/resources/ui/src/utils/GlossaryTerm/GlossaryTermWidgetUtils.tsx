@@ -17,8 +17,8 @@ import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';

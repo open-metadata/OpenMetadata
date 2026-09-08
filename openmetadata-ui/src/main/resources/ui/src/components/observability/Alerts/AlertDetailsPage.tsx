@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    ButtonUtility,
-    Owner,
-    Tabs
+  Box,
+  ButtonUtility,
+  Owner,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    EmptyPlaceholder,
-    EmptyPlaceholderAction,
-    Owner,
-    Skeleton,
-    Table
+  Box,
+  EmptyPlaceholder,
+  EmptyPlaceholderAction,
+  Owner,
+  Skeleton,
+  Table,
 } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
@@ -30,8 +30,8 @@ import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
 import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import {
-    DataQualityPageTabs,
-    DataQualitySubTabs
+  DataQualityPageTabs,
+  DataQualitySubTabs,
 } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';

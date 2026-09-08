@@ -79,7 +79,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: ({ owners }: { owners?: unknown[] }) => (
     <div data-testid="owner-label">{owners?.length ? 'Owner' : ''}</div>
   ),
-  toOwnerRef: (ref: { id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }) => ({
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+    profileUrl?: string;
+  }) => ({
     id: ref.id,
     name: ref.name,
     displayName: ref.displayName,
@@ -87,15 +94,33 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     href: ref.href,
     profileUrl: ref.profileUrl,
   }),
-  toOwnerRefs: (refs?: Array<{ id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }>) =>
-    (refs ?? []).map((ref: { id: string; type?: string; name?: string; displayName?: string; href?: string; profileUrl?: string }) => ({
-      id: ref.id,
-      name: ref.name,
-      displayName: ref.displayName,
-      type: ref.type ?? 'user',
-      href: ref.href,
-      profileUrl: ref.profileUrl,
-    })),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+      profileUrl?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+        profileUrl?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+        profileUrl: ref.profileUrl,
+      })
+    ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -226,12 +251,16 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('../../common/WidgetCard/WidgetCard', () =>
-  jest.fn().mockImplementation(({ children, title }: { children?: React.ReactNode; title?: string }) => (
-    <div data-testid="widget-card">
-      {title && <div>{title}</div>}
-      {children}
-    </div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
 );
 
 jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({

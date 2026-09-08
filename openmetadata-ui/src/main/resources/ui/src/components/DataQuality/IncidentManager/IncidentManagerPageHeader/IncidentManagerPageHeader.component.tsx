@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    Owner,
-    Skeleton,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Owner,
+  Skeleton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';

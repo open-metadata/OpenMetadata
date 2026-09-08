@@ -18,7 +18,7 @@ import { getNameFromFQN } from '../../utils/FqnUtils';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import IncidentManagerTable, {
-    IncidentManagerTableProps
+  IncidentManagerTableProps,
 } from './IncidentManagerTable.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {

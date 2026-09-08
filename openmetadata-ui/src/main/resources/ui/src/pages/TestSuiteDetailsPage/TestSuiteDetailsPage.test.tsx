@@ -16,10 +16,10 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
-    addTestCasesToLogicalTestSuiteBulk,
-    getListTestCaseBySearch,
-    getTestSuiteByName,
-    updateTestSuiteById
+  addTestCasesToLogicalTestSuiteBulk,
+  getListTestCaseBySearch,
+  getTestSuiteByName,
+  updateTestSuiteById,
 } from '../../rest/testAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
@@ -210,32 +210,30 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
       return Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
     })(),
-    Owner: jest
-      .fn()
-      .mockImplementation(
-        ({
-          selectorContent,
-        }: {
-          selectorContent?: React.ReactElement<{
-            onUpdate?: (owners: unknown[]) => void;
-          }>;
-        }) => {
-          const handleUpdate = selectorContent?.props?.onUpdate;
+    Owner: jest.fn().mockImplementation(
+      ({
+        selectorContent,
+      }: {
+        selectorContent?: React.ReactElement<{
+          onUpdate?: (owners: unknown[]) => void;
+        }>;
+      }) => {
+        const handleUpdate = selectorContent?.props?.onUpdate;
 
-          return (
-            <div data-testid="owner-label">
-              OwnerLabel.component
-              <button
-                data-testid="update-owner-btn"
-                onClick={() =>
-                  handleUpdate?.([{ id: 'new-owner', type: 'user' }])
-                }>
-                Update Owner
-              </button>
-            </div>
-          );
-        }
-      ),
+        return (
+          <div data-testid="owner-label">
+            OwnerLabel.component
+            <button
+              data-testid="update-owner-btn"
+              onClick={() =>
+                handleUpdate?.([{ id: 'new-owner', type: 'user' }])
+              }>
+              Update Owner
+            </button>
+          </div>
+        );
+      }
+    ),
   };
 });
 

@@ -171,7 +171,6 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
-
 jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {

@@ -12,19 +12,19 @@
  */
 
 import {
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Dot,
-    Dropdown,
-    Owner,
-    Skeleton,
-    Tabs,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Dot,
+  Dropdown,
+  Owner,
+  Skeleton,
+  Tabs,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -64,8 +64,8 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
-    ContentChangeState,
-    RecentlyViewedQuickLinks
+  ContentChangeState,
+  RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';

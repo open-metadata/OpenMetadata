@@ -12,18 +12,18 @@
  */
 
 import {
-    fireEvent,
-    getByText,
-    render,
-    screen,
-    waitFor
+  fireEvent,
+  getByText,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
-    mockedGlossaryTerms,
-    MOCK_PERMISSIONS
+  mockedGlossaryTerms,
+  MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
 import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';

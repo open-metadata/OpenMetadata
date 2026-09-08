@@ -17,15 +17,15 @@ import * as reactRouterDom from 'react-router-dom';
 import type { TestCase } from '../../../../generated/tests/testCase';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
-    MOCK_TASK_DATA,
-    MOCK_TEST_CASE_DATA,
-    MOCK_TEST_CASE_INCIDENT,
-    MOCK_TEST_CASE_RESOLUTION_STATUS
+  MOCK_TASK_DATA,
+  MOCK_TEST_CASE_DATA,
+  MOCK_TEST_CASE_INCIDENT,
+  MOCK_TEST_CASE_RESOLUTION_STATUS,
 } from '../../../../mocks/TestCase.mock';
 import {
-    getIncidentTaskByStateId,
-    getListTestCaseIncidentByStateId,
-    updateTestCaseIncidentById
+  getIncidentTaskByStateId,
+  getListTestCaseIncidentByStateId,
+  updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import IncidentManagerPageHeaderView from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
@@ -169,24 +169,28 @@ jest.mock(
   () => ({
     UserTeamSelectableList: jest
       .fn()
-      .mockImplementation(({ onUpdate }: { onUpdate: (v: unknown[]) => void }) => (
-        <button
-          data-testid="owner-update-trigger"
-          type="button"
-          onClick={() => onUpdate([])}>
-          Edit Owner
-        </button>
-      )),
+      .mockImplementation(
+        ({ onUpdate }: { onUpdate: (v: unknown[]) => void }) => (
+          <button
+            data-testid="owner-update-trigger"
+            type="button"
+            onClick={() => onUpdate([])}>
+            Edit Owner
+          </button>
+        )
+      ),
   })
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockImplementation(
-    ({ selectorContent }: { selectorContent?: React.ReactNode }) => (
-      <div data-testid="owner-component">{selectorContent}</div>
-    )
-  ),
+  Owner: jest
+    .fn()
+    .mockImplementation(
+      ({ selectorContent }: { selectorContent?: React.ReactNode }) => (
+        <div data-testid="owner-component">{selectorContent}</div>
+      )
+    ),
 }));
 
 jest.mock('../Severity/Severity.component', () => {

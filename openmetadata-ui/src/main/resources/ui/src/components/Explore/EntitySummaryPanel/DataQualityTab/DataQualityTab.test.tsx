@@ -12,14 +12,14 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
-    EntityReference,
-    TestCase,
-    TestCaseStatus
+  EntityReference,
+  TestCase,
+  TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import {
-    Severities,
-    TestCaseResolutionStatus,
-    TestCaseResolutionStatusTypes
+  Severities,
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityTest } from '../../../common/DataQualitySection/DataQualitySection.interface';
 import DataQualityTab from './DataQualityTab';
@@ -262,30 +262,32 @@ jest.mock('../../../../utils/RouterUtils', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Owner: jest.fn().mockImplementation(
-    ({
-      owners,
-      placeHolder,
-    }: {
-      owners?: Array<{ id?: string; displayName?: string; name?: string }>;
-      placeHolder?: string;
-    }) => {
-      if (owners && owners.length > 0) {
-        return (
-          <>
-            {owners.map((owner, i) => (
-              <span key={owner.id ?? i}>
-                <div data-testid="avatar">Avatar</div>
-                <span>{owner.displayName || owner.name}</span>
-              </span>
-            ))}
-          </>
-        );
-      }
+  Owner: jest
+    .fn()
+    .mockImplementation(
+      ({
+        owners,
+        placeHolder,
+      }: {
+        owners?: Array<{ id?: string; displayName?: string; name?: string }>;
+        placeHolder?: string;
+      }) => {
+        if (owners && owners.length > 0) {
+          return (
+            <>
+              {owners.map((owner, i) => (
+                <span key={owner.id ?? i}>
+                  <div data-testid="avatar">Avatar</div>
+                  <span>{owner.displayName || owner.name}</span>
+                </span>
+              ))}
+            </>
+          );
+        }
 
-      return placeHolder ? <span>{placeHolder}</span> : null;
-    }
-  ),
+        return placeHolder ? <span>{placeHolder}</span> : null;
+      }
+    ),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';

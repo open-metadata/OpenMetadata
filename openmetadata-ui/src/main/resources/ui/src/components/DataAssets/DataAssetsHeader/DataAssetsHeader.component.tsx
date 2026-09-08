@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import {
-    Button,
-    Owner,
-    Tooltip,
-    TooltipTrigger,
-    Typography
+  Button,
+  Owner,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Copy01,
-    File02,
-    RefreshCcw01,
-    ThumbsDown,
-    ThumbsUp
+  Copy01,
+  File02,
+  RefreshCcw01,
+  ThumbsDown,
+  ThumbsUp,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -44,12 +44,12 @@ import { UserTeamSelectableList } from '../../../components/common/UserTeamSelec
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
-    CustomizeEntityType,
-    ENTITY_PAGE_TYPE_MAP
+  CustomizeEntityType,
+  ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
 import {
-    EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
-    SERVICE_TYPES
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
+  SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -58,8 +58,8 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
-    ContractExecutionStatus,
-    DataContract
+  ContractExecutionStatus,
+  DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
@@ -71,16 +71,16 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
-    AnnouncementEntity,
-    getActiveAnnouncements
+  AnnouncementEntity,
+  getActiveAnnouncements,
 } from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
-    getDataAssetsHeaderInfo,
-    HeaderDotSeparator
+  getDataAssetsHeaderInfo,
+  HeaderDotSeparator,
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
@@ -119,10 +119,10 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
-    DataAssetHeaderInfo,
-    DataAssetsHeaderProps,
-    DataAssetsWithFollowersField,
-    EntitiesWithDomainField
+  DataAssetHeaderInfo,
+  DataAssetsHeaderProps,
+  DataAssetsWithFollowersField,
+  EntitiesWithDomainField,
 } from './DataAssetsHeader.interface';
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';

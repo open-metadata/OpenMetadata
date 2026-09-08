@@ -20,8 +20,8 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
@@ -37,8 +37,8 @@ import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
-    getCurrentMillis,
-    getEpochMillisForPastDays
+  getCurrentMillis,
+  getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../utils/EntityLink';
 import { hasLineageTab } from '../../utils/EntityPermissionUtils';
@@ -60,8 +60,8 @@ import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
 import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-    DataAssetSummaryPanelProps,
-    TestCaseStatusCounts
+  DataAssetSummaryPanelProps,
+  TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 // Entity types that share the "common" summary layout (description, overview,

@@ -13,7 +13,7 @@
 
 import { Avatar } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
-import { type ReactNode, ComponentProps, useMemo } from 'react';
+import { ComponentProps, useMemo, type ReactNode } from 'react';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -126,7 +126,11 @@ const ProfilePicture = ({
       contrastBorder={!isSolid}
       data-testid="profile-avatar"
       initials={isLoadingWithoutUrl ? undefined : character}
-      placeholder={getLoaderPlaceholder(isLoadingWithoutUrl, numericWidth, isSolid)}
+      placeholder={getLoaderPlaceholder(
+        isLoadingWithoutUrl,
+        numericWidth,
+        isSolid
+      )}
       size={avatarSize}
       src={profileURL || undefined}
       style={getAvatarStyle(isSolid, color, backgroundColor)}

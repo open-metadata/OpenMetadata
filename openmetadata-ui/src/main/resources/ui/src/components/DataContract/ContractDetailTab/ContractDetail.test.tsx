@@ -12,33 +12,33 @@
  */
 import '@testing-library/jest-dom';
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
-    ContractExecutionStatus,
-    ContractSecurity,
-    DataContract
+  ContractExecutionStatus,
+  ContractSecurity,
+  DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import {
-    exportContractToODCSYaml,
-    getContractResultByResultId,
-    validateContractById
+  exportContractToODCSYaml,
+  getContractResultByResultId,
+  validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
-    downloadContractAsODCSYaml,
-    downloadContractYamlFile,
-    getConstraintStatus
+  downloadContractAsODCSYaml,
+  downloadContractYamlFile,
+  getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';

@@ -17,17 +17,17 @@ import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/type/entityReference';
 import {
-    LabelType,
-    State,
-    TagLabel,
-    TagSource
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
 } from '../generated/type/tagLabel';
 import {
-    dataProductTableObject,
-    descriptionTableObject,
-    domainTableObject,
-    ownerTableObject,
-    tagTableObject
+  dataProductTableObject,
+  descriptionTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
 } from './TableColumn.util';
 
 jest.mock('@openmetadata/ui-core-components', () => ({

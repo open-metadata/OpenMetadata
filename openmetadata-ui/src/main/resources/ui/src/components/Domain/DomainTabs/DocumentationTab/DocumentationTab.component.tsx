@@ -20,30 +20,30 @@ import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePa
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
-    DataProduct,
-    TagLabel,
-    TagSource
+  DataProduct,
+  TagLabel,
+  TagSource,
 } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-    ChangeDescription,
-    EntityReference
+  ChangeDescription,
+  EntityReference,
 } from '../../../../generated/entity/type';
 import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
 
 import {
-    getPrioritizedEditPermission,
-    getPrioritizedViewPermission
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
 } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-    WidgetEditButton,
-    WidgetPlusButton
+  WidgetEditButton,
+  WidgetPlusButton,
 } from '../../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -53,8 +53,8 @@ import '../../domain.less';
 import { DomainExpertWidget } from '../../DomainExpertsWidget/DomainExpertWidget';
 import { DomainTypeWidget } from '../../DomainTypeWidget/DomainTypeWidget';
 import {
-    DocumentationEntity,
-    DocumentationTabProps
+  DocumentationEntity,
+  DocumentationTabProps,
 } from './DocumentationTab.interface';
 const DocumentationTab = ({
   isVersionsView = false,

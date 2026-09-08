@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-    Popover,
-    PopoverTrigger,
-    Tabs
+  Popover,
+  PopoverTrigger,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
@@ -22,17 +22,17 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import {
-    ADD_USER_CONTAINER_HEIGHT,
-    DE_ACTIVE_COLOR,
-    PAGE_SIZE_MEDIUM
+  ADD_USER_CONTAINER_HEIGHT,
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
-    formatTeamsResponse,
-    formatUsersResponse
+  formatTeamsResponse,
+  formatUsersResponse,
 } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';

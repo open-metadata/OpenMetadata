@@ -74,21 +74,43 @@ jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockImplementation(() => <div>OwnerComponent</div>),
-  toOwnerRef: (ref: { id: string; type?: string; name?: string; displayName?: string; href?: string }) => ({
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+  }) => ({
     id: ref.id,
     name: ref.name,
     displayName: ref.displayName,
     type: ref.type ?? 'user',
     href: ref.href,
   }),
-  toOwnerRefs: (refs?: Array<{ id: string; type?: string; name?: string; displayName?: string; href?: string }>) =>
-    (refs ?? []).map((ref: { id: string; type?: string; name?: string; displayName?: string; href?: string }) => ({
-      id: ref.id,
-      name: ref.name,
-      displayName: ref.displayName,
-      type: ref.type ?? 'user',
-      href: ref.href,
-    })),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+      })
+    ),
 }));
 
 jest.mock('../../../../hooks/useOwnerDisplayProps', () => ({
@@ -99,12 +121,16 @@ jest.mock('../../../../hooks/useOwnerDisplayProps', () => ({
 }));
 
 jest.mock('../../../common/WidgetCard/WidgetCard', () =>
-  jest.fn().mockImplementation(({ children, title }: { children?: React.ReactNode; title?: string }) => (
-    <div data-testid="widget-card">
-      {title && <div>{title}</div>}
-      {children}
-    </div>
-  ))
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
 );
 
 jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () =>
