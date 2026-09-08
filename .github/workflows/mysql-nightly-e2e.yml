@@ -75,8 +75,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Without STRICT, a sample-data DAG that outruns the validation window only
+      # logs a warning: startup continues, the reindex rebuilds the search indexes
+      # from a database still being written, and the shard fails ~40 minutes later
+      # as a bogus SearchRelevance regression. Fail at setup instead.
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
+        env:
+          STRICT_DAG_VALIDATION: "true"
+          VALIDATION_TIMEOUT_SECONDS: "600"
         with:
           python-version: "3.10"
           args: "-d mysql"
