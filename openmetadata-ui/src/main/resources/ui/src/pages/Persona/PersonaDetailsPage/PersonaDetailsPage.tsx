@@ -32,7 +32,6 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
-import { PersonaAIContext } from '../../../components/Settings/Persona/PersonaAIContext/PersonaAIContext.component';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -56,6 +55,8 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
 
+const CUSTOMIZE_UI_KEY = 'customize-ui';
+
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
   const navigate = useNavigate();
@@ -70,9 +71,9 @@ export const PersonaDetailsPage = () => {
   );
   const location = useCustomLocation();
   const { activeKey, activeCategory, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
-      '.'
-    )[0];
+    const activeKey = (
+      location.hash?.replace('#', '') || CUSTOMIZE_UI_KEY
+    ).split('.')[0];
     const activeCategory = (location.hash?.replace('#', '') || '').split(
       '.'
     )[1];
@@ -151,7 +152,7 @@ export const PersonaDetailsPage = () => {
       return;
     }
 
-    if (!location.hash.includes('customize-ui')) {
+    if (!location.hash.includes(CUSTOMIZE_UI_KEY)) {
       navigate(
         {
           pathname: location.pathname,
@@ -283,19 +284,8 @@ export const PersonaDetailsPage = () => {
     return [
       {
         label: t('label.customize-ui'),
-        key: 'customize-ui',
+        key: CUSTOMIZE_UI_KEY,
         children: <CustomizeUI />,
-      },
-      {
-        label: t('label.ai-context'),
-        key: 'ai-context',
-        children: personaDetails ? (
-          <PersonaAIContext
-            canEdit={entityPermission.EditAll}
-            persona={personaDetails}
-            onPersonaUpdate={fetchPersonaDetails}
-          />
-        ) : null,
       },
       {
         label: t('label.user-plural'),

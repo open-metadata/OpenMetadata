@@ -21,7 +21,7 @@ import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
-/** Typed SDK client for renewable Ontology Studio edit leases. */
+/** Typed SDK client for renewable Ontology edit leases. */
 public final class OntologyEditLockService {
   private static final String BASE_PATH = "/v1/ontologyEditLocks";
   private final HttpClient httpClient;

@@ -281,6 +281,9 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void prepare(User user, boolean update) {
     validateTeams(user);
+    if (!update) {
+      validateGroupTeams(user.getTeams());
+    }
     validateRoles(user.getRoles());
   }
 
@@ -548,6 +551,18 @@ public class UserRepository extends EntityRepository<User> {
       teams.sort(EntityUtil.compareEntityReference);
     } else {
       user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
+    }
+  }
+
+  private void validateGroupTeams(List<EntityReference> teamReferences) {
+    for (EntityReference teamReference : listOrEmpty(teamReferences)) {
+      if (!teamReference.getId().equals(getOrganization().getId())) {
+        Team team = Entity.getEntity(TEAM, teamReference.getId(), "teamType", ALL);
+        if (!TeamType.GROUP.equals(team.getTeamType())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidTeamDirectUserAssignment(team.getTeamType()));
+        }
+      }
     }
   }
 
@@ -1406,9 +1421,41 @@ public class UserRepository extends EntityRepository<User> {
                       .withIsAdmin(getBoolean(printer, csvRecord, 5)))
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
+      rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
       }
+    }
+
+    /**
+     * The import endpoints authorize {@code EDIT_ALL} on users, not administrator, so anyone who
+     * can manage a team could otherwise hand themselves {@code isAdmin} or any role straight from
+     * the spreadsheet - the escalation the PATCH and PUT paths already reject.
+     *
+     * <p>Keyed off {@code importedBy} rather than a {@code SecurityContext} because the async
+     * import ({@code PUT /v1/users/importAsync}) runs the rows on a background thread where no
+     * request context exists.
+     */
+    private void rejectPrivilegedFieldsFromNonAdmin(
+        CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
+      if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
+        return;
+      }
+      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+        importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
+        processRecord = false;
+        return;
+      }
+      if (!nullOrEmpty(user.getRoles())) {
+        importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
+        processRecord = false;
+      }
+    }
+
+    public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
+      String error = String.format("Only an admin can set %s during user import", fieldName);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
 
     @Override
@@ -1800,11 +1847,13 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     private void updateTeams(User original, User updated) {
+      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
+      validateGroupTeams(requestedTeams);
+
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
-      assignTeams(updated, updated.getTeams());
-
-      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      assignTeams(updated, requestedTeams);
       List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
 
       origTeams.sort(EntityUtil.compareEntityReference);

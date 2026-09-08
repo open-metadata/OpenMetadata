@@ -3017,7 +3017,7 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.4, 0.6);
+    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
   }
 
   @Test

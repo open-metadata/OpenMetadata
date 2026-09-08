@@ -69,7 +69,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Context Center - Documents Page', () => {
-  test.slow(true);
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ browser }) => {

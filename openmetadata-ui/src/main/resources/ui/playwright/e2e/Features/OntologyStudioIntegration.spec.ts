@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, uuid } from '../../utils/common';
@@ -220,6 +220,8 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
     });
     const glossaryFqn = spiralGlossary.responseData.fullyQualifiedName;
     const termFqn = spiralTerm.responseData.fullyQualifiedName;
+    const termId = spiralTerm.responseData.id;
+    const tableId = spiralTable.entityResponseData.id;
     await expect(async () => {
       const response = await apiContext.get(
         '/api/v1/glossaryTerms/assets/counts',
@@ -228,6 +230,48 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
       const counts = (await response.json()) as Record<string, number>;
       expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
     }).toPass({ timeout: 60000, intervals: [2000] });
+
+    // /assets/counts and /ontology/data are served by two different indexes
+    // and the ontology-data one lags behind on a cold Elasticsearch. Waiting
+    // only on the counts endpoint let the test start with the ontology-data
+    // cluster still empty — the UI rendered the cluster shell but not the
+    // asset card, and the assertion at line 272
+    // (`ontology-data-asset-<id>` visible) blew 15s waiting for a card the
+    // API had not yet returned. Poll the endpoint the test actually reads,
+    // matching the exact params the UI sends (see
+    // `useOntologyExplorer.ts:getOntologyDataGraph`), so the two are
+    // consistent before the UI runs. Timeout has to exceed the ES catchup
+    // window; observed 60s occasionally not enough — 180s leaves headroom
+    // for a cold shard. beforeAll's own timeout is bumped in step
+    // (default hook timeout is 60s; we need room for both toPass polls
+    // plus API setup).
+    test.setTimeout(300000);
+    await expect(async () => {
+      const response = await apiContext.get(
+        '/api/v1/glossaryTerms/ontology/data',
+        {
+          params: {
+            parent: glossaryFqn,
+            limit: '12',
+            offset: '0',
+            assetPreviewSize: '4',
+            connectedTermLimit: '25',
+            edgeLimit: '50',
+            lineageEdgeLimit: '25',
+          },
+        }
+      );
+      const body = (await response.json()) as {
+        clusters?: {
+          term?: { id?: string };
+          assets?: { id?: string }[];
+        }[];
+      };
+      const cluster = (body.clusters ?? []).find((c) => c.term?.id === termId);
+      expect(
+        (cluster?.assets ?? []).some((asset) => asset.id === tableId)
+      ).toBe(true);
+    }).toPass({ timeout: 180000, intervals: [2000, 5000, 10000] });
 
     await disposeApiContext(page, apiContext);
   });
@@ -239,25 +283,25 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
     await disposeApiContext(page, apiContext);
   });
 
-  test('data mode renders tagged assets from the Studio data response', async ({
+  test('data mode renders tagged assets from the ontology data response', async ({
     page,
   }) => {
     test.slow();
 
     await navigateAndFilterByGlossary(page, spiralGlossary.responseData.id);
 
-    const studioDataResponse = page.waitForResponse((response) => {
+    const ontologyDataResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
 
       return (
-        url.pathname === '/api/v1/glossaryTerms/studio/data' &&
+        url.pathname === '/api/v1/glossaryTerms/ontology/data' &&
         url.searchParams.get('limit') === '12' &&
         url.searchParams.get('offset') === '0' &&
         url.searchParams.get('assetPreviewSize') === '4'
       );
     });
     await page.getByRole('tab', { name: 'Data' }).click();
-    expect((await studioDataResponse).ok()).toBe(true);
+    expect((await ontologyDataResponse).ok()).toBe(true);
     await waitForGraphLoaded(page);
 
     const cluster = page.getByTestId(

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Request, test as base } from '@playwright/test';
+import { Page, Request } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -35,17 +35,18 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
   verifyDomainPropagation,
@@ -1623,8 +1624,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await editDescriptionButton.click();
 
             // Wait for description box to be visible and ready
-            const descBox = page.locator(descriptionBox).first();
-            await expect(descBox).toBeVisible();
+            const descBox = await resolveDescriptionBox(page);
             await descBox.clear();
             await descBox.fill(newDescription);
 

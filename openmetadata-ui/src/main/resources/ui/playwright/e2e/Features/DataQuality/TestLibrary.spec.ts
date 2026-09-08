@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
@@ -26,6 +26,22 @@ const TEST_DEFINITION_DISPLAY_NAME = `Aaro Custom Test Definition ${uuid()}`;
 const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition ${uuid()}`;
 const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
+
+const selectOptionWithMouse = async (page: Page, option: Locator) => {
+  await expect(option).toBeVisible();
+
+  // React Aria can replace an option node while Playwright checks click
+  // actionability. Its screen position remains stable, matching a user's mouse
+  // selection without retaining a stale option node.
+  const optionBox = await option.boundingBox();
+  if (!optionBox) {
+    throw new Error('Visible select option has no layout box');
+  }
+  await page.mouse.click(
+    optionBox.x + optionBox.width / 2,
+    optionBox.y + optionBox.height / 2
+  );
+};
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -616,13 +632,22 @@ test.describe(
           .locator('textarea')
           .fill('External test for read-only validation');
 
-        await page.getByTestId('entity-type').click();
+        const entityTypeSelect = page.getByTestId('entity-type');
+        const entityTypeTrigger = entityTypeSelect.getByRole('button');
+
+        // The documentation panel reacts to focus and rerenders the form. Let
+        // that update settle before the mouse press so React Aria does not
+        // cancel the press when CI is under load.
+        await entityTypeTrigger.focus();
+        await expect(entityTypeTrigger).toBeFocused();
+        await entityTypeTrigger.click();
         const tableOption = page.getByRole('option', {
           name: 'TABLE',
           exact: true,
         });
-        await expect(tableOption).toBeVisible();
-        await tableOption.click();
+        await selectOptionWithMouse(page, tableOption);
+
+        await expect(entityTypeSelect).toContainText('TABLE');
 
         // OpenMetadata is selected by default. Remove its chip (the chip is a
         // span with the label and an unlabeled remove button) and add dbt so the
@@ -637,19 +662,29 @@ test.describe(
           platformsField.getByText('OpenMetadata', { exact: true })
         ).toBeHidden();
 
-        await platformsField.locator('input[role="combobox"]').fill('dbt');
+        const platformsInput = platformsField.locator('input[role="combobox"]');
         const dbtOption = page.getByRole('option', {
           name: 'dbt',
           exact: true,
         });
-        await expect(dbtOption).toBeVisible();
-        await dbtOption.click();
+        await platformsInput.fill('dbt');
+
+        // Atomic fill can schedule closure of React Aria's focus-opened popup.
+        // Establish a closed state before reopening it so that pending close
+        // cannot race the mouse selection.
+        await page.getByTestId('form-heading').click();
+        await expect(dbtOption).toBeHidden();
+        await platformsInput.focus();
+        await expect(platformsInput).toBeFocused();
+        await platformsInput.click();
+        await selectOptionWithMouse(page, dbtOption);
         await expect(
           platformsField.getByText('dbt', { exact: true })
         ).toBeVisible();
-        // Close the still-open platforms dropdown (a single Escape dismisses the
-        // combobox popover, not the drawer) so the fields below are clickable.
-        await page.keyboard.press('Escape');
+
+        // Continue to the next field by mouse, which also dismisses the
+        // multi-select popover without relying on keyboard interaction.
+        await page.getByTestId('description').locator('textarea').click();
         await expect(dbtOption).toBeHidden();
 
         // Add a parameter to verify DQ Dimension can still be set on a subsequent edit
@@ -729,13 +764,26 @@ test.describe(
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        await page.getByTestId('data-quality-dimension').click();
+        const dimensionField = page.getByTestId('data-quality-dimension');
         const accuracyOption = page.getByRole('option', {
           name: 'Accuracy',
           exact: true,
         });
-        await expect(accuracyOption).toBeVisible();
-        await accuracyOption.click();
+
+        // The listbox is a non-modal React Aria popover, so it is dismissed by any
+        // scroll of the pane holding the trigger — including the one Playwright
+        // emits to bring this field into view, delivered a frame after the popup
+        // opened. Reopen on each attempt; nothing else reopens it.
+        await expect(async () => {
+          if (!(await accuracyOption.isVisible())) {
+            await dimensionField.getByRole('button').click();
+            await expect(accuracyOption).toBeVisible({ timeout: 2_000 });
+          }
+          await selectOptionWithMouse(page, accuracyOption);
+          await expect(dimensionField).toContainText('Accuracy', {
+            timeout: 2_000,
+          });
+        }).toPass({ timeout: 20_000, intervals: [500, 1_000, 2_000] });
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(

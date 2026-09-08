@@ -18,12 +18,12 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Paging } from '../../../generated/type/paging';
 import {
   getGlossariesList,
+  getGlossaryTermAssets,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
   getGlossaryTermsByIds,
-  getOntologyStudioAssets,
-  getOntologyStudioDataGraph,
-  getOntologyStudioSummary,
+  getOntologyDataGraph,
+  getOntologySummary,
 } from '../../../rest/glossaryAPI';
 import { getMetrics } from '../../../rest/metricsAPI';
 import { listRelationshipTypes } from '../../../rest/ontologyAPI';
@@ -38,18 +38,15 @@ jest.mock('../../../rest/rdfAPI');
 const mockGetGlossariesList = getGlossariesList as jest.MockedFunction<
   typeof getGlossariesList
 >;
-const mockGetOntologyStudioAssets =
-  getOntologyStudioAssets as jest.MockedFunction<
-    typeof getOntologyStudioAssets
-  >;
-const mockGetOntologyStudioDataGraph =
-  getOntologyStudioDataGraph as jest.MockedFunction<
-    typeof getOntologyStudioDataGraph
-  >;
-const mockGetOntologyStudioSummary =
-  getOntologyStudioSummary as jest.MockedFunction<
-    typeof getOntologyStudioSummary
-  >;
+const mockGetGlossaryTermAssets = getGlossaryTermAssets as jest.MockedFunction<
+  typeof getGlossaryTermAssets
+>;
+const mockGetOntologyDataGraph = getOntologyDataGraph as jest.MockedFunction<
+  typeof getOntologyDataGraph
+>;
+const mockGetOntologySummary = getOntologySummary as jest.MockedFunction<
+  typeof getOntologySummary
+>;
 const mockGetGlossaryTerms = getGlossaryTerms as jest.MockedFunction<
   typeof getGlossaryTerms
 >;
@@ -123,7 +120,7 @@ function createDeferredTerms() {
 }
 
 function createDeferredAssets() {
-  type AssetsResponse = Awaited<ReturnType<typeof getOntologyStudioAssets>>;
+  type AssetsResponse = Awaited<ReturnType<typeof getGlossaryTermAssets>>;
   let resolveAssets: (value: AssetsResponse) => void = () => undefined;
   const assets = new Promise<AssetsResponse>((resolve) => {
     resolveAssets = resolve;
@@ -136,12 +133,14 @@ describe('useOntologyExplorer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCheckRdfEnabled.mockResolvedValue(false);
-    mockGetOntologyStudioDataGraph.mockResolvedValue({
+    mockGetOntologyDataGraph.mockResolvedValue({
       clusters: [],
       edges: [],
+      lineageEdges: [],
       paging: { limit: 12, offset: 0, total: 0 },
+      seedTermIds: [],
     });
-    mockGetOntologyStudioSummary.mockResolvedValue({
+    mockGetOntologySummary.mockResolvedValue({
       connectedPercentage: 0,
       isolatedPreview: [],
       isolatedTerms: 0,
@@ -234,32 +233,93 @@ describe('useOntologyExplorer', () => {
     act(() => result.current.handleModeChange('data'));
 
     await waitFor(() =>
-      expect(mockGetOntologyStudioDataGraph).toHaveBeenCalledWith({
+      expect(mockGetOntologyDataGraph).toHaveBeenCalledWith({
         assetPreviewSize: 4,
+        connectedTermLimit: 48,
+        edgeLimit: 100,
         limit: 12,
+        lineageEdgeLimit: 100,
         offset: 0,
         parent: undefined,
       })
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(mockGetOntologyStudioAssets).not.toHaveBeenCalled();
+    expect(mockGetGlossaryTermAssets).not.toHaveBeenCalled();
     expect(mockGetGlossaryTermsAssetCounts).not.toHaveBeenCalled();
+  });
+
+  it('advances Data pagination by ranked seeds instead of connected context clusters', async () => {
+    const firstSeedIds = Array.from(
+      { length: 12 },
+      (_, index) => `seed-${index}`
+    );
+    const contextIds = Array.from(
+      { length: 48 },
+      (_, index) => `context-${index}`
+    );
+    const clusters = [...firstSeedIds, ...contextIds].map((id) => ({
+      assetCount: 1,
+      assets: [],
+      term: {
+        fullyQualifiedName: `LoadedGlossary.${id}`,
+        id,
+        name: id,
+      },
+    }));
+    mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
+    mockGetOntologyDataGraph
+      .mockResolvedValueOnce({
+        clusters,
+        edges: [],
+        lineageEdges: [],
+        paging: { limit: 12, offset: 0, total: 24 },
+        seedTermIds: firstSeedIds,
+      })
+      .mockResolvedValueOnce({
+        clusters: clusters.filter((cluster) =>
+          contextIds.slice(0, 12).includes(cluster.term.id)
+        ),
+        edges: [],
+        lineageEdges: [],
+        paging: { limit: 12, offset: 12, total: 24 },
+        seedTermIds: contextIds.slice(0, 12),
+      });
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.handleModeChange('data'));
+    await waitFor(() => expect(result.current.hasMoreDataTerms).toBe(true));
+
+    expect(result.current.loadedTermCount).toBe(12);
+    expect(result.current.graphDataToShow?.nodes).toHaveLength(60);
+
+    act(() => result.current.handleLoadMore());
+
+    await waitFor(() =>
+      expect(mockGetOntologyDataGraph).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 12 })
+      )
+    );
+    await waitFor(() => expect(result.current.isLoadingMore).toBe(false));
+
+    expect(result.current.loadedTermCount).toBe(24);
+    expect(result.current.hasMoreDataTerms).toBe(false);
   });
 
   it('loads one bounded asset page when a data cluster requests more', async () => {
     const termId = '00000000-0000-0000-0000-000000000004';
     mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
-    mockGetOntologyStudioDataGraph.mockResolvedValue({
+    mockGetOntologyDataGraph.mockResolvedValue({
       clusters: [
         {
           assetCount: 101,
           assets: Array.from({ length: 4 }, (_, index) => ({
-            entity: {
-              id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-              name: `Asset${index}`,
-              type: 'table',
-            },
+            id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+            name: `Asset${index}`,
+            type: 'table',
           })),
           term: {
             fullyQualifiedName: 'LoadedGlossary.PagedTerm',
@@ -269,9 +329,11 @@ describe('useOntologyExplorer', () => {
         },
       ],
       edges: [],
+      lineageEdges: [],
       paging: { limit: 12, offset: 0, total: 1 },
+      seedTermIds: [termId],
     });
-    mockGetOntologyStudioAssets.mockResolvedValue({
+    mockGetGlossaryTermAssets.mockResolvedValue({
       data: [],
       paging: { limit: 6, offset: 4, total: 101 },
     });
@@ -302,7 +364,7 @@ describe('useOntologyExplorer', () => {
     );
 
     await waitFor(() =>
-      expect(mockGetOntologyStudioAssets).toHaveBeenCalledWith(
+      expect(mockGetGlossaryTermAssets).toHaveBeenCalledWith(
         termId,
         6,
         4,
@@ -320,7 +382,7 @@ describe('useOntologyExplorer', () => {
     ];
     const signals: AbortSignal[] = [];
     mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
-    mockGetOntologyStudioDataGraph.mockResolvedValue({
+    mockGetOntologyDataGraph.mockResolvedValue({
       clusters: [
         {
           assetCount: 10,
@@ -333,9 +395,11 @@ describe('useOntologyExplorer', () => {
         },
       ],
       edges: [],
+      lineageEdges: [],
       paging: { limit: 12, offset: 0, total: 1 },
+      seedTermIds: [termId],
     });
-    mockGetOntologyStudioAssets.mockImplementation(
+    mockGetGlossaryTermAssets.mockImplementation(
       (_termId, _limit, _offset, signal) => {
         if (!signal) {
           throw new Error('Asset request did not provide an abort signal');

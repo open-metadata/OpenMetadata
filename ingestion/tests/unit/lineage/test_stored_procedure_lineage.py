@@ -17,8 +17,8 @@ ensuring memory-efficient streaming and proper processing.
 
 import unittest
 import uuid
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator  # noqa: UP035
 from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.entity.data.storedProcedure import (

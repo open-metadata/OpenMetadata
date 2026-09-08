@@ -18,7 +18,7 @@ auto XOR manual, never both.
 """
 
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, Optional  # noqa: UP035
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from metadata.ingestion.progress.registry import ProgressRegistry
@@ -42,7 +42,7 @@ class TotalsDeclarer:
     def __init__(self, registry: "ProgressRegistry") -> None:
         self._registry = registry
 
-    def set_total(self, entity_type: str, total: Optional[int]) -> None:  # noqa: UP045
+    def set_total(self, entity_type: str, total: int | None) -> None:
         self._registry.set_total(entity_type, total)
 
     def seed_scope_total(self, entity_type: str, scope: str, n: int) -> None:
@@ -63,12 +63,12 @@ class ManualProgress(TotalsDeclarer):
 
     def __init__(self, registry: "ProgressRegistry") -> None:
         super().__init__(registry)
-        self._group_label: Optional[str] = None  # noqa: UP045
+        self._group_label: str | None = None
 
-    def track(self, entity_type: Optional[str], n: int = 1) -> None:  # noqa: UP045
+    def track(self, entity_type: str | None, n: int = 1) -> None:
         self._registry.track(entity_type, n)
 
-    def track_asset(self, entity_type: Optional[str], n: int = 1) -> None:  # noqa: UP045
+    def track_asset(self, entity_type: str | None, n: int = 1) -> None:
         """Track ``n`` completed units of ``entity_type`` that are also catalog
         assets, so they count toward both the type's progress bar and the run's
         ``assets_ingested`` total (the flat-source equivalent of a topology
@@ -76,16 +76,16 @@ class ManualProgress(TotalsDeclarer):
         self._registry.track(entity_type, n)
         self._registry.record_asset(n)
 
-    def reconcile_scope_total(self, entity_type: Optional[str], scope: str, observed: int) -> None:  # noqa: UP045
+    def reconcile_scope_total(self, entity_type: str | None, scope: str, observed: int) -> None:
         self._registry.reconcile_scope_total(entity_type, scope, observed)
 
-    def declare_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+    def declare_groups(self, label: str, total: int | None) -> None:
         """Declare the grouping axis (e.g. workspaces) as a global counter and
         remember its label so ``close_group`` can count completions on it."""
         self._group_label = label
         self._registry.set_total(label, total)
 
-    def open_group(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006,UP045
+    def open_group(self, group: str, expected_by_type: dict[str, int | None]) -> None:
         """Open one child node per asset type under ``group``; ``expected`` may
         be None for lazy (running) counts."""
         for asset_type, expected in expected_by_type.items():

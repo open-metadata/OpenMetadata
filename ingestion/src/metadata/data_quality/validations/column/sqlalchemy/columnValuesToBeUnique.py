@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column, case, func, inspect, literal_column, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -69,7 +69,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return count - unique_count
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -115,7 +115,7 @@ class ColumnValuesToBeUniqueValidator(
 
         return res
 
-    def _get_unique_count(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _get_unique_count(self, metric: Metrics, column: Column) -> int | None:
         """Get unique count of values"""
 
         return self.value.get(metric.name)
@@ -125,9 +125,9 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict],  # noqa: UP045
+        test_params: dict | None,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for uniqueness using two-pass approach
 
         Two-pass query strategy for accurate "Others" unique count:

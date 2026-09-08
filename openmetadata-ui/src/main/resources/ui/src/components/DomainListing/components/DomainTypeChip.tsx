@@ -13,6 +13,7 @@
 
 import { BadgeWithIcon, Typography } from '@openmetadata/ui-core-components';
 import { Cube01, Database01, Users01 } from '@untitledui/icons';
+import { useTranslation } from 'react-i18next';
 
 const EMPTY_VALUE_INDICATOR = '-';
 
@@ -21,6 +22,8 @@ interface DomainTypeChipProps {
 }
 
 export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
+  const { t } = useTranslation();
+
   switch (domainType) {
     case 'Consumer-aligned':
       return (
@@ -29,7 +32,7 @@ export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
           iconLeading={Users01}
           size="sm"
           type="color">
-          Consumer-aligned
+          {t('label.consumer-aligned')}
         </BadgeWithIcon>
       );
     case 'Source-aligned':
@@ -39,7 +42,7 @@ export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
           iconLeading={Cube01}
           size="sm"
           type="color">
-          Source-aligned
+          {t('label.source-aligned')}
         </BadgeWithIcon>
       );
     case 'Aggregate':
@@ -49,7 +52,7 @@ export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
           iconLeading={Database01}
           size="sm"
           type="color">
-          Aggregate
+          {t('label.aggregate')}
         </BadgeWithIcon>
       );
     default:

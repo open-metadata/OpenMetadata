@@ -38,7 +38,7 @@ import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface RdfInfraDAOs {
   @CreateSqlObject
-  OntologyStudioDAO ontologyStudioDAO();
+  OntologyDAO ontologyDAO();
 
   @CreateSqlObject
   RelationshipTypeDAO relationshipTypeDAO();

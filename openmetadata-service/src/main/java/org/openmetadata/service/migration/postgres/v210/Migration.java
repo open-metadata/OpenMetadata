@@ -14,7 +14,9 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
@@ -36,11 +38,13 @@ public class Migration extends MigrationProcessImpl {
     ConversationReferenceMigration.migrate(handle, POSTGRES);
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
     exemptQueryFromMultiDomainRules();
+    backfillSourceConfigTypes(collectionDAO);
   }
 }
