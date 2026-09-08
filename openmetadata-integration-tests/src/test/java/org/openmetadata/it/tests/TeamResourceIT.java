@@ -664,7 +664,8 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     List<UUID> descendantIds =
         fetchedDiv.getDescendantTeams().stream().map(EntityReference::getId).toList();
     assertTrue(descendantIds.contains(dept.getId()), "descendants should include the Department");
-    assertTrue(descendantIds.contains(group.getId()), "descendants should include the nested Group");
+    assertTrue(
+        descendantIds.contains(group.getId()), "descendants should include the nested Group");
     assertFalse(descendantIds.contains(div.getId()), "descendants must exclude the team itself");
     assertFalse(descendantIds.contains(bu.getId()), "descendants must exclude ancestors");
 
@@ -672,8 +673,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Team fetchedGroup = client.teams().get(group.getId().toString(), "descendantTeams");
     assertNotNull(fetchedGroup.getDescendantTeams());
     assertTrue(
-        fetchedGroup.getDescendantTeams().isEmpty(),
-        "a leaf Group team has no descendant teams");
+        fetchedGroup.getDescendantTeams().isEmpty(), "a leaf Group team has no descendant teams");
   }
 
   @Test
