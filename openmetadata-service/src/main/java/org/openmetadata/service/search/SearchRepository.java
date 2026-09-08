@@ -4384,13 +4384,13 @@ public class SearchRepository {
         fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
   }
 
-  public boolean isFieldMappedInIndex(String entityType, String fieldPath) throws IOException {
-    String cacheKey = entityType + ":" + fieldPath;
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    String cacheKey = index + ":" + fieldPath;
     Boolean cached = mappedFieldCache.getIfPresent(cacheKey);
     if (cached != null) {
       return cached;
     }
-    boolean mapped = searchClient.isFieldMappedInIndex(entityType, fieldPath);
+    boolean mapped = searchClient.isFieldMappedInIndex(index, fieldPath);
     mappedFieldCache.put(cacheKey, mapped);
     return mapped;
   }

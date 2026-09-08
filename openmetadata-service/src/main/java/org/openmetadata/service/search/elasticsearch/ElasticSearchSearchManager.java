@@ -181,8 +181,25 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   public Response searchByField(
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
-    return searchByFieldWithOptions(
-        fieldName, fieldValue, index, deleted, from, size, List.of(), null, false);
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+    Query query =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
+                            .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
+    SearchRequest request =
+        SearchRequest.of(
+            search ->
+                search
+                    .index(Entity.getSearchRepository().getIndexOrAliasName(index))
+                    .from(from)
+                    .size(size)
+                    .query(restrictToOrgWideMemories(query)));
+    return executeSearchRequest(request);
   }
 
   @Override
@@ -269,7 +286,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
     SearchRequest searchRequest =
         requestBuilder.build(Entity.getSearchRepository().getIndexOrAliasName(index));
+    return executeSearchRequest(searchRequest);
+  }
 
+  private Response executeSearchRequest(SearchRequest searchRequest) throws IOException {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
     try {

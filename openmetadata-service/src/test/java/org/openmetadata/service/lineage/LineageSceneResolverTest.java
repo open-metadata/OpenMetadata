@@ -453,8 +453,8 @@ class LineageSceneResolverTest {
                         .withAdditionalProperty("entityType", "TOPIC")
                         .withAdditionalProperty("document_count", "2")));
 
-    LineageSceneResolver.RootAssetCounts result =
-        LineageSceneResolver.rootAssetCounts(report, rootField);
+    LineageSceneCounts.RootAssetCounts result =
+        LineageSceneCounts.rootAssetCounts(report, rootField);
 
     assertEquals(Map.of("snowflake", Map.of(Entity.TABLE, 7, Entity.TOPIC, 2)), result.counts());
     assertFalse(result.truncated());
@@ -473,7 +473,7 @@ class LineageSceneResolverTest {
 
     assertEquals(
         Map.of("snowflake.shop.shopify", 8),
-        LineageSceneResolver.aggregationCounts(report, bucketField));
+        LineageSceneCounts.aggregationCounts(report, bucketField));
   }
 
   @Test
@@ -486,14 +486,26 @@ class LineageSceneResolverTest {
                 .withDomains(List.of(new EntityReference().withFullyQualifiedName("Engineering"))),
             null);
     String queryFilter =
-        LineageSceneResolver.fieldQuery(
+        LineageSceneQuery.assetFieldQuery(
             "service.fullyQualifiedName.keyword",
             "snowflake",
             "upstreamLineage.docId",
-            subjectContext);
+            List.of(),
+            new LineageSceneRequest(
+                null,
+                null,
+                LineageLens.SERVICE,
+                LineageBand.ASSET,
+                1,
+                1,
+                25,
+                null,
+                false,
+                null,
+                subjectContext));
 
     SearchRequest request =
-        LineageSceneResolver.sceneAssetSearchRequest(
+        LineageSceneSearch.sceneAssetSearchRequest(
             Entity.TABLE, false, 25, List.of("id", "fullyQualifiedName"), queryFilter);
     JsonNode must = JsonUtils.readTree(request.getQueryFilter()).at("/query/bool/must");
 
@@ -509,7 +521,8 @@ class LineageSceneResolverTest {
             .asBoolean());
     assertEquals("upstreamLineage.docId", must.get(1).at("/exists/field").asText());
     assertEquals(
-        "Engineering", must.get(2).at("/bool/should/1/term/domains.fullyQualifiedName").asText());
+        "Engineering",
+        must.get(2).at("/bool/should/1/term/domains.fullyQualifiedName/value").asText());
   }
 
   @Test
@@ -524,7 +537,8 @@ class LineageSceneResolverTest {
 
     JsonNode clause =
         JsonUtils.readTree(
-            JsonUtils.pojoToJson(LineageSceneResolver.domainAccessClause(subjectContext)));
+            LineageSceneQuery.queryJson(LineageSceneQuery.domainAccessClause(subjectContext)));
+    clause = clause.path("query");
     JsonNode conditions = clause.path("bool").path("should");
 
     assertEquals(3, conditions.size());
@@ -532,9 +546,10 @@ class LineageSceneResolverTest {
     assertEquals(
         "domains.fullyQualifiedName",
         conditions.get(0).at("/bool/must_not/0/exists/field").asText());
-    assertEquals("Engineering", conditions.get(1).at("/term/domains.fullyQualifiedName").asText());
     assertEquals(
-        "Engineering.", conditions.get(2).at("/prefix/domains.fullyQualifiedName").asText());
+        "Engineering", conditions.get(1).at("/term/domains.fullyQualifiedName/value").asText());
+    assertEquals(
+        "Engineering.", conditions.get(2).at("/prefix/domains.fullyQualifiedName/value").asText());
   }
 
   @Test
@@ -548,13 +563,27 @@ class LineageSceneResolverTest {
             null);
 
     JsonNode must =
-        JsonUtils.readTree(LineageSceneResolver.rootLineageParticipantQuery("", subjectContext))
+        JsonUtils.readTree(
+                LineageSceneQuery.rootLineageParticipantQuery(
+                    new LineageSceneRequest(
+                        null,
+                        null,
+                        LineageLens.SERVICE,
+                        LineageBand.LAYER,
+                        1,
+                        1,
+                        100,
+                        null,
+                        false,
+                        null,
+                        subjectContext)))
             .at("/query/bool/must");
 
     assertEquals(2, must.size());
     assertEquals("upstreamLineage.docId", must.get(0).at("/exists/field").asText());
     assertEquals(
-        "Engineering", must.get(1).at("/bool/should/1/term/domains.fullyQualifiedName").asText());
+        "Engineering",
+        must.get(1).at("/bool/should/1/term/domains.fullyQualifiedName/value").asText());
   }
 
   @Test
@@ -579,17 +608,17 @@ class LineageSceneResolverTest {
 
   @Test
   void bestEffortTasksSkipIndividualIoFailures() throws IOException {
-    List<LineageSceneResolver.IOTask<String>> tasks =
+    List<LineageSceneTasks.IOTask<String>> tasks =
         List.of(
-            LineageSceneResolver.bestEffortTask("first child", () -> "first"),
-            LineageSceneResolver.bestEffortTask(
+            LineageSceneTasks.bestEffortTask("first child", () -> "first"),
+            LineageSceneTasks.bestEffortTask(
                 "failed child",
                 () -> {
                   throw new IOException("transient search failure");
                 }),
-            LineageSceneResolver.bestEffortTask("last child", () -> "last"));
+            LineageSceneTasks.bestEffortTask("last child", () -> "last"));
 
-    assertEquals(List.of("first", "last"), LineageSceneResolver.runBounded(tasks, 2));
+    assertEquals(List.of("first", "last"), LineageSceneTasks.runBounded(tasks, 2));
   }
 
   @Test
@@ -771,9 +800,9 @@ class LineageSceneResolverTest {
     entity.put("upstreamLineage", List.of(Map.of("docId", "edge-id")));
 
     Map<String, Object> assetPayload =
-        LineageSceneResolver.trimSourceEntity(entity, LineageBand.ASSET);
+        LineageSceneMapper.trimSourceEntity(entity, LineageBand.ASSET);
     Map<String, Object> fieldPayload =
-        LineageSceneResolver.trimSourceEntity(entity, LineageBand.FIELD);
+        LineageSceneMapper.trimSourceEntity(entity, LineageBand.FIELD);
 
     assertTrue(assetPayload.containsKey("id"));
     assertFalse(assetPayload.containsKey("columns"));
@@ -1096,7 +1125,7 @@ class LineageSceneResolverTest {
             .collect(Collectors.toSet()));
 
     Map<String, Object> fieldPayload =
-        LineageSceneResolver.trimSourceEntity(endpoint, LineageBand.FIELD);
+        LineageSceneMapper.trimSourceEntity(endpoint, LineageBand.FIELD);
     assertTrue(fieldPayload.containsKey("requestSchema"));
     assertTrue(fieldPayload.containsKey("responseSchema"));
   }
