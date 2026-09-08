@@ -192,9 +192,8 @@ public class AuditLogRepository {
       return AuditLogRecord.ActorType.USER;
     }
     String lowerName = userName.toLowerCase();
-    // Match whole name parts, not substrings: "management" contains "agent".
-    for (String part : lowerName.split("[^a-z0-9]+")) {
-      if (AGENT_INDICATORS.contains(part)) {
+    for (String indicator : AGENT_INDICATORS) {
+      if (lowerName.contains(indicator)) {
         return AuditLogRecord.ActorType.AGENT;
       }
     }
