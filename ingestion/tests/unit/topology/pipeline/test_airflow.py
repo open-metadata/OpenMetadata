@@ -1614,12 +1614,14 @@ class TestAirflow(TestCase):
 
     def test_get_pipeline_status_coalesce_ordering_with_asset_triggered_runs(self):
         """
-        get_pipeline_status must return DagRun objects built from the session rows.
-        For asset-triggered DAG runs, logical_date (date_value) is NULL; the COALESCE
-        ordering fallback to start_date ensures they are not spuriously sorted above
-        real scheduled runs.  This test verifies that the function correctly builds
-        DagRun objects for both scheduled and asset-triggered rows and respects the
-        numberOfStatus limit.
+        get_pipeline_status must order rows using COALESCE(date_column, start_date) DESC
+        so that asset-triggered runs (logical_date=NULL) sort by start_date rather than
+        being unconditionally last (plain DESC on a nullable column) or unconditionally
+        first (NULLS FIRST). Plain NULLS LAST syntax is also rejected by MySQL/MariaDB.
+
+        This test verifies both the DagRun construction from mixed row types and that
+        the ORDER BY expression passed to SQLAlchemy contains COALESCE — so a regression
+        back to bare column ordering is caught immediately.
         """
         from collections import namedtuple
         from datetime import datetime, timezone
@@ -1632,9 +1634,9 @@ class TestAirflow(TestCase):
         scheduled_dt = datetime(2026, 9, 1, 12, 0, 0, tzinfo=timezone.utc)
         asset_start = datetime(2026, 9, 2, 8, 0, 0, tzinfo=timezone.utc)
 
-        # Simulate the DB returning 2 rows in COALESCE-ordered order:
-        # newest first: asset-triggered run (logical_date=NULL, start_date=asset_start)
-        # then scheduled run (logical_date=scheduled_dt)
+        # Rows as the DB would return under COALESCE(date_value, start_date) DESC:
+        # asset run (date_value=NULL, COALESCE→asset_start=Sep 2) sorts before
+        # scheduled run (date_value=Sep 1).
         rows = [
             Row(dag_id="dag1", run_id="asset_run", queued_at=None, date_value=None, start_date=asset_start, state="success"),
             Row(dag_id="dag1", run_id="sched_run", queued_at=None, date_value=scheduled_dt, start_date=scheduled_dt, state="success"),
@@ -1645,7 +1647,8 @@ class TestAirflow(TestCase):
         mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
         mock_session.query.return_value = mock_query
 
-        # session is a @property backed by _session — inject mock directly
+        # _session is a plain instance attribute (not a read-only property) — set it
+        # directly so self.session returns our mock without touching the real DB.
         self.airflow._session = mock_session
         self.airflow._status_cache_dag_id = None
         try:
@@ -1654,11 +1657,9 @@ class TestAirflow(TestCase):
             self.airflow._session = None
             self.airflow._status_cache_dag_id = None
 
-        # Both rows are returned as DagRun objects
+        # ── Behavioral assertion 1: DagRun objects are built from both row types ──
         self.assertEqual(len(result), 2)
-
-        asset_run = result[0]
-        sched_run = result[1]
+        asset_run, sched_run = result
 
         self.assertIsInstance(asset_run, DagRun)
         self.assertEqual(asset_run.run_id, "asset_run")
@@ -1668,6 +1669,26 @@ class TestAirflow(TestCase):
         self.assertIsInstance(sched_run, DagRun)
         self.assertEqual(sched_run.run_id, "sched_run")
         self.assertEqual(sched_run.logical_date, scheduled_dt)
+
+        # ── Behavioral assertion 2: ORDER BY must use COALESCE ──
+        # func.coalesce(...) creates a real SQLAlchemy expression even inside a mock
+        # chain. Inspecting the argument to order_by() proves the cross-dialect contract
+        # is in place: COALESCE(date_col, start_date) DESC works on PostgreSQL, MySQL,
+        # MariaDB, and SQLite alike; bare NULLS LAST is MySQL-incompatible.
+        order_by_call = mock_query.filter.return_value.order_by.call_args
+        self.assertIsNotNone(order_by_call, "order_by() must be called on the query chain")
+        order_by_sql = str(order_by_call.args[0]).lower()
+        self.assertIn(
+            "coalesce",
+            order_by_sql,
+            "ORDER BY must use COALESCE so NULL logical_date falls back to start_date "
+            "(plain NULLS LAST is rejected by MySQL/MariaDB)",
+        )
+        self.assertIn(
+            "start_date",
+            order_by_sql,
+            "COALESCE must reference start_date as the fallback for asset-triggered runs",
+        )
 
     def test_get_pipeline_status_cache_returns_same_result(self):
         """
