@@ -29,6 +29,7 @@ export interface PreviewerProp {
   maxLineLength?: string;
   clampByLines?: boolean;
   extensionOptions?: ExtensionOptions;
+  viewMoreButtonClassName?: string;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
