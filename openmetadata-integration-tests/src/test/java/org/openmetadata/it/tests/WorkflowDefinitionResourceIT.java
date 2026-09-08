@@ -1929,9 +1929,10 @@ public class WorkflowDefinitionResourceIT {
                     .withDescription("DP with assets")
                     .withDomains(List.of(domain.getFullyQualifiedName())));
 
-    // Create a table and add it as an asset to dpWithAssets
-    DatabaseService service =
-        client.databaseServices().create(createDatabaseServiceRequest(ns.prefix("dpac_svc")));
+    // Create a table in the same domain and add it as an asset
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpac_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
     Database database =
         client
             .databases()
@@ -1939,7 +1940,8 @@ public class WorkflowDefinitionResourceIT {
                 new CreateDatabase()
                     .withName(ns.prefix("dpac_db"))
                     .withDescription("DB")
-                    .withService(service.getFullyQualifiedName()));
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
     DatabaseSchema schema =
         client
             .databaseSchemas()
@@ -2102,9 +2104,10 @@ public class WorkflowDefinitionResourceIT {
                     .withDescription("DP with output ports")
                     .withDomains(List.of(domain.getFullyQualifiedName())));
 
-    // Create a table and add it as an output port
-    DatabaseService service =
-        client.databaseServices().create(createDatabaseServiceRequest(ns.prefix("dpop_svc")));
+    // Create a table in the same domain, add as asset first, then as output port
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpop_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
     Database database =
         client
             .databases()
@@ -2112,7 +2115,8 @@ public class WorkflowDefinitionResourceIT {
                 new CreateDatabase()
                     .withName(ns.prefix("dpop_db"))
                     .withDescription("DB")
-                    .withService(service.getFullyQualifiedName()));
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
     DatabaseSchema schema =
         client
             .databaseSchemas()
@@ -2135,12 +2139,11 @@ public class WorkflowDefinitionResourceIT {
                                 .withName("id")
                                 .withDataType(ColumnDataType.INT)
                                 .withDescription("Primary key"))));
-    client
-        .dataProducts()
-        .bulkAddOutputPorts(
-            dpWithPorts.getFullyQualifiedName(),
-            new org.openmetadata.schema.type.api.BulkAssets()
-                .withAssets(List.of(table.getEntityReference())));
+    org.openmetadata.schema.type.api.BulkAssets bulkAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client.dataProducts().bulkAddAssets(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+    client.dataProducts().bulkAddOutputPorts(dpWithPorts.getFullyQualifiedName(), bulkAssets);
 
     String workflowName = ns.prefix("dpOutputPortCountWF");
     String workflowJson =
