@@ -882,14 +882,22 @@ test.describe('Data Contracts', () => {
         await columnResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await page
-          .getByRole('checkbox', { name: 'Select all' })
-          .locator('xpath=ancestor::label[1]')
-          .click();
+        const selectAllCheckbox = page.getByRole('checkbox', {
+          name: 'Select all',
+        });
 
-        await expect(
-          page.getByRole('checkbox', { name: 'Select all' })
-        ).not.toBeChecked();
+        // Persistence: the columns saved in step 1 are restored as selected on
+        // reopen. That restore is async and not gated by the column loader, so
+        // wait for the header select-all to reflect the full page selection
+        // before toggling -- otherwise the deselect click races the restore and
+        // nets back to checked. Asserting the checked state here also verifies
+        // the saved selection persisted.
+        await expect(selectAllCheckbox).toBeChecked();
+
+        // Now deselect every page-1 row from a stable fully-checked state.
+        await selectAllCheckbox.locator('xpath=ancestor::label[1]').click();
+
+        await expect(selectAllCheckbox).not.toBeChecked();
 
         // Pager is part of the edit form; assert it before saving. Persistence
         // of the deselection is covered on the next reopen.
