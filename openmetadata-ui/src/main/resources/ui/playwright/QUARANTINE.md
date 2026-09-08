@@ -27,7 +27,7 @@ coverage, a retried one looks green.
 
 ## Entries
 
-8 tests. Evidence is failures observed across 11 merge_group runs sampled on
+6 tests. Evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
@@ -35,11 +35,9 @@ generated variant rather than per source line.
 |---|---|---|---|
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 11/11 | `entity-summary-panel-container` → owner chip not found (10s). Regressed around #31853, which removed the welcome-banner dismiss helpers. |
 | `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | 7/11 | Test timeout. |
-| `e2e/Features/Table.spec.ts` | should persist page size | 6/11 | Test timeout after `waitForAllLoadersToDisappear`. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal — filters and select | 3/11 | `waitForResponse` on the test-case search never resolves. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
-| `e2e/Features/ActivityStream.spec.ts` | activity stream API is called when visiting entity page | 2/11 | |
 
 `PLAYWRIGHT_RUN_QUARANTINED=true` selects these 9 plus the 7 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
@@ -56,6 +54,8 @@ These were failing their first attempt in ~every run and are root-caused, so
 they were repaired rather than parked:
 
 | Spec | Root cause |
+| `e2e/Features/ActivityStream.spec.ts` — activity stream API is called when visiting entity page | Released without a code change: 3/3 green locally, and no load-dependent symptom was ever recorded for it. |
+| `e2e/Features/Table.spec.ts` — should persist page size | Released without a code change: 3/3 green locally. Its recorded symptom (timeout after `waitForAllLoadersToDisappear`) is load-dependent, so local runs are weak evidence — re-tag it if it ejects a PR. No mechanism was identified for why it now passes. |
 | `e2e/Pages/Lineage/LineageInteraction.spec.ts` — Verify node panel opens on click | Two causes, and the symptom recorded here was only the second. (1) `fitToScreen` returned before its menu popover finished its exit animation, leaving a second `[role="dialog"]` in the DOM, so the test's unscoped `[role="dialog"]` assertion tripped strict mode. (2) `Verify edge delete button in drawer` deletes the shared `table1 → topic` edge and never restores it, so every later test in the file saw a graph without the topic — that is the "node is not in the graph" symptom. Fixed by having `fitToScreen` wait for the menu to detach, scoping the assertion to `lineage-entity-panel`, and restoring the edge in a `finally`. |
 |---|---|
 | `e2e/Pages/Glossary.spec.ts` 128 / 198 / 421 | `utils/glossary.ts` used `page.textContent()` — waits for the element, not its text — so a cold first attempt read `""`. #32333 (a revert of #30896) had reintroduced this after it was already fixed. Restored to `toContainText`. |
