@@ -13,7 +13,7 @@
 
 import { Avatar } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
-import { ComponentProps, useMemo } from 'react';
+import { type ReactNode, ComponentProps, useMemo } from 'react';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -42,6 +42,34 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
   64: '2xl',
   80: '2xl',
 };
+
+function getLoaderPlaceholder(
+  isLoading: boolean,
+  numericWidth: number,
+  isSolid: boolean
+): ReactNode | undefined {
+  if (!isLoading) {
+    return undefined;
+  }
+
+  return (
+    <Loader
+      size={numericWidth <= 24 ? 'x-small' : 'small'}
+      type={isSolid ? 'white' : 'default'}
+    />
+  );
+}
+
+function getAvatarStyle(
+  isSolid: boolean,
+  color: string,
+  backgroundColor: string
+) {
+  return {
+    backgroundColor: isSolid ? color : backgroundColor,
+    color: isSolid ? '#fff' : color,
+  };
+}
 
 interface Props extends UserData {
   width?: string;
@@ -98,20 +126,10 @@ const ProfilePicture = ({
       contrastBorder={!isSolid}
       data-testid="profile-avatar"
       initials={isLoadingWithoutUrl ? undefined : character}
-      placeholder={
-        isLoadingWithoutUrl ? (
-          <Loader
-            size={numericWidth <= 24 ? 'x-small' : 'small'}
-            type={isSolid ? 'white' : 'default'}
-          />
-        ) : undefined
-      }
+      placeholder={getLoaderPlaceholder(isLoadingWithoutUrl, numericWidth, isSolid)}
       size={avatarSize}
       src={profileURL || undefined}
-      style={{
-        backgroundColor: isSolid ? color : backgroundColor,
-        color: isSolid ? '#fff' : color,
-      }}
+      style={getAvatarStyle(isSolid, color, backgroundColor)}
     />
   );
 };

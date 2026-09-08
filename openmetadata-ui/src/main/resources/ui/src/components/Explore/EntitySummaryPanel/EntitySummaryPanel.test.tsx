@@ -171,14 +171,6 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
-jest.mock('../../common/OwnerUserList/OwnerUserList.component', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="owner-user-list">OwnerUserList</div>
-    )),
-}));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
