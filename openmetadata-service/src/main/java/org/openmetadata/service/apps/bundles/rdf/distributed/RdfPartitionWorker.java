@@ -158,15 +158,9 @@ public class RdfPartitionWorker {
       // durable. The persisted cursor is the ACKED offset — never the read
       // offset — so a crash or stop resumes from the last batch the store
       // actually accepted.
-      flushTimingProgress(
-          partition,
-          acc.ackedOffset,
-          acc.processedCount,
-          acc.successCount,
-          acc.failedCount,
-          acc.readerTimeMs,
-          acc.processTimeMs,
-          acc.sinkTimeMs);
+      if (!flushTimingProgress(partition, acc)) {
+        acc.truncatedByStop = true;
+      }
 
       if (acc.truncatedByStop || stopped.get() || Thread.currentThread().isInterrupted()) {
         return new PartitionResult(
@@ -178,35 +172,42 @@ public class RdfPartitionWorker {
             acc.lastError);
       }
 
-      coordinator.completePartition(
-          partition.getId(),
-          acc.ackedOffset,
-          acc.processedCount,
-          acc.successCount,
-          acc.failedCount,
-          acc.lastError);
+      final boolean completed =
+          coordinator.completePartition(
+              partition,
+              acc.ackedOffset,
+              acc.processedCount,
+              acc.successCount,
+              acc.failedCount,
+              acc.lastError);
       return new PartitionResult(
           acc.processedCount,
           acc.successCount,
           acc.failedCount,
           acc.relationshipFailureCount,
-          false,
+          !completed,
           acc.lastError);
     } catch (Exception e) {
       LOG.error("Failed to process RDF partition {}", partition.getId(), e);
-      coordinator.failPartition(
-          partition.getId(),
-          acc.ackedOffset,
-          acc.processedCount,
-          acc.successCount,
-          acc.failedCount,
-          e.getMessage());
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      final boolean failed =
+          !stopped.get()
+              && !Thread.currentThread().isInterrupted()
+              && coordinator.failPartition(
+                  partition,
+                  acc.ackedOffset,
+                  acc.processedCount,
+                  acc.successCount,
+                  acc.failedCount,
+                  e.getMessage());
       return new PartitionResult(
           acc.processedCount,
           acc.successCount,
           acc.failedCount,
           acc.relationshipFailureCount,
-          false,
+          !failed,
           e.getMessage());
     }
   }
@@ -284,16 +285,7 @@ public class RdfPartitionWorker {
     }
 
     if (acc.processedCount % PROGRESS_UPDATE_INTERVAL < submission.cursorDelta()) {
-      coordinator.updatePartitionProgress(
-          partition.toBuilder()
-              .cursor(acc.ackedOffset)
-              .processedCount(acc.processedCount)
-              .successCount(acc.successCount)
-              .failedCount(acc.failedCount)
-              .readerTimeMs(acc.readerTimeMs)
-              .processTimeMs(acc.processTimeMs)
-              .sinkTimeMs(acc.sinkTimeMs)
-              .build());
+      acc.truncatedByStop = !persistProgress(partition, acc);
     }
   }
 
@@ -320,31 +312,28 @@ public class RdfPartitionWorker {
     stopped.set(true);
   }
 
-  private void flushTimingProgress(
-      RdfIndexPartition partition,
-      long cursor,
-      long processedCount,
-      long successCount,
-      long failedCount,
-      long readerTimeMs,
-      long processTimeMs,
-      long sinkTimeMs) {
+  private boolean persistProgress(final RdfIndexPartition partition, final Accumulator acc) {
+    return coordinator.updatePartitionProgress(
+        partition.toBuilder()
+            .cursor(acc.ackedOffset)
+            .processedCount(acc.processedCount)
+            .successCount(acc.successCount)
+            .failedCount(acc.failedCount)
+            .readerTimeMs(acc.readerTimeMs)
+            .processTimeMs(acc.processTimeMs)
+            .sinkTimeMs(acc.sinkTimeMs)
+            .build());
+  }
+
+  private boolean flushTimingProgress(final RdfIndexPartition partition, final Accumulator acc) {
     try {
-      coordinator.updatePartitionProgress(
-          partition.toBuilder()
-              .cursor(cursor)
-              .processedCount(processedCount)
-              .successCount(successCount)
-              .failedCount(failedCount)
-              .readerTimeMs(readerTimeMs)
-              .processTimeMs(processTimeMs)
-              .sinkTimeMs(sinkTimeMs)
-              .build());
-    } catch (Exception statsFailure) {
+      return persistProgress(partition, acc);
+    } catch (RuntimeException statsFailure) {
       LOG.warn(
           "Could not flush final timing progress for partition {}",
           partition.getId(),
           statsFailure);
+      return true;
     }
   }
 

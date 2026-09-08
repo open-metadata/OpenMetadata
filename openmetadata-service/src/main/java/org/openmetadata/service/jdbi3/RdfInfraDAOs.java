@@ -665,8 +665,9 @@ public interface RdfInfraDAOs {
         "UPDATE rdf_index_partition SET processingCursor = :cursor, processedCount = :processedCount, "
             + "successCount = :successCount, failedCount = :failedCount, "
             + "readerTimeMs = :readerTimeMs, processTimeMs = :processTimeMs, sinkTimeMs = :sinkTimeMs, "
-            + "lastUpdateAt = :lastUpdateAt WHERE id = :id")
-    void updateProgress(
+            + "lastUpdateAt = :lastUpdateAt WHERE id = :id AND status = 'PROCESSING' "
+            + "AND assignedServer = :assignedServer AND claimedAt = :claimedAt")
+    int updateProgress(
         @Bind("id") String id,
         @Bind("cursor") long cursor,
         @Bind("processedCount") long processedCount,
@@ -675,10 +676,18 @@ public interface RdfInfraDAOs {
         @Bind("readerTimeMs") long readerTimeMs,
         @Bind("processTimeMs") long processTimeMs,
         @Bind("sinkTimeMs") long sinkTimeMs,
-        @Bind("lastUpdateAt") long lastUpdateAt);
+        @Bind("lastUpdateAt") long lastUpdateAt,
+        @Bind("assignedServer") String assignedServer,
+        @Bind("claimedAt") long claimedAt);
 
-    @SqlUpdate("UPDATE rdf_index_partition SET lastUpdateAt = :lastUpdateAt WHERE id = :id")
-    void updateHeartbeat(@Bind("id") String id, @Bind("lastUpdateAt") long lastUpdateAt);
+    @SqlUpdate(
+        "UPDATE rdf_index_partition SET lastUpdateAt = :lastUpdateAt WHERE id = :id "
+            + "AND status = 'PROCESSING' AND assignedServer = :assignedServer AND claimedAt = :claimedAt")
+    int updateHeartbeat(
+        @Bind("id") String id,
+        @Bind("lastUpdateAt") long lastUpdateAt,
+        @Bind("assignedServer") String assignedServer,
+        @Bind("claimedAt") long claimedAt);
 
     @SqlQuery("SELECT * FROM rdf_index_partition WHERE id = :id")
     @RegisterRowMapper(RdfIndexPartitionMapper.class)
@@ -768,20 +777,17 @@ public interface RdfInfraDAOs {
     int countPartitionsByStatus(@Bind("jobId") String jobId, @Bind("status") String status);
 
     /**
-     * Status-guarded variant of {@link #update}: only writes if the row is still
-     * PROCESSING. Workers use this on completion so that a concurrent Stop
-     * (which moves the row to CANCELLED) isn't overwritten back to
-     * COMPLETED/FAILED, which would make the Stop button look unreliable.
-     * Returns the number of rows updated (0 means the row was no longer
-     * PROCESSING and the caller should skip side effects like server-stat
-     * increments).
+     * Writes only while the original claim still owns a PROCESSING partition. A stopped or
+     * reclaimed worker must not overwrite its replacement, even when both run on the same server.
+     * A zero result means the caller must skip completion side effects such as server statistics.
      */
     @SqlUpdate(
         "UPDATE rdf_index_partition SET status = :status, processingCursor = :cursor, "
             + "processedCount = :processedCount, successCount = :successCount, failedCount = :failedCount, "
             + "assignedServer = :assignedServer, claimedAt = :claimedAt, startedAt = :startedAt, "
             + "completedAt = :completedAt, lastUpdateAt = :lastUpdateAt, lastError = :lastError, "
-            + "retryCount = :retryCount WHERE id = :id AND status = 'PROCESSING'")
+            + "retryCount = :retryCount WHERE id = :id AND status = 'PROCESSING' "
+            + "AND assignedServer = :assignedServer AND claimedAt = :claimedAt")
     int updateIfProcessing(
         @Bind("id") String id,
         @Bind("status") String status,

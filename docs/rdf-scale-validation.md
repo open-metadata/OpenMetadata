@@ -65,7 +65,8 @@ until the rebuild ends, bounded at 2,000 samples per type. Queries return at mos
 text search returns at most 20. These are bounded interactive queries; the three-hop query does
 not compute unrestricted transitive closure. Integrity counts run before the query phases and
 warm the store, including after restart. Latencies are end-to-end API measurements, with no
-claimed cold-cache result.
+claimed cold-cache result. Entity and lineage queries rotate through deterministic table IDs
+across the catalog; text search repeats the fixture's description term.
 
 Resources are sampled approximately every two seconds, plus collection overhead. The JSONL file
 records application heap and RSS, Fuseki RSS and cgroup memory, PostgreSQL cgroup memory, allocated
@@ -93,6 +94,70 @@ nodes, and isolation between types. `RdfBatchFieldsIT` and the custom-property c
 `TypeResourceIT` compare database-backed batch reads with entity API responses. The catalog
 scenario additionally requires identical table, lineage, extension, and total-triple counts after
 local rebuilding, distributed recovery, and Fuseki restart.
+
+## Storage-pressure findings (2026-09-08)
+
+The following attempts used the complete 200,000-table / 2,000,000-edge source fixture. None
+completed the full validation scenario. They establish storage constraints, not successful
+full-catalog timings or a controlled comparison between configurations.
+
+| Application batch | Lineage batch | Append budget | Last observed successful records | Peak Fuseki disk (GiB) | Outcome |
+|---:|---:|---:|---:|---:|---|
+| 100 | 50 | 16 MiB | 27,156 | 17.671 | Operator stopped for projected disk growth |
+| 1,000 | 1,000 | 16 MiB | 78,356 | 22.828 | Operator stopped for projected disk growth |
+| 1,000 | 10,000 | 16 MiB | 200,441 | 57.343 | Free-disk reserve reached during compaction |
+
+The first two runs reported `stopped`, zero failed records, and an unchanged serving pointer.
+Their observed durations through worker shutdown were 572.128 and 623.044 seconds. The third
+entered post-load compaction 1,422.900 seconds after the local rebuild started, then the harness
+failed when host free disk crossed its 12 GiB reserve. Its last persisted progress counter was
+200,441 of 200,555 records with zero failed records; promotion, graph counts, query latency,
+cancellation, recovery, and restart were not validated in that attempt. Its sampled application
+heap peaked at 1.583 GiB, application RSS at 2.422 GiB, and Fuseki cgroup memory at its 16 GiB cap.
+The disk figure includes the unfinished compaction generation and is not the final graph size.
+
+Raw evidence, source revisions, and SHA-256 manifests are retained for the
+[100-record attempt](artifacts/rdf-scale/2026-09-08-aborted-batch-100/manifest.json),
+[1,000-edge attempt](artifacts/rdf-scale/2026-09-08-aborted-lineage-1000/manifest.json), and
+[compaction reserve failure](artifacts/rdf-scale/2026-09-08-failed-compaction-reserve/manifest.json).
+JSON reports are unchanged; JSONL resource and progress samples use reproducible gzip compression.
+Failure metadata distinguishes manual cancellation from an actual resource-guard failure.
+
+## Distributed worker findings (2026-09-08)
+
+Revision `a3e202811e4f57f8592bf3def8cdd6754a734274` completed the full scenario with application and
+append batches of 5,000, a 64 MiB append budget, and 10,000-edge lineage batches. Local rebuilding
+took 1,895.633 seconds and distributed recovery took 1,808.323 seconds, including compaction.
+Both processed 200,555 records with zero failed records. Each verified graph contained 200,000
+tables, all three sets of 2,000,000 lineage triples, 20,000 detailed edges, 400 extension entries,
+and 26,952,284 triples in total. Cancellation preserved the serving graph, and restart preserved
+the promoted dataset and its counts.
+
+That run also exposed duplicate participation: three participant workers joined the three
+coordinator workers in the same process while partition cursors were being prepared. Participant
+workers lacked heartbeats, and four active partitions were reclaimed. These timings therefore
+do not establish performance for the intended three-worker configuration. The
+[report and raw measurements](artifacts/rdf-scale/2026-09-08-200k-lease-findings/manifest.json)
+retain these findings alongside the successful scenario assertions.
+
+The fixes reserve the coordinator's job before partition initialization, renew claims throughout
+both coordinator and participant execution, interrupt workers even after graceful shutdown has
+started, and require the original server and claim timestamp for progress, heartbeat, completion,
+and failure updates. Reassignment to the same server also invalidates the old claim. Claim fencing
+uses existing database columns.
+
+The MySQL integration run additionally exposed missing timing columns. The 2.0.2 migration reused
+identical `PREPARE`, `EXECUTE`, and `DEALLOCATE` statements for three conditional column additions.
+The migration runner deduplicates statements by text, so only the first addition executed. Each
+column now uses a distinct prepared statement name. This correction remains in the unreleased
+2.0.2 migration; the equivalent PostgreSQL columns already migrate correctly.
+
+`DistributedRdfIndexExecutorTest` reproduces the initialization and shutdown races.
+`RdfPartitionHeartbeatTest` exercises the real scheduler with the database boundary stubbed.
+`RdfPartitionLeaseIT` checks stale writes and active heartbeats against a real database, including
+the coordinator and worker paths. The scale harness now records platform worker counts in each
+resource sample and fails distributed recovery if it observes local participant workers, exceeds
+three coordinator workers, or finds a partition retry.
 
 ## Runtime configuration and scope
 

@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -49,6 +51,14 @@ class RdfPartitionWorkerTest {
   @BeforeEach
   void setUp() {
     worker = new RdfPartitionWorker(coordinator, sink, batchProcessor, 100);
+    lenient().when(coordinator.updatePartitionProgress(any())).thenReturn(true);
+    lenient()
+        .when(
+            coordinator.completePartition(any(), anyLong(), anyLong(), anyLong(), anyLong(), any()))
+        .thenReturn(true);
+    lenient()
+        .when(coordinator.failPartition(any(), anyLong(), anyLong(), anyLong(), anyLong(), any()))
+        .thenReturn(true);
   }
 
   @Test
@@ -230,7 +240,7 @@ class RdfPartitionWorkerTest {
   private MockedStatic<Entity> stubEntityRegistry() {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
-    org.mockito.Mockito.lenient()
+    lenient()
         .when(repository.getAllowedFieldsCopy())
         .thenReturn(new java.util.HashSet<>(List.of("name", "description")));
     MockedStatic<Entity> entityMock = mockStatic(Entity.class);

@@ -646,8 +646,7 @@ class DistributedRdfIndexCoordinatorTest {
   void failPartitionBumpsRetryCountByOneViaUpdateIfProcessing() {
     UUID partitionId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    when(partitionDAO.findById(partitionId.toString()))
-        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 2));
+    final RdfIndexPartition claim = claimedPartition(partitionId, jobId, 2);
     when(partitionDAO.updateIfProcessing(
             anyString(),
             anyString(),
@@ -664,7 +663,7 @@ class DistributedRdfIndexCoordinatorTest {
             anyInt()))
         .thenReturn(1);
 
-    coordinator.failPartition(partitionId, 10L, 5L, 3L, 2L, "boom");
+    coordinator.failPartition(claim, 10L, 5L, 3L, 2L, "boom");
 
     ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
     verify(partitionDAO)
@@ -689,8 +688,7 @@ class DistributedRdfIndexCoordinatorTest {
   void failPartitionSkipsStatsWhenNoLongerProcessing() {
     UUID partitionId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    when(partitionDAO.findById(partitionId.toString()))
-        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 0));
+    final RdfIndexPartition claim = claimedPartition(partitionId, jobId, 0);
     when(partitionDAO.updateIfProcessing(
             anyString(),
             anyString(),
@@ -707,7 +705,7 @@ class DistributedRdfIndexCoordinatorTest {
             anyInt()))
         .thenReturn(0);
 
-    coordinator.failPartition(partitionId, 10L, 5L, 3L, 2L, "boom");
+    coordinator.failPartition(claim, 10L, 5L, 3L, 2L, "boom");
 
     verify(serverStatsDAO, never())
         .incrementStats(
@@ -728,8 +726,7 @@ class DistributedRdfIndexCoordinatorTest {
   void failPartitionIncrementsFailedPartitionStatOnSuccess() {
     UUID partitionId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    when(partitionDAO.findById(partitionId.toString()))
-        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 0));
+    final RdfIndexPartition claim = claimedPartition(partitionId, jobId, 0);
     when(partitionDAO.updateIfProcessing(
             anyString(),
             anyString(),
@@ -746,7 +743,7 @@ class DistributedRdfIndexCoordinatorTest {
             anyInt()))
         .thenReturn(1);
 
-    coordinator.failPartition(partitionId, 10L, 5L, 3L, 2L, "boom");
+    coordinator.failPartition(claim, 10L, 5L, 3L, 2L, "boom");
 
     verify(serverStatsDAO)
         .incrementStats(
@@ -766,8 +763,7 @@ class DistributedRdfIndexCoordinatorTest {
   void completePartitionSkipsStatsWhenNoLongerProcessing() {
     UUID partitionId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    when(partitionDAO.findById(partitionId.toString()))
-        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 0));
+    final RdfIndexPartition claim = claimedPartition(partitionId, jobId, 0);
     when(partitionDAO.updateIfProcessing(
             anyString(),
             anyString(),
@@ -784,7 +780,7 @@ class DistributedRdfIndexCoordinatorTest {
             anyInt()))
         .thenReturn(0);
 
-    coordinator.completePartition(partitionId, 10L, 5L, 5L, 0L, null);
+    coordinator.completePartition(claim, 10L, 5L, 5L, 0L, null);
 
     verify(serverStatsDAO, never())
         .incrementStats(
@@ -804,8 +800,7 @@ class DistributedRdfIndexCoordinatorTest {
   void completePartitionIncrementsCompletedPartitionStatOnSuccess() {
     UUID partitionId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    when(partitionDAO.findById(partitionId.toString()))
-        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 2));
+    final RdfIndexPartition claim = claimedPartition(partitionId, jobId, 2);
     when(partitionDAO.updateIfProcessing(
             anyString(),
             anyString(),
@@ -822,7 +817,7 @@ class DistributedRdfIndexCoordinatorTest {
             anyInt()))
         .thenReturn(1);
 
-    coordinator.completePartition(partitionId, 10L, 5L, 5L, 0L, null);
+    coordinator.completePartition(claim, 10L, 5L, 5L, 0L, null);
 
     verify(serverStatsDAO)
         .incrementStats(
@@ -842,8 +837,7 @@ class DistributedRdfIndexCoordinatorTest {
   void completePartitionKeepsRetryCountUnchanged() {
     UUID partitionId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    when(partitionDAO.findById(partitionId.toString()))
-        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 2));
+    final RdfIndexPartition claim = claimedPartition(partitionId, jobId, 2);
     when(partitionDAO.updateIfProcessing(
             anyString(),
             anyString(),
@@ -860,7 +854,7 @@ class DistributedRdfIndexCoordinatorTest {
             anyInt()))
         .thenReturn(1);
 
-    coordinator.completePartition(partitionId, 10L, 5L, 5L, 0L, null);
+    coordinator.completePartition(claim, 10L, 5L, 5L, 0L, null);
 
     ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
     verify(partitionDAO)
@@ -993,6 +987,20 @@ class DistributedRdfIndexCoordinatorTest {
             anyLong(),
             errorCaptor.capture());
     return errorCaptor;
+  }
+
+  private static RdfIndexPartition claimedPartition(
+      final UUID partitionId, final UUID jobId, final int retryCount) {
+    return RdfIndexPartition.builder()
+        .id(partitionId)
+        .jobId(jobId)
+        .entityType("table")
+        .assignedServer(TEST_SERVER_ID)
+        .claimedAt(1000L)
+        .startedAt(2000L)
+        .status(PartitionStatus.PROCESSING)
+        .retryCount(retryCount)
+        .build();
   }
 
   private RdfIndexPartitionRecord partitionRecord(

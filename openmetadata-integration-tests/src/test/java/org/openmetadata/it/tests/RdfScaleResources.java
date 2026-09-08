@@ -28,7 +28,7 @@ final class RdfScaleResources implements AutoCloseable {
   private final ScheduledExecutorService sampler = Executors.newSingleThreadScheduledExecutor();
   private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
   private volatile String phase = "initializing";
-  private Peaks peaks = new Peaks(0, 0, 0, 0, 0, 0, 0, 0);
+  private Peaks peaks = new Peaks(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   private int sampleCount;
 
   record Peaks(
@@ -39,7 +39,9 @@ final class RdfScaleResources implements AutoCloseable {
       long fusekiDiskBytes,
       long databaseContainerBytes,
       long databaseDiskBytes,
-      long sampleCount) {}
+      long sampleCount,
+      int coordinatorWorkers,
+      int participantWorkers) {}
 
   record Sample(
       String time,
@@ -54,7 +56,9 @@ final class RdfScaleResources implements AutoCloseable {
       long hostFreeDiskBytes,
       long hostFreeMemoryBytes,
       long hostSwapUsedBytes,
-      double hostLoadAverage) {}
+      double hostLoadAverage,
+      int coordinatorWorkers,
+      int participantWorkers) {}
 
   RdfScaleResources(
       final GenericContainer<?> fuseki, final GenericContainer<?> database, final Path output)
@@ -68,7 +72,7 @@ final class RdfScaleResources implements AutoCloseable {
 
   synchronized void phase(final String name) {
     phase = name;
-    peaks = new Peaks(0, 0, 0, 0, 0, 0, 0, 0);
+    peaks = new Peaks(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     sampleCount = 0;
   }
 
@@ -106,6 +110,7 @@ final class RdfScaleResources implements AutoCloseable {
     final long appRss = processRss();
     final var fusekiSample = sampleFuseki();
     final var databaseSample = sampleDatabase();
+    final WorkerCounts workers = countWorkers();
     final Sample sample =
         new Sample(
             Instant.now().toString(),
@@ -120,7 +125,9 @@ final class RdfScaleResources implements AutoCloseable {
             hostFree,
             SYSTEM.getFreeMemorySize(),
             SYSTEM.getTotalSwapSpaceSize() - SYSTEM.getFreeSwapSpaceSize(),
-            SYSTEM.getSystemLoadAverage());
+            SYSTEM.getSystemLoadAverage(),
+            workers.coordinator(),
+            workers.participant());
     samples.write(JsonUtils.pojoToJson(sample));
     samples.newLine();
     samples.flush();
@@ -128,6 +135,21 @@ final class RdfScaleResources implements AutoCloseable {
   }
 
   private record ContainerSample(long rss, long memory, long disk) {}
+
+  private record WorkerCounts(int coordinator, int participant) {}
+
+  private static WorkerCounts countWorkers() {
+    final var threads = ManagementFactory.getThreadMXBean();
+    int coordinator = 0;
+    int participant = 0;
+    for (var thread : threads.getThreadInfo(threads.getAllThreadIds())) {
+      if (thread == null) continue;
+      final String name = thread.getThreadName();
+      if (name.startsWith("rdf-distributed-coordinator-")) coordinator++;
+      if (name.startsWith("rdf-distributed-participant-")) participant++;
+    }
+    return new WorkerCounts(coordinator, participant);
+  }
 
   private ContainerSample sampleFuseki() throws IOException, InterruptedException {
     final var result =
@@ -183,7 +205,9 @@ final class RdfScaleResources implements AutoCloseable {
             Math.max(peaks.fusekiDiskBytes(), sample.fusekiDiskBytes()),
             Math.max(peaks.databaseContainerBytes(), sample.databaseContainerBytes()),
             Math.max(peaks.databaseDiskBytes(), sample.databaseDiskBytes()),
-            sampleCount);
+            sampleCount,
+            Math.max(peaks.coordinatorWorkers(), sample.coordinatorWorkers()),
+            Math.max(peaks.participantWorkers(), sample.participantWorkers()));
   }
 
   private static long metric(final String output, final String name) throws IOException {

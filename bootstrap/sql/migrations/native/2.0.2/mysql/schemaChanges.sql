@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS rdf_index_failures (
 
 -- Pipeline timing for RDF distributed indexing: the run stats previously recorded only counts,
 -- so the UI showed "<1 ms" averages while real throughput was seconds per record. Reader time is
--- the keyset read; sink time is the full RDF write path (translation + storage round trips).
-SET @ddl = (
+-- the keyset read; process time is translation; sink time is storage round trips.
+-- The migration runner deduplicates SQL by text, so each prepared statement needs a unique name.
+SET @rdf_reader_time_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -35,11 +36,11 @@ SET @ddl = (
     'ALTER TABLE rdf_index_partition ADD COLUMN readerTimeMs BIGINT NOT NULL DEFAULT 0'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE rdf_reader_time_stmt FROM @rdf_reader_time_ddl;
+EXECUTE rdf_reader_time_stmt;
+DEALLOCATE PREPARE rdf_reader_time_stmt;
 
-SET @ddl = (
+SET @rdf_process_time_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -51,11 +52,11 @@ SET @ddl = (
     'ALTER TABLE rdf_index_partition ADD COLUMN processTimeMs BIGINT NOT NULL DEFAULT 0'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE rdf_process_time_stmt FROM @rdf_process_time_ddl;
+EXECUTE rdf_process_time_stmt;
+DEALLOCATE PREPARE rdf_process_time_stmt;
 
-SET @ddl = (
+SET @rdf_sink_time_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -67,9 +68,9 @@ SET @ddl = (
     'ALTER TABLE rdf_index_partition ADD COLUMN sinkTimeMs BIGINT NOT NULL DEFAULT 0'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE rdf_sink_time_stmt FROM @rdf_sink_time_ddl;
+EXECUTE rdf_sink_time_stmt;
+DEALLOCATE PREPARE rdf_sink_time_stmt;
 
 -- Blue/green RDF dataset pointer. A full rebuild builds into an idle dataset and then flips this
 -- single row, so the served graph is never cleared out from under live queries the way a per-run

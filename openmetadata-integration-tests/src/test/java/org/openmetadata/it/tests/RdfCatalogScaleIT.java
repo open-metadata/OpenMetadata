@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.quartz.JobKey;
@@ -233,8 +234,36 @@ public class RdfCatalogScaleIT {
         "RDF scale rebuild failed: " + JsonUtils.pojoToJson(run));
     assertEquals(0, stats(run).path("failedRecords").asLong());
     assertNotEquals(serving, activeDataset(), "A successful blue/green rebuild must promote");
+    if (distributed) verifyDistributedClaims(label, run);
     System.out.printf("RDF_SCALE %s complete %.1fs %s%n", label, secondsSince(start), stats(run));
     return run;
+  }
+
+  private void verifyDistributedClaims(final String label, final AppRunRecord run)
+      throws IOException {
+    final String jobId =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT id FROM rdf_index_job WHERE createdAt >= :start AND createdAt <= :end")
+                        .bind("start", run.getStartTime())
+                        .bind("end", run.getEndTime())
+                        .mapTo(String.class)
+                        .one());
+    final var partitions = Entity.getCollectionDAO().rdfIndexPartitionDAO().findByJobId(jobId);
+    final int retries = partitions.stream().mapToInt(partition -> partition.retryCount()).sum();
+    final ObjectNode claims = report.withObject("/" + label).putObject("claims");
+    claims.put("jobId", jobId);
+    claims.put("partitions", partitions.size());
+    claims.put("retries", retries);
+    checkpoint();
+    assertTrue(!partitions.isEmpty(), "Distributed rebuild must create partitions");
+    assertEquals(0, retries, "Healthy workers must not lose their claims during the scale run");
+    assertEquals(0, resources.peaks().participantWorkers(), "Coordinator must not join itself");
+    assertTrue(
+        resources.peaks().coordinatorWorkers() <= 3, "Worker count must respect configuration");
   }
 
   private void recordRun(final String label, final long start, final AppRunRecord run)
