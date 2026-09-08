@@ -28,6 +28,10 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
+    density: {
+      control: 'inline-radio',
+      options: ['compact', 'comfortable'],
+    },
     variant: {
       control: 'inline-radio',
       options: ['flat', 'gradient'],
@@ -54,6 +58,32 @@ export const Basic: Story = {
   args: {
     title: 'Snowflake',
     subtitle: 'Production data warehouse service',
+  },
+  render: (args) => (
+    <Frame>
+      <PageHeader {...args} />
+    </Frame>
+  ),
+};
+
+export const CompactDensity: Story = {
+  args: {
+    density: 'compact',
+    subtitle: '12px vertical padding for denser application shells',
+    title: 'Compact page header',
+  },
+  render: (args) => (
+    <Frame>
+      <PageHeader {...args} />
+    </Frame>
+  ),
+};
+
+export const ComfortableDensity: Story = {
+  args: {
+    density: 'comfortable',
+    subtitle: '16px vertical padding for the default page rhythm',
+    title: 'Comfortable page header',
   },
   render: (args) => (
     <Frame>
