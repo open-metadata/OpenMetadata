@@ -599,9 +599,14 @@ class HiveUnitTest(TestCase):
         self.assertEqual([col["name"] for col in partition_only], ["year", "country"])
 
     def test_get_table_partition_details(self):
-        """HiveSource exposes partition keys via tablePartition metadata."""
+        """Fallback path: when cache is empty, fetch columns once and mark partitions."""
         mock_inspector = Mock()
         mock_inspector.get_columns.return_value = [
+            {
+                "name": "id",
+                "type": Integer,
+                "is_partition": False,
+            },
             {
                 "name": "year",
                 "type": Integer,
@@ -629,7 +634,42 @@ class HiveUnitTest(TestCase):
         mock_inspector.get_columns.assert_called_once_with(
             table_name="sales",
             schema="analytics",
-            only_partition_columns=True,
+        )
+
+    def test_get_table_partition_details_uses_cached_columns(self):
+        """After _get_columns_internal, partition details must not DESCRIBE again."""
+        raw_columns = [
+            {"name": "id", "type": Integer, "is_partition": False},
+            {"name": "year", "type": Integer, "is_partition": True},
+            {"name": "country", "type": String(), "is_partition": True},
+        ]
+        mock_inspector = Mock()
+        mock_inspector.get_columns.return_value = raw_columns
+
+        fetched = self.hive._get_columns_internal(
+            schema_name="analytics",
+            table_name="sales",
+            db_name="default",
+            inspector=mock_inspector,
+        )
+        self.assertEqual([col["name"] for col in fetched], ["id", "year", "country"])
+        self.assertEqual(mock_inspector.get_columns.call_count, 1)
+
+        is_partitioned, partition_details = self.hive.get_table_partition_details(
+            table_name="sales",
+            schema_name="analytics",
+            inspector=mock_inspector,
+        )
+
+        self.assertTrue(is_partitioned)
+        self.assertEqual(
+            [col.columnName.root for col in partition_details.columns],
+            ["year", "country"],
+        )
+        self.assertEqual(
+            mock_inspector.get_columns.call_count,
+            1,
+            "get_table_partition_details should reuse cached raw columns",
         )
 
     def test_ssl_connection_configuration(self):

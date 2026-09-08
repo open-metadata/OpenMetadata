@@ -13,6 +13,7 @@ Hive source methods.
 """
 
 import traceback
+from collections import OrderedDict
 
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
@@ -54,6 +55,7 @@ HiveDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
+_RAW_COLUMNS_CACHE_MAX = 512
 
 
 class HiveSource(CommonDbSourceService):
@@ -71,6 +73,40 @@ class HiveSource(CommonDbSourceService):
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
+
+    def _ensure_raw_columns_cache(self) -> OrderedDict[tuple[str, str], list[dict]]:
+        if not hasattr(self, "_raw_hive_columns") or self._raw_hive_columns is None:
+            self._raw_hive_columns = OrderedDict()
+        return self._raw_hive_columns
+
+    def _store_raw_columns(self, schema_name: str, table_name: str, columns: list[dict]) -> list[dict]:
+        cache = self._ensure_raw_columns_cache()
+        key = (schema_name, table_name)
+        cache[key] = columns
+        while len(cache) > _RAW_COLUMNS_CACHE_MAX:
+            cache.popitem(last=False)
+        return columns
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        """
+        Cache raw dialect column dicts (including ``is_partition``) so
+        ``get_table_partition_details`` can reuse them without a second DESCRIBE.
+        """
+        cache = self._ensure_raw_columns_cache()
+        key = (schema_name, table_name)
+        if key not in cache:
+            columns = inspector.get_columns(
+                table_name, schema_name, table_type=table_type, db_name=db_name
+            )
+            self._store_raw_columns(schema_name, table_name, columns)
+        return cache[key]
 
     def _parse_version(self, version: str) -> tuple:
         if "-" in version:
@@ -99,6 +135,7 @@ class HiveSource(CommonDbSourceService):
                 HiveDialect.get_view_names = get_view_names_older_versions
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
+        self._ensure_raw_columns_cache()
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -130,16 +167,19 @@ class HiveSource(CommonDbSourceService):
         """
         Return Hive partition keys from DESCRIBE's Partition Information section.
 
-        Partition columns are flagged in ``get_columns`` via ``is_partition`` so the
-        table schema keeps them as columns while ``tablePartition`` marks their role.
+        Prefer raw column dicts cached by ``_get_columns_internal`` (already flagged
+        with ``is_partition``) so yield_table does not DESCRIBE twice per table.
         """
         try:
-            columns = inspector.get_columns(
-                table_name=table_name,
-                schema=schema_name,
-                only_partition_columns=True,
-            )
-            if not columns:
+            cache = self._ensure_raw_columns_cache()
+            key = (schema_name, table_name)
+            columns = cache.get(key)
+            if columns is None:
+                columns = inspector.get_columns(table_name=table_name, schema=schema_name)
+                self._store_raw_columns(schema_name, table_name, columns)
+
+            partition_columns = [col for col in columns if col.get("is_partition")]
+            if not partition_columns:
                 return False, None
             partition_details = TablePartition(
                 columns=[
@@ -148,7 +188,7 @@ class HiveSource(CommonDbSourceService):
                         intervalType=PartitionIntervalTypes.COLUMN_VALUE,
                         interval=None,
                     )
-                    for col in columns
+                    for col in partition_columns
                 ]
             )
             return True, partition_details

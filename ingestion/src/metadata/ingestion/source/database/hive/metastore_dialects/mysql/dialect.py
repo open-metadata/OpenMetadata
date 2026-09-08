@@ -66,28 +66,35 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility.
         # Insert a Hive-style Partition Information sentinel between regular and
         # partition columns so get_columns can flag partition keys (issue #26712).
+        # sort_order + ORDER BY keeps sentinel position deterministic across UNION ALL.
         query = f"""
-            SELECT 
-                col.COLUMN_NAME,
-                col.TYPE_NAME, 
-                col.COMMENT
-            FROM COLUMNS_V2 col
-            JOIN CDS cds ON col.CD_ID = cds.CD_ID
-            JOIN SDS sds ON sds.CD_ID = cds.CD_ID
-            JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
-                AND tbsl.TBL_NAME = '{table_name}'
-            {schema_join}
-            UNION ALL
-            SELECT '# Partition Information', NULL, NULL
-            UNION ALL
-            SELECT 
-                pk.PKEY_NAME as COLUMN_NAME,
-                pk.PKEY_TYPE as TYPE_NAME,
-                pk.PKEY_COMMENT as COMMENT
-            FROM PARTITION_KEYS pk
-            JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
-                AND tbsl.TBL_NAME = '{table_name}'
-            {schema_join}
+            SELECT COLUMN_NAME, TYPE_NAME, COMMENT
+            FROM (
+                SELECT 
+                    col.COLUMN_NAME,
+                    col.TYPE_NAME, 
+                    col.COMMENT,
+                    0 AS sort_order
+                FROM COLUMNS_V2 col
+                JOIN CDS cds ON col.CD_ID = cds.CD_ID
+                JOIN SDS sds ON sds.CD_ID = cds.CD_ID
+                JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
+                    AND tbsl.TBL_NAME = '{table_name}'
+                {schema_join}
+                UNION ALL
+                SELECT '# Partition Information', NULL, NULL, 1 AS sort_order
+                UNION ALL
+                SELECT 
+                    pk.PKEY_NAME as COLUMN_NAME,
+                    pk.PKEY_TYPE as TYPE_NAME,
+                    pk.PKEY_COMMENT as COMMENT,
+                    2 AS sort_order
+                FROM PARTITION_KEYS pk
+                JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
+                    AND tbsl.TBL_NAME = '{table_name}'
+                {schema_join}
+            ) AS hive_cols
+            ORDER BY sort_order
         """  # noqa: W291
 
         return connection.execute(text(query)).fetchall()

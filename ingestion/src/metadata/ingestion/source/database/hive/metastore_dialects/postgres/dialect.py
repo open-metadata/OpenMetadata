@@ -65,13 +65,15 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             else ""
         )
 
+        # sort_order + ORDER BY keeps the Partition Information sentinel between
+        # regular and partition rows (#26712); UNION ALL order is otherwise unguaranteed.
         query = f"""
             WITH regular_columns AS (
-                -- Get regular table columns from COLUMNS_V2
                 SELECT 
                     col."COLUMN_NAME",
                     col."TYPE_NAME", 
-                    col."COMMENT"
+                    col."COMMENT",
+                    0 AS sort_order
                 FROM "COLUMNS_V2" col
                 JOIN "CDS" cds ON col."CD_ID" = cds."CD_ID"
                 JOIN "SDS" sds ON sds."CD_ID" = cds."CD_ID"
@@ -80,23 +82,24 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 {schema_join}
             ),
             partition_columns AS (
-                -- Get partition key columns from PARTITION_KEYS
                 SELECT 
                     pk."PKEY_NAME" as "COLUMN_NAME",
                     pk."PKEY_TYPE" as "TYPE_NAME",
-                    pk."PKEY_COMMENT" as "COMMENT"
+                    pk."PKEY_COMMENT" as "COMMENT",
+                    2 AS sort_order
                 FROM "PARTITION_KEYS" pk
                 JOIN "TBLS" tbsl ON pk."TBL_ID" = tbsl."TBL_ID"
                     AND tbsl."TBL_NAME" = '{table_name}'
                 {schema_join}
             )
-            -- Combine regular and partition columns. The sentinel mirrors Hive
-            -- DESCRIBE output so get_columns can mark partition keys (#26712).
-            SELECT * FROM regular_columns
-            UNION ALL
-            SELECT '# Partition Information', NULL, NULL
-            UNION ALL
-            SELECT * FROM partition_columns
+            SELECT "COLUMN_NAME", "TYPE_NAME", "COMMENT" FROM (
+                SELECT * FROM regular_columns
+                UNION ALL
+                SELECT '# Partition Information', NULL, NULL, 1 AS sort_order
+                UNION ALL
+                SELECT * FROM partition_columns
+            ) AS hive_cols
+            ORDER BY sort_order
         """  # noqa: W291
         return connection.execute(text(query)).fetchall()
 
