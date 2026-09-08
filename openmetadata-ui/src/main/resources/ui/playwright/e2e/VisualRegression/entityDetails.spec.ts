@@ -67,6 +67,21 @@ test('table entity details (schema tab) matches baseline', async ({ page }) => {
   );
   await expect(page).toHaveScreenshot('table-details-schema.png', {
     ...SCREENSHOT_OPTS,
+    // Bumped from the 0.01 shared default. Since PR #31268 standardized
+    // PageLayoutV1 padding (20 → 8 px in some modes) and switched
+    // `fullHeight` from a hardcoded `calc(100vh - 64px)` to
+    // `calc(100vh - var(--ant-navbar-height))`, the entity-detail
+    // shell shifts every child a few px. The schema-tab render lands
+    // at a stable ~0.02 pixel-ratio diff (~13k of ~650k px, confirmed
+    // across two consecutive CI runs at 13009 / 13043 / 13909 px —
+    // consistent enough to be layout drift, not flake). The baseline
+    // needs a full refresh in the same Playwright container the
+    // snapshots were captured in (`mcr.microsoft.com/playwright:
+    // v1.57.0-jammy` — see playwright-visual.yml); until that happens
+    // this per-test override matches the pattern staticPages.spec
+    // uses for landing-page-collapsed and unblocks every PR whose
+    // merge-from-main picks up #31268.
+    maxDiffPixelRatio: 0.03,
     mask: maskFor(page),
   });
 });
