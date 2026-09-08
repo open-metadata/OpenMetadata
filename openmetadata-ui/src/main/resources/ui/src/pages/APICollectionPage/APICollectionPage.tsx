@@ -130,6 +130,16 @@ const APICollectionPage: FunctionComponent = () => {
     [decodedAPICollectionFQN]
   );
 
+  const isAPICollectionQueryEnabled = useMemo(
+    () =>
+      Boolean(
+        decodedAPICollectionFQN &&
+          viewAPICollectionPermission &&
+          !isPermissionsLoading
+      ),
+    [decodedAPICollectionFQN, viewAPICollectionPermission, isPermissionsLoading]
+  );
+
   const {
     data: apiCollection,
     isLoading: isAPICollectionLoading,
@@ -141,11 +151,7 @@ const APICollectionPage: FunctionComponent = () => {
       decodedAPICollectionFQN,
       API_COLLECTION_DEFAULT_FIELDS
     ),
-    enabled: Boolean(
-      decodedAPICollectionFQN &&
-        viewAPICollectionPermission &&
-        !isPermissionsLoading
-    ),
+    enabled: isAPICollectionQueryEnabled,
   });
 
   const isError = useMemo(
@@ -592,7 +598,30 @@ const APICollectionPage: FunctionComponent = () => {
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.APICollection),
     [tabs[0], tab]
   );
-  if (isPermissionsLoading || isLoading) {
+
+  const isPageLoading = useMemo(
+    () => isPermissionsLoading || isLoading,
+    [isPermissionsLoading, isLoading]
+  );
+
+  const isCollectionDataFetching = useMemo(
+    () => isAPICollectionLoading || isAPICollectionFetching,
+    [isAPICollectionLoading, isAPICollectionFetching]
+  );
+
+  const expandButton = useMemo(
+    () =>
+      isExpandViewSupported && (
+        <AlignRightIconButton
+          className={isTabExpanded ? 'rotate-180' : ''}
+          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+          onClick={toggleTabExpanded}
+        />
+      ),
+    [isExpandViewSupported, isTabExpanded, t, toggleTabExpanded]
+  );
+
+  if (isPageLoading) {
     return <PageLoader />;
   }
 
@@ -623,9 +652,7 @@ const APICollectionPage: FunctionComponent = () => {
     <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
-          {isAPICollectionLoading ||
-          isAPICollectionFetching ||
-          !apiCollection ? (
+          {isCollectionDataFetching || !apiCollection ? (
             <Skeleton
               active
               className="m-b-md"
@@ -668,17 +695,7 @@ const APICollectionPage: FunctionComponent = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
+                tabBarExtraContent={expandButton}
                 onChange={activeTabHandler}
               />
             </Col>

@@ -1234,6 +1234,44 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
     assert selection["directChangedSpecs"] == ["playwright/e2e/Pages/Entity.spec.ts"]
 
 
+def test_persona_details_change_selects_ai_context_specs(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/pages/Persona/"
+        "PersonaDetailsPage/PersonaDetailsPage.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+
+    assert {
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts",
+    } <= selected_specs
+
+
 def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
@@ -2192,6 +2230,35 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "tag: '@ingestion'" in schema_search
 
 
+def test_scheduler_impact_mapping_covers_shared_consumers():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    scheduler_source = (
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/"
+        "AddIngestion/Steps/ScheduleInterval*"
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if scheduler_source in entry["sources"]
+    )
+
+    assert mapping["projects"] == [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "Data Insight",
+    ]
+    assert {
+        "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
+    }.issubset(mapping["specs"])
+
+
 def test_permission_impact_mapping_includes_ingestion_project():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
@@ -2826,3 +2893,170 @@ def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated
     # ...while the non-delegated Ontology Studio specs from the same glob remain,
     # proving the mapping fired and only the delegated spec was dropped.
     assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
+
+
+def test_unmapped_code_change_escalates_a_pr_to_the_full_plan(tmp_path, monkeypatch):
+    """
+    A code path the impact-map does not know about is the exact failure mode
+    that has been ejecting PRs at merge-queue time — the planner picks a
+    narrow set of specs, none of them exercise the changed code, PR CI passes,
+    and the merge queue is the first place the coverage gap surfaces. Route
+    that scenario to the full suite so unmapped code is caught in PR CI.
+
+    MetricsPage is the current canonical example: it has no source→spec
+    mapping in impact-map.json and its edits keep landing on main and then
+    tripping MetricBulkImportExportEdit.spec.ts under the merge queue.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/MetricsPage.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "full"
+    # An empty selectors list is how the downstream shard planner recognises a
+    # full plan; adding anything here would double-schedule specs.
+    assert selection["selectors"] == []
+    assert selection["unmappedCodeFiles"] == [
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/MetricsPage.tsx"
+    ]
+
+
+def test_unmapped_docs_change_stays_on_the_targeted_plan(tmp_path, monkeypatch):
+    """
+    Docs, changelogs, screenshots — none of these can break a spec, so an
+    unmapped docs edit must not drag in the whole suite. Only code paths
+    escalate; docs stay on smoke + canary the way the map already handled
+    them.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text("docs/rfc/2026-09-unmapped.md\n")
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "targeted"
+    # Same behaviour as before this change: docs are unmapped, so the canary
+    # slice is added on top of smoke. Selectors is therefore non-empty and
+    # nothing about the plan format has changed for this case.
+    assert selection["selectors"], "docs-only unmapped change should still add canary"
+
+
+def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
+    tmp_path, monkeypatch
+):
+    """
+    A PR that mixes docs edits, a mapped UI file, and an unmapped code file
+    still escalates — because the unmapped code file remains a coverage risk.
+    The escalation record only names the *code* files, so a reviewer can see
+    exactly which paths triggered the widening rather than a mixed list that
+    includes harmless docs.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "\n".join(
+            [
+                # Mapped — hits the Lineage source→spec mapping.
+                "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.tsx",
+                # Unmapped, but docs — must not escalate on its own.
+                "README.md",
+                # Unmapped code — triggers the escalation.
+                "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/MetricsPage.tsx",
+            ]
+        )
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["mode"] == "full"
+    assert selection["unmappedCodeFiles"] == [
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/MetricsPage.tsx"
+    ]
+
+
+def test_is_code_path_covers_every_root_the_e2e_filter_matches():
+    """
+    Kept in lock-step with the `e2e` paths in playwright-e2e-reusable.yml.
+    If a root gets added to that filter but not to UNMAPPED_CODE_ROOTS, a
+    change under it would reach the planner (check-changes passed) but not
+    trigger an escalation, silently reintroducing the coverage gap this
+    change closes.
+    """
+    selector = load_script("select_playwright_tests")
+
+    for path in (
+        "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java",
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/MetricsPage.tsx",
+        "openmetadata-ui-core-components/src/main/resources/ui/src/index.ts",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/table.json",
+        "ingestion/src/metadata/foo.py",
+        "bootstrap/sql/migrations/native/1.10.0/mysql/schemaChanges.sql",
+        "docker/development/docker-compose-postgres.yml",
+        "conf/openmetadata.yaml",
+    ):
+        assert selector.is_code_path(path), path
+
+    for path in (
+        "README.md",
+        "CHANGELOG.md",
+        "docs/rfc/2026-09-unmapped.md",
+        ".github/CODEOWNERS",  # tooling metadata, not the workflow itself
+    ):
+        assert not selector.is_code_path(path), path
