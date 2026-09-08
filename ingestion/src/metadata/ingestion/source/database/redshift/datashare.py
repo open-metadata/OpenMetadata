@@ -22,6 +22,7 @@ catalog views, which are queried from the connection to a local database.
 
 from collections import defaultdict
 from collections.abc import Callable
+from contextlib import suppress
 from typing import Any
 
 from sqlalchemy.engine import Connection
@@ -129,10 +130,17 @@ class RedshiftDatashareCatalog:
             (REDSHIFT_SHOW_DATABASES, "SHOW DATABASES"),
             (REDSHIFT_GET_DATABASE_TYPES, "SVV_REDSHIFT_DATABASES"),
         ):
+            connection = self._connection_provider()
             try:
-                rows = self._connection_provider().execute(text(query)).fetchall()
+                rows = connection.execute(text(query)).fetchall()
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning("%s unavailable (%s); trying the next source.", source, exc)
+                # A failed statement leaves the transaction aborted, so without
+                # this the fallback - and every later query on this connection -
+                # fails with "current transaction is aborted" rather than with
+                # anything that explains itself.
+                with suppress(Exception):
+                    connection.rollback()
                 continue
             return {
                 str(row.database_name): str(row.database_type or "").strip().lower()

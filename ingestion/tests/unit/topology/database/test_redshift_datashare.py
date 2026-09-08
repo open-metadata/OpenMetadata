@@ -91,23 +91,22 @@ STORED_PROCEDURE_ROWS = [
     )
 ]
 
+
 def _column_row(name, format_type, table_name="orders", notnull=False, comment=None, attnum=1):
     """A row of REDSHIFT_GET_DATASHARE_SCHEMA_COLUMN_INFO, whose format_type the
     query builds so that both paths hand the dialect the same thing."""
     return SimpleNamespace(
-        **{
-            "schema": "public",
-            "table_name": table_name,
-            "name": name,
-            "format_type": format_type,
-            "default": None,
-            "notnull": notnull,
-            "encode": None,
-            "comment": comment,
-            "distkey": None,
-            "sortkey": 0,
-            "attnum": attnum,
-        }
+        schema="public",
+        table_name=table_name,
+        name=name,
+        format_type=format_type,
+        default=None,
+        notnull=notnull,
+        encode=None,
+        comment=comment,
+        distkey=None,
+        sortkey=0,
+        attnum=attnum,
     )
 
 
@@ -403,6 +402,14 @@ class RedshiftDatabaseListingTest(RedshiftSourceFixture, unittest.TestCase):
         list(self.redshift_source.get_database_names_raw())
         self.redshift_source.datashare.shared_database_names  # noqa: B018
         self.assertEqual(self.connection.execute.call_count, 1)
+
+    def test_a_failed_probe_rolls_back_before_the_next_one(self):
+        """A failed statement aborts the transaction. Without a rollback the
+        fallback - and every later query on this connection - dies with
+        "current transaction is aborted" instead of anything self-explanatory."""
+        self.show_databases_error = RuntimeError('unrecognized configuration parameter "databases"')
+        self.assertEqual(self.redshift_source.datashare.shared_database_names, {SHARED_DATABASE})
+        self.connection.rollback.assert_called_once()
 
     def test_falls_back_to_pg_database_when_show_is_unavailable(self):
         """A cluster or role that cannot run either classifier keeps the old listing"""
