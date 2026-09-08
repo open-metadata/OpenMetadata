@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
@@ -409,7 +408,7 @@ public class TestCaseResultResource
           @QueryParam("q")
           String q)
       throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of(""), fieldParams);
+    EntityUtil.Fields fields = repository.getFields(fieldParams);
     SearchListFilter searchListFilter = new SearchListFilter();
     Optional.ofNullable(testCaseStatus)
         .ifPresent(tcs -> searchListFilter.addQueryParam("testCaseStatus", tcs.toString()));
