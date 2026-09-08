@@ -4,6 +4,138 @@
 shipped Apache Jena Fuseki image. It measures the acceptance criteria in
 [#32057](https://github.com/open-metadata/OpenMetadata/issues/32057).
 
+## Validated result (2026-09-08)
+
+The complete scenario passed on revision
+[`f6c678788c`](https://github.com/open-metadata/OpenMetadata/commit/f6c678788c12c79763f5b72723d6df5dbbf707b6),
+from 22:25:46 to 23:37:59 UTC. The fixture contained 200,000 tables, 2,386,000 columns, and
+2,000,000 lineage edges. Source seeding took 547.036 seconds and is excluded from rebuild timings.
+
+Both rebuilds processed **200,555 records with zero failures**. Independent graph counts verified
+200,000 tables, 2,000,000 triples for each of the three lineage predicates, 20,000 detailed edges,
+400 extension entries, and **26,952,284 total triples**. These counts matched after local rebuilding,
+distributed recovery, and Fuseki restart. The column count describes the source fixture; the graph
+assertions are the counts listed above.
+
+Cancellation stopped a distributed job after 5,067 successful records and zero failures. The
+serving pointer remained `openmetadata_a`, and the served graph counts remained unchanged.
+The entire interruption scenario took 139.066 seconds, including starting work, cancellation,
+verification, and worker shutdown; this is not a measurement of stop-request latency.
+Recovery promoted `openmetadata_b` and completed **63 partitions with zero retries**. Worker
+samples peaked at three coordinator workers and zero participant workers. Fuseki restart and
+verification took 10.045 seconds and preserved the promoted dataset and graph counts.
+
+### Rebuild and resource measurements
+
+Wall-clock time includes compaction, promotion, and waiting for worker shutdown. Application time
+is the terminal run record's duration. Resource figures are sampled peaks in GiB.
+
+| Measurement | Local rebuild | Distributed recovery |
+|---|---:|---:|
+| Observed wall clock | 1,796.651 s (29m 57s) | 1,794.809 s (29m 55s) |
+| Application time | 1,794.111 s | 1,792.858 s |
+| Successful records / second, including compaction | 111.6 | 111.7 |
+| Application heap | 2.624 | 2.537 |
+| Application RSS | 3.481 | 3.364 |
+| Fuseki RSS | 15.591 | 15.482 |
+| Fuseki cgroup memory, including page cache | 16.000 | 16.000 |
+| Fuseki allocated disk, all datasets | 39.771 | 50.731 |
+| PostgreSQL cgroup memory | 4.267 | 4.330 |
+| PostgreSQL allocated disk | 4.356 | 4.310 |
+
+After compaction, Fuseki occupied **10.665 GiB after local rebuilding** and **21.122 GiB after
+recovery**, when both complete blue/green datasets coexisted. Provision for the **50.731 GiB
+observed peak**, additional database storage, and free-space headroom, rather than using the
+compacted graph size as the rebuild storage requirement. The run retained at least 17.913 GiB
+of free host disk, above the harness's 12 GiB reserve.
+
+![Application memory, Fuseki memory, and allocated disk throughout both rebuilds](rdf-scale-resources.svg)
+
+The chart contains 1,769 resource samples. Sampling starts after source seeding and ends after
+recovery queries, before Fuseki restart. The shaded interval is the cancellation check. The
+dotted marker records the host build-cache cleanup described below.
+
+### Populated-store query latency
+
+All **2,624 queries returned nonempty results without errors** through the authenticated
+OpenMetadata SPARQL API. Values below are milliseconds. Each type has 100 samples after each
+completed phase and 356 while recovery runs, including compaction and promotion.
+
+| Phase | Query | Samples | p50 | p95 | p99 | Maximum |
+|---|---|---:|---:|---:|---:|---:|
+| After local rebuild | Entity lookup | 100 | 10.29 | 12.69 | 14.79 | 20.04 |
+| After local rebuild | One-hop lineage | 100 | 9.06 | 11.28 | 12.03 | 12.18 |
+| After local rebuild | Three-hop lineage | 100 | 10.36 | 13.01 | 15.49 | 30.70 |
+| After local rebuild | Text search | 100 | 12.15 | 16.53 | 18.85 | 311.69 |
+| During recovery | Entity lookup | 356 | 7.42 | 10.87 | 20.01 | 66.60 |
+| During recovery | One-hop lineage | 356 | 8.08 | 11.62 | 26.41 | 110.30 |
+| During recovery | Three-hop lineage | 356 | 8.98 | 12.34 | 20.18 | 347.12 |
+| During recovery | Text search | 356 | 11.05 | 17.11 | 43.52 | 142.67 |
+| After recovery | Entity lookup | 100 | 7.99 | 11.40 | 13.18 | 13.61 |
+| After recovery | One-hop lineage | 100 | 7.21 | 10.69 | 11.96 | 17.26 |
+| After recovery | Three-hop lineage | 100 | 8.12 | 11.72 | 45.75 | 48.13 |
+| After recovery | Text search | 100 | 10.20 | 13.11 | 40.82 | 43.36 |
+| After restart | Entity lookup | 100 | 9.20 | 11.86 | 13.05 | 15.66 |
+| After restart | One-hop lineage | 100 | 8.98 | 11.41 | 12.57 | 13.95 |
+| After restart | Three-hop lineage | 100 | 10.18 | 13.07 | 19.47 | 38.30 |
+| After restart | Text search | 100 | 14.80 | 21.84 | 30.42 | 107.08 |
+
+These are bounded interactive queries with a warm store, as described below. The maximum during
+recovery was 347.12 ms; low percentiles do not eliminate these outliers. Integrity counts warm the
+store before each completed-phase measurement, including after restart.
+
+### Measured configuration and evidence
+
+The host was an Apple M4 Max with 16 cores and 128 GiB RAM, running native Microsoft Java 21.0.11.
+Docker had 10 CPUs and 65,197,199,360 bytes (60.72 GiB) of memory available. Application, Fuseki,
+and PostgreSQL limits were the defaults listed below. The Fuseki image used Apache Jena 6.2.0
+with the shipped write extension and Lucene assemblers:
+
+- Fuseki image ID: `sha256:7a92a910c295f21e770b52768f2b901f01accd8fc307f7702e9cec54f435e8da`.
+- PostgreSQL 15 image ID: `sha256:1659a1a994f204ed0397ff17a73d72d27128bfa7d420bd7288ad5e8eb28fa588`.
+
+The successful run used larger batches than the launcher's defaults. With the measured revision
+and its artifacts already built, the command was:
+
+```bash
+BUILD=false BUILD_IMAGE=false \
+RDF_SCALE_FUSEKI_IMAGE=rdf-review-minnetonka:fuseki \
+RDF_SCALE_BATCH_SIZE=5000 \
+RDF_SCALE_APPEND_PAYLOAD_BYTES=67108864 \
+RDF_SCALE_APPEND_ENTITY_BATCH_SIZE=5000 \
+RDF_SCALE_LINEAGE_EDGE_BATCH_SIZE=10000 \
+RDF_SCALE_OUTPUT=.context/rdf-scale-200k-2m-lease-fixed-20260908 \
+scripts/rdf-catalog-scale.sh
+```
+
+`JAVA_HOME` pointed to the native Java 21 runtime. Build the corresponding sources and Fuseki
+image before reusing artifacts; omit `BUILD=false BUILD_IMAGE=false` to build through the launcher.
+The configuration retained two producers, three consumers, a 5,000-record queue, and a configured
+10,000-record partition size.
+
+This was a shared host: sampled load averaged 39.46 and peaked at 75.58, free host memory reached
+0.082 GiB, and 18.934 GiB of swap was already in use. At 23:24:54 UTC during recovery, unused Docker
+build cache last accessed more than seven days earlier was pruned to restore compaction headroom;
+Docker reported 8.287 GB reclaimed. The elapsed time and all resource/query samples include this
+operation. Its command and observed completion are retained in the environment-events artifact.
+These measurements establish a successful scenario for this workload and configuration. They do
+not quantify speedup against `main`, multi-node scaling, or live-ingestion throughput.
+
+The [raw evidence and SHA-256 manifest](artifacts/rdf-scale/2026-09-08-200k-validated/manifest.json)
+contain the unchanged report, compressed resource/progress/query samples, and environment events.
+All eight published files were checked against their source hashes and decompressed contents;
+query sample counts, percentiles, maxima, nonempty results, snapshots, and claim counters were
+also checked independently. Earlier unsuccessful attempts and the run that exposed worker bugs
+remain published in the findings sections below.
+
+Validation accompanying the fixes passed: 136 focused service unit tests, one resource-sampler
+unit test, nine partition-lease integration cases on each of PostgreSQL and MySQL, and three
+live-projection integration tests covering durable recovery and glossary-tag patches. The
+2,000-table / 20,000-edge smoke scenario also passed with no retries or duplicate workers.
+[CI for the measured revision](https://github.com/open-metadata/OpenMetadata/pull/32262/checks?sha=f6c678788c12c79763f5b72723d6df5dbbf707b6)
+finished with 154 successful checks, 21 skipped checks, and no failures, including the RDF
+Playwright workflow. Migration corrections remain in the unreleased **2.0.2** migration.
+
 ## Reproduce
 
 Run from a configured Java 21 development checkout with Docker available:
