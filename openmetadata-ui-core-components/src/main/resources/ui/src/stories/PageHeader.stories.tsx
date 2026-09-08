@@ -69,8 +69,8 @@ export const Basic: Story = {
 export const CompactDensity: Story = {
   args: {
     density: 'compact',
-    subtitle: '12px vertical padding for denser application shells',
-    title: 'Compact page header',
+    subtitle: 'Reduced vertical padding for denser application shells',
+    title: 'Compact density — 12px',
   },
   render: (args) => (
     <Frame>
@@ -82,8 +82,8 @@ export const CompactDensity: Story = {
 export const ComfortableDensity: Story = {
   args: {
     density: 'comfortable',
-    subtitle: '16px vertical padding for the default page rhythm',
-    title: 'Comfortable page header',
+    subtitle: 'Default vertical padding for standard page layouts',
+    title: 'Comfortable density — 16px',
   },
   render: (args) => (
     <Frame>
