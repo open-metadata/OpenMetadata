@@ -427,7 +427,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         while retry_count < max_retries:
             with Session() as session:
-                self.set_session_tag(session)
                 self.set_catalog(session)
                 runner = self._create_thread_safe_runner(session, metric_func.column)
                 try:

@@ -59,6 +59,15 @@ const Severity = ({
     [onSubmit]
   );
 
+  const canEditSeverity = onSubmit && hasEditPermission;
+  const severityModal = isEditSeverity && (
+    <SeverityModal
+      initialSeverity={severity}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+    />
+  );
+
   if (isInline) {
     return (
       <InlineSeverity
@@ -80,7 +89,7 @@ const Severity = ({
             weight="medium">
             {headerName}
           </Typography>
-          {onSubmit && hasEditPermission && (
+          {canEditSeverity && (
             <EditIconButton
               data-testid="edit-severity-icon"
               icon={<EditIcon width="12px" />}
@@ -104,13 +113,7 @@ const Severity = ({
           )}
         </div>
 
-        {isEditSeverity && (
-          <SeverityModal
-            initialSeverity={severity}
-            onCancel={onCancel}
-            onSubmit={handleSubmit}
-          />
-        )}
+        {severityModal}
       </div>
     );
   }
@@ -126,7 +129,7 @@ const Severity = ({
         ) : (
           NO_DATA_PLACEHOLDER
         )}
-        {onSubmit && hasEditPermission && (
+        {canEditSeverity && (
           <EditIconButton
             newLook
             className="flex-center"
@@ -141,13 +144,7 @@ const Severity = ({
         )}
       </div>
 
-      {isEditSeverity && (
-        <SeverityModal
-          initialSeverity={severity}
-          onCancel={onCancel}
-          onSubmit={handleSubmit}
-        />
-      )}
+      {severityModal}
     </>
   );
 };

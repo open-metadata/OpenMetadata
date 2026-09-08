@@ -41,6 +41,7 @@ jobs:
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
       k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
+      docker: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.docker }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -63,6 +64,19 @@ jobs:
               - 'bootstrap/**'
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
+            # Everything that ends up inside the server image or decides how it
+            # is launched. Not 'openmetadata-service/**': the smoke test asserts
+            # image properties, not application behaviour, so a Java-only change
+            # has nothing new for it to find.
+            docker:
+              - '.github/workflows/openmetadata-service-unit-tests.yml'
+              - 'docker/openmetadata-start.sh'
+              - 'docker/development/Dockerfile'
+              - 'docker/docker-compose-quickstart/Dockerfile'
+              - 'scripts/docker_smoke_test.sh'
+              - 'openmetadata-dist/**'
+              - 'conf/**'
+              - 'bin/**'
 
   # The openmetadata-service unit tests are pure JVM tests with no database
   # interaction (no testcontainers, no JDBC). The {mysql, postgresql} matrix used
@@ -215,13 +229,61 @@ jobs:
           report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
           check_name: "K8s Operator Test Report"
 
+  # The server image is distroless: no package manager, a non-root uid, a shell
+  # that exists only because busybox is deliberately kept, and the glibc
+  # libraries the JNI natives link against. Every one of those is a way for the
+  # image to break without a single Java test noticing, so the build gets its own
+  # smoke test. It needs no database and no search cluster -- see the script.
+  docker-image-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: changes
+    if: ${{ needs.changes.outputs.docker == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Install antlr cli
+        run: sudo make install_antlr_cli
+
+      # Sets SKIP_UI_BUILD=true on a hit, which the skip-ui-build profile in
+      # openmetadata-ui/pom.xml reads. The smoke test never loads a page, so a
+      # stale UI bundle costs it nothing and a cold yarn build costs it minutes.
+      - name: Restore openmetadata-ui dist cache
+        uses: ./.github/actions/cache-ui-dist
+
+      - name: Build the distribution tarball
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn -B -DskipTests package -pl openmetadata-dist -am
+
+      - name: Smoke test the server image
+        run: ./scripts/docker_smoke_test.sh
+
   # Single required-check gate for branch protection.
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
   # Runs and exits 1 only when a test job fails or is cancelled.
   # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
   openmetadata-service-unit-tests-status:
     name: openmetadata-service-unit-tests-status
-    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests]
+    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests, docker-image-smoke-test]
     if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-latest
     steps:
