@@ -175,3 +175,20 @@ def test_get_raw_retries_service_unavailable_503():
         resp = _rest(srv.port).get_raw("/x", retry_wait=0)
     assert resp.status_code == 200
     assert srv.attempts >= 2
+
+
+def test_put_retries_service_unavailable_503():
+    # The reported failure was a write (bulk table PUT / dataModel PATCH), not a
+    # read. Every verb funnels through _request, so a write hits the same
+    # retry_codes branch and must recover from a transient 503 too.
+    with FlakyServer(["503", "ok"]) as srv:
+        client = REST(
+            ClientConfig(
+                base_url=f"http://127.0.0.1:{srv.port}",
+                timeout=_CLIENT_TIMEOUT,
+                retry_wait=0,
+            )
+        )
+        out = client.put("/x", data="{}")
+    assert out == {"ok": True}
+    assert srv.attempts >= 2
