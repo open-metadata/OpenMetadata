@@ -26,11 +26,14 @@ import {
   FC,
   memo,
   MouseEventHandler,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
@@ -75,6 +78,30 @@ import LineageTimeFilter from './LineageTimeFilter.component';
 type LineageFilterNodeData = {
   node?: { id?: string };
   sceneNode?: { sourceEntity?: { id?: string } };
+};
+
+const DisabledEditTooltipTrigger = ({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  // Disabled controls ignore the tooltip context; a focusable span keeps the
+  // hint available without nesting the disabled button in another button.
+  const { focusableProps } = useFocusable({}, ref);
+
+  return (
+    <span
+      {...focusableProps}
+      aria-label={label}
+      className="tw:inline-flex"
+      ref={ref}
+      role="group">
+      {children}
+    </span>
+  );
 };
 
 const CustomControls: FC<{
@@ -395,6 +422,17 @@ const CustomControls: FC<{
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
     const isLayerBand = sceneBand === LineageBand.Layer;
+    const editLabel = t('label.edit-entity', { entity: t('label.lineage') });
+    const editButton = (
+      <Button
+        aria-label={editLabel}
+        color={isEditMode ? 'primary' : 'secondary'}
+        data-testid="edit-lineage"
+        iconLeading={EditIcon}
+        isDisabled={isLayerBand}
+        onClick={toggleEditMode}
+      />
+    );
 
     return showEditOption ? (
       <Tooltip
@@ -404,13 +442,13 @@ const CustomControls: FC<{
             ? t('label.zoom-in')
             : t('label.edit-entity', { entity: t('label.lineage') })
         }>
-        <Button
-          color={isEditMode ? 'primary' : 'secondary'}
-          data-testid="edit-lineage"
-          iconLeading={EditIcon}
-          isDisabled={isLayerBand}
-          onClick={toggleEditMode}
-        />
+        {isLayerBand ? (
+          <DisabledEditTooltipTrigger label={editLabel}>
+            {editButton}
+          </DisabledEditTooltipTrigger>
+        ) : (
+          editButton
+        )}
       </Tooltip>
     ) : null;
   }, [

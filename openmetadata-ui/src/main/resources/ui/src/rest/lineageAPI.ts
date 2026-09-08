@@ -118,6 +118,10 @@ export const getLineageDataByFQN = async ({
 export type LineageSceneFocus =
   | {
       focusFqn: string;
+      // Not EntityType: this round-trips the scene response's `originEntityType` /
+      // `focusEntityType`, which the JSON Schema types as a plain string, and the
+      // /lineage/scene endpoint takes it as an unvalidated String. Custom entity
+      // types are legal, so narrowing to the enum would misstate the contract.
       entityType: string;
     }
   | {

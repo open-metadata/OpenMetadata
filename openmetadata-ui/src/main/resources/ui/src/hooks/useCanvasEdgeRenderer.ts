@@ -60,10 +60,139 @@ interface EdgeHitEntry {
   path: Path2D;
 }
 
+interface CanvasEdgePath {
+  edgePath: string;
+  edgeCenterX: number;
+  edgeCenterY: number;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  path: Path2D;
+}
+
 export interface CanvasButtonHitData {
   button: CanvasButton;
   edge: Edge;
 }
+
+const getCanvasEdgePath = (
+  edge: Edge,
+  getNode: ReturnType<typeof useReactFlow>['getNode'],
+  columnsInCurrentPages: Parameters<typeof getEdgeCoordinates>[3]
+): CanvasEdgePath | undefined => {
+  const computedPath: Omit<CanvasEdgePath, 'path'> | undefined =
+    edge.data?.computedPath;
+  if (computedPath) {
+    return { ...computedPath, path: new Path2D(computedPath.edgePath) };
+  }
+  const coords = getEdgeCoordinates(
+    edge,
+    getNode(edge.source),
+    getNode(edge.target),
+    columnsInCurrentPages
+  );
+  if (!coords) {
+    return undefined;
+  }
+  const pathData = getEdgePathData(edge.source, edge.target, {
+    ...coords,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+  });
+
+  return { ...coords, ...pathData, path: new Path2D(pathData.edgePath) };
+};
+
+const getRollupWeight = (edge: Edge): number => {
+  const weight = Number(edge.data?.weight ?? 1);
+
+  return edge.data?.isRollup && Number.isFinite(weight) && weight > 1
+    ? weight
+    : 1;
+};
+
+const getRollupLabel = (edge: Edge, weight: number): string | undefined =>
+  edge.data?.label ?? (weight > 1 ? String(weight) : undefined);
+
+const drawEdgeArrow = (
+  ctx: CanvasRenderingContext2D,
+  pathData: CanvasEdgePath,
+  stroke: string
+) => {
+  if (pathData.sourceX === undefined || pathData.targetX === undefined) {
+    return;
+  }
+  const angle = getBezierEndTangentAngle(
+    pathData.edgePath,
+    pathData.sourceX,
+    pathData.sourceY,
+    pathData.targetX,
+    pathData.targetY
+  );
+  drawArrowMarker(ctx, pathData.targetX, pathData.targetY, angle, stroke);
+};
+
+const getPathPaint = (
+  style: ReturnType<typeof computeEdgeStyle>,
+  weight: number,
+  colors: LineageEdgeColors,
+  isPathHighlightActive: boolean,
+  isPathHighlighted: boolean
+) => {
+  const strokeWidth =
+    weight > 1
+      ? Math.max(
+          style.strokeWidth,
+          Math.min(7, style.strokeWidth + Math.log2(weight + 1))
+        )
+      : style.strokeWidth;
+  if (!isPathHighlightActive) {
+    return { ...style, strokeWidth };
+  }
+
+  return isPathHighlighted
+    ? {
+        ...style,
+        stroke: colors.primary,
+        strokeWidth: Math.max(strokeWidth + 1, 3),
+      }
+    : { ...style, strokeWidth, opacity: Math.min(style.opacity, 0.16) };
+};
+
+const drawRollupLabel = (
+  ctx: CanvasRenderingContext2D,
+  pathData: CanvasEdgePath,
+  label: string,
+  colors: LineageEdgeColors,
+  stroke: string,
+  opacity: number
+) => {
+  const paddingX = 6;
+  const labelHeight = 18;
+  ctx.save();
+  ctx.font = '600 11px Inter, sans-serif';
+  const labelWidth = ctx.measureText(label).width + paddingX * 2;
+  const x = pathData.edgeCenterX - labelWidth / 2;
+  const y = pathData.edgeCenterY - labelHeight / 2;
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = colors.labelBackground;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, labelWidth, labelHeight, 9);
+  } else {
+    ctx.rect(x, y, labelWidth, labelHeight);
+  }
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = colors.labelText;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, pathData.edgeCenterX, pathData.edgeCenterY);
+  ctx.restore();
+};
 
 const getEdgeButtonFlags = (edgeData: Edge['data']) => {
   const {
@@ -86,20 +215,7 @@ const getEdgeButtonFlags = (edgeData: Edge['data']) => {
 const getCanvasButtonHit = (
   ctx: CanvasRenderingContext2D,
   edge: Edge,
-  edgePathCacheRef: MutableRefObject<
-    WeakMap<
-      Edge,
-      {
-        edgePath: string;
-        edgeCenterX: number;
-        edgeCenterY: number;
-        sourceX: number;
-        sourceY: number;
-        targetX: number;
-        targetY: number;
-      }
-    >
-  >,
+  edgePathCacheRef: MutableRefObject<WeakMap<Edge, CanvasEdgePath>>,
   hoveredButtonRef: MutableRefObject<CanvasButton | null>,
   isDQEnabled: boolean
 ): CanvasButtonHitData | null => {
@@ -155,20 +271,7 @@ export function useCanvasEdgeRenderer({
   const hoveredButtonRef = useRef<CanvasButton | null>(null);
   const [hoveredButton, setHoveredButton] = useState<CanvasButton | null>(null);
   const hitTestCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const edgePathCacheRef = useRef<
-    WeakMap<
-      Edge,
-      {
-        edgePath: string;
-        edgeCenterX: number;
-        edgeCenterY: number;
-        sourceX: number;
-        sourceY: number;
-        targetX: number;
-        targetY: number;
-      }
-    >
-  >(new WeakMap());
+  const edgePathCacheRef = useRef(new WeakMap<Edge, CanvasEdgePath>());
 
   const { getNode } = useReactFlow();
   const nodes = useNodes();
@@ -192,48 +295,13 @@ export function useCanvasEdgeRenderer({
       let pathData = edgePathCacheRef.current.get(edge);
 
       if (!pathData) {
-        const computedPath = edge.data?.computedPath;
-
-        if (computedPath) {
-          pathData = computedPath;
-          edgePathCacheRef.current.set(edge, computedPath);
-        } else {
-          const coords = getEdgeCoordinates(
-            edge,
-            getNode(edge.source),
-            getNode(edge.target),
-            columnsInCurrentPages
-          );
-          if (!coords) {
-            return null;
-          }
-
-          const calculatedPath = getEdgePathData(edge.source, edge.target, {
-            sourceX: coords.sourceX,
-            sourceY: coords.sourceY,
-            targetX: coords.targetX,
-            targetY: coords.targetY,
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-          });
-
-          pathData = {
-            edgePath: calculatedPath.edgePath,
-            edgeCenterX: calculatedPath.edgeCenterX,
-            edgeCenterY: calculatedPath.edgeCenterY,
-            sourceX: coords.sourceX,
-            sourceY: coords.sourceY,
-            targetX: coords.targetX,
-            targetY: coords.targetY,
-          };
-
-          edgePathCacheRef.current.set(edge, pathData);
-        }
+        pathData = getCanvasEdgePath(edge, getNode, columnsInCurrentPages);
       }
 
       if (!pathData) {
         return null;
       }
+      edgePathCacheRef.current.set(edge, pathData);
 
       const style = computeEdgeStyle(
         edge,
@@ -247,97 +315,47 @@ export function useCanvasEdgeRenderer({
         edge.targetHandle,
         edge.id === hoverEdge?.id || selectedEdge?.id === edge.id
       );
-      const weight = Number(edge.data?.weight ?? 1);
-      const isRollup = Boolean(edge.data?.isRollup);
-      const strokeWidth =
-        isRollup && Number.isFinite(weight) && weight > 1
-          ? Math.max(
-              style.strokeWidth,
-              Math.min(7, style.strokeWidth + Math.log2(weight + 1))
-            )
-          : style.strokeWidth;
+      const weight = getRollupWeight(edge);
       const isPathHighlighted = pathHighlightedEdgeIds?.has(edge.id) ?? false;
-      const pathStroke =
-        isPathHighlightActive && isPathHighlighted
-          ? colors.primary
-          : style.stroke;
-      const pathOpacity =
-        isPathHighlightActive && !isPathHighlighted
-          ? Math.min(style.opacity, 0.16)
-          : style.opacity;
-      const pathStrokeWidth =
-        isPathHighlightActive && isPathHighlighted
-          ? Math.max(strokeWidth + 1, 3)
-          : strokeWidth;
+      const paint = getPathPaint(
+        style,
+        weight,
+        colors,
+        isPathHighlightActive,
+        isPathHighlighted
+      );
 
-      ctx.strokeStyle = pathStroke;
-      ctx.globalAlpha = pathOpacity;
-      ctx.lineWidth = pathStrokeWidth;
+      ctx.strokeStyle = paint.stroke;
+      ctx.globalAlpha = paint.opacity;
+      ctx.lineWidth = paint.strokeWidth;
       ctx.setLineDash(edge.animated ? [6, 4] : []);
 
-      const path = new Path2D(pathData.edgePath);
+      const { path } = pathData;
       ctx.stroke(path);
 
       ctx.globalAlpha = 1;
       ctx.setLineDash([]);
 
-      if (pathData.sourceX !== undefined && pathData.targetX !== undefined) {
-        const angle = getBezierEndTangentAngle(
-          pathData.edgePath,
-          pathData.sourceX,
-          pathData.sourceY,
-          pathData.targetX,
-          pathData.targetY
-        );
-        drawArrowMarker(
-          ctx,
-          pathData.targetX,
-          pathData.targetY,
-          angle,
-          pathStroke
-        );
-      }
+      drawEdgeArrow(ctx, pathData, paint.stroke);
 
-      const rollupLabel =
-        edge.data?.label ??
-        (isRollup && Number.isFinite(weight) && weight > 1
-          ? String(weight)
-          : undefined);
+      const rollupLabel = getRollupLabel(edge, weight);
 
       if (rollupLabel) {
-        const label = String(rollupLabel);
-        const paddingX = 6;
-        const labelHeight = 18;
-        ctx.font = '600 11px Inter, sans-serif';
-        const labelWidth = ctx.measureText(label).width + paddingX * 2;
-        const x = pathData.edgeCenterX - labelWidth / 2;
-        const y = pathData.edgeCenterY - labelHeight / 2;
-
-        ctx.save();
-        ctx.globalAlpha =
-          isPathHighlightActive && !isPathHighlighted ? 0.28 : 1;
-        ctx.fillStyle = colors.labelBackground;
-        ctx.strokeStyle = pathStroke;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        if (typeof ctx.roundRect === 'function') {
-          ctx.roundRect(x, y, labelWidth, labelHeight, 9);
-        } else {
-          ctx.rect(x, y, labelWidth, labelHeight);
-        }
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = colors.labelText;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, pathData.edgeCenterX, pathData.edgeCenterY);
-        ctx.restore();
+        const opacity = isPathHighlightActive && !isPathHighlighted ? 0.28 : 1;
+        drawRollupLabel(
+          ctx,
+          pathData,
+          String(rollupLabel),
+          colors,
+          paint.stroke,
+          opacity
+        );
       }
 
       return path;
     },
     [
-      nodes,
+      getNode,
       tracedNodes,
       tracedColumns,
       dqHighlightedEdges,
@@ -377,6 +395,9 @@ export function useCanvasEdgeRenderer({
 
     if (isRepositioning) {
       edgePathCacheRef.current = new WeakMap();
+      visibleEdgesRef.current = [];
+      edgeHitPathsRef.current = [];
+      canvasButtonsRef.current = [];
 
       if (isCanvasReadyRef.current) {
         isCanvasReadyRef.current = false;
@@ -548,6 +569,9 @@ export function useCanvasEdgeRenderer({
 
   useEffect(() => {
     edgePathCacheRef.current = new WeakMap();
+  }, [edges, nodes, columnsInCurrentPages, isRepositioning]);
+
+  useEffect(() => {
     scheduleRedraw();
 
     return () => {
@@ -573,6 +597,10 @@ export function useCanvasEdgeRenderer({
     pathHighlightedEdgeIds,
     isPathHighlightActive,
     colors,
+    hoveredButton,
+    isDQEnabled,
+    isEditMode,
+    scheduleRedraw,
   ]);
 
   useEffect(() => {

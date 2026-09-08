@@ -10,13 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
 
@@ -43,25 +53,7 @@ const defaultProps = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        isDisabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={isDisabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
   Dropdown: {
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Popover: jest
@@ -82,11 +74,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <li data-key={key}>{children}</li>
       )),
   },
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children, title }) => (
-      <div title={title as string}>{children}</div>
-    )),
+  Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
@@ -225,7 +213,7 @@ jest.mock('../../../hooks/useLineageStore', () => ({
     lineageConfig: {},
     toggleEditMode: jest.fn(),
     isEditMode: false,
-    platformView: false,
+    platformView: LineagePlatformView.None,
   })),
 }));
 
@@ -243,6 +231,14 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe('CustomControls', () => {
   beforeEach(() => {
+    (useLineageStore as unknown as jest.Mock).mockReturnValue({
+      isDQEnabled: false,
+      setLineageConfig: mockOnLineageConfigUpdate,
+      lineageConfig: {},
+      toggleEditMode: jest.fn(),
+      isEditMode: false,
+      platformView: LineagePlatformView.None,
+    });
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
       search: '?mode=lineage&depth=3&dir=downstream',
     }));
@@ -259,6 +255,70 @@ describe('CustomControls', () => {
     expect(screen.getByLabelText('label.export')).toBeInTheDocument();
     expect(screen.getByTestId('lineage-config')).toBeInTheDocument();
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
+  });
+
+  it('opens and dismisses the edit tooltip with the real core trigger', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+      wrapper: Wrapper,
+    });
+
+    const button = screen.getByRole('button', { name: 'label.edit-entity' });
+
+    expect(button.parentElement?.closest('button')).toBeNull();
+
+    fireEvent.mouseMove(document);
+    await user.hover(button);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.edit-entity'
+    );
+
+    await user.unhover(button);
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    );
+  });
+
+  it('shows the zoom-in hint when hovering the disabled Layer edit button', async () => {
+    const store = useLineageStore as unknown as jest.Mock;
+    store.mockReturnValue({ ...store(), sceneBand: LineageBand.Layer });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+      wrapper: Wrapper,
+    });
+    const button = screen.getByRole('button', { name: 'label.edit-entity' });
+
+    expect(button).toBeDisabled();
+    expect(button.parentElement?.closest('button')).toBeNull();
+
+    fireEvent.mouseMove(document);
+    await user.hover(button);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.zoom-in'
+    );
+
+    await user.unhover(button);
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    );
+
+    const trigger = screen.getByRole('group', { name: 'label.edit-entity' });
+
+    expect(trigger).toHaveAttribute('tabindex', '0');
+
+    fireEvent.keyDown(document, { key: 'Tab' });
+    act(() => trigger.focus());
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'label.zoom-in'
+    );
+
+    act(() => trigger.blur());
+    await waitFor(() =>
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    );
   });
 
   it('shows LineageSearchSelect by default in lineage mode', () => {

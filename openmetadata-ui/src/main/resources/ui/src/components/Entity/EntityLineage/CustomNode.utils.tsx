@@ -341,6 +341,27 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
   return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
 });
 
+/**
+ * Split across two named booleans so neither expression exceeds
+ * sonarjs/expression-complexity, and kept out of CustomNodeV1 so its operators
+ * do not count against that component's cyclomatic-complexity budget.
+ */
+export function shouldShowNodeRemoveButton({
+  isSelected,
+  isEditMode,
+  isRootNode,
+  isNodeRemovable,
+}: {
+  isSelected: boolean;
+  isEditMode: boolean;
+  isRootNode: boolean;
+  isNodeRemovable: boolean;
+}) {
+  const isRemovableSelection = isSelected && isEditMode;
+
+  return isRemovableSelection && !isRootNode && isNodeRemovable;
+}
+
 export function getNodeClassNames({
   isSelected,
   showDqTracing,

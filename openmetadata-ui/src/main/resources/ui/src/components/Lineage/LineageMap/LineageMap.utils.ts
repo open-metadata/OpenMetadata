@@ -12,6 +12,7 @@
  */
 
 import type { TFunction } from 'i18next';
+import Qs from 'qs';
 import {
   LineageBand,
   LineageLens,
@@ -199,6 +200,65 @@ export type LineageSceneRequest = LineageSceneFocus & {
   lens: LineageLens;
   band: LineageBand;
 };
+
+export const getSceneFocus = (
+  focusFqn?: string,
+  entityType?: string
+): LineageSceneFocus =>
+  focusFqn && entityType ? { focusFqn, entityType } : {};
+
+export const getSceneOriginFocus = (
+  scene: LineageScene | undefined,
+  routeFocus: LineageSceneFocus
+): LineageSceneFocus =>
+  routeFocus.focusFqn
+    ? routeFocus
+    : getSceneFocus(scene?.originFqn, scene?.originEntityType);
+
+export const getSceneRequestFromSearch = (
+  search: string,
+  defaultFocus: LineageSceneFocus,
+  isPlatformLineage = false
+): LineageSceneRequest => {
+  const params = Qs.parse(search, { ignoreQueryPrefix: true });
+  const lens =
+    Object.values(LineageLens).find((value) => value === params.lineageLens) ??
+    LineageLens.Service;
+  const defaultBand = isPlatformLineage ? LineageBand.Layer : LineageBand.Asset;
+  const band =
+    Object.values(LineageBand).find((value) => value === params.lineageBand) ??
+    defaultBand;
+  const fallbackFocus: LineageSceneFocus =
+    band === LineageBand.Layer ? {} : defaultFocus;
+
+  return {
+    lens,
+    band,
+    ...getSceneFocus(
+      typeof params.lineageFocus === 'string'
+        ? params.lineageFocus
+        : fallbackFocus.focusFqn,
+      typeof params.lineageEntityType === 'string'
+        ? params.lineageEntityType
+        : fallbackFocus.entityType
+    ),
+  };
+};
+
+export const getSceneSearch = (
+  search: string,
+  request: LineageSceneRequest
+): string =>
+  Qs.stringify(
+    {
+      ...Qs.parse(search, { ignoreQueryPrefix: true }),
+      lineageLens: request.lens,
+      lineageBand: request.band,
+      lineageFocus: request.focusFqn,
+      lineageEntityType: request.entityType,
+    },
+    { addQueryPrefix: true, encodeValuesOnly: true }
+  );
 
 export interface LineagePathEdge {
   id: string;
@@ -442,50 +502,27 @@ export const getSceneNodeCountSubtitle = (
   });
 };
 
-const getLevelLabelKey = (levelKind: LineageLevelKind) => {
-  switch (levelKind) {
-    case LineageLevelKind.Service:
-      return 'label.lineage-map-service-level';
-    case LineageLevelKind.Database:
-      return 'label.lineage-map-database-level';
-    case LineageLevelKind.Schema:
-      return 'label.lineage-map-schema-level';
-    case LineageLevelKind.Table:
-      return 'label.lineage-map-table-level';
-    case LineageLevelKind.Topic:
-      return 'label.lineage-map-topic-level';
-    case LineageLevelKind.Dashboard:
-      return 'label.lineage-map-dashboard-level';
-    case LineageLevelKind.Model:
-      return 'label.lineage-map-model-level';
-    case LineageLevelKind.Pipeline:
-      return 'label.lineage-map-pipeline-level';
-    case LineageLevelKind.Container:
-      return 'label.lineage-map-container-level';
-    case LineageLevelKind.SearchIndex:
-      return 'label.lineage-map-search-index-level';
-    case LineageLevelKind.APIEndpoint:
-      return 'label.lineage-map-api-endpoint-level';
-    case LineageLevelKind.Metric:
-      return 'label.lineage-map-metric-level';
-    case LineageLevelKind.Directory:
-      return 'label.lineage-map-directory-level';
-    case LineageLevelKind.File:
-      return 'label.lineage-map-file-level';
-    case LineageLevelKind.Spreadsheet:
-      return 'label.lineage-map-spreadsheet-level';
-    case LineageLevelKind.Worksheet:
-      return 'label.lineage-map-worksheet-level';
-    case LineageLevelKind.Column:
-    case LineageLevelKind.Field:
-      return 'label.lineage-map-field-level';
-    case LineageLevelKind.Domain:
-      return 'label.lineage-map-domain-level';
-    case LineageLevelKind.DataProduct:
-      return 'label.lineage-map-data-product-level';
-    default:
-      return 'label.lineage-map-asset-level';
-  }
+const LEVEL_LABEL_KEYS: Partial<Record<LineageLevelKind, string>> = {
+  [LineageLevelKind.Service]: 'label.lineage-map-service-level',
+  [LineageLevelKind.Database]: 'label.lineage-map-database-level',
+  [LineageLevelKind.Schema]: 'label.lineage-map-schema-level',
+  [LineageLevelKind.Table]: 'label.lineage-map-table-level',
+  [LineageLevelKind.Topic]: 'label.lineage-map-topic-level',
+  [LineageLevelKind.Dashboard]: 'label.lineage-map-dashboard-level',
+  [LineageLevelKind.Model]: 'label.lineage-map-model-level',
+  [LineageLevelKind.Pipeline]: 'label.lineage-map-pipeline-level',
+  [LineageLevelKind.Container]: 'label.lineage-map-container-level',
+  [LineageLevelKind.SearchIndex]: 'label.lineage-map-search-index-level',
+  [LineageLevelKind.APIEndpoint]: 'label.lineage-map-api-endpoint-level',
+  [LineageLevelKind.Metric]: 'label.lineage-map-metric-level',
+  [LineageLevelKind.Directory]: 'label.lineage-map-directory-level',
+  [LineageLevelKind.File]: 'label.lineage-map-file-level',
+  [LineageLevelKind.Spreadsheet]: 'label.lineage-map-spreadsheet-level',
+  [LineageLevelKind.Worksheet]: 'label.lineage-map-worksheet-level',
+  [LineageLevelKind.Column]: 'label.lineage-map-field-level',
+  [LineageLevelKind.Field]: 'label.lineage-map-field-level',
+  [LineageLevelKind.Domain]: 'label.lineage-map-domain-level',
+  [LineageLevelKind.DataProduct]: 'label.lineage-map-data-product-level',
 };
 
 export const getSceneLevelLabelKey = (scene: LineageScene) => {
@@ -502,7 +539,7 @@ export const getSceneLevelLabelKey = (scene: LineageScene) => {
   const labelLevels = concreteLevels.size > 0 ? concreteLevels : visibleLevels;
 
   return labelLevels.size === 1
-    ? getLevelLabelKey([...labelLevels][0])
+    ? LEVEL_LABEL_KEYS[[...labelLevels][0]] ?? 'label.lineage-map-asset-level'
     : getBandLabelKey(scene.band);
 };
 

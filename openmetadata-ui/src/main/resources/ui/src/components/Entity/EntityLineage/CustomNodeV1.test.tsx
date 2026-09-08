@@ -213,19 +213,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </div>
       );
     }),
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({ children, onClick, className, 'data-testid': testId }) => (
-        <button
-          className={className}
-          data-testid={testId}
-          type="button"
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+  Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   Typography: jest
     .fn()
     .mockImplementation(
@@ -375,6 +364,79 @@ describe('CustomNodeV1', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.zoom-in' }));
 
     expect(onSceneDrill).toHaveBeenCalledWith(sceneNode);
+  });
+
+  it.each([undefined, ''])(
+    'names the drill action when its label is %s',
+    (sceneDrillLabel) => {
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...mockNodeDataProps}
+            data={{
+              ...mockNodeDataProps.data,
+              sceneDrillLabel,
+              sceneNode: { isExpandable: true },
+              onSceneDrill: jest.fn(),
+            }}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'label.zoom-in' })
+      ).toBeVisible();
+    }
+  );
+
+  it('opens entity details from the title without drilling the scene', () => {
+    const onSceneNodeSelect = jest.fn();
+    const onSceneDrill = jest.fn();
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component
+          {...mockNodeDataProps}
+          data={{
+            ...mockNodeDataProps.data,
+            node: { ...mockNodeDataProps.data.node, displayName: 'Customers' },
+            sceneNode: { isExpandable: true },
+            onSceneNodeSelect,
+            onSceneDrill,
+          }}
+        />
+      </ReactFlowProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Customers' }));
+
+    expect(onSceneNodeSelect).toHaveBeenCalledWith(mockNodeDataProps.id);
+    expect(onSceneDrill).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the title when a scene reload changes an existing node', () => {
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+    rerender(
+      <ReactFlowProvider>
+        <CustomNodeV1Component
+          {...mockNodeDataProps}
+          data={{
+            ...mockNodeDataProps.data,
+            node: {
+              ...mockNodeDataProps.data.node,
+              displayName: 'Updated customers',
+            },
+          }}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'Updated customers'
+    );
   });
 
   it('renders drill action for expandable ghost scene nodes', () => {

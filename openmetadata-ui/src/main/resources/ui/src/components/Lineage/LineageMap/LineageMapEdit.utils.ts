@@ -85,12 +85,15 @@ export const getEndpointHandle = (endpoint: string) => {
 
 const getConnectionHandle = (
   handle: string | null | undefined,
-  nodeId: string
+  nodeId: string | null | undefined
 ) => (handle && handle !== nodeId ? handle : undefined);
 
 export const getRealEntityRef = (
-  node: LineageSceneNode
+  node?: LineageSceneNode
 ): EdgeFromToData | undefined => {
+  if (!node) {
+    return undefined;
+  }
   const sourceEntity = getSourceEntity(node);
   const id = getStringValue(sourceEntity.id);
   const type = getStringValue(
@@ -167,14 +170,32 @@ export const isEditableSceneEdge = (
     (sourceHandle === undefined && targetHandle === undefined) ||
     (sourceHandle !== undefined && targetHandle !== undefined);
 
+  const isSingleEdge = !edge.isRollup && (edge.weight ?? 1) === 1;
+
   return (
     hasValidHandlePair &&
-    !edge.isRollup &&
-    (edge.weight ?? 1) === 1 &&
+    isSingleEdge &&
     isEditableSceneNode(nodeById.get(getEndpointNodeId(edge.from))) &&
     isEditableSceneNode(nodeById.get(getEndpointNodeId(edge.to)))
   );
 };
+
+const getPipelineEntityType = (pipeline: LineageSceneEdge['pipeline']) => {
+  if (!pipeline) {
+    return undefined;
+  }
+
+  return pipeline.type === EntityType.STORED_PROCEDURE
+    ? EntityType.STORED_PROCEDURE
+    : EntityType.PIPELINE;
+};
+
+const getFlowEntityRef = (node?: LineageSceneNode): EdgeFromToData =>
+  getRealEntityRef(node) ?? {
+    id: '',
+    type: node?.entityType ?? '',
+    fullyQualifiedName: node?.fullyQualifiedName,
+  };
 
 export const isRemovableSceneNode = (
   node: LineageSceneNode,
@@ -197,15 +218,13 @@ export const isRemovableSceneNode = (
 export const toFlowEdge = (
   nodeById: Map<string, LineageSceneNode>,
   edge: LineageScene['edges'][number]
-): Edge<LineageMapEdgeData> => {
+): Edge<LineageMapEdgeData> & { data: LineageMapEdgeData } => {
   const source = getEndpointNodeId(edge.from);
   const target = getEndpointNodeId(edge.to);
   const sourceHandle = getEndpointHandle(edge.from);
   const targetHandle = getEndpointHandle(edge.to);
   const sourceNode = nodeById.get(source);
   const targetNode = nodeById.get(target);
-  const fromEntity = sourceNode ? getRealEntityRef(sourceNode) : undefined;
-  const toEntity = targetNode ? getRealEntityRef(targetNode) : undefined;
   const isColumnLineage = Boolean(sourceHandle && targetHandle);
   const dataTestId = isColumnLineage
     ? `column-edge-${sourceHandle}-${targetHandle}`
@@ -219,25 +238,12 @@ export const toFlowEdge = (
       dataTestId,
       edge: {
         description: edge.description,
-        fromEntity: fromEntity ?? {
-          id: '',
-          type: sourceNode?.entityType ?? '',
-          fullyQualifiedName: sourceNode?.fullyQualifiedName,
-        },
+        fromEntity: getFlowEntityRef(sourceNode),
         pipeline: edge.pipeline,
-        pipelineEntityType:
-          edge.pipeline?.type === EntityType.STORED_PROCEDURE
-            ? EntityType.STORED_PROCEDURE
-            : edge.pipeline
-            ? EntityType.PIPELINE
-            : undefined,
+        pipelineEntityType: getPipelineEntityType(edge.pipeline),
         source: edge.source,
         sqlQuery: edge.sqlQuery,
-        toEntity: toEntity ?? {
-          id: '',
-          type: targetNode?.entityType ?? '',
-          fullyQualifiedName: targetNode?.fullyQualifiedName,
-        },
+        toEntity: getFlowEntityRef(targetNode),
       },
       isColumnLineage,
       isRollup: edge.isRollup,
@@ -256,43 +262,47 @@ export const toFlowEdge = (
   };
 };
 
-const getPipelineSceneNode = (
-  nodeById: Map<string, LineageSceneNode>,
-  edge: LineageSceneEdge
-) => {
-  if (!edge.pipeline) {
-    return undefined;
-  }
-
-  return Array.from(nodeById.values()).find((node) => {
+const indexPipelineSceneNodes = (nodeById: Map<string, LineageSceneNode>) => {
+  const index = new Map<string, LineageSceneNode>();
+  nodeById.forEach((node) => {
     const entity = getRealEntityRef(node);
-
-    return (
-      node.id === edge.pipeline?.id ||
-      entity?.id === edge.pipeline?.id ||
-      (Boolean(edge.pipeline?.fullyQualifiedName) &&
-        (node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName ||
-          entity?.fullyQualifiedName === edge.pipeline?.fullyQualifiedName))
-    );
+    [
+      node.id,
+      entity?.id,
+      node.fullyQualifiedName,
+      entity?.fullyQualifiedName,
+    ].forEach((key) => {
+      if (key && !index.has(key)) {
+        index.set(key, node);
+      }
+    });
   });
+
+  return index;
 };
 
 export const toFlowEdges = (
   nodeById: Map<string, LineageSceneNode>,
   sceneEdges: LineageSceneEdge[],
   renderPipelinesAsNodes: boolean
-): Edge<LineageMapEdgeData>[] =>
-  sceneEdges.flatMap((sceneEdge) => {
+): Edge<LineageMapEdgeData>[] => {
+  const pipelineNodes = renderPipelinesAsNodes
+    ? indexPipelineSceneNodes(nodeById)
+    : new Map<string, LineageSceneNode>();
+
+  return sceneEdges.flatMap((sceneEdge) => {
     const source = getEndpointNodeId(sceneEdge.from);
     const target = getEndpointNodeId(sceneEdge.to);
-    const pipelineNode = renderPipelinesAsNodes
-      ? getPipelineSceneNode(nodeById, sceneEdge)
-      : undefined;
+    const pipeline = sceneEdge.pipeline;
+    const pipelineNode =
+      pipelineNodes.get(pipeline?.id ?? '') ??
+      pipelineNodes.get(pipeline?.fullyQualifiedName ?? '');
+    const isEntityEdge =
+      !getEndpointHandle(sceneEdge.from) && !getEndpointHandle(sceneEdge.to);
 
     if (
       !pipelineNode ||
-      getEndpointHandle(sceneEdge.from) ||
-      getEndpointHandle(sceneEdge.to) ||
+      !isEntityEdge ||
       pipelineNode.id === source ||
       pipelineNode.id === target
     ) {
@@ -334,6 +344,7 @@ export const toFlowEdges = (
       ),
     ];
   });
+};
 
 const toEdgeDetails = (
   fromEntity: EdgeFromToData,
@@ -351,12 +362,7 @@ const toEdgeDetails = (
     createdBy: details?.createdBy,
     description: details?.description ?? sceneEdge.description,
     pipeline,
-    pipelineEntityType:
-      pipeline?.type === EntityType.STORED_PROCEDURE
-        ? EntityType.STORED_PROCEDURE
-        : pipeline
-        ? EntityType.PIPELINE
-        : undefined,
+    pipelineEntityType: getPipelineEntityType(pipeline),
     source: details?.source ? String(details.source) : sceneEdge.source,
     sqlQuery: details?.sqlQuery ?? sceneEdge.sqlQuery,
     tempLineageTables: details?.tempLineageTables,
@@ -373,8 +379,8 @@ export const hydrateSelectedEdge = (
 ): Edge<LineageMapEdgeData> | null => {
   const fromNode = nodeById.get(getEndpointNodeId(sceneEdge.from));
   const toNode = nodeById.get(getEndpointNodeId(sceneEdge.to));
-  const fromEntity = fromNode ? getRealEntityRef(fromNode) : undefined;
-  const toEntity = toNode ? getRealEntityRef(toNode) : undefined;
+  const fromEntity = getRealEntityRef(fromNode);
+  const toEntity = getRealEntityRef(toNode);
 
   if (!fromEntity || !toEntity) {
     return null;
@@ -402,22 +408,19 @@ export const hydrateSelectedEdge = (
 export const buildConnectPayload = (
   connection: Connection,
   nodeById: Map<string, LineageSceneNode>,
-  existingDetails?: LineageDetails
+  existingDetails: LineageDetails = {}
 ): AddLineage | null => {
-  const sourceNode = connection.source
-    ? nodeById.get(connection.source)
-    : undefined;
-  const targetNode = connection.target
-    ? nodeById.get(connection.target)
-    : undefined;
-  const fromEntity = sourceNode ? getRealEntityRef(sourceNode) : undefined;
-  const toEntity = targetNode ? getRealEntityRef(targetNode) : undefined;
-  const sourceHandle = connection.source
-    ? getConnectionHandle(connection.sourceHandle, connection.source)
-    : undefined;
-  const targetHandle = connection.target
-    ? getConnectionHandle(connection.targetHandle, connection.target)
-    : undefined;
+  const { columnsLineage: existingColumns = [] } = existingDetails;
+  const fromEntity = getRealEntityRef(nodeById.get(connection.source ?? ''));
+  const toEntity = getRealEntityRef(nodeById.get(connection.target ?? ''));
+  const sourceHandle = getConnectionHandle(
+    connection.sourceHandle,
+    connection.source
+  );
+  const targetHandle = getConnectionHandle(
+    connection.targetHandle,
+    connection.target
+  );
   const isColumnConnection = Boolean(sourceHandle && targetHandle);
 
   if (
@@ -436,7 +439,7 @@ export const buildConnectPayload = (
   };
   const columnsLineage = isColumnConnection
     ? getUpdatedColumnsFromEdge(connection, currentEdge)
-    : existingDetails?.columnsLineage ?? [];
+    : existingColumns;
 
   return {
     edge: {

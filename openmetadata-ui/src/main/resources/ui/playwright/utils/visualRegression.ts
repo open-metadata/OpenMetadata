@@ -27,7 +27,7 @@ const FREEZE_CSS = `
     animation: none !important;
     transition: none !important;
   }
-  html { scroll-behavior: auto !important; }
+  * { scroll-behavior: auto !important; }
 `;
 
 /**
@@ -46,5 +46,16 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.goto(path);
   await waitForPageLoaded(page);
   await page.addStyleTag({ content: FREEZE_CSS });
-  await page.evaluate(() => document.scrollingElement?.scrollTo(0, 0));
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    (document.scrollingElement ?? document.documentElement).scrollTo(0, 0);
+    // Entity pages and drawers can scroll independently of the document.
+    document
+      .querySelectorAll<HTMLElement>('body, body *')
+      .forEach((element) => {
+        if (element.scrollTop || element.scrollLeft) {
+          element.scrollTo(0, 0);
+        }
+      });
+  });
 };

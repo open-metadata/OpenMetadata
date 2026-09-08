@@ -39,12 +39,9 @@ import {
   activateColumnLayer,
   addColumnLineage,
   addPipelineBetweenNodes,
-  applyPipelineBetweenNodesViaAPI,
   applyPipelineFromModal,
   connectEdgeBetweenNodes,
-  connectEntityEdgeBetweenNodesViaAPI,
   deleteEdge,
-  deleteEdgeBetweenNodesViaAPI,
   deleteNode,
   editLineage,
   editLineageClick,
@@ -155,16 +152,6 @@ test.describe('Data asset lineage', () => {
       test.setTimeout(8 * 60 * 1000);
       await page.setViewportSize({ height: 1600, width: 1920 });
 
-      const interactiveEntity = entities.find(
-        (entity) => entity.constructor === EntityClass
-      );
-      if (!interactiveEntity) {
-        throw new Error(`Missing ${key} lineage entity`);
-      }
-      const apiEntities = entities.filter(
-        (entity) => entity !== interactiveEntity
-      );
-
       await test.step('prepare entity', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         try {
@@ -178,24 +165,9 @@ test.describe('Data asset lineage', () => {
       });
 
       await test.step('should create lineage with normal edge', async () => {
-        await connectEdgeBetweenNodes(page, lineageEntity, interactiveEntity);
-        await fitToScreen(page);
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        try {
-          const responses = await Promise.all(
-            apiEntities.map((entity) =>
-              connectEntityEdgeBetweenNodesViaAPI(
-                apiContext,
-                lineageEntity,
-                entity
-              )
-            )
-          );
-
-          responses.forEach((response) => expect(response.ok()).toBeTruthy());
-        } finally {
-          await afterAction();
+        for (const entity of entities) {
+          await connectEdgeBetweenNodes(page, lineageEntity, entity);
+          await fitToScreen(page);
         }
 
         const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -219,6 +191,25 @@ test.describe('Data asset lineage', () => {
         }
       });
 
+      await test.step('Open and close the drawer for every lineage node', async () => {
+        for (const entity of entities) {
+          const { fullyQualifiedName, displayName, name } =
+            entity.entityResponseData;
+          await page
+            .getByTestId(`lineage-node-${fullyQualifiedName}`)
+            .getByTestId('entity-header-display-name')
+            .getByRole('button')
+            .click();
+
+          const drawer = page.getByTestId('lineage-entity-panel');
+          await expect(drawer.getByTestId('entity-header-title')).toHaveText(
+            displayName || name
+          );
+          await drawer.getByTestId('drawer-close-icon').click();
+          await expect(drawer).not.toBeVisible();
+        }
+      });
+
       await test.step('should create lineage with edge having pipeline', async () => {
         await editLineage(page);
 
@@ -227,29 +218,8 @@ test.describe('Data asset lineage', () => {
         await performZoomOut(page, 8);
         await waitForAllLoadersToDisappear(page);
 
-        await applyPipelineFromModal(
-          page,
-          lineageEntity,
-          interactiveEntity,
-          pipeline
-        );
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        try {
-          const responses = await Promise.all(
-            apiEntities.map((entity) =>
-              applyPipelineBetweenNodesViaAPI(
-                apiContext,
-                lineageEntity,
-                entity,
-                pipeline
-              )
-            )
-          );
-
-          responses.forEach((response) => expect(response.ok()).toBeTruthy());
-        } finally {
-          await afterAction();
+        for (const entity of entities) {
+          await applyPipelineFromModal(page, lineageEntity, entity, pipeline);
         }
       });
 
@@ -277,19 +247,8 @@ test.describe('Data asset lineage', () => {
 
         await fitToScreen(page);
 
-        await deleteEdge(page, lineageEntity, interactiveEntity);
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        try {
-          const responses = await Promise.all(
-            apiEntities.map((entity) =>
-              deleteEdgeBetweenNodesViaAPI(apiContext, lineageEntity, entity)
-            )
-          );
-
-          responses.forEach((response) => expect(response.ok()).toBeTruthy());
-        } finally {
-          await afterAction();
+        for (const entity of entities) {
+          await deleteEdge(page, lineageEntity, entity);
         }
       });
     });
@@ -342,13 +301,17 @@ test.describe('Column Level Lineage', () => {
         const sourceCol = get(sourceColumns, '[0].fullyQualifiedName', '');
         const targetCol = get(targetColumns, '[0].fullyQualifiedName', '');
 
-        await test.step('Add column lineage', async () => {
+        await test.step('Add entity lineage and finish editing', async () => {
           await addPipelineBetweenNodes(page, sourceEntity, targetEntity);
           await editLineageClick(page);
-          await activateColumnLayer(page);
-          await editLineageClick(page);
+        });
 
-          // Add column lineage
+        await test.step('Select the field view, then edit column lineage', async () => {
+          await expect(page.getByTestId('lineage-layer-btn')).toBeEnabled();
+          await activateColumnLayer(page);
+          await expect(page.getByTestId('lineage-layer-btn')).toBeEnabled();
+          await editLineage(page);
+
           await addColumnLineage(page, sourceCol, targetCol);
         });
 

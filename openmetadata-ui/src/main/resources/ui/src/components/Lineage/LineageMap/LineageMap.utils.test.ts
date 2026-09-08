@@ -12,6 +12,7 @@
  */
 
 import type { TFunction } from 'i18next';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
   LineageLens,
@@ -28,9 +29,174 @@ import {
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
+  getSceneFocus,
   getSceneLevelLabelKey,
   getSceneNodeCountSubtitle,
+  getSceneOriginFocus,
+  getSceneRequestFromSearch,
+  getSceneSearch,
 } from './LineageMap.utils';
+
+describe('scene focus validation', () => {
+  it('preserves a valid entity focus', () => {
+    expect(getSceneFocus('service.db.schema.table', EntityType.TABLE)).toEqual({
+      focusFqn: 'service.db.schema.table',
+      entityType: EntityType.TABLE,
+    });
+  });
+
+  it.each([undefined, ''])(
+    'does not send an incomplete focus: %s',
+    (entityType) => {
+      expect(getSceneFocus('service.db', entityType)).toEqual({});
+    }
+  );
+});
+
+describe('scene URL navigation', () => {
+  const defaultFocus = {
+    focusFqn: 'service.db.table',
+    entityType: EntityType.TABLE,
+  };
+
+  it('round-trips quoted FQNs containing query-string delimiters', () => {
+    const request = {
+      lens: LineageLens.Service,
+      band: LineageBand.Field,
+      focusFqn: 'service.db."orders & returns?region=us#1"',
+      entityType: EntityType.TABLE,
+    };
+    const search = getSceneSearch('?mode=lineage', request);
+
+    expect(new URLSearchParams(search).get('mode')).toBe('lineage');
+    expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual(request);
+  });
+
+  it('preserves custom entity types across URL, breadcrumb, parent and origin navigation', () => {
+    const focus = {
+      focusFqn: 'custom."asset & fields"',
+      entityType: 'customAsset',
+    };
+    const request = {
+      ...focus,
+      lens: LineageLens.Service,
+      band: LineageBand.Field,
+    };
+    const scene: LineageScene = {
+      lens: request.lens,
+      band: request.band,
+      nodes: [],
+      edges: [],
+      breadcrumb: [],
+      focusFqn: focus.focusFqn,
+      focusEntityType: focus.entityType,
+      originFqn: focus.focusFqn,
+      originEntityType: focus.entityType,
+    };
+    const breadcrumb: LineageSceneBreadcrumb = {
+      id: 'custom',
+      label: 'custom',
+      fullyQualifiedName: focus.focusFqn,
+      entityType: focus.entityType,
+      band: LineageBand.Asset,
+      levelKind: LineageLevelKind.Asset,
+    };
+
+    expect(getSceneFocus(focus.focusFqn, focus.entityType)).toEqual(focus);
+    expect(
+      getSceneRequestFromSearch(getSceneSearch('', request), defaultFocus)
+    ).toEqual(request);
+    expect(getBreadcrumbSceneRequest(scene, breadcrumb)).toEqual({
+      ...request,
+      band: LineageBand.Asset,
+    });
+    expect(getParentSceneRequest(scene)).toEqual({
+      ...request,
+      band: LineageBand.Asset,
+    });
+    expect(getSceneOriginFocus(scene, {})).toEqual(focus);
+  });
+
+  it('removes the previous focus when navigating to a root breadcrumb', () => {
+    const request = { lens: LineageLens.Domain, band: LineageBand.Layer };
+    const search = getSceneSearch(
+      '?lineageFocus=service.db.table&lineageEntityType=table',
+      request
+    );
+
+    expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual(request);
+  });
+
+  it('uses the current route entity when no focus has been selected', () => {
+    const nextFocus = {
+      focusFqn: 'service.db.other',
+      entityType: EntityType.TABLE,
+    };
+
+    expect(getSceneRequestFromSearch('', defaultFocus).focusFqn).toBe(
+      defaultFocus.focusFqn
+    );
+    expect(getSceneRequestFromSearch('', nextFocus).focusFqn).toBe(
+      nextFocus.focusFqn
+    );
+  });
+
+  it.each([{}, defaultFocus])(
+    'recenters the entity-page table after reloading a Layer URL with focus %j',
+    (focus) => {
+      const request = {
+        lens: LineageLens.Service,
+        band: LineageBand.Layer,
+        ...focus,
+      };
+      const search = getSceneSearch('', request);
+      const reloaded = getSceneRequestFromSearch(search, defaultFocus);
+
+      expect(reloaded).toEqual(request);
+
+      const scene: LineageScene = {
+        ...request,
+        nodes: [],
+        edges: [],
+        breadcrumb: [],
+      };
+      const recentered = {
+        lens: scene.lens,
+        band: LineageBand.Asset,
+        ...getSceneOriginFocus(scene, defaultFocus),
+      };
+
+      expect(
+        getSceneRequestFromSearch(
+          getSceneSearch(search, recentered),
+          defaultFocus
+        )
+      ).toEqual({
+        lens: LineageLens.Service,
+        band: LineageBand.Asset,
+        ...defaultFocus,
+      });
+    }
+  );
+
+  it('keeps the original route table as the recenter target after drilling elsewhere', () => {
+    const scene = {
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      nodes: [],
+      edges: [],
+      breadcrumb: [],
+      originFqn: 'service.db.other',
+      originEntityType: EntityType.TABLE,
+    };
+
+    expect(getSceneOriginFocus(scene, defaultFocus)).toEqual(defaultFocus);
+    expect(getSceneOriginFocus(scene, {})).toEqual({
+      focusFqn: scene.originFqn,
+      entityType: EntityType.TABLE,
+    });
+  });
+});
 
 const t = ((key: string, options?: Record<string, string | number>) => {
   const labels: Record<string, string> = {

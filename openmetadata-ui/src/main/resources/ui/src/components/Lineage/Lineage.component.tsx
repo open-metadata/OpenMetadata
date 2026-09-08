@@ -29,9 +29,7 @@ const Lineage = ({
 }: LineageProps) => {
   const { isEditMode } = useLineageStore();
 
-  const headerContent = isPlatformLineage ? (
-    platformHeader
-  ) : showControls ? (
+  const entityHeader = showControls ? (
     <div
       className={classNames('lineage-header', {
         'lineage-header-edit-mode': isEditMode,
@@ -42,6 +40,7 @@ const Lineage = ({
       />
     </div>
   ) : null;
+  const headerContent = isPlatformLineage ? platformHeader : entityHeader;
 
   return (
     <Card

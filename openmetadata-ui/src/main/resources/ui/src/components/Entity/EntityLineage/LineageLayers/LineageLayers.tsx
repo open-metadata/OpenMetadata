@@ -99,6 +99,38 @@ const getSceneBandLabelKey = (band: LineageBand) => {
   }
 };
 
+const getLegacyLayerVisibility = (
+  entityType: LineageLayersProps['entityType'],
+  entity: LineageLayersProps['entity'],
+  isPlatformLineage: boolean
+) => {
+  const isServiceType = SERVICE_TYPES.includes(entityType as AssetsUnion);
+  const hasDomainContext = Boolean(
+    entityType && entityType !== EntityType.DOMAIN
+  );
+
+  return {
+    showColumnAndObservability: Boolean(entityType && !isServiceType),
+    showService: isPlatformLineage || !isServiceType,
+    showDomain:
+      isPlatformLineage || (hasDomainContext && !isEmpty(entity?.domains)),
+    showDataProduct:
+      isPlatformLineage ||
+      (hasDomainContext && !isEmpty((entity as Table)?.dataProducts)),
+  };
+};
+
+const SceneLensIcon = ({ lens }: { lens: LineageLens }) => {
+  const icons = {
+    [LineageLens.Domain]: DomainIcon,
+    [LineageLens.DataProduct]: DataProductIcon,
+    [LineageLens.Service]: ServiceView,
+  };
+  const Icon = icons[lens];
+
+  return <Icon className={SCENE_LAYER_MENU_ICON_CLASSES} />;
+};
+
 const LineageLayers = ({
   entityType,
   entity,
@@ -171,18 +203,12 @@ const LineageLayers = ({
     [onSceneBandChange]
   );
 
-  const isServiceType = SERVICE_TYPES.includes(entityType as AssetsUnion);
-  const showColumnAndObservability = entityType && !isServiceType;
-  const showService = isPlatformLineage || !isServiceType;
-  const showDomain =
-    isPlatformLineage ||
-    (entityType &&
-      entityType !== EntityType.DOMAIN &&
-      !isEmpty(entity?.domains));
-  const dataProductCount = ((entity as Table)?.dataProducts ?? []).length;
-  const showDataProduct =
-    isPlatformLineage ||
-    (entityType && entityType !== EntityType.DOMAIN && dataProductCount > 0);
+  const {
+    showColumnAndObservability,
+    showService,
+    showDomain,
+    showDataProduct,
+  } = getLegacyLayerVisibility(entityType, entity, isPlatformLineage);
 
   const { layerButtons, renderedValues } = useMemo(() => {
     const buttons = [];
@@ -324,13 +350,7 @@ const LineageLayers = ({
                 data-testid={`lineage-layer-lens-${lens}`}
                 id={lens}
                 key={lens}>
-                {lens === LineageLens.Domain ? (
-                  <DomainIcon className={SCENE_LAYER_MENU_ICON_CLASSES} />
-                ) : lens === LineageLens.DataProduct ? (
-                  <DataProductIcon className={SCENE_LAYER_MENU_ICON_CLASSES} />
-                ) : (
-                  <ServiceView className={SCENE_LAYER_MENU_ICON_CLASSES} />
-                )}
+                <SceneLensIcon lens={lens} />
                 <span className="lineage-scene-layer-menu-copy tw:flex tw:min-w-0 tw:flex-col">
                   <span className="lineage-scene-layer-menu-option-title tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
                     {t(getSceneLensLabelKey(lens))}

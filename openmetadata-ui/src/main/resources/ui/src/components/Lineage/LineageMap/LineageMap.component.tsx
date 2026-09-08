@@ -26,8 +26,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import type { LayoutOptions } from 'elkjs/lib/elk.bundled.js';
-import { debounce, isEqual, uniqueId } from 'lodash';
-import Qs from 'qs';
+import { debounce, uniqueId } from 'lodash';
 import {
   useCallback,
   useEffect,
@@ -69,12 +68,12 @@ import {
   LineageLevelKind,
   LineageScene,
   LineageSceneBreadcrumb,
+  LineageSceneEdge,
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
-import { LineageDetails } from '../../../generated/type/entityLineage';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import type { LineageSceneFocus } from '../../../rest/lineageAPI';
@@ -111,8 +110,12 @@ import {
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
+  getSceneFocus,
   getSceneLevelLabelKey,
   getSceneNodeCountSubtitle,
+  getSceneOriginFocus,
+  getSceneRequestFromSearch,
+  getSceneSearch,
 } from './LineageMap.utils';
 import {
   buildConnectPayload,
@@ -127,13 +130,13 @@ import {
   toFlowEdges,
   type LineageMapEdgeData,
 } from './LineageMapEdit.utils';
+import { LineageSceneCache } from './LineageSceneCache.utils';
 
 const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
 const ZOOM_IN_THRESHOLD = 1.9;
 const ZOOM_OUT_THRESHOLD = 0.5;
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
-const SCENE_CACHE_LIMIT = 50;
 const SCENE_MUTATION_MAX_ATTEMPTS = 5;
 const SCENE_MUTATION_RETRY_DELAY_MS = 500;
 const MAX_SCENE_DEPTH = 3;
@@ -196,18 +199,13 @@ const SCENE_LAYOUT_OPTIONS: Record<LineageBand, LayoutOptions> = {
 
 type SceneRequest = LineageSceneRequest;
 
-const getSceneFocus = (
-  focusFqn?: string,
-  entityType?: string
-): LineageSceneFocus =>
-  focusFqn && entityType ? { focusFqn, entityType } : {};
-
 interface SceneFlowNodeData {
   node: LineageNodeType;
   sceneNode: LineageSceneNode;
   sceneBand: LineageBand;
   nodeWidth: number;
   onSceneDrill: (node: LineageSceneNode) => void;
+  onSceneNodeSelect?: (nodeId: string) => void;
   sceneDrillLabel: string;
   isRootNode: boolean;
   hasOutgoers: boolean;
@@ -312,12 +310,15 @@ const getSceneNodeBounds = (
 const getActiveLayersFromBand = (band: LineageBand) =>
   band === LineageBand.Field ? [LineageLayer.ColumnLevelLineage] : [];
 
-const getSceneFitViewMinZoom = (band?: LineageBand) =>
-  band === LineageBand.Layer
-    ? SCENE_LAYER_FIT_VIEW_MIN_ZOOM
-    : band === LineageBand.Field
+const getSceneFitViewMinZoom = (band?: LineageBand) => {
+  if (band === LineageBand.Layer) {
+    return SCENE_LAYER_FIT_VIEW_MIN_ZOOM;
+  }
+
+  return band === LineageBand.Field
     ? SCENE_FIELD_FIT_VIEW_MIN_ZOOM
     : SCENE_ASSET_FIT_VIEW_MIN_ZOOM;
+};
 
 const getSceneFitViewOptions = (
   band?: LineageBand,
@@ -378,33 +379,98 @@ export const getSceneCacheKey = (
     queryFilter,
   ].join('|');
 
-const getCachedScene = (
-  cache: Map<string, LineageScene>,
-  key: string
-): LineageScene | undefined => {
-  const cachedScene = cache.get(key);
-  if (!cachedScene) {
-    return undefined;
+const prefetchSceneBands = (
+  currentScene: LineageScene,
+  request: SceneRequest,
+  config: LineageConfig,
+  queryFilter: string,
+  cache: LineageSceneCache
+) => {
+  const bands =
+    currentScene.band === LineageBand.Asset
+      ? [LineageBand.Layer, LineageBand.Field]
+      : [LineageBand.Asset];
+  for (const band of bands) {
+    const nextRequest = { ...request, band };
+    const key = getSceneCacheKey(nextRequest, config, queryFilter);
+    cache
+      .load(key, () => getLineageScene({ ...nextRequest, config, queryFilter }))
+      .catch(() => undefined);
   }
-  cache.delete(key);
-  cache.set(key, cachedScene);
-
-  return cachedScene;
 };
 
-const setCachedScene = (
-  cache: Map<string, LineageScene>,
-  key: string,
-  value: LineageScene
+const fitSceneBounds = (
+  instance: ReactFlowInstance,
+  bounds: SceneNodeBounds,
+  band?: LineageBand
 ) => {
-  cache.delete(key);
-  cache.set(key, value);
-  if (cache.size > SCENE_CACHE_LIMIT) {
-    const oldestKey = cache.keys().next().value;
-    if (oldestKey) {
-      cache.delete(oldestKey);
-    }
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      instance.fitBounds(bounds, getSceneFitViewOptions(band));
+      window.requestAnimationFrame(() => {
+        const minZoom = getSceneFitViewMinZoom(band);
+        if (instance.getZoom() < minZoom) {
+          instance.zoomTo(minZoom);
+        }
+      });
+    });
+  });
+};
+
+const getHydratedSceneEdge = async (
+  edge: Edge<LineageMapEdgeData>,
+  sceneEdge: LineageSceneEdge,
+  nodeById: Map<string, LineageSceneNode>
+) => {
+  const fromEntity = getRealEntityRef(
+    nodeById.get(getEndpointNodeId(sceneEdge.from))
+  );
+  const toEntity = getRealEntityRef(
+    nodeById.get(getEndpointNodeId(sceneEdge.to))
+  );
+  if (!fromEntity || !toEntity) {
+    return null;
   }
+  const details = await getLineageEdgeDetails(fromEntity.id, toEntity.id);
+
+  return hydrateSelectedEdge(edge, sceneEdge, nodeById, details);
+};
+
+const getExistingEdgeDetails = async (fromId: string, toId: string) => {
+  try {
+    return await getLineageEdgeDetails(fromId, toId);
+  } catch (error) {
+    if ((error as AxiosError).response?.status !== 404) {
+      throw error;
+    }
+
+    return undefined;
+  }
+};
+
+const getSceneConnectionHandles = ({
+  source,
+  sourceHandle,
+  target,
+  targetHandle,
+}: Connection) => ({
+  sourceHandle: sourceHandle === source ? undefined : sourceHandle ?? undefined,
+  targetHandle: targetHandle === target ? undefined : targetHandle ?? undefined,
+});
+
+const getSemanticZoomBand = (
+  band: LineageBand,
+  previousZoom: number,
+  zoom: number
+) => {
+  if (zoom >= ZOOM_IN_THRESHOLD && previousZoom < ZOOM_IN_THRESHOLD) {
+    return getNextZoomBand(band);
+  }
+  if (zoom <= ZOOM_OUT_THRESHOLD && previousZoom > ZOOM_OUT_THRESHOLD) {
+    return getPreviousZoomBand(band);
+  }
+
+  return band;
 };
 
 const getSceneChildren = (node: LineageSceneNode): EntityChildren =>
@@ -436,7 +502,7 @@ const getSceneChildrenPatch = (
     case EntityType.CONTAINER:
       return {
         dataModel: {
-          ...(sourceEntity.dataModel ?? {}),
+          ...sourceEntity.dataModel,
           columns: children,
         } as LineageNodeType['dataModel'],
         flattenChildren: children,
@@ -445,7 +511,7 @@ const getSceneChildrenPatch = (
     case EntityType.TOPIC:
       return {
         messageSchema: {
-          ...(sourceEntity.messageSchema ?? {}),
+          ...sourceEntity.messageSchema,
           schemaFields: children,
         } as LineageNodeType['messageSchema'],
         flattenChildren: children,
@@ -454,7 +520,7 @@ const getSceneChildrenPatch = (
     case EntityType.API_ENDPOINT:
       return {
         responseSchema: {
-          ...(sourceEntity.responseSchema ?? {}),
+          ...sourceEntity.responseSchema,
           schemaFields: children,
         } as LineageNodeType['responseSchema'],
         flattenChildren: children,
@@ -777,6 +843,92 @@ const LineageMapBreadcrumbs = ({
   );
 };
 
+const LineageMapStatusPanel = ({
+  scene,
+  error,
+}: {
+  scene: LineageScene;
+  error?: AxiosError;
+}) => {
+  const { t } = useTranslation();
+  const { hiddenNodeCount = 0, sampled, nodes } = scene;
+  const hasHiddenNodes = hiddenNodeCount > 0;
+  if (!hasHiddenNodes && !sampled && !error) {
+    return null;
+  }
+
+  return (
+    <Panel className="lineage-map-status-panel tw:z-10" position="top-right">
+      {hasHiddenNodes && (
+        <Badge color="gray" size="sm" type="color">
+          {t('label.plus-count-more', { count: hiddenNodeCount })}
+        </Badge>
+      )}
+      {(sampled || hasHiddenNodes) && (
+        <Alert
+          title={
+            sampled
+              ? t('message.showing-count-of-total-assets', {
+                  count: nodes.length,
+                  total: nodes.length + hiddenNodeCount,
+                })
+              : t('message.knowledge-graph-truncated')
+          }
+          variant="warning"
+        />
+      )}
+      {error && (
+        <Alert title={t('message.something-went-wrong')} variant="error" />
+      )}
+    </Panel>
+  );
+};
+
+const LineageMapPlaceholder = ({
+  scene,
+  loading,
+  error,
+  onRetry,
+}: {
+  scene?: LineageScene;
+  loading: boolean;
+  error?: AxiosError;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+  if (loading && !scene) {
+    return <LineageSkeleton />;
+  }
+  if (error && !scene) {
+    return (
+      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <span>{t('message.something-went-wrong')}</span>
+          <Button data-testid="lineage-map-retry" onClick={onRetry}>
+            {t('label.try-again')}
+          </Button>
+        </ErrorPlaceHolder>
+      </div>
+    );
+  }
+  if (!scene) {
+    return (
+      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
+        <span>{t('message.no-lineage-data-available')}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={LINEAGE_MAP_EMPTY_CLASSES}>
+      <ErrorPlaceHolder
+        placeholderText={t('message.no-lineage-data-available')}
+        type={ERROR_PLACEHOLDER_TYPE.FILTER}
+      />
+    </div>
+  );
+};
+
 const LineageMapCanvas = ({
   config,
   deleted,
@@ -798,46 +950,19 @@ const LineageMapCanvas = ({
     onAddPipelineClick,
     onColumnEdgeRemove,
     onEdgeClick: onProviderEdgeClick,
+    onNodeClick: onProviderNodeClick,
     onPaneClick: onProviderPaneClick,
     setSceneNodes,
   } = useLineageProvider();
-  const queryParams = useMemo(
-    () => Qs.parse(location.search, { ignoreQueryPrefix: true }),
-    [location.search]
+  const request = useMemo(
+    () =>
+      getSceneRequestFromSearch(
+        location.search,
+        getSceneFocus(entity?.fullyQualifiedName, entityType),
+        isPlatformLineage
+      ),
+    [location.search, entity?.fullyQualifiedName, entityType, isPlatformLineage]
   );
-  const lineageLensParam =
-    typeof queryParams.lineageLens === 'string'
-      ? queryParams.lineageLens
-      : undefined;
-  const lineageBandParam =
-    typeof queryParams.lineageBand === 'string'
-      ? queryParams.lineageBand
-      : undefined;
-  const initialLens =
-    lineageLensParam &&
-    Object.values(LineageLens).includes(lineageLensParam as LineageLens)
-      ? (lineageLensParam as LineageLens)
-      : LineageLens.Service;
-  const initialBand =
-    lineageBandParam &&
-    Object.values(LineageBand).includes(lineageBandParam as LineageBand)
-      ? (lineageBandParam as LineageBand)
-      : isPlatformLineage
-      ? LineageBand.Layer
-      : LineageBand.Asset;
-  const initialFocusFqn =
-    typeof queryParams.lineageFocus === 'string'
-      ? queryParams.lineageFocus
-      : entity?.fullyQualifiedName;
-  const initialFocusEntityType =
-    typeof queryParams.lineageEntityType === 'string'
-      ? queryParams.lineageEntityType
-      : entityType;
-  const [request, setRequest] = useState<SceneRequest>({
-    lens: initialLens,
-    band: initialBand,
-    ...getSceneFocus(initialFocusFqn, initialFocusEntityType),
-  });
   const [scene, setScene] = useState<LineageScene>();
   const [loading, setLoading] = useState(true);
   const [sceneError, setSceneError] = useState<AxiosError>();
@@ -851,8 +976,9 @@ const LineageMapCanvas = ({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
-  const cacheRef = useRef(new Map<string, LineageScene>());
+  const [sceneCache] = useState(() => new LineageSceneCache());
   const nodesRef = useRef<Node<SceneFlowNodeData>[]>([]);
+  const onProviderNodeClickRef = useRef(onProviderNodeClick);
   const sceneRef = useRef<LineageScene>();
   const sceneRequestIdRef = useRef(0);
   const preserveViewportRef = useRef(false);
@@ -882,10 +1008,15 @@ const LineageMapCanvas = ({
     setTracedColumns,
   } = useLineageStore();
   const previousMutationTickRef = useRef(lineageMutationTick);
+  const canEditScene = isEditMode && scene?.band !== LineageBand.Layer;
 
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
+
+  useEffect(() => {
+    onProviderNodeClickRef.current = onProviderNodeClick;
+  }, [onProviderNodeClick]);
 
   useEffect(() => {
     sceneRef.current = scene;
@@ -936,30 +1067,9 @@ const LineageMapCanvas = ({
         return;
       }
       suppressSemanticZoom();
-      setRequest((current) =>
-        isEqual(current, nextRequest) ? current : nextRequest
-      );
-      const params = Qs.parse(location.search, {
-        ignoreQueryPrefix: true,
-      });
-      params.lineageLens = nextRequest.lens;
-      params.lineageBand = nextRequest.band;
-      if (nextRequest.focusFqn) {
-        params.lineageFocus = nextRequest.focusFqn;
-      } else {
-        delete params.lineageFocus;
-      }
-      if (nextRequest.entityType) {
-        params.lineageEntityType = nextRequest.entityType;
-      } else {
-        delete params.lineageEntityType;
-      }
       navigate(
         {
-          search: Qs.stringify(params, {
-            addQueryPrefix: true,
-            encode: false,
-          }),
+          search: getSceneSearch(location.search, nextRequest),
         },
         { replace: true }
       );
@@ -984,14 +1094,12 @@ const LineageMapCanvas = ({
 
   const getOriginRequestTarget = useCallback(
     (currentScene?: LineageScene): LineageSceneFocus =>
-      getSceneFocus(
-        isPlatformLineage
-          ? undefined
-          : currentScene?.originFqn ?? entity?.fullyQualifiedName,
-        isPlatformLineage
-          ? undefined
-          : currentScene?.originEntityType ?? entityType
-      ),
+      isPlatformLineage
+        ? {}
+        : getSceneOriginFocus(
+            currentScene,
+            getSceneFocus(entity?.fullyQualifiedName, entityType)
+          ),
     [entity?.fullyQualifiedName, entityType, isPlatformLineage]
   );
 
@@ -1005,7 +1113,8 @@ const LineageMapCanvas = ({
       const cacheKey = getSceneCacheKey(nextRequest, config, queryFilter);
       const cachedScene = options.bypassCache
         ? undefined
-        : getCachedScene(cacheRef.current, cacheKey);
+        : sceneCache.get(cacheKey);
+      preserveViewportRef.current = Boolean(options.preserveViewport);
       if (cachedScene) {
         setScene(cachedScene);
         setSceneError(undefined);
@@ -1013,16 +1122,14 @@ const LineageMapCanvas = ({
 
         return cachedScene;
       }
-      preserveViewportRef.current = Boolean(options.preserveViewport);
       setLoading(true);
       let response: LineageScene | undefined;
       try {
-        response = await getLineageScene({
-          ...nextRequest,
-          config,
-          queryFilter,
-        });
-        setCachedScene(cacheRef.current, cacheKey, response);
+        response = await sceneCache.load(
+          cacheKey,
+          () => getLineageScene({ ...nextRequest, config, queryFilter }),
+          options.bypassCache
+        );
         if (sceneRequestIdRef.current === requestId) {
           setScene(response);
           setSceneError(undefined);
@@ -1040,11 +1147,11 @@ const LineageMapCanvas = ({
 
       return response;
     },
-    [config, queryFilter]
+    [config, queryFilter, sceneCache]
   );
   const refetchCurrentScene = useCallback(
     async (isExpectedScene?: (response: LineageScene) => boolean) => {
-      cacheRef.current.clear();
+      sceneCache.clear();
       for (let attempt = 0; attempt < SCENE_MUTATION_MAX_ATTEMPTS; attempt++) {
         const response = await fetchScene(request, {
           bypassCache: true,
@@ -1060,7 +1167,7 @@ const LineageMapCanvas = ({
         }
       }
     },
-    [fetchScene, request]
+    [fetchScene, request, sceneCache]
   );
 
   const removeSceneNode = useCallback(
@@ -1147,27 +1254,23 @@ const LineageMapCanvas = ({
         if (isEditMode) {
           return;
         }
-        const bands =
-          currentScene.band === LineageBand.Asset
-            ? [LineageBand.Layer, LineageBand.Field]
-            : [LineageBand.Asset];
-        bands.forEach((band) => {
-          const nextRequest = { ...request, band };
-          const cacheKey = getSceneCacheKey(nextRequest, config, queryFilter);
-          if (!cacheRef.current.has(cacheKey)) {
-            getLineageScene({ ...nextRequest, config, queryFilter })
-              .then((response) =>
-                setCachedScene(cacheRef.current, cacheKey, response)
-              )
-              .catch(() => undefined);
-          }
-        });
+        prefetchSceneBands(
+          currentScene,
+          request,
+          config,
+          queryFilter,
+          sceneCache
+        );
       }, 300),
-    [config, isEditMode, queryFilter, request]
+    [config, isEditMode, queryFilter, request, sceneCache]
   );
 
   useEffect(() => {
     fetchScene(request);
+
+    return () => {
+      sceneRequestIdRef.current++;
+    };
   }, [fetchScene, request]);
 
   useEffect(() => {
@@ -1213,6 +1316,22 @@ const LineageMapCanvas = ({
     [setSelectedColumn]
   );
 
+  const handleSceneNodeSelect = useCallback((nodeId: string) => {
+    const node = nodesRef.current.find((candidate) => candidate.id === nodeId);
+    if (node) {
+      const entityRef = getRealEntityRef(node.data.sceneNode);
+      if (entityRef) {
+        onProviderNodeClickRef.current({
+          ...node,
+          data: {
+            ...node.data,
+            node: { ...node.data.node, id: entityRef.id },
+          },
+        });
+      }
+    }
+  }, []);
+
   const fitViewWithoutSemanticZoom = useCallback(
     (nodeIds?: string[]) => {
       if (!reactFlowInstance) {
@@ -1222,21 +1341,8 @@ const LineageMapCanvas = ({
       if (!nodeBounds) {
         return;
       }
-      const minZoom = getSceneFitViewMinZoom(scene?.band);
       suppressSemanticZoom();
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          reactFlowInstance.fitBounds(
-            nodeBounds,
-            getSceneFitViewOptions(scene?.band)
-          );
-          window.requestAnimationFrame(() => {
-            if (reactFlowInstance.getZoom() < minZoom) {
-              reactFlowInstance.zoomTo(minZoom);
-            }
-          });
-        });
-      });
+      fitSceneBounds(reactFlowInstance, nodeBounds, scene?.band);
     },
     [nodes, reactFlowInstance, scene?.band, suppressSemanticZoom]
   );
@@ -1292,6 +1398,9 @@ const LineageMapCanvas = ({
           sceneBand: scene.band,
           nodeWidth: getNodeWidth(node, scene.band),
           onSceneDrill: handleDrill,
+          onSceneNodeSelect: getRealEntityRef(node)
+            ? handleSceneNodeSelect
+            : undefined,
           sceneDrillLabel: t('label.zoom-in'),
           onSceneColumnHover: handleSceneColumnHover,
           onSceneColumnSelect: handleSceneColumnSelect,
@@ -1327,6 +1436,7 @@ const LineageMapCanvas = ({
     handleDrill,
     handleSceneColumnHover,
     handleSceneColumnSelect,
+    handleSceneNodeSelect,
     isEditMode,
     removeSceneNode,
     scene,
@@ -1377,16 +1487,12 @@ const LineageMapCanvas = ({
         return;
       }
       if (isDeeperBand(scene.band, band)) {
-        if (
-          band === LineageBand.Asset &&
-          scene.focusFqn &&
-          scene.focusEntityType
-        ) {
+        const focus = getSceneFocus(scene.focusFqn, scene.focusEntityType);
+        if (band === LineageBand.Asset && focus.focusFqn) {
           updateRequest({
             lens: scene.lens,
             band,
-            focusFqn: scene.focusFqn,
-            entityType: scene.focusEntityType,
+            ...focus,
           });
 
           return;
@@ -1421,17 +1527,7 @@ const LineageMapCanvas = ({
 
   const handleMove = useCallback(
     (_event: unknown, viewport: { zoom: number }) => {
-      if (isEditMode) {
-        previousZoomRef.current = viewport.zoom;
-
-        return;
-      }
-      if (!scene) {
-        previousZoomRef.current = viewport.zoom;
-
-        return;
-      }
-      if (semanticZoomSuppressedRef.current) {
+      if (isEditMode || !scene || semanticZoomSuppressedRef.current) {
         previousZoomRef.current = viewport.zoom;
 
         return;
@@ -1442,15 +1538,16 @@ const LineageMapCanvas = ({
       if (now - lastSemanticZoomAtRef.current < SEMANTIC_ZOOM_COOLDOWN) {
         return;
       }
-      if (
-        viewport.zoom >= ZOOM_IN_THRESHOLD &&
-        previousZoom < ZOOM_IN_THRESHOLD
-      ) {
-        const nextBand = getNextZoomBand(scene.band);
-        if (nextBand === scene.band) {
-          return;
-        }
-        lastSemanticZoomAtRef.current = now;
+      const nextBand = getSemanticZoomBand(
+        scene.band,
+        previousZoom,
+        viewport.zoom
+      );
+      if (nextBand === scene.band) {
+        return;
+      }
+      lastSemanticZoomAtRef.current = now;
+      if (isDeeperBand(scene.band, nextBand)) {
         const target = pickCenterExpandableNode();
         if (target) {
           handleDrill(target);
@@ -1458,22 +1555,14 @@ const LineageMapCanvas = ({
           return;
         }
         handleBandChange(nextBand);
-      } else if (
-        viewport.zoom <= ZOOM_OUT_THRESHOLD &&
-        previousZoom > ZOOM_OUT_THRESHOLD
-      ) {
-        const previousBand = getPreviousZoomBand(scene.band);
-        if (previousBand === scene.band) {
-          return;
-        }
-        lastSemanticZoomAtRef.current = now;
+      } else {
         const parentRequest = getParentSceneRequest(scene);
         if (parentRequest) {
           updateRequest(parentRequest);
 
           return;
         }
-        handleBandChange(previousBand);
+        handleBandChange(nextBand);
       }
     },
     [
@@ -1507,7 +1596,8 @@ const LineageMapCanvas = ({
   );
 
   const handleRecenterOrigin = useCallback(() => {
-    if (!scene?.originFqn || !scene.originEntityType) {
+    const origin = getSceneOriginFocus(scene, getOriginRequestTarget(scene));
+    if (!scene || !origin.focusFqn) {
       fitViewWithoutSemanticZoom();
 
       return;
@@ -1515,10 +1605,14 @@ const LineageMapCanvas = ({
     updateRequest({
       lens: scene.lens,
       band: LineageBand.Asset,
-      focusFqn: scene.originFqn,
-      entityType: scene.originEntityType,
+      ...origin,
     });
-  }, [fitViewWithoutSemanticZoom, scene, updateRequest]);
+  }, [
+    fitViewWithoutSemanticZoom,
+    getOriginRequestTarget,
+    scene,
+    updateRequest,
+  ]);
 
   const handleFitView = useCallback(() => {
     fitViewWithoutSemanticZoom();
@@ -1661,23 +1755,11 @@ const LineageMapCanvas = ({
         return;
       }
 
-      const fromNode = nodeById.get(getEndpointNodeId(sceneEdge.from));
-      const toNode = nodeById.get(getEndpointNodeId(sceneEdge.to));
-      const fromEntity = fromNode ? getRealEntityRef(fromNode) : undefined;
-      const toEntity = toNode ? getRealEntityRef(toNode) : undefined;
-      if (!fromEntity || !toEntity) {
-        showInfoToast(t('message.no-lineage-data-available'));
-
-        return;
-      }
-
       try {
-        const details = await getLineageEdgeDetails(fromEntity.id, toEntity.id);
-        const hydratedEdge = hydrateSelectedEdge(
+        const hydratedEdge = await getHydratedSceneEdge(
           edge,
           sceneEdge,
-          nodeById,
-          details
+          nodeById
         );
         if (!hydratedEdge) {
           showInfoToast(t('message.no-lineage-data-available'));
@@ -1715,7 +1797,7 @@ const LineageMapCanvas = ({
 
   const handleConnect = useCallback(
     async (connection: Connection) => {
-      if (!isEditMode || scene?.band === LineageBand.Layer) {
+      if (!canEditScene) {
         return;
       }
       const nodeById = new Map(
@@ -1744,17 +1826,10 @@ const LineageMapCanvas = ({
 
       setIsCreatingEdge(true);
       try {
-        let existingDetails: LineageDetails | undefined;
-        try {
-          existingDetails = await getLineageEdgeDetails(
-            fromEntity.id,
-            toEntity.id
-          );
-        } catch (error) {
-          if ((error as AxiosError).response?.status !== 404) {
-            throw error;
-          }
-        }
+        const existingDetails = await getExistingEdgeDetails(
+          fromEntity.id,
+          toEntity.id
+        );
         const payload = buildConnectPayload(
           connection,
           nodeById,
@@ -1766,14 +1841,8 @@ const LineageMapCanvas = ({
         await addLineageHandler(payload);
         setSelectedEdge(undefined);
         setSelectedNode(undefined);
-        const sourceHandle =
-          connection.sourceHandle === connection.source
-            ? undefined
-            : connection.sourceHandle ?? undefined;
-        const targetHandle =
-          connection.targetHandle === connection.target
-            ? undefined
-            : connection.targetHandle ?? undefined;
+        const { sourceHandle, targetHandle } =
+          getSceneConnectionHandles(connection);
         await refetchCurrentScene((response) =>
           hasSceneEntityConnection(
             response,
@@ -1792,9 +1861,8 @@ const LineageMapCanvas = ({
       }
     },
     [
-      isEditMode,
+      canEditScene,
       refetchCurrentScene,
-      scene?.band,
       setIsCreatingEdge,
       setSelectedEdge,
       setSelectedNode,
@@ -1856,21 +1924,20 @@ const LineageMapCanvas = ({
 
   const handleDragOver = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
-      if (!isEditMode || scene?.band === LineageBand.Layer) {
+      if (!canEditScene) {
         return;
       }
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
     },
-    [isEditMode, scene?.band]
+    [canEditScene]
   );
 
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       if (
-        !isEditMode ||
+        !canEditScene ||
         !scene ||
-        scene?.band === LineageBand.Layer ||
         !reactFlowInstance ||
         !wrapperRef.current
       ) {
@@ -1939,12 +2006,12 @@ const LineageMapCanvas = ({
       setNodes((currentNodes) => [...currentNodes, temporaryNode]);
     },
     [
+      canEditScene,
       handleDrill,
       handleNewNodeSelect,
-      isEditMode,
       reactFlowInstance,
       removeSceneNode,
-      scene?.band,
+      scene,
       t,
     ]
   );
@@ -2048,51 +2115,18 @@ const LineageMapCanvas = ({
     setHoveredNodeId(undefined);
   }, []);
 
-  if (loading && !scene) {
-    return <LineageSkeleton />;
-  }
-
-  if (sceneError && !scene) {
+  if (!scene || scene.nodes.length === 0) {
     return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <span>{t('message.something-went-wrong')}</span>
-          <Button
-            data-testid="lineage-map-retry"
-            onClick={() =>
-              fetchScene(request, {
-                bypassCache: true,
-              })
-            }>
-            {t('label.try-again')}
-          </Button>
-        </ErrorPlaceHolder>
-      </div>
-    );
-  }
-
-  if (!scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <span>{t('message.no-lineage-data-available')}</span>
-      </div>
-    );
-  }
-
-  if (scene.nodes.length === 0) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <ErrorPlaceHolder
-          placeholderText={t('message.no-lineage-data-available')}
-          type={ERROR_PLACEHOLDER_TYPE.FILTER}
-        />
-      </div>
+      <LineageMapPlaceholder
+        error={sceneError}
+        loading={loading}
+        scene={scene}
+        onRetry={() => fetchScene(request, { bypassCache: true })}
+      />
     );
   }
 
   const canDrillScene = scene.nodes.some(isSceneNodeDrillable);
-  const visibleAssetCount = scene.nodes.length;
-  const totalAssetCount = visibleAssetCount + (scene.hiddenNodeCount ?? 0);
 
   return (
     <div
@@ -2122,7 +2156,7 @@ const LineageMapCanvas = ({
         minZoom={MIN_ZOOM_VALUE}
         nodeTypes={nodeTypes}
         nodes={renderedNodes}
-        nodesConnectable={isEditMode && scene.band !== LineageBand.Layer}
+        nodesConnectable={canEditScene}
         selectNodesOnDrag={false}
         onConnect={handleConnect}
         onConnectEnd={() => setIsCreatingEdge(false)}
@@ -2169,38 +2203,7 @@ const LineageMapCanvas = ({
           scene={scene}
           onBreadcrumbFocus={handleBreadcrumbFocus}
         />
-        {(scene.hiddenNodeCount ?? 0) > 0 || scene.sampled || sceneError ? (
-          <Panel
-            className="lineage-map-status-panel tw:z-10"
-            position="top-right">
-            {(scene.hiddenNodeCount ?? 0) > 0 && (
-              <Badge color="gray" size="sm" type="color">
-                {t('label.plus-count-more', {
-                  count: scene.hiddenNodeCount,
-                })}
-              </Badge>
-            )}
-            {(scene.sampled || (scene.hiddenNodeCount ?? 0) > 0) && (
-              <Alert
-                title={
-                  scene.sampled
-                    ? t('message.showing-count-of-total-assets', {
-                        count: visibleAssetCount,
-                        total: totalAssetCount,
-                      })
-                    : t('message.knowledge-graph-truncated')
-                }
-                variant="warning"
-              />
-            )}
-            {sceneError && (
-              <Alert
-                title={t('message.something-went-wrong')}
-                variant="error"
-              />
-            )}
-          </Panel>
-        ) : null}
+        <LineageMapStatusPanel error={sceneError} scene={scene} />
         <LineageMapOnboardingDialog
           open={showOnboarding}
           onClose={handleOnboardingClose}

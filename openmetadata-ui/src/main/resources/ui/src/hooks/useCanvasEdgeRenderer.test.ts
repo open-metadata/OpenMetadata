@@ -39,6 +39,7 @@ const mockUseLineageStore = {
   selectedColumn: undefined,
   columnsInCurrentPages: new Map<string, string[]>(),
   setIsCanvasReady: jest.fn(),
+  isRepositioning: false,
 };
 
 jest.mock('./useLineageStore', () => ({
@@ -142,6 +143,7 @@ describe('useCanvasEdgeRenderer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseLineageStore.isRepositioning = false;
     const { canvas, ctx } = createMockCanvas();
     mockCanvas = canvas;
     mockCtx = ctx;
@@ -580,5 +582,83 @@ describe('useCanvasEdgeRenderer', () => {
     );
 
     expect(mockCtx.setLineDash).toHaveBeenCalledWith([6, 4]);
+  });
+
+  it('reuses drawn paths on pan and highlight, then rebuilds changed geometry', () => {
+    const path = {
+      edgePath: 'M 0,0 C 100,0 100,100 200,100',
+      edgeCenterX: 100,
+      edgeCenterY: 50,
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 100,
+    };
+    const edge = createMockEdge({ data: { computedPath: path } });
+    const props = {
+      canvasRef,
+      edges: [edge],
+      dqHighlightedEdges: new Set<string>(),
+      colors: createMockColors(),
+      containerWidth: 800,
+      containerHeight: 600,
+      isPathHighlightActive: false,
+      pathHighlightedEdgeIds: new Set([edge.id]),
+    };
+    const { rerender } = renderHook(useCanvasEdgeRenderer, {
+      initialProps: props,
+    });
+    const initialPath = (mockCtx.stroke as jest.Mock).mock.calls[0][0];
+    mockUseViewport.mockReturnValue({ x: 25, y: 50, zoom: 1.5 });
+    rerender(props);
+    rerender({ ...props, isPathHighlightActive: true });
+
+    expect(mockCtx.stroke).toHaveBeenLastCalledWith(initialPath);
+    expect(mockCtx.strokeStyle).toBe(props.colors.primary);
+    expect(Path2D).toHaveBeenCalledTimes(1);
+
+    const movedPath = 'M 0,0 C 150,0 150,100 300,100';
+    rerender({
+      ...props,
+      edges: [
+        {
+          ...edge,
+          data: {
+            computedPath: { ...path, edgePath: movedPath, targetX: 300 },
+          },
+        },
+      ],
+    });
+
+    expect(Path2D).toHaveBeenLastCalledWith(movedPath);
+    expect(Path2D).toHaveBeenCalledTimes(2);
+    expect(mockCtx.stroke).not.toHaveBeenLastCalledWith(initialPath);
+  });
+
+  it('does not hit-test invisible edges while the graph is repositioning', () => {
+    global.OffscreenCanvas = jest.fn().mockImplementation(() => ({
+      getContext: () => ({ isPointInStroke: () => true }),
+    })) as unknown as typeof OffscreenCanvas;
+    const edge = createMockEdge();
+    const props = {
+      canvasRef,
+      edges: [edge],
+      dqHighlightedEdges: new Set<string>(),
+      colors: createMockColors(),
+      containerWidth: 800,
+      containerHeight: 600,
+    };
+    const { result, rerender } = renderHook(useCanvasEdgeRenderer, {
+      initialProps: props,
+    });
+    const rect = new DOMRect(0, 0, 800, 600);
+
+    expect(result.current.getEdgeAtPoint(50, 50, rect)).toBe(edge);
+
+    mockUseLineageStore.isRepositioning = true;
+    rerender(props);
+
+    expect(result.current.visibleEdgesRef.current).toEqual([]);
+    expect(result.current.getEdgeAtPoint(50, 50, rect)).toBeNull();
   });
 });
