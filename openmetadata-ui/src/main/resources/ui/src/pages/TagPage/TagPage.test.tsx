@@ -61,6 +61,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, isOpen }) =>
       isOpen ? <div>{children}</div> : null
     ),
+  Skeleton: jest.fn().mockImplementation(() => <span />),
+  Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -166,7 +168,7 @@ jest.mock(
       updateFeed: jest.fn(),
     }),
     __esModule: true,
-    default: 'ActivityFeedProvider',
+    default: ({ children }) => <>{children}</>,
   })
 );
 
