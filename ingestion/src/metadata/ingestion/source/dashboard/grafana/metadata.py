@@ -128,7 +128,7 @@ class GrafanaSource(DashboardServiceSource):
         try:
             return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
-            logger.warning("Failed to get dashboard details for %s: %s", dashboard["uid"], exc)
+            logger.warning("Failed to get dashboard details for %s: %s", dashboard.uid, exc)
             return None
 
     def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> EntityReferenceList | None:
