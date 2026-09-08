@@ -72,12 +72,12 @@ export const selectIngestionRunnerFromDropdown = async (
   const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
 
   if (await runnerSelector.isVisible()) {
-    await runnerSelector.click();
+    const trigger = runnerSelector.getByRole('button');
+    const option = page
+      .locator('.core-select-widget-popover')
+      .getByRole('option', { name: runnerDisplayName });
 
-    const runnerOption = page.getByRole('option').getByText(runnerDisplayName);
-    await runnerOption.waitFor({ state: 'visible' });
-    await runnerOption.click();
-
+    await selectOptionWithRetry(trigger, option);
     await expect(runnerSelector).toContainText(runnerDisplayName);
   }
 };

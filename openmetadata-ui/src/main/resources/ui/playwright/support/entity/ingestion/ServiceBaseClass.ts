@@ -24,6 +24,7 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
+  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   visitEntityPage,
@@ -131,22 +132,14 @@ class ServiceBaseClass {
     );
 
     if (await runnerSelector.isVisible()) {
-      await runnerSelector.click();
-
-      // The runner control is now a react-aria Select whose options render as
-      // role="listbox" entries (no more antd `data-key`). Match the option by
-      // its visible label (displayName); the substring match tolerates a
-      // display-name suffix (e.g. "Collate SaaS" matches "Collate SaaS Runner").
       const runnerLabel = this.ingestionRunner.displayName;
-      const runnerOption = page
-        .getByRole('option', { name: runnerLabel })
-        .first();
-      await runnerOption.waitFor({ state: 'visible' });
-      await runnerOption.click();
+      const trigger = runnerSelector.getByRole('button');
+      const option = page
+        .locator('.core-select-widget-popover')
+        .getByRole('option', { name: runnerLabel });
 
-      await expect(
-        page.getByTestId('select-widget-root/ingestionRunner')
-      ).toContainText(runnerLabel);
+      await selectOptionWithRetry(trigger, option);
+      await expect(runnerSelector).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {
