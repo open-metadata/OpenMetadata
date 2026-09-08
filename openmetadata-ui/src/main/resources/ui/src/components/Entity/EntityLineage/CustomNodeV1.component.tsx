@@ -20,6 +20,7 @@ import {
   useState,
   type MouseEvent,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
@@ -34,6 +35,7 @@ import {
   getCollapseHandle,
   getExpandHandle,
   getNodeClassNames,
+  shouldShowNodeRemoveButton,
 } from './CustomNode.utils';
 import {
   ExpandCollapseHandlesProps,
@@ -160,6 +162,7 @@ const ExpandCollapseHandles = memo((props: ExpandCollapseHandlesProps) => {
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
+  const { t } = useTranslation();
 
   const {
     onNodeCollapse,
@@ -262,6 +265,9 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
   const renderedNodeWidth = nodeWidth ?? NODE_WIDTH;
   const isSceneNodeDrillable = Boolean(sceneNode?.isExpandable && onSceneDrill);
+  // `data` is React Flow's untyped node payload, so a producer that omits
+  // sceneDrillLabel would render this icon-only button with no accessible name.
+  const drillLabel = sceneDrillLabel ?? t('label.zoom-in');
 
   const onExpand = useCallback(
     (direction: LineageDirection, depth = 1) => {
@@ -319,9 +325,12 @@ const CustomNodeV1 = (props: NodeProps) => {
             toggleShowColumnsWithLineageOnly
           }
         />
-        {isSelected && isEditMode && !isRootNode && isNodeRemovable && (
-          <LineageNodeRemoveButton onRemove={handleNodeRemove} />
-        )}
+        {shouldShowNodeRemoveButton({
+          isSelected,
+          isEditMode,
+          isRootNode: Boolean(isRootNode),
+          isNodeRemovable,
+        }) && <LineageNodeRemoveButton onRemove={handleNodeRemove} />}
       </>
     );
   }, [
@@ -411,9 +420,9 @@ const CustomNodeV1 = (props: NodeProps) => {
       <div className="lineage-node-content">
         {isSceneNodeDrillable && !isEditMode && (
           <button
-            aria-label={sceneDrillLabel}
+            aria-label={drillLabel}
             className="lineage-scene-drill-button nodrag nopan"
-            title={sceneDrillLabel}
+            title={drillLabel}
             type="button"
             onClick={handleSceneDrill}>
             <ZoomInIcon />

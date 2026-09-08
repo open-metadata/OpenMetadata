@@ -46,5 +46,10 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.goto(path);
   await waitForPageLoaded(page);
   await page.addStyleTag({ content: FREEZE_CSS });
-  await page.evaluate(() => document.scrollingElement?.scrollTo(0, 0));
+  // scrollingElement is null in quirks mode and is not guaranteed to be the
+  // scroll container; without a fallback the reset is silently skipped and the
+  // screenshot inherits whatever scroll offset the previous test left behind.
+  await page.evaluate(() =>
+    (document.scrollingElement ?? document.documentElement).scrollTo(0, 0)
+  );
 };

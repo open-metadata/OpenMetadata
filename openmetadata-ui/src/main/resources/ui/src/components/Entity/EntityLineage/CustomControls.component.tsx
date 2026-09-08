@@ -403,7 +403,13 @@ const CustomControls: FC<{
           isLayerBand
             ? t('label.zoom-in')
             : t('label.edit-entity', { entity: t('label.lineage') })
-        }>
+        }
+        // A disabled AriaButton drops the hover handlers Tooltip publishes via
+        // FocusableContext (useFocusable ignores that context when isDisabled),
+        // so the "zoom in" hint explaining *why* editing is unavailable would
+        // never render. Forcing Tooltip's own focusable wrapper keeps it
+        // reachable; only needed while disabled, so the enabled path stays flat.
+        triggerClassName={isLayerBand ? 'tw:inline-flex' : undefined}>
         <Button
           color={isEditMode ? 'primary' : 'secondary'}
           data-testid="edit-lineage"

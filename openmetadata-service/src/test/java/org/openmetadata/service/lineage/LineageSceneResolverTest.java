@@ -486,7 +486,7 @@ class LineageSceneResolverTest {
                 .withDomains(List.of(new EntityReference().withFullyQualifiedName("Engineering"))),
             null);
     String queryFilter =
-        LineageSceneResolver.fieldQuery(
+        LineageSceneQuery.fieldQuery(
             "service.fullyQualifiedName.keyword",
             "snowflake",
             "upstreamLineage.docId",
@@ -524,7 +524,7 @@ class LineageSceneResolverTest {
 
     JsonNode clause =
         JsonUtils.readTree(
-            JsonUtils.pojoToJson(LineageSceneResolver.domainAccessClause(subjectContext)));
+            JsonUtils.pojoToJson(LineageSceneQuery.domainAccessClause(subjectContext)));
     JsonNode conditions = clause.path("bool").path("should");
 
     assertEquals(3, conditions.size());
@@ -548,7 +548,7 @@ class LineageSceneResolverTest {
             null);
 
     JsonNode must =
-        JsonUtils.readTree(LineageSceneResolver.rootLineageParticipantQuery("", subjectContext))
+        JsonUtils.readTree(LineageSceneQuery.rootLineageParticipantQuery("", subjectContext))
             .at("/query/bool/must");
 
     assertEquals(2, must.size());

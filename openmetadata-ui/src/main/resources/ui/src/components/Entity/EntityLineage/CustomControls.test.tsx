@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
 
@@ -621,5 +625,53 @@ describe('CustomControls', () => {
     );
 
     expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+  });
+
+  describe('edit-lineage tooltip in the Layer band', () => {
+    const renderWithBand = (sceneBand?: LineageBand) => {
+      (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
+        isDQEnabled: false,
+        setLineageConfig: mockOnLineageConfigUpdate,
+        lineageConfig: {},
+        toggleEditMode: jest.fn(),
+        isEditMode: false,
+        platformView: LineagePlatformView.None,
+        sceneBand,
+      }));
+
+      // entityType comes from useRequiredParams (mocked to TABLE above), not props.
+      render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+        wrapper: Wrapper,
+      });
+    };
+
+    it('force-wraps the trigger while the edit button is disabled', () => {
+      renderWithBand(LineageBand.Layer);
+
+      expect(screen.getByTestId('edit-lineage')).toBeDisabled();
+      // A disabled AriaButton never receives Tooltip's hover handlers, so the
+      // "zoom in" hint only renders if Tooltip wraps it in its own focusable
+      // trigger. Asserting the prop keeps that wiring from being dropped again.
+      expect(Tooltip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'label.zoom-in',
+          triggerClassName: expect.any(String),
+        }),
+        expect.anything()
+      );
+    });
+
+    it('leaves the trigger unwrapped while the edit button is enabled', () => {
+      renderWithBand(LineageBand.Asset);
+
+      expect(screen.getByTestId('edit-lineage')).not.toBeDisabled();
+      expect(Tooltip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'label.edit-entity',
+          triggerClassName: undefined,
+        }),
+        expect.anything()
+      );
+    });
   });
 });

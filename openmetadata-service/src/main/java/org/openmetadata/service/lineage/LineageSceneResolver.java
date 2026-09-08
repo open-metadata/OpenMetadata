@@ -14,6 +14,8 @@
 package org.openmetadata.service.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.lineage.LineageSceneQuery.DOMAINS_FQN_FIELD;
+import static org.openmetadata.service.lineage.LineageSceneQuery.UPSTREAM_LINEAGE_DOC_ID_FIELD;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageListIfExist;
@@ -114,10 +116,8 @@ public class LineageSceneResolver {
   private static final String DATABASE_FQN_KEYWORD_FIELD = "database.fullyQualifiedName.keyword";
   private static final String DATABASE_SCHEMA_FQN_KEYWORD_FIELD =
       "databaseSchema.fullyQualifiedName.keyword";
-  private static final String DOMAINS_FQN_FIELD = "domains.fullyQualifiedName";
   private static final String DATA_PRODUCTS_FQN_FIELD = "dataProducts.fullyQualifiedName";
   private static final String ENTITY_FQN_FIELD = "fullyQualifiedName";
-  private static final String UPSTREAM_LINEAGE_DOC_ID_FIELD = "upstreamLineage.docId";
   private static final String UPSTREAM_LINEAGE_FROM_FQN_FIELD =
       "upstreamLineage.fromEntity.fullyQualifiedName.keyword";
   private static final int ROOT_ASSET_PAGE_SIZE = 25;
@@ -319,7 +319,7 @@ public class LineageSceneResolver {
             Entity.getSearchRepository()
                 .searchPlatformLineage(
                     "dataAsset",
-                    rootLineageParticipantQuery(queryFilter, subjectContext),
+                    LineageSceneQuery.rootLineageParticipantQuery(queryFilter, subjectContext),
                     includeDeleted,
                     subjectContext);
         hydrateMissingRootLineageAssets(lineage, band, includeDeleted, subjectContext);
@@ -451,7 +451,7 @@ public class LineageSceneResolver {
     DataQualityReport response =
         Entity.getSearchRepository()
             .genericAggregation(
-                rootAssetQuery(queryFilter, includeDeleted, subjectContext),
+                LineageSceneQuery.rootAssetQuery(queryFilter, includeDeleted, subjectContext),
                 "dataAsset",
                 SearchIndexUtils.buildAggregationTree(aggregation),
                 subjectContext);
@@ -485,64 +485,6 @@ public class LineageSceneResolver {
     return counts.size() >= ROOT_AGGREGATION_BUCKET_SIZE
         || counts.values().stream()
             .anyMatch(typeCounts -> typeCounts.size() >= ROOT_TYPE_AGGREGATION_BUCKET_SIZE);
-  }
-
-  private static String rootAssetQuery(
-      String queryFilter, boolean includeDeleted, SubjectContext subjectContext) {
-    List<Object> must = new ArrayList<>();
-    must.add(Map.of("term", Map.of("deleted", includeDeleted)));
-    addQueryFilterClause(must, queryFilter);
-    addDomainAccessClause(must, subjectContext);
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
-  }
-
-  static String rootLineageParticipantQuery(String queryFilter, SubjectContext subjectContext) {
-    List<Object> must = new ArrayList<>();
-    must.add(Map.of("exists", Map.of("field", UPSTREAM_LINEAGE_DOC_ID_FIELD)));
-    addQueryFilterClause(must, queryFilter);
-    addDomainAccessClause(must, subjectContext);
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
-  }
-
-  private static void addQueryFilterClause(List<Object> must, String queryFilter) {
-    if (!nullOrEmpty(queryFilter)) {
-      try {
-        JsonNode query = JsonUtils.readTree(queryFilter);
-        JsonNode innerQuery = query.has("query") ? query.path("query") : query;
-        if (!innerQuery.isMissingNode() && !innerQuery.isNull() && !innerQuery.isEmpty()) {
-          must.add(JsonUtils.convertValue(innerQuery, new TypeReference<Map<String, Object>>() {}));
-        }
-      } catch (RuntimeException exception) {
-        LOG.warn("Ignoring invalid lineage scene query filter", exception);
-      }
-    }
-  }
-
-  private static void addDomainAccessClause(List<Object> must, SubjectContext subjectContext) {
-    Map<String, Object> clause = domainAccessClause(subjectContext);
-    if (!clause.isEmpty()) {
-      must.add(clause);
-    }
-  }
-
-  static Map<String, Object> domainAccessClause(SubjectContext subjectContext) {
-    if (!LineageDomainFilter.shouldApply(subjectContext)) {
-      return Map.of();
-    }
-    List<Object> allowedDomains = new ArrayList<>();
-    allowedDomains.add(
-        Map.of(
-            "bool",
-            Map.of("must_not", List.of(Map.of("exists", Map.of("field", DOMAINS_FQN_FIELD))))));
-    for (EntityReference domain : subjectContext.getUserDomains()) {
-      if (domain == null || nullOrEmpty(domain.getFullyQualifiedName())) {
-        continue;
-      }
-      String domainFqn = domain.getFullyQualifiedName();
-      allowedDomains.add(Map.of("term", Map.of(DOMAINS_FQN_FIELD, domainFqn)));
-      allowedDomains.add(Map.of("prefix", Map.of(DOMAINS_FQN_FIELD, domainFqn + ".")));
-    }
-    return Map.of("bool", Map.of("should", allowedDomains, "minimum_should_match", 1));
   }
 
   private static String normalizedKey(String value) {
@@ -815,20 +757,12 @@ public class LineageSceneResolver {
     DataQualityReport response =
         Entity.getSearchRepository()
             .genericAggregation(
-                parentFieldQuery(parentFieldName, parentFqn, includeDeleted, subjectContext),
+                LineageSceneQuery.parentFieldQuery(
+                    parentFieldName, parentFqn, includeDeleted, subjectContext),
                 entityType,
                 SearchIndexUtils.buildAggregationTree(aggregation),
                 subjectContext);
     return aggregationCounts(response, bucketFieldName);
-  }
-
-  private static String parentFieldQuery(
-      String fieldName, String fieldValue, boolean includeDeleted, SubjectContext subjectContext) {
-    List<Object> must = new ArrayList<>();
-    must.add(Map.of("wildcard", Map.of(fieldName, fieldValue)));
-    must.add(Map.of("term", Map.of("deleted", includeDeleted)));
-    addDomainAccessClause(must, subjectContext);
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
   }
 
   static Map<String, Integer> aggregationCounts(DataQualityReport report, String bucketFieldName) {
@@ -1223,7 +1157,8 @@ public class LineageSceneResolver {
                     includeDeleted,
                     size,
                     sourceIncludes,
-                    fieldQuery(fieldName, fieldValue, requiredExistsField, subjectContext)),
+                    LineageSceneQuery.fieldQuery(
+                        fieldName, fieldValue, requiredExistsField, subjectContext)),
                 subjectContext);
     return parseSearchAssets(response);
   }
@@ -1245,7 +1180,7 @@ public class LineageSceneResolver {
                     includeDeleted,
                     size,
                     sourceFieldList(band),
-                    termsQuery(fieldName, fieldValues, subjectContext)),
+                    LineageSceneQuery.termsQuery(fieldName, fieldValues, subjectContext)),
                 subjectContext);
     return parseSearchAssets(response);
   }
@@ -1267,30 +1202,6 @@ public class LineageSceneResolver {
         .withDeleted(includeDeleted)
         .withIncludeSourceFields(sourceIncludes)
         .withIncludeAggregations(false);
-  }
-
-  static String fieldQuery(
-      String fieldName,
-      String fieldValue,
-      String requiredExistsField,
-      SubjectContext subjectContext) {
-    List<Object> must = new ArrayList<>();
-    must.add(
-        Map.of(
-            "wildcard", Map.of(fieldName, Map.of("value", fieldValue, "case_insensitive", true))));
-    if (!nullOrEmpty(requiredExistsField)) {
-      must.add(Map.of("exists", Map.of("field", requiredExistsField)));
-    }
-    addDomainAccessClause(must, subjectContext);
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
-  }
-
-  private static String termsQuery(
-      String fieldName, List<String> fieldValues, SubjectContext subjectContext) {
-    List<Object> must = new ArrayList<>();
-    must.add(Map.of("terms", Map.of(fieldName, fieldValues)));
-    addDomainAccessClause(must, subjectContext);
-    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
   }
 
   private static List<String> sourceFieldList(LineageBand band) {
