@@ -39,7 +39,6 @@ export const useChartColors = () => {
       ) as Record<keyof typeof CHART_COLOR_TOKENS, string>,
     // CSS variables are ambient DOM state; context changes intentionally
     // invalidate these reads even though their values are not callback inputs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [brandColors, theme]
   );
 };

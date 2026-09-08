@@ -65,8 +65,8 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
           ? LINK_TECHNICAL_SWATCH
           : LINK_ONTOLOGY_COLOR;
 
+        // A derivation may revisit the same node, so its position disambiguates repeated steps.
         return (
-          // eslint-disable-next-line react/no-array-index-key -- path may revisit a node; index disambiguates
           <div key={`${step}-${index}`}>
             <div className="tw:flex tw:items-center tw:gap-2.5">
               <span
