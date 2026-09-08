@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
@@ -135,15 +135,15 @@ export const generateSearchDropdownLabel = (
           </div>
         )}
         <div>
-          <span
-            className="dropdown-option-label tw:truncate tw:block"
-            title={option.label}>
-            <span>
-              {parse(
-                DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
-              )}
+          <Tooltip title={option.label}>
+            <span className="dropdown-option-label tw:truncate tw:block">
+              <span>
+                {parse(
+                  DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
+                )}
+              </span>
             </span>
-          </span>
+          </Tooltip>
           {option.description && (
             <span
               className="text-xs d-block tw:text-secondary"

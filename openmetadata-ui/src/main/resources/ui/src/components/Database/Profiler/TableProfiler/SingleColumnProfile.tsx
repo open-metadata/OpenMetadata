@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart } from 'recharts';
 import {
   GREEN_3,
   GREY_200,
@@ -123,18 +124,21 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Transi18next
-        i18nKey="message.no-profiler-card-message-with-link"
-        renderElement={
-          <a
-            aria-label={t('label.documentation')}
-            href={profilerDocsLink}
-            rel="noreferrer"
-            target="_blank"
-            title="Profiler Documentation"
+      <Tooltip title={t('label.documentation')}>
+        <span>
+          <Transi18next
+            i18nKey="message.no-profiler-card-message-with-link"
+            renderElement={
+              <a
+                aria-label={t('label.documentation')}
+                href={profilerDocsLink}
+                rel="noreferrer"
+                target="_blank"
+              />
+            }
           />
-        }
-      />
+        </span>
+      </Tooltip>
     );
   }, [isProfilingEnabled]);
   const columnCustomMetrics = useMemo(

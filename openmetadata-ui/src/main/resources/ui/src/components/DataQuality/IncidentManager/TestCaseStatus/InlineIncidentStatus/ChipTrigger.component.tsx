@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import {
   ChevronDown as ArrowDownIcon,
   ChevronUp as ArrowUpIcon,
@@ -114,15 +114,16 @@ export const ChipTrigger = ({
           color: palette.color,
         }}>
         {/* Truncation is visual only — the full label stays in the DOM for the
-            button's accessible name, and `title` surfaces it on hover. Both are
+            button's accessible name, and the Tooltip surfaces it on hover. Both are
             gated on the bound: an unbounded chip cannot clip, so a tooltip there
             would only repeat text the user can already read. */}
-        <span
-          className={isBounded ? 'tw:min-w-0 tw:truncate' : undefined}
-          data-testid={`${dataTestId}-label`}
-          title={isBounded ? chipLabel : undefined}>
-          {chipLabel}
-        </span>
+        <Tooltip isDisabled={!isBounded} title={chipLabel}>
+          <span
+            className={isBounded ? 'tw:min-w-0 tw:truncate' : undefined}
+            data-testid={`${dataTestId}-label`}>
+            {chipLabel}
+          </span>
+        </Tooltip>
         {hasEditPermission && (
           <ChevronIcon
             aria-hidden

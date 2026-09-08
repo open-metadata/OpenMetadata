@@ -14,6 +14,7 @@
 import {
   Input,
   SelectPopover,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
@@ -232,12 +233,13 @@ const MarketplaceSearchBar = ({
                 <div className="search-result-icon">
                   {getDataProductIconByUrl(dp.style?.iconURL)}
                 </div>
-                <Typography
-                  as="span"
-                  className="tw:truncate tw:block tw:text-sm"
-                  title={dp.displayName || dp.name}>
-                  {dp.displayName || dp.name}
-                </Typography>
+                <Tooltip title={dp.displayName || dp.name}>
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:block tw:text-sm">
+                    {dp.displayName || dp.name}
+                  </Typography>
+                </Tooltip>
               </div>
             ))}
           </div>
@@ -264,12 +266,13 @@ const MarketplaceSearchBar = ({
                 <div className="search-result-icon">
                   {getDomainIcon(domain.style?.iconURL)}
                 </div>
-                <Typography
-                  as="span"
-                  className="tw:truncate tw:block tw:text-sm"
-                  title={domain.displayName || domain.name}>
-                  {domain.displayName || domain.name}
-                </Typography>
+                <Tooltip title={domain.displayName || domain.name}>
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:block tw:text-sm">
+                    {domain.displayName || domain.name}
+                  </Typography>
+                </Tooltip>
               </div>
             ))}
           </div>
@@ -293,23 +296,26 @@ const MarketplaceSearchBar = ({
       <div className="tw:relative">
         <div className="tw:absolute tw:left-3 tw:top-1/2 tw:-translate-y-1/2 tw:z-10 tw:flex tw:items-center">
           {isNLPEnabled ? (
-            <button
-              className={`marketplace-nlq-button${
-                isNLPActive ? ' active' : ''
-              }`}
-              data-testid="marketplace-nlq-toggle"
+            <Tooltip
               title={
                 isNLPActive
                   ? t('message.natural-language-search-active')
                   : t('label.use-natural-language-search')
-              }
-              onClick={() => setNLPActive(!isNLPActive)}>
-              {isNLPActive ? (
-                <IconSuggestionsActive />
-              ) : (
-                <IconSuggestionsBlue />
-              )}
-            </button>
+              }>
+              <button
+                className={`marketplace-nlq-button${
+                  isNLPActive ? ' active' : ''
+                }`}
+                data-testid="marketplace-nlq-toggle"
+                type="button"
+                onClick={() => setNLPActive(!isNLPActive)}>
+                {isNLPActive ? (
+                  <IconSuggestionsActive />
+                ) : (
+                  <IconSuggestionsBlue />
+                )}
+              </button>
+            </Tooltip>
           ) : (
             <SearchLg className="tw:size-4 tw:text-text-tertiary" />
           )}
