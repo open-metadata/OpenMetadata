@@ -74,7 +74,8 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <jackson.version>2.18.9</jackson.version>
+    <!-- 2.18.10 clears CVE-2026-83557 and CVE-2026-19032 (patch over 2.18.9). -->
+    <jackson.version>2.18.10</jackson.version>
     <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
          import below and by openmetadata-service's BOM import. -->
     <awssdk.version>2.41.30</awssdk.version>
@@ -896,12 +897,13 @@
         <version>1.85</version>
       </dependency>
       <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
-           3.1.5 adds CVE-2026-59889. jsonschema2pojo-core is scope=provided so none of this
-           reaches the runtime classpath, but Snyk's Maven scanner walks the provided tree. -->
+           3.1.6 clears CVE-2026-83557 and CVE-2026-19032.
+           jsonschema2pojo-core is scope=provided so none of this reaches the runtime
+           classpath, but Snyk's Maven scanner walks the provided tree. -->
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>3.1.5</version>
+        <version>3.1.6</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
