@@ -15,7 +15,6 @@ Handle big query usage extraction
 from abc import ABC
 from copy import deepcopy
 from datetime import datetime
-from typing import Optional
 
 from google import auth
 
@@ -46,7 +45,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         self.database = self.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
@@ -82,7 +81,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         else:
             yield self.engine
 
-    def check_life_cycle_query(self, query_type: Optional[str], query_text: Optional[str]) -> bool:  # noqa: UP045
+    def check_life_cycle_query(self, query_type: str | None, query_text: str | None) -> bool:
         """
         returns true if query is to be used for life cycle processing.
 

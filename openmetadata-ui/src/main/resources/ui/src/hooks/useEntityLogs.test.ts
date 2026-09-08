@@ -72,6 +72,8 @@ jest.mock('../utils/ToastUtils', () => ({
 
 jest.mock('../components/common/LogViewerModal/useLogStream', () => ({
   useLogStream: jest.fn(),
+  getIngestionLogStreamUrl: (fqn: string, runId: string) =>
+    `/stream/${fqn}/${runId}`,
 }));
 
 const mockUseLogStream = useLogStream as jest.Mock;
@@ -215,7 +217,8 @@ describe('useEntityLogs', () => {
   });
 
   it('ignores a stale app-log response after runId changes', async () => {
-    let resolveFirstApp: (value: { name: string }) => void = () => undefined;
+    let resolveFirstApp: (value: { name: string }) => void = (_value) =>
+      undefined;
     (getApplicationByName as jest.Mock)
       .mockImplementationOnce(
         () =>
@@ -402,8 +405,7 @@ describe('useEntityLogs — SSE tail', () => {
     expect(result.current.hasMore).toBe(false);
     expect(getIngestionPipelineLogById).not.toHaveBeenCalled();
     expect(mockUseLogStream).toHaveBeenCalledWith({
-      fqn: 'svc.pipeline',
-      runId: 'run-1',
+      streamUrl: '/stream/svc.pipeline/run-1',
       enabled: true,
     });
   });

@@ -13,8 +13,15 @@ name: PostgreSQL PR RDF E2E Tests
 on:
   merge_group:
   workflow_dispatch:
-  # Same-repo PRs run under pull_request — unprivileged. Merges come
-  # from merge_group above, full dispatch runs from workflow_dispatch.
+  # `Playwright RDF (Knowledge Graph + Ontology)` is a REQUIRED status check on
+  # main, so there is deliberately no `paths:` filter here: a path-filtered
+  # workflow simply never reports on PRs outside the filter, and the required
+  # context would hang at "Expected — waiting for status" forever (same rationale
+  # as the `changes` pattern in java-playwright-nightly.yml, PR #32521). Path
+  # selection lives in the `changes` job below (dorny/paths-filter), which skips
+  # the expensive build/test jobs while the summary still publishes the required
+  # check name as green. Same-repo PRs are unprivileged under pull_request;
+  # merges use merge_group; full dispatch uses workflow_dispatch.
   pull_request:
     types:
       - labeled
@@ -22,47 +29,11 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths:
-      - ".github/actions/setup-openmetadata-test-environment/action.yml"
-      - ".github/workflows/playwright-knowledge-graph-postgresql-e2e.yml"
-      - "docker/run_local_docker.sh"
-      - "docker/run_local_docker_common.sh"
-      - "docker/run_local_docker_rdf.sh"
-      - "docker/validate_compose.py"
-      - "docker/development/docker-compose-fuseki.yml"
-      - "docker/development/docker-compose-postgres-fuseki.yml"
-      - "docs/rdf-local-development.md"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
-      - "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**"
-      - "openmetadata-service/src/test/java/org/openmetadata/service/rdf/**"
-      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
-      - "openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json"
-      - "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
-      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json"
-      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
-      - "openmetadata-spec/src/main/resources/rdf/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
-      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
-      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
-      - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"
-      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**"
-      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**"
-      - "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**"
-      - "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx"
-  # Fork PRs need cloud-connector secrets that pull_request events cannot
-  # access on forks. pull_request_target runs in the base repo's context
-  # so those secrets resolve, but requires a maintainer to apply the
-  # "safe to test" label first (enforced by the gate job below). Same-repo
-  # PRs already ran under pull_request above; the gate short-circuits on
-  # them via the head-repo check. Same paths filter as pull_request so
-  # the trigger stays scoped to RDF/ontology work.
+  # Fork PRs need cloud-connector secrets that pull_request events cannot access
+  # on forks. pull_request_target runs in the base repo's context so those
+  # secrets resolve, but requires a maintainer to apply the "safe to test" label
+  # first (enforced by the gate job below). Same-repo PRs already run under
+  # pull_request above; the gate short-circuits on them via the head-repo check.
   pull_request_target:
     types:
       - labeled
@@ -70,40 +41,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths:
-      - ".github/actions/setup-openmetadata-test-environment/action.yml"
-      - ".github/workflows/playwright-knowledge-graph-postgresql-e2e.yml"
-      - "docker/run_local_docker.sh"
-      - "docker/run_local_docker_common.sh"
-      - "docker/run_local_docker_rdf.sh"
-      - "docker/validate_compose.py"
-      - "docker/development/docker-compose-fuseki.yml"
-      - "docker/development/docker-compose-postgres-fuseki.yml"
-      - "docs/rdf-local-development.md"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
-      - "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**"
-      - "openmetadata-service/src/test/java/org/openmetadata/service/rdf/**"
-      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
-      - "openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json"
-      - "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
-      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json"
-      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
-      - "openmetadata-spec/src/main/resources/rdf/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
-      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
-      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
-      - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"
-      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**"
-      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**"
-      - "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**"
-      - "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx"
 
 permissions:
   contents: read
@@ -114,9 +51,73 @@ concurrency:
   # the other does the real work; sharing a group would let the "skip" event
   # cancel an in-flight real run.
   group: playwright-rdf-pr-postgresql-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
+  # Path selection for the required `Playwright RDF (Knowledge Graph + Ontology)`
+  # check. The workflow itself has no `paths:` filter (see the trigger comment);
+  # this job decides whether the RDF-related paths were touched. When they were
+  # not, build/tests are skipped but the summary still publishes the required
+  # check as green so branch protection is satisfied. This is the single source
+  # of truth for "RDF/ontology code changed" — keep the filter list here.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      rdf: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.rdf }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        with:
+          # Fork PRs under pull_request_target: dorny/paths-filter uses the
+          # GitHub API to enumerate changed files rather than checking out fork
+          # code, so no untrusted execution here.
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            rdf:
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/workflows/playwright-knowledge-graph-postgresql-e2e.yml'
+              - 'docker/run_local_docker.sh'
+              - 'docker/run_local_docker_common.sh'
+              - 'docker/run_local_docker_rdf.sh'
+              - 'docker/validate_compose.py'
+              - 'docker/development/docker-compose-fuseki.yml'
+              - 'docker/development/docker-compose-postgres-fuseki.yml'
+              - 'docs/rdf-local-development.md'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/rdf/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json'
+              - 'openmetadata-spec/src/main/resources/rdf/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx'
+
   # Fork-vs-same-repo PR arbitration. Same pattern as
   # playwright-postgresql-e2e.yml (established by #30485):
   #   merge_group / workflow_dispatch → always run
@@ -125,6 +126,9 @@ jobs:
   #   same-repo PR + pull_request     → run
   #   fork PR + pull_request_target + "safe to test" (reconciled) → run
   #   everything else                 → skip
+  # `should_run` only encodes the fork/label/authoritative-event decision.
+  # The paths decision comes from the `changes` job above; build/tests need
+  # both to be true.
   gate:
     runs-on: ubuntu-latest
     permissions:
@@ -194,9 +198,9 @@ jobs:
           decide false
 
   build:
-    needs: gate
+    needs: [gate, changes]
     runs-on: ubuntu-latest
-    if: ${{ needs.gate.outputs.should_run == 'true' }}
+    if: ${{ needs.gate.outputs.should_run == 'true' && needs.changes.outputs.rdf == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -217,8 +221,9 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Cache Maven Dependencies
-        uses: actions/cache@v5
+      - name: Restore Maven Dependencies
+        id: maven-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -243,8 +248,22 @@ jobs:
       - name: Build with Maven
         run: mvn -DskipTests clean package
 
+      - name: Save Maven Dependencies
+        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
+        # The restore above stays ungated so forks are not forced into a cold
+        # ~/.m2 download; only the write into main's cache scope is blocked.
+        if: >-
+          steps.maven-cache.outputs.cache-hit != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+
       - name: Upload OpenMetadata distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -258,13 +277,13 @@ jobs:
     # expression), so a redundant sibling event's synthetic-green cannot
     # satisfy branch protection before the real pipeline finishes.
     name: RDF Playwright execution
-    needs: [gate, build]
+    needs: [gate, changes, build]
     runs-on: ubuntu-latest
     # The previous fork short-circuit (`!github.event.pull_request.head.repo.fork`)
     # is now handled by the gate — fork PRs only reach this point when
     # pull_request_target fires AND the reconciled labels include
     # "safe to test", so it is safe to run the pipeline with secrets.
-    if: ${{ !cancelled() && needs.gate.outputs.should_run == 'true' && needs.build.result == 'success' }}
+    if: ${{ !cancelled() && needs.gate.outputs.should_run == 'true' && needs.changes.outputs.rdf == 'true' && needs.build.result == 'success' }}
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -390,7 +409,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Playwright diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -443,7 +462,7 @@ jobs:
         )
       }}
     if: ${{ always() && !cancelled() }}
-    needs: [gate, build, playwright-rdf-postgresql]
+    needs: [gate, changes, build, playwright-rdf-postgresql]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -458,6 +477,15 @@ jobs:
           echo "::error::gate did not succeed (result=${{ needs.gate.result }}, should_run=${{ needs.gate.outputs.should_run }}). Refusing synthetic green."
           exit 1
 
+      # Same treatment for the paths detector: an unset `rdf` output would
+      # look like "no paths changed" and silently pass without ever running
+      # the tests.
+      - name: Guard against missing changes decision
+        if: ${{ needs.changes.result != 'success' }}
+        run: |
+          echo "::error::changes did not succeed (result=${{ needs.changes.result }}, rdf=${{ needs.changes.outputs.rdf }}). Refusing synthetic green."
+          exit 1
+
       # Short-circuit when gate decided should_run=false. The underlying
       # jobs are skipped in that case (redundant pull_request_target for
       # a same-repo PR, or fork PR without safe-to-test), so there's
@@ -470,11 +498,21 @@ jobs:
           echo "Gate decided should_run=false for event=${{ github.event_name }}."
           echo "This run is intentionally skipped; the authoritative required check comes from the sibling event's run."
 
+      # Authoritative event but no RDF/ontology paths changed. Build and
+      # tests were skipped by design; publish the required check name as
+      # green so branch protection is satisfied on PRs unrelated to RDF.
+      - name: Report no-paths-changed run as green
+        if: ${{ needs.gate.outputs.should_run == 'true' && needs.changes.outputs.rdf != 'true' }}
+        run: |
+          echo "No RDF/ontology paths changed for event=${{ github.event_name }}."
+          echo "Build and Playwright execution were skipped; required check reports green."
+
       # Propagate real upstream failures under the required check name
       # so the PR fails visibly rather than falling through to green.
+      # Only fires when we actually asked the pipeline to run.
       - name: Fail on upstream failure
         if: |
-          needs.gate.outputs.should_run == 'true' && (
+          needs.gate.outputs.should_run == 'true' && needs.changes.outputs.rdf == 'true' && (
             needs.build.result != 'success' ||
             needs.playwright-rdf-postgresql.result != 'success'
           )

@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -101,22 +106,22 @@ export class MlModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/mlmodelServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/mlmodels', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'MlModelClass.create',
+      createPath: '/api/v1/services/mlmodelServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'MlModelClass.create',
+      createPath: '/api/v1/mlmodels',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
-
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -127,17 +132,16 @@ export class MlModelClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/mlmodels/${this.entityResponseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/mlmodels/${this.entityResponseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'MlModelClass.patch');
 
     return {
       entity: response.body,

@@ -18,6 +18,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
@@ -56,9 +57,44 @@ public class ConfigResourceIT {
 
     assertNull(auth.getLdapConfiguration(), "LDAP configuration should be excluded");
     assertNull(auth.getOidcConfiguration(), "OIDC configuration should be excluded");
-    assertTrue(
-        auth.getPublicKeyUrls() == null || auth.getPublicKeyUrls().isEmpty(),
-        "Public key URLs should be empty or null");
+  }
+
+  /**
+   * The public /config/auth endpoint must mirror the persisted authentication configuration for the
+   * fields the login flow depends on — it must not fall back to schema defaults. Regression guard
+   * for #29597, where a configured responseType of 'code' was served back as the default 'id_token'
+   * (and populated publicKeyUrls as an empty list). Cross-checks the public endpoint against the
+   * admin /security/config endpoint, which returns the true persisted configuration.
+   */
+  @Test
+  void testAuthConfigMirrorsPersistedLoginFields(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String publicResponse =
+        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/system/config/auth", null);
+    AuthenticationConfiguration publicAuth =
+        OBJECT_MAPPER.readValue(publicResponse, AuthenticationConfiguration.class);
+
+    String securityResponse =
+        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/system/security/config", null);
+    AuthenticationConfiguration persistedAuth =
+        OBJECT_MAPPER
+            .readValue(securityResponse, SecurityConfiguration.class)
+            .getAuthenticationConfiguration();
+
+    assertNotNull(persistedAuth, "Persisted authentication configuration should be present");
+    assertEquals(
+        persistedAuth.getResponseType(),
+        publicAuth.getResponseType(),
+        "Public /config/auth responseType must match the persisted configuration");
+    assertEquals(
+        persistedAuth.getPublicKeyUrls(),
+        publicAuth.getPublicKeyUrls(),
+        "Public /config/auth publicKeyUrls must match the persisted configuration");
+    assertEquals(
+        persistedAuth.getTokenValidationAlgorithm(),
+        publicAuth.getTokenValidationAlgorithm(),
+        "Public /config/auth tokenValidationAlgorithm must match the persisted configuration");
   }
 
   @Test

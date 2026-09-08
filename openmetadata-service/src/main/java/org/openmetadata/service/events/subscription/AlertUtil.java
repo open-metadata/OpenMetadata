@@ -15,8 +15,8 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.CONVERSATION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
@@ -29,13 +29,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
@@ -45,8 +49,11 @@ import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
+import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -59,6 +66,8 @@ public final class AlertUtil {
   // Bounded + thread-safe — also evaluated from EventSubscriptionScheduler parallel streams.
   private static final Cache<String, Expression> COMPILED_CONDITIONS =
       Caffeine.newBuilder().maximumSize(1000).build();
+
+  private static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
 
   private AlertUtil() {}
 
@@ -153,7 +162,7 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (event.getEntityType().equals(THREAD)) {
+    if (event.getEntityType().equals(CONVERSATION) || event.getEntityType().equals(Entity.THREAD)) {
       // Observability alerts (those with trigger actions) react to a measurable signal the
       // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
       // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
@@ -161,7 +170,9 @@ public final class AlertUtil {
       if (!nullOrEmpty(config.getActions())) {
         return false;
       }
-      return shouldTriggerAlertForThread(event, config.getResources().get(0));
+      return event.getEntityType().equals(CONVERSATION)
+          ? shouldTriggerAlertForConversation(event, config.getResources().get(0))
+          : shouldTriggerAlertForThread(event, config.getResources().get(0));
     }
 
     // Test Suite
@@ -177,6 +188,18 @@ public final class AlertUtil {
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
+  private static boolean shouldTriggerAlertForConversation(ChangeEvent event, String resource) {
+    Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+    if (conversation == null) {
+      return false;
+    }
+    if (CONVERSATION.equalsIgnoreCase(resource)) {
+      return true;
+    }
+    return conversation.getEntityRef() != null
+        && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
+  }
+
   // Announcement is its own entity since #25894; task stays until #30559 retires the legacy path.
   private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("task", "conversation");
 
@@ -188,7 +211,6 @@ public final class AlertUtil {
     if (THREAD_TYPE_RESOURCES.contains(resource.toLowerCase(Locale.ROOT))) {
       return resource.equalsIgnoreCase(thread.getType().value());
     }
-    // Entity-type resource (e.g., "glossaryTerm"): match threads whose parent entity type matches
     return thread.getEntityRef() != null
         && resource.equalsIgnoreCase(thread.getEntityRef().getType());
   }
@@ -220,6 +242,14 @@ public final class AlertUtil {
   }
 
   public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, String reason, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(reason)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
       TestDestinationStatus.Status status, StatusContext statusContext) {
     return new TestDestinationStatus()
         .withStatus(status)
@@ -234,16 +264,41 @@ public final class AlertUtil {
   }
 
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
-      EventSubscription eventSubscription, Map<ChangeEvent, Set<UUID>> events) {
+      EventSubscription eventSubscription,
+      Map<ChangeEvent, Set<UUID>> events,
+      Long startingTimestamp) {
+    Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
     return events.entrySet().stream()
         .filter(
             entry ->
-                checkIfChangeEventIsAllowed(entry.getKey(), eventSubscription.getFilteringRules()))
+                checkIfChangeEventIsAllowed(
+                    entry.getKey(), eventSubscription.getFilteringRules(), watermark))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  /**
+   * Only notification and observability subscriptions suppress historical executions. Custom and
+   * governance-workflow consumers drive integrations that may legitimately need the full stream.
+   */
+  public static Long alertingWatermark(
+      EventSubscription eventSubscription, Long startingTimestamp) {
+    CreateEventSubscription.AlertType alertType = eventSubscription.getAlertType();
+    boolean alerting =
+        alertType == CreateEventSubscription.AlertType.NOTIFICATION
+            || alertType == CreateEventSubscription.AlertType.OBSERVABILITY;
+    return alerting ? startingTimestamp : null;
   }
 
   public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
+    return checkIfChangeEventIsAllowed(event, filteringRules, null);
+  }
+
+  public static boolean checkIfChangeEventIsAllowed(
+      ChangeEvent event, FilteringRules filteringRules, Long startingTimestamp) {
+    if (isStalePipelineExecution(event, startingTimestamp)) {
+      return false;
+    }
     boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
     if (triggerChangeEvent) {
@@ -267,17 +322,80 @@ public final class AlertUtil {
             .eventSubscriptionDAO()
             .getSubscriberExtension(eventSubscriptionId.toString(), OFFSET_EXTENSION);
     if (json != null) {
-      EventSubscriptionOffset offsetFromDb =
-          JsonUtils.readValue(json, EventSubscriptionOffset.class);
-      startingOffset = offsetFromDb.getStartingOffset();
-      currentOffset = offsetFromDb.getCurrentOffset();
-    } else {
-      currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-      startingOffset = currentOffset;
+      return JsonUtils.readValue(json, EventSubscriptionOffset.class);
     }
-    return new EventSubscriptionOffset()
-        .withCurrentOffset(currentOffset)
-        .withStartingOffset(startingOffset);
+    currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    startingOffset = currentOffset;
+    long now = System.currentTimeMillis();
+    EventSubscriptionOffset offset =
+        new EventSubscriptionOffset()
+            .withCurrentOffset(currentOffset)
+            .withStartingOffset(startingOffset)
+            .withStartingTimestamp(now)
+            .withTimestamp(now);
+    // Persisted here rather than at the first commit. Until a row exists every server restart and
+    // every subscription edit re-derives this, which would drift the watermark forward and silently
+    // suppress executions that failed after the alert was created.
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSubscriberExtension(
+            eventSubscriptionId.toString(),
+            OFFSET_EXTENSION,
+            "eventSubscriptionOffset",
+            JsonUtils.pojoToJson(offset));
+    return offset;
+  }
+
+  /**
+   * True when a pipeline execution finished before this subscription started alerting. Anything we
+   * cannot place in time is delivered: a suppression rule that cannot decide must not suppress.
+   */
+  public static boolean isStalePipelineExecution(ChangeEvent event, Long startingTimestamp) {
+    if (startingTimestamp == null
+        || event == null
+        || !Entity.PIPELINE.equals(event.getEntityType())
+        || event.getChangeDescription() == null) {
+      return false;
+    }
+    for (FieldChange fieldChange : listOrEmpty(event.getChangeDescription().getFieldsUpdated())) {
+      if (!FIELD_PIPELINE_STATUS.equals(fieldChange.getName())
+          || fieldChange.getNewValue() == null) {
+        continue;
+      }
+      PipelineStatus status;
+      try {
+        status = JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
+      } catch (Exception ex) {
+        // This filter runs on every pipeline event in the batch, including subscriptions with no
+        // pipelineStatus rule, so a throw here would drop the whole delivery batch.
+        LOG.warn("Could not read pipelineStatus for the staleness check, delivering", ex);
+        return false;
+      }
+      OptionalLong executedAt = effectiveExecutionTime(status);
+      return executedAt.isPresent() && executedAt.getAsLong() < startingTimestamp;
+    }
+    return false;
+  }
+
+  /**
+   * Wall-clock time the execution finished. {@code PipelineStatus.timestamp} is deliberately not a
+   * fallback: it is the per-execution unique key, and connectors fill it with anything stable, from
+   * Airflow's logical date to the ingestion clock.
+   */
+  static OptionalLong effectiveExecutionTime(PipelineStatus status) {
+    if (status.getEndTime() != null) {
+      return OptionalLong.of(status.getEndTime());
+    }
+    OptionalLong taskEnd = maxTaskTime(status, Status::getEndTime);
+    return taskEnd.isPresent() ? taskEnd : maxTaskTime(status, Status::getStartTime);
+  }
+
+  private static OptionalLong maxTaskTime(PipelineStatus status, Function<Status, Long> extractor) {
+    return listOrEmpty(status.getTaskStatus()).stream()
+        .map(extractor)
+        .filter(Objects::nonNull)
+        .mapToLong(Long::longValue)
+        .max();
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(

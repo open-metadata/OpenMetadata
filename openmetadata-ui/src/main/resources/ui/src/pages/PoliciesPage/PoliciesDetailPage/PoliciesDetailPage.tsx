@@ -524,9 +524,12 @@ const PoliciesDetailPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.policy'),
-      })}>
+      pageTitle={
+        policyName ||
+        t('label.entity-detail-plural', {
+          entity: t('label.policy'),
+        })
+      }>
       <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 

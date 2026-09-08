@@ -12,12 +12,15 @@
  */
 
 import {
+  canFitGraph,
   computeHighlight,
   computeLinkHighlight,
   expandGraphLayout,
+  getCameraRecoveryPosition,
   getVisibleLabelIds,
   idOf,
   linkKey,
+  resolveGraphNodeId,
   viewGraph,
 } from './KnowledgeGraph3D.utils';
 import { Graph3DData, GraphLink3D, GraphNode3D } from './types';
@@ -46,6 +49,59 @@ describe('idOf', () => {
 
   it('returns the id from an object endpoint', () => {
     expect(idOf({ id: 'C1' } as unknown as GraphNode3D)).toBe('C1');
+  });
+});
+
+describe('canFitGraph', () => {
+  it('requires a measured viewport and finite coordinates for every node', () => {
+    const nodes = [
+      makeNode({ id: 'A', x: 0, y: 10, z: -4 }),
+      makeNode({ id: 'B', x: 20, y: -5, z: 8 }),
+    ];
+
+    expect(canFitGraph(nodes, 800, 600, 60)).toBe(true);
+    expect(canFitGraph(nodes, 100, 600, 60)).toBe(false);
+    expect(
+      canFitGraph([...nodes, makeNode({ id: 'C', x: 2, y: 3 })], 800, 600, 60)
+    ).toBe(false);
+  });
+});
+
+describe('getCameraRecoveryPosition', () => {
+  it('recovers a non-finite camera to a deterministic position', () => {
+    expect(
+      getCameraRecoveryPosition({ x: Number.NaN, y: 0, z: 0 }, 160)
+    ).toEqual({ x: 0, y: 0, z: 160 });
+  });
+
+  it('pulls a valid camera out to the minimum distance', () => {
+    expect(getCameraRecoveryPosition({ x: 30, y: 40, z: 0 }, 100)).toEqual({
+      x: 60,
+      y: 80,
+      z: 0,
+    });
+  });
+
+  it('leaves a camera beyond the minimum distance unchanged', () => {
+    expect(getCameraRecoveryPosition({ x: 0, y: 0, z: 320 }, 160)).toBeNull();
+  });
+});
+
+describe('resolveGraphNodeId', () => {
+  const nodes = [
+    makeNode({ id: 'plain-id' }),
+    makeNode({ id: 'https://open-metadata.org/entity/table/table-id' }),
+  ];
+
+  it('resolves both direct ids and RDF entity IRIs', () => {
+    expect(resolveGraphNodeId(nodes, 'plain-id')).toBe('plain-id');
+    expect(resolveGraphNodeId(nodes, 'table-id')).toBe(
+      'https://open-metadata.org/entity/table/table-id'
+    );
+  });
+
+  it('returns undefined when the focus entity is outside the graph', () => {
+    expect(resolveGraphNodeId(nodes, 'missing')).toBeUndefined();
   });
 });
 

@@ -67,6 +67,35 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showInfoToast: jest.fn(),
 }));
 
+// Default returns a shape that keeps pre-existing tests (which don't touch
+// this mock) working — they call startTokenExpiryTimer during mount, which
+// destructures isExpired/timeoutExpiry from the return value.
+const mockGetOidcToken = jest.fn().mockResolvedValue('');
+const mockExtractDetailsFromToken = jest.fn().mockReturnValue({
+  exp: 0,
+  isExpired: true,
+  timeoutExpiry: 0,
+});
+
+jest.mock('../../../utils/SwTokenStorageUtils', () => {
+  const actual = jest.requireActual('../../../utils/SwTokenStorageUtils');
+
+  return {
+    ...actual,
+    getOidcToken: (...args: unknown[]) => mockGetOidcToken(...args),
+  };
+});
+
+jest.mock('../../../utils/AuthProvider.util', () => {
+  const actual = jest.requireActual('../../../utils/AuthProvider.util');
+
+  return {
+    ...actual,
+    extractDetailsFromToken: (token: string) =>
+      mockExtractDetailsFromToken(token),
+  };
+});
+
 const mockRefreshToken = jest
   .fn()
   .mockImplementation(() => Promise.resolve('newToken'));
@@ -571,5 +600,159 @@ describe('Test axios response interceptor', () => {
     expect(mockRefreshToken).toHaveBeenCalled();
     expect(mockAxios).toHaveBeenCalledWith(mockError.config);
     expect(result).toEqual({ data: 'ok' });
+  });
+});
+
+// Regression tests for the visibility handler. Before this branch every
+// visibilitychange event fired tokenService.refreshToken() when the stored
+// token was empty or lacked an `exp` claim — hitting the IdP on every tab
+// focus for a signed-out session or an opaque token. The handler now
+// early-returns in both cases, and only near-expiry / expired tokens
+// trigger a refresh.
+describe('AuthProvider visibility handler', () => {
+  const ConsumerComponent = () => <div>ConsumerComponent</div>;
+  const WrapperComponent = () => (
+    <AuthProvider childComponentType={ConsumerComponent}>
+      <ConsumerComponent />
+    </AuthProvider>
+  );
+
+  const fireTabVisible = async () => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+    await act(async () => {
+      fireEvent(document, new Event('visibilitychange'));
+    });
+    // Let the handler's async chain resolve
+    // (getOidcToken → extractDetailsFromToken → branch).
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+
+  beforeEach(() => {
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('newToken');
+    mockGetOidcToken.mockReset();
+    mockGetOidcToken.mockResolvedValue('');
+    mockExtractDetailsFromToken.mockReset();
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: 0,
+      isExpired: true,
+      timeoutExpiry: 0,
+    });
+  });
+
+  it('does NOT call refreshToken when there is no token in storage', async () => {
+    mockGetOidcToken.mockResolvedValue('');
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    // Clear counts from mount-time work so the visibility-event assertion
+    // only reflects the handler under test.
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call refreshToken when the token has no exp claim', async () => {
+    mockGetOidcToken.mockResolvedValue('opaque-token');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: undefined,
+      isExpired: false,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call refreshToken for an opaque/undecodable token (jwt-decode threw)', async () => {
+    // When jwt-decode throws, extractDetailsFromToken falls through to
+    // {exp: 0, isExpired: true, timeoutExpiry: 0}. Naïvely ordering
+    // `if (isExpired)` first would fire refresh on every focus for an
+    // opaque token. The invalid-exp guard MUST come before the isExpired
+    // branch. (Greptile P1 on #31819)
+    mockGetOidcToken.mockResolvedValue('not-a-jwt');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: 0,
+      isExpired: true,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call refreshToken when the token is fresh (outside the pre-expiry buffer)', async () => {
+    mockGetOidcToken.mockResolvedValue('fresh-jwt');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: Math.floor(Date.now() / 1000) + 600,
+      isExpired: false,
+      timeoutExpiry: 540_000,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('DOES call refreshToken when the token has expired', async () => {
+    mockGetOidcToken.mockResolvedValue('expired-jwt');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: Math.floor(Date.now() / 1000) - 60,
+      isExpired: true,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('DOES call refreshToken when the token is within the pre-expiry buffer', async () => {
+    mockGetOidcToken.mockResolvedValue('near-expiry-jwt');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: Math.floor(Date.now() / 1000) + 30,
+      isExpired: false,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
   });
 });

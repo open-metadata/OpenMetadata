@@ -82,11 +82,11 @@ describe('KnowledgePageListRightPanel', () => {
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    expect(
-      screen.getByTestId('create-error-placeholder-label.quick-link-plural')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
 
-    const addQuickLinkBtn = screen.getByTestId('add-quick-link');
+    const addQuickLinkBtn = screen.getByRole('button', {
+      name: 'label.create-entity',
+    });
 
     expect(addQuickLinkBtn).toBeInTheDocument();
 

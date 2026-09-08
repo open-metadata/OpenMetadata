@@ -255,7 +255,8 @@ class TagClassBase {
     } as Tag;
   }
   public getAutoClassificationComponent = (
-    _isClassification: boolean
+    _isClassification: boolean,
+    _isParentAutoClassificationEnabled?: boolean
   ): React.ReactElement | null => {
     return null;
   };

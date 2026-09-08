@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -56,9 +57,9 @@ import {
   tagTableObject,
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { DataModelTableProps } from './DataModelDetails.interface';
 
 const DataModelTable = ({
@@ -294,7 +295,26 @@ const DataModelTable = ({
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.data-model-plural'),
+                })}
+                variant="blank"
+              />
+            )}
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

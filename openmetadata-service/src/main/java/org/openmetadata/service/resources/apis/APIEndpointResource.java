@@ -27,6 +27,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -380,7 +381,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleAPIEndpoints",
@@ -406,7 +407,17 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
-      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
     return deleteStaleEntities(securityContext, request);
   }
 
@@ -520,9 +531,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -550,9 +559,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @PUT

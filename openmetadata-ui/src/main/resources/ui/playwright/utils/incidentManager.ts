@@ -255,21 +255,24 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await page.click(`.ant-popover [title="${user.displayName}"]`);
   await updateIncident;
 
-  await page
-    .getByTestId('assignee')
-    .getByTestId('owner-link')
-    .first()
-    .waitFor();
-
   const taskHeaderAssignee = page.getByTestId(
     'incident-manager-task-header-container'
   );
+  // List pages can contain several incidents, so a generic first() may assert
+  // against an unrelated unassigned row instead of the incident just updated.
+  const incidentAssignee = testCaseName
+    ? page
+        .locator('tr')
+        .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
+        .first()
+        .getByTestId('assignee')
+    : page.getByTestId('assignee').first();
 
   await expect(
     (await taskHeaderAssignee.isVisible().catch(() => false))
       ? taskHeaderAssignee
-      : page.getByTestId('assignee').first()
-  ).toContainText(user.displayName);
+      : incidentAssignee
+  ).toContainText(user.displayName, { timeout: 30_000 });
 };
 
 export const assignIncident = async (data: {

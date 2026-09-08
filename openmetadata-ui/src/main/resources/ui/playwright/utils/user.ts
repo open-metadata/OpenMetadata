@@ -23,11 +23,12 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -69,6 +70,7 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);
@@ -116,44 +118,24 @@ export const deletedUserChecks = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
-  await page
+
+  const listLoader = page
     .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
-  const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=*&from=0&size=*'
+    .getByTestId('loader');
+  const userRow = page.getByTestId(userName);
+
+  await listLoader.waitFor({ state: 'detached' });
+
+  const searchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=user&from=0&size=*'
   );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
-  const searchBar = page.getByTestId('searchbar');
+  await page.getByTestId('searchbar').fill(userName);
+  await searchResponse;
+  await listLoader.waitFor({ state: 'detached' });
 
-  await expect
-    .poll(
-      async () => {
-        const searchRequest = page.waitForResponse('/api/v1/search/query*');
-        await searchBar.fill('');
-        await searchBar.fill(userName);
-        await searchRequest;
-        await loaderPromise.catch(() => undefined);
+  await expect(userRow).toBeVisible();
 
-        return await page.getByTestId(userName).count();
-      },
-      {
-        timeout: 60000,
-        intervals: [1000, 2000, 5000],
-        message: `Timed out waiting for user ${userName} to become visible in the user list`,
-      }
-    )
-    .toBeGreaterThan(0);
-
-  await userResponse.catch(() => undefined);
-  await page.getByTestId(userName).click();
+  await userRow.click();
 };
 
 export const softDeleteUserProfilePage = async (
@@ -289,7 +271,7 @@ export const editDescription = async (
   await page.click('[data-testid="edit-description"]');
 
   // Clear and type the new description
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await fillDescriptionBox(page, updatedDescription);
 
   const updateDescription = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save"]');
@@ -309,9 +291,7 @@ export const handleAdminUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -321,11 +301,7 @@ export const handleUserUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
-  );
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -721,14 +697,17 @@ export const addUser = async (
   }
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const initialRolesSearchResponse = page.waitForResponse(
+    '/api/v1/roles/search?*'
+  );
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles/search?*');
+  await initialRolesSearchResponse;
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);
@@ -796,7 +775,7 @@ export const checkForUserExistError = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);

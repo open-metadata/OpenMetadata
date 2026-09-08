@@ -13,6 +13,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.core.statement.StatementException;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -164,12 +165,43 @@ public interface JobDAO {
   List<BackgroundJob> listCsvJobsByUser(
       @Bind("createdBy") String createdBy, @Bind("limit") int limit);
 
+  // Omits `result` for the same reason the list query does: a completed export
+  // stores the whole CSV there, and this is the endpoint clients poll for status.
+  // Downloads read the payload through findCsvJobResultById.
   @SqlQuery(
       "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
-          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
           + "FROM background_jobs WHERE id = :id AND jobType IN ('CSV_IMPORT', 'CSV_EXPORT')")
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob findCsvJobById(@Bind("id") long id);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE createdBy = :createdBy "
+          + "AND jobType = 'ONTOLOGY_BULK' ORDER BY createdAt DESC LIMIT :limit")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  List<BackgroundJob> listOntologyBulkJobsByUser(
+      @Bind("createdBy") String createdBy, @Bind("limit") int limit);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_BULK'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findOntologyBulkJobById(@Bind("id") long id);
+
+  @SqlQuery(
+      "SELECT result FROM background_jobs WHERE id = :id "
+          + "AND jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT')")
+  String findCsvJobResultById(@Bind("id") long id);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'AUDIT_EXPORT'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findAuditExportJobById(@Bind("id") long id);
 
   @SqlUpdate(
       "UPDATE background_jobs SET status = :status, message = :message, "
@@ -229,11 +261,47 @@ public interface JobDAO {
   @SqlQuery("SELECT cancelRequested FROM background_jobs WHERE id = :id")
   Boolean isCancelRequested(@Bind("id") long id);
 
+  // Workers heartbeat updatedAt, so the cutoff prevents a rolling deployment from failing jobs
+  // owned by another server. Only job types managed by GenericBackgroundWorker belong here.
   @SqlUpdate(
-      "UPDATE background_jobs SET status = 'FAILED', error = 'Server restarted before the job completed.', "
-          + "message = 'Server restarted before the job completed.', updatedAt = :updatedAt, completedAt = :updatedAt "
-          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT') AND status = 'RUNNING'")
-  int markStaleRunningCsvJobsFailed(@Bind("updatedAt") long updatedAt);
+      "UPDATE background_jobs SET status = 'FAILED', error = 'Job stopped responding and was marked failed.', "
+          + "message = 'Job stopped responding and was marked failed.', updatedAt = :updatedAt, completedAt = :updatedAt "
+          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK') "
+          + "AND status = 'RUNNING' AND updatedAt < :staleBefore")
+  int markStaleRunningJobsFailed(
+      @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);
+
+  @SqlUpdate("UPDATE background_jobs SET updatedAt = :updatedAt WHERE id = :id")
+  void touchJob(@Bind("id") long id, @Bind("updatedAt") long updatedAt);
+
+  // Retention tier 1 — the hard bound. Ids beyond the newest `keep` exports for
+  // this user, whose payload is still held.
+  @SqlQuery(
+      "SELECT id FROM background_jobs WHERE createdBy = :createdBy "
+          + "AND jobType IN ('CSV_EXPORT', 'AUDIT_EXPORT') "
+          + "AND result IS NOT NULL ORDER BY id DESC LIMIT :limit OFFSET :keep")
+  List<Long> findExportResultsOverUserCap(
+      @Bind("createdBy") String createdBy, @Bind("keep") int keep, @Bind("limit") int limit);
+
+  @SqlUpdate("UPDATE background_jobs SET result = NULL WHERE id IN (<ids>)")
+  int releaseExportResults(@BindList("ids") List<Long> ids);
+
+  // Retention tier 2 — release payloads past the TTL, keeping the row so the
+  // job stays visible in the tray's history.
+  @SqlUpdate(
+      "UPDATE background_jobs SET result = NULL WHERE jobType IN ('CSV_EXPORT', 'AUDIT_EXPORT') "
+          + "AND result IS NOT NULL AND completedAt IS NOT NULL AND completedAt < :cutoff")
+  int releaseExpiredExportResults(@Bind("cutoff") long cutoff);
+
+  // Retention tier 3 — prune terminal rows outright. PENDING/RUNNING are never
+  // pruned: a PENDING job with a future runAt has not had its turn yet.
+  @SqlQuery(
+      "SELECT id FROM background_jobs WHERE status IN ('COMPLETED', 'FAILED', 'CANCELLED') "
+          + "AND updatedAt < :cutoff ORDER BY id LIMIT :limit")
+  List<Long> findJobsToPrune(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+  @SqlUpdate("DELETE FROM background_jobs WHERE id IN (<ids>)")
+  int deleteJobsByIds(@BindList("ids") List<Long> ids);
 
   @SqlUpdate(
       "INSERT INTO background_job_logs (logId, jobId, createdAt, level, message) "

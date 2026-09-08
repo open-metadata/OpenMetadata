@@ -54,8 +54,6 @@ export function useMultiContainerFocusTrap({
       };
     } else {
       deactivateTrap();
-
-      return;
     }
   }, [active, activateTrap, deactivateTrap]);
 
@@ -79,6 +77,7 @@ export const FocusTrapWithContainer = ({
   });
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- stops Enter propagation only
     <div
       ref={containerRef}
       onKeyDown={(e) => {

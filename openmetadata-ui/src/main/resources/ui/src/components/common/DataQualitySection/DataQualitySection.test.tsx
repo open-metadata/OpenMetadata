@@ -61,6 +61,7 @@ jest.mock('../SectionWithEdit/SectionWithEdit', () => {
         <div
           data-show-edit={String(showEditButton)}
           data-testid="section-with-edit"
+          role="presentation"
           onClick={onEdit}>
           <div data-testid="section-title">{title}</div>
           <div data-testid="section-children">{children}</div>

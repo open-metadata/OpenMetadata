@@ -37,7 +37,14 @@ const GatewayNode = ({ data }: Node['data']) => {
   return (
     <div
       className={classNames('gateway-node', { active: isActive })}
-      onClick={handleNodeClick}>
+      role="button"
+      tabIndex={0}
+      onClick={handleNodeClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleNodeClick();
+        }
+      }}>
       <div className="gateway-node-header">
         <ForkOutlined style={{ fontSize: '24px' }} />
         <Space className="m-l-xs" direction="vertical" size={0}>

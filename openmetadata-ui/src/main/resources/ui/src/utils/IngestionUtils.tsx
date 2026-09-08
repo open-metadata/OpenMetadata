@@ -53,6 +53,7 @@ const getPipelineExtraInfo = (
               i18nKey="message.data-insight-pipeline-description"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={DATA_INSIGHTS_PIPELINE_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}
@@ -76,6 +77,7 @@ const getPipelineExtraInfo = (
               i18nKey="message.elastic-search-re-index-pipeline-description"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}
@@ -100,6 +102,7 @@ const getPipelineExtraInfo = (
             }
             renderElement={
               <a
+                aria-label={t('label.documentation')}
                 href={
                   isPlatFormDisabled
                     ? INGESTION_FRAMEWORK_DEPLOYMENT_DOCS

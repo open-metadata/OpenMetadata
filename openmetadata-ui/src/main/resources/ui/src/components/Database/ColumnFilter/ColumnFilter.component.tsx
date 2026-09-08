@@ -12,9 +12,9 @@
  */
 import { Menu } from 'antd';
 import Checkbox, { CheckboxChangeEvent } from 'antd/lib/checkbox/Checkbox';
-import { FilterDropdownProps } from 'antd/lib/table/interface';
 import { startCase } from 'lodash';
 import React from 'react';
+import { FilterDropdownProps } from '../../common/Table/Table.interface';
 
 export const ColumnFilter = ({
   setSelectedKeys,

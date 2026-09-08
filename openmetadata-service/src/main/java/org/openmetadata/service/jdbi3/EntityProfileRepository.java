@@ -1,8 +1,8 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.jdbi3.TableRepository.SYSTEM_PROFILE_EXTENSION;
-import static org.openmetadata.service.jdbi3.TableRepository.TABLE_COLUMN_PROFILE_EXTENSION;
-import static org.openmetadata.service.jdbi3.TableRepository.TABLE_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -41,7 +41,7 @@ public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityPr
     List<EntityProfile> entityProfileList;
     entityProfileList =
         JsonUtils.readObjects(
-            ((CollectionDAO.ProfilerDataTimeSeriesDAO) timeSeriesDao)
+            ((TimeSeriesDAOs.ProfilerDataTimeSeriesDAO) timeSeriesDao)
                 .listEntityProfileData(filter, startTs, endTs),
             EntityProfile.class);
 
@@ -85,7 +85,7 @@ public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityPr
   }
 
   public void deleteEntityProfile(ListFilter filter, Long timestamp) {
-    ((CollectionDAO.ProfilerDataTimeSeriesDAO) timeSeriesDao)
+    ((TimeSeriesDAOs.ProfilerDataTimeSeriesDAO) timeSeriesDao)
         .deleteEntityProfileData(filter, timestamp);
   }
 

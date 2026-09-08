@@ -55,6 +55,8 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  private static final String FUZZINESS_DISABLED = "0";
+  private static final String FUZZINESS_ENABLED = "1";
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -353,6 +355,14 @@ public final class SearchUtils {
     return aggregationJson.getString("key");
   }
 
+  /**
+   * Decides whether the caller's policy conditions are compiled into the search query. Bots are
+   * evaluated exactly like humans: they used to be exempt, which left every bot-authenticated search
+   * unfiltered even with access control on, because a skipped injection leaves the query matching
+   * everything rather than failing closed. {@code DefaultAuthorizer#authorize} already evaluates the
+   * same policies on a bot's REST reads, so exempting search made it the laxer of the two. Admins
+   * stay exempt because their compiled query would match everything anyway.
+   */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
@@ -361,7 +371,6 @@ public final class SearchUtils {
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && rbacConditionEvaluator != null;
   }
 
@@ -767,6 +776,8 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
+          .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
       case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
@@ -809,9 +820,9 @@ public final class SearchUtils {
    */
   public static String getFuzziness(String query) {
     if (query == null || query.isBlank()) {
-      return "1";
+      return FUZZINESS_ENABLED;
     }
-    return analyzedSubTokenCount(query) > 2 ? "0" : "1";
+    return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
   }
 
   /**

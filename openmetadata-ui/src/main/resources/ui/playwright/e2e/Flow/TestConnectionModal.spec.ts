@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -228,6 +229,51 @@ test.describe(
         page.getByTestId('edit-connection-button')
       ).not.toBeVisible();
       await expect(page.getByTestId('retry-test-button')).not.toBeVisible();
+    });
+
+    test('changing a form field after a successful test resets the connection badge', async ({
+      page,
+    }) => {
+      const successResponse = {
+        id: MOCK_WORKFLOW_ID,
+        status: 'Successful',
+        response: {
+          status: 'Successful',
+          steps: [
+            { name: 'CheckAccess', passed: true, mandatory: true },
+            { name: 'GetDatabases', passed: true, mandatory: true },
+          ],
+        },
+      };
+
+      await navigateToMysqlConnectionForm(page);
+      await setupWorkflowApiMocks(page, successResponse);
+
+      await page.getByTestId('test-connection-btn').click();
+
+      await expect(page.getByRole('button', { name: /done/i })).toBeVisible({
+        timeout: 30000,
+      });
+      await page.getByRole('button', { name: /done/i }).click();
+
+      await expect(
+        page.getByTestId('test-connection-card-Successful')
+      ).toBeVisible();
+      await expect(page.getByTestId('test-connection-btn')).toHaveText(
+        'Re-test Connection'
+      );
+
+      await page.fill('[id="root\\/hostPort"]', 'localhost:3307');
+
+      await expect(
+        page.getByTestId('test-connection-card-Successful')
+      ).not.toBeVisible();
+      await expect(
+        page.getByTestId('test-connection-card-ready-to-test')
+      ).toBeVisible();
+      await expect(page.getByTestId('test-connection-btn')).toHaveText(
+        'Test Connection'
+      );
     });
 
     test('failure state shows Edit Connection button and Retry Test button', async ({

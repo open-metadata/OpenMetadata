@@ -24,6 +24,7 @@ import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -69,7 +70,7 @@ import {
   glossaryTermQueryKey,
   GLOSSARY_TERM_DEFAULT_FIELDS,
 } from '../../../rest/queries/glossaryTermQuery';
-import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityMissingMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -508,6 +509,23 @@ const GlossaryPage = () => {
     );
   }
 
+  const renderEmptyStateFooter = () => {
+    if (!createGlossaryPermission) {
+      return undefined;
+    }
+
+    return (
+      <CoreButton
+        color="primary"
+        data-testid="add-glossary"
+        iconLeading={Plus}
+        size="sm"
+        onPress={handleAddGlossaryClick}>
+        {t('label.add-entity', { entity: t('label.glossary') })}
+      </CoreButton>
+    );
+  };
+
   if (glossaries.length === 0 && !isLoading) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
@@ -533,18 +551,7 @@ const GlossaryPage = () => {
               description: t('message.link-them-to-data-description'),
             },
           ]}
-          footer={
-            createGlossaryPermission ? (
-              <CoreButton
-                color="primary"
-                data-testid="add-glossary"
-                iconLeading={Plus}
-                size="sm"
-                onPress={handleAddGlossaryClick}>
-                {t('label.add-entity', { entity: t('label.glossary') })}
-              </CoreButton>
-            ) : undefined
-          }
+          footer={renderEmptyStateFooter()}
           title={t('message.build-your-business-dictionary')}
           variant="features"
         />
@@ -552,17 +559,24 @@ const GlossaryPage = () => {
     );
   }
 
-  let glossaryElement;
-  if (isRightPanelLoading) {
-    glossaryElement = <Loader />;
-  } else if (isTermNotFound) {
-    glossaryElement = (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
-      </ErrorPlaceHolder>
-    );
-  } else {
-    glossaryElement = (
+  const renderGlossaryElement = () => {
+    if (isRightPanelLoading) {
+      return <Loader />;
+    }
+    if (isTermNotFound) {
+      return (
+        <div className="content-height-with-resizable-panel tw:relative">
+          <NoDataPlaceholder
+            description={getEntityMissingMessage(
+              t('label.glossary-term'),
+              glossaryFqn
+            )}
+          />
+        </div>
+      );
+    }
+
+    return (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -578,7 +592,9 @@ const GlossaryPage = () => {
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
     );
-  }
+  };
+
+  const glossaryElement = renderGlossaryElement();
 
   const resizableLayout = isGlossaryActive ? (
     <ResizableLeftPanels

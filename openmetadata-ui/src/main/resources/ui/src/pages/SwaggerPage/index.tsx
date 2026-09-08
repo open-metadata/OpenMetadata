@@ -12,6 +12,8 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import {
   GRAPH_BACKGROUND_COLOR,
@@ -23,6 +25,7 @@ import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
+  const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [idToken, setIdToken] = useState<string>('');
 
@@ -37,34 +40,39 @@ const SwaggerPage = () => {
 
   const apiKeyValue = `Bearer ${idToken}`;
 
-  if (!idToken) {
-    return <Loader />;
-  }
-
+  // One title above both branches — the token fetch leaves the page on a
+  // loader long enough for a stale tab title to be visible.
   return (
-    <div
-      className="container-fluid"
-      data-testid="fluid-container"
-      id="doc-container">
-      <RapiDocReact
-        allow-spec-file-download
-        api-key-location="header"
-        api-key-name="Authorization"
-        api-key-value={apiKeyValue}
-        font-size="large"
-        nav-bg-color={GRAPH_BACKGROUND_COLOR}
-        nav-item-spacing="compact"
-        nav-text-color={TEXT_BODY_COLOR}
-        primary-color={theme.primaryColor}
-        regular-font="Open Sans"
-        render-style="focused"
-        show-header={false}
-        show-method-in-nav-bar="as-colored-block"
-        spec-url="./swagger.json"
-        text-color={TEXT_BODY_COLOR}
-        theme="light"
-      />
-    </div>
+    <>
+      <DocumentTitle title={t('label.documentation')} />
+      {idToken ? (
+        <div
+          className="container-fluid"
+          data-testid="fluid-container"
+          id="doc-container">
+          <RapiDocReact
+            allow-spec-file-download
+            api-key-location="header"
+            api-key-name="Authorization"
+            api-key-value={apiKeyValue}
+            font-size="large"
+            nav-bg-color={GRAPH_BACKGROUND_COLOR}
+            nav-item-spacing="compact"
+            nav-text-color={TEXT_BODY_COLOR}
+            primary-color={theme.primaryColor}
+            regular-font="Open Sans"
+            render-style="focused"
+            show-header={false}
+            show-method-in-nav-bar="as-colored-block"
+            spec-url="./swagger.json"
+            text-color={TEXT_BODY_COLOR}
+            theme="light"
+          />
+        </div>
+      ) : (
+        <Loader />
+      )}
+    </>
   );
 };
 

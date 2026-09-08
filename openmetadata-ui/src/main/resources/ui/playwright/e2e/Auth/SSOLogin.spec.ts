@@ -10,21 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, test } from '@playwright/test';
+import { BrowserContext, Page } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
   swapSecurityConfig,
   verifyLoggedInUserMatches,
 } from '../../utils/ssoAuth';
+import { SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
 test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
-  test.slow();
   // eslint-disable-next-line playwright/no-skipped-test -- conditional skip on required env vars; the suite only runs when SSO credentials are provided by CI or the developer
   test.skip(
     !providerType || !username || !password,
@@ -53,12 +54,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   );
 
   test.afterAll('Restore original security configuration', async () => {
+    test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
     await userPage?.close();
     await userContext?.close();
+
     await restoreSecurity?.();
   });
 
   test('should display SSO sign-in button on /signin', async ({ page }) => {
+    test.slow();
     await page.goto('/signin');
 
     await expect(page.getByTestId('login-form-container')).toBeVisible();
@@ -71,6 +76,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should complete full SSO login and verify user session', async () => {
+    test.slow();
     const page = userPage!;
 
     await test.step('Click SSO button and redirect to IdP', async () => {
@@ -81,6 +87,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
       await expect(signInButton).toBeVisible();
       await signInButton.click();
       await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+
+      // #29597 regression guard: the front-channel authorize request must carry
+      // the server-configured response_type, not oidc-client's 'id_token' default.
+      if (helper.expectedResponseType) {
+        const responseType = new URL(page.url()).searchParams.get(
+          'response_type'
+        );
+
+        expect(responseType).toBe(helper.expectedResponseType);
+      }
     });
 
     await test.step('Authenticate at the identity provider', async () => {
@@ -90,7 +106,9 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     await test.step('Return to OpenMetadata and complete self-signup if needed', async () => {
       await page.waitForURL(
         (url) =>
-          url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
+          url.pathname.endsWith('/signup') ||
+          url.pathname.endsWith('/my-data') ||
+          url.pathname === '/',
         { timeout: 60_000 }
       );
 
@@ -99,7 +117,10 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
 
         await expect(createButton).toBeEnabled();
         await createButton.click();
-        await page.waitForURL('**/my-data', { timeout: 60_000 });
+        await page.waitForURL(
+          (url) => url.pathname === '/' || url.pathname === '/my-data',
+          { timeout: 60_000 }
+        );
       }
 
       await redirectToHomePage(page);
@@ -111,20 +132,28 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should keep the session after a page reload', async () => {
+    test.slow();
     const page = userPage!;
 
     await page.reload();
-    await page.waitForURL('**/my-data', { timeout: 30_000 });
+    await page.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { timeout: 30_000 }
+    );
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     await verifyLoggedInUserMatches(page, username);
   });
 
   test('should share the session with a new page in the same context', async () => {
+    test.slow();
     const extraPage = await userContext!.newPage();
 
     try {
       await extraPage.goto('/');
-      await extraPage.waitForURL('**/my-data', { timeout: 30_000 });
+      await extraPage.waitForURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data',
+        { timeout: 30_000 }
+      );
       await expect(extraPage.getByTestId('dropdown-profile')).toBeVisible();
       await verifyLoggedInUserMatches(extraPage, username);
     } finally {
@@ -133,6 +162,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should sign out and return to /signin', async () => {
+    test.slow();
     const page = userPage!;
 
     await page.getByRole('menuitem', { name: /logout/i }).click();
@@ -149,6 +179,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   });
 
   test('should stay signed-out after refreshing', async () => {
+    test.slow();
     const page = userPage!;
 
     await page.reload();

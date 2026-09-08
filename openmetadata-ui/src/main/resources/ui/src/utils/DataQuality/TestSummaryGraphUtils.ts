@@ -17,7 +17,6 @@ import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
-import { Thread } from '../../generated/entity/feed/thread';
 import { Task } from '../../generated/entity/tasks/task';
 import {
   TestCaseParameterValue,
@@ -28,7 +27,6 @@ import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
 import {
-  getTaskDetailPath,
   getTaskDetailPathFromTask,
   getTaskDisplayId,
 } from '../TaskNavigationUtils';
@@ -38,29 +36,16 @@ const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
   testCaseResults: TestCaseResult[];
-  entityThread: Thread[];
   tasks?: Task[];
 };
 
-function isThread(value: unknown): value is Thread {
-  return typeof value === 'object' && value !== null && 'task' in value;
-}
-
 /**
- * Converts current tasks and legacy threads into the fields used by the
- * tooltip, keeping the display component independent of the incident API.
+ * Converts an incident task into the fields used by the tooltip, keeping the
+ * display component independent of the incident API.
  */
-export const getIncidentDetails = (task?: Task | Thread) => {
+export const getIncidentDetails = (task?: Task) => {
   if (!task) {
     return {};
-  }
-
-  if (isThread(task)) {
-    return {
-      incidentDisplayId: task.task?.id,
-      incidentPath: getTaskDetailPath(task),
-      incidentAssignees: task.task?.assignees,
-    };
   }
 
   return {
@@ -73,7 +58,6 @@ export const getIncidentDetails = (task?: Task | Thread) => {
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
-  entityThread,
   tasks = [],
 }: PrepareChartDataType) => {
   // Bond will only be shown if params length is 2 and both values are present
@@ -126,11 +110,7 @@ export const prepareChartData = ({
       ...omitBy(metric, isUndefined),
       boundArea,
       incidentId: result.incidentId,
-      task:
-        tasks.find((task) => task.id === result.incidentId) ??
-        entityThread.find(
-          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-        ),
+      task: tasks.find((task) => task.id === result.incidentId),
     });
   });
 
@@ -180,17 +160,33 @@ export interface TooltipSize {
   width: number;
 }
 
-export interface TooltipBoundary extends TooltipSize {
+export interface TooltipPosition {
   x: number;
   y: number;
 }
 
+export interface TooltipBoundary extends TooltipSize, TooltipPosition {}
+
 interface TooltipPositionOptions {
-  anchor: Pick<TooltipBoundary, 'x' | 'y'>;
+  anchor: TooltipPosition;
   boundary: TooltipBoundary;
   gap: number;
   tooltipSize: TooltipSize;
 }
+
+/**
+ * Browsers report fractional, layout-dependent sizes for the same tooltip, and
+ * the flipped placement derives the position from that size. Comparing exactly
+ * would let sub-pixel noise feed a new position back into state indefinitely.
+ */
+const TOOLTIP_POSITION_EPSILON = 0.5;
+
+export const isSameTooltipPosition = (
+  current: TooltipPosition,
+  next: TooltipPosition
+): boolean =>
+  Math.abs(current.x - next.x) < TOOLTIP_POSITION_EPSILON &&
+  Math.abs(current.y - next.y) < TOOLTIP_POSITION_EPSILON;
 
 /**
  * Recharts types every view-box coordinate as optional, while overflow-aware
@@ -236,7 +232,7 @@ export const getTestSummaryTooltipPosition = ({
   boundary,
   gap,
   tooltipSize,
-}: TooltipPositionOptions) => ({
+}: TooltipPositionOptions): TooltipPosition => ({
   x: getTooltipAxisPosition(
     anchor.x,
     tooltipSize.width,

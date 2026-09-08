@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearch Connection",
+  "description": "ElasticSearch Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.ElasticSearchConnection",
+  "definitions": {
+    "elasticSearchType": {
+      "description": "ElasticSearch service type",
+      "type": "string",
+      "enum": [
+        "ElasticSearch"
+      ],
+      "default": "ElasticSearch"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "ElasticSearch Type",
+      "description": "ElasticSearch Type",
+      "default": "ElasticSearch",
+      "type": "string",
+      "enum": [
+        "ElasticSearch"
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the ElasticSearch service.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Basic Authentication",
+          "description": "Basic Auth Configuration for ElasticSearch",
+          "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth",
+          "type": "object",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Elastic Search Username for Login",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Elastic Search Password for Login",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "API Key Authentication",
+          "description": "API Key Authentication for ElasticSearch",
+          "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth",
+          "type": "object",
+          "properties": {
+            "apiKey": {
+              "title": "API Key",
+              "description": "Elastic Search API Key for API Authentication",
+              "type": "string",
+              "format": "password"
+            },
+            "apiKeyId": {
+              "title": "API Key ID",
+              "description": "Elastic Search API Key ID for API Authentication",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "SSL Config",
+      "javaType": "org.openmetadata.schema.services.common.SSLConfig",
+      "type": "object",
+      "properties": {
+        "certificates": {
+          "type": "object",
+          "title": "SSL Certificates",
+          "description": "SSL Certificates",
+          "oneOf": [
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "SSL Certificates By Path",
+              "description": "SSL Certificates By Path",
+              "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
+              "type": "object",
+              "properties": {
+                "caCertPath": {
+                  "title": "CA Certificate Path",
+                  "description": "CA Certificate Path",
+                  "type": "string"
+                },
+                "clientCertPath": {
+                  "title": "Client Certificate Path",
+                  "description": "Client Certificate Path",
+                  "type": "string"
+                },
+                "privateKeyPath": {
+                  "title": "Private Key Path",
+                  "description": "Private Key Path",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "title": "SSL Certificates By Values",
+              "description": "SSL Certificates By Values",
+              "javaType": "org.openmetadata.schema.services.common.SSLCertValues",
+              "type": "object",
+              "properties": {
+                "caCertValue": {
+                  "title": "CA Certificate Value",
+                  "description": "CA Certificate Value",
+                  "type": "string",
+                  "format": "password"
+                },
+                "clientCertValue": {
+                  "title": "Client Certificate Value",
+                  "description": "Client Certificate Value",
+                  "type": "string",
+                  "format": "password"
+                },
+                "privateKeyValue": {
+                  "title": "Private Key Value",
+                  "description": "Private Key Value",
+                  "type": "string",
+                  "format": "password"
+                },
+                "stagingDir": {
+                  "title": "Staging Directory Path",
+                  "description": "Staging Directory Path",
+                  "type": "string",
+                  "default": "/tmp/openmetadata-certs"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      }
+    },
+    "connectionTimeoutSecs": {
+      "title": "Connection Timeout in Seconds",
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 30
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "searchIndexFilterPattern": {
+      "title": "Default Search Index Filter Pattern",
+      "description": "Regex to only fetch search indexes that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

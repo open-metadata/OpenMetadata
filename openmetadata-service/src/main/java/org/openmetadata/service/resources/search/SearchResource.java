@@ -84,6 +84,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
@@ -952,8 +953,9 @@ public class SearchResource {
 
     Future<?> future =
         AsyncService.getInstance()
-            .getExecutorService()
-            .submit(
+            .submitCancellableDatabaseTask(
+                DatabaseOperation.SEARCH_OPERATION,
+                "entities:" + entities.size(),
                 () -> {
                   int totalEntities = entities.size();
                   int successCount = 0;
@@ -1088,6 +1090,7 @@ public class SearchResource {
                   if (!failures.isEmpty()) {
                     LOG.warn("Failed entities: {}", String.join("; ", failures));
                   }
+                  return null;
                 });
 
     AsyncService.getInstance()
@@ -1157,10 +1160,10 @@ public class SearchResource {
 
       SearchStatsResponse$IndexStats indexStat = new SearchStatsResponse$IndexStats();
       indexStat.setName(stats.name());
-      indexStat.setDocuments((int) stats.documents());
+      indexStat.setDocuments(stats.documents());
       indexStat.setPrimaryShards(stats.primaryShards());
       indexStat.setReplicaShards(stats.replicaShards());
-      indexStat.setSizeInBytes((int) stats.sizeInBytes());
+      indexStat.setSizeInBytes(stats.sizeInBytes());
       indexStat.setSizeFormatted(formatBytes(stats.sizeInBytes()));
       indexStat.setHealth(stats.health());
       indexStat.setAliases(new java.util.ArrayList<>(stats.aliases()));
@@ -1183,7 +1186,7 @@ public class SearchResource {
                           .findFirst()
                           .map(IndexStats::sizeInBytes)
                           .orElse(0L);
-                  orphan.setSizeInBytes((int) size);
+                  orphan.setSizeInBytes(size);
                   orphan.setSizeFormatted(formatBytes(size));
                   return orphan;
                 })
@@ -1192,8 +1195,8 @@ public class SearchResource {
     SearchStatsResponse response = new SearchStatsResponse();
     response.setClusterHealth(clusterHealth);
     response.setTotalIndexes(allIndexStats.size());
-    response.setTotalDocuments((int) totalDocs);
-    response.setTotalSizeInBytes((int) totalSize);
+    response.setTotalDocuments(totalDocs);
+    response.setTotalSizeInBytes(totalSize);
     response.setTotalSizeFormatted(formatBytes(totalSize));
     response.setTotalPrimaryShards(totalPrimaryShards);
     response.setTotalReplicaShards(totalReplicaShards);

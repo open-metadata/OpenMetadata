@@ -22,6 +22,33 @@ import { Utils as extendConfigUtils } from '@react-awesome-query-builder/core';
 export const ES_7_SYNTAX = 'ES_7_SYNTAX';
 export const ES_6_SYNTAX = 'ES_6_SYNTAX';
 
+const EXACT_MATCH_OPERATORS = [
+  'equal',
+  'not_equal',
+  'select_equals',
+  'select_not_equals',
+  'multiselect_equals',
+  'multiselect_not_equals',
+];
+
+const NEGATED_OPERATORS = [
+  'not_equal',
+  'not_between',
+  'not_like',
+  'select_not_equals',
+  'multiselect_not_equals',
+  'multiselect_not_contains',
+];
+
+const RANGEABLE_OM_TYPES = [
+  'integer',
+  'number',
+  'timestamp',
+  'date-cp',
+  'dateTime-cp',
+  'time-cp',
+];
+
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
@@ -89,6 +116,7 @@ function buildEsRangeParameters(value, operator) {
       };
 
     case 'greater_or_equal':
+    case 'greater':
       return {
         gte: ''.concat(dateTime),
       };
@@ -96,11 +124,6 @@ function buildEsRangeParameters(value, operator) {
     case 'less':
       return {
         lt: ''.concat(dateTime),
-      };
-
-    case 'greater':
-      return {
-        gte: ''.concat(dateTime),
       };
 
     default:
@@ -510,7 +533,12 @@ function buildExtensionQuery(
 
   // Use customPropertiesTyped for structured queries
   // Handle text search operators first (like, not_like, regexp) - these need special query types
-  if (operator === 'like' || operator === 'not_like') {
+  if (
+    operator === 'like' ||
+    operator === 'not_like' ||
+    operator === 'multiselect_contains' ||
+    operator === 'multiselect_not_contains'
+  ) {
     // Contains/Not contains: use wildcard query on stringValue (keyword field)
     // All searchable values are now stored in stringValue for wildcard support
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -612,17 +640,11 @@ function buildExtensionQuery(
       value,
       operator
     );
-  } else if (fieldType === 'hyperlink' && nestedField) {
-    // Hyperlink: both URL and displayText are stored in stringValue for exact/wildcard matching
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-  } else if (fieldType === 'table' && nestedField) {
-    // Table: row data is stored in both stringValue (for wildcard) and textValue (for full-text)
-    // Use stringValue for exact match queries
+  } else if (
+    (fieldType === 'hyperlink' || fieldType === 'table') &&
+    nestedField
+  ) {
+    // Hyperlink/Table: values are stored in stringValue for exact/wildcard matching
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
       'stringValue',
@@ -650,14 +672,7 @@ function buildExtensionQuery(
         minimum_should_match: 1,
       },
     };
-  } else if (
-    operator === 'equal' ||
-    operator === 'not_equal' ||
-    operator === 'select_equals' ||
-    operator === 'select_not_equals' ||
-    operator === 'multiselect_equals' ||
-    operator === 'multiselect_not_equals'
-  ) {
+  } else if (EXACT_MATCH_OPERATORS.includes(operator)) {
     // Exact match: pick the right typed field.
     // 1) If we know the OM property type, route directly: numeric types ->
     //    longValue/doubleValue, all others -> stringValue. This avoids the bug
@@ -695,32 +710,6 @@ function buildExtensionQuery(
         'equal'
       );
     }
-  } else if (
-    operator === 'multiselect_contains' ||
-    operator === 'multiselect_not_contains'
-  ) {
-    // Multiselect contains: use wildcard on stringValue (enum values are stored there)
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                wildcard: {
-                  'customPropertiesTyped.stringValue': {
-                    value: '*' + searchValue + '*',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
   } else {
     // Default text search: use match query on textValue
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -748,15 +737,7 @@ function buildExtensionQuery(
   }
 
   // Wrap in must_not if negated
-  if (
-    not ||
-    operator === 'not_equal' ||
-    operator === 'not_between' ||
-    operator === 'not_like' ||
-    operator === 'select_not_equals' ||
-    operator === 'multiselect_not_equals' ||
-    operator === 'multiselect_not_contains'
-  ) {
+  if (not || NEGATED_OPERATORS.includes(operator)) {
     mainQuery = {
       bool: {
         must_not: mainQuery.nested ? mainQuery : [mainQuery],
@@ -808,13 +789,14 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     return undefined;
   }
 
-  if (
-    (operator === 'between' || operator === 'not_between') &&
-    (!Array.isArray(value) ||
-      value.length < 2 ||
-      value[0] === undefined ||
-      value[1] === undefined)
-  ) {
+  const isBetweenOperator =
+    operator === 'between' || operator === 'not_between';
+  const hasIncompleteRangeBounds =
+    !Array.isArray(value) ||
+    value.length < 2 ||
+    value[0] === undefined ||
+    value[1] === undefined;
+  if (isBetweenOperator && hasIncompleteRangeBounds) {
     return undefined;
   }
 
@@ -868,18 +850,11 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     // zero-padded formats (e.g. yyyy-MM-dd HH:mm:ss). Other types collapse to
     // value[0] since only a single bound is meaningful.
     const isBetweenOp = op === 'between';
-    const isRangeableOmType =
-      omPropertyType === 'integer' ||
-      omPropertyType === 'number' ||
-      omPropertyType === 'timestamp' ||
-      omPropertyType === 'date-cp' ||
-      omPropertyType === 'dateTime-cp' ||
-      omPropertyType === 'time-cp';
-    const extensionValue = hasValue
-      ? isBetweenOp && isRangeableOmType
-        ? value
-        : value[0]
-      : null;
+    const isRangeableOmType = RANGEABLE_OM_TYPES.includes(omPropertyType);
+    let extensionValue = null;
+    if (hasValue) {
+      extensionValue = isBetweenOp && isRangeableOmType ? value : value[0];
+    }
 
     return buildExtensionQuery(
       extensionPropertyName,
@@ -1045,20 +1020,16 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
             // serialize to a null clause, which the search engines reject.
             [useAndLogic ? 'must' : 'should']: value[0]
               .map((val) =>
-                buildEsRule(
-                  field,
-                  [val],
-                  operator,
-                  extendedConfig,
-                  valueSrc,
-                  syntax
-                )
+                buildEsRule(field, [val], operator, extendedConfig, valueSrc)
               )
               .filter((rule) => rule !== undefined),
           },
         };
       } else {
-        return buildEsRule(field, value, operator, config, valueSrc, syntax);
+        // extendedConfig, as in every other branch: buildEsRule resolves the field's widget
+        // through the config it is given, and a raw one resolves none — so a fully entered
+        // condition builds no clause at all when this runs on a rule node directly.
+        return buildEsRule(field, value, operator, extendedConfig, valueSrc);
       }
     }
 

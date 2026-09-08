@@ -17,6 +17,8 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -107,6 +109,14 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       return new Promise<void>((resolve, reject) => {
+        const handleSignoutSuccess = () => {
+          // Cleanup application state
+          handleSuccessfulLogout();
+          resolve();
+        };
+        const handleSignoutError = (error: unknown) => {
+          reject(error);
+        };
         userManager.metadataService.getEndSessionEndpoint().then((endpoint) => {
           if (endpoint) {
             // Perform singout from sso if endSessionEndpointAvailable
@@ -115,14 +125,8 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                 post_logout_redirect_uri:
                   window.location.origin + ROUTES.SIGNIN,
               })
-              .then(() => {
-                // Cleanup application state
-                handleSuccessfulLogout();
-                resolve();
-              })
-              .catch((error) => {
-                reject(error);
-              });
+              .then(handleSignoutSuccess)
+              .catch(handleSignoutError);
           } else {
             try {
               // If signout fails, still clean up local state
@@ -137,7 +141,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     // Performs silent signIn and returns with IDToken
-    const signInSilently = async () => {
+    const signInSilently = useCallback(async () => {
       try {
         // Token will be coming as silent-callback via an iframe
         await userManager.signinSilent();
@@ -149,7 +153,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         updateAxiosInterceptors();
         TokenService.getInstance().clearRefreshInProgress();
       }
-    };
+    }, [userManager, updateAxiosInterceptors]);
 
     const handleSilentSignInSuccess = async (user: User) => {
       // On success update token in store and update axios interceptors
@@ -178,6 +182,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       renewIdToken: signInSilently,
     }));
 
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Google / CustomOidc / AwsCognito public-client flows.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(signInSilently);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [signInSilently]);
+
     const AppWithAuth = getAuthenticator(
       childComponentType,
       userManager
@@ -186,19 +200,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     return (
       <>
         <Routes>
-          {/* render sign in page if user is not authenticated and not signing up
-           * else redirect to my data page as user is authenticated and not signing up
-           */}
-          <Route
-            element={
-              !isAuthenticated && !isSigningUp ? (
-                <Navigate to={ROUTES.SIGNIN} />
-              ) : (
-                <Navigate to={ROUTES.MY_DATA} />
-              )
-            }
-            path={ROUTES.HOME}
-          />
           {/* render the sign in route only if user is not signing up */}
           <Route
             element={isSigningUp ? <AppWithAuth /> : <SignInPage />}

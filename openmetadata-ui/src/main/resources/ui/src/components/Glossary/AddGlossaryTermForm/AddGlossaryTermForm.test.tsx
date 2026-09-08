@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Config, CustomProperty } from '../../../generated/entity/type';
 import {
   FieldKind,
@@ -89,6 +90,7 @@ jest.mock('../../../utils/formUtils', () => {
     value?: unknown;
   }) => (
     <input
+      aria-label="input"
       data-testid={dataTestId}
       value={
         typeof value === 'string' || typeof value === 'number' ? value : ''
@@ -130,6 +132,7 @@ jest.mock(
 
       return (
         <input
+          aria-label="input"
           data-testid={props['data-testid'] as string}
           value=""
           onChange={() => undefined}
@@ -139,18 +142,18 @@ jest.mock(
 );
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
-  jest.fn().mockReturnValue(<textarea />)
+  jest.fn().mockReturnValue(<textarea aria-label="editor" />)
 );
 
 jest.mock('../../common/DatePicker/DatePicker', () =>
-  jest.fn().mockReturnValue(<input />)
+  jest.fn().mockReturnValue(<input aria-label="date-picker" />)
 );
 
 jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
   jest
     .fn()
     .mockImplementation(({ 'data-testid': dataTestId }) => (
-      <textarea data-testid={dataTestId} />
+      <textarea aria-label="editor" data-testid={dataTestId} />
     ))
 );
 
@@ -224,12 +227,14 @@ const createIntakeFormWithFields = (
 interface FormHarnessProps {
   editMode?: boolean;
   formValues?: Partial<CreateGlossaryTerm>;
+  glossaryTerm?: GlossaryTerm;
   onSave: (value: GlossaryTermForm) => void | Promise<void>;
 }
 
 const FormHarness = ({
   editMode = false,
   formValues,
+  glossaryTerm,
   onSave,
 }: FormHarnessProps) => {
   const [form] = Form.useForm<CreateGlossaryTerm>();
@@ -239,6 +244,7 @@ const FormHarness = ({
       <AddGlossaryTermForm
         editMode={editMode}
         formRef={form}
+        glossaryTerm={glossaryTerm}
         onCancel={jest.fn()}
         onSave={onSave}
       />
@@ -361,8 +367,9 @@ describe('AddGlossaryTermForm intake fields', () => {
   it('waits for custom-property definitions before rendering intake fields', async () => {
     const requiredFields = [createRequiredField('summary')];
     const customProperties = [createCustomProperty('summary', 'string')];
-    let resolveCustomProperties: (properties: CustomProperty[]) => void = () =>
-      undefined;
+    let resolveCustomProperties: (properties: CustomProperty[]) => void = (
+      _properties
+    ) => undefined;
     const customPropertiesRequest = new Promise<CustomProperty[]>((resolve) => {
       resolveCustomProperties = resolve;
     });
@@ -505,4 +512,63 @@ describe('AddGlossaryTermForm intake fields', () => {
       expect(await screen.findByText(errorMessage)).toBeInTheDocument();
     }
   );
+});
+
+describe('AddGlossaryTermForm style fields', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getIntakeFormByEntityType as jest.Mock).mockResolvedValue(undefined);
+    (getCustomPropertiesByEntityType as jest.Mock).mockResolvedValue([]);
+  });
+
+  it('prefills the icon and colour of the term being edited', async () => {
+    render(
+      <FormHarness
+        editMode
+        glossaryTerm={
+          {
+            name: 'term',
+            style: { color: '#FF0000', iconURL: 'File01' },
+          } as GlossaryTerm
+        }
+        onSave={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('root/iconURL')).toHaveValue('File01');
+    });
+
+    expect(screen.getByTestId('root/color')).toHaveValue('#FF0000');
+  });
+
+  it('carries the picked icon and colour into the save payload as style', async () => {
+    const onSave = jest.fn();
+
+    render(
+      <FormHarness
+        formValues={
+          {
+            name: 'term',
+            description: 'a term',
+            color: '#0000FF',
+            iconURL: 'Folder',
+          } as Partial<CreateGlossaryTerm>
+        }
+        onSave={onSave}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-values'));
+    });
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          style: { color: '#0000FF', iconURL: 'Folder' },
+        })
+      );
+    });
+  });
 });

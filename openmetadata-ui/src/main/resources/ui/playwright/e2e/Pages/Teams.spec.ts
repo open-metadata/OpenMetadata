@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import {
   EDIT_USER_FOR_TEAM_RULES,
   OWNER_TEAM_RULES,
@@ -27,6 +23,8 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -52,16 +50,20 @@ import {
   addTeamOwnerToEntity,
   addUserInTeam,
   addUserTeam,
+  applyEntityTypeFilterValue,
   checkTeamTabCount,
   createTeam,
   executionOnOwnerGroupTeam,
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
+  openAddTeamModal,
   searchTeam,
+  selectAssetsFilterFromDropdown,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
   verifyTeamListingAssetCount,
+  waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
 
 base.describe.configure({ mode: 'serial' });
@@ -163,8 +165,6 @@ const test = base.extend<{
 });
 
 test.describe('Teams Page', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -189,12 +189,11 @@ test.describe('Teams Page', () => {
   });
 
   test('Teams Page Flow', async ({ page, scopedUserPage }) => {
+    test.slow();
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
-      await page.getByTestId('add-team').waitFor();
-
-      await page.getByTestId('add-team').click();
+      await openAddTeamModal(page);
 
       const newTeamData = await createTeam(page, true);
 
@@ -427,9 +426,7 @@ test.describe('Teams Page', () => {
   test('Create a new public team', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page.getByTestId('add-team').waitFor();
-
-    await page.getByTestId('add-team').click();
+    await openAddTeamModal(page);
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
@@ -470,11 +467,12 @@ test.describe('Teams Page', () => {
 
     try {
       await privateTeam.create(apiContext);
+      const teamName = privateTeam.responseData.name ?? privateTeam.data.name;
+      const teamDisplayName =
+        privateTeam.responseData.displayName ?? privateTeam.data.displayName;
       const privateTeamFqn =
         privateTeam.responseData.fullyQualifiedName ??
-        `Organization.${
-          privateTeam.responseData.name ?? privateTeam.data.name
-        }`;
+        `Organization.${teamName}`;
       const createdTeamResponse = await apiContext.get(
         `/api/v1/teams/name/${encodeURIComponent(privateTeamFqn)}?include=all`
       );
@@ -492,9 +490,7 @@ test.describe('Teams Page', () => {
 
       await page
         .getByTestId('profile-teams-edit-popover')
-        .getByText(
-          privateTeam.responseData.displayName ?? privateTeam.data.displayName
-        )
+        .getByText(teamDisplayName)
         .click();
 
       const patchUserPromise = page.waitForResponse(
@@ -511,12 +507,35 @@ test.describe('Teams Page', () => {
         page.getByTestId('profile-teams-edit-popover')
       ).not.toBeVisible();
 
-      await page
-        .getByTestId('user-profile-teams')
-        .getByText(
-          privateTeam.responseData.displayName ?? privateTeam.data.displayName
-        )
-        .click();
+      await waitForAllLoadersToDisappear(page);
+
+      // The teams chip only renders the first USER_DATA_SIZE entries; the rest
+      // are not in the DOM until the "+N more" tag is expanded.
+      const teamsCard = page.getByTestId('user-profile-teams');
+      const showMoreTeams = teamsCard.getByTestId('plus-more-count');
+      if (await showMoreTeams.isVisible()) {
+        await showMoreTeams.click();
+      }
+
+      const teamChip = teamsCard.getByTestId(`${teamName}-link`);
+
+      await expect(teamChip).toBeVisible();
+
+      const teamPageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.request().method() === 'GET'
+      );
+      await teamChip.click();
+      const teamPageResult = await teamPageResponse;
+
+      expect(teamPageResult.status()).toBe(200);
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('team-heading')).toContainText(
+        teamDisplayName
+      );
     } finally {
       await privateTeam.delete(apiContext).catch(() => undefined);
       await afterAction().catch(() => undefined);
@@ -626,6 +645,7 @@ test.describe('Teams Page', () => {
   });
 
   test('Team assets should', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
 
@@ -695,6 +715,128 @@ test.describe('Teams Page', () => {
       await team4.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test.describe('Team assets entity type filter', () => {
+    let filterTable: TableClass;
+    let filterTopic: TopicClass;
+    let filterTeam: TeamClass;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        // Instantiate here so a retry regenerates entity names instead of
+        // re-creating the same ones and hitting 409s
+        filterTable = new TableClass();
+        filterTopic = new TopicClass();
+        filterTeam = new TeamClass();
+
+        await filterTable.create(apiContext);
+        await filterTopic.create(apiContext);
+        await filterTeam.create(apiContext);
+
+        const ownerPatch: Operation[] = [
+          {
+            op: 'add',
+            path: '/owners/-',
+            value: { id: filterTeam.responseData.id, type: 'team' },
+          },
+        ];
+        await filterTable.patch({ apiContext, patchData: ownerPatch });
+        await filterTopic.patch({ apiContext, patchData: ownerPatch });
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await filterTable.delete(apiContext);
+        await filterTopic.delete(apiContext);
+        await filterTeam.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test('should apply, toggle off and clear the entity type filter', async ({
+      page,
+    }) => {
+      const teamId = filterTeam.responseData.id ?? '';
+
+      expect(teamId).not.toBe('');
+
+      const tableCard = page.getByTestId(
+        `table-data-card_${filterTable.entityResponseData?.['fullyQualifiedName']}`
+      );
+      const topicCard = page.getByTestId(
+        `table-data-card_${filterTopic.entityResponseData?.['fullyQualifiedName']}`
+      );
+      const entityTypeFilterChip = page.getByRole('button', {
+        name: 'Entity Type',
+      });
+
+      await test.step('Apply entity type filter', async () => {
+        await filterTeam.visitTeamPage(page);
+
+        const assetsResponse = waitForTeamAssetsSearchResponse(page, teamId);
+        await page.getByTestId('assets').click();
+        const assetsSearchResponse = await assetsResponse;
+
+        expect(assetsSearchResponse.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+
+        await expect(entityTypeFilterChip).toBeVisible();
+
+        await applyEntityTypeFilterValue(page, teamId, 'table-checkbox');
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).not.toBeVisible();
+      });
+
+      await test.step('Toggle the filter off from the dropdown', async () => {
+        const removeFilterResponse = waitForTeamAssetsSearchResponse(
+          page,
+          teamId
+        );
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+        const removeSearchResponse = await removeFilterResponse;
+
+        expect(removeSearchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+        await expect(entityTypeFilterChip).not.toBeVisible();
+      });
+
+      await test.step('Clear removes the selected filter entirely', async () => {
+        await selectAssetsFilterFromDropdown(page, 'Entity Type');
+        await applyEntityTypeFilterValue(page, teamId, 'table-checkbox');
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).not.toBeVisible();
+
+        const clearResponse = waitForTeamAssetsSearchResponse(page, teamId);
+        await page.getByText('Clear').click();
+        const clearSearchResponse = await clearResponse;
+
+        expect(clearSearchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(tableCard).toBeVisible();
+        await expect(topicCard).toBeVisible();
+        await expect(entityTypeFilterChip).not.toBeVisible();
+      });
+    });
   });
 
   test('Delete a user from the table', async ({ page }) => {
@@ -838,6 +980,35 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
+  test('Total User Count should update after a member is deactivated', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+
+    await user.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw-stale-count-${id}`,
+      displayName: `pw stale count ${id}`,
+      description: 'playwright team for userCount staleness',
+      teamType: 'Group',
+      users: [user.responseData.id],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('1');
+
+    await user.delete(apiContext, false);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('0');
+
+    await afterAction();
+  });
+
   test.describe('Show Deleted toggle', () => {
     let deletedTeam: TeamClass;
     let activeTeam: TeamClass;
@@ -904,8 +1075,6 @@ test.describe('Teams Page', () => {
 });
 
 test.describe('Teams Page with EditUser Permission', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await editOnlyUser.create(apiContext);
@@ -981,8 +1150,6 @@ test.describe('Teams Page with EditUser Permission', () => {
 });
 
 test.describe('Teams Page with Data Consumer User', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await dataConsumerUser.create(apiContext);
@@ -1106,8 +1273,6 @@ test.describe('Teams Page with Data Consumer User', () => {
 });
 
 test.describe('Teams Page action as Owner of Team', () => {
-  test.slow(true);
-
   let teamNoOwner = new TeamClass();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -1136,7 +1301,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${teamID}`,
       description: 'playwright data consumer team description',
       teamType: 'BusinessUnit',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
@@ -1145,7 +1309,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${team2ID}`,
       description: 'playwright data consumer team description',
       teamType: 'Department',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });
@@ -1154,7 +1317,6 @@ test.describe('Teams Page action as Owner of Team', () => {
       displayName: `PW Data Owner Team ${team3ID}`,
       description: 'playwright data consumer team description',
       teamType: 'Division',
-      users: [user.responseData.id, ownerDataEntityReference.id],
       owners: [ownerDataEntityReference],
       defaultRoles: role.responseData.id ? [role.responseData.id] : [],
     });

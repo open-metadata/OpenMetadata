@@ -163,6 +163,8 @@ function FileDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -170,6 +172,8 @@ function FileDetails({
           entity: t('label.file'),
         })
       );
+
+      return false;
     }
   };
 

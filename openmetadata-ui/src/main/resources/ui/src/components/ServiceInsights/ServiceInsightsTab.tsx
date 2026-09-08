@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, noop } from 'lodash';
 import { Bucket, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
@@ -313,13 +313,17 @@ const ServiceInsightsTab = ({
     if (
       workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
     ) {
-      triggerSocketConnection();
+      // The stream is best-effort, widgets fall back to the polled chart data,
+      // so a failed handshake must not surface as an unhandled rejection
+      triggerSocketConnection().catch(noop);
     }
 
     return () => {
       // Stop the socket connection if it is started and set the sessionId to undefined
       if (sessionIdRef.current) {
-        stopChartDataStreamConnection(sessionIdRef.current);
+        // The server may have already reaped the session (404 on teardown), and
+        // an unmount has nobody left to report to, so swallow the failure
+        stopChartDataStreamConnection(sessionIdRef.current).catch(noop);
         sessionIdRef.current = undefined;
       }
     };

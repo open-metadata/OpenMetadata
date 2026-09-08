@@ -37,6 +37,17 @@ jest.mock('../../../utils/AuthProvider.util', () => ({
   })),
 }));
 
+const updateRenewToken = jest.fn();
+
+jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({
+      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
+    }),
+  },
+}));
+
 const mockInstance = {
   loginPopup: jest.fn(),
   loginRedirect: jest.fn(),
@@ -227,5 +238,26 @@ describe('MsalAuthenticator', () => {
     );
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
+  });
+
+  // Regression: renewer registration now lives here instead of in the
+  // parent AuthProvider's ref-deps useEffect.
+  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
+    const { unmount } = render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    expect(updateRenewToken).toHaveBeenCalled();
+
+    const registered = updateRenewToken.mock.calls[0][0];
+
+    expect(typeof registered).toBe('function');
+
+    unmount();
+
+    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
   });
 });

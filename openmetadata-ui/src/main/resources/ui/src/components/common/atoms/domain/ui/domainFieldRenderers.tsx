@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
+import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
@@ -53,17 +53,39 @@ export const CARD_NAME_CLIP_CLASS = 'tw:min-w-0';
 // apply; `block` makes it a block container so the left alignment takes effect.
 export const CLIPPED_NAME_CLASS = 'tw:block tw:text-left';
 
+// The empty states share the list body with the table and card branches, which
+// get `tw:min-h-0 tw:flex-1`. Only the full-height shell pins the card to a
+// height, so elsewhere `flex-1` resolves to nothing and the placeholder
+// collapses onto its own content - the text then sits on the card's bottom
+// border. The floor gives it a block tall enough to centre in either way.
+//
+// The centring utilities are here rather than left to the placeholder because
+// `CoreCreateErrorPlaceHolder` asks for it with `tw:flex-center`, which is a
+// legacy Less class name that the `tw:` prefix never resolves - so that box
+// stays `display: block` and pins its content to the top of whatever height it
+// is given. Supplying the real utilities from the call site fixes these two
+// pages without touching a placeholder that many other screens render.
+export const LIST_EMPTY_STATE_CLASS =
+  'tw:flex tw:flex-1 tw:min-h-60 tw:items-center tw:justify-center';
+
 export const renderDomainNameCell = (
-  entity: Domain | DataProduct
+  entity: Domain | DataProduct,
+  onClick?: () => void
 ): ReactNode => {
   const entityName = getEntityName(entity);
+
+  const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    onClick?.();
+  };
 
   return (
     <Box
       align="center"
       className={NAME_CELL_CLIP_CLASS}
       direction="row"
-      gap={3}>
+      gap={3}
+      onClick={onClick ? handleNameClick : undefined}>
       <Avatar size="md" {...getEntityAvatarProps(entity)} />
       <Typography
         className={CLIPPED_NAME_CLASS}

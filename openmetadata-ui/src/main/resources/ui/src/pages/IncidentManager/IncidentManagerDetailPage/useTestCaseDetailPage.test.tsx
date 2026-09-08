@@ -14,11 +14,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Include } from '../../../generated/type/include';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE_DATA } from '../../../mocks/TestCase.mock';
 import {
+  getTestCaseByFqn,
   getTestCaseVersionDetails,
   getTestCaseVersionList,
+  restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import {
@@ -26,6 +29,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
@@ -80,9 +84,23 @@ jest.mock('../../../rest/testAPI', () => ({
         jest.requireActual('../../../mocks/TestCase.mock').MOCK_TEST_CASE_DATA
       )
     ),
+  restoreTestCase: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      ...jest.requireActual('../../../mocks/TestCase.mock').MOCK_TEST_CASE_DATA,
+      deleted: false,
+    })
+  ),
 }));
 
 const mockNavigate = jest.fn();
+const mockNavigationState = {
+  breadcrumbData: [
+    {
+      name: 'Data Quality',
+      url: '/data-quality/test-cases',
+    },
+  ],
+};
 const mockGetEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => Promise.resolve(MOCK_PERMISSIONS));
@@ -100,7 +118,12 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () =>
+  jest.fn().mockImplementation(() => ({ state: mockNavigationState }))
+);
 
 let mockParams: Record<string, string | undefined> = {
   fqn: mockTestCaseFqn,
@@ -155,6 +178,32 @@ describe('useTestCaseDetailPage', () => {
     expect(result.current.hasEditPermission).toBe(true);
     expect(result.current.hasDeletePermission).toBe(true);
     expect(result.current.editDisplayNamePermission).toBe(true);
+    expect(result.current.canRestorePermission).toBe(true);
+  });
+
+  it('should request active and deleted test cases for direct detail links', async () => {
+    renderDetailPageHook();
+
+    await waitFor(() => expect(getTestCaseByFqn).toHaveBeenCalled());
+
+    expect(getTestCaseByFqn).toHaveBeenCalledWith(
+      mockTestCaseFqn,
+      expect.objectContaining({ include: Include.All })
+    );
+  });
+
+  it('should make a deleted test case read-only while retaining restore permission', async () => {
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.hasEditPermission).toBe(false);
+    expect(result.current.hasDeletePermission).toBe(false);
+    expect(result.current.editDisplayNamePermission).toBe(false);
+    expect(result.current.canRestorePermission).toBe(true);
+    expect(result.current.extraDropdownContent).toEqual([]);
   });
 
   it('should fetch test case permission and task counts on mount', async () => {
@@ -224,7 +273,9 @@ describe('useTestCaseDetailPage', () => {
       result.current.handleTabChange(TestCasePageTabs.ISSUES);
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(expect.any(String), {
+      state: mockNavigationState,
+    });
   });
 
   it('handleOwnerChange should patch the test case owners', async () => {
@@ -273,7 +324,9 @@ describe('useTestCaseDetailPage', () => {
       result.current.onVersionClick();
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(expect.any(String), {
+      state: mockNavigationState,
+    });
   });
 
   it('should fetch the version list and version details on version pages', async () => {
@@ -358,6 +411,38 @@ describe('useTestCaseDetailPage', () => {
     );
 
     expect(result.current.extraDropdownContent[0].key).toBe('edit-dimensions');
+  });
+
+  it('should restore the test case and update the detail query', async () => {
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleRestore();
+    });
+
+    expect(restoreTestCase).toHaveBeenCalledWith(MOCK_TEST_CASE_DATA.id);
+    expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('should report restore failures without showing a success toast', async () => {
+    const error = new Error('Restore failed');
+    (restoreTestCase as jest.Mock).mockRejectedValueOnce(error);
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let isRestored: boolean | undefined;
+    await act(async () => {
+      isRestored = await result.current.handleRestore();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(error);
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(isRestored).toBe(false);
   });
 
   it('getEntityFeedCount should fetch feed counts', async () => {

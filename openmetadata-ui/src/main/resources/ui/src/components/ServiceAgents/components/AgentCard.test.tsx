@@ -39,6 +39,15 @@ jest.mock('./shared/Metric.component', () =>
   jest.fn().mockImplementation(() => <p>Metric</p>)
 );
 
+const mockAirflowStatus = jest.fn();
+
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: () => mockAirflowStatus(),
+  })
+);
+
 const mockScheduleTexts = jest.fn();
 
 jest.mock('../../../hooks/useScheduleDescriptionTexts', () => ({
@@ -91,6 +100,94 @@ describe('AgentCard', () => {
     mockScheduleTexts.mockReturnValue({
       descriptionFirstPart: '',
       descriptionSecondPart: '',
+    });
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+  });
+
+  describe('pipeline service status', () => {
+    const permissions: AgentActionPermissions = {
+      trigger: true,
+      edit: true,
+      delete: true,
+    };
+
+    it('should replace the action controls with a placeholder while the status call is in flight', () => {
+      mockAirflowStatus.mockReturnValue({
+        isAirflowAvailable: false,
+        isFetchingStatus: true,
+        platform: 'Airflow',
+      });
+
+      renderCard(baseAgent, permissions);
+
+      expect(
+        screen.getByTestId('agent-card-actions-skeleton')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('logs-button')).toBeNull();
+      expect(screen.queryByTestId('run-agent-button')).toBeNull();
+      expect(mockAgentOverflowMenu).not.toHaveBeenCalled();
+    });
+
+    it('should keep the run history reachable while the status call is in flight', () => {
+      mockAirflowStatus.mockReturnValue({
+        isAirflowAvailable: false,
+        isFetchingStatus: true,
+        platform: 'Airflow',
+      });
+
+      renderCard(baseAgent, permissions);
+
+      fireEvent.click(screen.getByTestId('view-run-history-button'));
+
+      expect(mockOnRunDetails).toHaveBeenCalledWith(baseAgent);
+    });
+
+    it('should keep Diagnose enabled on a failed agent while the status call is in flight', () => {
+      mockAirflowStatus.mockReturnValue({
+        isAirflowAvailable: false,
+        isFetchingStatus: true,
+        platform: 'Airflow',
+      });
+
+      renderCard({ ...baseAgent, status: 'failed' }, permissions);
+
+      fireEvent.click(screen.getByTestId('diagnose-button'));
+
+      expect(mockOnRunDetails).toHaveBeenCalledWith({
+        ...baseAgent,
+        status: 'failed',
+      });
+    });
+
+    it('should disable the action controls once the status call reports it unreachable', () => {
+      mockAirflowStatus.mockReturnValue({
+        isAirflowAvailable: false,
+        isFetchingStatus: false,
+        platform: 'Airflow',
+      });
+
+      renderCard(baseAgent, permissions);
+
+      expect(screen.getByTestId('logs-button')).toBeDisabled();
+      expect(screen.getByTestId('run-agent-button')).toBeDisabled();
+      expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
+        expect.objectContaining({ isDisabled: true })
+      );
+      expect(screen.queryByTestId('agent-card-actions-skeleton')).toBeNull();
+    });
+
+    it('should leave the action controls enabled once the pipeline service answers', () => {
+      renderCard(baseAgent, permissions);
+
+      expect(screen.getByTestId('logs-button')).toBeEnabled();
+      expect(screen.getByTestId('run-agent-button')).toBeEnabled();
+      expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
+        expect.objectContaining({ isDisabled: false })
+      );
     });
   });
 
@@ -151,6 +248,27 @@ describe('AgentCard', () => {
     expect(
       screen.getAllByTitle(/message.run-status-click-details/)
     ).toHaveLength(3);
+  });
+
+  it('should render the run dots in the order given, oldest to newest', () => {
+    renderCard(baseAgent);
+
+    expect(
+      screen
+        .getAllByTestId('agent-run-dot')
+        .map((dot) => dot.getAttribute('data-run-status'))
+    ).toEqual(['success', 'failed', 'partial']);
+  });
+
+  it('should highlight the rightmost dot as the latest run', () => {
+    const dimmed = 'tw:opacity-[0.55]';
+    renderCard(baseAgent);
+
+    const dots = screen.getAllByTestId('agent-run-dot');
+
+    expect(dots[0]).toHaveClass(dimmed);
+    expect(dots[1]).toHaveClass(dimmed);
+    expect(dots[2]).not.toHaveClass(dimmed);
   });
 
   it('should show recent runs for a queued agent with run history', () => {

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   getApiContext,
@@ -75,8 +75,8 @@ test.describe('Data Product Domain Migration', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: sourceDomain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: sourceDomain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -85,8 +85,8 @@ test.describe('Data Product Domain Migration', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: sourceDomain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: sourceDomain.responseData.id, type: 'domain' }],
         },
       ],
     });

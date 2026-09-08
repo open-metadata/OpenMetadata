@@ -91,7 +91,12 @@ jest.mock('../../../Database/ColumnFilter/ColumnFilter.component', () => ({
 }));
 jest.mock('../../../Database/TableDescription/TableDescription.component', () =>
   jest.fn(({ columnData, onClick }) => (
-    <div data-testid="table-description" onClick={onClick}>
+    <div
+      data-testid="table-description"
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={onClick}>
       {columnData.field || 'No description'}
     </div>
   ))
@@ -112,7 +117,11 @@ jest.mock(
         visible ? (
           <div data-testid="modal-with-markdown-editor">
             <h3>{header}</h3>
-            <textarea data-testid="description-input" defaultValue={value} />
+            <textarea
+              aria-label="Description"
+              data-testid="description-input"
+              defaultValue={value}
+            />
             <button
               data-testid="save-button"
               onClick={() => onSave('Updated description')}>

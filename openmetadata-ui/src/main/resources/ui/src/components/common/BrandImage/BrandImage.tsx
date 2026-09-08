@@ -52,6 +52,7 @@ const BrandImage: FC<BrandImageProps> = ({
   }, [isMonoGram, applicationConfig?.customLogoConfig]);
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- image load lifecycle, not interaction
     <img
       alt={alt ?? t('label.brand-name-logo')}
       className={className}

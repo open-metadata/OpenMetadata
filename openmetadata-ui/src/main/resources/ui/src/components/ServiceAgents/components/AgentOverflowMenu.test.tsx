@@ -37,6 +37,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       return (
         <div data-open={String(Boolean(isOpen))} data-testid="dropdown-root">
           <button
+            aria-label="open-dropdown"
             data-testid="open-dropdown"
             onClick={() => onOpenChange?.(true)}
           />
@@ -101,12 +102,14 @@ const renderMenu = (
   status: AgentStatus,
   permissions?: AgentActionPermissions,
   allowedActions?: string[],
-  enabled?: boolean
+  enabled?: boolean,
+  isDisabled?: boolean
 ) =>
   render(
     <AgentOverflowMenu
       allowedActions={allowedActions}
       enabled={enabled}
+      isDisabled={isDisabled}
       permissions={permissions}
       status={status}
       onAction={mockOnAction}
@@ -116,6 +119,12 @@ const renderMenu = (
 describe('AgentOverflowMenu', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should disable the trigger when the pipeline service is unreachable', () => {
+    renderMenu('success', FULL_PERMISSIONS, undefined, undefined, true);
+
+    expect(screen.getByTestId('more-actions')).toBeDisabled();
   });
 
   it('should render pause, redeploy, edit and delete for an enabled inactive agent', () => {

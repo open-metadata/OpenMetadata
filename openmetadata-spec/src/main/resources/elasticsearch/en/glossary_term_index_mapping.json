@@ -28,9 +28,10 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
@@ -43,8 +44,8 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
@@ -69,6 +70,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     }
@@ -590,6 +595,49 @@
       },
       "mutuallyExclusive": {
         "type": "boolean"
+      },
+      "realizedIn": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": { "type": "keyword" },
+          "asset": {
+            "properties": {
+              "id": { "type": "keyword" },
+              "type": { "type": "keyword" },
+              "name": {
+                "type": "text",
+                "fields": { "keyword": { "type": "keyword" } }
+              },
+              "fullyQualifiedName": { "type": "keyword" },
+              "displayName": {
+                "type": "text",
+                "fields": { "keyword": { "type": "keyword" } }
+              }
+            }
+          },
+          "role": { "type": "keyword" },
+          "description": { "type": "text" },
+          "provenance": { "type": "keyword" }
+        }
+      },
+      "attributes": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": { "type": "keyword" },
+          "name": {
+            "type": "text",
+            "fields": { "keyword": { "type": "keyword" } }
+          },
+          "iri": { "type": "keyword" },
+          "description": { "type": "text" },
+          "dataType": { "type": "keyword" },
+          "datatypeIri": { "type": "keyword" },
+          "unit": { "type": "keyword" },
+          "enumValues": { "type": "keyword" },
+          "isIdentifier": { "type": "boolean" }
+        }
       },
       "fingerprint": {
         "type": "keyword"

@@ -13,20 +13,18 @@
 Module to define overridden dialect methods
 """
 
-import operator  # noqa: I001
+import operator
 from collections import OrderedDict, defaultdict
 from functools import reduce
-from typing import Dict, Optional  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -34,11 +32,12 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeTable,
     SnowflakeTableList,
 )
-from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION,
+    SNOWFLAKE_GET_SEMANTIC_VIEWS,
     SNOWFLAKE_GET_STAGES,
     SNOWFLAKE_GET_STREAM_DEFINITION,
     SNOWFLAKE_GET_STREAM_NAMES,
@@ -52,6 +51,13 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
 )
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    SEMANTIC_COMMENT_IDX,
+    SEMANTIC_DATA_TYPE_IDX,
+    SEMANTIC_EXPRESSION_IDX,
+    SEMANTIC_NAME_IDX,
+)
+from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -59,12 +65,13 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 
 logger = ingestion_logger()
 
 dialect = SnowflakeDialect()
 Query = str
-QueryMap = Dict[str, Query]  # noqa: UP006
+QueryMap = dict[str, Query]
 
 
 # How many schemas' column dicts we keep in the get_schema_columns cache
@@ -83,6 +90,30 @@ QueryMap = Dict[str, Query]  # noqa: UP006
 SCHEMA_COLUMNS_CACHE_SIZE = snowflake_settings.schema_columns_cache_size
 
 _SCHEMA_COLUMNS_LRU_KEY = "_om_snowflake_schema_columns_lru"
+
+# Snowflake errno for "Information schema query returned too much data". Both the
+# schema-wide column query and the schema-wide semantic catalog query fall back to
+# per-object reflection on it.
+INFO_SCHEMA_TOO_MUCH_DATA = 90030
+
+# The three INFORMATION_SCHEMA catalog views backing a semantic view.
+SEMANTIC_DIMENSIONS = "semantic_dimensions"
+SEMANTIC_FACTS = "semantic_facts"
+SEMANTIC_METRICS = "semantic_metrics"
+SEMANTIC_CATALOG_VIEWS = (SEMANTIC_DIMENSIONS, SEMANTIC_FACTS, SEMANTIC_METRICS)
+
+# Which catalog views become columns on the semantic view Table, and the kind label
+# used to deduplicate a name that appears as both a dimension and a fact. Metrics are
+# excluded: they are Metric entities, not columns.
+SEMANTIC_VIEW_COLUMN_KINDS = (
+    ("Dimension", SEMANTIC_DIMENSIONS),
+    ("Fact", SEMANTIC_FACTS),
+)
+
+SEMANTIC_CATALOG_CACHE_SIZE = snowflake_settings.semantic_catalog_cache_size
+
+# A schema's semantic catalog: {catalog_view: {view_name: [row, ...]}}
+SemanticCatalog = dict[str, dict[str, list[tuple]]]
 
 
 TABLE_QUERY_MAPS = {
@@ -128,7 +159,7 @@ def _denormalize_quote_join(*idents):
     return ".".join(normalized_identifiers)
 
 
-def _quoted_name(entity_name: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _quoted_name(entity_name: str | None) -> str | None:
     if entity_name:
         return fqn.quote_name(entity_name)
 
@@ -198,7 +229,19 @@ def get_stage_names_reflection(self, schema=None, **kw):
         return self.dialect.get_stage_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
-def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):  # noqa: UP006, UP045
+def get_semantic_view_names_reflection(self, schema=None, **kw):
+    """Return all semantic view names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_semantic_view_names(conn, schema, info_cache=self.info_cache, **kw)
+
+
+def _get_query_map(incremental: IncrementalConfig | None, query_maps: dict[str, QueryMap]):
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
@@ -209,10 +252,10 @@ def _get_query_parameters(
     self,
     connection,
     schema: str,
-    incremental: Optional[IncrementalConfig],  # noqa: UP045
-    account_usage: Optional[str] = None,  # noqa: UP045
-    include_transient_tables: Optional[bool] = False,  # noqa: UP045
-    include_views: Optional[bool] = False,  # noqa: UP045
+    incremental: IncrementalConfig | None,
+    account_usage: str | None = None,
+    include_transient_tables: bool | None = False,
+    include_views: bool | None = False,
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
@@ -329,6 +372,82 @@ def get_stage_names(self, connection, schema, **kw):
     return result  # noqa: RET504
 
 
+def get_semantic_view_names(self, connection, schema, **kw):
+    """Return all semantic view names in schema from INFORMATION_SCHEMA.SEMANTIC_VIEWS."""
+    parameters = {"schema": fqn.unquote_name(schema)}
+    cursor = connection.execute(text(SNOWFLAKE_GET_SEMANTIC_VIEWS.format(**parameters)))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(
+                name=self.normalize_name(row[0]),
+                deleted=None,
+                type_=TableType.SemanticView,
+            )
+            for row in cursor
+        ]
+    )
+    return result  # noqa: RET504
+
+
+def _resolve_semantic_column_type(data_type: str | None):
+    """Map a Snowflake INFORMATION_SCHEMA data_type string to a SQLAlchemy type.
+
+    Falls back to NullType (OpenMetadata maps this to DataType.UNKNOWN) when the
+    base type is unrecognized so a semantic view is never dropped over an exotic type.
+
+    Reads ``ischema_names`` at call time rather than import time: the Snowflake source
+    module registers VARIANT/GEOGRAPHY/GEOMETRY/VECTOR/MAP into that same dict when it
+    is imported, which happens before any semantic view is reflected.
+    """
+    resolved = sqltypes.NullType()
+    if data_type:
+        base_type = data_type.strip().split("(")[0].split()[0].upper()
+        type_class = ischema_names.get(base_type)
+        if type_class is not None:
+            try:
+                resolved = type_class()
+            except Exception:  # pylint: disable=broad-except
+                resolved = sqltypes.NullType()
+    return resolved
+
+
+def merge_semantic_view_column(merged: dict[str, dict], kind: str, row) -> None:
+    """Accumulate a dimension/fact row under its column name.
+
+    ``kind`` is unused: the semantic classification, owning logical table and
+    synonyms are carried by the Metric entity's ``dimensions``/``measures``, not
+    by the column. The merge still deduplicates names that appear in both the
+    dimension and the fact catalog.
+    """
+    name = row[SEMANTIC_NAME_IDX]
+    if name not in merged:
+        merged[name] = {
+            "name": name,
+            "data_type": row[SEMANTIC_DATA_TYPE_IDX],
+            "expression": row[SEMANTIC_EXPRESSION_IDX],
+            "comment": row[SEMANTIC_COMMENT_IDX],
+        }
+
+
+def build_semantic_view_column(entry: dict) -> dict:
+    """Convert an accumulated semantic object into an OpenMetadata column dict.
+
+    The description is the raw Snowflake ``COMMENT`` only. The semantic detail
+    (kind, logical table, synonyms, defining expression) lives on the Metric
+    entity so the column stays a plain, readable column.
+    """
+    return {
+        "name": entry["name"],
+        "type": _resolve_semantic_column_type(entry["data_type"]),
+        "system_data_type": entry["data_type"] or DataType.UNKNOWN.value,
+        "nullable": True,
+        "default": None,
+        "autoincrement": False,
+        "comment": entry["comment"] or None,
+        "primary_key": False,
+    }
+
+
 @reflection.cache
 def get_view_definition(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     view_definition = get_view_definition_wrapper(
@@ -367,6 +486,25 @@ def get_stream_definition(  # pylint: disable=unused-argument
     schema = schema or self.default_schema_name
     stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
     cursor = connection.execute(text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
+
+
+@reflection.cache
+def get_semantic_view_definition(  # pylint: disable=unused-argument
+    self, connection, semantic_view_name, schema=None, **kw
+):
+    """Gets the semantic view definition (DDL)."""
+    schema = schema or self.default_schema_name
+    semantic_view_name = f'"{schema}"."{semantic_view_name}"' if schema else f'"{semantic_view_name}"'
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION.format(semantic_view_name=semantic_view_name))
+    )
     try:
         result = cursor.fetchone()
         if result:
@@ -472,7 +610,7 @@ def get_schema_columns(self, connection, schema, **kw):
         result = connection.execute(text(SNOWFLAKE_GET_SCHEMA_COLUMNS), {"table_schema": table_schema})
 
     except sa_exc.ProgrammingError as p_err:
-        if p_err.orig.errno == 90030:
+        if p_err.orig.errno == INFO_SCHEMA_TOO_MUCH_DATA:
             # Too many tables in the schema for the bulk query; signal the
             # per-table fallback in get_columns by returning None. Cache the
             # None so subsequent tables in the same schema don't re-run the

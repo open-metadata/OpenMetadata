@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { AntdConfig } from '@react-awesome-query-builder/antd';
+import {
+  AntdConfig,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/antd';
 import {
   elasticSearchFormat,
   hasUnfinishedRule,
@@ -286,5 +289,87 @@ describe('hasUnfinishedRule', () => {
     const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
 
     expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+  });
+});
+
+// The cases above all use `extension.*` fields, which return from buildEsRule through
+// buildExtensionQuery before the widget is ever resolved. A plain field goes the other way and
+// needs the config the widget lookup expects, so it is the one that exposes issue #31564.
+const SELECT_FIELD = 'service.displayName.keyword';
+const SELECT_VALUE = 'banking-bigquery';
+
+const selectFieldConfig = {
+  ...AntdConfig,
+  fields: {
+    [SELECT_FIELD]: {
+      label: 'Service',
+      type: 'select',
+      fieldSettings: {
+        listValues: { [SELECT_VALUE]: SELECT_VALUE },
+      },
+    },
+  },
+};
+
+const loadSelectTree = (operator, value, valueType) =>
+  QbUtils.checkTree(
+    QbUtils.loadTree({
+      id: 'aaaaaaaa-1111-4111-8111-111111111111',
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        'bbbbbbbb-2222-4222-8222-222222222222': {
+          type: 'rule',
+          id: 'bbbbbbbb-2222-4222-8222-222222222222',
+          properties: {
+            field: SELECT_FIELD,
+            operator,
+            value,
+            valueSrc: ['value'],
+            valueType: [valueType],
+          },
+        },
+      },
+    }),
+    selectFieldConfig
+  );
+
+const firstRuleOf = (tree) => tree.get('children1').valueSeq().toArray()[0];
+
+describe('elasticSearchFormat – rule node reached directly (Issue #31564)', () => {
+  it('should build the same clause for a rule whether it is reached through its group or on its own', () => {
+    const tree = loadSelectTree('select_equals', [SELECT_VALUE], 'select');
+    const clause = { term: { [SELECT_FIELD]: SELECT_VALUE } };
+
+    expect(
+      elasticSearchFormat(firstRuleOf(tree), selectFieldConfig)
+    ).toStrictEqual(clause);
+    expect(elasticSearchFormat(tree, selectFieldConfig)).toStrictEqual({
+      bool: { must: [clause] },
+    });
+  });
+});
+
+describe('hasUnfinishedRule – entered rules on plain fields (Issue #31564)', () => {
+  it('should accept an entered single-value select condition', () => {
+    const tree = loadSelectTree('select_equals', [SELECT_VALUE], 'select');
+
+    expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(false);
+  });
+
+  it('should accept an entered multiselect condition', () => {
+    const tree = loadSelectTree(
+      'select_any_in',
+      [[SELECT_VALUE]],
+      'multiselect'
+    );
+
+    expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(false);
+  });
+
+  it('should still report a single-value select condition with no value entered', () => {
+    const tree = loadSelectTree('select_equals', [undefined], 'select');
+
+    expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(true);
   });
 });

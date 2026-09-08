@@ -18,17 +18,17 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import java.util.List;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.TagFeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 public class TagFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s the tags for %s %s";
 
   public TagFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     super(messageDecorator, thread, fieldChange);
   }
 
@@ -68,7 +68,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               .replaceMarkers(
                   message, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
     }
-    populateTagFeedInfo(Thread.FieldOperation.ADDED, message);
+    populateTagFeedInfo(FormattedMessage.FieldOperation.ADDED, message);
     return message;
   }
 
@@ -118,7 +118,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               this.getFieldChangeName(),
               diff);
     }
-    populateTagFeedInfo(Thread.FieldOperation.UPDATED, message);
+    populateTagFeedInfo(FormattedMessage.FieldOperation.UPDATED, message);
     return message;
   }
 
@@ -158,7 +158,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               .replaceMarkers(
                   message, this.getMessageDecorator().httpRemoveMarker(), spanAdd, spanAddClose);
     }
-    populateTagFeedInfo(Thread.FieldOperation.DELETED, message);
+    populateTagFeedInfo(FormattedMessage.FieldOperation.DELETED, message);
     return message;
   }
 
@@ -169,7 +169,8 @@ public class TagFormatter extends DefaultFieldFormatter {
     return fieldName;
   }
 
-  private void populateTagFeedInfo(Thread.FieldOperation operation, String threadMessage) {
+  private void populateTagFeedInfo(
+      FormattedMessage.FieldOperation operation, String threadMessage) {
     List<TagLabel> oldTags =
         JsonUtils.readOrConvertValues(fieldChange.getOldValue(), TagLabel.class);
     List<TagLabel> newTags =
@@ -180,7 +181,8 @@ public class TagFormatter extends DefaultFieldFormatter {
             .withHeaderMessage(getHeaderForTagsUpdate(operation.value()))
             .withFieldName(FIELD_TAGS)
             .withEntitySpecificInfo(tagFeedInfo);
-    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.TAGS, operation, feedInfo);
+    populateThreadFeedInfo(
+        thread, threadMessage, FormattedMessage.CardStyle.TAGS, operation, feedInfo);
   }
 
   private String getHeaderForTagsUpdate(String eventTypeMessage) {

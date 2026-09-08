@@ -21,7 +21,6 @@ import {
   expectBulkIdsRequest,
   expectCapturedDownload,
   expectSelectedCount,
-  getDocumentRowByName,
   insertAudioViaUpload,
   insertFileViaUpload,
   insertFileWithUrl,
@@ -33,6 +32,7 @@ import {
   navigateToArticles,
   navigateToDocuments,
   responseMatchesRequestPath,
+  searchAndGetDocumentRow,
   selectDocumentByName,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
@@ -94,7 +94,7 @@ test.describe('Context Center - Download', () => {
 
     await navigateToDocuments(page);
 
-    const targetRow = getDocumentRowByName(page, fileName);
+    const targetRow = await searchAndGetDocumentRow(page, fileName);
     await expect(targetRow).toBeVisible();
 
     const downloadPath = `/api/v1/contextCenter/drive/files/${document.id}/download`;
@@ -447,7 +447,6 @@ test.describe('Context Center - Article Attachments', () => {
       await expect(
         page.getByTestId('uploaded-image-node').first()
       ).toBeVisible();
-      await page.waitForTimeout(500);
     });
 
     await test.step('navigate away immediately without waiting for autosave', async () => {

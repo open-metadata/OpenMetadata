@@ -90,6 +90,42 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 }));
 
 /**
+ * DOMRect polyfill — jsdom does not expose the constructor, but browser code
+ * (e.g. Tippy.js fallbacks) uses `new DOMRect()` at runtime.
+ */
+if (typeof global.DOMRect === 'undefined') {
+  global.DOMRect = class DOMRect {
+    constructor(x = 0, y = 0, width = 0, height = 0) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.top = y;
+      this.right = x + width;
+      this.bottom = y + height;
+      this.left = x;
+    }
+
+    toJSON() {
+      return {
+        x: this.x,
+        y: this.y,
+        width: this.width,
+        height: this.height,
+        top: this.top,
+        right: this.right,
+        bottom: this.bottom,
+        left: this.left,
+      };
+    }
+
+    static fromRect(other) {
+      return new DOMRect(other?.x, other?.y, other?.width, other?.height);
+    }
+  };
+}
+
+/**
  * Minimal DataTransfer polyfill — jsdom does not implement it, and the core
  * FileUploadDropZone builds a FileList via `new DataTransfer()` when forwarding
  * the selected files to its onDrop handlers.

@@ -10,17 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import AddGlossaryPageComponent from '../../../pages/AddGlossary/AddGlossaryPage.component';
-import GlossaryPage from '../../../pages/Glossary/GlossaryPage/GlossaryPage.component';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import GlossaryVersion from '../../Glossary/GlossaryVersion/GlossaryVersion.component';
 import AdminProtectedRoute from '../AdminProtectedRoute';
+import { withPageSuspenseFallback } from '../withSuspenseFallback';
+
+const AddGlossaryPageComponent = withPageSuspenseFallback(
+  lazy(() => import('../../../pages/AddGlossary/AddGlossaryPage.component'))
+);
+const GlossaryPage = withPageSuspenseFallback(
+  lazy(
+    () => import('../../../pages/Glossary/GlossaryPage/GlossaryPage.component')
+  )
+);
 
 const GlossaryRouter = () => {
   const { permissions } = usePermissionProvider();

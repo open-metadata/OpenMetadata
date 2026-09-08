@@ -132,6 +132,23 @@ const classificationLanguageEnumNames = (
 ).map((v) => capitalize(v));
 
 /**
+ * These two fields first render *after* mount — they live inside the collapsed "Filter patterns"
+ * section, whose children are unmounted until it is expanded. Without their own boundary they
+ * suspend the form-wide one below, which swaps the entire form for a loader; the scroll container
+ * then collapses, the browser clamps scrollTop to 0, and the form repaints at the top. Wrapping
+ * localises the suspension so expanding a section keeps the scroll position.
+ *
+ * Wrapped at module scope, not inside the `useMemo` registries: `withSuspenseFallback` returns a
+ * new component per call, so wrapping per render would remount the field on every re-render.
+ * The remaining lazy fields/templates all render at initial mount, where a form-wide loader is
+ * the correct behaviour, so they are deliberately left alone.
+ */
+const SuspendedFilterPatternField = withSuspenseFallback(FilterPatternField);
+const SuspendedProfileSampleConfigField = withSuspenseFallback(
+  ProfileSampleConfigField
+);
+
+/**
  * Rendered as a sibling of the RJSF form inside the Suspense boundary, so its
  * effect can only run once every lazy template above has resolved and the form
  * ref is attached. Consumers use this to gate an external submit button that
@@ -278,7 +295,7 @@ const IngestionWorkflowForm = forwardRef<
       AnyOfField: CoreOneOfField,
       ArrayField: WorkflowArrayFieldTemplate,
       BooleanField: BooleanFieldTemplate,
-      FilterPatternField,
+      FilterPatternField: SuspendedFilterPatternField,
       OneOfField: CoreOneOfField,
     };
 
@@ -292,7 +309,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     if (pipeLineType === PipelineType.Profiler) {
-      fields['ProfileSampleConfigField'] = ProfileSampleConfigField;
+      fields['ProfileSampleConfigField'] = SuspendedProfileSampleConfigField;
     }
 
     return fields;

@@ -27,4 +27,16 @@ void i18n.use(initReactI18next).init({
 // `languageChanged` lazy-load handler is needed here.
 initCoreI18n(i18n);
 
+// `label.brand-name` is owned by the host app's namespace, not the library's, so
+// it isn't in the core bundles. Stand in the product default here (falling back
+// to en-US covers every locale) so `DocumentTitle` renders "… | OpenMetadata"
+// in Storybook.
+i18n.addResourceBundle(
+  'en-US',
+  CORE_NS,
+  { label: { 'brand-name': 'OpenMetadata' } },
+  /* deep */ true,
+  /* overwrite */ true
+);
+
 export default i18n;

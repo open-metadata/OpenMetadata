@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import { DqDashboardSectionContent } from './DqDashboardSectionContent.component';
 
@@ -179,14 +180,23 @@ describe('DqDashboardSectionContent component', () => {
     expect(
       screen.getByTestId('test-case-status-area-widget-failed')
     ).toBeInTheDocument();
-    expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'success',
-        redirectPath: expect.objectContaining({
-          search: expect.stringContaining('lastRunRange%5BstartTs%5D=1000'),
-        }),
-      })
-    );
+
+    [
+      ['success', TestCaseStatus.Success],
+      ['aborted', TestCaseStatus.Aborted],
+      ['failed', TestCaseStatus.Failed],
+    ].forEach(([name, status]) => {
+      expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name,
+          redirectPath: expect.objectContaining({
+            search: expect.stringContaining(
+              `testCaseStatus=${status}&lastRunRange%5BstartTs%5D=1000&lastRunRange%5BendTs%5D=2000`
+            ),
+          }),
+        })
+      );
+    });
   });
 
   it('should render the incident-metrics section with incident type and time widgets', () => {

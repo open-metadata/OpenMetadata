@@ -5,8 +5,7 @@
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
-    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
-    "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
     "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
@@ -97,6 +96,23 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
+        "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/Tasks/**/*.spec.ts",
+        "playwright/e2e/Pages/Tasks.spec.ts",
+        "playwright/e2e/Pages/TasksUIFlow.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
       ],
@@ -123,13 +139,14 @@
         "SearchRBAC"
       ],
       "specs": [
-        "playwright/e2e/Pages/Explore*.spec.ts",
+        "playwright/e2e/**/Explore*.spec.ts",
         "playwright/e2e/Features/*Search*.spec.ts",
         "playwright/e2e/Flow/*Search*.spec.ts",
         "playwright/e2e/Search/**/*.spec.ts",
         "playwright/e2e/Features/SearchSeparation/**/*.spec.ts",
         "playwright/e2e/**/*AfterReindex.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -169,10 +186,35 @@
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
+        "playwright/e2e/Pages/TestSuite*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "ScheduleInterval is shared by ingestion, data quality, data contracts, and application configuration, so changes must exercise every scheduler-facing flow.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleInterval*",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleSelectionCards.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/AppSchedule/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AppInstall/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Schedular.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CronExpressionUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SchedularUtils.tsx"
+      ],
+      "projects": ["chromium", "Basic", "Ingestion", "Data Insight"],
+      "specs": [
+        "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
+        "playwright/e2e/Features/TestSuite*.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"
       ]
     },
@@ -198,6 +240,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/TestSuite*.spec.ts",
@@ -232,6 +275,21 @@
       ]
     },
     {
+      "_comment": "The agents tab has to keep listing agents, and keep its run history readable, while the pipeline-service status call is slow or failing — only the controls that reach that service may go down with it. These are the files that decide it. The spec stubs the status endpoint and carries no ingestion tag, so chromium alone is enough; it needs no Airflow fixture.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ServiceAgents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Ingestion/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AirflowMessageBanner/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/AirflowStatusProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/ingestionPipelineAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
@@ -246,8 +304,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/GlossaryTermRelation/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Settings/GlossaryTermRelation/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/**",
+        "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DomainListing/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataProduct/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
@@ -256,6 +328,21 @@
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
         "playwright/e2e/Features/DomainIsolation/**/*.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DomainsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DataProductsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/domainAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/domainQuery.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/dataProductAPI.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts"
       ]
     },
     {
@@ -283,7 +370,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
+      "projects": ["chromium", "Basic", "Ingestion", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",
@@ -407,7 +494,7 @@
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
       ],
       "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
+      "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"]
     },
     {
       "sources": [
@@ -516,6 +603,129 @@
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The customize-landing-page and widget-filter playwright helpers are shared by every landing-page/customization spec. Without this entry a helper-only change (e.g. a wait fix in customizeLandingPage.ts or widgetFilters.ts) counted as an unmapped file, so CustomizeWidgets/CustomizeLandingPage and the other specs that execute the changed helpers never ran on the PR. Specs listed are the exact importers of these modules; DataInsight.spec.ts runs in the Data Insight project.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/widgetFilters.ts"
+      ],
+      "projects": ["chromium", "Data Insight"],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
+        "playwright/e2e/Features/NavigationBlocker.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
+        "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Persona AI Context moved from Persona settings to Context Center. Cover its page, route, API, and shared Playwright navigation so a relocation cannot leave its E2E suites out of targeted CI.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/personaAIContext.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ContextCenterRouter/ContextCenterRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterAIContextPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Persona/PersonaDetailsPage/PersonaDetailsPage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/PersonaAIContextUtils.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/aicontext/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/teams/PersonaResource.java",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContext.json",
+        "openmetadata-spec/src/main/resources/json/schema/type/personaContextDefinition.json"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextPermissions.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Metric page, custom-metric page, bulk-edit grid, and the CSV import/export machinery all funnel through this cluster. MetricBulkImportExportEdit + BulkImport + ClassificationImportExport have been ejecting PRs from the merge queue because none of them named these paths — PR CI skipped them entirely and the queue was the first place they ran. The two playwright helpers are included so a wait/selector fix in importUtils.ts also routes back to the specs that consume it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AddCustomMetricPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/bulkImportExport.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/importUtils.ts"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
+        "playwright/e2e/Features/CustomMetric.spec.ts",
+        "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
+        "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
+        "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/CsvJobsTray.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Column bulk operations and column sorting exercise the ColumnBulkOperations page and columnAPI; keeps ColumnBulkOperationsTagsGlossary tied to both this and the Tag mapping above.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/ColumnBulkOperations/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/columnAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
+        "playwright/e2e/Features/ColumnSorting.spec.ts",
+        "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Customize pages (Details and AppMode sidebar) plus the customizable-widgets component tree feed the CustomizeDetailPage and CustomizeNavigation specs. Data Insight is included because the customize flow ships a data-insight preview.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/**"
+      ],
+      "projects": ["chromium", "Data Insight"],
+      "specs": [
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Container entity page. Container.spec.ts covers the storage-container details view and had no mapping before this entry.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContainerPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Container/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Container.spec.ts"
+      ]
+    },
+    {
+      "_comment": "AppMode covers the ai-shell / admin-shell split. Sources are spread across the AppModeSwitcher, the ai-shell platform tree (routing + sidebar), the Settings AppMode pages, and the appModeSession util. The generated appModePreference schema is included because a schema change ripples into every AppMode spec that reads a persisted preference.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/AppModeSwitcher/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/SettingsAppModePage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Settings/DefaultAppModePage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/appModeSession.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/appMode.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/teams/preferences/appModePreference.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AppMode/**/*.spec.ts"
       ]
     }
   ]

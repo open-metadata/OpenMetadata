@@ -9,251 +9,76 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This workflow executes end-to-end (e2e) tests using Playwright with PostgreSQL as the database.
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+# On-demand PostgreSQL Playwright E2E run. Dispatch this from `main` and
+# pass the release branch you want to test via `branch:`; the reusable
+# will check that branch out for every test-path job (build, fixture,
+# shard). The PR gate lives in `playwright-postgresql-e2e.yml`; this file
+# only exists so someone can verify a specific release branch without
+# opening a PR.
+#
+# Any change to shard planning, caching, gate rules, or the summary check
+# should be made in the reusable so both callers stay aligned.
 
-name: Postgresql Playwright E2E Tests
+name: PostgreSQL Playwright E2E (release branch)
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to run tests on"
+        description: Release branch to check out and test against (e.g. `release-1.9`, `main`).
         required: true
         type: string
-        default: "main"
+        default: main
+      full_suite:
+        description: Run the complete duration-balanced suite
+        required: true
+        type: boolean
+        default: true
+      protocol:
+        description: Application protocol used by Playwright
+        required: true
+        type: choice
+        options:
+          - http
+          - h2
+        default: http
+      coarse_bundle:
+        description: Build the CI-only coarse Vite bundle
+        required: true
+        type: boolean
+        default: true
       send_slack_notification:
-        description: "Send Slack notification with test results"
+        description: Post the run summary to the E2E Slack channel
         required: false
         type: boolean
         default: false
 
 permissions:
+  actions: read
   contents: read
-
-concurrency:
-  group: pw-ci-postgresql-branch-${{ inputs.branch }}
-  cancel-in-progress: true
+  pull-requests: read
 
 jobs:
-  pw-ci-postgresql-branch:
-    runs-on: ubuntu-latest
-    environment: test
-    env:
-      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
-      # workers, retries). The production default of 5 active sessions per user would evict the
-      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
-      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
-      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
-    strategy:
-      fail-fast: false
-      matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6, 7]
-        shardTotal: [7]
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
-
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.branch }}
-
-      - name: Cache Maven Dependencies
-        id: cache-output
-        uses: actions/cache@v5
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: "3.10"
-          args: "-d postgresql"
-          ingestion_dependency: "playwright"
-
-      - name: Install dependencies
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
-      - name: Install Playwright Browsers
-        run: npx playwright@1.57.0 install chromium --with-deps
-      - name: Run Playwright tests
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: |
-          if [ "${{ matrix.shardIndex }}" = "1" ]; then
-            echo "🔹 Running DataAssetRules-only tests on shard 1"
-
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
-            npx playwright test \
-              --project=setup \
-              --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled
-
-          elif [ "${{ matrix.shardIndex }}" = "2" ]; then
-            echo "🔹 Running search relevance tests on shard 2"
-
-            npx playwright test \
-              --project=search-nightly \
-              playwright/e2e/Search/SearchRelevance.spec.ts \
-              --workers=1
-
-          else
-            # Shards 3-7 handle chromium tests (5 shards total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
-            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
-            npx playwright test \
-              --project=chromium \
-              --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
-          fi
-
-        env:
-          PLAYWRIGHT_IS_OSS: true
-          PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
-          PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
-          PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
-          PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
-          PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
-          PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
-          PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
-          PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
-          PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
-          PLAYWRIGHT_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-          PLAYWRIGHT_REDSHIFT_HOST: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
-          PLAYWRIGHT_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
-          PLAYWRIGHT_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
-          PLAYWRIGHT_REDSHIFT_DATABASE: ${{ secrets.TEST_REDSHIFT_DATABASE }}
-          PLAYWRIGHT_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
-          PLAYWRIGHT_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
-          PLAYWRIGHT_METABASE_DB_SERVICE_NAME: ${{ secrets.TEST_METABASE_DB_SERVICE_NAME }}
-          PLAYWRIGHT_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
-          PLAYWRIGHT_SUPERSET_USERNAME: ${{ secrets.TEST_SUPERSET_USERNAME }}
-          PLAYWRIGHT_SUPERSET_PASSWORD: ${{ secrets.TEST_SUPERSET_PASSWORD }}
-          PLAYWRIGHT_SUPERSET_HOST_PORT: ${{ secrets.TEST_SUPERSET_HOST_PORT }}
-          PLAYWRIGHT_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.TEST_KAFKA_BOOTSTRAP_SERVERS }}
-          PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL: ${{ secrets.TEST_KAFKA_SCHEMA_REGISTRY_URL }}
-          PLAYWRIGHT_GLUE_ACCESS_KEY: ${{ secrets.TEST_GLUE_ACCESS_KEY }}
-          PLAYWRIGHT_GLUE_SECRET_KEY: ${{ secrets.TEST_GLUE_SECRET_KEY }}
-          PLAYWRIGHT_GLUE_AWS_REGION: ${{ secrets.TEST_GLUE_AWS_REGION }}
-          PLAYWRIGHT_GLUE_ENDPOINT: ${{ secrets.TEST_GLUE_ENDPOINT }}
-          PLAYWRIGHT_GLUE_STORAGE_SERVICE: ${{ secrets.TEST_GLUE_STORAGE_SERVICE }}
-          PLAYWRIGHT_MYSQL_USERNAME: ${{ secrets.TEST_MYSQL_USERNAME }}
-          PLAYWRIGHT_MYSQL_PASSWORD: ${{ secrets.TEST_MYSQL_PASSWORD }}
-          PLAYWRIGHT_MYSQL_HOST_PORT: ${{ secrets.TEST_MYSQL_HOST_PORT }}
-          PLAYWRIGHT_MYSQL_DATABASE_SCHEMA: ${{ secrets.TEST_MYSQL_DATABASE_SCHEMA }}
-          PLAYWRIGHT_POSTGRES_USERNAME: ${{ secrets.TEST_POSTGRES_USERNAME }}
-          PLAYWRIGHT_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
-          PLAYWRIGHT_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
-          PLAYWRIGHT_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
-          PLAYWRIGHT_AIRFLOW_HOST_PORT: ${{ secrets.TEST_AIRFLOW_HOST_PORT }}
-          PLAYWRIGHT_ML_MODEL_TRACKING_URI: ${{ secrets.TEST_ML_MODEL_TRACKING_URI }}
-          PLAYWRIGHT_ML_MODEL_REGISTRY_URI: ${{ secrets.TEST_ML_MODEL_REGISTRY_URI }}
-          PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
-          PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
-          PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
-
-          # Recommended: pass the GitHub token lets this action correctly
-          # determine the unique run id necessary to re-run the checks
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload blob report to GitHub Actions Artifacts
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: blob-report-${{ matrix.shardIndex }}
-          overwrite: true
-          path: openmetadata-ui/src/main/resources/ui/blob-report
-          retention-days: 1
-
-      - name: Upload HTML report to GitHub Actions Artifacts
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: playwright-HTML-report-${{ matrix.shardIndex }}
-          overwrite: true
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
-          retention-days: 1
-          compression-level: 9
-
-      - name: Clean Up
-        if: always()
-        continue-on-error: true
-        run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf "${PWD}/docker-volume"
-
-  merge-reports:
-    needs: pw-ci-postgresql-branch
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    env:
-      # Recommended: pass the GitHub token lets this action correctly
-      # determine the unique run id necessary to re-run the checks
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.branch }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
-
-      - name: Download blob reports from GitHub Actions Artifacts
-        uses: actions/download-artifact@v7
-        with:
-          path: openmetadata-ui/src/main/resources/ui/blob-reports
-          pattern: blob-report-*
-          merge-multiple: true
-
-      - name: Merge Reports
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: |
-          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
-
-      - name: Evaluate zero-retry gate in shadow mode
-        if: always()
-        continue-on-error: true
-        env:
-          MATRIX_OUTCOME: ${{ needs.pw-ci-postgresql-branch.result }}
-        run: |
-          python3 .github/scripts/classify_playwright_outcome.py \
-            --report-glob 'openmetadata-ui/src/main/resources/ui/merged_tests_results.json' \
-            --matrix-outcome "$MATRIX_OUTCOME" \
-            --profile postgresql-nightly \
-            --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
-
-      - name: Upload Playwright shadow-gate ledger
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v6
-        with:
-          name: playwright-shadow-gate-postgresql-nightly-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Generate Slack Notification
-        if: ${{ inputs.send_slack_notification }}
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        env:
-          RUN_TITLE: "PostgreSQL Test for OSS Release: ${{ inputs.branch }}"
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
-        run: |
-          npx playwright-slack-report -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json
+  playwright:
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: postgresql
+      profile: postgresql-nightly
+      workflow_filename: playwright-postgresql-nightly.yml
+      # The branch input drives every test-path checkout inside the reusable
+      # (build/fixture/shard); the summary and baseline-refresh jobs
+      # deliberately stay on main / github.sha for security.
+      ref: ${{ inputs.branch }}
+      full_suite: ${{ inputs.full_suite }}
+      protocol: ${{ inputs.protocol }}
+      coarse_bundle: ${{ inputs.coarse_bundle }}
+      # Release branches accumulate flakes faster than main; give each test
+      # two retries instead of the config default of one.
+      retries: 2
+      send_slack_notification: ${{ inputs.send_slack_notification }}
+      slack_run_title: "PostgreSQL Playwright E2E on ${{ inputs.branch }}"

@@ -60,10 +60,12 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for DataProduct entity operations.
@@ -215,6 +217,110 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   // ===================================================================
   // DATA PRODUCT-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void put_addFollowerForAnotherUser_403(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class,
+            () -> addFollower(SdkClients.user2Client(), dataProduct.getId(), testUser3().getId()));
+
+    assertEquals(403, exception.getStatusCode());
+    assertFalse(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  @Test
+  void delete_followerForSelf_200(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    OpenMetadataClient client = SdkClients.user2Client();
+    UUID userId = testUser2().getId();
+
+    addFollower(client, dataProduct.getId(), userId);
+    assertTrue(hasFollower(dataProduct.getId(), userId));
+
+    deleteFollower(client, dataProduct.getId(), userId);
+    assertFalse(hasFollower(dataProduct.getId(), userId));
+  }
+
+  @Test
+  void delete_followerForAnotherUserAsAdmin_200(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID userId = testUser3().getId();
+
+    addFollower(client, dataProduct.getId(), userId);
+    assertTrue(hasFollower(dataProduct.getId(), userId));
+
+    deleteFollower(client, dataProduct.getId(), userId);
+    assertFalse(hasFollower(dataProduct.getId(), userId));
+  }
+
+  @Test
+  void put_addFollowerWithNullUserId_400(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.user2Client()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/dataProducts/" + dataProduct.getId() + "/followers",
+                        "null",
+                        ChangeEvent.class,
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json")
+                            .build()));
+
+    assertEquals(400, exception.getStatusCode());
+    assertEquals("userId is required", exception.getMessage());
+  }
+
+  @Test
+  void delete_removeFollowerForAnotherUser_403(TestNamespace ns) {
+    DataProduct dataProduct = createEntity(createMinimalRequest(ns));
+    addFollower(SdkClients.user3Client(), dataProduct.getId(), testUser3().getId());
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                deleteFollower(SdkClients.user2Client(), dataProduct.getId(), testUser3().getId()));
+
+    assertEquals(403, exception.getStatusCode());
+    assertTrue(hasFollower(dataProduct.getId(), testUser3().getId()));
+  }
+
+  private void addFollower(OpenMetadataClient client, UUID dataProductId, UUID userId) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProductId + "/followers",
+            userId,
+            ChangeEvent.class);
+  }
+
+  private void deleteFollower(OpenMetadataClient client, UUID dataProductId, UUID userId) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/dataProducts/" + dataProductId + "/followers/" + userId,
+            null,
+            ChangeEvent.class);
+  }
+
+  private boolean hasFollower(UUID dataProductId, UUID userId) {
+    DataProduct dataProduct = getEntityWithFields(dataProductId.toString(), "followers");
+    return dataProduct.getFollowers() != null
+        && dataProduct.getFollowers().stream()
+            .anyMatch(follower -> userId.equals(follower.getId()));
+  }
 
   @Test
   void post_dataProductWithStyle_200_OK(TestNamespace ns) {
@@ -1958,6 +2064,80 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_addPort_rejectsNonDataAssetEntity(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_type_guard"))
+            .withDescription("Data product for port type validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // A user is a real entity but not a data asset, so it cannot be a port.
+    String userName = ns.shortPrefix("port_user");
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(user.getEntityReference()));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertEquals(1, failResult.getFailedRequest().size());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    // The rejected asset must not appear as a port, and the view must load without error.
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_addPort_rejectsTableColumnPseudoType(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_tablecolumn_port"))
+            .withDescription("Data product for tableColumn port validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // tableColumn is a search-only pseudo type with no repository. It must be reported as a
+    // per-row failure, not silently dropped (populateEntityReferences works on a copy).
+    EntityReference columnRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("tableColumn")
+            .withFullyQualifiedName(ns.prefix("db.schema.table.column"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(columnRef));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
   void test_getPortsViewCombined(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
 
@@ -2093,6 +2273,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private void bulkAddInputPorts(String dataProductName, BulkAssets request) {
     SdkClients.adminClient().dataProducts().inputPorts(dataProductName).add(request);
+  }
+
+  private BulkOperationResult addInputPortsWithResult(String dataProductName, BulkAssets request)
+      throws Exception {
+    String path = "/v1/dataProducts/name/" + dataProductName + "/inputPorts/add";
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
   }
 
   private void bulkAddOutputPorts(String dataProductName, BulkAssets request) throws Exception {

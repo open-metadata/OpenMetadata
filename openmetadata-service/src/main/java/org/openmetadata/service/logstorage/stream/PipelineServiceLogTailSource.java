@@ -12,9 +12,11 @@
  */
 package org.openmetadata.service.logstorage.stream;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 
 /**
  * Tails a run whose logs are served by the pipeline service client (Airflow, Argo, Kubernetes).
@@ -46,8 +48,12 @@ public class PipelineServiceLogTailSource implements LogTailSource {
   }
 
   @Override
-  public LogChunk readNext() {
+  public LogChunk readNext() throws IOException {
     final Map<String, String> page = reader.read(Integer.toString(chunkIndex));
+    String error = page == null ? null : page.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+    if (error != null) {
+      throw new LogSourceUnavailableException(error);
+    }
     final String chunk = extractContent(page);
     final String fresh = freshContent(chunk);
     deliveredChars = chunk.length();

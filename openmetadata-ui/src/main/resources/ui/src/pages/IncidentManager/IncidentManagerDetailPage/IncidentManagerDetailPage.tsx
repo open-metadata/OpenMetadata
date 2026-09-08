@@ -38,6 +38,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -65,6 +66,12 @@ const IncidentManagerDetailPage = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useCustomLocation();
+  const originBreadcrumb = (
+    location.state as {
+      breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
+    } | null
+  )?.breadcrumbData;
 
   const {
     testCase,
@@ -73,6 +80,7 @@ const IncidentManagerDetailPage = ({
     hasViewPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     displayName,
     tabs,
     activeTab,
@@ -90,6 +98,7 @@ const IncidentManagerDetailPage = ({
     handleCancelDimension,
     extraDropdownContent,
     handleDisplayNameChange,
+    handleRestore,
     handleOwnerChange,
     getEntityFeedCount,
     setTestCase,
@@ -165,41 +174,45 @@ const IncidentManagerDetailPage = ({
     const fqnParts = tableFqn ? Fqn.split(tableFqn) : [];
     const [service, database, schema, table] = fqnParts;
 
-    const data: TitleBreadcrumbProps['titleLinks'] =
-      fqnParts.length === 4
-        ? [
-            {
-              name: service,
-              url: getServiceDetailsPath(
-                service,
-                ServiceCategory.DATABASE_SERVICES
-              ),
-            },
-            {
-              name: database,
-              url: getEntityDetailsPath(
-                EntityType.DATABASE,
-                `${service}.${database}`
-              ),
-            },
-            {
-              name: schema,
-              url: getEntityDetailsPath(
-                EntityType.DATABASE_SCHEMA,
-                `${service}.${database}.${schema}`
-              ),
-            },
-            {
-              name: table,
-              url: getEntityDetailsPath(EntityType.TABLE, tableFqn),
-            },
-          ]
-        : [
-            {
-              name: t('label.incident-manager'),
-              url: observabilityRouterClassBase.getIncidentManagerPath(),
-            },
-          ];
+    let data: TitleBreadcrumbProps['titleLinks'];
+    if (originBreadcrumb?.length) {
+      data = originBreadcrumb;
+    } else if (fqnParts.length === 4) {
+      data = [
+        {
+          name: service,
+          url: getServiceDetailsPath(
+            service,
+            ServiceCategory.DATABASE_SERVICES
+          ),
+        },
+        {
+          name: database,
+          url: getEntityDetailsPath(
+            EntityType.DATABASE,
+            `${service}.${database}`
+          ),
+        },
+        {
+          name: schema,
+          url: getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
+            `${service}.${database}.${schema}`
+          ),
+        },
+        {
+          name: table,
+          url: getEntityDetailsPath(EntityType.TABLE, tableFqn),
+        },
+      ];
+    } else {
+      data = [
+        {
+          name: t('label.incident-manager'),
+          url: observabilityRouterClassBase.getIncidentManagerPath(),
+        },
+      ];
+    }
 
     if (isDimensionPage) {
       return [
@@ -228,7 +241,15 @@ const IncidentManagerDetailPage = ({
         activeTitle: true,
       },
     ];
-  }, [testCase, testCaseFQN, activeTab, isDimensionPage, dimensionKey, t]);
+  }, [
+    testCase,
+    testCaseFQN,
+    activeTab,
+    isDimensionPage,
+    dimensionKey,
+    originBreadcrumb,
+    t,
+  ]);
 
   const breadcrumbItems = useMemo(
     () =>
@@ -334,8 +355,9 @@ const IncidentManagerDetailPage = ({
                       observabilityRouterClassBase.getIncidentManagerPath()
                     )
                   }
-                  allowSoftDelete={false}
                   canDelete={hasDeletePermission}
+                  canRestore={canRestorePermission}
+                  deleted={testCase.deleted}
                   displayName={testCase.displayName}
                   editDisplayNamePermission={editDisplayNamePermission}
                   entityFQN={testCase.fullyQualifiedName}
@@ -344,6 +366,7 @@ const IncidentManagerDetailPage = ({
                   entityType={EntityType.TEST_CASE}
                   extraDropdownContent={extraDropdownContent}
                   onEditDisplayName={handleDisplayNameChange}
+                  onRestoreEntity={handleRestore}
                 />
               )}
             </Box>

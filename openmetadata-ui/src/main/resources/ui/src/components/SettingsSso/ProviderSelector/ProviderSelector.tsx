@@ -61,7 +61,14 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
               selectedProvider === provider.key ? 'selected' : ''
             }`}
             key={provider.key}
-            onClick={() => handleCardClick(provider.key)}>
+            role="button"
+            tabIndex={0}
+            onClick={() => handleCardClick(provider.key)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                handleCardClick(provider.key);
+              }
+            }}>
             <div className="provider-icon">
               <div className="provider-icon-inner">
                 {typeof provider.icon === 'string' ? (

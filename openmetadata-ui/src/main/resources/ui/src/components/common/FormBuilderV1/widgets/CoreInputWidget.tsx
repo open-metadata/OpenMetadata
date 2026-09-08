@@ -72,6 +72,7 @@ const CoreInputWidget = ({
   return (
     <div>
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
         autoFocus={autofocus}
         hint={hint}
         hintClassName="tw:text-xs"

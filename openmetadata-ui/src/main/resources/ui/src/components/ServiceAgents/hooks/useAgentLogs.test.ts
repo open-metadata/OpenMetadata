@@ -23,6 +23,8 @@ import { useAgentLogs } from './useAgentLogs';
 
 jest.mock('../../common/LogViewerModal/useLogStream', () => ({
   useLogStream: jest.fn(),
+  getIngestionLogStreamUrl: (fqn: string, runId: string) =>
+    `/stream/${fqn}/${runId}`,
 }));
 
 jest.mock('../../../rest/ingestionPipelineAPI', () => ({
@@ -79,8 +81,7 @@ describe('useAgentLogs', () => {
     expect(result.current.streamHealth).toBe('live');
     expect(mockGetLogs).not.toHaveBeenCalled();
     expect(mockUseLogStream).toHaveBeenCalledWith({
-      fqn: FQN,
-      runId: RUN_ID,
+      streamUrl: `/stream/${FQN}/${RUN_ID}`,
       enabled: true,
     });
   });

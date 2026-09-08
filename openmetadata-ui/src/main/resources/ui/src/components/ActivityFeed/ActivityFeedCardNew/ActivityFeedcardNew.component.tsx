@@ -18,10 +18,12 @@ import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../generated/entity/feed/conversation';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
@@ -30,10 +32,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getActivityEventHeaderText,
-  getFeedHeaderTextFromCardStyle,
-} from '../../../utils/FeedUtils';
+import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
 import {
   entityDisplayName,
   getEntityFQN,
@@ -49,17 +48,18 @@ import ActivityEventFooter from '../ActivityFeedCardV2/FeedCardFooter/ActivityEv
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
+import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
 
 interface ActivityFeedCardNewProps {
-  feed?: Thread;
+  feed?: Conversation;
   activity?: ActivityEvent;
   isPost?: boolean;
   isActive?: boolean;
-  post?: Post;
+  post?: ConversationReply;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
   isForFeedTab?: boolean;
@@ -68,6 +68,52 @@ interface ActivityFeedCardNewProps {
   isFullSizeWidget?: boolean;
   onActivityClick?: (activity: ActivityEvent) => void;
 }
+
+const getFeedCardWrapperClassName = (
+  baseClassName: string,
+  showThread: boolean | undefined,
+  isPost: boolean,
+  isOpenInDrawer: boolean,
+  isActive: boolean | undefined
+): string =>
+  classNames(
+    baseClassName,
+    {
+      'activity-feed-card-new-right-panel m-0 gap-0':
+        showThread || isPost || isOpenInDrawer,
+    },
+    { 'activity-feed-reply-card': isPost },
+    { 'active-card is-active': isActive }
+  );
+
+const getHeaderTagsClassName = (
+  showThread: boolean | undefined,
+  entityRefType?: string
+): string =>
+  classNames('d-flex gap-1', {
+    'header-container-card': !showThread,
+    'flex-wrap': showThread && entityRefType !== EntityType.CONTAINER,
+    'items-start': showThread && entityRefType === EntityType.CONTAINER,
+    ' items-center': showThread && entityRefType !== EntityType.CONTAINER,
+  });
+
+const computeFeedId = (feed?: Conversation, activity?: ActivityEvent): string =>
+  feed?.id ?? activity?.id ?? '';
+
+const computeHasNoReplies = (
+  isActivityEvent: boolean,
+  activityReplies: ConversationReply[],
+  feed?: Conversation
+): boolean =>
+  isActivityEvent
+    ? activityReplies.length === 0
+    : (feed?.replies?.length ?? 0) === 0;
+
+const computeShouldAddBottomMargin = (
+  showActivityFeedEditor: boolean | undefined,
+  hasNoReplies: boolean,
+  isOpenInDrawer: boolean
+): boolean => (showActivityFeedEditor && hasNoReplies) || isOpenInDrawer;
 
 const ActivityFeedCardNew = ({
   feed,
@@ -96,10 +142,14 @@ const ActivityFeedCardNew = ({
   }, [feed?.about, activity?.about, activity?.entity]);
 
   const createdBy = useMemo(() => {
-    return feed?.createdBy ?? activity?.actor?.name ?? '';
-  }, [feed?.createdBy, activity?.actor?.name]);
+    const postAuthor = post?.author.name ?? post?.author.fullyQualifiedName;
+    const feedCreator =
+      feed?.createdBy?.name ?? feed?.createdBy?.fullyQualifiedName;
 
-  const feedId = feed?.id ?? activity?.id ?? '';
+    return postAuthor ?? feedCreator ?? activity?.actor?.name ?? '';
+  }, [feed?.createdBy, post?.author, activity?.actor?.name]);
+
+  const feedId = computeFeedId(feed, activity);
 
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -109,10 +159,11 @@ const ActivityFeedCardNew = ({
     updateFeed,
     isPostsLoading,
     postActivityComment,
-    activityThread,
+    activityReplies,
   } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [, , user] = useUserProfile({
     permission: true,
     name: createdBy,
@@ -140,8 +191,8 @@ const ActivityFeedCardNew = ({
     if (!feed) {
       return;
     }
-    const updatedPost = { ...feed, message };
-    const patch = compare(feed, updatedPost);
+    const target = isPost && post ? post : feed;
+    const patch = compare(target, { ...target, message });
     updateFeed(feed.id, post?.id ?? '', !isPost, patch);
     setIsEditPost(!isEditPost);
   };
@@ -151,14 +202,11 @@ const ActivityFeedCardNew = ({
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
     };
-  }, [entityFQN, entityType, feed?.cardStyle]);
+  }, [entityFQN, entityType]);
   const entityRef = feed?.entityRef ?? activity?.entity;
 
   const renderEntityLink = useMemo(() => {
-    if (
-      isUserOrTeam &&
-      !ASSET_CARD_STYLES.includes(feed?.cardStyle as CardStyle)
-    ) {
+    if (isUserOrTeam) {
       return (
         <UserPopOverCard
           showUserName
@@ -208,14 +256,7 @@ const ActivityFeedCardNew = ({
         </EntityPopOverCard>
       );
     }
-  }, [
-    feed?.cardStyle,
-    entityType,
-    entityFQN,
-    isUserOrTeam,
-    entityRef,
-    createdBy,
-  ]);
+  }, [entityType, entityFQN, isUserOrTeam, entityRef, createdBy]);
 
   const feedHeaderText = useMemo(() => {
     if (isActivityEvent && activity) {
@@ -226,15 +267,11 @@ const ActivityFeedCardNew = ({
       );
     }
 
-    return getFeedHeaderTextFromCardStyle(
-      feed?.fieldOperation,
-      feed?.cardStyle,
-      feed?.feedInfo?.fieldName,
-      entityType
-    );
-  }, [isActivityEvent, activity, feed, entityType]);
+    return t('label.conversation-lowercase');
+  }, [isActivityEvent, activity, entityType, t]);
 
-  const timestampValue = post?.postTs ?? activity?.timestamp;
+  const timestampValue =
+    post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
   const timestamp = timestampValue ? (
     <Tooltip
       color="white"
@@ -252,18 +289,21 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   };
 
+  const canShowFeedActions = isHovered && !isActivityEvent && !isPost;
+  const feedActions =
+    canShowFeedActions && feed ? (
+      <ActivityFeedActions
+        conversation={feed}
+        conversationId={feed.id}
+        isReply={false}
+        onEditPost={() => setIsEditPost((current) => !current)}
+      />
+    ) : null;
+
   const posts = useMemo(() => {
-    if (!showThread) {
+    if (!showThread && !isOpenInDrawer) {
       return null;
     }
-
-    // For activity events, use activityThread; for regular feeds, use feed
-    const threadToDisplay = isActivityEvent ? activityThread : feed;
-
-    if (!threadToDisplay) {
-      return null;
-    }
-
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>
@@ -274,7 +314,8 @@ const ActivityFeedCardNew = ({
       );
     }
 
-    const orderedPosts = orderBy(threadToDisplay.posts, ['postTs'], ['desc']);
+    const replies = isActivityEvent ? activityReplies : feed?.replies ?? [];
+    const orderedPosts = orderBy(replies, ['createdAt'], ['desc']);
 
     if (orderedPosts.length === 0) {
       return null;
@@ -285,10 +326,11 @@ const ActivityFeedCardNew = ({
         {orderedPosts.map((reply, index, arr) => (
           <CommentCard
             closeFeedEditor={closeFeedEditor}
-            feed={threadToDisplay}
+            conversation={feed}
+            conversationId={activity?.id ?? feed?.id ?? ''}
             isLastReply={index === arr.length - 1}
             key={reply.id}
-            post={reply}
+            reply={reply}
           />
         ))}
       </Col>
@@ -296,147 +338,202 @@ const ActivityFeedCardNew = ({
   }, [
     feed,
     showThread,
+    isOpenInDrawer,
     closeFeedEditor,
     isPostsLoading,
     isActivityEvent,
-    activityThread,
+    activityReplies,
+    activity?.id,
   ]);
 
   const feedMessage = useMemo(() => {
     if (isActivityEvent) {
       return activity?.summary ?? '';
     }
-    if (!isPost) {
-      return feed?.feedInfo?.entitySpecificInfo?.entity?.description ?? '';
-    }
 
-    return post?.message ?? '';
+    return isPost ? post?.message ?? '' : feed?.message ?? '';
   }, [isActivityEvent, activity, isPost, feed, post]);
 
-  if (isFeedWidget) {
-    return (
-      <Card
-        className={classNames(
-          'activity-feed-card-new',
-          {
-            'activity-feed-card-new-right-panel m-0 gap-0':
-              showThread || isPost || isOpenInDrawer,
-          },
-          { 'activity-feed-reply-card': isPost },
-          { 'active-card is-active': isActive }
-        )}
-        data-testid="feed-card-v2-sidebar">
-        <Space align="start" className="w-full">
-          <div className="flex gap-2 w-full">
-            <div className="flex-center flex-col">
-              <UserPopOverCard
-                className="m-r-0"
-                profileWidth={24}
-                userName={createdBy}
-              />
+  const renderWidgetCard = () => (
+    <Card
+      className={getFeedCardWrapperClassName(
+        'activity-feed-card-new',
+        showThread,
+        isPost,
+        isOpenInDrawer,
+        isActive
+      )}
+      data-conversation-id={feed?.id}
+      data-testid="feed-card-v2-sidebar"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
+      <Space align="start" className="w-full">
+        <div className="flex gap-2 w-full">
+          <div className="flex-center flex-col">
+            <UserPopOverCard
+              className="m-r-0"
+              profileWidth={24}
+              userName={createdBy}
+            />
 
-              <div className="divider" />
-            </div>
+            <div className="divider" />
+          </div>
 
-            <div className="d-flex flex-col w-full min-w-0 overflow-hidden">
-              <div className="d-flex flex-col align-start">
+          <div className="d-flex flex-col w-full min-w-0 overflow-hidden">
+            <div className="d-flex flex-col align-start">
+              <div
+                className={classNames(
+                  'd-flex align-center w-full justify-between',
+                  {
+                    'header-container-card': !showThread,
+                    'header-container-right-panel': showThread,
+                  }
+                )}>
                 <div
-                  className={classNames(
-                    'd-flex align-center w-full justify-between',
-                    {
-                      'header-container-card': !showThread,
-                      'header-container-right-panel': showThread,
-                    }
-                  )}>
-                  <div
+                  className={classNames('mr-2', {
+                    'activity-feed-user-name': !isPost,
+                    'reply-card-user-name': isPost,
+                  })}>
+                  <UserPopOverCard
                     className={classNames('mr-2', {
                       'activity-feed-user-name': !isPost,
                       'reply-card-user-name': isPost,
-                    })}>
-                    <UserPopOverCard
-                      className={classNames('mr-2', {
-                        'activity-feed-user-name': !isPost,
-                        'reply-card-user-name': isPost,
-                      })}
-                      userName={createdBy}>
-                      <Link to={getUserPath(createdBy)}>
-                        {getEntityName(user)}
-                      </Link>
-                    </UserPopOverCard>
-                  </div>
-                  {timestamp}
+                    })}
+                    userName={createdBy}>
+                    <Link to={getUserPath(createdBy)}>
+                      {getEntityName(user)}
+                    </Link>
+                  </UserPopOverCard>
                 </div>
-                {!isPost && (
-                  <Space
-                    className={classNames('d-flex gap-1', {
-                      'header-container-card': !showThread,
-                      'flex-wrap':
-                        showThread && entityRef?.type !== EntityType.CONTAINER,
-                      'items-start':
-                        showThread && entityRef?.type === EntityType.CONTAINER,
-                      ' items-center':
-                        showThread && entityRef?.type !== EntityType.CONTAINER,
-                    })}>
-                    <Typography.Text
-                      className="card-style-feed-header text-sm"
-                      data-testid="headerText">
-                      {feedHeaderText}
-                    </Typography.Text>
-
-                    {renderEntityLink}
-                  </Space>
-                )}
+                {timestamp}
               </div>
-              <FeedCardBodyNew
-                activity={activity}
-                feed={feed}
-                isEditPost={isEditPost}
-                isFeedWidget={isFeedWidget}
-                isForFeedTab={isForFeedTab}
-                isPost={isPost}
-                message={feedMessage}
-                showThread={showThread}
-                onEditCancel={() => setIsEditPost(false)}
-                onUpdate={onUpdate}
-              />
-              {isFullSizeWidget && !isActivityEvent && feed && (
-                <div className="m-b-md">
-                  <FeedCardFooterNew
-                    isForFeedTab
-                    feed={feed}
-                    isPost={isPost}
-                    post={post}
-                  />
-                </div>
-              )}
-              {isFullSizeWidget && isActivityEvent && activity && (
-                <div className="m-b-md">
-                  <ActivityEventFooter
-                    activity={activity}
-                    isForFeedTab={isForFeedTab}
-                    onActivityClick={onActivityClick}
-                  />
-                </div>
+              {!isPost && (
+                <Space
+                  className={getHeaderTagsClassName(
+                    showThread,
+                    entityRef?.type
+                  )}>
+                  <Typography.Text
+                    className="card-style-feed-header text-sm"
+                    data-testid="headerText">
+                    {feedHeaderText}
+                  </Typography.Text>
+
+                  {renderEntityLink}
+                </Space>
               )}
             </div>
+            <FeedCardBodyNew
+              activity={activity}
+              feed={feed}
+              isEditPost={isEditPost}
+              isFeedWidget={isFeedWidget}
+              isForFeedTab={isForFeedTab}
+              isPost={isPost}
+              message={feedMessage}
+              showThread={showThread}
+              onEditCancel={() => setIsEditPost(false)}
+              onUpdate={onUpdate}
+            />
+            {isFullSizeWidget && !isActivityEvent && feed && (
+              <div className="m-b-md">
+                <FeedCardFooterNew
+                  isForFeedTab
+                  conversation={feed}
+                  conversationId={feed.id}
+                  isReply={isPost}
+                  reply={post}
+                />
+              </div>
+            )}
+            {isFullSizeWidget && isActivityEvent && activity && (
+              <div className="m-b-md">
+                <ActivityEventFooter
+                  activity={activity}
+                  isForFeedTab={isForFeedTab}
+                  onActivityClick={onActivityClick}
+                />
+              </div>
+            )}
           </div>
-        </Space>
-      </Card>
-    );
+        </div>
+      </Space>
+      {feedActions}
+    </Card>
+  );
+
+  if (isFeedWidget) {
+    return renderWidgetCard();
   }
 
-  return (
-    <Card
-      className={classNames(
-        'relative activity-feed-card-new',
-        {
-          'activity-feed-card-new-right-panel m-0 gap-0':
-            showThread || isPost || isOpenInDrawer,
-        },
-        { 'activity-feed-reply-card': isPost },
-        { 'active-card is-active': isActive }
+  const hasNoReplies = computeHasNoReplies(
+    isActivityEvent,
+    activityReplies,
+    feed
+  );
+  const shouldAddBottomMargin = computeShouldAddBottomMargin(
+    showActivityFeedEditor,
+    hasNoReplies,
+    isOpenInDrawer
+  );
+
+  const renderCommentsSection = () => (
+    <div className="activity-feed-comments-container d-flex flex-col">
+      {(showActivityFeedEditor || isOpenInDrawer) && (
+        <Typography.Text className="activity-feed-comments-title m-b-md">
+          {t('label.comment-plural')}
+        </Typography.Text>
       )}
-      data-testid="feed-card-v2-sidebar">
+      {showFeedEditor ? (
+        <ActivityFeedEditorNew
+          className={classNames(
+            'm-t-md feed-editor activity-feed-editor-container-new',
+            {
+              'm-b-md': shouldAddBottomMargin,
+            }
+          )}
+          onSave={onSave}
+        />
+      ) : (
+        <div className="d-flex gap-2">
+          <div>
+            <UserPopOverCard userName={currentUser?.name ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture
+                  key={feedId}
+                  name={currentUser?.name ?? ''}
+                  width="32"
+                />
+              </div>
+            </UserPopOverCard>
+          </div>
+
+          <Input
+            className="comments-input-field"
+            data-testid="comments-input-field"
+            placeholder={t('message.input-placeholder')}
+            onClick={() => setShowFeedEditor(true)}
+          />
+        </div>
+      )}
+
+      {posts}
+    </div>
+  );
+
+  const renderFullCard = () => (
+    <Card
+      className={getFeedCardWrapperClassName(
+        'relative activity-feed-card-new',
+        showThread,
+        isPost,
+        isOpenInDrawer,
+        isActive
+      )}
+      data-conversation-id={feed?.id}
+      data-testid="feed-card-v2-sidebar"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
@@ -481,15 +578,10 @@ const ActivityFeedCardNew = ({
               </Space>
               {!isPost && (
                 <Space
-                  className={classNames('d-flex gap-1', {
-                    'header-container-card': !showThread,
-                    'flex-wrap':
-                      showThread && entityRef?.type !== EntityType.CONTAINER,
-                    'items-start':
-                      showThread && entityRef?.type === EntityType.CONTAINER,
-                    ' items-center':
-                      showThread && entityRef?.type !== EntityType.CONTAINER,
-                  })}>
+                  className={getHeaderTagsClassName(
+                    showThread,
+                    entityRef?.type
+                  )}>
                   <Typography.Text
                     className="card-style-feed-header text-sm"
                     data-testid="headerText">
@@ -514,12 +606,13 @@ const ActivityFeedCardNew = ({
             onUpdate={onUpdate}
           />
 
-          {(isPost || (!showThread && !isPost)) && !isActivityEvent && feed && (
+          {!isActivityEvent && feed && (
             <FeedCardFooterNew
-              feed={feed}
+              conversation={feed}
+              conversationId={feed.id}
               isForFeedTab={isForFeedTab}
-              isPost={isPost}
-              post={post}
+              isReply={isPost}
+              reply={post}
             />
           )}
 
@@ -532,53 +625,12 @@ const ActivityFeedCardNew = ({
           )}
         </Space>
       </Space>
-      {(showThread || isOpenInDrawer) && (
-        <div className="activity-feed-comments-container d-flex flex-col">
-          {(showActivityFeedEditor || isOpenInDrawer) && (
-            <Typography.Text className="activity-feed-comments-title m-b-md">
-              {t('label.comment-plural')}
-            </Typography.Text>
-          )}
-          {showFeedEditor ? (
-            <ActivityFeedEditorNew
-              className={classNames(
-                'm-t-md feed-editor activity-feed-editor-container-new',
-                {
-                  'm-b-md':
-                    (showActivityFeedEditor && feed?.posts?.length === 0) ||
-                    isOpenInDrawer,
-                }
-              )}
-              onSave={onSave}
-            />
-          ) : (
-            <div className="d-flex gap-2">
-              <div>
-                <UserPopOverCard userName={currentUser?.name ?? ''}>
-                  <div className="d-flex items-center">
-                    <ProfilePicture
-                      key={feedId}
-                      name={currentUser?.name ?? ''}
-                      width="32"
-                    />
-                  </div>
-                </UserPopOverCard>
-              </div>
-
-              <Input
-                className="comments-input-field"
-                data-testid="comments-input-field"
-                placeholder={t('message.input-placeholder')}
-                onClick={() => setShowFeedEditor(true)}
-              />
-            </div>
-          )}
-
-          {posts}
-        </div>
-      )}
+      {(showThread || isOpenInDrawer) && renderCommentsSection()}
+      {feedActions}
     </Card>
   );
+
+  return renderFullCard();
 };
 
 export default ActivityFeedCardNew;

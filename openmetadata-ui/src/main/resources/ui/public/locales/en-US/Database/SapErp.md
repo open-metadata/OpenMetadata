@@ -8,6 +8,8 @@ You will need the following permissions to extract SAP ERP metadata:
 
 - **API Access**: You must have the API Enabled permission in your SAP ERP instance.
 
+You can find further information on the SAP ERP connector in the <a href="https://docs.open-metadata.org/connectors/database/sap-erp" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

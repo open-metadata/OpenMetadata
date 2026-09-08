@@ -15,6 +15,11 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
+import {
   assignSingleSelectDomain,
   removeSingleSelectDomain,
   uuid,
@@ -134,28 +139,35 @@ export class DatabaseClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/databases', {
+    const service = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create service',
+      createPath: '/api/v1/services/databaseServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    const entity = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create database',
+      createPath: '/api/v1/databases',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
-
-    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
+    const schema = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      fqnSegments: [this.service.name, this.entity.name, this.schema.name],
       data: this.schema,
     });
-
-    const tableResponse = await apiContext.post('/api/v1/tables', {
+    const table = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create table',
+      createPath: '/api/v1/tables',
+      fqnSegments: [
+        this.service.name,
+        this.entity.name,
+        this.schema.name,
+        this.table.name,
+      ],
       data: this.table,
     });
-
-    const service = await serviceResponse.json();
-    const entity = await entityResponse.json();
-    const schema = await schemaResponse.json();
-    const table = await tableResponse.json();
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
@@ -177,17 +189,16 @@ export class DatabaseClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/databases/${this.entityResponseData?.['id']}`,
-      {
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/databases/${this.entityResponseData?.['id']}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    const entity = await serviceResponse.json();
+    const entity = await okJson(serviceResponse, 'DatabaseClass.patch');
 
     this.entityResponseData = entity;
 

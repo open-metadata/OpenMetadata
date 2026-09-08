@@ -1077,19 +1077,22 @@ class TestComplexQueryPatterns:
             {"price_history"},
             {"products"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Capturing only "latest_prices" CTE as source table that too is wrong
-            # SqlFluff: Not capturing target table "products"
-            test_sqlglot=False,
-            test_sqlfluff=False,
         )
 
-        # UPDATE with CTE - parsers may have different column lineage extraction
+        # SET sources resolve through the latest_prices CTE to price_history
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("price", "price_history"),
+                    TestColumnQualifierTuple("current_price", "products"),
+                ),
+                (
+                    TestColumnQualifierTuple("effective_date", "price_history"),
+                    TestColumnQualifierTuple("last_price_update", "products"),
+                ),
+            ],
             dialect=Dialect.POSTGRES.value,
-            # Graph: SqlGlot (3n/2e) vs SqlFluff (13n/14e)
-            skip_graph_check=True,
         )
 
     def test_create_table_as_select_complex(self):
@@ -5800,11 +5803,26 @@ class TestComplexQueryPatterns:
             dialect=Dialect.POSTGRES.value,
         )
 
-        # UPDATE column lineage - parsers may differ
+        # price_change_percent reads lp.new_price both directly and via p.current_price,
+        # which the parsers emit as the chain
+        # latest_prices.new_price -> products.current_price -> products.price_change_percent.
+        # assert_column_lineage compares only the ends of each path, so that chain and the
+        # direct read collapse onto the same pair.
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("new_price", "latest_prices"),
+                    TestColumnQualifierTuple("price_change_percent", "products"),
+                ),
+                (
+                    TestColumnQualifierTuple("update_date", "latest_prices"),
+                    TestColumnQualifierTuple("last_updated", "products"),
+                ),
+            ],
             dialect=Dialect.POSTGRES.value,
+            # SqlFluff: adds latest_prices.* and products.* wildcard edges
+            test_sqlfluff=False,
         )
 
     def test_update_merge_02_update_with_cte(self):
@@ -5835,19 +5853,26 @@ class TestComplexQueryPatterns:
             {"sales"},
             {"product_stats"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Treats CTE (aggregated_sales) as a source table instead of tracing through to sales
-            # SqlFluff: Doesn't detect target table in UPDATE statements with CTEs
-            # SqlParse: Also has issues with UPDATE + CTE
-            test_sqlglot=False,
-            test_sqlfluff=False,
-            test_sqlparse=False,
         )
 
+        # SET sources resolve through the aggregated_sales CTE to sales
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("*", "sales"),
+                    TestColumnQualifierTuple("ytd_sales_count", "product_stats"),
+                ),
+                (
+                    TestColumnQualifierTuple("quantity", "sales"),
+                    TestColumnQualifierTuple("ytd_quantity_sold", "product_stats"),
+                ),
+                (
+                    TestColumnQualifierTuple("amount", "sales"),
+                    TestColumnQualifierTuple("ytd_revenue", "product_stats"),
+                ),
+            ],
             dialect=Dialect.POSTGRES.value,
-            skip_graph_check=True,
         )
 
     def test_update_merge_03_merge_with_insert_update(self):
@@ -5939,18 +5964,27 @@ class TestComplexQueryPatterns:
             {"sales", "products", "suppliers"},
             {"inventory"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Cannot parse INTERVAL syntax in subquery
-            # SqlFluff: Doesn't trace through subquery to detect sales table
-            test_sqlglot=False,
-            test_sqlfluff=False,
         )
 
+        # reorder_level resolves through the "s" subquery to sales.quantity, and
+        # supplier_lead_time to the joined suppliers table
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("quantity", "sales"),
+                    TestColumnQualifierTuple("reorder_level", "inventory"),
+                ),
+                (
+                    TestColumnQualifierTuple("lead_time_days", "suppliers"),
+                    TestColumnQualifierTuple("supplier_lead_time", "inventory"),
+                ),
+            ],
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Cannot parse INTERVAL syntax in subquery
-            test_sqlglot=False,
+            # SqlFluff: adds inventory.*, products.*, suppliers.* and s.* wildcard edges
+            # SqlParse: resolves reorder_level but not the joined suppliers.lead_time_days
+            test_sqlfluff=False,
+            test_sqlparse=False,
             skip_graph_check=True,
         )
 
@@ -6046,18 +6080,21 @@ class TestComplexQueryPatterns:
             {"employees"},
             {"employee_rankings"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Doesn't detect any source or target tables in UPDATE with window functions
-            # SqlFluff: Doesn't track target table (employee_rankings) as source
-            test_sqlglot=False,
-            test_sqlfluff=False,
         )
 
+        # All three window expressions read employees.salary through the "ranked" subquery.
+        # Only AVG(salary) resolves, because it reads salary as a function argument. RANK()
+        # and PERCENT_RANK() read it through OVER (ORDER BY salary), which no parser treats
+        # as a source column, so salary_rank and salary_percentile have no edge yet.
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("salary", "employees"),
+                    TestColumnQualifierTuple("dept_avg_salary", "employee_rankings"),
+                ),
+            ],
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Doesn't detect any source or target tables in UPDATE with window functions
-            test_sqlglot=False,
             skip_graph_check=True,
         )
 
@@ -6155,17 +6192,29 @@ class TestComplexQueryPatterns:
             {"reviews"},
             {"products"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Doesn't include target table (products) as a source in UPDATE statements
             # Graph: Parsers create different graph structures (table lineage is correct)
-            test_sqlglot=False,
             skip_graph_check=True,
         )
 
+        # Each correlated subquery reads one reviews column into its own products column
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("rating", "reviews"),
+                    TestColumnQualifierTuple("avg_rating", "products"),
+                ),
+                (
+                    TestColumnQualifierTuple("*", "reviews"),
+                    TestColumnQualifierTuple("review_count", "products"),
+                ),
+                (
+                    TestColumnQualifierTuple("review_date", "reviews"),
+                    TestColumnQualifierTuple("last_review_date", "products"),
+                ),
+            ],
             dialect=Dialect.POSTGRES.value,
-            # SqlFluff: Tracks extra column lineages from correlated subquery
+            # SqlFluff: collapses all three targets onto a single products."avg(rating)" column
             # Graph: Parsers create different graph structures (column lineage is correct)
             test_sqlfluff=False,
             skip_graph_check=True,
@@ -6277,21 +6326,25 @@ class TestComplexQueryPatterns:
             {"employees"},
             {"employee_hierarchy"},
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Treats recursive CTE (manager_chain) as a source table instead of tracing to employees
-            # SqlFluff: Doesn't track target table (employee_hierarchy) as source in UPDATE
-            # SqlParse: Includes recursive CTE (manager_chain) as a source table in UPDATE with recursive CTE
-            test_sqlglot=False,
-            test_sqlfluff=False,
+            # SqlParse: still reports the manager_chain recursive CTE as a source table
+            # Graph: SqlGlot (7n/5e) and SqlFluff (8n/4e) build different internal shapes
+            # for the recursion, though both resolve the same source and target tables
             test_sqlparse=False,
+            skip_graph_check=True,
         )
 
+        # Correct lineage would be employees.employee_id to reporting_chain and to
+        # top_level_manager, since chain accumulates employee_id through the recursion and
+        # management_level derives from the literal counter. No parser produces that yet.
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
-            # SqlGlot: Treats CTE as source, doesn't produce column lineages
-            # SqlFluff/SqlParse: May produce different graph structures
+            # SqlGlot: traces to employees but adds manager_id as a source of the chain
+            #   columns and gives management_level a source it does not have
+            # SqlParse: stops at the manager_chain CTE instead of tracing to employees
             test_sqlglot=False,
+            test_sqlparse=False,
             skip_graph_check=True,
         )
 
