@@ -56,6 +56,8 @@ import {
 import type { CollateAgentAutomation } from '../rest/applicationAPI';
 import { t } from './i18next/LocalUtil';
 
+const COLLATE_AGENT_ICON = 'collate-agent-icon';
+
 export const getAgentIconFromType = (agentType: string) => {
   let Icon: SvgComponent = () => null;
   let className = '';
@@ -83,17 +85,17 @@ export const getAgentIconFromType = (agentType: string) => {
       break;
     case DOCUMENTATION_AUTOMATION_TEMPLATE:
       Icon = MetadataIcon;
-      className = 'collate-agent-icon';
+      className = COLLATE_AGENT_ICON;
 
       break;
     case DATA_QUALITY_AUTOMATION_TEMPLATE:
       Icon = DataQualityIcon;
-      className = 'collate-agent-icon';
+      className = COLLATE_AGENT_ICON;
 
       break;
     case TIER_AUTOMATION_TEMPLATE:
       Icon = AutoTieringIcon;
-      className = 'collate-agent-icon';
+      className = COLLATE_AGENT_ICON;
 
       break;
   }

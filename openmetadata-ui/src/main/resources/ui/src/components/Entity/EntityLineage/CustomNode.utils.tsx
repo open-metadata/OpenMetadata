@@ -324,19 +324,22 @@ const ColumnContentInner = ({
   );
 };
 
-export const ColumnContent = memo(
-  ColumnContentInner,
-  (prev, next) =>
+export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
+  const coreColumnPropsEqual =
     prev.column === next.column &&
     prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
-    prev.showDataObservabilitySummary === next.showDataObservabilitySummary &&
+    prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
+  const renderPropsEqual =
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className &&
+    prev.className === next.className;
+  const columnCallbacksEqual =
     prev.onColumnHover === next.onColumnHover &&
-    prev.onColumnSelect === next.onColumnSelect
-);
+    prev.onColumnSelect === next.onColumnSelect;
+
+  return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
+});
 
 export function getNodeClassNames({
   isSelected,

@@ -31,6 +31,7 @@ import {
 } from './AssetHealthWidget.utils';
 
 const INCIDENT_LIMIT = 50;
+const ASSET_HEALTH_QUERY_KEY = 'asset-health';
 
 export const useAssetHealth = (table?: Table): UseAssetHealthResult => {
   const tableId = table?.id;
@@ -39,13 +40,13 @@ export const useAssetHealth = (table?: Table): UseAssetHealthResult => {
   const tableFqn = table?.fullyQualifiedName;
 
   const summaryQuery = useQuery({
-    queryKey: ['asset-health', 'test-summary', testSuiteId],
+    queryKey: [ASSET_HEALTH_QUERY_KEY, 'test-summary', testSuiteId],
     queryFn: () => getTestCaseExecutionSummary(testSuiteId),
     enabled: Boolean(testSuiteId),
   });
 
   const incidentsQuery = useQuery({
-    queryKey: ['asset-health', 'incidents', tableFqn],
+    queryKey: [ASSET_HEALTH_QUERY_KEY, 'incidents', tableFqn],
     queryFn: () =>
       getListTestCaseIncidentStatus({
         latest: true,
@@ -64,7 +65,7 @@ export const useAssetHealth = (table?: Table): UseAssetHealthResult => {
   });
 
   const pipelineQuery = useQuery({
-    queryKey: ['asset-health', 'pipeline', serviceFqn],
+    queryKey: [ASSET_HEALTH_QUERY_KEY, 'pipeline', serviceFqn],
     queryFn: () =>
       getIngestionPipelines({
         arrQueryFields: ['pipelineStatuses'],

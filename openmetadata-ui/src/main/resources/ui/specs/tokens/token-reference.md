@@ -75,6 +75,14 @@ padding / margin / gap. See foundations/spacing.md.
 | `--om-space-220` | `220px` |
 | `--om-space-290` | `290px` |
 
+## Layout (1)
+
+Shared viewport and shell-derived dimensions.
+
+| Token | Value |
+| --- | --- |
+| `--om-page-height` | `calc(100vh - var(--ant-navbar-height, 80px))` |
+
 ## Radius (24)
 
 border-radius. See foundations/radius.md.
@@ -776,6 +784,7 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-101828` | `#101828` |
 | `--om-legacy-color-111827` | `#111827` |
 | `--om-legacy-color-155724` | `#155724` |
+| `--om-legacy-color-344054` | `#344054` |
 | `--om-legacy-color-373737` | `#373737` |
 | `--om-legacy-color-444444` | `#444` |
 | `--om-legacy-color-515151` | `#515151` |
