@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { EntityType } from '../../../../../enums/entity.enum';
-import {
-  getPersonaVersions,
-  updatePersona,
-} from '../../../../../rest/PersonaAPI';
+import { EntityType } from '../../../../enums/entity.enum';
+import { getPersonaVersions, updatePersona } from '../../../../rest/PersonaAPI';
 import { VersionHistoryDrawer } from './VersionHistoryDrawer.component';
 
-jest.mock('../../../../../rest/PersonaAPI', () => ({
+jest.mock('../../../../rest/PersonaAPI', () => ({
   getPersonaVersions: jest.fn(),
   refreshPersonaAIContextDocument: jest.fn(),
   updatePersona: jest.fn(),
 }));
 
-jest.mock('../../../../../utils/ToastUtils', () => ({
+jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
@@ -36,7 +33,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../../common/Loader/Loader', () => ({
+jest.mock('../../../common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader" />,
 }));
