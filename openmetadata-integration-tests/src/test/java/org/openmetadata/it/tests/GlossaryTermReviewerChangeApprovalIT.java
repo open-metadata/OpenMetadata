@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -101,7 +102,8 @@ public class GlossaryTermReviewerChangeApprovalIT {
     replaceReviewers(term.getId(), firstReviewer(), secondReviewer());
 
     Task settledTask =
-        awaitSingleOpenApprovalTaskAssignedTo(term.getFullyQualifiedName(), secondReviewer());
+        awaitSupersedingOpenApprovalTask(
+            term.getFullyQualifiedName(), firstTask.getId(), secondReviewer());
     assertAssigneesContain(settledTask, secondReviewer().getId());
     waitForTermStatus(term.getId(), EntityStatus.IN_REVIEW);
   }
@@ -153,30 +155,73 @@ public class GlossaryTermReviewerChangeApprovalIT {
   }
 
   /**
-   * Waits until exactly one open approval task exists for the term and it is assigned to {@code
-   * newReviewer}, then returns it. This is the acceptance criterion: after a reviewer change the
-   * workflow must settle on a single open task carrying the new reviewers, not a duplicate or a
-   * stale assignee set.
+   * Waits until the reviewer change has settled into exactly one open approval task that (a) is a
+   * <b>new</b> task — the original was superseded, not left lingering or patched in place — and (b)
+   * is assigned to the added reviewer. This is the acceptance criterion: after a reviewer change the
+   * workflow settles on a single open task carrying the new reviewers.
+   *
+   * <p>Fails fast if the term's approval workflow settles in a terminal state without producing the
+   * superseding task, so a workflow that never re-triggers surfaces a diagnostic instead of a bare
+   * timeout.
    */
-  private Task awaitSingleOpenApprovalTaskAssignedTo(String termFqn, User newReviewer) {
-    Awaitility.await("single open approval task assigned to " + newReviewer.getId())
+  private Task awaitSupersedingOpenApprovalTask(
+      String termFqn, UUID originalTaskId, User newReviewer) {
+    Awaitility.await("superseding open approval task assigned to " + newReviewer.getId())
         .atMost(TASK_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
         .until(
-            () -> {
-              List<Task> tasks = openApprovalTasks(termFqn);
-              return tasks.size() == 1
-                  && entityReferenceIds(tasks.get(0).getAssignees()).contains(newReviewer.getId());
-            });
+            () ->
+                supersedingTask(termFqn, originalTaskId, newReviewer.getId()) != null
+                    || approvalWorkflowSettledWithoutTask(termFqn));
+    Task settled = supersedingTask(termFqn, originalTaskId, newReviewer.getId());
+    if (settled == null) {
+      List<Task> tasks = openApprovalTasks(termFqn);
+      fail(
+          "Expected the reviewer change on "
+              + termFqn
+              + " to leave exactly one open approval task (superseding "
+              + originalTaskId
+              + ") assigned to "
+              + newReviewer.getId()
+              + ", but the workflow settled without one. term status="
+              + safeCurrentStatus(termFqn)
+              + ", open tasks="
+              + tasks.stream().map(Task::getId).collect(Collectors.toList()));
+    }
+    return settled;
+  }
+
+  /**
+   * Returns the settled open approval task when there is exactly one, it is not the original task,
+   * and it is assigned to the new reviewer; otherwise {@code null} (still settling).
+   */
+  private Task supersedingTask(String termFqn, UUID originalTaskId, UUID newReviewerId) {
     List<Task> tasks = openApprovalTasks(termFqn);
-    assertEquals(
-        1,
-        tasks.size(),
-        "Expected exactly one open approval task for "
-            + termFqn
-            + " after the reviewer change, but found "
-            + tasks.size());
-    return tasks.get(0);
+    Task result = null;
+    if (tasks.size() == 1) {
+      Task candidate = tasks.get(0);
+      if (!candidate.getId().equals(originalTaskId)
+          && entityReferenceIds(candidate.getAssignees()).contains(newReviewerId)) {
+        result = candidate;
+      }
+    }
+    return result;
+  }
+
+  private boolean approvalWorkflowSettledWithoutTask(String termFqn) {
+    EntityStatus status = safeCurrentStatus(termFqn);
+    return (status == EntityStatus.APPROVED || status == EntityStatus.DRAFT)
+        && openApprovalTasks(termFqn).isEmpty();
+  }
+
+  private EntityStatus safeCurrentStatus(String termFqn) {
+    EntityStatus status;
+    try {
+      status = SdkClients.adminClient().glossaryTerms().getByName(termFqn).getEntityStatus();
+    } catch (RuntimeException e) {
+      status = null;
+    }
+    return status;
   }
 
   private List<Task> openApprovalTasks(String termFqn) {
