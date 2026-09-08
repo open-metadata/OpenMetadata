@@ -7,10 +7,6 @@ import argparse
 import concurrent.futures
 import sys
 import time
-from datetime import datetime
-
-# Force unbuffered output
-sys.stdout.reconfigure(line_buffering=True)
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -27,6 +23,9 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -36,14 +35,18 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
+
+
+def _parse_int(value: str) -> int:
+    try:
+        return int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("must be an integer") from error
 
 
 def positive_int(value: str) -> int:
     """Parse a strictly positive CLI integer."""
-    parsed = int(value)
+    parsed = _parse_int(value)
     if parsed <= 0:
         raise argparse.ArgumentTypeError("must be greater than 0")
     return parsed
@@ -51,7 +54,7 @@ def positive_int(value: str) -> int:
 
 def non_negative_int(value: str) -> int:
     """Parse a non-negative CLI integer."""
-    parsed = int(value)
+    parsed = _parse_int(value)
     if parsed < 0:
         raise argparse.ArgumentTypeError("must be greater than or equal to 0")
     return parsed
@@ -142,15 +145,15 @@ def build_columns(total: int) -> list:
     suggests, which is what makes byte-budgeted batching matter.
     """
     columns = list(BASE_COLUMNS[:total])
-    for i in range(len(columns), total):
-        columns.append(
-            Column(
-                name=f"col_{i:03d}",
-                dataType=DataType.VARCHAR,
-                dataLength=255,
-                description=f"Generated column {i} for wide-table benchmarking",
-            )
+    columns.extend(
+        Column(
+            name=f"col_{i:03d}",
+            dataType=DataType.VARCHAR,
+            dataLength=255,
+            description=f"Generated column {i} for wide-table benchmarking",
         )
+        for i in range(len(columns), total)
+    )
     return columns
 
 
@@ -159,8 +162,8 @@ def create_tables_batch(
     schema_fqn: str,
     start_idx: int,
     count: int,
-    columns: list = None,
-    wide_columns: list = None,
+    columns: list | None = None,
+    wide_columns: list | None = None,
     wide_every: int = 0,
 ) -> int:
     """Create a batch of tables."""
@@ -169,11 +172,7 @@ def create_tables_batch(
 
     for i in range(start_idx, start_idx + count):
         table_name = f"test_table_{i:06d}"
-        table_columns = (
-            wide_columns
-            if wide_every and wide_columns and i % wide_every == 0
-            else columns
-        )
+        table_columns = wide_columns if wide_every and wide_columns and (i + 1) % wide_every == 0 else columns
         try:
             table = CreateTableRequest(
                 name=table_name,
@@ -207,8 +206,7 @@ def ingest_tables(
     wide_column_list = build_columns(wide_columns) if wide_every else None
     if wide_every:
         print(
-            f"Every {wide_every}th table gets {wide_columns} columns "
-            f"(others get {columns})",
+            f"Every {wide_every}th table gets {wide_columns} columns (others get {columns})",
             flush=True,
         )
     print("-" * 60, flush=True)
@@ -223,9 +221,9 @@ def ingest_tables(
     db_name = "scale_test_db"
     schema_name = "scale_test_schema"
 
-    service = create_service(metadata, service_name)
-    database = create_database(metadata, service_name, db_name)
-    schema = create_schema(metadata, f"{service_name}.{db_name}", schema_name)
+    create_service(metadata, service_name)
+    create_database(metadata, service_name, db_name)
+    create_schema(metadata, f"{service_name}.{db_name}", schema_name)
     schema_fqn = f"{service_name}.{db_name}.{schema_name}"
 
     print("-" * 60)
@@ -273,7 +271,7 @@ def ingest_tables(
                     rate = total_created / elapsed if elapsed > 0 else 0
                     print(
                         f"Progress: {total_created}/{total_tables} tables "
-                        f"({100*total_created/total_tables:.1f}%) - "
+                        f"({100 * total_created / total_tables:.1f}%) - "
                         f"{rate:.1f} tables/sec"
                     )
             except Exception as e:
@@ -283,7 +281,7 @@ def ingest_tables(
     rate = total_created / elapsed if elapsed > 0 else 0
 
     print("-" * 60)
-    print(f"Ingestion complete!")
+    print("Ingestion complete!")
     print(f"Total tables created: {total_created}")
     print(f"Time elapsed: {elapsed:.1f} seconds")
     print(f"Average rate: {rate:.1f} tables/sec")
@@ -291,9 +289,7 @@ def ingest_tables(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Ingest tables into OpenMetadata for scale testing"
-    )
+    parser = argparse.ArgumentParser(description="Ingest tables into OpenMetadata for scale testing")
     parser.add_argument(
         "--server",
         default="http://localhost:8585/api",
@@ -359,4 +355,5 @@ def main():
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(line_buffering=True)
     main()

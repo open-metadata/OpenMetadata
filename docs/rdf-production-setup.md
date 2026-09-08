@@ -44,6 +44,11 @@ memory starves the page cache and usually reduces throughput.
   into `/fuseki-data`. Upgrading from that layout requires moving the files (below) — the locations
   are deliberately not the same.
 - **The assembler provisions `openmetadata`, `openmetadata_a`, and `openmetadata_b`** on the data volume with the same union-default-graph and timeout settings. `FUSEKI_BASE` retains authentication and any operator-managed registrations. The OpenMetadata Graph Store extension is refreshed from the image at startup.
+- **Each dataset has its own persistent Lucene index** (`lucene`, `lucene_a`, `lucene_b`) for
+  `rdfs:label`, `dcterms:description`, and the OpenMetadata `name` property. The services use
+  Jena `text:TextDataset` wrappers so both SPARQL updates and Graph Store uploads maintain the
+  indexes. Graph and statement identifiers keep named-graph searches and deletions consistent
+  through live updates and repeated blue/green rebuilds.
 - **Explicit equal heap** (`-Xms4g -Xmx4g` in the image; the development compose files override to
   1500 MB) plus GC logging to `/fuseki-data/gc.log`.
 
@@ -80,6 +85,19 @@ counts against the active dataset after restart.
 
 Apply the native 2.0.2 SQL migrations and upgrade every OpenMetadata pod before enabling online
 rebuilds. Older pods do not participate in the mutation journal or routing fence.
+
+### Populating full-text indexes after an upgrade
+
+The previous `ja:textIndex` property on a plain TDB2 dataset did not activate Jena text indexing.
+Adding the text-dataset wrapper indexes new writes; it does not backfill triples already on disk.
+After upgrading, run the RDF indexing app with `recreateIndex: true` and `blueGreenRebuild: true` to
+populate a new target and its Lucene index before promotion. Reusing a target clears its old
+triples and text documents together. Include the corresponding `lucene*` directory with each
+TDB2 dataset in backups; account for these indexes in disk capacity planning.
+
+For datasets populated outside OpenMetadata, follow Jena's
+[text-index backfill procedure](https://jena.apache.org/documentation/query/text-query.html#building-a-text-index)
+with a separate assembler description for each text dataset while Fuseki is stopped.
 
 ## Capacity planning
 
@@ -423,6 +441,8 @@ The original `RdfWritePathScaleHarness` measurements used Fuseki 6.2.0 in Docker
 | 100k entities | piped RDF Thrift | 158 s | 632 |
 
 These are historical results from before complete-payload staging and durable rebuild coordination.
+The measurements below also predate the active Lucene indexes; rerun the harness with the shipped
+assembler to include text-index maintenance in write-throughput measurements.
 They compare transports on this branch, not this branch against `origin/main`, and do not establish
 current indexing-app or live-event throughput. The harness exercises translation and storage;
 `scripts/rdf-reindex-benchmark.sh` instead triggers the complete indexing app.

@@ -23,11 +23,8 @@ public class RdfDistributedJobStatsAggregator {
     Stats stats = new Stats();
     stats.setEntityStats(new EntityStats());
 
-    // Timing semantics: readerTimeMs is the keyset read; sinkTimeMs is the FULL
-    // RDF write path (translation + storage round trips) — the un-instrumented
-    // stage where a 164-hour production run hid at "<1 ms"; processTimeMs is
-    // reserved for a future translate/write split. totalTimeMs powers the UI's
-    // average-latency computation (totalTimeMs / successRecords).
+    // Sum keyset reads, RDF translation, and storage writes independently so the UI's
+    // totalTimeMs / successRecords latency includes every stage without double counting.
     long jobReaderTimeMs = 0;
     long jobProcessTimeMs = 0;
     long jobSinkTimeMs = 0;

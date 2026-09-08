@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
@@ -78,7 +79,7 @@ class RdfBlueGreenDatasetTest {
       // to prevent.
       for (String active :
           new String[] {null, "openmetadata", "openmetadata_a", "openmetadata_b"}) {
-        assertNotSame(
+        assertNotEquals(
             active, RdfRepository.alternateDatasetName("openmetadata", active), "active=" + active);
       }
     }
@@ -129,7 +130,7 @@ class RdfBlueGreenDatasetTest {
       String target = repository.resolveBuildDatasetName();
 
       assertEquals("openmetadata_a", target);
-      assertNotSame("openmetadata", target);
+      assertNotEquals("openmetadata", target);
     }
   }
 

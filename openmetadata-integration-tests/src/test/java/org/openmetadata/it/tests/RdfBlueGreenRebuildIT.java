@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -74,6 +75,7 @@ public class RdfBlueGreenRebuildIT {
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Path ROOT = repositoryRoot();
   private static GenericContainer<?> fuseki;
   private static String endpoint;
@@ -357,6 +359,39 @@ public class RdfBlueGreenRebuildIT {
 
   @ParameterizedTest
   @EnumSource(Database.class)
+  void textSearchSurvivesPromotionLiveWritesAndTargetReuse(final Database database)
+      throws Exception {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      final UUID id = UUID.randomUUID();
+      final RdfStorageInterface live = fixture.other.routedStorage();
+      write(live, id, "baseline");
+      assertTextMatch(live, id, "baseline", true);
+
+      for (String expected : List.of("openmetadata_a", "openmetadata_b", "openmetadata_a")) {
+        final BuildTarget target = fixture.primary.begin();
+        assertEquals(expected, target.dataset());
+        final RdfStorageInterface build = fixture.primary.buildStorage(target);
+        build.clearGraph(GRAPH);
+        assertTextMatch(build, id, "snapshot", false);
+        assertTextMatch(build, id, "retained", false);
+        append(build, id, "snapshot");
+        assertTextMatch(build, id, "snapshot", true);
+        assertTextMatch(live, id, "snapshot", false);
+
+        fixture.primary.promote(target, "test");
+        assertTextMatch(live, id, "snapshot", true);
+        write(live, id, "updated");
+        assertTextMatch(live, id, "snapshot", false);
+        assertTextMatch(live, id, "updated", true);
+        live.deleteEntity("table", id);
+        assertTextMatch(live, id, "updated", false);
+        append(live, id, "retained");
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
   void promotionMarksMaterializedInferenceDirty(final Database database) {
     try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
       database.jdbi.useHandle(
@@ -577,6 +612,31 @@ public class RdfBlueGreenRebuildIT {
       return !model.isEmpty();
     } finally {
       model.close();
+    }
+  }
+
+  private static void append(final RdfStorageInterface storage, final UUID id, final String name) {
+    final Model model = ModelFactory.createDefaultModel();
+    try {
+      model
+          .createResource(BASE + "entity/table/" + id)
+          .addProperty(model.createProperty(NAME), name);
+      storage.bulkStoreEntities(
+          List.of(new EntityWriteRequest("table", id, model)), RdfWriteMode.INSERT_ONLY);
+    } finally {
+      model.close();
+    }
+  }
+
+  private static void assertTextMatch(
+      final RdfStorageInterface storage, final UUID id, final String term, final boolean expected)
+      throws Exception {
+    final String pattern =
+        "?entity <http://jena.apache.org/text#query> (<%s> \"%s\") FILTER (?entity = <%sentity/table/%s>)"
+            .formatted(NAME, term, BASE, id);
+    for (String body : List.of(pattern, "GRAPH <%s> { %s }".formatted(GRAPH, pattern))) {
+      final String result = storage.executeSparqlQuery("ASK { " + body + " }", "json");
+      assertEquals(expected, MAPPER.readTree(result).path("boolean").asBoolean(), result);
     }
   }
 

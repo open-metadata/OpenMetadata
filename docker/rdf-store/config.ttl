@@ -17,8 +17,6 @@
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix tdb2:  <http://jena.apache.org/2016/tdb#> .
 @prefix ja:    <http://jena.hpl.hp.com/2005/11/Assembler#> .
-# jena-text prefix: without this the file fails to parse at the first text: term below
-# ("Undefined prefix: text"), which made Fuseki refuse to boot with --config.
 @prefix text:  <http://jena.apache.org/text#> .
 
 [] rdf:type fuseki:Server ;
@@ -37,7 +35,12 @@
     fuseki:serviceReadWriteGraphStore "data" ;
     fuseki:dataset <#dataset> .
 
-<#dataset> rdf:type tdb2:DatasetTDB2 ;
+<#dataset> rdf:type text:TextDataset ;
+    text:dataset <#tdb_dataset> ;
+    text:index <#index> ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#tdb_dataset> rdf:type tdb2:DatasetTDB2 ;
     tdb2:location "/fuseki-data/openmetadata" ;
     # Required, not cosmetic: OpenMetadata writes every entity into a NAMED graph, so
     # without this a plain `?s ?p ?o` against the default graph returns zero rows while
@@ -69,27 +72,49 @@
     fuseki:serviceReadWriteGraphStore "data" ;
     fuseki:dataset <#dataset_b> .
 
-<#dataset_a> rdf:type tdb2:DatasetTDB2 ;
+<#dataset_a> rdf:type text:TextDataset ;
+    text:dataset <#tdb_dataset_a> ;
+    text:index <#index_a> ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#tdb_dataset_a> rdf:type tdb2:DatasetTDB2 ;
     tdb2:location "/fuseki-data/openmetadata_a" ;
     tdb2:unionDefaultGraph true ;
     ja:context <#queryDeadline>, <#updateDeadline> .
 
-<#dataset_b> rdf:type tdb2:DatasetTDB2 ;
+<#dataset_b> rdf:type text:TextDataset ;
+    text:dataset <#tdb_dataset_b> ;
+    text:index <#index_b> ;
+    ja:context <#queryDeadline>, <#updateDeadline> .
+
+<#tdb_dataset_b> rdf:type tdb2:DatasetTDB2 ;
     tdb2:location "/fuseki-data/openmetadata_b" ;
     tdb2:unionDefaultGraph true ;
     ja:context <#queryDeadline>, <#updateDeadline> .
 
-# Enable full-text search
-<#dataset> ja:textIndex (<#index>) .
-
+# Each dataset owns its index so clearing a rebuild target cannot affect serving queries.
 <#index> a text:TextIndexLucene ;
-    text:directory "/fuseki-data/lucene" ;
+    text:directory <file:/fuseki-data/lucene> ;
+    text:entityMap <#entityMap> ;
+    text:storeValues true .
+
+<#index_a> a text:TextIndexLucene ;
+    text:directory <file:/fuseki-data/lucene_a> ;
+    text:entityMap <#entityMap> ;
+    text:storeValues true .
+
+<#index_b> a text:TextIndexLucene ;
+    text:directory <file:/fuseki-data/lucene_b> ;
     text:entityMap <#entityMap> ;
     text:storeValues true .
 
 <#entityMap> a text:EntityMap ;
     text:defaultField "text" ;
     text:entityField "uri" ;
+    # UID tracking removes indexed documents on update/delete; graph tracking scopes
+    # text:query to the requested named graph instead of leaking matches across graphs.
+    text:uidField "uid" ;
+    text:graphField "graph" ;
     text:map (
         [ text:field "text" ;
           text:predicate rdfs:label ]
