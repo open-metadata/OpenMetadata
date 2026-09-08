@@ -366,7 +366,10 @@ export const UserTeamSelectableList = ({
             {t('label.user-plural')}
           </Tabs.Item>
         </Tabs.List>
-        <Tabs.Panel data-testid="owner-select-teams-panel" id="teams">
+        <Tabs.Panel
+          shouldForceMount
+          data-testid="owner-select-teams-panel"
+          id="teams">
           <SelectableList
             customTagRenderer={TeamListItemRenderer}
             fetchOptions={fetchTeamOptions}
@@ -382,7 +385,10 @@ export const UserTeamSelectableList = ({
             onUpdate={handleUpdate}
           />
         </Tabs.Panel>
-        <Tabs.Panel data-testid="owner-select-users-panel" id="users">
+        <Tabs.Panel
+          shouldForceMount
+          data-testid="owner-select-users-panel"
+          id="users">
           <SelectableList
             fetchOptions={fetchUserOptions}
             height={listHeight}
