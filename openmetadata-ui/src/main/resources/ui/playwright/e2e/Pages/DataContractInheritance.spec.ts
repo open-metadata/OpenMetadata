@@ -86,7 +86,10 @@ const fillContractDetailsForm = async (
 
   if (status) {
     await page.getByTestId('contract-status').click();
-    await page.getByRole('option', { name: status }).click();
+    await expect(
+      page.locator(`.contract-status-dropdown [title="${status}"]`)
+    ).toBeVisible();
+    await page.locator(`.contract-status-dropdown [title="${status}"]`).click();
   }
 };
 

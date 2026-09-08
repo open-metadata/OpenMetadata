@@ -89,6 +89,7 @@ export const ContractDetailFormTab: React.FC<{
       props: {
         'data-testid': 'contract-status',
         options: dataContractStatusOptions,
+        popupClassName: 'contract-status-dropdown',
       },
       formItemProps: {
         initialValue: initialValues?.entityStatus ?? EntityStatus.Draft,
