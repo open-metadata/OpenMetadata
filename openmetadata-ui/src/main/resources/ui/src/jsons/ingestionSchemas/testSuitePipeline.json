@@ -1487,7 +1487,8 @@
                         "accessToken": {
                           "title": "Access Token",
                           "description": "Access token to connect to DOMO",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "apiHost": {
                           "expose": true,
@@ -7288,7 +7289,8 @@
                         "accessToken": {
                           "title": "Access Token",
                           "description": "Access token to connect to DOMO",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "apiHost": {
                           "expose": true,
@@ -7712,7 +7714,8 @@
                                     "token": {
                                       "title": "Token",
                                       "description": "The Astra DB application token used for authentication.",
-                                      "type": "string"
+                                      "type": "string",
+                                      "format": "password"
                                     },
                                     "secureConnectBundle": {
                                       "title": "Secure Connect Bundle",
@@ -12812,7 +12815,8 @@
                         "accessToken": {
                           "title": "Access Token",
                           "description": "Access token to connect to DOMO",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "apiHost": {
                           "expose": true,
@@ -15631,7 +15635,7 @@
                           "javaEnums": [
                             {
                               "name": "Stdio",
-                              "description": "Standard input/output transport - spawns a subprocess"
+                              "description": "Deprecated and unsupported. Stdio transport has been removed; use SSE or StreamableHTTP with a URL."
                             },
                             {
                               "name": "SSE",
@@ -15657,21 +15661,21 @@
                             },
                             "command": {
                               "type": "string",
-                              "description": "Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')"
+                              "description": "Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url' instead."
                             },
                             "args": {
                               "type": "array",
                               "items": {
                                 "type": "string"
                               },
-                              "description": "Arguments to pass to the command"
+                              "description": "Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url' instead."
                             },
                             "env": {
                               "type": "object",
                               "additionalProperties": {
                                 "type": "string"
                               },
-                              "description": "Environment variables for the server process"
+                              "description": "Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url' instead."
                             },
                             "url": {
                               "type": "string",
