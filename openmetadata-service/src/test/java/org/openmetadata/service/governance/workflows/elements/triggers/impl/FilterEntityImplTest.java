@@ -175,6 +175,27 @@ class FilterEntityImplTest {
   }
 
   @Test
+  void testEntitySpecificColumnFieldTriggersByDefault() throws Exception {
+    // `columns` is a table-specific trigger field. It is not opt-in: with no include/exclude it
+    // fires like any other trigger field, so a column change (including a column custom-property /
+    // extension change, recorded as `columns.<name>.extension`) triggers the workflow.
+    assertTrue(invokeFilter(List.of(fieldChange("columns")), null, null));
+    assertTrue(invokeFilter(List.of(fieldChange("columns.campaign_id.extension")), null, null));
+
+    // include set -> only the listed fields fire.
+    assertTrue(
+        invokeFilter(
+            List.of(fieldChange("columns.campaign_id.extension")), List.of("columns"), null));
+    assertFalse(invokeFilter(List.of(fieldChange("description")), List.of("columns"), null));
+
+    // exclude set -> everything but the listed fields fires.
+    assertFalse(
+        invokeFilter(
+            List.of(fieldChange("columns.campaign_id.extension")), null, List.of("columns")));
+    assertTrue(invokeFilter(List.of(fieldChange("description")), null, List.of("columns")));
+  }
+
+  @Test
   void testMultipleChangedFieldsPassIfAnyMatchesTriggerFields() throws Exception {
     List<FieldChange> changes = List.of(fieldChange("updatedAt"), fieldChange("schema"));
 

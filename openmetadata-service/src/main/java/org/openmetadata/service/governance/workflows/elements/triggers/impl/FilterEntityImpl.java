@@ -7,7 +7,6 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Ev
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -258,8 +257,11 @@ public class FilterEntityImpl implements JavaDelegate {
       List<FieldChange> changedFields,
       List<String> includeFields,
       List<String> excludedFilter) {
+    // effectiveFields = the common trigger fields plus this entity's own (e.g. `columns` for a
+    // table). A change fires the workflow when it touches one of them, subject to include/exclude:
+    // include set -> only those fields; exclude set -> everything but those; neither -> all of
+    // them.
     Set<String> effectiveFields = WorkflowTriggerFieldsRegistry.getEffectiveFields(entityType);
-    Set<String> commonFields = new HashSet<>(WorkflowTriggerFieldsRegistry.getCommonFields());
     return changedFields.stream()
         .anyMatch(
             field -> {
@@ -270,18 +272,7 @@ public class FilterEntityImpl implements JavaDelegate {
                 return false;
               }
 
-              boolean hasInclude = includeFields != null && !includeFields.isEmpty();
-
-              // Entity-specific (byEntity) fields are opt-in: they fire only when explicitly listed
-              // in include, so workflows saved before these fields were triggerable are not
-              // retroactively fired on routine edits. Common fields keep the default behaviour.
-              boolean isCommon = commonFields.stream().anyMatch(tf -> matchesField(fieldName, tf));
-              if (!isCommon) {
-                return hasInclude
-                    && includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
-              }
-
-              if (hasInclude) {
+              if (includeFields != null && !includeFields.isEmpty()) {
                 return includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
               }
 

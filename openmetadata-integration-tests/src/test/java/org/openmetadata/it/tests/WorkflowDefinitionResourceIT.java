@@ -10969,8 +10969,10 @@ public class WorkflowDefinitionResourceIT {
   void test_ColumnCustomPropertyChange_TriggersWorkflow(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     ensureTierTagExists();
+    ensureWorkflowEventConsumerIsActive(client);
     String propName = ns.prefix("wfTriggerCp");
     String columnTypeName = "tableColumn";
+    UUID workflowId = null;
 
     try {
       addColumnCustomProperty(client, columnTypeName, propName);
@@ -10993,19 +10995,33 @@ public class WorkflowDefinitionResourceIT {
               .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
       Table table = client.tables().create(createTable);
 
+      // Scope the trigger to THIS table only. `columns` is a trigger field with an EMPTY include
+      // (the default), so this workflow would otherwise fire on every table update in the cluster
+      // and tag other concurrent tests' tables. The exclusion filter is TRUE for every table except
+      // this one, so only this table can trigger it while it is deployed.
+      String tableScopeFilter =
+          MAPPER.writeValueAsString(
+              MAPPER.writeValueAsString(
+                  Map.of(
+                      "!=",
+                      List.of(
+                          Map.of("var", "fullyQualifiedName"), table.getFullyQualifiedName()))));
+
       String workflowName = ns.prefix("colCpTrigger");
       String workflowJson =
           """
           {
             "name": "%s",
             "displayName": "Column CP Trigger",
-            "description": "Fires when a table column custom property changes",
+            "description": "Fires when a table column custom property changes (empty include)",
             "trigger": {
               "type": "eventBasedEntity",
               "config": {
                 "entityTypes": ["table"],
                 "events": ["Updated"],
-                "include": ["columns"]
+                "include": [],
+                "exclude": [],
+                "filter": {"table": %s}
               },
               "output": ["relatedEntity", "updatedBy"]
             },
@@ -11030,21 +11046,24 @@ public class WorkflowDefinitionResourceIT {
             "config": {"storeStageStatus": true}
           }
           """
-              .formatted(workflowName);
+              .formatted(workflowName, tableScopeFilter);
 
       CreateWorkflowDefinition workflowRequest =
           MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
-      client
-          .getHttpClient()
-          .executeForString(
-              HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+      String createResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+      workflowId = UUID.fromString(MAPPER.readTree(createResponse).get("id").asText());
       waitForWorkflowDeployment(client, workflowName);
       waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
 
       // Setting a column custom property emits a table Updated event carrying
-      // columns."id".extension; the opt-in include:[columns] trigger then runs the workflow, which
-      // sets Tier.Tier1 on the table. Asserting the tier proves the column change fired the
-      // workflow.
+      // columns."id".extension. With an empty include, `columns` triggers by default (it is a
+      // trigger field, not opt-in), so the workflow runs and sets Tier.Tier1 on the table.
+      // Asserting the tier proves the column change fired the workflow. This is the regression
+      // guard for the filter fix: before it, an empty-include workflow ignored column changes.
       String columnFQN = table.getFullyQualifiedName() + ".id";
       Map<String, Object> extension = new HashMap<>();
       extension.put(propName, "trigger-me");
@@ -11062,9 +11081,16 @@ public class WorkflowDefinitionResourceIT {
                             .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
                 assertTrue(
                     hasTier1,
-                    "a column custom-property change must trigger the include:[columns] workflow");
+                    "a column custom-property change must trigger the empty-include workflow");
               });
     } finally {
+      if (workflowId != null) {
+        try {
+          client.workflowDefinitions().delete(workflowId);
+        } catch (Exception ignored) {
+          // best-effort cleanup so the empty-include workflow cannot affect other tests
+        }
+      }
       deleteColumnCustomProperty(client, columnTypeName, propName);
     }
   }
