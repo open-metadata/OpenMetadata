@@ -1994,7 +1994,17 @@ public class K8sPipelineClient extends PipelineServiceClient {
       }
 
       org.openmetadata.schema.auth.JWTAuthMechanism jwtAuth =
-          (org.openmetadata.schema.auth.JWTAuthMechanism) authMechanism.getConfig();
+          org.openmetadata.schema.utils.JsonUtils.convertValue(
+              authMechanism.getConfig(), org.openmetadata.schema.auth.JWTAuthMechanism.class);
+      org.openmetadata.service.secrets.SecretsManager secretsManager =
+          org.openmetadata.service.secrets.SecretsManagerFactory.getSecretsManager();
+      if (secretsManager != null) {
+        secretsManager.decryptJWTAuthMechanism(jwtAuth);
+        String token = jwtAuth.getJWTToken();
+        if (secretsManager.isSecret(token)) {
+          return secretsManager.getSecretValue(token);
+        }
+      }
       return jwtAuth.getJWTToken();
 
     } catch (Exception e) {
