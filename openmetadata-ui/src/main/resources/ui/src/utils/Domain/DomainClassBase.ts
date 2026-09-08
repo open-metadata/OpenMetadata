@@ -270,10 +270,7 @@ class DomainClassBase {
     return null;
   }
 
-  /**
-   * Reviewers are a Collate-only capability on Data Products. The base class
-   * returns null so the field is never rendered — and never submitted — in OSS.
-   */
+  // Reviewers are Collate-only; overridden downstream.
   public getReviewersField(): FieldProp | null {
     return null;
   }

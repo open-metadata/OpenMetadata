@@ -188,8 +188,7 @@ const applyDataProductFields = (
     dataProduct.portfolioPriority = formData.portfolioPriority
       .value as PortfolioPriority;
   }
-  // Reviewers are a Collate-only capability: the base class returns no field in
-  // OSS, so the property is never sent on the create payload there.
+  // Collate-only: no field means the property is never sent.
   if (domainClassBase.getReviewersField()) {
     dataProduct.reviewers = formData.reviewers.map(
       (item) => item.value as EntityReference

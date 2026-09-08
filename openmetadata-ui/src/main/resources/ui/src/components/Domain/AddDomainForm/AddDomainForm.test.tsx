@@ -332,8 +332,7 @@ const AddDomainFormHarness = ({
   );
 };
 
-// jest's `clearMocks` only clears calls, not return values, so tests that opt
-// the Collate-only reviewers field in must not leak it into the next test.
+// `clearMocks` clears calls, not return values, so opt-ins would leak.
 beforeEach(() => {
   (domainClassBase.getReviewersField as jest.Mock).mockReturnValue(null);
 });
