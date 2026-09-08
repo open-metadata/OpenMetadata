@@ -304,20 +304,28 @@ const AlertDetailsPage = () => {
     ]
   );
 
-  if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.alert-detail-plural'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
-  }
+  const guardPlaceholder = useMemo<ReactNode | null>(() => {
+    if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.alert-detail-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
 
-  if (!loadingCount && isUndefined(alertDetails)) {
-    return <ErrorPlaceHolder className="m-0" />;
+    if (!loadingCount && isUndefined(alertDetails)) {
+      return <ErrorPlaceHolder className="m-0" />;
+    }
+
+    return null;
+  }, [loadingCount, viewPermission, alertDetails, t]);
+
+  if (guardPlaceholder) {
+    return guardPlaceholder;
   }
 
   return (
