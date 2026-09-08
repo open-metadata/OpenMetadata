@@ -34,9 +34,6 @@ export const useDataInsightChartColors = () => {
   return useMemo(() => {
     // SVG presentation attributes need concrete values, so resolve them again
     // after theme classes or runtime brand variables change.
-    void brandColors;
-    void theme;
-
     return {
       ...chartColors,
       dataInsightSeries: resolveColorTokens(DATA_INSIGHT_GRAPH_COLOR_TOKENS),
