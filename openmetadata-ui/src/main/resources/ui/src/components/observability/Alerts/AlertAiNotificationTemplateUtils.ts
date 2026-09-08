@@ -43,12 +43,15 @@ interface CustomTemplateFieldLabels {
 
 export const getSelectedTemplateKey = (
   notificationTemplate: ModifiedCreateEventSubscription['notificationTemplate']
-) =>
-  typeof notificationTemplate === 'string'
-    ? notificationTemplate
-    : notificationTemplate
+) => {
+  if (typeof notificationTemplate === 'string') {
+    return notificationTemplate;
+  }
+
+  return notificationTemplate
     ? JSON.stringify(notificationTemplate)
     : undefined;
+};
 
 export const getSelectedSavedTemplate = (
   selectedTemplate: string | undefined,
@@ -198,10 +201,12 @@ export const getCustomTemplateFieldData = ({
   customTemplateData?: ModifiedCreateEventSubscription['customNotificationTemplateData'];
   isCustomTemplate: boolean;
   selectedSavedTemplate?: NotificationTemplate;
-}) =>
-  isCustomTemplate
-    ? customTemplateData
-    : selectedSavedTemplate
+}) => {
+  if (isCustomTemplate) {
+    return customTemplateData;
+  }
+
+  return selectedSavedTemplate
     ? {
         displayName:
           selectedSavedTemplate.displayName ?? selectedSavedTemplate.name,
@@ -209,3 +214,4 @@ export const getCustomTemplateFieldData = ({
         templateSubject: selectedSavedTemplate.templateSubject,
       }
     : undefined;
+};

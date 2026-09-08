@@ -86,6 +86,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
+import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 import { submitTestCaseForm } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
@@ -126,7 +127,6 @@ const entitySupportsQuality = (entityType: string): boolean => {
 
 test.describe('Data Contracts', () => {
   const user = new UserClass();
-  test.slow(true);
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -146,7 +146,7 @@ test.describe('Data Contracts', () => {
     const testTitle = `Create Data Contract and validate for ${entityType}`;
 
     test(testTitle, testDetails, async ({ page }) => {
-      // 12-min timeout so waitForDataContractExecution completes first.
+      // 15-min timeout so waitForDataContractExecution completes first.
       test.setTimeout(900_000);
 
       const testClassification = new ClassificationClass();
@@ -455,11 +455,13 @@ test.describe('Data Contracts', () => {
             .locator('input')
             .fill('test-pipeline');
 
-          await page.getByTestId('schedular-on-demand').click();
+          await selectOnDemandSchedule(page);
 
-          await expect(page.locator('.expression-text')).toContainText(
-            'Pipeline will only be triggered manually.'
-          );
+          await expect(
+            page.getByText('Pipeline will only be triggered manually.', {
+              exact: true,
+            })
+          ).toBeVisible();
 
           await submitTestCaseForm(page);
 

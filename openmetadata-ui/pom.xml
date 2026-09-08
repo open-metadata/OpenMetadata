@@ -180,8 +180,10 @@
                    that the reactor already built). It also suppresses postinstall, so
                    the `yarn run build-check` execution below re-runs its work (js-antlr
                    parser generation) explicitly, since that output is gitignored and
-                   required by the vite build. The dereferenced schemas under src/jsons
-                   are committed, so they are no longer regenerated here. -->
+                   required by the vite build. The dereferenced schemas — connection
+                   schemas under `public/jsons/connectionSchemas/` (fetched at runtime),
+                   application/ingestion/governance/sso schemas under `src/jsons/` (bundled
+                   at build time) — are all committed, so none are regenerated here. -->
               <arguments>install --frozen-lockfile --ignore-scripts</arguments>
               <skip>${skip.ui.build}</skip>
             </configuration>
@@ -219,10 +221,20 @@
             <phase>prepare-package</phase>
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run build</arguments>
-              <!--arguments>build</arguments-->
+              <!--
+                `run build:release` runs the normal Vite build and then the
+                parallel brotli compressor (scripts/compress-brotli.mjs).
+                Brotli was intentionally removed from the Vite pipeline
+                because `vite-plugin-compression` serialized ~1200 chunks of
+                quality-11 brotli through Rollup's `writeBundle` and added
+                1-3 min to every build; the standalone script does the same
+                work across `os.availableParallelism()` workers in seconds.
+                Maven packaging is the release path, so we want the `.br`
+                artifacts here — `OpenMetadataAssetServlet` prefers them over
+                `.gz` when the client sends `Accept-Encoding: br`. Local dev
+                (`yarn build`) stays fast.
+              -->
+              <arguments>run build:release</arguments>
               <skip>${skip.ui.build}</skip>
               <environmentVariables>
                 <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
