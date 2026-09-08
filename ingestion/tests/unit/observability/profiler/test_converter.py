@@ -252,9 +252,9 @@ def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
     class-attribute key so every column reaches the ORM table.
     """
     column_definition = [
-        ("__hevo_id", DataType.STRING),     # dunder prefix — is the PK, must not be dropped
+        ("__hevo_id", DataType.STRING),  # dunder prefix — is the PK, must not be dropped
         ("normal_col", DataType.INT),
-        ("_sa_special", DataType.STRING),   # _sa_ prefix — also filtered by SQLAlchemy
+        ("_sa_special", DataType.STRING),  # _sa_ prefix — also filtered by SQLAlchemy
     ]
 
     columns = [Column(name=name, dataType=data_type) for name, data_type in column_definition]
