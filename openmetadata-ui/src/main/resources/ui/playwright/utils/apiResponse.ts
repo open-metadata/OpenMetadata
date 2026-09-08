@@ -188,10 +188,25 @@ export const createOrFetch = async <T = ResponseBody>(
       `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
     );
 
-    return await okJson<T>(
+    const existing = await okJson<T>(
       getResponse,
       `${label}: fetch existing "${entityFqn}"`
     );
+
+    // A soft-deleted entity keeps its name, so it is a legitimate source of the
+    // 409 -- but handing it back gives the caller an id that 404s on the very
+    // next write, which is how a stale fixture surfaces as "instance not found"
+    // several calls later, far from the cause. Restoring is not right either:
+    // restore is async and returns the entity mid-history, while callers expect
+    // a fresh one. Fail here, where the situation is still legible.
+    if ((existing as { deleted?: boolean })?.deleted) {
+      throw new Error(
+        `${label}: "${entityFqn}" already exists but is soft-deleted, so it cannot be ` +
+          `used or written to. Hard-delete the leftover, or give this fixture a unique name.`
+      );
+    }
+
+    return existing;
   }
 
   return await okJson<T>(createResponse, label);
