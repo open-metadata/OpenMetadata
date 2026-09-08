@@ -71,11 +71,13 @@ IMPORT_RE = re.compile(
     r"""
     (?:^|;)\s*
     (?:import|export)\b
-    [^'"]*?                      # any bindings, may span newlines (lazy)
-    (?:from\s*)?
+    (?:
+        \s+                          # side-effect form: `import 'foo'`
+      | [^'";]*?\bfrom\s*            # binding form: requires `from`, bounded by `;`
+    )
     (['"])([^'"]+)\1
     """,
-    re.VERBOSE | re.MULTILINE | re.DOTALL,
+    re.VERBOSE | re.MULTILINE,
 )
 
 # testIds referenced by a spec. Covers the two conventions the codebase uses:
