@@ -2026,7 +2026,7 @@ public class WorkflowDefinitionResourceIT {
     try {
       waitForWorkflowDeployment(client, workflowName);
       waitForEntityIndexedInSearch(
-          client, "dataproduct_search_index", dpWithAssets.getFullyQualifiedName());
+          client, "data_product_search_index", dpWithAssets.getFullyQualifiedName());
 
       String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
       client
@@ -2199,7 +2199,7 @@ public class WorkflowDefinitionResourceIT {
     try {
       waitForWorkflowDeployment(client, workflowName);
       waitForEntityIndexedInSearch(
-          client, "dataproduct_search_index", dpWithPorts.getFullyQualifiedName());
+          client, "data_product_search_index", dpWithPorts.getFullyQualifiedName());
 
       String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
       client
