@@ -29,6 +29,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
 import java.util.ArrayList;
@@ -47,9 +48,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.domains.PaginatedEntities;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -67,6 +70,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -90,6 +94,9 @@ import org.openmetadata.service.util.LineageUtil;
 public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS =
       "experts,domains"; // Domain can now be updated with asset migration
+
+  private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
+      "Data Product Domain Validation";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -1053,6 +1060,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           searchRepository.propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
         }
       }
+
+      // Moving the data product's domain re-homes its assets, which can strand any OTHER data
+      // product still assigned to those assets (or to descendants that inherit their domain) whose
+      // domain no longer matches — leaving the asset permanently failing "Data Product Domain
+      // Validation" on every later edit. Detach those, mirroring the Domain page cleanup. Only when
+      // the rule is enabled; with it off the mismatch is a legal configuration and is left as-is.
+      if (!assetRecords.isEmpty() && isDataProductDomainValidationRuleEnabled()) {
+        detachConflictingDataProductsAfterDomainChange(assetRecords, updatedDomains);
+      }
     }
 
     private void updateDataProductDomainContainment(
@@ -1182,6 +1198,107 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       Entity.getConversationRepository()
           .updateEntityReference(updated.getEntityReference(), oldFqn);
     }
+  }
+
+  private boolean isDataProductDomainValidationRuleEnabled() {
+    try {
+      EntityRulesSettings settings =
+          SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class);
+      if (settings == null || nullOrEmpty(settings.getEntitySemantics())) {
+        return false;
+      }
+      return settings.getEntitySemantics().stream()
+          .anyMatch(
+              rule ->
+                  DATA_PRODUCT_DOMAIN_VALIDATION_RULE.equals(rule.getName())
+                      && Boolean.TRUE.equals(rule.getEnabled()));
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Entity rules settings unavailable, skipping data product detach: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  private void detachConflictingDataProductsAfterDomainChange(
+      List<CollectionDAO.EntityRelationshipRecord> assetRecords, List<EntityReference> newDomains) {
+    Set<UUID> newDomainIds =
+        newDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
+      EntityReference asset =
+          Entity.getEntityReferenceById(record.getType(), record.getId(), NON_DELETED);
+      detachConflictingDataProducts(asset, ownDomainIds(asset));
+      detachConflictingDataProductsFromDescendants(asset, newDomainIds);
+    }
+  }
+
+  /**
+   * Descendants with no domain of their own inherit this asset's new domains, so their assigned data
+   * products face the same conflict. A descendant that carries its own domain is unaffected and its
+   * subtree keeps inheriting from it, so the walk stops there.
+   */
+  private void detachConflictingDataProductsFromDescendants(
+      EntityReference asset, Set<UUID> inheritedDomainIds) {
+    for (EntityReference child : getContainedChildren(asset)) {
+      if (!ownDomainIds(child).isEmpty()) {
+        continue;
+      }
+      detachConflictingDataProducts(child, inheritedDomainIds);
+      detachConflictingDataProductsFromDescendants(child, inheritedDomainIds);
+    }
+  }
+
+  private void detachConflictingDataProducts(EntityReference asset, Set<UUID> effectiveDomainIds) {
+    List<EntityReference> conflicting =
+        getDataProducts(asset.getId(), asset.getType()).stream()
+            .filter(dataProduct -> conflictsWithDomains(dataProduct, effectiveDomainIds))
+            .toList();
+    if (conflicting.isEmpty()) {
+      return;
+    }
+    removeDataProductAssignments(asset, conflicting);
+  }
+
+  private boolean conflictsWithDomains(EntityReference dataProduct, Set<UUID> effectiveDomainIds) {
+    Set<UUID> dataProductDomainIds =
+        findFrom(dataProduct.getId(), DATA_PRODUCT, Relationship.CONTAINS, DOMAIN, NON_DELETED)
+            .stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    return !dataProductDomainIds.isEmpty()
+        && Collections.disjoint(dataProductDomainIds, effectiveDomainIds);
+  }
+
+  private void removeDataProductAssignments(
+      EntityReference asset, List<EntityReference> dataProducts) {
+    daoCollection
+        .relationshipDAO()
+        .bulkRemoveFromRelationship(
+            dataProducts.stream().map(EntityReference::getId).toList(),
+            asset.getId(),
+            DATA_PRODUCT,
+            asset.getType(),
+            Relationship.HAS.ordinal());
+    removeDataProductsLineage(asset.getId(), asset.getType(), dataProducts);
+    EntityRepository.invalidateCacheForEntity(
+        asset.getType(), asset.getId(), asset.getFullyQualifiedName());
+    if (searchRepository != null) {
+      searchRepository.updateEntity(asset);
+    }
+  }
+
+  private Set<UUID> ownDomainIds(EntityReference asset) {
+    return findFrom(asset.getId(), asset.getType(), Relationship.HAS, DOMAIN, NON_DELETED).stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private List<EntityReference> getContainedChildren(EntityReference parent) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(parent.getId(), parent.getType(), Relationship.CONTAINS.ordinal())
+        .stream()
+        .map(record -> Entity.getEntityReferenceById(record.getType(), record.getId(), NON_DELETED))
+        .toList();
   }
 
   private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {
