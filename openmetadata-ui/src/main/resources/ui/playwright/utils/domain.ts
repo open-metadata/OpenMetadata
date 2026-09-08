@@ -448,9 +448,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
 
   const displayName = domain.displayName ?? domain.name;
   await expect(
-    page
-      .getByTestId('domain-details')
-      .getByTestId('entity-header-display-name')
+    page.getByTestId('domain-details').getByTestId('entity-header-display-name')
   ).toContainText(displayName);
 
   await waitForAllLoadersToDisappear(page);
