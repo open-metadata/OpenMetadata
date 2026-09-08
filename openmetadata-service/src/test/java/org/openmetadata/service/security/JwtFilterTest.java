@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -31,6 +32,7 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -561,5 +563,99 @@ class JwtFilterTest {
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }
+  }
+
+  @Test
+  void rolesClaimAbsentLeavesContextRolesNull() throws Exception {
+    // Regression guard: an empty set here would tell the role sync the provider revoked every
+    // role, wiping the roles of every user on a deployment that never configured a roles claim.
+    JwtFilter filter = filterWithRolesFromProvider(true);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(rolesClaimJwt(null));
+
+    assertNull(context.userRoles());
+  }
+
+  @Test
+  void emptyRolesClaimYieldsEmptySetSoRevocationIsVisible() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(true);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(rolesClaimJwt(List.of()));
+
+    assertEquals(Set.of(), context.userRoles());
+  }
+
+  @Test
+  void populatedRolesClaimIsCarriedIntoTheSecurityContext() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(true);
+
+    CatalogSecurityContext context =
+        filter.getCatalogSecurityContext(rolesClaimJwt(List.of("DataSteward", "DataConsumer")));
+
+    assertEquals(Set.of("DataSteward", "DataConsumer"), context.userRoles());
+  }
+
+  @Test
+  void scalarRolesClaimIsReadAsASingleRole() throws Exception {
+    // Providers that emit a lone role as a string rather than a one-element array used to be read
+    // as "no roles" because Claim.asList returns null for a scalar.
+    JwtFilter filter = filterWithRolesFromProvider(true);
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim("roles", "DataSteward")
+            .sign(algorithm);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(jwt);
+
+    assertEquals(Set.of("DataSteward"), context.userRoles());
+  }
+
+  @Test
+  void rolesClaimIsIgnoredWhenUseRolesFromProviderIsOff() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(false);
+
+    CatalogSecurityContext context =
+        filter.getCatalogSecurityContext(rolesClaimJwt(List.of("DataSteward")));
+
+    assertNull(context.userRoles());
+  }
+
+  @Test
+  void botTokensNeverCarryProviderRoles() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(true);
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .withClaim("isBot", true)
+            .withClaim("roles", List.of("DataSteward"))
+            .sign(algorithm);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(jwt);
+
+    assertNull(context.userRoles());
+  }
+
+  private static String rolesClaimJwt(List<String> roles) {
+    var builder =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam");
+    if (roles != null) {
+      builder = builder.withClaim("roles", roles);
+    }
+    return builder.sign(algorithm);
+  }
+
+  private static JwtFilter filterWithRolesFromProvider(boolean useRolesFromProvider)
+      throws Exception {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub", "email"), "openmetadata.org", false);
+    Field field = JwtFilter.class.getDeclaredField("useRolesFromProvider");
+    field.setAccessible(true);
+    field.setBoolean(filter, useRolesFromProvider);
+    return filter;
   }
 }

@@ -5,8 +5,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
@@ -544,6 +546,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
       String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
       User user = getOrCreateOidcUser(userName, email, claims);
+      syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       if (Entity.getAuditLogRepository() != null) {
@@ -1021,6 +1024,25 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       return UserUtil.addOrUpdateUser(newUser);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
+  }
+
+  /**
+   * Applies the identity provider's roles claim to the user before the OpenMetadata session token
+   * is minted.
+   *
+   * <p>Until 1.10.x the browser was handed the provider's raw id_token, so JwtFilter saw the
+   * provider's roles on every request and synced them. This callback now mints an OpenMetadata
+   * token carrying OpenMetadata's own roles, which makes that sync compare the database against
+   * itself. This is the last point at which the provider's roles are visible, so the sync has to
+   * happen here.
+   */
+  private void syncRolesFromProvider(User user, Map<String, Object> claims) {
+    if (!Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
+        || !claims.containsKey(ROLES_CLAIM)) {
+      return;
+    }
+    UserUtil.reSyncUserRolesFromToken(
+        null, user, new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM))));
   }
 
   private Set<String> getAdminPrincipals() {
