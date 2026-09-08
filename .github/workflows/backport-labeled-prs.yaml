@@ -231,6 +231,42 @@ jobs:
             git cherry-pick --abort
           fi
 
+      # A conflict used to end here with instructions and a red run, which left
+      # the backport undone until somebody picked it up by hand. CLAUDE_CODE_
+      # OAUTH_TOKEN is a repository secret of openmetadata-collate and cannot be
+      # read from here, so the resolution happens there instead: it checks out
+      # this repository, resolves, and opens the PR back here, which
+      # backport-automerge.yaml then merges on green like any other backport.
+      #
+      # Same channel maven-build-collate.yml already uses in this direction.
+      # Fire and forget on purpose — a resolution takes minutes and holding a
+      # runner open for it buys nothing; the resolver reports its own outcome
+      # onto this PR.
+      - name: Build resolver inputs
+        id: rinputs
+        if: steps.pick.outputs.state == 'conflict'
+        run: |
+          set -uo pipefail
+          # Built with jq, not string-interpolated: a PR title containing a
+          # quote or a newline would otherwise produce invalid JSON, and the
+          # title is attacker-influenced text going into a dispatch payload.
+          JSON=$(jq -cn --arg pr "$PR_NUMBER" --arg sha "$MERGE_SHA" \
+                        --arg target "$TARGET" --arg title "$PR_TITLE" \
+                        --arg author "$PR_AUTHOR" \
+                        '{pr: $pr, sha: $sha, target: $target, title: $title, author: $author}')
+          echo "json=$JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Hand the conflict to the resolver
+        id: dispatch
+        if: steps.pick.outputs.state == 'conflict'
+        uses: benc-uk/workflow-dispatch@v1.3.2
+        with:
+          workflow: Resolve an OpenMetadata backport conflict
+          repo: open-metadata/openmetadata-collate
+          ref: main
+          token: ${{ secrets.COLLATE_PAT }}
+          inputs: ${{ steps.rinputs.outputs.json }}
+
       - name: Push and open PR
         id: pr
         if: steps.pick.outputs.state == 'clean'
@@ -300,6 +336,7 @@ jobs:
           CONFLICTS: ${{ steps.pick.outputs.conflicts }}
           URL: ${{ steps.pr.outputs.url }}
           EXISTS: ${{ steps.target.outputs.exists }}
+          DISPATCH: ${{ steps.dispatch.outcome }}
         run: |
           set -uo pipefail
           if [ "$EXISTS" = "false" ]; then
@@ -308,8 +345,11 @@ jobs:
             BODY="🤖 Backport to \`$TARGET\` opened as $URL (clean cherry-pick). It merges once CI is green."
           elif [ "$PICK" = "empty" ]; then
             BODY="🤖 Nothing to backport to \`$TARGET\` — this change is already on that branch."
+          elif [ "$PICK" = "conflict" ] && [ "$DISPATCH" = "success" ]; then
+            BODY=$(printf '🤖 The cherry-pick to `%s` conflicts, so it has been handed to Claude to adapt. It will open the backport PR here and comment again — nothing is needed from you unless it reports otherwise.\n\nConflicting paths:\n```\n%s\n```\n\n<sub>[run log](%s)</sub>' \
+              "$TARGET" "$CONFLICTS" "$RUN_URL")
           elif [ "$PICK" = "conflict" ]; then
-            BODY=$(printf '🤖 **Backport to `%s` needs you.** The cherry-pick conflicts, so nothing was pushed and this change is **not** on `%s` yet.\n\nConflicting paths:\n```\n%s\n```\n\nTo finish it:\n```bash\ngit fetch origin\ngit checkout -b %s origin/%s\ngit cherry-pick -x %s\n# resolve the conflicts, then:\ngit push origin %s\ngh pr create --base %s --head %s --title "[%s] %s"\n```\n\nThat PR merges itself once its checks pass, same as an automatic one.\n\n<sub>[run log](%s)</sub>' \
+            BODY=$(printf '🤖 **Backport to `%s` needs you.** The cherry-pick conflicts and the resolver could not be reached, so this change is **not** on `%s`.\n\nConflicting paths:\n```\n%s\n```\n\nTo finish it by hand:\n```bash\ngit fetch origin\ngit checkout -b %s origin/%s\ngit cherry-pick -x %s\n# resolve the conflicts, then:\ngit push origin %s\ngh pr create --base %s --head %s --title "[%s] %s"\n```\n\nThat PR merges itself once its checks pass, same as an automatic one.\n\n<sub>[run log](%s)</sub>' \
               "$TARGET" "$TARGET" "$CONFLICTS" \
               "$HEAD_BRANCH" "$TARGET" "$MERGE_SHA" "$HEAD_BRANCH" \
               "$TARGET" "$HEAD_BRANCH" "$TARGET" "$PR_TITLE" "$RUN_URL")
@@ -323,13 +363,10 @@ jobs:
       # change silently missed the release — the failure mode this whole change
       # exists to remove. Fail the branch's leg so the run list shows it.
       - name: Fail if the change did not reach the release branch
-        if: steps.target.outputs.exists == 'false' || steps.pick.outputs.state == 'conflict'
-        env:
-          EXISTS: ${{ steps.target.outputs.exists }}
+        # A conflict is no longer a failure here: it has been handed to the
+        # resolver, which owns the outcome from that point. A handoff that
+        # could not be dispatched fails the job on its own step.
+        if: steps.target.outputs.exists == 'false'
         run: |
-          if [ "$EXISTS" = "false" ]; then
-            echo "::error::Branch $TARGET is marked for release but does not exist here, so PR #$PR_NUMBER was not backported to it."
-          else
-            echo "::error::Backport to $TARGET conflicts and needs a human. See the comment on PR #$PR_NUMBER."
-          fi
+          echo "::error::Branch $TARGET is marked for release but does not exist here, so PR #$PR_NUMBER was not backported to it."
           exit 1
