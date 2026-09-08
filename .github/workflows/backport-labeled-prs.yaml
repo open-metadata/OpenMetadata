@@ -242,7 +242,10 @@ jobs:
           # --force, not --force-with-lease: the branch is recreated from
           # origin/$TARGET on every run and lives in a namespace only this
           # workflow writes to, so a re-run should overwrite it outright.
-          git push --force origin "HEAD:refs/heads/$HEAD_BRANCH"
+          if ! git push --force origin "HEAD:refs/heads/$HEAD_BRANCH"; then
+            echo "::error::Could not push $HEAD_BRANCH; nothing was backported to $TARGET."
+            exit 1
+          fi
 
           BODY="$RUNNER_TEMP/body.md"
           {
@@ -264,20 +267,28 @@ jobs:
             printf '<sub>[run log](%s)</sub>\n' "$RUN_URL"
           } > "$BODY"
 
-          EXISTING=$(gh pr list --head "$HEAD_BRANCH" --base "$TARGET" \
+          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+            --head "$HEAD_BRANCH" --base "$TARGET" \
             --state open --json number --jq '.[0].number // empty')
           if [ -n "$EXISTING" ]; then
-            gh pr edit "$EXISTING" --body-file "$BODY"
-            URL=$(gh pr view "$EXISTING" --json url --jq .url)
+            gh pr edit "$EXISTING" --repo "$GITHUB_REPOSITORY" --body-file "$BODY"
+            URL=$(gh pr view "$EXISTING" --repo "$GITHUB_REPOSITORY" --json url --jq .url)
           else
             URL=$(gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
               --base "$TARGET" \
               --head "$HEAD_BRANCH" \
               --title "[$TARGET] $PR_TITLE" \
               --body-file "$BODY")
             # Best-effort: the author may not be assignable (an outside
             # contributor, or a bot). Not worth failing a good backport over.
-            gh pr edit "$URL" --add-assignee "$PR_AUTHOR" || true
+            gh pr edit "$URL" --repo "$GITHUB_REPOSITORY" --add-assignee "$PR_AUTHOR" || true
+          fi
+          # An empty URL means the push landed but no PR opened, so the change
+          # sits on a branch nobody is looking at. That must not pass as success.
+          if [ -z "$URL" ]; then
+            echo "::error::No PR was opened against $TARGET; the backport is not in review."
+            exit 1
           fi
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 

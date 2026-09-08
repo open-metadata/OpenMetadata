@@ -44,6 +44,13 @@ permissions:
 jobs:
   automerge:
     runs-on: ubuntu-latest
+    # `check_suite: completed` can fire more than once for the same commit, so
+    # two runs could both see green and both try to merge. Serialise per commit
+    # and never cancel: the second run then finds the PR already merged and the
+    # provenance gate below exits it cleanly.
+    concurrency:
+      group: backport-automerge-${{ github.event.check_suite.head_sha || inputs.pr }}
+      cancel-in-progress: false
     timeout-minutes: 10
     steps:
       # Provenance gate. Matching on the branch name alone would be an access
@@ -63,9 +70,11 @@ jobs:
           if [ -n "${INPUT_PR:-}" ]; then
             PR="$INPUT_PR"
           else
-            PR=$(gh pr list --repo "$REPO" --state open --limit 100 \
-                   --json number,headRefOid \
-                   --jq "[.[] | select(.headRefOid == \"$SHA\")][0].number // empty")
+            # Ask which PRs this commit belongs to rather than scanning the
+            # open-PR list: a `--limit` there is a silent ceiling, and on a busy
+            # repo a backport PR past that page would never be evaluated at all.
+            PR=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                   --jq '[.[] | select(.state == "open")][0].number // empty' 2>/dev/null || true)
           fi
           if [ -z "$PR" ]; then
             echo "No open PR at ${SHA:-$INPUT_PR}; nothing to do."
@@ -146,7 +155,13 @@ jobs:
           set -uo pipefail
           # Squash is the only method enabled on these repos, and a backport
           # branch carries exactly one commit, so it is also the faithful one.
-          gh pr merge "$PR" --repo "$REPO" --squash --delete-branch
+          # Checked, not assumed: there is no `set -e` here, so an unchecked
+          # `gh pr merge` would let the comment below claim success on a PR that
+          # never merged — green run, false comment, nobody alerted.
+          if ! gh pr merge "$PR" --repo "$REPO" --squash --delete-branch; then
+            echo "::error::gh pr merge failed for #$PR; it has NOT been merged."
+            exit 1
+          fi
           gh pr comment "$PR" --repo "$REPO" \
             --body "🤖 All checks passed — merged automatically by the backport pipeline."
 
