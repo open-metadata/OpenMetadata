@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { EntityType } from '../../../../../enums/entity.enum';
+import { EntityType } from '../../../../enums/entity.enum';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
 const mockAddRule = jest.fn();
@@ -21,33 +21,30 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock(
-  '../../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1',
-  () => {
-    const MockQueryBuilderWidget = ({
-      getQueryActions,
-      onChange,
-    }: {
-      getQueryActions?: (actions: { addRule: typeof mockAddRule }) => void;
-      onChange?: (value: string, tree: Record<string, string>) => void;
-    }) => {
-      const React = jest.requireActual<typeof import('react')>('react');
-      React.useEffect(() => {
-        getQueryActions?.(mockQueryActions);
-      }, [getQueryActions]);
+jest.mock('../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
+  const MockQueryBuilderWidget = ({
+    getQueryActions,
+    onChange,
+  }: {
+    getQueryActions?: (actions: { addRule: typeof mockAddRule }) => void;
+    onChange?: (value: string, tree: Record<string, string>) => void;
+  }) => {
+    const React = jest.requireActual<typeof import('react')>('react');
+    React.useEffect(() => {
+      getQueryActions?.(mockQueryActions);
+    }, [getQueryActions]);
 
-      return (
-        <button
-          data-testid="emit-query-change"
-          onClick={() => onChange?.('{"query":{}}', { id: 'tree' })}>
-          change
-        </button>
-      );
-    };
+    return (
+      <button
+        data-testid="emit-query-change"
+        onClick={() => onChange?.('{"query":{}}', { id: 'tree' })}>
+        change
+      </button>
+    );
+  };
 
-    return { __esModule: true, default: MockQueryBuilderWidget };
-  }
-);
+  return { __esModule: true, default: MockQueryBuilderWidget };
+});
 
 describe('RuleQueryBuilderField', () => {
   beforeEach(() => {
