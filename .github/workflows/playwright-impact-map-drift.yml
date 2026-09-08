@@ -28,9 +28,16 @@
 #     PR CI so subsequent checks run against the fresh map.
 #
 #   * Fork PR (pull_request_target with head_repo != base_repo):
-#     workflow cannot push into the fork. It posts a comment with the
-#     exact command to run locally and fails so the PR cannot merge
-#     with a stale map.
+#     no-op. The bot cannot push into the fork, and asking every
+#     external contributor to install Python and regenerate the map
+#     locally is friction disproportionate to the coverage risk (a
+#     stale map on a fork PR still routes to the same specs a
+#     properly-generated map would, just via `select_playwright_tests`'s
+#     "unmapped code → full" fallback — see PR #32809). The check
+#     records a green skip on forks so branch protection is satisfied
+#     without pushing work onto external contributors. Maintainers
+#     refresh the map post-merge if it has drifted (the drift check
+#     itself catches it on the follow-up merge_group).
 #
 #   * merge_group: read-only check. If the queue's tentative merge
 #     somehow drifts (unlikely — same-repo PRs auto-refresh before
@@ -114,7 +121,19 @@ jobs:
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
 
+      # Fork PRs are a no-op past this point — see the header docstring
+      # for the rationale. The step below records the reason in the log so
+      # a reviewer looking at the run can see why nothing else fired.
+      - name: Skip on fork PRs
+        if: steps.check-fork.outputs.is_fork == 'true'
+        run: |
+          echo "Fork PR detected — impact-map drift is a no-op on forks."
+          echo "The 'unmapped code → full' fallback in select_playwright_tests still"
+          echo "runs the specs a stale map would have routed to (see PR #32809)."
+          echo "A maintainer's follow-up merge_group run will catch any real drift."
+
       - name: Determine checkout ref
+        if: steps.check-fork.outputs.is_fork != 'true'
         id: checkout-ref
         env:
           IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
@@ -140,6 +159,7 @@ jobs:
           fi
 
       - name: Checkout
+        if: steps.check-fork.outputs.is_fork != 'true'
         uses: actions/checkout@v7
         with:
           repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
@@ -149,15 +169,18 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python
+        if: steps.check-fork.outputs.is_fork != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Regenerate impact map
+        if: steps.check-fork.outputs.is_fork != 'true'
         run: python3 .github/scripts/generate_playwright_impact_map.py
 
       - name: Check for drift
         id: git-check
+        if: steps.check-fork.outputs.is_fork != 'true'
         continue-on-error: true
         run: |
           git add .github/playwright/impact-map.generated.json
@@ -251,33 +274,12 @@ jobs:
             git commit --amend --no-edit  # or a separate commit
             ```
 
-      - name: Comment on fork PR
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          body: |
-            ## ⚠️ Playwright impact map is out of date
-
-            This PR touched specs or UI source that changed the source→spec routing map, but `.github/playwright/impact-map.generated.json` was not regenerated. Because this PR is from a fork, the bot cannot push the refresh — please run it locally and commit the result:
-
-            ```bash
-            python3 .github/scripts/generate_playwright_impact_map.py
-            git add .github/playwright/impact-map.generated.json
-            git commit -m "chore(playwright): refresh impact-map.generated.json"
-            git push
-            ```
-
-            Diff summary from the current tree:
-
-            ```
-            ${{ steps.summarise.outputs.summary }}
-            ```
-
-            **What is this file?** It is the auto-generated half of Playwright's PR planner — it routes "if source X changes, run specs Y" by walking spec imports and cross-referencing `getByTestId` strings against `data-testid="…"` occurrences in `src/**`. When it drifts, the PR planner may skip specs that actually exercise your change, and merge_group is the first place they run.
-
-            This check will re-run and pass once you push the refreshed file.
+      # No fork-PR comment. External contributors are not asked to install
+      # Python and regenerate the map locally — the "unmapped code → full"
+      # fallback still routes the specs a fresh map would have. If real
+      # drift lands via a fork merge, the follow-up merge_group's check
+      # (below) catches it.
 
       - name: Fail check on drift that could not be auto-committed
-        if: steps.git-check.outcome != 'success' && (steps.check-fork.outputs.is_fork == 'true' || github.event_name == 'merge_group')
+        if: steps.git-check.outcome != 'success' && github.event_name == 'merge_group'
         run: exit 1
