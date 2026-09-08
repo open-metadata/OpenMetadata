@@ -16,7 +16,7 @@
 .user-team-select-dropdown {
   .ant-tabs {
     .ant-tabs-tab {
-      padding: 8px 16px;
+      padding: var(--om-space-8) var(--om-space-16);
 
       &.ant-tabs-tab-active {
         .ant-tabs-tab-btn {
@@ -35,28 +35,28 @@
   }
 
   .search-container {
-    padding: 8px 12px;
+    padding: var(--om-space-8) var(--om-space-12);
     border-bottom: 1px solid @border-color;
 
     .ant-input-search {
       .ant-input {
-        border-radius: 6px;
+        border-radius: var(--om-radius-md);
       }
     }
   }
 
   .options-container {
-    padding: 4px 0;
+    padding: var(--om-space-4) 0;
 
     .ant-select-item {
-      padding: 8px 12px;
+      padding: var(--om-space-8) var(--om-space-12);
 
       &.selected-option {
         color: @primary-color;
       }
 
       .anticon {
-        margin-right: 8px;
+        margin-right: var(--om-space-8);
       }
     }
   }
@@ -65,11 +65,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 16px;
+    padding: var(--om-space-16);
   }
 
   .load-more-container {
-    padding: 8px 12px;
+    padding: var(--om-space-8) var(--om-space-12);
     text-align: center;
     border-top: 1px solid @border-color;
 
@@ -82,8 +82,8 @@
 .selected-values-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
+  gap: var(--om-space-4);
+  padding: var(--om-space-4);
   min-height: 24px;
 
   .user-tag {
@@ -95,7 +95,7 @@
 .ant-select-multiple {
   &.user-team-select {
     .ant-select-selector {
-      padding: 4px 8px;
+      padding: var(--om-space-4) var(--om-space-8);
 
       .ant-select-selection-search {
         display: none; // Hide default search since we have custom search

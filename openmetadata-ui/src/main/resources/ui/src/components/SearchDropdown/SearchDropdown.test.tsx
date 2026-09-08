@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { debounce } from 'lodash';
 import { act } from 'react';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
@@ -402,6 +403,31 @@ describe('Search DropDown Component', () => {
     const noOwnerCheckbox = await screen.findByTestId('no-option-checkbox');
 
     expect(noOwnerCheckbox).toBeInTheDocument();
+  });
+
+  it('Should cancel a pending search when the dropdown is closed', async () => {
+    render(<SearchDropdown {...mockProps} />);
+
+    const trigger = await screen.findByTestId('search-dropdown-Owner');
+    const { cancel } = (debounce as jest.Mock).mock.results.at(-1)?.value ?? {};
+
+    await act(async () => {
+      userEvent.click(trigger);
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    const cancelCallsWhileOpen = cancel.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('close-btn'));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument()
+    );
+
+    expect(cancel.mock.calls.length).toBeGreaterThan(cancelCallsWhileOpen);
   });
 
   it('Should send null option in payload if selected', async () => {

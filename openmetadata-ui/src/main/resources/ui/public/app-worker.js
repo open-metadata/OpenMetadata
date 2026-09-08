@@ -119,7 +119,9 @@ self.addEventListener('activate', (event) => {
         .then((names) =>
           Promise.all(
             names
-              .filter((name) => name.startsWith('om-assets-') && name !== ASSET_CACHE)
+              .filter(
+                (name) => name.startsWith('om-assets-') && name !== ASSET_CACHE
+              )
               .map((name) => caches.delete(name))
           )
         ),

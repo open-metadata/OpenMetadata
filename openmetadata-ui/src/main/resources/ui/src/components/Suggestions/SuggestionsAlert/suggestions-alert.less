@@ -14,7 +14,7 @@
 
 .suggested-card {
   border-color: @primary-color !important;
-  border-radius: 10px !important;
+  border-radius: var(--om-radius-10) !important;
   overflow: hidden;
 }
 
@@ -26,19 +26,19 @@
 }
 
 .ant-btn.suggestion-pending-btn {
-  margin-left: 4px;
-  border-radius: 20px;
-  padding: 2px 8px;
-  font-size: 12px;
+  margin-left: var(--om-space-4);
+  border-radius: var(--om-radius-20);
+  padding: var(--om-space-2) var(--om-space-8);
+  font-size: var(--om-font-size-xs);
 }
 
 .suggested-alert-content {
-  padding: 12px;
+  padding: var(--om-space-12);
 }
 
 .suggested-alert-footer {
-  padding: 8px 14px;
-  font-size: 12px;
+  padding: var(--om-space-8) var(--om-space-14);
+  font-size: var(--om-font-size-xs);
 }
 
 .suggested-alert-footer-profile-pic {
@@ -46,9 +46,9 @@
 }
 
 td .suggested-alert-footer {
-  padding: 4px 12px;
+  padding: var(--om-space-4) var(--om-space-12);
 }
 
 .close-suggestion-btn {
-  gap: 6px;
+  gap: var(--om-space-6);
 }

@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyConceptType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyConceptType",
+  "description": "Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies round-trip with the typing they were authored with.",
+  "javaType": "org.openmetadata.schema.type.OntologyConceptType",
+  "type": "string",
+  "enum": ["SKOS_CONCEPT", "OWL_CLASS", "BOTH"],
+  "default": "BOTH"
+}

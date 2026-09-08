@@ -34,17 +34,16 @@ Example:
     ```
 """
 
+import types
+from collections.abc import Callable
 from functools import wraps
 from threading import RLock
-from typing import (  # noqa: UP035
+from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
-    Callable,
-    Dict,
     Generic,
     Optional,
-    Type,
     TypeVar,
     Union,
     get_args,
@@ -78,7 +77,7 @@ class InvalidInjectionTypeError(DependencyInjectionError):
 
 
 if TYPE_CHECKING:
-    Inject = Annotated[Union[T, None], "Inject Marker"]  # noqa: UP007
+    Inject = Annotated[T | None, "Inject Marker"]
 else:
 
     class Inject(Generic[T]):
@@ -123,8 +122,8 @@ class DependencyContainer:
 
     _instance: Optional["DependencyContainer"] = None
     _lock = RLock()
-    _dependencies: Dict[str, Callable[[], Any]] = {}  # noqa: RUF012, UP006
-    _overrides: Dict[str, Callable[[], Any]] = {}  # noqa: RUF012, UP006
+    _dependencies: dict[str, Callable[[], Any]] = {}  # noqa: RUF012
+    _overrides: dict[str, Callable[[], Any]] = {}  # noqa: RUF012
 
     def __new__(cls) -> "DependencyContainer":
         if cls._instance is None:
@@ -133,7 +132,7 @@ class DependencyContainer:
                     cls._instance = super().__new__(cls)
         return cls._instance
 
-    def get_key(self, dependency_type: Type[Any]) -> str:  # noqa: UP006
+    def get_key(self, dependency_type: type[Any]) -> str:
         """
         Get the key for a dependency.
         """
@@ -142,7 +141,7 @@ class DependencyContainer:
             return f"Type[{inner_type.__name__}]"
         return dependency_type.__name__
 
-    def register(self, dependency_type: Type[Any], dependency: Callable[[], Any]) -> None:  # noqa: UP006
+    def register(self, dependency_type: type[Any], dependency: Callable[[], Any]) -> None:
         """
         Register a dependency with the container.
 
@@ -159,7 +158,7 @@ class DependencyContainer:
         with self._lock:
             self._dependencies[self.get_key(dependency_type)] = dependency
 
-    def override(self, dependency_type: Type[Any], dependency: Callable[[], Any]) -> None:  # noqa: UP006
+    def override(self, dependency_type: type[Any], dependency: Callable[[], Any]) -> None:
         """
         Override a dependency with a new implementation.
 
@@ -178,7 +177,7 @@ class DependencyContainer:
         with self._lock:
             self._overrides[self.get_key(dependency_type)] = dependency
 
-    def remove_override(self, dependency_type: Type[T]) -> None:  # noqa: UP006
+    def remove_override(self, dependency_type: type[T]) -> None:
         """
         Remove an override for a dependency.
 
@@ -193,7 +192,7 @@ class DependencyContainer:
         with self._lock:
             self._overrides.pop(self.get_key(dependency_type), None)
 
-    def get(self, dependency_type: Type[Any]) -> Optional[Any]:  # noqa: UP006, UP045
+    def get(self, dependency_type: type[Any]) -> Any | None:
         """
         Get a dependency from the container.
 
@@ -233,7 +232,7 @@ class DependencyContainer:
             self._dependencies.clear()
             self._overrides.clear()
 
-    def has(self, dependency_type: Type[T]) -> bool:  # noqa: UP006
+    def has(self, dependency_type: type[T]) -> bool:
         """
         Check if a dependency exists in the container.
 
@@ -318,7 +317,8 @@ def is_inject_type(tp: Any) -> bool:
     origin = get_origin(tp)
     if origin is Inject:
         return True
-    if origin is Union:
+    # PEP 604 unions (`Inject[X] | None`) report `types.UnionType`, not `typing.Union`.
+    if origin in (Union, types.UnionType):
         args = get_args(tp)
         return any(get_origin(arg) is Inject for arg in args)
     return False
@@ -340,7 +340,7 @@ def extract_inject_arg(tp: Any) -> Any:
     origin = get_origin(tp)
     if origin is Inject:
         return get_args(tp)[0]
-    if origin is Union:
+    if origin in (Union, types.UnionType):
         for arg in get_args(tp):
             if get_origin(arg) is Inject:
                 return get_args(arg)[0]
@@ -350,7 +350,7 @@ def extract_inject_arg(tp: Any) -> Any:
     )
 
 
-def inject_class_attributes(cls: Type[Any]) -> Type[Any]:  # noqa: UP006
+def inject_class_attributes(cls: type[Any]) -> type[Any]:
     """
     Decorator to inject dependencies into class-level (static) attributes based on type hints.
 

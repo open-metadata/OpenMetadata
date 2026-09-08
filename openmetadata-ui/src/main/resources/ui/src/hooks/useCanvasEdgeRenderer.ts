@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  MutableRefObject,
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
 import {
@@ -27,7 +34,11 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
-import { computeEdgeStyle, LineageEdgeColors } from '../utils/EdgeStyleUtils';
+import {
+  computeEdgeStyle,
+  computeEdgeVisualState,
+  LineageEdgeColors,
+} from '../utils/EdgeStyleUtils';
 import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
@@ -51,6 +62,77 @@ export interface CanvasButtonHitData {
   button: CanvasButton;
   edge: Edge;
 }
+
+const getEdgeButtonFlags = (edgeData: Edge['data']) => {
+  const {
+    isColumnLineage,
+    edge: edgeDetails,
+    columnFunctionValue,
+    isExpanded,
+  } = edgeData ?? {};
+
+  return {
+    hasPipeline: Boolean(
+      !isColumnLineage &&
+        edgeDetails?.pipeline &&
+        getEntityName(edgeDetails.pipeline)
+    ),
+    hasFunction: Boolean(!isColumnLineage && columnFunctionValue && isExpanded),
+  };
+};
+
+const getCanvasButtonHit = (
+  ctx: CanvasRenderingContext2D,
+  edge: Edge,
+  edgePathCacheRef: MutableRefObject<
+    WeakMap<
+      Edge,
+      {
+        edgePath: string;
+        edgeCenterX: number;
+        edgeCenterY: number;
+        sourceX: number;
+        sourceY: number;
+        targetX: number;
+        targetY: number;
+      }
+    >
+  >,
+  hoveredButtonRef: MutableRefObject<CanvasButton | null>,
+  isDQEnabled: boolean
+): CanvasButtonHitData | null => {
+  const edgeData = edge.data ?? {};
+  const { hasPipeline, hasFunction } = getEdgeButtonFlags(edgeData);
+
+  if (!hasPipeline && !hasFunction) {
+    return null;
+  }
+
+  const cachedPathData = edgePathCacheRef.current.get(edge);
+
+  if (!cachedPathData) {
+    return null;
+  }
+
+  const button = createCanvasButton(
+    cachedPathData.edgeCenterX,
+    cachedPathData.edgeCenterY,
+    edge.id,
+    hasPipeline ? ECanvasButtonType.Pipeline : ECanvasButtonType.Function,
+    edgeData.edge?.pipeline?.pipelineStatus?.executionStatus,
+    edgeData.isPipelineRootNode
+  );
+
+  const isButtonHovered =
+    hoveredButtonRef.current?.edgeId === edge.id &&
+    hoveredButtonRef.current?.type === button.type;
+
+  ctx.save();
+  drawCanvasButton(ctx, button, isButtonHovered, isDQEnabled);
+  ctx.restore();
+
+  return { button, edge };
+};
 
 export function useCanvasEdgeRenderer({
   canvasRef,
@@ -254,16 +336,17 @@ export function useCanvasEdgeRenderer({
 
     const visibleEdges = edges.filter(
       (edge) =>
-        isEdgeTraced(edge, tracedColumns) ||
-        isEdgeInViewport(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          viewport,
-          containerWidth,
-          containerHeight,
-          columnsInCurrentPages
-        )
+        computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        (isEdgeTraced(edge, tracedColumns) ||
+          isEdgeInViewport(
+            edge,
+            getNode(edge.source),
+            getNode(edge.target),
+            viewport,
+            containerWidth,
+            containerHeight,
+            columnsInCurrentPages
+          ))
     );
 
     visibleEdgesRef.current = visibleEdges;
@@ -280,45 +363,16 @@ export function useCanvasEdgeRenderer({
         hitPaths.push({ edge, path });
       }
 
-      const {
-        isColumnLineage,
-        edge: edgeDetails,
-        columnFunctionValue,
-        isExpanded,
-        isPipelineRootNode,
-      } = edge.data || {};
+      const buttonHit = getCanvasButtonHit(
+        ctx,
+        edge,
+        edgePathCacheRef,
+        hoveredButtonRef,
+        isDQEnabled
+      );
 
-      const hasPipeline =
-        !isColumnLineage &&
-        edgeDetails?.pipeline &&
-        getEntityName(edgeDetails.pipeline);
-      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
-
-      if (hasPipeline || hasFunction) {
-        const cachedPathData = edgePathCacheRef.current.get(edge);
-
-        if (!cachedPathData) {
-          return;
-        }
-
-        const button = createCanvasButton(
-          cachedPathData.edgeCenterX,
-          cachedPathData.edgeCenterY,
-          edge.id,
-          hasPipeline ? ECanvasButtonType.Pipeline : ECanvasButtonType.Function,
-          edgeDetails?.pipeline?.pipelineStatus?.executionStatus,
-          isPipelineRootNode
-        );
-
-        const isHovered =
-          hoveredButtonRef.current?.edgeId === edge.id &&
-          hoveredButtonRef.current?.type === button.type;
-
-        ctx.save();
-        drawCanvasButton(ctx, button, isHovered, isDQEnabled);
-        ctx.restore();
-
-        canvasButtons.push({ button, edge });
+      if (buttonHit) {
+        canvasButtons.push(buttonHit);
       }
     });
 

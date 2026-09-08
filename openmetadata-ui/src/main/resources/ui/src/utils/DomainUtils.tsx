@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
@@ -24,6 +24,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
+import { Icon } from '../components/common/Icon/Icon';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -40,7 +41,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -269,7 +269,7 @@ export const getDomainDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.Domain} />,
+      children: <GenericTab type={PageType.Domain} variant="flat" />,
     },
     ...(isVersionsView
       ? []
@@ -447,18 +447,11 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
-export const getDomainIcon = (iconURL?: string) => {
-  // Try to render the icon using the utility (handles both URLs and icon names)
-  const iconElement = renderIcon(iconURL, {
-    size: 24,
-    className: 'tw:h-6 tw:w-6',
-  });
-
-  // If we got an icon element, return it
-  if (iconElement) {
-    return iconElement;
-  }
-
-  // Otherwise return the default domain icon
-  return <DomainIcon className="domain-default-icon" />;
-};
+export const getDomainIcon = (iconURL?: string) => (
+  <Icon
+    fallback={<DomainIcon className="tw:text-quaternary" />}
+    iconValue={iconURL}
+    imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
+    size={24}
+  />
+);

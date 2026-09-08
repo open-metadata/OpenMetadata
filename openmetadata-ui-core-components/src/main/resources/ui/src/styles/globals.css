@@ -58,6 +58,9 @@
   /* This must match the breakpoint in Sonner: https://github.com/emilkowalski/sonner/blob/main/src/styles.css */
   --breakpoint-xs: 600px;
 
+  /* CONTAINER QUERIES */
+  --container-8xl: 96rem;
+
   /* RADIUS */
   --radius-none: 0px;
   --radius-xs: 0.125rem;
@@ -1365,6 +1368,125 @@
     --outline-color-brand_alt: theme(--color-border-brand_alt);
     --outline-color-error: theme(--color-border-error);
     --outline-color-error_subtle: theme(--color-border-error_subtle);
+
+    /*
+     * TAILWIND UTILITY LAYER — --tw-*-color-* overrides.
+     *
+     * Tailwind v4 compiles `tw:bg-primary`, `tw:text-primary`, etc. to
+     * `background-color: var(--tw-background-color-primary)` and declares
+     * each `--tw-*` via `@property { inherits: false }`. That non-inheritance
+     * means overriding the raw --color-* / --background-color-* layer inside
+     * .dark-mode has no effect on utility classes — the --tw-* layer stays
+     * pinned to its light initial-value. We mirror every --tw-*-color-* here
+     * so utility classes read the flipped dark values. Each entry chains to
+     * the L2 semantic token above, so there is still one source of truth per
+     * token.
+     */
+
+    /* --tw-background-color-* — Tailwind utility layer (bg-*) */
+    --tw-background-color-active: var(--color-bg-active);
+    --tw-background-color-border-brand: var(--color-border-brand);
+    --tw-background-color-border-brand_alt: var(--color-border-brand_alt);
+    --tw-background-color-border-tertiary: var(--color-border-tertiary);
+    --tw-background-color-brand-primary: var(--color-bg-brand-primary);
+    --tw-background-color-brand-primary_alt: var(--color-bg-brand-primary_alt);
+    --tw-background-color-brand-secondary: var(--color-bg-brand-secondary);
+    --tw-background-color-brand-section: var(--color-bg-brand-section);
+    --tw-background-color-brand-section_subtle: var(--color-bg-brand-section_subtle);
+    --tw-background-color-brand-solid: var(--color-bg-brand-solid);
+    --tw-background-color-brand-solid_hover: var(--color-bg-brand-solid_hover);
+    --tw-background-color-disabled: var(--color-bg-disabled);
+    --tw-background-color-disabled_subtle: var(--color-bg-disabled_subtle);
+    --tw-background-color-error-primary: var(--color-bg-error-primary);
+    --tw-background-color-error-secondary: var(--color-bg-error-secondary);
+    --tw-background-color-error-solid: var(--color-bg-error-solid);
+    --tw-background-color-error-solid_hover: var(--color-bg-error-solid_hover);
+    --tw-background-color-overlay: var(--color-bg-overlay);
+    --tw-background-color-primary-solid: var(--color-bg-primary-solid);
+    --tw-background-color-primary: var(--color-bg-primary);
+    --tw-background-color-primary_alt: var(--color-bg-primary_alt);
+    --tw-background-color-primary_hover: var(--color-bg-primary_hover);
+    --tw-background-color-quaternary: var(--color-bg-quaternary);
+    --tw-background-color-secondary-solid: var(--color-bg-secondary-solid);
+    --tw-background-color-secondary: var(--color-bg-secondary);
+    --tw-background-color-secondary_alt: var(--color-bg-secondary_alt);
+    --tw-background-color-secondary_hover: var(--color-bg-secondary_hover);
+    --tw-background-color-secondary_subtle: var(--color-bg-secondary_subtle);
+    --tw-background-color-success-primary: var(--color-bg-success-primary);
+    --tw-background-color-success-secondary: var(--color-bg-success-secondary);
+    --tw-background-color-success-solid: var(--color-bg-success-solid);
+    --tw-background-color-tertiary: var(--color-bg-tertiary);
+    --tw-background-color-warning-primary: var(--color-bg-warning-primary);
+    --tw-background-color-warning-secondary: var(--color-bg-warning-secondary);
+    --tw-background-color-warning-solid: var(--color-bg-warning-solid);
+
+    /* --tw-border-color-* — Tailwind utility layer (border-*) */
+    --tw-border-color-brand-solid: var(--color-bg-brand-solid);
+    --tw-border-color-brand-solid_hover: var(--color-bg-brand-solid_hover);
+    --tw-border-color-brand: var(--color-border-brand);
+    --tw-border-color-brand_alt: var(--color-border-brand_alt);
+    --tw-border-color-disabled: var(--color-border-disabled);
+    --tw-border-color-disabled_subtle: var(--color-border-disabled_subtle);
+    --tw-border-color-error: var(--color-border-error);
+    --tw-border-color-error_subtle: var(--color-border-error_subtle);
+    --tw-border-color-primary: var(--color-border-primary);
+    --tw-border-color-secondary: var(--color-border-secondary);
+    --tw-border-color-secondary_alt: var(--color-border-secondary_alt);
+    --tw-border-color-tertiary: var(--color-border-tertiary);
+
+    /* --tw-outline-color-* — Tailwind utility layer (outline-*) */
+    --tw-outline-color-brand-solid: var(--color-bg-brand-solid);
+    --tw-outline-color-brand-solid_hover: var(--color-bg-brand-solid_hover);
+    --tw-outline-color-brand: var(--color-border-brand);
+    --tw-outline-color-brand_alt: var(--color-border-brand_alt);
+    --tw-outline-color-disabled: var(--color-border-disabled);
+    --tw-outline-color-disabled_subtle: var(--color-border-disabled_subtle);
+    --tw-outline-color-error: var(--color-border-error);
+    --tw-outline-color-error_subtle: var(--color-border-error_subtle);
+    --tw-outline-color-primary: var(--color-border-primary);
+    --tw-outline-color-secondary: var(--color-border-secondary);
+    --tw-outline-color-secondary_alt: var(--color-border-secondary_alt);
+    --tw-outline-color-tertiary: var(--color-border-tertiary);
+
+    /* --tw-ring-color-* — Tailwind utility layer (ring-*, historical) */
+    --tw-ring-color-bg-brand-solid: var(--color-bg-brand-solid);
+    --tw-ring-color-brand-solid: var(--color-bg-brand-solid);
+    --tw-ring-color-brand-solid_hover: var(--color-bg-brand-solid_hover);
+    --tw-ring-color-brand: var(--color-border-brand);
+    --tw-ring-color-brand_alt: var(--color-border-brand_alt);
+    --tw-ring-color-disabled: var(--color-border-disabled);
+    --tw-ring-color-disabled_subtle: var(--color-border-disabled_subtle);
+    --tw-ring-color-error: var(--color-border-error);
+    --tw-ring-color-error_subtle: var(--color-border-error_subtle);
+    --tw-ring-color-primary: var(--color-border-primary);
+    --tw-ring-color-secondary: var(--color-border-secondary);
+    --tw-ring-color-secondary_alt: var(--color-border-secondary_alt);
+    --tw-ring-color-tertiary: var(--color-border-tertiary);
+
+    /* --tw-text-color-* — Tailwind utility layer (text-*) */
+    --tw-text-color-brand-primary: var(--color-text-brand-primary);
+    --tw-text-color-brand-secondary: var(--color-text-brand-secondary);
+    --tw-text-color-brand-secondary_hover: var(--color-text-brand-secondary_hover);
+    --tw-text-color-brand-tertiary: var(--color-text-brand-tertiary);
+    --tw-text-color-brand-tertiary_alt: var(--color-text-brand-tertiary_alt);
+    --tw-text-color-disabled: var(--color-text-disabled);
+    --tw-text-color-error-primary: var(--color-text-error-primary);
+    --tw-text-color-error-primary_hover: var(--color-text-error-primary_hover);
+    --tw-text-color-placeholder: var(--color-text-placeholder);
+    --tw-text-color-placeholder_subtle: var(--color-text-placeholder_subtle);
+    --tw-text-color-primary: var(--color-text-primary);
+    --tw-text-color-primary_on-brand: var(--color-text-primary_on-brand);
+    --tw-text-color-quaternary: var(--color-text-quaternary);
+    --tw-text-color-quaternary_on-brand: var(--color-text-quaternary_on-brand);
+    --tw-text-color-secondary: var(--color-text-secondary);
+    --tw-text-color-secondary_hover: var(--color-text-secondary_hover);
+    --tw-text-color-secondary_on-brand: var(--color-text-secondary_on-brand);
+    --tw-text-color-success-primary: var(--color-text-success-primary);
+    --tw-text-color-tertiary: var(--color-text-tertiary);
+    --tw-text-color-tertiary_hover: var(--color-text-tertiary_hover);
+    --tw-text-color-tertiary_on-brand: var(--color-text-tertiary_on-brand);
+    --tw-text-color-tooltip-supporting-text: var(--color-tooltip-supporting-text);
+    --tw-text-color-warning-primary: var(--color-text-warning-primary);
   }
 }
 

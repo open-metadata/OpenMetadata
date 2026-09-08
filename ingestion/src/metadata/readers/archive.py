@@ -441,10 +441,10 @@ class SevenZipArchiveReader(ArchiveReader):
     """7z reader — validates paths and extracts once in __init__; entries() is a plain folder walk."""
 
     def __init__(self, data: bytes) -> None:
-        import tempfile  # noqa: PLC0415
-        from pathlib import Path  # noqa: PLC0415
+        import tempfile
+        from pathlib import Path
 
-        import py7zr  # noqa: PLC0415
+        import py7zr
 
         self._tmpdir = tempfile.TemporaryDirectory()
         try:
@@ -487,7 +487,7 @@ class RarArchiveReader(ArchiveReader):
     """RAR reader — loads the entire archive into memory (RAR format requires random access)."""
 
     def __init__(self, data: bytes) -> None:
-        import rarfile  # noqa: PLC0415
+        import rarfile
 
         try:
             self._rar_file = rarfile.RarFile(BytesIO(data))

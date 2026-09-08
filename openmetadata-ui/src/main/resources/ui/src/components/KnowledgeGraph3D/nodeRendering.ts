@@ -27,20 +27,23 @@ import {
   hexRgba,
   iconCanvas,
   personColor,
+  resolveGraphColor,
   sizeFor,
 } from './nodeCanvas';
 import { GraphNode3D, Level, NodeType } from './types';
 
 const GLOW_CANVAS_SIZE = 128;
+const GLOW_TEXTURE_CACHE_MAX = 128;
+const ICON_TEXTURE_CACHE_MAX = 128;
 const AVATAR_TEXTURE_CACHE_MAX = 256;
 
 export const NODE_LABEL_OBJECT_NAME = 'knowledge-graph-node-label';
 
 /**
  * Textures are shared across sprites and reused across re-renders. Glow and
- * icon textures are keyed by color/type (a small, fixed set), so plain Maps
- * are inherently bounded. Avatars are keyed by name, so that cache is FIFO-
- * capped. Caching avoids re-rasterizing hundreds of canvases on large graphs.
+ * icon textures are keyed by color/type (a small, fixed set), and every cache
+ * is explicitly capped. Caching avoids re-rasterizing hundreds of canvases on
+ * large graphs.
  */
 const glowTextureCache = new Map<string, THREE.CanvasTexture>();
 const iconTextureCache = new Map<string, THREE.CanvasTexture>();
@@ -93,6 +96,13 @@ const glowTexture = (color: string): THREE.CanvasTexture => {
   let texture = glowTextureCache.get(color);
   if (!texture) {
     texture = asTexture(drawGlowCanvas(color));
+    if (glowTextureCache.size >= GLOW_TEXTURE_CACHE_MAX) {
+      const oldest = glowTextureCache.keys().next().value;
+      if (oldest !== undefined) {
+        glowTextureCache.get(oldest)?.dispose();
+        glowTextureCache.delete(oldest);
+      }
+    }
     glowTextureCache.set(color, texture);
   }
 
@@ -104,6 +114,13 @@ const iconTexture = (type: NodeType): THREE.CanvasTexture => {
   let texture = iconTextureCache.get(key);
   if (!texture) {
     texture = asTexture(iconCanvas(type, colorFor(type)));
+    if (iconTextureCache.size >= ICON_TEXTURE_CACHE_MAX) {
+      const oldest = iconTextureCache.keys().next().value;
+      if (oldest !== undefined) {
+        iconTextureCache.get(oldest)?.dispose();
+        iconTextureCache.delete(oldest);
+      }
+    }
     iconTextureCache.set(key, texture);
   }
 
@@ -156,7 +173,7 @@ const buildTermBadge = (
 ): SpriteText => {
   const text = termCount > 1 ? `${term}  +${termCount - 1}` : term;
   const badge = new SpriteText(text);
-  badge.color = TERM_BADGE_TEXT_COLOR;
+  badge.color = resolveGraphColor(TERM_BADGE_TEXT_COLOR);
   badge.backgroundColor = hexRgba(LINK_ONTOLOGY_COLOR, 0.96);
   badge.padding = 2.2;
   badge.borderRadius = 3;
@@ -175,7 +192,7 @@ const buildCoverageRings = (group: THREE.Group, size: number): void => {
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(radius, 0.55, 8, 40),
       new THREE.MeshBasicMaterial({
-        color: COVERAGE_GAP_COLOR,
+        color: resolveGraphColor(COVERAGE_GAP_COLOR),
         transparent: true,
         opacity: 0.95,
       })
@@ -228,7 +245,7 @@ export const buildNodeObject = (
   if (options.showLabel) {
     const label = new SpriteText(node.name);
     label.name = NODE_LABEL_OBJECT_NAME;
-    label.color = LABEL_COLOR;
+    label.color = resolveGraphColor(LABEL_COLOR);
     label.textHeight = Math.max(2.8, size * 0.24);
     label.fontWeight = '600';
     label.position.set(0, -(size * 0.66) - 3, 0);

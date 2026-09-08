@@ -22,6 +22,7 @@ import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeS
 import '../../../../pages/MyDataPage/my-data.less';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
 
@@ -91,27 +92,29 @@ function CustomizeGlossaryTermDetailPage({
   }
 
   return (
-    <PageLayoutV1
-      mainContainerClassName="p-t-0"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.' + kebabCase(currentPageType)),
-      })}>
-      <Row className="customize-details-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-        <Col span={24}>
-          <GlossaryHeaderWidget isGlossary={isGlossary} />
-        </Col>
-        {/* It will render cols inside the row */}
-        <CustomizeTabWidget />
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.' + kebabCase(currentPageType)),
+        })}>
+        <Row className="customize-details-page" gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Col>
+          <Col span={24}>
+            <GlossaryHeaderWidget isGlossary={isGlossary} />
+          </Col>
+          {/* It will render cols inside the row */}
+          <CustomizeTabWidget />
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 }
 

@@ -28,13 +28,23 @@
       "type": "boolean",
       "default": true
     },
+    "formFields": {
+      "description": "Fields included in this IntakeForm. Fields with required=true are enforced.",
+      "type": "array",
+      "items": {
+        "$ref": "../../governance/intakeForm.json#/definitions/intakeFormField"
+      },
+      "default": []
+    },
     "requiredFields": {
-      "description": "Additional required fields enforced by this IntakeForm.",
+      "description": "Deprecated compatibility input for required fields. Use formFields instead.",
       "type": "array",
       "items": {
         "$ref": "../../governance/intakeForm.json#/definitions/requiredField"
       },
-      "default": []
+      "default": [],
+      "deprecated": true,
+      "$comment": "@deprecated Use formFields and set required=true on fields that must be populated"
     },
     "owners": {
       "description": "Owners of this IntakeForm configuration.",

@@ -13,7 +13,10 @@
 import { isEmpty, upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { CACHE_WARMUP_APPLICATION_NAME } from '../constants/constants';
+import {
+  CACHE_WARMUP_APPLICATION_NAME,
+  MCP_APPLICATION_NAME,
+} from '../constants/constants';
 import {
   AppRunRecord,
   Stats,
@@ -24,6 +27,9 @@ import { formatJsonString } from './StringUtils';
 
 export const isCacheWarmupApplication = (appName?: string) =>
   appName === CACHE_WARMUP_APPLICATION_NAME;
+
+export const isMcpApplication = (appName?: string) =>
+  appName === MCP_APPLICATION_NAME;
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {
@@ -72,6 +78,36 @@ const VECTOR_INDEXABLE_ENTITIES = new Set([
   'searchindex',
   'topic',
 ]);
+
+/**
+ * Format avg stage latency as a short human string. Returns "—" when no records or no time
+ * has been recorded yet (e.g. fresh job, or stages that haven't reported timing because the
+ * legacy non-distributed path is in use). Below 1 ms shows "<1 ms" rather than rounding to 0.
+ */
+export const formatLatencyAverage = (
+  totalTimeMs?: number,
+  successRecords?: number
+): string => {
+  // No timing recorded yet (legacy non-distributed path) or no records to divide by.
+  // totalTimeMs === 0 with successRecords > 0 is a valid sub-millisecond batch and
+  // falls through to the "<1 ms" branch.
+  if (
+    totalTimeMs === undefined ||
+    successRecords === undefined ||
+    successRecords <= 0
+  ) {
+    return '—';
+  }
+  const avgMs = totalTimeMs / successRecords;
+  if (avgMs < 1) {
+    return '<1 ms';
+  }
+  if (avgMs < 1000) {
+    return `${avgMs.toFixed(1)} ms`;
+  }
+
+  return `${(avgMs / 1000).toFixed(2)} s`;
+};
 
 export const getEntityStatsData = (data: {
   [key: string]: StepStats;
@@ -136,36 +172,6 @@ export const getEntityStatsData = (data: {
   return result.sort((a: EntityStatsData, b: EntityStatsData) =>
     a.name.localeCompare(b.name)
   );
-};
-
-/**
- * Format avg stage latency as a short human string. Returns "—" when no records or no time
- * has been recorded yet (e.g. fresh job, or stages that haven't reported timing because the
- * legacy non-distributed path is in use). Below 1 ms shows "<1 ms" rather than rounding to 0.
- */
-export const formatLatencyAverage = (
-  totalTimeMs?: number,
-  successRecords?: number
-): string => {
-  // No timing recorded yet (legacy non-distributed path) or no records to divide by.
-  // totalTimeMs === 0 with successRecords > 0 is a valid sub-millisecond batch and
-  // falls through to the "<1 ms" branch.
-  if (
-    totalTimeMs === undefined ||
-    successRecords === undefined ||
-    successRecords <= 0
-  ) {
-    return '—';
-  }
-  const avgMs = totalTimeMs / successRecords;
-  if (avgMs < 1) {
-    return '<1 ms';
-  }
-  if (avgMs < 1000) {
-    return `${avgMs.toFixed(1)} ms`;
-  }
-
-  return `${(avgMs / 1000).toFixed(2)} s`;
 };
 
 /**

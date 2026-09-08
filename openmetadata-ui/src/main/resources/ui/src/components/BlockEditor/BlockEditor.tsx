@@ -42,6 +42,8 @@ import './Extensions/File/file-node.less';
 import { slashMenuPluginKey } from './Extensions/slash-command';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
+const PROSEMIRROR_EDITABLE_SELECTOR = '.ProseMirror[contenteditable="true"]';
+
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
@@ -142,7 +144,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       if (hasFiles) {
         const editorElement = document.querySelector(
-          '.ProseMirror[contenteditable="true"]'
+          PROSEMIRROR_EDITABLE_SELECTOR
         );
         if (editorElement) {
           (editorElement as HTMLElement).classList.add('drag-over');
@@ -152,7 +154,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const handleDragLeave = (e: React.DragEvent) => {
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSEMIRROR_EDITABLE_SELECTOR
       );
       // Only remove class if we're leaving the editor area
       if (editorElement && !editorElement.contains(e.relatedTarget as Node)) {
@@ -168,7 +170,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       e.preventDefault();
 
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSEMIRROR_EDITABLE_SELECTOR
       );
       if (editorElement) {
         (editorElement as HTMLElement).classList.remove('drag-over');
@@ -231,9 +233,15 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => {
-        setEditorContent(editor, htmlContent);
+      // The editor is destroyed on unmount, so a timer left pending past this
+      // effect would call updateState on a torn-down ProseMirror view.
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
+          setEditorContent(editor, htmlContent);
+        }
       });
+
+      return () => clearTimeout(timer);
     }, [content, editor]);
 
     // this effect to handle the editable state
@@ -248,7 +256,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => editor.setEditable(editable));
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
+          editor.setEditable(editable);
+        }
+      });
+
+      return () => clearTimeout(timer);
     }, [editable, editor]);
 
     // this effect to handle the RTL and LTR direction
@@ -269,6 +283,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         })}
         id="block-editor-wrapper"
         ref={editorWrapperRef}
+        role="presentation"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={(e) => e.preventDefault()}

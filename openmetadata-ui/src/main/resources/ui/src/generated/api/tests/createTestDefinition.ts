@@ -39,9 +39,12 @@ export interface CreateTestDefinition {
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
     /**
-     * SQL expression template for custom SQL-based test definitions. Supports substitution
-     * variables: {table} and {column} for runtime entity references, and {{paramName}} for
-     * user-defined parameters.
+     * SQL expression template for custom SQL-based test definitions. The template is rendered
+     * with Jinja2, so every substitution variable must use double curly braces: {{ table_name
+     * }} for the runtime table reference, {{ column_name }} for the runtime column reference
+     * (available only for column-level test definitions, i.e. entityType COLUMN), and {{
+     * paramName }} for user-defined parameters. Single-brace placeholders are not substituted
+     * and will produce invalid SQL.
      */
     sqlExpression?:      string;
     supportedDataTypes?: DataType[];

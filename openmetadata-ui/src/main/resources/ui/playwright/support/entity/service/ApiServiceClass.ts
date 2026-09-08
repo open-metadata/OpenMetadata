@@ -13,6 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -42,31 +47,31 @@ export class ApiServiceClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/apiServices',
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await serviceResponse.json();
+    const service = await createOrFetch(apiContext, {
+      label: 'ApiServiceClass.create',
+      createPath: '/api/v1/services/apiServices',
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 
     return service;
   }
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/services/apiServices/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/services/apiServices/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(serviceResponse, 'ApiServiceClass.patch');
 
     this.entityResponseData = service;
 

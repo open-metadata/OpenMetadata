@@ -4,7 +4,7 @@ import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
+import org.openmetadata.service.resources.services.metadata.MetadataServiceResource;
 
 public class MetadataServiceRepository
     extends ServiceEntityRepository<MetadataService, MetadataConnection> {
@@ -12,7 +12,7 @@ public class MetadataServiceRepository
 
   public MetadataServiceRepository() {
     super(
-        DatabaseServiceResource.COLLECTION_PATH,
+        MetadataServiceResource.COLLECTION_PATH,
         Entity.METADATA_SERVICE,
         Entity.getCollectionDAO().metadataServiceDAO(),
         MetadataConnection.class,

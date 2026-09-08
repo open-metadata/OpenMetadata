@@ -1106,6 +1106,12 @@ public class ElasticSearchBulkSink implements BulkSink {
       Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker) {
     try {
+      // Per-instance gate, mirroring VectorEmbeddingHandler: the entity-type check above cannot
+      // see that an individual ContextMemory is Private/Shared, and the vector query path carries
+      // no per-document visibility filter.
+      if (!Entity.isVectorEmbeddable(entity)) {
+        return json;
+      }
       ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
       if (vectorService == null) {
         return json;

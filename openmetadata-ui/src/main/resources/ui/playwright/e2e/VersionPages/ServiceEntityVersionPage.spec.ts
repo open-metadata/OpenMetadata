@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -31,6 +26,7 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {

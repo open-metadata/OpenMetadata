@@ -13,6 +13,7 @@ Test fivetran using the topology
 """
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -27,6 +28,8 @@ from metadata.generated.schema.entity.data.pipeline import (
     StatusType,
     Task,
 )
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -38,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
     FIVETRAN_TASK_EXTRACT,
@@ -50,6 +54,7 @@ from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
 )
 from metadata.ingestion.source.pipeline.fivetran.metadata import FivetranSource
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
+from metadata.utils.fqn import prefix_entity_for_wildcard_search
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"
 with open(mock_file_path) as file:  # noqa: PTH123
@@ -558,9 +563,9 @@ class TestFivetranLineage:
     def test_cross_service(self, mock_build, mock_get_services, fivetran_source):
         source, client = fivetran_source
         mock_get_services.return_value = ["pg_svc", "sf_svc"]
-        mock_src = Mock()
+        mock_src = Mock(spec=Table)
         mock_src.id = str(uuid4())
-        mock_dst = Mock()
+        mock_dst = Mock(spec=Table)
         mock_dst.id = str(uuid4())
         mock_pipe = Mock()
         mock_pipe.id.root = str(uuid4())
@@ -606,7 +611,7 @@ class TestFivetranLineage:
         source, client = fivetran_source
         mock_get_services.return_value = ["pg"]
         same_id = str(uuid4())
-        mock_table = Mock()
+        mock_table = Mock(spec=Table)
         mock_table.id = same_id
 
         mock_build.side_effect = lambda *a, **kw: "pg.db.public.orders"
@@ -632,9 +637,9 @@ class TestFivetranLineage:
         source, client = fivetran_source
         mock_db.return_value = ["sf"]
         mock_msg.return_value = ["kafka"]
-        mock_topic = Mock()
+        mock_topic = Mock(spec=Topic)
         mock_topic.id = str(uuid4())
-        mock_table = Mock()
+        mock_table = Mock(spec=Table)
         mock_table.id = str(uuid4())
         mock_pipe = Mock()
         mock_pipe.id.root = str(uuid4())
@@ -680,6 +685,475 @@ class TestFivetranLineage:
             assert len(result) == 1
             assert result[0].right.edge.fromEntity.type == "topic"
 
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_falls_back_to_cross_service_search_when_unconfigured(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = []
+        found = Mock(spec=Table)
+        found.service = Mock(name="svc")
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.search_in_any_service = Mock(return_value=found)
+            result = source._resolve_table(table_name="orders", schema_name="crm", database_name=None)
+
+        assert result is found
+        assert mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == "crm.orders"
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_configured_services_do_not_use_fallback(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        found = Mock()
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=found)
+            mock_metadata.search_in_any_service = Mock()
+            result = source._resolve_table(table_name="orders", schema_name="crm", database_name="db")
+
+        assert result is found
+        mock_metadata.search_in_any_service.assert_not_called()
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_configured_but_not_found_still_skips(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = ["pg"]
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=None)
+            mock_metadata.search_in_any_service = Mock()
+            result = source._resolve_table(table_name="orders", schema_name="crm", database_name="db")
+
+        assert result is None
+        mock_metadata.search_in_any_service.assert_not_called()
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    def test_topic_search_string_quotes_dotted_name(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = []
+        found = Mock(spec=Topic)
+        found.service = Mock(name="kafka")
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.search_in_any_service = Mock(return_value=found)
+            source._resolve_topic(topic_name="hr_stream.employee_events")
+
+        # Topic FQNs have 2 slots; an unquoted dotted name would be read as service.topic
+        assert (
+            mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == '"hr_stream.employee_events"'
+        )
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    @patch("metadata.utils.fqn.build")
+    def test_table_to_topic_lineage(self, mock_build, mock_db, mock_msg, fivetran_source):
+        source, client = fivetran_source
+        mock_db.return_value = ["pg"]
+        mock_msg.return_value = ["kafka"]
+        mock_table = Mock(spec=Table)
+        mock_table.id = str(uuid4())
+        mock_topic = Mock(spec=Topic)
+        mock_topic.id = str(uuid4())
+        mock_pipe = Mock()
+        mock_pipe.id.root = str(uuid4())
+
+        def build_se(*a, **kw):
+            if kw.get("topic_name"):
+                return f"{kw['service_name']}.{kw['topic_name']}"
+            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
+
+        mock_build.side_effect = build_se
+
+        def get_by_name(entity, fqn):
+            s = str(fqn)
+            if "kafka" in s:
+                return mock_topic
+            if "pg" in s:
+                return mock_table
+            return mock_pipe
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(side_effect=get_by_name)
+            client.get_connector_schema_details.return_value = {
+                "hr": {
+                    "enabled": True,
+                    "name_in_destination": "hr_stream",
+                    "tables": {"employees": {"enabled": True, "name_in_destination": "employee_events"}},
+                }
+            }
+            client.get_connector_column_lineage.return_value = {}
+            details = FivetranPipelineDetails(
+                source={"id": "pg", "service": "postgres", "schema": "hr", "config": {"database": "db"}},
+                destination={"id": "cc", "service": "confluent_cloud", "config": {}},
+                group=mock_data["group"],
+                connector_id="pg",
+            )
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.fromEntity.type == "table"
+        assert result[0].right.edge.toEntity.type == "topic"
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_warns_when_lineage_enabled_but_no_edges(self, mock_get_services, fivetran_source, caplog):
+        source, client = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        client.get_connector_schema_details.return_value = {
+            "public": {
+                "enabled": True,
+                "name_in_destination": "pub",
+                "tables": {"users": {"enabled": True, "name_in_destination": "users"}},
+            }
+        }
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=None)
+            with caplog.at_level(logging.WARNING):
+                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
+
+        assert result == []
+        assert "produced no lineage" in caplog.text
+        assert "source entity not found" in caplog.text
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_no_warning_when_only_fivetran_side_disables_skipped(self, mock_get_services, fivetran_source, caplog):
+        """Finding 4: every schema disabled is deliberate Fivetran-side configuration,
+        not a defect - it must stay silent so the warning isn't trained to be ignored."""
+        source, client = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        client.get_connector_schema_details.return_value = {
+            "s": {
+                "enabled": False,
+                "name_in_destination": "s",
+                "tables": {"t": {"enabled": True}},
+            }
+        }
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
+
+        assert result == []
+        assert "produced no lineage" not in caplog.text
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_warning_names_actionable_reason_over_disabled(self, mock_get_services, fivetran_source, caplog):
+        """When both Fivetran-side disables and a real resolution failure are present,
+        the warning must name the actionable reason, not whichever is more common."""
+        source, client = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        client.get_connector_schema_details.return_value = {
+            "disabled_one": {
+                "enabled": False,
+                "name_in_destination": "d1",
+                "tables": {"t": {"enabled": True}},
+            },
+            "disabled_two": {
+                "enabled": False,
+                "name_in_destination": "d2",
+                "tables": {"t": {"enabled": True}},
+            },
+            "public": {
+                "enabled": True,
+                "name_in_destination": "pub",
+                "tables": {"users": {"enabled": True, "name_in_destination": "users"}},
+            },
+        }
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=None)
+            with caplog.at_level(logging.WARNING):
+                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
+
+        assert result == []
+        assert "produced no lineage" in caplog.text
+        assert "source entity not found" in caplog.text
+        assert "schema disabled in Fivetran" not in caplog.text
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    @patch("metadata.utils.fqn.build")
+    def test_no_warning_when_edges_produced_despite_skips(self, mock_build, mock_get_services, fivetran_source, caplog):
+        """A healthy connector that produced at least one edge must stay silent even
+        though some other candidates were skipped."""
+        source, client = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        mock_src = Mock(spec=Table)
+        mock_src.id = str(uuid4())
+        mock_dst = Mock(spec=Table)
+        mock_dst.id = str(uuid4())
+        mock_pipe = Mock()
+        mock_pipe.id.root = str(uuid4())
+
+        mock_build.side_effect = lambda *a, **kw: ".".join(
+            str(v)
+            for v in [
+                kw.get("service_name", ""),
+                kw.get("database_name", ""),
+                kw.get("schema_name", ""),
+                kw.get("table_name", ""),
+            ]
+            if v
+        )
+
+        def side_effect(entity, fqn):
+            s = str(fqn)
+            if "orders_dest" in s:
+                return mock_dst
+            if "orders" in s:
+                return mock_src
+            if "pipeline" in s or "fivetran" in s:
+                return mock_pipe
+            return None
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(side_effect=side_effect)
+            client.get_connector_schema_details.return_value = {
+                "disabled": {
+                    "enabled": False,
+                    "name_in_destination": "d",
+                    "tables": {"t": {"enabled": True}},
+                },
+                "public": {
+                    "enabled": True,
+                    "name_in_destination": "pub",
+                    "tables": {"orders": {"enabled": True, "name_in_destination": "orders_dest"}},
+                },
+            }
+            client.get_connector_column_lineage.return_value = {}
+            with caplog.at_level(logging.WARNING):
+                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
+
+        assert len(result) == 1
+        assert "produced no lineage" not in caplog.text
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_topic_field_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    @patch("metadata.utils.fqn.build")
+    def test_messaging_source_column_lineage_happy_path(
+        self, mock_build, mock_db, mock_msg, mock_col_fqn, mock_topic_fqn, fivetran_source
+    ):
+        """Column lineage is now attempted when the *source* side is a Topic - this was
+        never exercised end-to-end before the messaging gate was removed."""
+        source, client = fivetran_source
+        mock_db.return_value = ["sf"]
+        mock_msg.return_value = ["kafka"]
+        mock_topic = Mock(spec=Topic)
+        mock_topic.id = str(uuid4())
+        mock_table = Mock(spec=Table)
+        mock_table.id = str(uuid4())
+        mock_pipe = Mock()
+        mock_pipe.id.root = str(uuid4())
+
+        def build_se(*a, **kw):
+            if kw.get("topic_name"):
+                return f"{kw['service_name']}.{kw['topic_name']}"
+            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
+
+        mock_build.side_effect = build_se
+        mock_topic_fqn.return_value = "kafka.TRADES.symbol"
+        mock_col_fqn.return_value = "sf.db.sch.tbl.symbol"
+
+        def side_effect(entity, fqn):
+            s = str(fqn)
+            if "kafka" in s:
+                return mock_topic
+            if "sf" in s:
+                return mock_table
+            if "pipeline" in s or "fivetran" in s:
+                return mock_pipe
+            return None
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(side_effect=side_effect)
+            client.get_connector_schema_details.return_value = {
+                "topics": {
+                    "enabled": True,
+                    "name_in_destination": "cc",
+                    "tables": {"TRADES": {"enabled": True, "name_in_destination": "TRADES"}},
+                }
+            }
+            client.get_connector_column_lineage.return_value = {
+                "symbol": {"enabled": True, "name_in_destination": "symbol"}
+            }
+            details = FivetranPipelineDetails(
+                source={
+                    "id": "cc",
+                    "service": "confluent_cloud",
+                    "schema": "cc",
+                    "config": {},
+                },
+                destination=mock_data["destination"],
+                group=mock_data["group"],
+                connector_id="cc",
+            )
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        columns_lineage = result[0].right.edge.lineageDetails.columnsLineage
+        assert columns_lineage is not None
+        assert len(columns_lineage) == 1
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    @patch("metadata.utils.fqn.build")
+    def test_messaging_source_column_lineage_raises_still_emits_edge(
+        self, mock_build, mock_db, mock_msg, fivetran_source, caplog
+    ):
+        """Regression test for Finding 1: Fivetran's column-config endpoint 404s /
+        raises for connector types it doesn't support (messaging sources are the
+        newly-reachable case). That must not abort the whole entity-level edge."""
+        source, client = fivetran_source
+        mock_db.return_value = ["sf"]
+        mock_msg.return_value = ["kafka"]
+        mock_topic = Mock(spec=Topic)
+        mock_topic.id = str(uuid4())
+        mock_table = Mock(spec=Table)
+        mock_table.id = str(uuid4())
+        mock_pipe = Mock()
+        mock_pipe.id.root = str(uuid4())
+
+        def build_se(*a, **kw):
+            if kw.get("topic_name"):
+                return f"{kw['service_name']}.{kw['topic_name']}"
+            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
+
+        mock_build.side_effect = build_se
+
+        def side_effect(entity, fqn):
+            s = str(fqn)
+            if "kafka" in s:
+                return mock_topic
+            if "sf" in s:
+                return mock_table
+            if "pipeline" in s or "fivetran" in s:
+                return mock_pipe
+            return None
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(side_effect=side_effect)
+            client.get_connector_schema_details.return_value = {
+                "topics": {
+                    "enabled": True,
+                    "name_in_destination": "cc",
+                    "tables": {"TRADES": {"enabled": True, "name_in_destination": "TRADES"}},
+                }
+            }
+            client.get_connector_column_lineage.side_effect = RuntimeError(
+                "Fivetran API request failed for /connectors/cc/schemas/topics/tables/TRADES/columns"
+                " — received None response"
+            )
+            details = FivetranPipelineDetails(
+                source={
+                    "id": "cc",
+                    "service": "confluent_cloud",
+                    "schema": "cc",
+                    "config": {},
+                },
+                destination=mock_data["destination"],
+                group=mock_data["group"],
+                connector_id="cc",
+            )
+            with caplog.at_level(logging.WARNING):
+                result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.lineageDetails.columnsLineage is None
+        assert "Column lineage skipped" in caplog.text
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    @patch("metadata.utils.fqn.build")
+    def test_entity_edge_survives_unresolvable_column(
+        self, mock_build, mock_get_services, mock_col_fqn, fivetran_source
+    ):
+        """At the yield_pipeline_lineage_details level (not just _fetch_column_lineage):
+        when column FQN resolution yields nothing, the entity-level edge must still land."""
+        source, client = fivetran_source
+        mock_get_services.return_value = ["pg_svc"]
+        mock_src = Mock(spec=Table)
+        mock_src.id = str(uuid4())
+        mock_dst = Mock(spec=Table)
+        mock_dst.id = str(uuid4())
+        mock_pipe = Mock()
+        mock_pipe.id.root = str(uuid4())
+
+        mock_build.side_effect = lambda *a, **kw: ".".join(
+            str(v)
+            for v in [
+                kw.get("service_name", ""),
+                kw.get("database_name", ""),
+                kw.get("schema_name", ""),
+                kw.get("table_name", ""),
+            ]
+            if v
+        )
+        mock_col_fqn.return_value = None  # unresolvable -> _fetch_column_lineage yields []
+
+        def side_effect(entity, fqn):
+            s = str(fqn)
+            if "users_dest" in s:
+                return mock_dst
+            if "users" in s:
+                return mock_src
+            if "pipeline" in s or "fivetran" in s:
+                return mock_pipe
+            return None
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(side_effect=side_effect)
+            client.get_connector_schema_details.return_value = {
+                "public": {
+                    "enabled": True,
+                    "name_in_destination": "pub",
+                    "tables": {"users": {"enabled": True, "name_in_destination": "users_dest"}},
+                }
+            }
+            client.get_connector_column_lineage.return_value = {"id": {"enabled": True, "name_in_destination": "id"}}
+            result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
+
+        assert len(result) == 1
+        assert result[0].right.edge.lineageDetails.columnsLineage is None
+
+
+class TestSearchAnyService:
+    """Pins the FQN slot-padding contract that the cross-service fallback rests on
+    (Finding 2/4): leading gaps are dropped for prefix_entity_for_wildcard_search to
+    pad back with `*`, interior gaps must stay as explicit `*`, and a missing leaf
+    can't be searched for at all."""
+
+    @staticmethod
+    def _capture_search_string(source, entity_type, parts):
+        captured = {}
+
+        def fake_search(entity_type, fqn_search_string):
+            captured["search_string"] = fqn_search_string
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.search_in_any_service = Mock(side_effect=fake_search)
+            source._search_any_service(entity_type, parts)
+        return captured.get("search_string")
+
+    def test_padding_contract_matches_real_helper(self, fivetran_source):
+        source, _ = fivetran_source
+        search_string = self._capture_search_string(source, Table, [None, "crm", "orders"])
+        assert prefix_entity_for_wildcard_search(Table, search_string) == "*.*.crm.orders"
+
+    def test_leading_gap_is_dropped(self, fivetran_source):
+        source, _ = fivetran_source
+        search_string = self._capture_search_string(source, Table, [None, "crm", "orders"])
+        assert search_string == "crm.orders"
+
+    def test_interior_gap_is_kept_as_wildcard(self, fivetran_source):
+        source, _ = fivetran_source
+        search_string = self._capture_search_string(source, Table, ["dev", None, "users"])
+        assert search_string == "dev.*.users"
+
+    def test_missing_leaf_performs_no_search(self, fivetran_source):
+        source, _ = fivetran_source
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.search_in_any_service = Mock()
+            result = source._search_any_service(Table, ["dev", "pub", None])
+
+        assert result is None
+        mock_metadata.search_in_any_service.assert_not_called()
+
 
 class TestFivetranColumnLineage:
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
@@ -709,3 +1183,31 @@ class TestFivetranColumnLineage:
         result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock())
         assert result == []
         mock_fqn.assert_not_called()
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_topic_field_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
+    def test_table_to_topic_uses_topic_field_resolver(self, mock_col_fqn, mock_topic_fqn, fivetran_source):
+        source, client = fivetran_source
+        client.get_connector_column_lineage.return_value = {"src": {"enabled": True, "name_in_destination": "dst"}}
+        mock_col_fqn.return_value = "svc.db.sch.tbl.src"
+        mock_topic_fqn.return_value = "kafka.topic.dst"
+
+        topic = Topic.model_construct(id=uuid4(), name="topic")
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), topic)
+
+        assert len(result) == 1
+        mock_topic_fqn.assert_called_once_with(topic, "dst")
+        assert model_str(result[0].toColumn) == "kafka.topic.dst"
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_topic_field_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
+    def test_unresolvable_topic_field_is_skipped(self, mock_col_fqn, mock_topic_fqn, fivetran_source):
+        source, client = fivetran_source
+        client.get_connector_column_lineage.return_value = {"src": {"enabled": True, "name_in_destination": "dst"}}
+        mock_col_fqn.return_value = "svc.db.sch.tbl.src"
+        mock_topic_fqn.return_value = None
+
+        topic = Topic.model_construct(id=uuid4(), name="topic")
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), topic)
+
+        assert result == []

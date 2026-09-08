@@ -31,6 +31,17 @@ import { TriggerConfigSectionProps } from '../../../../interface/workflow-builde
 import { FormField } from '../common/FormField';
 import { CronExpressionBuilder } from './CronExpressionBuilder';
 
+const getScheduleTypeDisabled = (
+  isFormDisabled: boolean,
+  lockScheduleTypeField?: boolean,
+  lockPeriodicBatchFields?: boolean,
+  lockNonIncludeExcludeFields?: boolean
+) =>
+  isFormDisabled ||
+  (lockScheduleTypeField ??
+    lockPeriodicBatchFields ??
+    lockNonIncludeExcludeFields);
+
 const getFieldLabel = (v: string): string => {
   if (v.startsWith('extension.')) {
     return v.slice('extension.'.length);
@@ -94,11 +105,12 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
     isFormDisabled || lockNonIncludeExcludeFields;
   const periodicBatchDisabled =
     isFormDisabled || (lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
-  const scheduleTypeDisabled =
-    isFormDisabled ||
-    (lockScheduleTypeField ??
-      lockPeriodicBatchFields ??
-      lockNonIncludeExcludeFields);
+  const scheduleTypeDisabled = getScheduleTypeDisabled(
+    isFormDisabled,
+    lockScheduleTypeField,
+    lockPeriodicBatchFields,
+    lockNonIncludeExcludeFields
+  );
   const includeExcludeDisabled = isFormDisabled;
 
   const triggerTypeOptions = [
@@ -245,33 +257,6 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
 
           <div className="tw:mt-6">
             <Autocomplete
-              data-testid="exclude-fields-select"
-              isDisabled={includeExcludeDisabled}
-              items={fieldItems}
-              label={t('label.exclude-fields')}
-              maxVisibleItems={2}
-              placeholder={t('message.select-fields-to-exclude')}
-              selectedItems={selectedExcludeFields}
-              onItemCleared={(key) => {
-                selectedExcludeFields.remove(key);
-                onRemoveExcludeField?.(String(key));
-              }}
-              onItemInserted={(key) => {
-                selectedExcludeFields.append({
-                  id: String(key),
-                  label: getFieldLabel(String(key)),
-                });
-                onExcludeFieldsChange?.([
-                  ...selectedExcludeFields.items.map((i) => i.id),
-                  String(key),
-                ]);
-              }}>
-              {renderFieldItem}
-            </Autocomplete>
-          </div>
-
-          <div className="tw:mt-6">
-            <Autocomplete
               data-testid="include-fields-select"
               isDisabled={includeExcludeDisabled}
               items={fieldItems}
@@ -290,6 +275,33 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
                 });
                 onIncludeChange?.([
                   ...selectedIncludeFields.items.map((i) => i.id),
+                  String(key),
+                ]);
+              }}>
+              {renderFieldItem}
+            </Autocomplete>
+          </div>
+
+          <div className="tw:mt-6">
+            <Autocomplete
+              data-testid="exclude-fields-select"
+              isDisabled={includeExcludeDisabled}
+              items={fieldItems}
+              label={t('label.exclude-fields')}
+              maxVisibleItems={2}
+              placeholder={t('message.select-fields-to-exclude')}
+              selectedItems={selectedExcludeFields}
+              onItemCleared={(key) => {
+                selectedExcludeFields.remove(key);
+                onRemoveExcludeField?.(String(key));
+              }}
+              onItemInserted={(key) => {
+                selectedExcludeFields.append({
+                  id: String(key),
+                  label: getFieldLabel(String(key)),
+                });
+                onExcludeFieldsChange?.([
+                  ...selectedExcludeFields.items.map((i) => i.id),
                   String(key),
                 ]);
               }}>

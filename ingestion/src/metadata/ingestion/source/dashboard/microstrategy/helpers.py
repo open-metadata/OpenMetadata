@@ -14,7 +14,7 @@ Microstrategy source helpers.
 
 from __future__ import annotations
 
-from typing import Any, Dict  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -49,7 +49,7 @@ class MicroStrategyColumnParser:
     }
 
     @classmethod
-    def parse(cls, field: Dict[str, Any]) -> Column:  # noqa: UP006
+    def parse(cls, field: dict[str, Any]) -> Column:
         """
         Parses a MicroStrategy table column into an OpenMetadata column.
         """

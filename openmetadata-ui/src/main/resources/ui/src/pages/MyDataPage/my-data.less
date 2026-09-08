@@ -21,7 +21,7 @@
 
 .announcement-alert-heading {
   color: @blue-27;
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
 }
 
 .view-all-btn {
@@ -30,7 +30,7 @@
 
 .ant-card.card-widget {
   box-shadow: none;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   height: 100%;
   .ant-card-body {
     height: 100%;
@@ -47,12 +47,12 @@
 
     ::-webkit-scrollbar-track {
       background: transparent;
-      border-radius: 3px;
+      border-radius: var(--om-radius-3);
     }
 
     ::-webkit-scrollbar-thumb {
       background: @grey-300;
-      border-radius: 3px;
+      border-radius: var(--om-radius-3);
       opacity: 0.6;
 
       &:hover {
@@ -73,6 +73,6 @@
 
 .grid-wrapper {
   .grid-container {
-    margin-top: -220px;
+    margin-top: calc(-1 * var(--om-space-220));
   }
 }

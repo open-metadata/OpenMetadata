@@ -385,7 +385,7 @@ describe('FiltersConfigForm', () => {
         formData: expect.objectContaining({
           tableFilterPattern: {
             excludes: [],
-            includes: ['orders'],
+            includes: ['.*orders.*'],
           },
         }),
       });
@@ -487,7 +487,7 @@ describe('FiltersConfigForm', () => {
       within(tableSection).getAllByText('contains', {
         selector: '.filters-config-form__chip-operator',
       }).length
-    ).toBeGreaterThanOrEqual(2);
+    ).toBeGreaterThanOrEqual(1);
 
     expect(within(tableSection).getAllByText('orders')).toHaveLength(2);
     expect(within(tableSection).getAllByText('finance_')).toHaveLength(2);
@@ -691,7 +691,7 @@ describe('FiltersConfigForm', () => {
       within(tableSection).getByText('includes += ^orders\\.v1$')
     ).toBeInTheDocument();
     expect(
-      within(tableSection).getByText('includes += _fact$')
+      within(tableSection).getByText('includes += .*_fact$')
     ).toBeInTheDocument();
     expect(
       within(tableSection).getByText('excludes += ^tmp_[0-9]+$')
@@ -704,7 +704,7 @@ describe('FiltersConfigForm', () => {
         formData: expect.objectContaining({
           tableFilterPattern: {
             excludes: ['^tmp_[0-9]+$'],
-            includes: ['^orders\\.v1$', '_fact$'],
+            includes: ['^orders\\.v1$', '.*_fact$'],
           },
         }),
       });

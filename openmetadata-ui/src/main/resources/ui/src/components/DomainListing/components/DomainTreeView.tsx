@@ -16,19 +16,22 @@ import {
   Avatar,
   Badge,
   Box,
+  EmptyPlaceholder,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Domain as DomainIcon,
+  Expand,
+  NoSearch,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -43,6 +46,7 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -53,7 +57,6 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
@@ -64,17 +67,79 @@ interface DomainTreeViewProps {
   filters?: Record<string, string[]>;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
+  onClearSearch?: () => void;
 }
 
 const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
 const LOAD_MORE_ITEM_SUFFIX = '__load_more';
 
+type ChildPagingState = Record<
+  string,
+  { offset: number; limit: number; total: number }
+>;
+
+// Derived, per-node tree-rendering flags pulled out of the `.map` callback so
+// that callback keeps only rendering branches, not these lookups too.
+const getTreeNodeMeta = (
+  node: Domain,
+  childPaging: ChildPagingState,
+  loadingChildren: Record<string, boolean>
+) => {
+  const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+  const childDomains = (node?.children as unknown as Domain[]) ?? [];
+  const childrenCount = node?.childrenCount || childDomains?.length || 0;
+  const hasChildren = childDomains?.length > 0 || childrenCount > 0;
+  const isLoading = loadingChildren?.[identifier as string] ?? false;
+  const paging = childPaging?.[identifier as string];
+  const hasMoreChildren =
+    paging != null && paging?.offset + paging?.limit < paging?.total;
+
+  return {
+    identifier,
+    childDomains,
+    childrenCount,
+    hasChildren,
+    isLoading,
+    hasMoreChildren,
+  };
+};
+
+const LoadMoreTreeItem = ({
+  identifier,
+  isLoading,
+  t,
+  onLoadMore,
+}: {
+  identifier: string;
+  isLoading: boolean;
+  t: (key: string) => string;
+  onLoadMore: (identifier: string) => void;
+}) => (
+  <Tree.Item
+    id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+    key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+    textValue={t('label.load-more')}>
+    <Tree.ItemContent showExpandIcon={false}>
+      <button
+        className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onLoadMore(identifier);
+        }}>
+        {isLoading ? <Loader size="small" /> : t('label.load-more')}
+      </button>
+    </Tree.ItemContent>
+  </Tree.Item>
+);
+
 const DomainTreeView = ({
   searchQuery,
   filters,
   refreshToken = 0,
   openAddDomainDrawer,
+  onClearSearch,
 }: DomainTreeViewProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -85,9 +150,8 @@ const DomainTreeView = ({
   const [hierarchy, setHierarchy] = useState<Domain[]>([]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedFqn, setSelectedFqn] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<EntityTabs>(
-    EntityTabs.DOCUMENTATION
-  );
+  // Undefined = no explicit tab; DomainDetails resolves it to the persona's first tab.
+  const [activeTab, setActiveTab] = useState<EntityTabs | undefined>(undefined);
   const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
   const [isHierarchyLoading, setIsHierarchyLoading] = useState<boolean>(false);
   const [isDomainLoading, setIsDomainLoading] = useState<boolean>(false);
@@ -128,14 +192,13 @@ const DomainTreeView = ({
     return Object.values(filters).some((values) => values && values.length > 0);
   }, [filters]);
 
-  // TODO: Revert these changes once the backend API for domain search is implemented.
-  // const queryFilter = useMemo(() => {
-  //   if (!hasActiveFilters || !filters) {
-  //     return undefined;
-  //   }
+  const queryFilter = useMemo(() => {
+    if (!hasActiveFilters || !filters) {
+      return undefined;
+    }
 
-  //   return domainBuildESQuery(filters);
-  // }, [filters, hasActiveFilters]);
+    return domainBuildESQuery(filters);
+  }, [filters, hasActiveFilters]);
 
   useEffect(() => {
     const map: Record<string, Domain> = {};
@@ -199,6 +262,7 @@ const DomainTreeView = ({
       const firstDomain = selectDomain(domains, resetExpandedItems, domainFqn);
 
       if ((firstDomain?.childrenCount || 0) > 0 && shouldLoadChildren) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- useCallback defined below
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
@@ -212,8 +276,8 @@ const DomainTreeView = ({
         const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
         const results: Domain[] = await searchDomains(
           encodedValue,
-          1
-          // queryFilter
+          1,
+          queryFilter
         );
 
         const filteredResults =
@@ -235,7 +299,7 @@ const DomainTreeView = ({
         setIsHierarchyLoading(false);
       }
     },
-    [t, isDomainRestricted, userDomains]
+    [t, isDomainRestricted, userDomains, queryFilter]
   );
 
   const fetchDomainDetails = useCallback(
@@ -478,13 +542,17 @@ const DomainTreeView = ({
     },
     [loadingChildren, rootPaging, applySelection, loadChildDomains]
   );
+  // Keyed on `queryFilter`, not `hasActiveFilters`: swapping one active filter
+  // for another leaves the boolean true, so the tree would keep showing the
+  // previous result set. `urlState` is memoised on the search params, so the
+  // filter object only changes identity when the URL does.
   useEffect(() => {
     if (searchQuery || hasActiveFilters) {
       searchDomain(searchQuery);
     } else {
       loadDomains();
     }
-  }, [refreshToken, searchQuery, hasActiveFilters]);
+  }, [refreshToken, searchQuery, queryFilter]);
 
   useEffect(() => {
     if (selectedFqn) {
@@ -495,7 +563,8 @@ const DomainTreeView = ({
 
   useEffect(() => {
     if (selectedFqn) {
-      setActiveTab(EntityTabs.DOCUMENTATION);
+      // Reset so the newly selected domain lands on its first rendered tab.
+      setActiveTab(undefined);
     }
   }, [selectedFqn]);
 
@@ -730,7 +799,8 @@ const DomainTreeView = ({
         if (requestedTab && Object.values(EntityTabs).includes(requestedTab)) {
           setActiveTab(requestedTab);
         } else {
-          setActiveTab(EntityTabs.DOCUMENTATION);
+          // No tab in the URL -- let DomainDetails resolve the first rendered tab.
+          setActiveTab(undefined);
         }
 
         updateExpansionForFqn(decodedFqn);
@@ -756,13 +826,9 @@ const DomainTreeView = ({
 
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      if (
-        !hasMore ||
-        isLoadingMore ||
-        isHierarchyLoading ||
-        searchQuery ||
-        hasActiveFilters
-      ) {
+      const isScrollLoadBlocked =
+        !hasMore || isLoadingMore || isHierarchyLoading;
+      if (isScrollLoadBlocked || searchQuery || hasActiveFilters) {
         return;
       }
 
@@ -785,19 +851,18 @@ const DomainTreeView = ({
   const renderTreeItems = useCallback(
     (nodes: Domain[]) => {
       return nodes.map((node) => {
-        const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+        const {
+          identifier,
+          childDomains,
+          childrenCount,
+          hasChildren,
+          isLoading,
+          hasMoreChildren,
+        } = getTreeNodeMeta(node, childPaging, loadingChildren);
 
         if (!identifier) {
           return null;
         }
-
-        const childDomains = (node?.children as unknown as Domain[]) ?? [];
-        const childrenCount = node?.childrenCount || childDomains?.length || 0;
-        const hasChildren = childDomains?.length > 0 || childrenCount > 0;
-        const isLoading = loadingChildren?.[identifier] ?? false;
-        const paging = childPaging?.[identifier];
-        const hasMoreChildren =
-          paging != null && paging?.offset + paging?.limit < paging?.total;
 
         return (
           <Tree.Item
@@ -831,26 +896,12 @@ const DomainTreeView = ({
             </Tree.ItemContent>
             {childDomains.length > 0 && renderTreeItems(childDomains)}
             {hasMoreChildren && (
-              <Tree.Item
-                id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
-                key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
-                textValue={t('label.load-more')}>
-                <Tree.ItemContent showExpandIcon={false}>
-                  <button
-                    className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      loadDomains(identifier, true);
-                    }}>
-                    {loadingChildren[identifier] ? (
-                      <Loader size="small" />
-                    ) : (
-                      t('label.load-more')
-                    )}
-                  </button>
-                </Tree.ItemContent>
-              </Tree.Item>
+              <LoadMoreTreeItem
+                identifier={identifier}
+                isLoading={isLoading}
+                t={t}
+                onLoadMore={(id) => loadDomains(id, true)}
+              />
             )}
           </Tree.Item>
         );
@@ -952,49 +1003,79 @@ const DomainTreeView = ({
     t,
   ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
+    if (searchQuery?.trim() || hasActiveFilters) {
+      return (
+        <div className="tw:relative tw:flex-1 tw:h-full">
+          <EmptyPlaceholder
+            actions={[
+              {
+                color: 'primary',
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => onClearSearch?.(),
+              },
+            ]}
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearch className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+          />
+        </div>
+      );
+    }
+
     return (
-      <ErrorPlaceHolder
-        buttonId="domain-add-button"
-        buttonTitle={t('label.add-entity', {
-          entity: t('label.domain'),
-        })}
-        className="border-none"
-        heading={t('message.no-data-message', {
-          entity: t('label.domain-lowercase-plural'),
-        })}
-        icon={<FolderEmptyIcon />}
-        permission={permissions.domain?.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-        onClick={openAddDomainDrawer}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          actions={
+            permissions.domain?.Create
+              ? [
+                  {
+                    color: 'primary',
+                    iconLeading: <Expand size={14} />,
+                    key: 'add-domain',
+                    label: t('label.add-entity', { entity: t('label.domain') }),
+                    onPress: openAddDomainDrawer,
+                  },
+                ]
+              : []
+          }
+          description={t('message.no-data-message', {
+            entity: t('label.domain-lowercase-plural'),
+          })}
+          icon={<DomainIcon className="tw:text-fg-brand-primary" />}
+          title={t('label.no-entity', { entity: t('label.domain-plural') })}
+        />
+      </div>
     );
   }
 
   return (
+    // No panel title: the page header above already carries the "Domains"
+    // heading and its learning icon, and the row cost the tree ~55px of list
+    // height. `h-full` on the container and both scrollers replaces a pair of
+    // `max-h-[calc(80vh-Npx)]` guesses that left dead space below the panels
+    // at some viewport heights and overflowed the card at others.
     <ResizableLeftPanels
-      showLearningIcon
+      className="tw:h-full"
       firstPanel={{
         className: 'domain-tree-panel border-right border-gray-200',
         minWidth: 280,
         flex: 0.25,
-        title: t('label.domain-plural'),
         children: (
           <div
-            className="tw:pt-4.5 tw:pr-3 tw:overflow-y-auto tw:max-h-[calc(80vh-220px)]"
+            className="tw:h-full tw:min-h-0 tw:pt-4.5 tw:pr-3 tw:overflow-y-auto"
             ref={scrollContainerRef}
             onScroll={handleScroll}>
             {hierarchySection}
           </div>
         ),
       }}
-      learningPageId={LEARNING_PAGE_IDS.DOMAIN}
-      learningTitle={t('label.domain-plural')}
       secondPanel={{
         className: 'domain-details-panel',
         minWidth: 600,
         flex: 0.75,
         children: (
-          <div className="tw:pt-3 tw:overflow-y-auto tw:max-h-[calc(80vh-160px)]">
+          <div className="tw:h-full tw:min-h-0 tw:pt-3 tw:overflow-y-auto">
             {domainSection}
           </div>
         ),

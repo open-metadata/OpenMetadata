@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
+import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -37,7 +37,12 @@ jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
     getQueryActions,
     value,
     readonly,
-  }: any) {
+  }: {
+    onChange?: (value: string, tree: JsonTree) => void;
+    getQueryActions?: (actions: Actions) => void;
+    value?: string;
+    readonly?: boolean;
+  }) {
     return (
       <div data-testid="query-builder-widget">
         <span>Query Builder Widget</span>
@@ -107,7 +112,7 @@ const mockInitialValues: Partial<DataContract> = {
       enabled: true,
       jsonTree: '{"type": "group"}',
     },
-  ] as any,
+  ] as unknown as DataContract['semantics'],
 };
 
 describe('ContractSemanticFormTab', () => {

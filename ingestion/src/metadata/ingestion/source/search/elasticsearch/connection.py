@@ -13,9 +13,9 @@
 Source connection handler
 """
 
+import shutil
 import ssl
 from pathlib import Path
-from typing import Optional
 
 from elasticsearch8 import Elasticsearch
 from httpx import create_ssl_context
@@ -137,6 +137,12 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
     return ssl._create_unverified_context()  # pylint: disable=protected-access
 
 
+def _cleanup_staging_dir(staging_dir: str | None) -> None:
+    """Remove the staging dir holding the cert/key files written by value."""
+    if staging_dir and Path(staging_dir).exists():
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
+
 class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elasticsearch]):
     def _get_client(self) -> Elasticsearch:
         connection = self.service_connection
@@ -162,6 +168,10 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
             connection.connectionArguments = init_empty_connection_arguments()
 
         if connection.sslConfig:
+            certificates = connection.sslConfig.certificates
+            if isinstance(certificates, SslCertificatesByValues):
+                staging_dir = certificates.stagingDir
+                self._on_close(lambda: _cleanup_staging_dir(staging_dir))
             ssl_context = get_ssl_context(connection.sslConfig)
 
         return Elasticsearch(
@@ -175,8 +185,8 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
+import type { PressEvent } from 'react-aria-components';
+
+// Tooltip's auto-generated focusable wrapper uses react-aria's AriaButton,
+// whose usePress hook stops press events from propagating to ancestor DOM
+// listeners by default. For the ellipsis tooltip we wrap non-interactive text,
+// so a click should still reach any ancestor onClick (e.g. a selectable card).
+// Calling continuePropagation() restores that, scoped to this call site only.
+const allowEllipsisTooltipPressToPropagate = (e: PressEvent) => {
+  e.continuePropagation();
+};
 
 const lineClampClasses: Record<number, string> = {
   1: 'tw:line-clamp-1',
@@ -45,6 +55,13 @@ type TypographySize =
 
 type TypographyWeight = 'regular' | 'medium' | 'semibold' | 'bold';
 
+/**
+ * Semantic text color, mirroring antd Typography's `type` prop
+ * ("secondary" | "success" | "warning" | "danger") so migrated call sites
+ * have a first-class equivalent instead of a per-site `className` override.
+ */
+type TypographyColor = 'secondary' | 'success' | 'warning' | 'danger';
+
 type EllipsisRows = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 type TypographyEllipsis =
@@ -62,7 +79,9 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   className?: string;
   size?: TypographySize;
   weight?: TypographyWeight;
+  color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
+  tooltip?: ReactNode;
 }
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
@@ -92,6 +111,16 @@ const weightClasses: Record<TypographyWeight, string> = {
   bold: 'tw:font-bold',
 };
 
+// Established idiom already in use across core components (see tree.tsx,
+// pagination.tsx, empty-placeholder, form-field) and the existing per-site
+// `className="tw:text-tertiary"` workaround this prop replaces.
+const colorClasses: Record<TypographyColor, string> = {
+  secondary: 'tw:text-tertiary',
+  success: 'tw:text-success-primary',
+  warning: 'tw:text-warning-primary',
+  danger: 'tw:text-error-primary',
+};
+
 export const Typography = (props: TypographyProps) => {
   const {
     as: Component = 'span',
@@ -100,13 +129,16 @@ export const Typography = (props: TypographyProps) => {
     children,
     size,
     weight,
+    color,
     ellipsis,
+    tooltip,
     style,
     ...otherProps
   } = props;
 
   const sizeClass = size ? sizeClasses[size] : undefined;
   const weightClass = weight ? weightClasses[weight] : undefined;
+  const colorClass = color ? colorClasses[color] : undefined;
 
   const ellipsisConfig = typeof ellipsis === 'object' ? ellipsis : undefined;
   const isEllipsis = !!ellipsis;
@@ -124,42 +156,53 @@ export const Typography = (props: TypographyProps) => {
 
   const ellipsisClassName = isEllipsis ? getEllipsisClassName() : undefined;
 
+  // `cx` (twMerge) resolves conflicting classes in favor of whichever is
+  // passed last, so `colorClass` is placed before `className` here: an
+  // explicit consumer `className` text-color utility still wins over the
+  // `color` prop, matching how `className` already overrides `sizeClass`/
+  // `weightClass` above.
   const innerClassName = cx(
     sizeClass,
     weightClass,
+    colorClass,
     className,
     ellipsisClassName
   );
 
-  if (ellipsisTooltip) {
-    return (
-      <Tooltip title={ellipsisTooltip}>
-        <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
-          <div
-            className={cx(
-              'prose',
-              quoteStyles[quoteVariant],
-              ellipsisClassName
-            )}>
-            <Component {...otherProps} className={innerClassName} style={style}>
-              {children}
-            </Component>
-          </div>
-        </TooltipTrigger>
-      </Tooltip>
-    );
-  }
-
-  return (
+  const content = (
     <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
       <Component {...otherProps} className={innerClassName} style={style}>
         {children}
       </Component>
     </div>
   );
+
+  if (ellipsisTooltip) {
+    return (
+      <Tooltip
+        title={ellipsisTooltip}
+        triggerClassName="tw:block tw:w-full tw:min-w-0"
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
+  }
+
+  if (tooltip) {
+    return (
+      <Tooltip
+        title={tooltip}
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
+  }
+
+  return content;
 };
 
 export type {
+  TypographyColor,
   TypographyEllipsis,
   TypographyProps,
   TypographyQuoteVariant,

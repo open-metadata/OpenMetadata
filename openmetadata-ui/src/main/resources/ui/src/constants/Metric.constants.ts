@@ -19,8 +19,12 @@ import {
   MetricType,
   State,
   TagSource,
+  Type,
   UnitOfMeasurement,
 } from '../generated/entity/data/metric';
+
+const CONVERSION_RATE = 'Conversion Rate';
+const GROSS_PROFIT_MARGIN = 'Gross Profit Margin';
 
 export const METRIC_DUMMY_DATA: Metric = {
   id: '60c367be-a3d0-492a-b7be-8e38c970e0a7',
@@ -35,21 +39,43 @@ export const METRIC_DUMMY_DATA: Metric = {
   metricType: MetricType.Percentage,
   unitOfMeasurement: UnitOfMeasurement.Percentage,
   granularity: MetricGranularity.Year,
+  dimensions: [
+    {
+      name: 'order_date',
+      type: Type.Time,
+      expression: "DATE_TRUNC('day', o.created_at)",
+      description: 'Day the order was placed.',
+    },
+    {
+      name: 'region',
+      type: Type.Categorical,
+      expression: 'c.region',
+      description: 'Customer billing region.',
+    },
+  ],
+  measures: [
+    {
+      name: 'engagements',
+      aggregation: 'SUM',
+      expression: 'likes + comments + shares',
+      description: 'Total interactions across all engagement types.',
+    },
+  ],
   relatedMetrics: [
     {
       id: 'aa80b81d-c033-4cb4-b00c-3adbf6ec5cd5',
       type: 'metric',
-      name: 'Conversion Rate',
-      fullyQualifiedName: 'Conversion Rate',
-      displayName: 'Conversion Rate',
+      name: CONVERSION_RATE,
+      fullyQualifiedName: CONVERSION_RATE,
+      displayName: CONVERSION_RATE,
       deleted: false,
     },
     {
       id: '0b50f3d1-d906-4027-b687-f533b19aadce',
       type: 'metric',
-      name: 'Gross Profit Margin',
-      fullyQualifiedName: 'Gross Profit Margin',
-      displayName: 'Gross Profit Margin',
+      name: GROSS_PROFIT_MARGIN,
+      fullyQualifiedName: GROSS_PROFIT_MARGIN,
+      displayName: GROSS_PROFIT_MARGIN,
       deleted: false,
     },
   ],

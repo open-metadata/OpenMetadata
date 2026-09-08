@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -28,12 +29,17 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import {
+  CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -159,6 +165,12 @@ const ContextCenterArchivePage: FC = () => {
     async (item: ArchiveItem) => {
       try {
         await restoreDriveFile(item.id);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+        });
         showSuccessToast(
           t('message.entity-restored-success', { entity: item.name })
         );
@@ -186,6 +198,9 @@ const ContextCenterArchivePage: FC = () => {
     try {
       setIsDeleting(true);
       await deleteDriveFile(itemToDelete.id, true);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
@@ -206,6 +221,7 @@ const ContextCenterArchivePage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
+      <DocumentTitle title={t('label.archive')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           breadcrumbs={[
@@ -219,7 +235,7 @@ const ContextCenterArchivePage: FC = () => {
         />
       </div>
       <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:px-5 tw:pb-5">
-        {!isLoading && (hasEverHadItems || items.length > 0) && (
+        {(hasEverHadItems || items.length > 0) && (
           <div className="tw:pb-5">
             <Tabs
               className="tw:w-max"

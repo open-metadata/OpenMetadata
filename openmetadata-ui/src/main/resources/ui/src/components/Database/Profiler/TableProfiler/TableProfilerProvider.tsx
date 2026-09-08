@@ -248,10 +248,12 @@ export const TableProfilerProvider = ({
     // we are decoding FQN below to avoid double encoding in the API function
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(datasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
-      });
+      const [profiler, customMetricResponse] = await Promise.all([
+        getLatestTableProfileByFqn(datasetFQN),
+        getTableDetailsByFQN(datasetFQN, {
+          fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
+        }),
+      ]);
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);
@@ -271,6 +273,7 @@ export const TableProfilerProvider = ({
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
           TabSpecificField.INCIDENT_ID,
+          TabSpecificField.INCIDENT_STATUS,
         ],
 
         entityLink: generateEntityLink(datasetFQN ?? ''),
@@ -289,10 +292,9 @@ export const TableProfilerProvider = ({
   };
 
   useEffect(() => {
+    const isProfilerFetchable = !isTableDeleted && datasetFQN && !isTourOpen;
     const fetchProfiler =
-      !isTableDeleted &&
-      datasetFQN &&
-      !isTourOpen &&
+      isProfilerFetchable &&
       [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
         activeTab
       ) &&

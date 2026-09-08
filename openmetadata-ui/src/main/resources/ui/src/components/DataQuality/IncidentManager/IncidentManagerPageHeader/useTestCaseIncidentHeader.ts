@@ -105,6 +105,8 @@ export const useTestCaseIncidentHeader = ({
     setTestCase,
   } = useTestCaseStore();
 
+  const isDeleted = Boolean(testCaseData?.deleted);
+
   const { dimensionKey } = useRequiredParams<{
     fqn: string;
     dimensionKey?: string;
@@ -143,7 +145,7 @@ export const useTestCaseIncidentHeader = ({
   );
 
   const handleSeverityUpdate = async (severity?: Severities) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -167,7 +169,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -215,18 +217,17 @@ export const useTestCaseIncidentHeader = ({
     try {
       const { data } = await getListTestCaseIncidentByStateId(id);
 
-      setTestCaseStatusData(first(data));
+      return first(data);
     } catch {
-      setTestCaseStatusData(undefined);
+      return undefined;
     }
   };
 
   const fetchIncidentTask = async (stateId: string) => {
     try {
-      const task = await getIncidentTaskByStateId(stateId);
-      setIncidentTask(task);
+      return await getIncidentTaskByStateId(stateId);
     } catch {
-      setIncidentTask(null);
+      return null;
     }
   };
 
@@ -248,21 +249,56 @@ export const useTestCaseIncidentHeader = ({
   }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
 
   useEffect(() => {
-    if (testCaseData?.incidentId) {
-      setIsLoading(true);
-      Promise.allSettled([
-        fetchTestCaseResolution(testCaseData.incidentId),
-        fetchIncidentTask(testCaseData.incidentId),
-      ]).finally(() => setIsLoading(false));
-    } else {
+    const inlineStatus = testCaseData?.incidentStatus;
+    const resolvedStatus =
+      inlineStatus?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Resolved
+        ? inlineStatus
+        : undefined;
+    const incidentId = testCaseData?.incidentId;
+    const stateId = incidentId ?? resolvedStatus?.stateId;
+
+    if (!stateId) {
+      setTestCaseStatusData(undefined);
+      setIncidentTask(null);
       setIsLoading(false);
+
+      return;
     }
-  }, [testCaseData?.incidentId]);
+
+    // Guard against a stale response landing after the test case changed:
+    // both fetches below resolve asynchronously, so the cleanup flips `active`
+    // and the late writer is dropped instead of showing the prior incident.
+    let active = true;
+    setIsLoading(true);
+
+    Promise.all([
+      incidentId
+        ? fetchTestCaseResolution(incidentId)
+        : Promise.resolve(resolvedStatus),
+      fetchIncidentTask(stateId),
+    ])
+      .then(([status, task]) => {
+        if (active) {
+          setTestCaseStatusData(status);
+          setIncidentTask(task);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [testCaseData?.incidentId, testCaseData?.incidentStatus]);
 
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]
   ) => {
-    if (!testCaseData) {
+    if (!testCaseData || isDeleted) {
       return;
     }
 
@@ -285,7 +321,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return isVersionPage
+    return isVersionPage || isDeleted
       ? {
           hasEditStatusPermission: false,
           hasEditOwnerPermission: false,
@@ -304,7 +340,7 @@ export const useTestCaseIncidentHeader = ({
               Operation.EditOwners
             ),
         };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+  }, [testCasePermission, isVersionPage, isDeleted]);
 
   const taskLinkInfo = useMemo(
     () =>
@@ -334,7 +370,7 @@ export const useTestCaseIncidentHeader = ({
     hasEditStatusPermission,
     hasEditOwnerPermission,
     hasEditDomainPermission:
-      !isVersionPage && Boolean(testCasePermission?.EditAll),
+      !isVersionPage && !isDeleted && Boolean(testCasePermission?.EditAll),
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

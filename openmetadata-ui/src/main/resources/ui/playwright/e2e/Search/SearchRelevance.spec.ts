@@ -571,6 +571,38 @@ test.describe(
       );
     });
 
+    test('shows how tier and usage signals moved an exact table match', async ({
+      page,
+    }) => {
+      // Elasticsearch renders the function_score clause as a sibling of the lexical explain tree,
+      // so tier, status, usage and vote boosts never appeared in the Reason list and the panel
+      // could only claim in prose that they had been applied. Every document carries at least the
+      // baseline weight, so this holds whichever table ranks first — no dependency on the fixture
+      // having a tier.
+      await searchForExactTableWithRankingDetails(page);
+
+      const exactTableCard = page.getByTestId(
+        `table-data-card_${EXACT_TABLE_FQN}`
+      );
+      const signalBoosts = exactTableCard.getByTestId('ranking-signal-boosts');
+
+      await expect(signalBoosts).toBeVisible();
+      await expect(
+        signalBoosts.getByTestId('ranking-signal-contributor').first()
+      ).toBeVisible();
+      // Each contributor is a signed contribution against a named signal.
+      await expect(
+        signalBoosts.getByTestId('ranking-signal-contributor').first()
+      ).toContainText(/\+\d/);
+      await expect(
+        exactTableCard.getByTestId('ranking-signal-total')
+      ).toContainText(/\+\d/);
+      // The split is what tells an admin whether a result won on text or on signals.
+      await expect(
+        exactTableCard.getByTestId('ranking-score-breakdown')
+      ).toBeVisible();
+    });
+
     test('shows configurable ranking stages in table search settings', async ({
       page,
     }) => {
@@ -585,6 +617,17 @@ test.describe(
       );
       await expect(page.getByTestId('ranking-signals')).toContainText(
         /Tier|usage|votes/i
+      );
+
+      // The prefix stage gives a partially typed name its own band between phrase and close name,
+      // and is what lets a query shorter than the n-gram minimum match at all. Asserted here rather
+      // than in its own test so the settings page is only loaded once.
+      await expect(page.getByTestId('ranking-stage-prefixName')).toContainText(
+        'Prefix Name'
+      );
+      // The match type is what distinguishes this stage from the other name stages.
+      await expect(page.getByTestId('ranking-stage-prefixName')).toContainText(
+        'Prefix (2<70%)'
       );
     });
 

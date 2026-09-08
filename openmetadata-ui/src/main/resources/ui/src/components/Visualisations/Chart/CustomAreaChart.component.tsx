@@ -24,6 +24,38 @@ import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { CustomAreaChartProps } from './Chart.interface';
 import './chart.less';
 
+interface CustomTooltipProps extends TooltipProps<string, number | string> {
+  valueFormatter?: CustomAreaChartProps['valueFormatter'];
+}
+
+const CustomTooltip = ({
+  active,
+  payload = [],
+  valueFormatter,
+}: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const payloadData = payload[0].payload;
+
+    return (
+      <Card className="custom-tooltip-area-chart">
+        <div className="flex-center gap-2">
+          <Typography.Text className="font-medium text-md">
+            {valueFormatter
+              ? valueFormatter(payloadData['count'])
+              : payloadData['count']}
+          </Typography.Text>
+          <Divider type="vertical" />
+          <Typography.Text className="text-xs">
+            {formatDate(payloadData.timestamp)}
+          </Typography.Text>
+        </div>
+      </Card>
+    );
+  }
+
+  return null;
+};
+
 const CustomAreaChart = ({
   data,
   name,
@@ -31,31 +63,6 @@ const CustomAreaChart = ({
   colorScheme,
   valueFormatter,
 }: CustomAreaChartProps) => {
-  const CustomTooltip = (props: TooltipProps<string, number | string>) => {
-    const { active, payload = [] } = props;
-
-    if (active && payload && payload.length) {
-      const payloadData = payload[0].payload;
-
-      return (
-        <Card className="custom-tooltip-area-chart">
-          <div className="flex-center gap-2">
-            <Typography.Text className="font-medium text-md">
-              {valueFormatter
-                ? valueFormatter(payloadData['count'])
-                : payloadData['count']}
-            </Typography.Text>
-            <Divider type="vertical" />
-            <Typography.Text className="text-xs">
-              {formatDate(payloadData.timestamp)}
-            </Typography.Text>
-          </div>
-        </Card>
-      );
-    }
-
-    return null;
-  };
   const gradientId = `${name}-splitColor`;
 
   const gradientArea = useMemo(() => {
@@ -88,7 +95,7 @@ const CustomAreaChart = ({
           left: 0,
           bottom: 5,
         }}>
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip valueFormatter={valueFormatter} />} />
 
         {gradientArea}
         <Area

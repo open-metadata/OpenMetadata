@@ -12,13 +12,20 @@
  */
 
 import { FormInstance } from 'antd';
+import { RefObject } from 'react';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
   GlossaryTerm,
   TagLabel,
   TermReference,
 } from '../../../generated/entity/data/glossaryTerm';
+import {
+  CustomProperty,
+  EntityReference as GlossaryTermEntityReference,
+} from '../../../generated/entity/type';
+import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { EntityReference } from '../../../generated/type/entityLineage';
+import { GlossaryTermIntakeFieldsHandle } from './GlossaryTermIntakeFields.component';
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
@@ -28,10 +35,24 @@ export interface AddGlossaryTermFormProps {
   formRef: FormInstance<CreateGlossaryTerm>;
 }
 
+export interface OwnersBadgeProps {
+  owners: GlossaryTermEntityReference[];
+  testId: string;
+}
+
+export interface IntakeFieldsSectionProps {
+  editMode: boolean;
+  customPropertiesLoaded: boolean;
+  extensionFormFields: IntakeFormField[];
+  customProperties: CustomProperty[];
+  intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
+}
+
 export interface GlossaryTermForm {
   name: string;
   displayName: string;
   description: string;
+  extension?: Record<string, unknown>;
   reviewers: EntityReference[];
   relatedTerms: string[] | undefined;
   references: TermReference[] | undefined;

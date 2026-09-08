@@ -152,6 +152,11 @@ server:
 # Set LOG_FORMAT=json for structured logs. The default text format preserves legacy output.
 logging:
   level: ${LOG_LEVEL:-INFO}
+  loggers:
+    # ROOT at DEBUG makes Jetty's HttpParser log every header verbatim, including Authorization
+    # bearer tokens and OM_SESSION cookies. Pin it so LOG_LEVEL=DEBUG stays safe to share.
+    org.eclipse.jetty:
+      level: ${JETTY_LOG_LEVEL:-INFO}
   appenders:
     - type: console
       threshold: INFO
@@ -181,18 +186,19 @@ database:
   checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Disable for performance
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-5 minute}
+  queryTimeoutSeconds: ${DB_QUERY_TIMEOUT_SECONDS:-300}
 
 
   # JDBC Driver Properties - Critical for Performance
   # These work across both PostgreSQL and MySQL drivers
   properties:
     # HikariCP connection pool settings
-    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-300000}  # 300 seconds
+    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30000}  # 30 seconds
     idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes
     maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
-    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
+    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-60000}  # 1 minute
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
-    validationTimeout: ${DB_VALIDATION_TIMEOUT:-300000}  # 300 seconds
+    validationTimeout: ${DB_VALIDATION_TIMEOUT:-5000}  # 5 seconds
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
@@ -201,9 +207,9 @@ database:
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
-    loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
-    postgresqlConnectTimeout: ${DB_POSTGRESQL_CONNECT_TIMEOUT:-60}  # Connection timeout in seconds
-    postgresqlSocketTimeout: ${DB_POSTGRESQL_SOCKET_TIMEOUT:-30000}  # Socket timeout in seconds (0 = infinite)
+    loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-30}  # Login timeout in seconds
+    postgresqlConnectTimeout: ${DB_POSTGRESQL_CONNECT_TIMEOUT:-30}  # Connection timeout in seconds
+    postgresqlSocketTimeout: ${DB_POSTGRESQL_SOCKET_TIMEOUT:-300}  # Socket timeout in seconds
 
     # Aurora PostgreSQL specific optimizations
     loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
@@ -225,7 +231,7 @@ database:
     tcpKeepAlive: ${DB_MYSQL_TCP_KEEP_ALIVE:-true}
     tcpNoDelay: ${DB_MYSQL_TCP_NO_DELAY:-true}
     mysqlConnectTimeout: ${DB_MYSQL_CONNECT_TIMEOUT:-60000}  # Connection timeout in milliseconds
-    mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-30000000}  # Socket timeout in milliseconds (0 = infinite)
+    mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-300000}  # Socket timeout in milliseconds
 
 objectStorage:
   enabled: false
@@ -372,11 +378,12 @@ elasticsearch:
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-10}  # Increased from 5s for Docker networks
+  connectionRequestTimeoutSecs: ${ELASTICSEARCH_CONNECTION_REQUEST_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-120}  # Increased from 60s for slow queries
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   # Connection pool settings for better load balancing and performance
   maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-30}  # Total connections across all hosts
-  maxConnPerRoute: ${ELASTICSEARCH_MAX_CONN_PER_ROUTE:-10}  # Max connections per host
+  maxConnPerRoute: ${ELASTICSEARCH_MAX_CONN_PER_ROUTE:-10}  # Keep below total for multi-host isolation
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
@@ -393,9 +400,7 @@ elasticsearch:
     sessionToken: ${AWS_SESSION_TOKEN:-""}
     serviceName: ${SEARCH_AWS_SERVICE_NAME:-"es"}  # Use "es" for OpenSearch, "aoss" for OpenSearch Serverless
   naturalLanguageSearch:
-    enabled: ${NATURAL_LANGUAGE_SEARCH_ENABLED:-false}
     embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock}
-    providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
       awsConfig:
         enabled: ${BEDROCK_AWS_IAM_AUTH_ENABLED:-false}
@@ -552,6 +557,11 @@ bulkOperation:
   # Timeout in seconds for entire bulk operation
   timeoutSeconds: ${BULK_OPERATION_TIMEOUT_SECONDS:-300}
 
+asyncOperations:
+  maxConcurrentDbTasks: ${ASYNC_MAX_CONCURRENT_DB_TASKS:-25}
+  maxConcurrentRdfWrites: ${ASYNC_MAX_CONCURRENT_RDF_WRITES:-8}
+  dataInsightsMaxConcurrentDbTasks: ${DATA_INSIGHTS_MAX_CONCURRENT_DB_TASKS:-16}
+
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
@@ -591,6 +601,7 @@ rdf:
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
   remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  maxInMemoryInferenceTriples: ${RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES:-100000}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}

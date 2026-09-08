@@ -14,6 +14,7 @@ import {
   Box,
   EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
@@ -26,7 +27,10 @@ import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
@@ -86,18 +90,35 @@ export const TestSuitesTable = ({
 
   const renderNameCell = (record: TestSuite) => {
     if (record.basic) {
+      const tableName =
+        record.basicEntityReference?.fullyQualifiedName ??
+        record.basicEntityReference?.name ??
+        '';
+      const tableDetailsPath = getEntityDetailsPath(
+        EntityType.TABLE,
+        record.basicEntityReference?.fullyQualifiedName ?? '',
+        EntityTabs.PROFILER,
+        ProfilerTabPath.DATA_QUALITY
+      );
+
       return (
         <Link
           className="break-word"
           data-testid={record.name}
-          to={getEntityDetailsPath(
-            EntityType.TABLE,
-            record.basicEntityReference?.fullyQualifiedName ?? '',
-            EntityTabs.PROFILER,
-            ProfilerTabPath.DATA_QUALITY
-          )}>
-          {record.basicEntityReference?.fullyQualifiedName ??
-            record.basicEntityReference?.name}
+          state={{
+            breadcrumbData: [
+              {
+                name: t('label.test-suite-plural'),
+                url: observabilityRouterClassBase.getDataQualityPagePath(
+                  DataQualityPageTabs.TEST_SUITES,
+                  DataQualitySubTabs.TABLE_SUITES
+                ),
+              },
+              { name: tableName, url: tableDetailsPath },
+            ],
+          }}
+          to={tableDetailsPath}>
+          {tableName}
         </Link>
       );
     }
@@ -199,7 +220,28 @@ export const TestSuitesTable = ({
         </Table.Header>
         <Table.Body
           items={isLoading ? [] : data}
-          renderEmptyState={() => (isLoading ? <></> : noDataPlaceholder)}>
+          renderEmptyState={() =>
+            isLoading ? (
+              // Keep the table footprint stable while a page or cached query
+              // changes, rather than flashing the true empty-state message.
+              <Box className="tw:p-4">
+                {Array.from(
+                  { length: 5 },
+                  (_, index) => `test-suite-skeleton-${index}`
+                ).map((skeletonKey) => (
+                  <Skeleton
+                    className="tw:mb-2"
+                    data-testid="test-suite-loading-row"
+                    height={40}
+                    key={skeletonKey}
+                    width="100%"
+                  />
+                ))}
+              </Box>
+            ) : (
+              noDataPlaceholder
+            )
+          }>
           {(record) => renderRow(record)}
         </Table.Body>
       </Table>

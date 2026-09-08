@@ -15,6 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { ForwardedRef } from 'react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ALL_SERVICES_CATEGORY } from '../../constants/Services.constant';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { getServiceByFQN, postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
@@ -26,6 +27,7 @@ const mockParam = {
 };
 
 const mockNavigate = jest.fn();
+let mockLocationState: unknown = null;
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
@@ -38,9 +40,10 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
   getExtraInfo: jest.fn(),
   getServiceConfigData: jest.fn(),
   getProperties: jest.fn(),
-  getSupportedServiceFromList: jest
-    .fn()
-    .mockReturnValue({ databaseServices: ['mysql'] }),
+  getSupportedServiceFromList: jest.fn().mockReturnValue({
+    databaseServices: ['mysql'],
+    dashboardServices: ['Looker'],
+  }),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -49,6 +52,10 @@ jest.mock('../../hoc/withPageLayout', () => ({
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
+  useLocation: () =>
+    mockLocationState === null
+      ? jest.requireActual('react-router-dom').useLocation()
+      : { pathname: '/add-service', state: mockLocationState },
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParam),
 }));
@@ -103,10 +110,23 @@ jest.mock(
     jest
       .fn()
       .mockImplementation(
-        ({ handleServiceTypeClick, serviceCategoryHandler }) => (
+        ({
+          handleServiceTypeClick,
+          serviceCategory,
+          serviceCategoryHandler,
+        }) => (
           <div>
-            <button onClick={() => handleServiceTypeClick('mysql')}>
+            {/* The real step always reports which category the clicked card belongs to. */}
+            <button
+              onClick={() => handleServiceTypeClick('mysql', serviceCategory)}>
               Select MySQL
+            </button>
+            {/* A card from another category, only reachable in the flattened `all` grid. */}
+            <button
+              onClick={() =>
+                handleServiceTypeClick('Looker', 'dashboardServices')
+              }>
+              Select Cross-Category Looker
             </button>
             <button onClick={() => serviceCategoryHandler('messagingServices')}>
               Change Category
@@ -130,6 +150,7 @@ jest.mock(
 
     return React.forwardRef(function MockConnectionConfigForm(
       {
+        isAdditionalValidationPending,
         onSave,
         onCancel,
         onValidateAdditionalRequiredFields,
@@ -144,6 +165,7 @@ jest.mock(
       }));
 
       mockConnectionConfigFormProps({
+        isAdditionalValidationPending,
         onSave,
         onCancel,
         onValidateAdditionalRequiredFields,
@@ -228,6 +250,22 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
   getEntityTypeFromServiceCategory: jest.fn(),
   getServiceType: jest.fn(),
+  getValidatedServiceType: (state: unknown, serviceCategory: string) => {
+    const requested = (state as { serviceType?: string } | null)?.serviceType;
+    if (!requested) {
+      return '';
+    }
+    // requireMock, not requireActual: the connector list must come from this suite's own
+    // ServiceUtilClassBase stub so deep-link cases resolve against the same fixture data.
+    const serviceUtilMock = jest.requireMock(
+      '../../utils/ServiceUtilClassBase'
+    );
+    const supported = ((
+      serviceUtilMock.default ?? serviceUtilMock
+    ).getSupportedServiceFromList?.() ?? {})[serviceCategory];
+
+    return (supported ?? []).includes(requested) ? requested : '';
+  },
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -237,7 +275,9 @@ jest.mock('../../utils/ToastUtils', () => ({
 jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
   __esModule: true,
   default: {
-    getAddServicePath: jest.fn().mockReturnValue('/add-service'),
+    getAddServicePath: jest
+      .fn()
+      .mockImplementation((category) => `/connections/add-service/${category}`),
     getSettingsServicesPath: jest.fn().mockReturnValue('/services'),
     getServiceDetailsPath: jest.fn().mockReturnValue('/service/details/path'),
   },
@@ -248,6 +288,7 @@ const mockProps = {
 };
 
 type MockConnectionConfigFormProps = {
+  isAdditionalValidationPending?: boolean;
   onCancel?: () => void;
   onSave: (event: { formData: { host: string } }) => void;
   onValidateAdditionalRequiredFields?: () => boolean;
@@ -270,6 +311,10 @@ type MockFiltersConfigFormHandle = {
 };
 
 describe('EmbeddedAddServicePage', () => {
+  beforeEach(() => {
+    mockLocationState = null;
+  });
+
   beforeEach(() => {
     (getServiceByFQN as jest.Mock).mockRejectedValue({
       response: {
@@ -327,7 +372,9 @@ describe('EmbeddedAddServicePage', () => {
       fireEvent.click(screen.getByText('Change Category'));
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/add-service');
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/connections/add-service/messagingServices'
+    );
   });
 
   it('advances through the steps to create a service', async () => {
@@ -505,6 +552,26 @@ describe('EmbeddedAddServicePage', () => {
     expect(typeof lastProps.onValidateAdditionalRequiredFields).toBe(
       'function'
     );
+  });
+
+  it('passes pending service name validation to ConnectionConfigForm', async () => {
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
+
+    expect(lastProps.isAdditionalValidationPending).toBe(true);
   });
 
   it('focuses the service name input when additional validation fails on empty name', async () => {
@@ -793,6 +860,91 @@ describe('EmbeddedAddServicePage', () => {
       expect(screen.getByText('Select MySQL')).toBeInTheDocument();
       expect(screen.getByTestId('header')).toHaveTextContent(
         'label.add-new-entity'
+      );
+    });
+  });
+
+  describe('category-agnostic all-services entry point', () => {
+    afterEach(() => {
+      mockParam.serviceCategory = 'databaseServices';
+    });
+
+    it('renders the connector grid for the all sentinel without throwing', async () => {
+      mockParam.serviceCategory = ALL_SERVICES_CATEGORY;
+
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'label.add-new-entity'
+      );
+    });
+
+    it('continues in the clicked connector own category when it differs from the URL', async () => {
+      mockParam.serviceCategory = ALL_SERVICES_CATEGORY;
+
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Select Cross-Category Looker'));
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/connections/add-service/dashboardServices',
+        { state: { serviceType: 'Looker' } }
+      );
+    });
+
+    it('advances to the Connect step when the same route re-renders with a new category', async () => {
+      // Reproduces the reported bug: /all -> /dashboardServices is a re-render, not a remount, so
+      // mount-time initial state cannot be what puts the user on the Connect step.
+      mockParam.serviceCategory = ALL_SERVICES_CATEGORY;
+
+      let rerender: ((ui: React.ReactElement) => void) | undefined;
+      await act(async () => {
+        ({ rerender } = render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: MemoryRouter,
+        }));
+      });
+
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+
+      // The navigation the flattened grid performs: new category param, connector in router state.
+      mockParam.serviceCategory = 'dashboardServices';
+      mockLocationState = { serviceType: 'Looker' };
+
+      await act(async () => {
+        rerender?.(<EmbeddedAddServicePage {...mockProps} />);
+      });
+
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'Looker label.service'
+      );
+      expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+    });
+
+    it('advances in place when the clicked connector matches the URL category', async () => {
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Select MySQL'));
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'mysql label.service'
       );
     });
   });

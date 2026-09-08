@@ -14,6 +14,11 @@
  * Preview Search Results
  */
 export interface PreviewSearchRequest {
+    /**
+     * Filter documents by deleted param. Defaults to false so the preview mirrors what Explore
+     * shows.
+     */
+    deleted?:     boolean;
     explain?:     boolean;
     fetchSource?: boolean;
     /**
@@ -99,6 +104,13 @@ export interface AllowedFieldField {
      * Detailed explanation of what this field represents and how it affects search behavior
      */
     description: string;
+    /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
     /**
      * Field name that can be used in searchFields
      */
@@ -396,6 +408,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }

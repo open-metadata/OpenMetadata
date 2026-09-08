@@ -96,6 +96,11 @@ export interface DataContract {
      */
     name: string;
     /**
+     * ODCS schema element attributes with no OpenMetadata equivalent, stored during import for
+     * round-trip compatibility with ODCS export.
+     */
+    odcsElementExtensions?: OdcsElementExtension[];
+    /**
      * ODCS quality rules stored during import for round-trip compatibility with ODCS export.
      */
     odcsQualityRules?: OdcsQualityRule[];
@@ -346,6 +351,49 @@ export enum ContractExecutionStatus {
 }
 
 /**
+ * ODCS attributes of a schema element that OpenMetadata does not model on its own Column
+ * type. Anchored by element name so they can be reattached to the right element on export.
+ * Unlike the other definitions here, which stay open so that vendor-specific keys in an
+ * uploaded ODCS document survive the round trip, this one is closed: it is never
+ * deserialised from a raw ODCS document, and the OpenMetadata envelopes that do carry it
+ * (createDataContract, dataContract) are themselves closed.
+ */
+export interface OdcsElementExtension {
+    /**
+     * External documentation links declared on the element.
+     */
+    authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
+    /**
+     * Name of the schema element these attributes belong to. Empty when the attributes belong
+     * to the contract itself.
+     */
+    element?: string;
+    /**
+     * Source objects the element is derived from.
+     */
+    transformSourceObjects?: string[];
+}
+
+/**
+ * External reference link.
+ */
+export interface OdcsAuthoritativeDefinition {
+    /**
+     * Name of the authoritative definition.
+     */
+    name?: string;
+    /**
+     * Type of the reference (e.g., documentation, specification).
+     */
+    type?: string;
+    /**
+     * URL to the authoritative definition.
+     */
+    url?: string;
+    [property: string]: any;
+}
+
+/**
  * Data quality rule definition.
  */
 export interface OdcsQualityRule {
@@ -457,25 +505,6 @@ export interface OdcsQualityRule {
      * Static value list.
      */
     validValues?: string[];
-    [property: string]: any;
-}
-
-/**
- * External reference link.
- */
-export interface OdcsAuthoritativeDefinition {
-    /**
-     * Name of the authoritative definition.
-     */
-    name?: string;
-    /**
-     * Type of the reference (e.g., documentation, specification).
-     */
-    type?: string;
-    /**
-     * URL to the authoritative definition.
-     */
-    url?: string;
     [property: string]: any;
 }
 
@@ -760,9 +789,6 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.

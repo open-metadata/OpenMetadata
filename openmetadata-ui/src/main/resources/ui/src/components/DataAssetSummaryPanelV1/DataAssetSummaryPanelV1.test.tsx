@@ -197,15 +197,19 @@ jest.mock('../../rest/dataProductAPI', () => ({
 
 // Mock child components
 jest.mock('../common/DescriptionSection/DescriptionSection', () => {
-  return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
-    <div data-testid="description-section">
-      <button
-        data-testid="update-description-btn"
-        onClick={() => onDescriptionUpdate?.('New description')}>
-        Update Description
-      </button>
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ hasPermission, onDescriptionUpdate }) => (
+      <div data-testid="description-section">
+        {hasPermission && (
+          <button
+            data-testid="update-description-btn"
+            onClick={() => onDescriptionUpdate?.('New description')}>
+            Update Description
+          </button>
+        )}
+      </div>
+    ));
 });
 
 jest.mock('../common/OverviewSection/OverviewSection', () => {
@@ -427,7 +431,11 @@ describe('DataAssetSummaryPanelV1', () => {
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
     (getEntityOverview as jest.Mock).mockImplementation(
-      (_entityType: any, _dataAsset: any, additionalInfo: any) => [
+      (
+        _entityType: unknown,
+        _dataAsset: unknown,
+        additionalInfo: { incidentCount?: number }
+      ) => [
         { name: 'Type', value: 'Table', visible: ['explore'] },
         { name: 'Rows', value: 1000, visible: ['explore'] },
         { name: 'Columns', value: 15, visible: ['explore'] },
@@ -727,30 +735,40 @@ describe('DataAssetSummaryPanelV1', () => {
       });
     });
 
-    it('should throw error for unsupported entity type', async () => {
+    it('should not render summary sections for unknown entity types', async () => {
       const unsupportedProps = {
         ...defaultProps,
         entityType: 'UNSUPPORTED_TYPE' as EntityType,
       };
 
-      // Suppress console.error for this test
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-
       await act(async () => {
         render(<DataAssetSummaryPanelV1 {...unsupportedProps} />);
       });
 
-      // For unsupported entity types, the component should still render the skeleton
       expect(screen.getByTestId('summary-panel-skeleton')).toBeInTheDocument();
-
-      // The description section should not render for unsupported entity types
       expect(
         screen.queryByTestId('update-description-btn')
       ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('owners-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tags-section')).not.toBeInTheDocument();
+    });
 
-      consoleSpy.mockRestore();
+    it('should render mapped extension sections without edit actions', async () => {
+      const extensionEntityProps = {
+        ...defaultProps,
+        entityType: 'aiDashboard' as EntityType,
+        summaryEntityType: EntityType.ALL,
+      };
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...extensionEntityProps} />);
+      });
+
+      expect(
+        screen.queryByTestId('update-description-btn')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('owners-section')).toBeInTheDocument();
+      expect(screen.getByTestId('tags-section')).toBeInTheDocument();
     });
   });
 

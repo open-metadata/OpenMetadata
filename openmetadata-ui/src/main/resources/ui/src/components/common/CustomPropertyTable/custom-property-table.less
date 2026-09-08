@@ -14,21 +14,21 @@
 @import (reference) '../../../styles/variables.less';
 
 .custom-property-right-panel-container {
-  background: #f8f8f8;
-  padding: 14px;
-  border-radius: 10px;
+  background: var(--om-legacy-color-f8f8f8);
+  padding: var(--om-space-14);
+  border-radius: var(--om-radius-10);
 
   .custom-property-right-panel-card {
-    background: #fff;
-    padding: 14px;
+    background: var(--om-color-white);
+    padding: var(--om-space-14);
   }
   .custom-property-right-panel-card.top-border-radius {
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    border-top-left-radius: var(--om-radius-10);
+    border-top-right-radius: var(--om-radius-10);
   }
   .custom-property-right-panel-card.bottom-border-radius {
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: var(--om-radius-10);
+    border-bottom-right-radius: var(--om-radius-10);
   }
 }
 

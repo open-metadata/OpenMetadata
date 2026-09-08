@@ -69,7 +69,7 @@ def _redshift_initialize(self, connection):
     PostgreSQL-specific queries that Redshift doesn't support
     (e.g., SHOW standard_conforming_strings).
     """
-    from sqlalchemy.engine.default import DefaultDialect  # noqa: PLC0415
+    from sqlalchemy.engine.default import DefaultDialect
 
     DefaultDialect.initialize(self, connection)
     self._backslash_escapes = False

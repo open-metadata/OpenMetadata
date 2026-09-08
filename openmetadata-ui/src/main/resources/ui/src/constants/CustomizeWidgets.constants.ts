@@ -117,7 +117,7 @@ export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
 
 export const KNOWLEDGE_ARTICLE_WIDGET = {
   fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-  name: i18n.t('label.knowledge-page-plural'),
+  name: i18n.t('label.article-plural'),
   data: {
     gridSizes: ['large'] as GridSizes[],
   },

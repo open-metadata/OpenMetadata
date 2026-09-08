@@ -16,10 +16,10 @@
   width: 350px !important;
   .ant-card-body {
     padding: 0;
-    padding-bottom: 16px;
+    padding-bottom: var(--om-space-16);
   }
   .tier-card-footer-action-buttons {
-    padding-right: 16px;
+    padding-right: var(--om-space-16);
   }
 }
 .edit-icon {
@@ -29,19 +29,19 @@
 .tier-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0px 14px;
+  gap: var(--om-space-10);
+  padding: 0 var(--om-space-14);
   border-bottom: 0.6px solid @grey-15;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
 
   .tier-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--om-space-8);
 
     .tier-title {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: var(--om-font-size-13);
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
     }
   }
@@ -58,7 +58,7 @@
           width: 20px;
           height: 20px;
           border-radius: 50%;
-          animation: spin 1s linear infinite;
+          animation: spin var(--om-duration-1000) linear infinite;
         }
       }
     }
@@ -67,17 +67,17 @@
       .tier-selector-display {
         align-content: center;
         min-height: 40px !important;
-        border-radius: 6px !important;
+        border-radius: var(--om-radius-md) !important;
         border: 1px solid @grey-22 !important;
         background-color: @white !important;
-        padding: 4px 2px !important;
+        padding: var(--om-space-4) var(--om-space-2) !important;
       }
     }
 
     .tier-display {
       .no-data-placeholder {
         color: @grey-500;
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
       }
     }
   }

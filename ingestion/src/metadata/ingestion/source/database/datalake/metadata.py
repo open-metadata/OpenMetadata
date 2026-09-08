@@ -15,8 +15,9 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 
 import json
 import traceback
+from collections.abc import Iterable
 from hashlib import md5
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -105,7 +106,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
@@ -159,33 +160,30 @@ class DatalakeSource(DatabaseServiceSource):
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
+
+        Errors are allowed to propagate so the topology producer wrapper
+        (`_run_node_producer`) records a clean StackTraceError. Do NOT yield an
+        Either(left=...) here: the framework treats each yielded item as a
+        schema-name string, and a yielded Either would surface downstream as a
+        masked ``TypeError: expected string or bytes-like object``.
         """
-        try:
-            for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                )
-
-                if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
-                ):
-                    self.status.filter(schema_fqn, "Bucket Filtered Out")
-                    continue
-
-                yield schema_name
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="Bucket",
-                    error=f"Unexpected exception to yield bucket: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
+        for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
             )
+
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
+            ):
+                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                continue
+
+            yield schema_name
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
@@ -209,7 +207,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[tuple[str, TableType, SupportedTypes, int | None]]:
         """
         Handle table and views.
 
@@ -250,7 +248,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+        table_name_and_type: tuple[str, TableType, SupportedTypes, int | None],
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
@@ -66,6 +67,7 @@ public class ColumnCustomPropertiesIT {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String TABLE_COLUMN = "tableColumn";
   private static final String DASHBOARD_DATA_MODEL_COLUMN = "dashboardDataModelColumn";
+  private static final String DEEP_EXTENSION_VALUE = "deep-inline-value";
 
   private static Type STRING_TYPE;
   private static Type INT_TYPE;
@@ -303,12 +305,41 @@ public class ColumnCustomPropertiesIT {
               .tables()
               .getByName(schema.getFullyQualifiedName() + "." + tableName, "columns,extension");
       assertNotNull(reloaded.getColumns());
-      Column idColumn = reloaded.getColumns().get(0);
+      Column idColumn = reloaded.getColumns().getFirst();
       assertNotNull(
           idColumn.getExtension(), "column extension lost after bulk PUT update of existing table");
       @SuppressWarnings("unchecked")
       Map<String, Object> ext = (Map<String, Object>) idColumn.getExtension();
       assertEquals("after-bulk-update", ext.get(propName));
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_deeplyNestedInlineExtensionPersists(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("deepInlineCreateProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("deepInlineCpTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(createDeeplyNestedColumn(propName)));
+
+      Table created = client.tables().create(request);
+      Table reloaded = client.tables().get(created.getId().toString(), "columns,extension");
+      assertFalse(nullOrEmpty(reloaded.getColumns()), "reloaded table must contain columns");
+      Column leaf = getDeepestColumn(reloaded.getColumns().getFirst());
+
+      assertNotNull(leaf.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> extension = (Map<String, Object>) leaf.getExtension();
+      assertEquals(DEEP_EXTENSION_VALUE, extension.get(propName));
     } finally {
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
     }
@@ -1325,6 +1356,33 @@ public class ColumnCustomPropertiesIT {
         .withColumns(List.of(idColumn, nameColumn))
         .withDescription("Test table for custom properties")
         .execute();
+  }
+
+  private Column createDeeplyNestedColumn(String propertyName) {
+    Column leaf =
+        new Column()
+            .withName("level4")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(64)
+            .withExtension(Map.of(propertyName, DEEP_EXTENSION_VALUE));
+    Column level3 = structColumn("level3", leaf);
+    Column level2 = structColumn("level2", level3);
+    return structColumn("level1", level2);
+  }
+
+  private Column structColumn(String name, Column child) {
+    return new Column()
+        .withName(name)
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(List.of(child));
+  }
+
+  private Column getDeepestColumn(Column column) {
+    Column deepest = column;
+    while (!nullOrEmpty(deepest.getChildren())) {
+      deepest = deepest.getChildren().getFirst();
+    }
+    return deepest;
   }
 
   private DashboardDataModel createTestDashboardDataModel(TestNamespace ns) {

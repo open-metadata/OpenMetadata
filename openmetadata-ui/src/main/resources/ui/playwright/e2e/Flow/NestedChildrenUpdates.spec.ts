@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { nestedChildrenTestData } from '../../constant/nestedColumnUpdates';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   assignTagToChildren,
@@ -28,6 +29,8 @@ for (const [
   { CreationClass, tabSelector, supportDisplayNameUpdate },
 ] of Object.entries(nestedChildrenTestData)) {
   test.describe(entityType, () => {
+    test.describe.configure({ mode: 'default' });
+
     const entity = new CreationClass();
 
     test.beforeAll(async ({ browser }) => {

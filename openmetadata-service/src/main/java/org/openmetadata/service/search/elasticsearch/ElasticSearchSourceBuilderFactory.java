@@ -39,7 +39,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -217,6 +216,11 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   public Query buildSearchQueryBuilderV2(String query, Map<String, Float> fields) {
+    return buildSearchQueryBuilderV2(query, fields, false);
+  }
+
+  public Query buildSearchQueryBuilderV2(
+      String query, Map<String, Float> fields, boolean freeText) {
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -227,16 +231,22 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
+    // fuzzy branch can throw on user input. Endpoints that document `q` as free text swap
+    // it for simple_query_string, whose parser discards malformed syntax instead of
+    // raising a query_shard_exception.
     Query fuzzyQuery =
-        ElasticQueryBuilder.queryStringQuery(
-            query,
-            fuzzyFields,
-            Operator.And,
-            "1",
-            10,
-            3,
-            DEFAULT_TIE_BREAKER,
-            TextQueryType.MostFields);
+        freeText
+            ? ElasticQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
+            : ElasticQueryBuilder.queryStringQuery(
+                query,
+                fuzzyFields,
+                Operator.And,
+                "1",
+                10,
+                3,
+                DEFAULT_TIE_BREAKER,
+                TextQueryType.MostFields);
 
     Query nonFuzzyQuery =
         ElasticQueryBuilder.multiMatchQuery(
@@ -323,14 +333,31 @@ public class ElasticSearchSourceBuilderFactory
       int size,
       boolean includeExplain,
       boolean includeAggregations) {
+    return getSearchSourceBuilderV2(
+        indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations, false);
+  }
+
+  public ElasticSearchRequestBuilder getSearchSourceBuilderV2(
+      String indexName,
+      String searchQuery,
+      int fromOffset,
+      int size,
+      boolean includeExplain,
+      boolean includeAggregations,
+      boolean freeText) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
-      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
+      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
     if (isColumnIndex(indexName)) {
-      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+      // Column docs carry fqnParts and structured search fields (the "tableColumn"
+      // AssetTypeConfiguration). Route through the data-asset builder so an FQN query
+      // matches precisely (operator AND over fqnParts) instead of OR-matching every
+      // column that merely shares a parent-name token.
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (isServiceIndex(indexName)) {
@@ -338,7 +365,7 @@ public class ElasticSearchSourceBuilderFactory
     }
 
     if (isDataQualityIndex(indexName)) {
-      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
+      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
     if (isDataAssetIndex(indexName)) {
@@ -364,8 +391,14 @@ public class ElasticSearchSourceBuilderFactory
 
   public ElasticSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
       String indexName, String query, int from, int size) {
+    return buildTimeSeriesSearchBuilderV2(indexName, query, from, size, false);
+  }
+
+  public ElasticSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean freeText) {
     return switch (indexName) {
-      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(
+          query, from, size, freeText);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
           query, from, size);
       case "raw_cost_analysis_report_data_index",
@@ -373,25 +406,6 @@ public class ElasticSearchSourceBuilderFactory
           query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
-  }
-
-  public ElasticSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    Query queryBuilder;
-    if (nullOrEmpty(query) || "*".equals(query.trim())) {
-      queryBuilder = Query.of(q -> q.matchAll(m -> m));
-    } else {
-      Map<String, Float> fields = ColumnSearchIndex.getFields();
-      queryBuilder =
-          ElasticQueryBuilder.multiMatchQuery(
-              query,
-              fields,
-              TextQueryType.BestFields,
-              Operator.Or,
-              String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
-    }
-    Highlight hb = buildHighlightsV2(List.of("name", "displayName", "description"));
-    return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {
@@ -464,25 +478,25 @@ public class ElasticSearchSourceBuilderFactory
     return searchRequestBuilder;
   }
 
-  public ElasticSearchRequestBuilder buildDataQualitySearchBuilderV2(
-      String indexName, String query, int from, int size) {
-    return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
-      default -> buildAggregateSearchBuilderV2(query, from, size);
-    };
+  public ElasticSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
+    return buildTestCaseSearchV2(query, from, size, false);
   }
 
-  public ElasticSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
+  public ElasticSearchRequestBuilder buildTestCaseSearchV2(
+      String query, int from, int size, boolean freeText) {
+    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields(), freeText);
     Highlight hb = buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildTestCaseResultSearchV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
+    return buildTestCaseResultSearchV2(query, from, size, false);
+  }
+
+  public ElasticSearchRequestBuilder buildTestCaseResultSearchV2(
+      String query, int from, int size, boolean freeText) {
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields(), freeText);
     Highlight hb = buildHighlightsV2(new ArrayList<>());
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
@@ -664,6 +678,7 @@ public class ElasticSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
+      case PREFIX -> buildPrefixRankingStageQueryV2(significantQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
           significantQuery, stage, assetConfig, getFuzziness(significantQuery));
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
@@ -698,6 +713,27 @@ public class ElasticSearchSourceBuilderFactory
     return ElasticQueryBuilder.constantScoreQuery(exactQuery.build(), weight);
   }
 
+  /**
+   * Prefix stage: {@code match_bool_prefix} treats the last query token as a prefix, so a
+   * partially typed name ranks in its own band above an incidental substring hit. It also covers
+   * queries shorter than {@code om_ngram}'s three-character minimum, which previously matched
+   * nothing at all.
+   */
+  private Query buildPrefixRankingStageQueryV2(String query, RankingStage stage) {
+    ElasticQueryBuilder.BoolQueryBuilder prefixQuery = ElasticQueryBuilder.boolQuery();
+    for (String field : stage.getFields()) {
+      prefixQuery.should(
+          ElasticQueryBuilder.matchBoolPrefixQuery(
+              field,
+              query,
+              SearchRankingHelper.minimumShouldMatch(stage),
+              rankingQueryName(stage, field)));
+    }
+    prefixQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.constantScoreQuery(
+        prefixQuery.build(), SearchRankingHelper.stageWeight(stage));
+  }
+
   private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
     ElasticQueryBuilder.BoolQueryBuilder phraseQuery = ElasticQueryBuilder.boolQuery();
     float weight = SearchRankingHelper.stageWeight(stage);
@@ -724,7 +760,7 @@ public class ElasticSearchSourceBuilderFactory
               fields,
               TextQueryType.BestFields,
               Operator.And,
-              String.valueOf(DEFAULT_TIE_BREAKER),
+              String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
               "0",
               null,
               null,
@@ -739,17 +775,22 @@ public class ElasticSearchSourceBuilderFactory
   private Query buildTextRankingStageQueryV2(
       String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
     Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
-    return ElasticQueryBuilder.multiMatchQuery(
-        query,
-        fields,
-        TextQueryType.BestFields,
-        Operator.Or,
-        String.valueOf(DEFAULT_TIE_BREAKER),
-        fuzziness,
-        SearchRankingHelper.minimumShouldMatch(stage),
-        SearchRankingHelper.stageWeight(stage),
-        rankingQueryName(stage, "text"),
-        SearchRankingHelper.stageSearchAnalyzer(stage));
+    Query textQuery =
+        ElasticQueryBuilder.multiMatchQuery(
+            query,
+            fields,
+            TextQueryType.BestFields,
+            Operator.Or,
+            String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
+            fuzziness,
+            SearchRankingHelper.minimumShouldMatch(stage),
+            null,
+            rankingQueryName(stage, "text"),
+            SearchRankingHelper.stageSearchAnalyzer(stage));
+    return ElasticQueryBuilder.scriptScoreQuery(
+        textQuery,
+        SearchRankingHelper.STAGE_SATURATION_SCRIPT,
+        SearchRankingHelper.stageSaturationParams(stage));
   }
 
   private String rankingQueryName(RankingStage stage, String field) {

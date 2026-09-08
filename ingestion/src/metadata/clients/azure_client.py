@@ -33,7 +33,7 @@ class AzureClient:
     def create_client(
         self,
     ):
-        from azure.identity import ClientSecretCredential, DefaultAzureCredential  # noqa: PLC0415
+        from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
         try:
             if (
@@ -55,7 +55,7 @@ class AzureClient:
             raise e  # noqa: TRY201
 
     def create_blob_client(self):
-        from azure.storage.blob import BlobServiceClient  # noqa: PLC0415
+        from azure.storage.blob import BlobServiceClient
 
         try:
             logger.info("Creating Blob Service Client")
@@ -70,7 +70,7 @@ class AzureClient:
             raise e  # noqa: TRY201
 
     def create_secret_client(self):
-        from azure.keyvault.secrets import SecretClient  # noqa: PLC0415
+        from azure.keyvault.secrets import SecretClient
 
         try:
             if self.credentials.vaultName:

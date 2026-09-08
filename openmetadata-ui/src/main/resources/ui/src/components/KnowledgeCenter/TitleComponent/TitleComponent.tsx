@@ -89,6 +89,7 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <textarea
+        aria-label={i18n.t('label.title')}
         className="knowledge-page-title-input"
         data-testid="entity-header-display-name"
         id="title-input"

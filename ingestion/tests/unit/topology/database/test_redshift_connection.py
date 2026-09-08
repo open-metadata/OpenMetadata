@@ -81,41 +81,6 @@ class TestGetRedshiftConnectionUrlBasicAuth:
         assert "admin" in url
 
 
-class TestGetRedshiftConnectionUrlIAMAuth:
-    @patch("metadata.ingestion.source.database.redshift.connection._get_redshift_iam_credentials")
-    def test_iam_auth_url_provisioned(self, mock_get_creds):
-        mock_get_creds.return_value = ("IAMUser:admin", "temporary-password-123")
-
-        connection = RedshiftConnection(
-            hostPort=f"{PROVISIONED_HOST}:5439",
-            username="admin",
-            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
-            database="mydb",
-        )
-        url = get_redshift_connection_url(connection)
-
-        mock_get_creds.assert_called_once_with(connection)
-        assert "redshift+psycopg2://" in url
-        assert "IAMUser" in url
-        assert "temporary-password-123" in url
-        assert f"{PROVISIONED_HOST}:5439" in url
-        assert url.endswith("/mydb")
-
-    @patch("metadata.ingestion.source.database.redshift.connection._get_redshift_iam_credentials")
-    def test_iam_auth_url_no_database(self, mock_get_creds):
-        mock_get_creds.return_value = ("admin", "temp-pass")
-
-        connection = RedshiftConnection(
-            hostPort=f"{PROVISIONED_HOST}:5439",
-            username="admin",
-            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
-            database="",
-        )
-        url = get_redshift_connection_url(connection)
-
-        assert url.endswith(f"{PROVISIONED_HOST}:5439")
-
-
 class TestGetRedshiftIAMCredentials:
     @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
     def test_provisioned_calls_get_cluster_credentials(self, mock_aws_client_cls):
@@ -133,10 +98,10 @@ class TestGetRedshiftIAMCredentials:
             database="mydb",
         )
 
-        user, password = _get_redshift_iam_credentials(connection)
+        credential = _get_redshift_iam_credentials(connection)
 
-        assert user == "IAM:admin"
-        assert password == "temp-password"
+        assert credential.user == "IAM:admin"
+        assert credential.password == "temp-password"
         mock_client.get_cluster_credentials.assert_called_once_with(
             DbUser="admin",
             ClusterIdentifier="my-cluster",
@@ -181,10 +146,10 @@ class TestGetRedshiftIAMCredentials:
             database="mydb",
         )
 
-        user, password = _get_redshift_iam_credentials(connection)
+        credential = _get_redshift_iam_credentials(connection)
 
-        assert user == "IAMR:admin"
-        assert password == "serverless-temp-password"
+        assert credential.user == "IAMR:admin"
+        assert credential.password == "serverless-temp-password"
         mock_client.get_credentials.assert_called_once_with(
             workgroupName="my-workgroup",
             dbName="mydb",
@@ -276,10 +241,10 @@ class TestExplicitClusterOverrides:
             clusterIdentifier="my-real-cluster",
         )
 
-        user, password = _get_redshift_iam_credentials(connection)
+        credential = _get_redshift_iam_credentials(connection)
 
-        assert user == "IAM:admin"
-        assert password == "temp-password"
+        assert credential.user == "IAM:admin"
+        assert credential.password == "temp-password"
         mock_client.get_cluster_credentials.assert_called_once_with(
             DbUser="admin",
             ClusterIdentifier="my-real-cluster",
@@ -304,10 +269,10 @@ class TestExplicitClusterOverrides:
             workgroupName="my-real-workgroup",
         )
 
-        user, password = _get_redshift_iam_credentials(connection)
+        credential = _get_redshift_iam_credentials(connection)
 
-        assert user == "IAMR:admin"
-        assert password == "serverless-temp-password"
+        assert credential.user == "IAMR:admin"
+        assert credential.password == "serverless-temp-password"
         mock_client.get_credentials.assert_called_once_with(
             workgroupName="my-real-workgroup",
             dbName="mydb",

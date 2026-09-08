@@ -53,6 +53,7 @@ def lint(session):
     # Mirrors `make py_format_check` so local nox and Makefile stay in sync.
     install(session, ".[dev]")
     session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
+    session.run("python", "scripts/check_ruff_suppressions.py", "--check")
     session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
 
 
@@ -171,6 +172,9 @@ def unit_tests(session):
         "auto",
         "--dist",
         "loadfile",
+        "--timeout=300",
+        "--timeout-method=signal",
+        "--durations=20",
     ]
 
     pytest_args.extend(test_paths or ["tests/unit/"])

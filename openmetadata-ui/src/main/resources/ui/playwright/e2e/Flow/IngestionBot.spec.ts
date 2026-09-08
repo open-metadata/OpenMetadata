@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { expect, test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
@@ -31,7 +32,9 @@ const test = base.extend<{
   ingestionBotPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { afterAction, page } = await performAdminLogin(browser);
+    const { afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     await use(page);
     await afterAction();
@@ -39,15 +42,25 @@ const test = base.extend<{
   ingestionBotPage: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const page = await browser.newPage();
-    await page.goto('/');
-
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
       .then((response) => response.json());
     const tokenData = await apiContext
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
+
+    const page = await browser.newPage();
+    await page.goto('/signin');
+    // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
+    // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
+    // registers a SW -- there is no clients.claim() race to wait out there.
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker.controller),
+      undefined,
+      { timeout: 30_000 }
+    );
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
@@ -67,8 +80,7 @@ test.describe('Ingestion Bot ', () => {
   const domain3 = new Domain();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -82,12 +94,11 @@ test.describe('Ingestion Bot ', () => {
     await redirectToHomePage(page);
   });
 
-  test.slow();
-
   test('Ingestion bot should be able to access domain specific domain', async ({
     ingestionBotPage,
     page,
   }) => {
+    test.slow();
     const { assets: domainAsset1, assetCleanup: assetCleanup1 } =
       await setupAssetsForDomain(page);
     const { assets: domainAsset2, assetCleanup: assetCleanup2 } =

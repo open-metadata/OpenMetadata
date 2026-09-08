@@ -1,6 +1,6 @@
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { HelpCircle, InfoCircle } from '@untitledui/icons';
@@ -37,6 +37,8 @@ export interface InputBaseProps extends TextFieldProps {
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   /** Placeholder text. */
   placeholder?: string;
+  /** Increment used by numeric inputs. */
+  step?: AriaInputProps['step'];
   /** Class name for the icon. */
   iconClassName?: string;
   /** Class name for the input. */
@@ -74,6 +76,7 @@ export const InputBase = ({
   isDisabled,
   icon: Icon,
   placeholder,
+  step,
   wrapperClassName,
   tooltipClassName,
   inputClassName,
@@ -177,6 +180,7 @@ export const InputBase = ({
         data-testid={inputDataTestId}
         placeholder={placeholder}
         ref={ref}
+        step={step}
       />
 
       {/* Custom trailing slot (e.g. password reveal button) */}
@@ -184,16 +188,16 @@ export const InputBase = ({
 
       {/* Tooltip and help icon */}
       {tooltip && !isInvalid && (
-        <Tooltip placement="top" title={tooltip}>
-          <TooltipTrigger
-            className={cx(
-              'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
-              sizes[inputSize].iconTrailing,
-              context?.tooltipClassName,
-              tooltipClassName
-            )}>
-            <HelpCircle className="tw:size-4" />
-          </TooltipTrigger>
+        <Tooltip
+          placement="top"
+          title={tooltip}
+          triggerClassName={cx(
+            'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
+            sizes[inputSize].iconTrailing,
+            context?.tooltipClassName,
+            tooltipClassName
+          )}>
+          <HelpCircle className="tw:size-4" />
         </Tooltip>
       )}
 
@@ -281,6 +285,7 @@ export const Input = ({
   size = 'sm',
   fontSize = 'sm',
   placeholder,
+  step,
   icon: Icon,
   label,
   hint,
@@ -322,6 +327,7 @@ export const Input = ({
               size,
               fontSize,
               placeholder,
+              step,
               icon: Icon,
               shortcut,
               trailingSlot,

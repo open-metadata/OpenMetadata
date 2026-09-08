@@ -345,4 +345,69 @@ test.describe('Glossary Term — Related Terms', () => {
       await afterAction();
     }
   });
+
+  test('should reveal the related terms hidden behind the overflow toggle', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const parentTerm = new GlossaryTerm(glossary);
+    // Seven related terms against a five-badge display limit, so two stay hidden.
+    const relatedTerms = Array.from(
+      { length: 7 },
+      () => new GlossaryTerm(glossary)
+    );
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+
+      for (const term of relatedTerms) {
+        await term.create(apiContext);
+      }
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
+
+      await addRelatedTermsByRelationType(page, [
+        { relationTypeLabel: 'Related To', terms: relatedTerms },
+      ]);
+
+      const container = page.getByTestId('related-term-container');
+      const toggle = page.getByTestId('related-terms-toggle-relatedTo');
+      const names = relatedTerms.map(
+        (term) => term.responseData?.displayName ?? term.data.displayName
+      );
+      // Count by name rather than position — the server does not guarantee the
+      // order relations come back in, so which two are hidden is not fixed.
+      const countVisibleTerms = async () => {
+        const visibility = await Promise.all(
+          names.map((name) => container.getByTestId(name).isVisible())
+        );
+
+        return visibility.filter(Boolean).length;
+      };
+
+      await expect(toggle).toBeVisible();
+
+      expect(await countVisibleTerms()).toBe(5);
+
+      await toggle.click();
+
+      expect(await countVisibleTerms()).toBe(7);
+
+      await toggle.click();
+
+      expect(await countVisibleTerms()).toBe(5);
+    } finally {
+      for (const term of relatedTerms) {
+        await term.delete(apiContext);
+      }
+
+      await parentTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
 });

@@ -51,6 +51,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -62,6 +63,7 @@ import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jena.sys.JenaSystem;
 import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -70,6 +72,10 @@ import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
+import org.eclipse.jetty.http2.server.AbstractHTTP2ServerConnectionFactory;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.ServerConnector;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
@@ -118,6 +124,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.BackgroundJobCleanupScheduler;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
@@ -133,6 +140,8 @@ import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
+import org.openmetadata.service.ontology.OntologyBulkJobHandler;
+import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -163,6 +172,7 @@ import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
 import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.ImpersonationCleanupFilter;
+import org.openmetadata.service.security.ImpersonationRestrictionFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -183,6 +193,7 @@ import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionTimeoutResolver;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.Jetty12WebSocketHandler;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
@@ -192,6 +203,7 @@ import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
+import org.openmetadata.service.util.StartupTimer;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
 
@@ -244,13 +256,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           KeyStoreException,
           NoSuchAlgorithmException {
 
+    StartupTimer startupTimer = new StartupTimer();
     this.environment = environment;
+
+    // Initialize Jena before anything can touch org.apache.jena.vocabulary.RDF. On Jena 6.2.0
+    // InitJenaCore's TypeMapper.reset() registers the RDF 1.2 datatypes by reading RDF.dtLangString
+    // and friends, so if RDF is the first Jena class the JVM initializes, its <clinit> triggers
+    // JenaSystem.init() re-entrantly on the same thread and TypeMapper reads those fields while
+    // they
+    // are still null: NPE inside a static initializer, which then leaves *every* Jena class in the
+    // JVM permanently unusable ("Could not initialize class org.apache.jena.graph.NodeFactory").
+    // Jena 5.6.0 did not have this cycle. An explicit init here is idempotent and orders the
+    // subsystem startup ahead of the RDF resources, which construct Jena objects even when RDF is
+    // disabled. Remove once the RDF/TypeMapper init cycle is fixed upstream.
+    JenaSystem.init();
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
-    // Configure URI compliance to LEGACY mode by default for Jetty 12
-    // This allows special characters in entity names that were permitted in Jetty 11
     configureUriCompliance(catalogConfig);
+    environment
+        .lifecycle()
+        .addServerLifecycleListener(server -> configureUriCompliance(server.getConnectors()));
 
     // Configure ServletHandler to preserve encoded slashes in paths
     // This is needed for entity names containing slashes (e.g., "domain.name/with-slash")
@@ -273,13 +299,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Metrics initialization now handled by MicrometerBundle
 
-    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
+
+    jdbi =
+        startupTimer.time(
+            "JDBI initialization",
+            () -> createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory()));
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
     Entity.setSystemRepository(new SystemRepository());
+    startupTimer.time(
+        "seed data gate initialization",
+        () ->
+            SeedDataGate.getInstance()
+                .configure(catalogConfig.getStartupConfiguration(), Entity.getSystemRepository()));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
     CsvAsyncJobManager.initialize(jdbi.onDemand(JobDAO.class));
@@ -288,10 +324,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
     // Phase 1: Core search infrastructure (needed by repositories)
-    initializeCoreSearchInfrastructure(catalogConfig);
+    startupTimer.time(
+        "core search infrastructure", () -> initializeCoreSearchInfrastructure(catalogConfig));
 
     // as first step register all the repositories (now they can access SearchRepository)
-    Entity.initializeRepositories(catalogConfig, jdbi);
+    startupTimer.time(
+        "repository initialization", () -> Entity.initializeRepositories(catalogConfig, jdbi));
 
     // Rebuild caches with configured limits (cacheMemory section in openmetadata.yaml)
     CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
@@ -307,17 +345,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Initialize Workflow Handler
-    WorkflowHandler.initialize(catalogConfig);
+    startupTimer.time(
+        "Flowable workflow initialization", () -> WorkflowHandler.initialize(catalogConfig));
 
     // Recover AI audit-report jobs interrupted by a prior pod restart: re-queue Queued
     // reports and reclaim orphaned Running ones so they don't hang forever.
-    AuditPackGenerator.recoverInterruptedReports();
+    startupTimer.time("audit report recovery", AuditPackGenerator::recoverInterruptedReports);
 
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
-    SettingsCache.initialize(catalogConfig);
+    startupTimer.time(
+        "settings cache initialization", () -> SettingsCache.initialize(catalogConfig));
 
     // Phase 2: Advanced search features (after settings are available)
-    initializeAdvancedSearchFeatures();
+    startupTimer.time("advanced search features", this::initializeAdvancedSearchFeatures);
 
     // Phase 3: Vector search (embeddings + vector index)
     Entity.getSearchRepository().initializeVectorSearchService();
@@ -357,7 +397,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .getValidator());
 
     // Validate native migrations
-    validateMigrations(jdbi, catalogConfig);
+    startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
@@ -382,7 +422,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     ApplicationHandler.initialize(catalogConfig);
     IndexResource.initialize(catalogConfig);
-    registerResources(catalogConfig, environment, jdbi);
+    startupTimer.time(
+        "resource registration", () -> registerResources(catalogConfig, environment, jdbi));
+    SeedDataGate.getInstance().stampIfClean();
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
@@ -391,10 +433,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
 
-    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
-    // RequestEntityCache, impersonation context) after every response so state
-    // cannot leak across requests that share a Jetty worker thread.
+    // Clears per-request ThreadLocals (ReadBundleContext, RequestEntityCache, impersonation
+    // context) after every response so state cannot leak across requests that share a Jetty
+    // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+
+    // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
+    // password change, logout) - those call no authorizer, so nothing else would stop them.
+    environment.jersey().register(ImpersonationRestrictionFilter.class);
 
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
@@ -409,6 +455,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(
+            new BackgroundJobCleanupScheduler(
+                jdbi.onDemand(JobDAO.class), CsvAsyncJobManager.getInstance()));
+
+    environment
+        .lifecycle()
+        .manage(
             new SearchIndexRetryWorker(
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
@@ -419,7 +471,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created
     // by authorizer
-    authorizer.init(catalogConfig);
+    startupTimer.time("authorizer initialization", () -> authorizer.init(catalogConfig));
 
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig);
@@ -435,13 +487,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerAuthServlets(catalogConfig, environment);
 
     // Register MCP (depends on Auth Handlers for SSO)
-    registerMCPServer(catalogConfig, environment);
+    startupTimer.time(
+        "MCP server registration", () -> registerMCPServer(catalogConfig, environment));
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
 
     // Register User Metrics Servlet
     registerUserMetricsServlet(environment);
+
+    startupTimer.logSummary();
   }
 
   protected void registerMCPServer(
@@ -468,10 +523,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
     JobHandlerRegistry registry = new JobHandlerRegistry();
+    OntologyBulkJobHandler ontologyBulkJobHandler = OntologyBulkJobHandler.createDefault();
     registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
     registry.register(
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
+    registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
     return registry;
   }
 
@@ -557,30 +614,55 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Configure URI compliance for Jetty 12. By default, Jetty 12 uses strict URI compliance which
-   * rejects special characters that were allowed in Jetty 11. OpenMetadata allows special
-   * characters in entity names (including encoded chars like %22 for double quotes), so we
-   * default to UNSAFE compliance mode unless explicitly configured otherwise.
-   * Note: For tests using DropwizardAppExtension, uriCompliance must be set in YAML config
-   * since the server is initialized before run() is called.
+   * Jetty 12 defaults to strict URI compliance, which rejects encoded characters Jetty 11 allowed
+   * and that OpenMetadata entity names depend on (for example {@code %22} for a double quote).
+   * This configures the connector beans, which Dropwizard reads when it builds the server.
    */
-  private void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
+  void configureUriCompliance(final OpenMetadataApplicationConfig configuration) {
     if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
-      // Configure application connectors - always set to UNSAFE for backward compatibility
-      for (ConnectorFactory connector : serverFactory.getApplicationConnectors()) {
-        if (connector instanceof HttpConnectorFactory httpConnector) {
-          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-          LOG.info("Set URI compliance to UNSAFE for application connector");
-        }
-      }
-      // Configure admin connectors - always set to UNSAFE for backward compatibility
-      for (ConnectorFactory connector : serverFactory.getAdminConnectors()) {
-        if (connector instanceof HttpConnectorFactory httpConnector) {
-          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-          LOG.info("Set URI compliance to UNSAFE for admin connector");
-        }
+      applyUnsafeUriCompliance(serverFactory.getApplicationConnectors());
+      applyUnsafeUriCompliance(serverFactory.getAdminConnectors());
+    }
+  }
+
+  private void applyUnsafeUriCompliance(final List<ConnectorFactory> connectors) {
+    for (final ConnectorFactory connector : connectors) {
+      if (connector instanceof HttpConnectorFactory httpConnector) {
+        httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+        LOG.info("Set URI compliance to UNSAFE for {}", httpConnector.getClass().getSimpleName());
       }
     }
+  }
+
+  /**
+   * The connector beans above only reach HTTP/1.1: {@code HttpConnectorFactory} applies compliance
+   * to a defensive copy of the HttpConfiguration that it hands to the HTTP/1.1 connection factory,
+   * while an h2/h2c connector keeps the original and so retains Jetty's strict default — which
+   * rejects entity names containing {@code %} with "400 Ambiguous URI path encoding". Jetty
+   * connectors do not exist until Dropwizard builds the server, after {@link #run} returns, so the
+   * built connection factories are reconfigured once the server starts.
+   */
+  void configureUriCompliance(final Connector[] connectors) {
+    int configuredFactories = 0;
+    for (final Connector connector : connectors) {
+      if (connector instanceof ServerConnector serverConnector) {
+        configuredFactories += configureUriCompliance(serverConnector);
+      }
+    }
+    LOG.info("Set URI compliance to UNSAFE on {} Jetty connection factories", configuredFactories);
+  }
+
+  private int configureUriCompliance(final ServerConnector connector) {
+    final Collection<HttpConnectionFactory> httpFactories =
+        connector.getContainedBeans(HttpConnectionFactory.class);
+    final Collection<AbstractHTTP2ServerConnectionFactory> http2Factories =
+        connector.getContainedBeans(AbstractHTTP2ServerConnectionFactory.class);
+    httpFactories.forEach(
+        factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+    http2Factories.forEach(
+        factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+
+    return httpFactories.size() + http2Factories.size();
   }
 
   /**
@@ -625,12 +707,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize RDF if enabled (core infrastructure)
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
-      RdfUpdater.initialize(rdfConfig);
+      RdfUpdater.initialize(rdfConfig, config.getAsyncOperationsConfiguration());
       LOG.info("RDF knowledge graph support initialized");
     }
 
-    searchRepository.createMissingIndexes();
-    searchRepository.createOrUpdateIndexTemplates();
+    int createdIndexCount = searchRepository.createMissingIndexes();
+    searchRepository.createOrUpdateIndexTemplates(createdIndexCount);
 
     LOG.info("Core search infrastructure initialization completed");
   }
@@ -1057,9 +1139,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
-
-    // Register metrics request filter for tracking request latencies
-    environment.jersey().register(org.openmetadata.service.monitoring.MetricsRequestFilter.class);
   }
 
   private void registerUserActivityTracking(Environment environment) {

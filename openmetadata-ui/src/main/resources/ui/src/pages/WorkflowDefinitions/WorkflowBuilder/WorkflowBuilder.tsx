@@ -26,6 +26,8 @@ import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -48,6 +50,7 @@ import {
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { useWorkflowActions } from '../../../hooks/useWorkflowActions';
 import { useWorkflowHistory } from '../../../hooks/useWorkflowHistory';
@@ -60,6 +63,7 @@ import {
   patchWorkflowDefinition,
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
@@ -73,6 +77,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const {
     canAccessSidebar,
     canDragNodes,
@@ -408,15 +413,36 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     workflowMetadata?.displayName || 'Workflow Builder';
   const workflowName = workflowMetadata?.name;
 
-  const breadcrumbs = useMemo(() => {
-    return [
+  // AI-mode breadcrumb: rendered inside the HeaderShell gradient header.
+  const breadcrumb = useMemo(
+    () => (
+      <HeaderBreadcrumb
+        noMargin
+        items={[
+          getGlossaryHomeCrumb(t),
+          {
+            label: t('label.workflow-plural'),
+            href: getWorkflowDefinitionsListPath(),
+          },
+          { label: workflowDisplayName },
+        ]}
+        showHome={false}
+      />
+    ),
+    [workflowDisplayName, t]
+  );
+
+  // Classic-mode breadcrumb: the legacy TitleBreadcrumb shown above the header.
+  const breadcrumbs = useMemo(
+    () => [
       {
         activeTitle: false,
         name: t('label.workflow-plural'),
         url: getWorkflowDefinitionsListPath(),
       },
-    ];
-  }, [workflowDisplayName, t]);
+    ],
+    [t]
+  );
 
   if (loading) {
     return <Loader />;
@@ -432,112 +458,76 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     }
   );
 
-  return (
-    <PageLayoutV1
-      fullHeight
-      mainContainerClassName="workflow-builder-layout"
-      pageContainerStyle={{
-        height: 'calc(100vh - var(--ant-navbar-height))',
-        overflow: 'hidden',
-      }}
-      pageTitle={t('label.workflow-plural')}>
-      {isConnectionModalOpen && (
-        <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
-      )}
+  const isCanvasTabActive = activeTab === workflowBuilderTabs[0].value;
 
-      <div className="tw:bg-gray-50 tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden">
-        <div className="tw:mb-4 tw:shrink-0">
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </div>
+  const getCanvasNodeDragEnabled = () => {
+    if (canDragNodes) {
+      return isNodeDragEnabledWrapper;
+    }
 
-        <div className="tw:shrink-0">
-          <WorkflowHeader
-            handleDeleteWorkflow={handleShowDeleteModal}
-            handleRevertAndCancel={handleRevertAndCancel}
-            handleRunWorkflow={handleRunWorkflow}
-            handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
-            handleTestWorkflow={handleTestWorkflow}
-            isRunLoading={isRunLoading}
-            title={workflowDisplayName}
-            workflowName={workflowName}
-            onUpdateDisplayName={handleUpdateDisplayName}
-          />
-        </div>
-        <Card className="tw:mt-3">
-          <Tabs
-            className="tw:w-full tw:mt-3 tw:shrink-0 tw:pl-5"
-            data-testid="workflow-execution-tabs"
-            selectedKey={activeTab}
-            onSelectionChange={(key) =>
-              setActiveTab(key as WorkflowBuilderTab)
-            }>
-            <Tabs.List items={workflowBuilderTabs} type="underline">
-              {(tab) => (
-                <Tabs.Item
-                  data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
-                  id={tab.id}
-                  label={tab.label}
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </Card>
-        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
-          {activeTab === workflowBuilderTabs[0].value ? (
-            <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
-              <WorkflowCanvas
-                canRedo={canRedo}
-                canUndo={canUndo}
-                edges={edges}
-                focusedConnection={focusedConnection}
-                isConnectionModalOpen={isConnectionModalOpen}
-                isDragging={isDragging}
-                isNodeDragEnabled={
-                  canDragNodes
-                    ? isNodeDragEnabledWrapper
-                    : canDragNodesInViewMode
-                    ? () => true
-                    : () => false
-                }
-                nodes={nodes}
-                pendingConnection={pendingConnection}
-                onConnect={onConnect}
-                onDragEnter={onDragEnter}
-                onDragLeave={onDragLeave}
-                onDragOver={onDragOver}
-                onDrop={onDrop}
-                onEdgeClick={handleEdgeClick}
-                onEdgeDelete={handleEdgeDelete}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={handleNodeClick}
-                onNodesChange={onNodesChange}
-                onRearrange={handleRearrange}
-                onRedo={handleRedo}
-                onUndo={handleUndo}
-              />
-            </div>
-          ) : (
-            <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
-              <WorkflowExecutionHistory />
-            </div>
-          )}
+    return canDragNodesInViewMode ? () => true : () => false;
+  };
 
-          {activeTab === workflowBuilderTabs[0].value &&
-            canAccessSidebar &&
-            showWorkflowNodePalette && (
-              <div className={sidebarClassName}>
-                <WorkflowSidebar
-                  isNodeDragEnabled={
-                    isEditMode && showWorkflowNodePalette
-                      ? isNodeDragEnabledWrapper
-                      : () => false
-                  }
-                />
-              </div>
-            )}
-        </div>
+  const getSidebarNodeDragEnabled = () =>
+    isEditMode && showWorkflowNodePalette
+      ? isNodeDragEnabledWrapper
+      : () => false;
+
+  const renderTitleBreadcrumb = () =>
+    isAiMode ? null : (
+      <div className="tw:mb-4 tw:shrink-0">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
       </div>
+    );
 
+  const renderConnectionOverlay = () =>
+    isConnectionModalOpen ? (
+      <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
+    ) : null;
+
+  const renderTabPanel = () =>
+    isCanvasTabActive ? (
+      <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
+        <WorkflowCanvas
+          canRedo={canRedo}
+          canUndo={canUndo}
+          edges={edges}
+          focusedConnection={focusedConnection}
+          isConnectionModalOpen={isConnectionModalOpen}
+          isDragging={isDragging}
+          isNodeDragEnabled={getCanvasNodeDragEnabled()}
+          nodes={nodes}
+          pendingConnection={pendingConnection}
+          onConnect={onConnect}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onEdgeClick={handleEdgeClick}
+          onEdgeDelete={handleEdgeDelete}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          onNodesChange={onNodesChange}
+          onRearrange={handleRearrange}
+          onRedo={handleRedo}
+          onUndo={handleUndo}
+        />
+      </div>
+    ) : (
+      <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
+        <WorkflowExecutionHistory />
+      </div>
+    );
+
+  const renderSidebar = () =>
+    isCanvasTabActive && canAccessSidebar && showWorkflowNodePalette ? (
+      <div className={sidebarClassName}>
+        <WorkflowSidebar isNodeDragEnabled={getSidebarNodeDragEnabled()} />
+      </div>
+    ) : null;
+
+  const renderOverlays = () => (
+    <>
       <NodeFormSidebar
         currentWorkflowConfig={{
           dataAssets: startEventDataAssets,
@@ -588,6 +578,67 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         onCancel={handleDeleteModalCancel}
         onDelete={handleDeleteWorkflowFromModal}
       />
+    </>
+  );
+
+  return (
+    <PageLayoutV1
+      fullHeight
+      mainContainerClassName="workflow-builder-layout"
+      pageTitle={
+        getEntityName(workflowDefinition ?? undefined) ||
+        t('label.workflow-plural')
+      }
+      variant={isAiMode ? 'compact' : 'default'}>
+      {renderConnectionOverlay()}
+
+      <div
+        className={classNames(
+          'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
+          { 'tw:bg-gray-50': !isAiMode }
+        )}>
+        {renderTitleBreadcrumb()}
+        <div className="tw:shrink-0">
+          <WorkflowHeader
+            breadcrumb={isAiMode ? breadcrumb : undefined}
+            handleDeleteWorkflow={handleShowDeleteModal}
+            handleRevertAndCancel={handleRevertAndCancel}
+            handleRunWorkflow={handleRunWorkflow}
+            handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
+            handleTestWorkflow={handleTestWorkflow}
+            isAiMode={isAiMode}
+            isRunLoading={isRunLoading}
+            title={workflowDisplayName}
+            workflowName={workflowName}
+            onUpdateDisplayName={handleUpdateDisplayName}
+          />
+        </div>
+        <Card className="tw:mt-3">
+          <Tabs
+            className="tw:w-full tw:mt-3 tw:shrink-0 tw:pl-5"
+            data-testid="workflow-execution-tabs"
+            selectedKey={activeTab}
+            onSelectionChange={(key) =>
+              setActiveTab(key as WorkflowBuilderTab)
+            }>
+            <Tabs.List items={workflowBuilderTabs} type="underline">
+              {(tab) => (
+                <Tabs.Item
+                  data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
+                  id={tab.id}
+                  label={tab.label}
+                />
+              )}
+            </Tabs.List>
+          </Tabs>
+        </Card>
+        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
+          {renderTabPanel()}
+          {renderSidebar()}
+        </div>
+      </div>
+
+      {renderOverlays()}
     </PageLayoutV1>
   );
 };

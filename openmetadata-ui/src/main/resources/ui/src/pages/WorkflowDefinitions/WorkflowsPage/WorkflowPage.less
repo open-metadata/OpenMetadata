@@ -14,14 +14,14 @@
 
 .workflow-page {
   height: 100vh;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
 }
 
 .workflow-page-content {
   background-color: var(--tw-color-bg-primary);
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   min-height: calc(100vh - 120px);
-  padding: 20px;
+  padding: var(--om-space-20);
   display: flex;
   flex-direction: column;
 }
@@ -35,13 +35,13 @@
 }
 
 .workflow-input {
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
 
   &:focus {
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
   }
 
   &:hover {
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
   }
 }

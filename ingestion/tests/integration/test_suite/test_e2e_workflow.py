@@ -307,8 +307,8 @@ class TestE2EWorkflow(unittest.TestCase):
                 profileSampleConfig=ProfileSampleConfig(
                     sampleConfigType="STATIC",
                     config={
-                        "profileSample": 50.0,
-                        "profileSampleType": "PERCENTAGE",
+                        "profileSample": 15,
+                        "profileSampleType": "ROWS",
                     },
                 ),
             ),
@@ -356,12 +356,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
         assert data_test_case_result_2
         assert data_test_case_result_2[0]["testCaseStatus"] == "Success"
-        self.assertAlmostEqual(
-            data_test_case_result_2[0]["passedRows"],
-            15,
-            delta=8,
-            msg="This is a 99% confidence interval. Run the test again to validate failure.",
-        )
+        self.assertEqual(data_test_case_result_2[0]["passedRows"], 15)
 
     def test_e2e_cli_partitioned_workflow(self):
         """test cli workflow e2e"""

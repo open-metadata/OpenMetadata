@@ -98,6 +98,7 @@ export default defineConfig({
         'react-aria-components',
         'react-stately',
         'react-hook-form',
+        'react-helmet-async',
         'tailwind-merge',
         'input-otp',
         '@react-aria/utils',
@@ -105,6 +106,8 @@ export default defineConfig({
         '@react-types/shared',
         '@internationalized/date',
         'tailwindcss-react-aria-components',
+        'i18next',
+        'react-i18next',
       ],
       output: {
         entryFileNames: (chunkInfo) => {

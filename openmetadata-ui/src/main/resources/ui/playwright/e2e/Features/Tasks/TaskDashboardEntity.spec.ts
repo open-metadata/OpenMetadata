@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -439,7 +439,9 @@ test.describe('Dashboard Task UI Flow', () => {
   test('should show task in activity feed after creation', async ({
     browser,
   }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       // Create task via API

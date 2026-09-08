@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
@@ -597,7 +597,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
       const feedResponse = page.waitForResponse(
         (r) =>
-          r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+          r.url().includes('/api/v1/activity') && r.request().method() === 'GET'
       );
       await page.getByTestId('activity_feed').click();
       await feedResponse;
@@ -699,7 +699,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         await waitForAllLoadersToDisappear(userPage);
         const feedResponse = userPage.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/feed') && r.request().method() === 'GET'
+            r.url().includes('/api/v1/activity') &&
+            r.request().method() === 'GET'
         );
         await userPage.getByTestId('activity_feed').click();
         await feedResponse;

@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Optional, Union
 
 from airflow.models import DagRun
 from flask import Response, jsonify, make_response
@@ -29,6 +28,7 @@ class ApiResponse:
     STATUS_UNAUTHORIZED = 401
     STATUS_NOT_FOUND = 404
     STATUS_SERVER_ERROR = 500
+    UNEXPECTED_ERROR = "An unexpected problem occurred"
 
     @staticmethod
     def standard_response(status, response_obj) -> Response:
@@ -38,12 +38,16 @@ class ApiResponse:
         return make_response(jsonify(response_obj), status)
 
     @staticmethod
-    def success(response_obj: Union[Optional[dict], Optional[list]] = None):  # noqa: UP007, UP045
+    def success(response_obj: dict | None | list | None = None):
         response_body = response_obj if response_obj is not None else {}
         return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_body)
 
     @staticmethod
     def error(status, error):
+        if not isinstance(status, int):
+            status = ApiResponse.STATUS_SERVER_ERROR
+        if status >= ApiResponse.STATUS_SERVER_ERROR:
+            error = ApiResponse.UNEXPECTED_ERROR
         return ApiResponse.standard_response(status, {"error": error})
 
     @staticmethod
@@ -59,8 +63,8 @@ class ApiResponse:
         return ApiResponse.error(ApiResponse.STATUS_UNAUTHORIZED, error)
 
     @staticmethod
-    def server_error(error="An unexpected problem occurred"):
-        return ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, error)
+    def server_error():
+        return ApiResponse.error(ApiResponse.STATUS_SERVER_ERROR, ApiResponse.UNEXPECTED_ERROR)
 
 
 class ResponseFormat:

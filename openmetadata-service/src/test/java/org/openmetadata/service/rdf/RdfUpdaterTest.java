@@ -31,6 +31,8 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Unit tests for {@link RdfUpdater}, specifically the glossary-term ⇔
@@ -62,6 +65,7 @@ class RdfUpdaterTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    RdfProjectionHealth.markReady();
     mockRepository = Mockito.mock(RdfRepository.class);
     when(mockRepository.isEnabled()).thenReturn(true);
     originalRepository = swapRdfRepository(mockRepository);
@@ -120,9 +124,82 @@ class RdfUpdaterTest {
     }
   }
 
+  @Test
+  @DisplayName("RDF storage writes never exceed the configured concurrency bound")
+  void concurrentWritesAreBounded() throws InterruptedException {
+    final int capacity = RdfUpdater.maxConcurrentWrites();
+    final BlockingWriteProbe probe = new BlockingWriteProbe(capacity, capacity + 4);
+    configureBlockingWrites(probe);
+    assertBoundedExecution(probe);
+    verify(mockRepository, times(probe.totalWrites())).createOrUpdate(any(EntityInterface.class));
+    assertEquals(capacity, probe.maximumConcurrentWrites());
+  }
+
+  private void configureBlockingWrites(final BlockingWriteProbe probe) {
+    doAnswer(
+            ignored -> {
+              probe.block();
+              return null;
+            })
+        .when(mockRepository)
+        .createOrUpdate(any(EntityInterface.class));
+  }
+
+  private static void assertBoundedExecution(final BlockingWriteProbe probe)
+      throws InterruptedException {
+    try {
+      mockEntities(probe.totalWrites()).forEach(RdfUpdater::updateEntity);
+      assertTrue(probe.awaitCapacity(Duration.ofSeconds(5)));
+      assertFalse(probe.awaitAllWrites(Duration.ofMillis(250)));
+    } finally {
+      probe.releaseWrites();
+    }
+    assertTrue(probe.awaitAllWrites(Duration.ofSeconds(5)));
+    Awaitility.await().atMost(Duration.ofSeconds(5)).until(() -> probe.activeWrites() == 0);
+  }
+
   @AfterEach
   void tearDown() throws Exception {
+    PostCommitActionQueue.clear();
+    RdfProjectionHealth.markReady();
     swapRdfRepository(originalRepository);
+  }
+
+  @Test
+  @DisplayName("A failed incremental write degrades RDF projection health")
+  void failedIncrementalWriteDegradesProjectionHealth() {
+    final EntityInterface entity = Mockito.mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+    doAnswer(
+            ignored -> {
+              throw new IllegalStateException("storage unavailable");
+            })
+        .when(mockRepository)
+        .createOrUpdate(entity);
+
+    RdfUpdater.updateEntity(entity);
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(() -> assertTrue(RdfProjectionHealth.isDegraded()));
+  }
+
+  @Test
+  @DisplayName("RDF submissions wait for the surrounding database transaction to commit")
+  void rdfSubmissionIsDeferredUntilCommit() {
+    UUID termId = UUID.randomUUID();
+    UUID relatedTermId = UUID.randomUUID();
+    PostCommitActionQueue.begin();
+
+    RdfUpdater.addGlossaryTermRelation(termId, relatedTermId, "relatedTo");
+
+    verify(mockRepository, never()).addGlossaryTermRelation(any(), any(), any());
+    PostCommitActionQueue.run(PostCommitActionQueue.drain());
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                verify(mockRepository).addGlossaryTermRelation(termId, relatedTermId, "relatedTo"));
   }
 
   @Nested
@@ -293,5 +370,67 @@ class RdfUpdaterTest {
     RdfRepository previous = (RdfRepository) field.get(null);
     field.set(null, replacement);
     return previous;
+  }
+
+  private static List<EntityInterface> mockEntities(final int count) {
+    return IntStream.range(0, count)
+        .mapToObj(
+            ignored -> {
+              final EntityInterface entity = Mockito.mock(EntityInterface.class);
+              when(entity.getId()).thenReturn(UUID.randomUUID());
+              return entity;
+            })
+        .toList();
+  }
+
+  private static final class BlockingWriteProbe {
+    private final int totalWrites;
+    private final CountDownLatch capacityReached;
+    private final CountDownLatch allWritesStarted;
+    private final CountDownLatch releaseWrites = new CountDownLatch(1);
+    private final AtomicInteger activeWrites = new AtomicInteger();
+    private final AtomicInteger maximumConcurrentWrites = new AtomicInteger();
+
+    private BlockingWriteProbe(final int capacity, final int totalWrites) {
+      this.totalWrites = totalWrites;
+      capacityReached = new CountDownLatch(capacity);
+      allWritesStarted = new CountDownLatch(totalWrites);
+    }
+
+    private void block() throws InterruptedException {
+      final int concurrentWrites = activeWrites.incrementAndGet();
+      maximumConcurrentWrites.accumulateAndGet(concurrentWrites, Math::max);
+      capacityReached.countDown();
+      allWritesStarted.countDown();
+      try {
+        assertTrue(releaseWrites.await(5, TimeUnit.SECONDS));
+      } finally {
+        activeWrites.decrementAndGet();
+      }
+    }
+
+    private boolean awaitCapacity(final Duration timeout) throws InterruptedException {
+      return capacityReached.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    private boolean awaitAllWrites(final Duration timeout) throws InterruptedException {
+      return allWritesStarted.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    private void releaseWrites() {
+      releaseWrites.countDown();
+    }
+
+    private int activeWrites() {
+      return activeWrites.get();
+    }
+
+    private int maximumConcurrentWrites() {
+      return maximumConcurrentWrites.get();
+    }
+
+    private int totalWrites() {
+      return totalWrites;
+    }
   }
 }

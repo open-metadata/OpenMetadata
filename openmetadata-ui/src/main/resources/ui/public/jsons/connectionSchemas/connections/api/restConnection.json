@@ -1,0 +1,302 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RestConnection",
+  "description": "REST Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.api.RestConnection",
+  "definitions": {
+    "restType": {
+      "description": "REST API type",
+      "type": "string",
+      "enum": [
+        "Rest"
+      ],
+      "default": "Rest"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "REST API Type",
+      "description": "REST API Type",
+      "default": "Rest",
+      "type": "string",
+      "enum": [
+        "Rest"
+      ]
+    },
+    "openAPISchemaConnection": {
+      "title": "OpenAPI Schema Connection",
+      "description": "OpenAPI Schema source config. Either a URL or a file path must be provided.",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "OpenAPISchemaURL",
+          "description": "Open API Schema URL Connection Config",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.api.OpenAPISchemaURL",
+          "properties": {
+            "openAPISchemaURL": {
+              "expose": true,
+              "title": "OpenAPI Schema URL",
+              "description": "Open API Schema URL.",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "openAPISchemaURL"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "OpenAPISchemaFilePath",
+          "description": "Open API Schema File Path Connection Config",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.api.OpenAPISchemaFilePath",
+          "properties": {
+            "openAPISchemaFilePath": {
+              "expose": true,
+              "title": "OpenAPI Schema File Path",
+              "description": "Path to a local OpenAPI schema file.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "openAPISchemaFilePath"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "OpenAPISchemaS3",
+          "description": "Open API Schema S3 Connection Config",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.api.OpenAPISchemaS3",
+          "properties": {
+            "openAPISchemaS3URL": {
+              "expose": true,
+              "title": "OpenAPI Schema S3 URL",
+              "description": "S3 URL of the OpenAPI schema file (JSON or YAML). Example: https://bucket-name.s3.amazonaws.com/path/to/openapi_schema.json",
+              "type": "string",
+              "format": "uri"
+            },
+            "awsCredentials": {
+              "title": "AWS Credentials",
+              "description": "AWS credentials required to access the S3 file.",
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+              "properties": {
+                "enabled": {
+                  "title": "Enable IAM Auth",
+                  "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "awsAccessKeyId": {
+                  "title": "AWS Access Key ID",
+                  "description": "AWS Access key ID.",
+                  "type": "string"
+                },
+                "awsSecretAccessKey": {
+                  "title": "AWS Secret Access Key",
+                  "description": "AWS Secret Access Key.",
+                  "type": "string",
+                  "format": "password"
+                },
+                "awsRegion": {
+                  "title": "AWS Region",
+                  "description": "AWS Region",
+                  "type": "string"
+                },
+                "awsSessionToken": {
+                  "title": "AWS Session Token",
+                  "description": "AWS Session Token.",
+                  "type": "string"
+                },
+                "endPointURL": {
+                  "title": "Endpoint URL",
+                  "description": "EndPoint URL for the AWS",
+                  "type": "string",
+                  "format": "uri"
+                },
+                "profileName": {
+                  "title": "Profile Name",
+                  "description": "The name of a profile to use with the boto session.",
+                  "type": "string"
+                },
+                "assumeRoleArn": {
+                  "title": "Role Arn for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                  "type": "string"
+                },
+                "assumeRoleSessionName": {
+                  "title": "Role Session Name for Assume Role",
+                  "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                  "type": "string",
+                  "default": "OpenMetadataSession"
+                },
+                "assumeRoleSourceIdentity": {
+                  "title": "Source Identity for Assume Role",
+                  "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "awsRegion"
+              ]
+            }
+          },
+          "required": [
+            "openAPISchemaS3URL",
+            "awsCredentials"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "token": {
+      "title": "Token",
+      "description": "Generated Token to connect to OpenAPI Schema.",
+      "type": "string",
+      "format": "password"
+    },
+    "docURL": {
+      "expose": true,
+      "title": "docURL",
+      "description": "Documentation URL for the schema.",
+      "type": "string",
+      "format": "uri"
+    },
+    "apiCollectionFilterPattern": {
+      "description": "Regex to only fetch api collections with names matching the pattern.",
+      "title": "Default API Collection Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "apiEndpointFilterPattern": {
+      "description": "Regex to only fetch api endpoints with names matching the pattern.",
+      "title": "Default API Endpoint Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "verifySSL": {
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "default": "no-ssl",
+      "title": "Verify SSL",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "Client SSL configuration",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "openAPISchemaConnection"
+  ]
+}

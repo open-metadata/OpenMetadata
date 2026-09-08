@@ -1,0 +1,47 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Workflow": {
+        "@id": "om:Workflow",
+        "@type": "om:Entity"
+      },
+      "Automation": {
+        "@id": "om:Automation",
+        "@type": "om:Entity"
+      },
+      "WorkflowDefinition": {
+        "@id": "om:WorkflowDefinition",
+        "@type": "om:Entity"
+      },
+      "WorkflowInstance": {
+        "@id": "om:WorkflowInstance",
+        "@type": ["om:Entity", "prov:Activity"]
+      },
+      "workflowType": {
+        "@id": "om:workflowType",
+        "@type": "xsd:string"
+      },
+      "status": {
+        "@id": "om:hasStatus",
+        "@type": "xsd:string"
+      },
+      "request": {
+        "@id": "om:automationRequest",
+        "@type": "@json"
+      },
+      "response": {
+        "@id": "om:automationResponse",
+        "@type": "@json"
+      },
+      "triggerType": {
+        "@id": "om:triggerType",
+        "@type": "xsd:string"
+      },
+      "scheduleType": {
+        "@id": "om:scheduleType",
+        "@type": "xsd:string"
+      }
+    }
+  ]
+}

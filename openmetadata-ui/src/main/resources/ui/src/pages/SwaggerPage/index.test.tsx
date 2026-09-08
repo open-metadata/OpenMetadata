@@ -13,6 +13,10 @@
 import { render, screen } from '@testing-library/react';
 import SwaggerPage from './index';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 jest.mock('./RapiDocReact', () => {
   return jest.fn().mockImplementation((props) => (
     <div>

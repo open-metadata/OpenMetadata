@@ -20,34 +20,34 @@ pre {
 
 //font weight
 .font-thin {
-  font-weight: 300;
+  font-weight: var(--om-font-weight-light);
 }
 .font-normal {
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
 }
 
 // font size
 .text-xss {
-  font-size: 10px;
+  font-size: var(--om-font-size-10);
 }
 
 .text-base {
-  font-size: 1rem /* 16px */;
+  font-size: var(--om-font-size-md) /* 16px */;
   line-height: 1.5rem /* 24px */;
 }
 
 .text-2xl {
-  font-size: 1.5rem /* 24px */;
+  font-size: var(--om-font-size-display-xs) /* 24px */;
   line-height: 2rem /* 32px */;
 }
 
 .text-3xl {
-  font-size: 1.875rem /* 24px */;
+  font-size: var(--om-font-size-display-sm) /* 24px */;
   line-height: 2.5rem /* 32px */;
 }
 
 .text-5xl {
-  font-size: 3rem /* 48px */;
+  font-size: var(--om-font-size-display-lg) /* 48px */;
   line-height: 3rem /* 48px */;
 }
 
@@ -147,8 +147,8 @@ pre {
 
 a.ant-typography,
 .ant-typography a {
-  font-weight: 500;
-  font-size: 14px;
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-sm);
   line-height: 21px;
   color: @blue-9;
 
@@ -178,11 +178,11 @@ a.ant-typography,
 // =============================== New Design System ===============================
 
 .text-secondary-new {
-  color: #414651;
+  color: var(--om-color-gray-700);
 }
 
 .border-secondary-new {
-  border-color: #d5d7da;
+  border-color: var(--om-color-gray-300);
 }
 
 //font weight

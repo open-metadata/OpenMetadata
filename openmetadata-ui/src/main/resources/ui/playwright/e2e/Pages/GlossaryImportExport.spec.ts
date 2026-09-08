@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -19,6 +19,7 @@ import {
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
@@ -48,10 +49,11 @@ import {
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
-// use the admin user to login
-test.use({
-  storageState: 'playwright/.auth/admin.json',
-});
+// Dedicated admin user for glossary import/export tests. Using a fresh user
+// instead of the shared admin.json session prevents completed export/import
+// jobs from accumulating in the admin background-jobs tray and blocking other
+// admin tests that run in the same CI worker.
+const glossaryExportUser = new UserClass(undefined, true);
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -102,12 +104,11 @@ const exportActiveGlossaryCsv = async (
   return fetchCompletedCsvAsyncJobResult(apiContext, jobId);
 };
 
-test.describe('Glossary Bulk Import Export', () => {
-  test.slow(true);
-
+test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('setup pre-test', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
 
+    await glossaryExportUser.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
     await user3.create(apiContext);
@@ -122,6 +123,7 @@ test.describe('Glossary Bulk Import Export', () => {
   test.afterAll('Cleanup', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
 
+    await glossaryExportUser.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
     await user3.delete(apiContext);
@@ -132,6 +134,7 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await glossaryExportUser.login(page);
     await redirectToHomePage(page);
   });
 
@@ -316,6 +319,7 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test('Check for Circular Reference in Glossary Import', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const circularRefGlossary = new Glossary(`TestCSV-${uuid()}`);
 
@@ -710,6 +714,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
   });
 
   test('Glossary CSV import preserves typed relations', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const suffix = uuid();
     const relGlossary = new Glossary(`TypedRelations_${suffix}`);

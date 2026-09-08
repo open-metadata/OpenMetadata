@@ -3,7 +3,9 @@
 Configuration for RDF knowledge graph indexing.
 
 $$section
-### entities $(id="entities")
+### Entities $(id="entities")
+
+List of entities that you need to reindex. Leave empty to index all supported entities.
 
 $$
 

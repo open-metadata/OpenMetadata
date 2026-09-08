@@ -12,6 +12,7 @@
  */
 
 import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import HeaderShell from '../HeaderShell/HeaderShell.component';
@@ -64,6 +65,16 @@ const EntityDetailHeader = ({
     onTabChange?.(String(key));
   };
 
+  const iconElement = icon ? (
+    <FeaturedIcon
+      color="brand"
+      icon={icon}
+      shape="square"
+      size="md"
+      theme="gradient"
+    />
+  ) : undefined;
+
   const resolvedLeading =
     leading ??
     (serviceLogoUrl ? (
@@ -77,15 +88,9 @@ const EntityDetailHeader = ({
           src={serviceLogoUrl}
         />
       </Box>
-    ) : icon ? (
-      <FeaturedIcon
-        color="brand"
-        icon={icon}
-        shape="square"
-        size="md"
-        theme="gradient"
-      />
-    ) : undefined);
+    ) : (
+      iconElement
+    ));
 
   const actions =
     primaryAction || secondaryActions ? (
@@ -124,7 +129,7 @@ const EntityDetailHeader = ({
       actions={actions}
       badge={badge}
       breadcrumb={breadcrumb}
-      className={className}
+      className={classNames('entity-detail-header', className)}
       data-testid={dataTestId}
       footer={footer}
       leading={resolvedLeading}

@@ -24,6 +24,7 @@ import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -51,11 +52,13 @@ import {
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { Paging } from '../../../generated/type/paging';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
+  getGlossariesByName,
   getGlossariesList,
   patchGlossaries,
   patchGlossaryTerm,
@@ -67,7 +70,7 @@ import {
   glossaryTermQueryKey,
   GLOSSARY_TERM_DEFAULT_FIELDS,
 } from '../../../rest/queries/glossaryTermQuery';
-import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityMissingMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -75,6 +78,15 @@ import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
+
+const GLOSSARY_LIST_FIELDS = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.REVIEWERS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.TERM_COUNT,
+];
 
 const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
@@ -105,6 +117,7 @@ const GlossaryPage = () => {
     activeGlossary,
     setActiveGlossary,
     updateActiveGlossary,
+    updateGlossary: updateGlossaryInList,
   } = useGlossaryStore();
 
   const isImportAction = useMemo(
@@ -157,19 +170,12 @@ const GlossaryPage = () => {
       let allGlossaries: Glossary[] = [];
       let nextPage = paging.after;
       let isGlossaryFound = false;
-      setInitialised(false);
+      let settledPaging: Paging | undefined;
       setIsLoading(true);
 
       do {
         const { data, paging: glossaryPaging } = await getGlossariesList({
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.REVIEWERS,
-            TabSpecificField.VOTES,
-            TabSpecificField.DOMAINS,
-            TabSpecificField.TERM_COUNT,
-          ],
+          fields: GLOSSARY_LIST_FIELDS,
           limit: PAGE_SIZE_LARGE,
           ...(nextPage && { after: nextPage }),
         });
@@ -185,11 +191,14 @@ const GlossaryPage = () => {
         }
 
         nextPage = glossaryPaging?.after;
-
-        handlePagingChange(glossaryPaging);
+        settledPaging = glossaryPaging;
       } while (nextPage && !isGlossaryFound);
 
       setGlossaries(allGlossaries);
+
+      if (settledPaging) {
+        handlePagingChange(settledPaging);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -205,14 +214,7 @@ const GlossaryPage = () => {
       setIsMoreGlossaryLoading(true);
 
       const { data, paging: glossaryPaging } = await getGlossariesList({
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.REVIEWERS,
-          TabSpecificField.VOTES,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.TERM_COUNT,
-        ],
+        fields: GLOSSARY_LIST_FIELDS,
         limit: PAGE_SIZE_LARGE,
         after: after,
       });
@@ -461,8 +463,15 @@ const GlossaryPage = () => {
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
         navigate(getGlossaryPath(fqn));
-        // Refresh glossary list to update term count after deletion
-        fetchGlossaryList();
+
+        const rootFqn = glossaryFqn ? Fqn.split(glossaryFqn)[0] : undefined;
+        if (rootFqn) {
+          updateGlossaryInList(
+            await getGlossariesByName(rootFqn, {
+              fields: GLOSSARY_LIST_FIELDS,
+            })
+          );
+        }
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -472,7 +481,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, activeGlossary, fetchGlossaryList]
+    [glossaryFqn, activeGlossary, fetchGlossaryList, updateGlossaryInList]
   );
 
   const handleAssetClick = useCallback(
@@ -500,9 +509,26 @@ const GlossaryPage = () => {
     );
   }
 
+  const renderEmptyStateFooter = () => {
+    if (!createGlossaryPermission) {
+      return undefined;
+    }
+
+    return (
+      <CoreButton
+        color="primary"
+        data-testid="add-glossary"
+        iconLeading={Plus}
+        size="sm"
+        onPress={handleAddGlossaryClick}>
+        {t('label.add-entity', { entity: t('label.glossary') })}
+      </CoreButton>
+    );
+  };
+
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="tw:relative full-height tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary">
+      <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         <EmptyPlaceholder
           description={t('message.glossary-empty-description')}
           features={[
@@ -525,18 +551,7 @@ const GlossaryPage = () => {
               description: t('message.link-them-to-data-description'),
             },
           ]}
-          footer={
-            createGlossaryPermission ? (
-              <CoreButton
-                color="primary"
-                data-testid="add-glossary"
-                iconLeading={Plus}
-                size="sm"
-                onPress={handleAddGlossaryClick}>
-                {t('label.add-entity', { entity: t('label.glossary') })}
-              </CoreButton>
-            ) : undefined
-          }
+          footer={renderEmptyStateFooter()}
           title={t('message.build-your-business-dictionary')}
           variant="features"
         />
@@ -544,17 +559,24 @@ const GlossaryPage = () => {
     );
   }
 
-  let glossaryElement;
-  if (isRightPanelLoading) {
-    glossaryElement = <Loader />;
-  } else if (isTermNotFound) {
-    glossaryElement = (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
-      </ErrorPlaceHolder>
-    );
-  } else {
-    glossaryElement = (
+  const renderGlossaryElement = () => {
+    if (isRightPanelLoading) {
+      return <Loader />;
+    }
+    if (isTermNotFound) {
+      return (
+        <div className="content-height-with-resizable-panel tw:relative">
+          <NoDataPlaceholder
+            description={getEntityMissingMessage(
+              t('label.glossary-term'),
+              glossaryFqn
+            )}
+          />
+        </div>
+      );
+    }
+
+    return (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -570,7 +592,9 @@ const GlossaryPage = () => {
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
     );
-  }
+  };
+
+  const glossaryElement = renderGlossaryElement();
 
   const resizableLayout = isGlossaryActive ? (
     <ResizableLeftPanels

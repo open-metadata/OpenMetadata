@@ -110,7 +110,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
   }>) => {
-    const value = { sortDescriptor, onSortChange };
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
 
     return (
       <SortContext.Provider value={value}>
@@ -229,6 +232,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: string) => void;
   }) => (
     <input
+      aria-label={placeholder}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
@@ -266,6 +270,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
+    Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+      <div data-testid={testId} />
+    ),
     Tabs: MockTabs,
     Table: MockTable,
   };
@@ -485,7 +492,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',

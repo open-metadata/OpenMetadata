@@ -25,12 +25,13 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
-  descriptionBox,
   getApiContext,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../utils/common';
 import {
+  ARTICLES_URL,
   ARTICLE_DESCRIPTION,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
@@ -50,6 +51,8 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
+  waitForDraftPersisted,
+  waitForRecentlyViewed,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -71,8 +74,10 @@ import {
   verifyNotificationAndClick,
   waitForAutoSave,
 } from '../../utils/KnowledgeCenter';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
+import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 import {
   runAdvancedBlocksTest,
   runContentPersistenceTest,
@@ -204,6 +209,24 @@ test.describe('Context Center Articles', () => {
       description: 'Original description for draft article B',
     });
 
+    await Promise.all([
+      waitForSearchIndexed(
+        apiContext,
+        articleEntity.responseData.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleA.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleB.fullyQualifiedName,
+        'page'
+      ),
+    ]);
+
     await afterAction();
   });
 
@@ -255,7 +278,10 @@ test.describe('Context Center Articles', () => {
 
     await test.step('dashboard view all articles opens article list', async () => {
       await navigateToDashboard(page);
-      await page.getByTestId('article-detail-card').click();
+      await page
+        .getByTestId('article-detail-card')
+        .getByRole('button', { name: 'View All Articles' })
+        .click();
 
       await expect(page).toHaveURL(/\/context-center\/articles/);
     });
@@ -309,7 +335,14 @@ test.describe('Context Center Articles', () => {
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
-    await scrollListingToCard(page, articleEntity.responseData.displayName);
+    await expect(searchInput).toHaveValue('');
+    await expect(page.getByText('No matching results')).not.toBeVisible();
+    await expect(
+      page
+        .getByTestId('knowledge-page-listing')
+        .locator('[data-testid^="knowledge-card-"]')
+        .first()
+    ).toBeVisible();
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -332,25 +365,25 @@ test.describe('Context Center Articles', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByTestId('explore-tree-title-Knowledge Center')
-      ).toContainText('Knowledge Center');
+        page.getByTestId('explore-tree-title-Context Center')
+      ).toContainText('Context Center');
 
       await page
-        .locator('div')
-        .filter({ hasText: /^Knowledge Center$/ })
+        .locator('.ant-tree-treenode')
+        .filter({ hasText: /^Context Center$/ })
         .locator('svg')
         .first()
         .click();
 
       await expect(
-        page.getByTestId('explore-tree-title-Knowledge Page')
-      ).toContainText('Knowledge Page');
+        page.getByTestId('explore-tree-title-Articles')
+      ).toContainText('Articles');
 
       const apiRes = page.waitForResponse(
         '/api/v1/search/query?q=&index=dataAsset*'
       );
 
-      await page.getByTestId('explore-tree-title-Knowledge Page').click();
+      await page.getByTestId('explore-tree-title-Articles').click();
       const response = await apiRes;
       const responseData = await response.json();
 
@@ -362,6 +395,57 @@ test.describe('Context Center Articles', () => {
         page.getByTestId('search-error-placeholder')
       ).not.toBeVisible();
     });
+  });
+
+  test('Article tags added on the article page are visible in the Explore right-panel summary', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext: setupContext, afterAction: setupAfterAction } =
+      await createNewPage(browser);
+    const article = await createArticleViaApi(setupContext, {
+      displayName: `CC Tag Panel Article ${uuid()}`,
+      name: `cc_tag_panel_article_${uuid()}`,
+    });
+    await setupAfterAction();
+
+    const tagDisplayName = 'Article';
+    const tagFqn = 'KnowledgeCenter.Article';
+
+    try {
+      await test.step('Add tag to article via the article page', async () => {
+        await navigateToArticle(page, article.fullyQualifiedName);
+        await updateTags(page, { tag: tagDisplayName, tagFqn });
+      });
+
+      await test.step('Wait for search index to reflect the update', async () => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        await waitForSearchIndexed(
+          apiContext,
+          article.fullyQualifiedName,
+          'page'
+        );
+        await afterAction();
+      });
+
+      await test.step('Verify tag is visible in Explore right-panel summary', async () => {
+        await navigateToKCEntity(page, article.displayName);
+
+        const summaryPanel = page.locator(
+          '[data-testid="entity-summary-panel-container"]'
+        );
+        await expect(
+          summaryPanel
+            .locator('.tags-section, [class*="tags"]')
+            .getByText(tagDisplayName)
+        ).toBeVisible();
+      });
+    } finally {
+      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+        await createNewPage(browser);
+      await deleteArticleByFqn(cleanupContext, article.fullyQualifiedName);
+      await cleanupAfterAction();
+    }
   });
 
   test('Quick link lifecycle validates, creates, edits, and deletes from card', async ({
@@ -397,16 +481,11 @@ test.describe('Context Center Articles', () => {
     await readArticleInHierarchy(page, testQuickLink.displayName);
     await scrollHierarchyToNode(page, testQuickLink.displayName);
 
-    const searchInput = await verifyArticleSearch(
-      page,
-      testQuickLink.displayName
-    );
+    await verifyArticleSearch(page, testQuickLink.displayName);
     await expect(
       page.getByTestId(`knowledge-card-${testQuickLink.displayName}`)
     ).toBeVisible();
 
-    await searchInput.clear();
-    await waitForAllLoadersToDisappear(page);
     await updateQuickLink(page, testQuickLink);
 
     const updatedCard = page.getByTestId(
@@ -610,7 +689,10 @@ test.describe('Context Center Articles', () => {
       url.pathname.includes('/context-center/articles/')
     );
     await waitForAllLoadersToDisappear(page);
-    await page.waitForTimeout(500);
+    await waitForRecentlyViewed(
+      page,
+      articleEntity.responseData.displayName as string
+    );
 
     await navigateToArticles(page);
     const rightPanel = page.getByTestId('knowledge-center-right-panel');
@@ -658,7 +740,16 @@ test.describe('Context Center Articles', () => {
     const targetArticle =
       listKnowledgeCenter.knowledgePages[MIN_CARDS - 1].displayName;
     const node = await scrollHierarchyToNode(page, targetArticle);
+    const articleLoaded = page.waitForResponse((resp) =>
+      resp.url().includes('/api/v1/contextCenter/pages/name/')
+    );
     await node.click();
+    const articleResponse = await articleLoaded;
+
+    expect(articleResponse.status()).toBe(200);
+    await expect(
+      page.getByTestId('article-detail-header-skeleton')
+    ).not.toBeVisible();
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
       targetArticle
@@ -709,6 +800,7 @@ test.describe('Context Center Articles', () => {
     ).not.toBeVisible();
 
     await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -724,6 +816,98 @@ test.describe('Context Center Articles', () => {
       `${parent.fullyQualifiedName}.${child.name}`
     );
     await cleanupAfterAction();
+  });
+
+  test('Expanding a multi-level hierarchy does not throw and renders no duplicate nodes', async ({
+    page,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const grandparent = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Grandparent ${uuid()}`,
+      name: `cc_deep_grandparent_${uuid()}`,
+    });
+    const parent = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Parent ${uuid()}`,
+      name: `cc_deep_parent_${uuid()}`,
+    });
+    const child = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Child ${uuid()}`,
+      name: `cc_deep_child_${uuid()}`,
+    });
+
+    const patchParent = async (
+      pageId: string,
+      parentEntity: KnowledgeCenterResponseDataType
+    ) => {
+      await apiContext.patch(`/api/v1/contextCenter/pages/${pageId}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/parent',
+            value: {
+              id: parentEntity.id,
+              type: 'page',
+              fullyQualifiedName: parentEntity.fullyQualifiedName,
+              displayName: parentEntity.displayName,
+              name: parentEntity.name,
+            },
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+    };
+
+    await patchParent(parent.id, grandparent);
+    await patchParent(child.id, parent);
+    await afterAction();
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) =>
+      pageErrors.push(error.stack ?? error.message)
+    );
+
+    await navigateToArticles(page);
+    await scrollHierarchyToNode(page, grandparent.displayName);
+
+    await page
+      .getByRole('button', {
+        name: `Expand ${grandparent.displayName}`,
+      })
+      .click();
+    await expect(
+      page.getByTestId(`page-node-${parent.displayName}`)
+    ).toBeVisible();
+
+    await page
+      .getByRole('button', {
+        name: `Expand ${parent.displayName}`,
+      })
+      .click();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+
+    await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
+    await page.getByLabel('Collapse All').click();
+    await expect(page.getByLabel('Expand All')).toBeVisible();
+    await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+
+    for (const displayName of [
+      grandparent.displayName,
+      parent.displayName,
+      child.displayName,
+    ]) {
+      await expect(page.getByTestId(`page-node-${displayName}`)).toHaveCount(1);
+    }
+
+    expect(pageErrors).toEqual([]);
   });
 
   test('Article detail layout, drawer, activity tab, and version page work', async ({
@@ -830,6 +1014,7 @@ test.describe('Context Center Articles', () => {
     await scrollHierarchyToNode(page, updatedTitle);
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, updatedTitle);
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
@@ -840,12 +1025,13 @@ test.describe('Context Center Articles', () => {
     await titleInput.fill(`${updatedTitle} Unsaved`);
     await page.goBack();
     await waitForAllLoadersToDisappear(page);
+    await verifyArticleSearch(page, updatedTitle);
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
 
     await navigateToArticle(page, article.fullyQualifiedName);
-    await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
       updatedTitle
     );
 
@@ -977,25 +1163,101 @@ test.describe('Context Center Articles', () => {
     });
 
     await test.step('activity feed supports create, edit, and delete', async () => {
+      const paginationMarker = `Paginated conversation ${uuid()}`;
+      const entityLink = `<#E::page::${mentionArticle.fullyQualifiedName}::description>`;
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        const seedResponses = await Promise.all(
+          Array.from({ length: 11 }, (_, index) =>
+            apiContext.post('/api/v1/conversations', {
+              data: {
+                about: entityLink,
+                message: `${paginationMarker} ${index}`,
+              },
+            })
+          )
+        );
+        expect(seedResponses.every((response) => response.ok())).toBeTruthy();
+      } finally {
+        await afterAction();
+      }
+
+      const nextConversationPage = page.waitForRequest((request) => {
+        const url = new URL(request.url());
+
+        return (
+          url.pathname === '/api/v1/conversations' &&
+          url.searchParams.has('after')
+        );
+      });
       await navigateToArticle(page, mentionArticle.fullyQualifiedName);
       await page.locator('[data-testid="conversation"]').click();
       await page.locator('.feed-drawer').waitFor({ state: 'visible' });
       await page.getByRole('tab', { name: 'Conversations' }).click();
+      await page.getByTestId('observer-element').scrollIntoViewIfNeeded();
+      await nextConversationPage;
+      await expect(
+        page
+          .locator('[data-testid="feed-card-v2-sidebar"]')
+          .filter({ hasText: paginationMarker })
+      ).toHaveCount(11);
 
       const conversationMessage = `Test Conversation Message ${uuid()}`;
+      await page.getByTestId('add-new-conversation').click();
       const editor = page.locator(
         '[data-testid="editor-wrapper"] [contenteditable="true"]'
       );
       await editor.click();
       await editor.fill(conversationMessage);
 
-      const feedResponse = page.waitForResponse('/api/v1/feed');
+      const feedResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/conversations' &&
+          response.request().method() === 'POST'
+      );
       await page.locator('[data-testid="send-button"]').click();
-      await feedResponse;
+      const createdConversationResponse = await feedResponse;
+      const createdConversation = await createdConversationResponse.json();
       await expect(page.getByText(conversationMessage)).toBeVisible();
 
-      await page.locator('[data-testid="main-message"]').hover();
-      await page.locator('[data-testid="edit-message"]').click();
+      const mainMessage = page.locator(
+        `[data-testid="feed-card-v2-sidebar"][data-conversation-id="${createdConversation.id}"]`
+      );
+      await expect(mainMessage).toBeVisible();
+      await mainMessage.getByTestId('add-reactions').click();
+      const reactionResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
+            ) && response.request().method() === 'PUT'
+      );
+      await page.locator('[title="rocket"]:visible').click();
+      await reactionResponse;
+      await mainMessage.getByTestId('emoji-button').hover();
+      await expect(
+        page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
+      ).toContainText(/admin/i);
+
+      await mainMessage.hover();
+      const resolveResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(`/api/v1/conversations/${createdConversation.id}`) &&
+          response.request().method() === 'PATCH'
+      );
+      await mainMessage.getByTestId('toggle-resolved').click();
+      await resolveResponse;
+      await mainMessage.hover();
+      await expect(mainMessage.getByTestId('toggle-resolved')).toHaveAttribute(
+        'aria-label',
+        'Open'
+      );
+
+      await mainMessage.hover();
+      await mainMessage.getByTestId('edit-message').click();
 
       const updatedMessage = `Updated Thread Message ${uuid()}`;
       await editor.click();
@@ -1004,25 +1266,23 @@ test.describe('Context Center Articles', () => {
 
       const updateThreadPromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.request().method() === 'PATCH'
       );
       await page.locator('[data-testid="save-button"]').click();
       await updateThreadPromise;
       await expect(page.getByText(updatedMessage)).toBeVisible();
 
-      await page.locator('[data-testid="main-message"]').hover();
-      await page.locator('[data-testid="delete-message"]').click();
+      await mainMessage.hover();
+      await mainMessage.getByTestId('delete-message').click();
       const deletePostPromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.request().method() === 'DELETE'
       );
       await page.getByTestId('save-button').click();
       await deletePostPromise;
-      await expect(
-        page.locator('[data-testid="main-message"]')
-      ).not.toBeVisible();
+      await expect(mainMessage).not.toBeVisible();
     });
 
     await test.step('user mention notification redirects to article', async () => {
@@ -1054,14 +1314,16 @@ test.describe('Context Center Articles', () => {
       await waitForRelatedArticles;
 
       await page.getByTestId('edit-description').click();
-      await page.locator(descriptionBox).first().click();
-      await page.locator(descriptionBox).first().clear();
+
+      const editor = await resolveDescriptionBox(page);
+
+      await editor.click();
+      await editor.clear();
 
       const mentionResponse = page.waitForResponse('/api/v1/search/query?**');
-      await page
-        .locator(descriptionBox)
-        .first()
-        .fill(`#${relatedKnowledgeCenter.knowledgePages[0].displayName}`);
+      await editor.fill(
+        `#${relatedKnowledgeCenter.knowledgePages[0].displayName}`
+      );
       await mentionResponse;
 
       await page
@@ -1083,7 +1345,7 @@ test.describe('Context Center Articles', () => {
 
       expect(href).toMatch(
         new RegExp(
-          `/knowledge-center/${relatedKnowledgeCenter.knowledgePages[0].name}$`
+          `${ARTICLES_URL}/${relatedKnowledgeCenter.knowledgePages[0].name}$`
         )
       );
     });
@@ -1268,8 +1530,16 @@ test.describe('Context Center Articles', () => {
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
+        const articleLoaded = page.waitForResponse((resp) =>
+          resp.url().includes('/api/v1/contextCenter/pages/name/')
+        );
         await node.click();
-        await waitForAllLoadersToDisappear(page);
+        const articleResponse = await articleLoaded;
+
+        expect(articleResponse.status()).toBe(200);
+        await expect(
+          page.getByTestId('article-detail-header-skeleton')
+        ).not.toBeVisible();
         await assertArticleEditorSaved(page);
       });
 
@@ -1317,8 +1587,9 @@ test.describe('Context Center Articles', () => {
         await page
           .getByTestId('entity-header-display-name')
           .fill(newDisplayName);
+        // The 'Unsaved' badge is the editor's own signal that the edit has been
+        // registered, so it is the thing to wait on before navigating away.
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
         await page.getByRole('link', { name: 'Articles' }).click();
       });
 
@@ -1334,8 +1605,16 @@ test.describe('Context Center Articles', () => {
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
         await updateDisplayNameResponse;
+        const articleLoaded = page.waitForResponse((resp) =>
+          resp.url().includes('/api/v1/contextCenter/pages/name/')
+        );
         await node.click();
-        await waitForAllLoadersToDisappear(page);
+        const articleResponse = await articleLoaded;
+
+        expect(articleResponse.status()).toBe(200);
+        await expect(
+          page.getByTestId('article-detail-header-skeleton')
+        ).not.toBeVisible();
         await assertArticleEditorSaved(page);
       });
 
@@ -1375,7 +1654,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', reloadDescription);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(page, draftArticleA.id, reloadDescription);
       });
 
       await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
@@ -1454,7 +1733,11 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
         await page.fill('.om-block-editor', 'This draft should be deleted');
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(
+          page,
+          articleToDelete.id,
+          'This draft should be deleted'
+        );
       });
 
       await test.step('Navigate away to ensure draft is persisted in localStorage', async () => {
@@ -1502,14 +1785,14 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', contentA);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(page, draftArticleA.id, contentA);
       });
 
       await test.step('Navigate to draft article B and type without saving', async () => {
         await navigateToArticle(page, draftArticleB.fullyQualifiedName);
         await page.fill('.om-block-editor', contentB);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(page, draftArticleB.id, contentB);
       });
 
       await test.step('Reload Article B — its own draft should be synced', async () => {

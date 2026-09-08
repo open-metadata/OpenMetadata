@@ -1135,6 +1135,12 @@ public class OpenSearchBulkSink implements BulkSink {
       StageStatsTracker tracker,
       String stagedChunkTarget) {
     try {
+      // Per-instance gate, mirroring VectorEmbeddingHandler: the entity-type check above cannot
+      // see that an individual ContextMemory is Private/Shared, and the vector query path carries
+      // no per-document visibility filter.
+      if (!Entity.isVectorEmbeddable(entity)) {
+        return json;
+      }
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
       if (vectorService == null) {
         return json;

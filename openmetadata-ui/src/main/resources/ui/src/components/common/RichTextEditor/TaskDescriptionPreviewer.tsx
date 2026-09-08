@@ -82,6 +82,7 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
               }
             : undefined
         }>
+        {/* eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus explicitly off */}
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (

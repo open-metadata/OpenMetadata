@@ -73,12 +73,20 @@ class S3IngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill(
-      '#root\\/containerFilterPattern\\/includes',
-      `${this.entityName}`
-    );
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-containerFilterPattern').click();
     await page
-      .locator('#root\\/containerFilterPattern\\/includes')
+      .getByTestId('containerFilterPattern-only-specific-button')
+      .click();
+    await page
+      .getByTestId('filter-section-containerFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.entityName);
+    await page
+      .getByTestId('filter-section-containerFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

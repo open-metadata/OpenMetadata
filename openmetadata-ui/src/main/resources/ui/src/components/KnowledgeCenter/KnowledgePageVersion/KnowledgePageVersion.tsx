@@ -13,8 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { diffWordsWithSpace } from 'diff';
-import { isEmpty, map, toString } from 'lodash';
+import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -33,6 +32,7 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
+import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
@@ -63,14 +63,10 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   );
 
   const descriptionDiff = useMemo(() => {
-    const changeDescription = knowledgePage.changeDescription ?? {};
-    const currentDescription = knowledgePage.description;
-
     const fieldDiff = getDiffByFieldName(
       EntityField.DESCRIPTION,
-      changeDescription
+      knowledgePage.changeDescription ?? {}
     );
-
     const oldField = getFrontEndFormat(
       toString(getChangedEntityOldValue(fieldDiff))
     );
@@ -78,30 +74,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
       toString(getChangedEntityNewValue(fieldDiff))
     );
 
-    if (isEmpty(newField) && isEmpty(oldField)) {
-      return currentDescription;
-    }
-
-    const diffArr = diffWordsWithSpace(oldField, newField);
-
-    const result = map(diffArr, (diff) => {
-      const value = diff.value.trim().replaceAll('\n', '<br>');
-
-      if (diff.added && value) {
-        return `<diff-view class="diff-added">${value}</diff-view>`;
-      }
-      if (diff.removed && value) {
-        return `<diff-view class="diff-removed">${value}</diff-view>`;
-      }
-
-      if (value) {
-        return `<diff-view>${value}</diff-view>`;
-      }
-
-      return '';
-    });
-
-    return result.join('');
+    return getRichTextDiff(oldField, newField, knowledgePage.description);
   }, [knowledgePage]);
 
   const tags = useMemo(() => {

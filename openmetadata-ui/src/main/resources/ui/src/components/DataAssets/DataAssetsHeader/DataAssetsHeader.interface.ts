@@ -147,7 +147,7 @@ export type DataAssetsHeaderProps = {
   onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   onVersionClick?: () => void;
   onFollowClick?: () => Promise<void>;
-  onRestoreDataAsset: () => Promise<void>;
+  onRestoreDataAsset: () => Promise<boolean>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
   onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
@@ -161,6 +161,7 @@ export type DataAssetsHeaderProps = {
   onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
   onStyleUpdate?: (style: Style | null) => Promise<void>;
   disableRunAgentsButtonMessage?: string;
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
 } & (
   | DataAssetTable
   | DataAssetTopic

@@ -202,7 +202,7 @@ class _CloudSqlStrategy(EngineStrategy[MySQLConnectionConfig]):
 
     def build(self) -> Engine:
         try:
-            from google.cloud.sql.connector import Connector  # noqa: PLC0415
+            from google.cloud.sql.connector import Connector
         except ImportError:
             raise ImportError(  # noqa: B904
                 "cloud-sql-python-connector is required for GCP CloudSQL connections. "

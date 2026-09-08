@@ -43,11 +43,13 @@ test.beforeAll(async ({ browser }) => {
     patchData: [
       {
         op: 'add',
-        value: {
-          type: 'domain',
-          id: EntityDataClass.domain1.responseData.id,
-        },
-        path: '/domains/0',
+        value: [
+          {
+            type: 'domain',
+            id: EntityDataClass.domain1.responseData.id,
+          },
+        ],
+        path: '/domains',
       },
     ],
   });
@@ -92,11 +94,14 @@ test(
       'entityResponseData.database.fullyQualifiedName',
       ''
     );
+    const tableLineageResponse = page.waitForResponse(
+      '/api/v1/lineage/getLineage?*'
+    );
     await page
       .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
       .dispatchEvent('click');
 
-    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await tableLineageResponse;
 
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
@@ -114,8 +119,11 @@ test(
       db
     );
     await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
+    const dbLineageResponse = page.waitForResponse(
+      '/api/v1/lineage/getLineage?*'
+    );
     await page.getByTestId(`node-suggestion-${dbFqn}`).dispatchEvent('click');
-    await page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await dbLineageResponse;
 
     await expect(page.getByTestId('lineage-details')).toBeVisible();
 

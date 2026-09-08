@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { ChevronRight, RefreshCw01 } from '@untitledui/icons';
 import type {
@@ -306,6 +307,8 @@ const TreeLoadMoreItemComponent = ({
   className,
   ...props
 }: TreeLoadMoreItemProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaTreeLoadMoreItem
       {...props}
@@ -320,7 +323,7 @@ const TreeLoadMoreItemComponent = ({
             aria-hidden="true"
             className="tw:h-4 tw:w-4 tw:animate-spin"
           />
-          {children ?? 'Loading…'}
+          {children ?? t('label.loading', 'Loading…')}
         </span>
       ) : (
         children ?? 'Load more'

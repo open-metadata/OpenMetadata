@@ -13,11 +13,11 @@
 import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product-new.svg';
 import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as DataProductIcon } from '../../../../assets/svg/widget/data-products.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -39,7 +39,6 @@ import {
 import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
-import { getEntityTypeExploreQueryFilter } from '../../../../utils/FilterQueryUtils';
 import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -129,7 +128,7 @@ const DataProductsWidget = ({
   }, []);
 
   const handleTitleClick = useCallback(() => {
-    navigate(`${ROUTES.EXPLORE}?tab=data_product`);
+    navigate(ROUTES.DATA_PRODUCT);
   }, [navigate]);
 
   const emptyState = useMemo(
@@ -227,20 +226,16 @@ const DataProductsWidget = ({
     [dataProducts, loading]
   );
 
-  const footer = useMemo(() => {
-    const quickFilter = encodeURIComponent(
-      getEntityTypeExploreQueryFilter('dataproduct')
-    );
-    const exploreUrl = `${ROUTES.EXPLORE}?quickFilter=${quickFilter}`;
-
-    return (
+  const footer = useMemo(
+    () => (
       <WidgetFooter
-        moreButtonLink={exploreUrl}
+        moreButtonLink={ROUTES.DATA_PRODUCT}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
-    );
-  }, [t, showWidgetFooterMoreButton]);
+    ),
+    [t, showWidgetFooterMoreButton]
+  );
 
   const widgetHeader = useMemo(
     () => (
@@ -251,8 +246,8 @@ const DataProductsWidget = ({
         icon={
           <DataProductIcon
             className="data-products-widget-icon"
-            height={22}
-            width={22}
+            height={24}
+            width={24}
           />
         }
         isEditView={isEditView}
@@ -277,25 +272,30 @@ const DataProductsWidget = ({
     ]
   );
 
+  let widgetContent: ReactNode;
+  if (error) {
+    widgetContent = (
+      <ErrorPlaceHolder
+        className="data-products-widget-error border-none"
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        {error}
+      </ErrorPlaceHolder>
+    );
+  } else if (isEmpty(dataProducts)) {
+    widgetContent = (
+      <div data-testid="data-products-empty-state">{emptyState}</div>
+    );
+  } else {
+    widgetContent = dataProductsList;
+  }
+
   return (
     <WidgetWrapper
       dataTestId="KnowledgePanel.DataProducts"
       header={widgetHeader}
       loading={loading}>
       <div className="data-products-widget-container">
-        <div className="widget-content flex-1">
-          {error ? (
-            <ErrorPlaceHolder
-              className="data-products-widget-error border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              {error}
-            </ErrorPlaceHolder>
-          ) : isEmpty(dataProducts) ? (
-            <div data-testid="data-products-empty-state">{emptyState}</div>
-          ) : (
-            dataProductsList
-          )}
-        </div>
+        <div className="widget-content flex-1">{widgetContent}</div>
         {!isEmpty(dataProducts) && footer}
       </div>
     </WidgetWrapper>

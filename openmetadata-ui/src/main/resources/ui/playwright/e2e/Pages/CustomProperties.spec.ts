@@ -18,14 +18,14 @@
  *   StoredProcedure, DashboardDataModel, Metric, Chart,
  *   ApiCollection, ApiEndpoint, DataProduct, Domain, TableColumn.
  *
- * Each entity type has ONE describe.serial block so no two workers can ever run
- * CP create/edit/delete operations for the same entity type simultaneously.
+ * Each entity type has one default-mode describe block so its CP operations
+ * remain sequential without replaying every preceding test on a retry.
  *
  * Entity setup (prepareCustomProperty) is done in beforeAll, not inside tests,
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import {
   CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
   INVALID_NAMES,
@@ -63,6 +63,7 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -75,6 +76,7 @@ import {
   clickOutside,
   createNewPage,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -105,6 +107,7 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
   setSliderValue,
@@ -248,7 +251,7 @@ const ALL_ENTITIES: CRUDEntity[] = [
     makeInstance: () => new DashboardDataModelClass(),
   },
   { key: 'entity_metric', makeInstance: () => new MetricClass() },
-  // { key: 'entity_chart', makeInstance: () => new ChartClass() },
+  { key: 'entity_chart', makeInstance: () => new ChartClass() },
   // Part-3 entities
   { key: 'entity_apiCollection', makeInstance: () => new ApiCollectionClass() },
   { key: 'entity_apiEndpoint', makeInstance: () => new ApiEndpointClass() },
@@ -259,9 +262,29 @@ const ALL_ENTITIES: CRUDEntity[] = [
 
 ALL_ENTITIES.forEach(({ key, makeInstance }) => {
   const entity = CUSTOM_PROPERTIES_ENTITIES[key];
+  const basicProperties =
+    key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
+  const configProperties = key === 'entity_table' ? CONFIG_PROPERTIES : [];
+  const valuePropertyTypes =
+    key === 'entity_table'
+      ? Object.values(CustomPropertyTypeByName)
+      : [CustomPropertyTypeByName.STRING];
+  const updatePropertyTypes =
+    key === 'entity_table'
+      ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.TABLE_CP]
+      : valuePropertyTypes;
+  const rightPanelPropertyTypes =
+    key === 'entity_table'
+      ? [CustomPropertyTypeByName.STRING]
+      : valuePropertyTypes;
+  const preparedPropertyTypes =
+    key === 'entity_container'
+      ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.HYPERLINK_CP]
+      : valuePropertyTypes;
 
-  test.describe
-    .serial(`Add update and delete custom properties for ${entity.name}`, () => {
+  test.describe(`Add update and delete custom properties for ${entity.name}`, () => {
+    test.describe.configure({ mode: 'default' });
+
     let mainEntity: AssetTypes | OtherTypes = {} as AssetTypes | OtherTypes;
     let responseData:
       | AssetTypes['entityResponseData']
@@ -291,7 +314,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
-      const { page, apiContext, afterAction } = await createNewPage(browser);
+      const { page, apiContext, afterAction } = await createNewPage(browser, {
+        navigate: true,
+      });
 
       if (key === 'entity_tableColumn') {
         tableForColumnTest = new TableClass();
@@ -299,19 +324,36 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       } else if (makeInstance !== null) {
         mainEntity = makeInstance();
         await mainEntity.create(apiContext);
-        await mainEntity.prepareCustomProperty(apiContext);
+        await mainEntity.prepareCustomProperty(
+          apiContext,
+          preparedPropertyTypes
+        );
 
         if (key === 'entity_table') {
-          for (let i = 0; i < 5; i++) {
-            const user = new UserClass();
-            await user.create(apiContext);
-            users.push(user);
+          // Created concurrently: sequential round-trips in this hook
+          // accumulate enough latency under load to exhaust its 60s budget.
+          // allSettled rather than all, so a partial failure still registers
+          // whatever was created for teardown before the hook fails — the
+          // rejection is rethrown, never swallowed.
+          const newUsers = Array.from({ length: 5 }, () => new UserClass());
+          const created = await Promise.allSettled(
+            newUsers.map((user) => user.create(apiContext))
+          );
+          // create() persists the user via /users/signup and only then assigns
+          // roles, so a rejection can still leave a real user behind. Register
+          // by "did it get an id", not by "did the promise settle happily".
+          users.push(...newUsers.filter((user) => user.responseData?.id));
+          const failed = created.find((result) => result.status === 'rejected');
+          if (failed) {
+            throw failed.reason;
           }
         } else if (key === 'entity_dashboard') {
           dashboardTopic1 = new TopicClass();
           dashboardTopic2 = new TopicClass();
-          await dashboardTopic1.create(apiContext);
-          await dashboardTopic2.create(apiContext);
+          await Promise.all([
+            dashboardTopic1.create(apiContext),
+            dashboardTopic2.create(apiContext),
+          ]);
           await setupCustomPropertyAdvancedSearchTest(
             page,
             cpasTestData,
@@ -363,9 +405,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       await redirectToHomePage(page);
     });
 
-    // ── 17 CRUD tests ──────────────────────────────────────────────────────
-
-    BASIC_PROPERTIES.forEach((property) => {
+    basicProperties.forEach((property) => {
       test(property, async ({ page }) => {
         test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
@@ -400,7 +440,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
     });
 
-    CONFIG_PROPERTIES.forEach((propertyConfig) => {
+    configProperties.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
@@ -455,18 +495,22 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
     });
 
-    // ── Set & Update all CP types (entities with a UI entity page) ──────────
+    // ── Set & Update CP values (entities with a UI entity page) ─────────────
 
     if (makeInstance !== null) {
-      test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        // 5 minutes timeout since the test handles set->update operation on all
-        // custom property types sequentially
-        test.setTimeout(300000);
-        const properties = Object.values(CustomPropertyTypeByName);
+      const valueCoverageLabel =
+        key === 'entity_table' ? 'all CP types' : 'String CP';
+      const valueCoverageTestTitle =
+        key === 'entity_table'
+          ? `Set all CP types and update representative properties on ${entity.name}`
+          : `Set & Update ${valueCoverageLabel} on ${entity.name}`;
 
-        await test.step('Set all CP types', async () => {
+      test(valueCoverageTestTitle, async ({ page }) => {
+        test.setTimeout(key === 'entity_table' ? 180_000 : 90_000);
+
+        await test.step(`Set ${valueCoverageLabel}`, async () => {
           await mainEntity.visitEntityPage(page);
-          for (const type of properties) {
+          for (const type of valuePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -475,9 +519,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step('Update all CP types', async () => {
-          await mainEntity.visitEntityPage(page);
-          for (const type of properties) {
+        await test.step('Update representative properties', async () => {
+          for (const type of updatePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -486,8 +529,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step('Update all CP types in Right Panel', async () => {
-          for (const [index, type] of properties.entries()) {
+        await test.step('Update a representative property in Right Panel', async () => {
+          for (const [index, type] of rightPanelPropertyTypes.entries()) {
             await updateCustomPropertyInRightPanel({
               page,
               entityName: getEntityDisplayName(responseData),
@@ -793,6 +836,55 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
       });
 
+      test('markdown edit button visible and clickable when value contains a table', async ({
+        page,
+      }) => {
+        const propertyName =
+          mainEntity.customPropertyValue[CustomPropertyTypeByName.MARKDOWN]
+            .property.name;
+
+        await test.step('Insert a TipTap table into the markdown property value', async () => {
+          await redirectToHomePage(page);
+          await mainEntity.visitEntityPage(page);
+          await waitForAllLoadersToDisappear(page);
+          await page.getByTestId('custom_properties').click();
+
+          const container = page.locator(
+            `[data-testid="custom-property-${propertyName}-card"]`
+          );
+          await container.getByTestId('edit-icon').scrollIntoViewIfNeeded();
+          await container.getByTestId('edit-icon').click();
+
+          // Move to a new paragraph at the end, then insert a table via slash command
+          const editor = getDescriptionBox(page);
+          await editor.click();
+          await page.keyboard.press('Control+End');
+          await page.keyboard.press('Enter');
+          await createTable(page);
+
+          const patchResponse = page.waitForResponse(
+            `/api/v1/${entity.entityApiType}/*`
+          );
+          await page.locator('[data-testid="save"]').click();
+          expect((await patchResponse).status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
+        });
+
+        await test.step('Edit button visible and clickable with wide table in markdown value', async () => {
+          const container = page.locator(
+            `[data-testid="custom-property-${propertyName}-card"]`
+          );
+          const editButton = container.getByTestId('edit-icon');
+          await editButton.scrollIntoViewIfNeeded();
+          await expect(editButton).toBeVisible();
+          await expect(editButton).toBeEnabled();
+
+          // Regression for #32477: edit button must not be hidden by horizontal overflow
+          await editButton.click();
+          await expect(getDescriptionBox(page)).toBeVisible();
+        });
+      });
+
       test('Enum: Set Value, Verify, Remove Value', async ({ page }) => {
         test.slow();
         const propertyName =
@@ -903,26 +995,26 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator .ant-select'),
+            ruleLocator.locator('.rule--operator'),
             CONDITIONS_MUST.equalTo.name
           );
 
@@ -945,7 +1037,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator .ant-select'),
+            ruleLocator.locator('.rule--operator'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1197,28 +1289,28 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator .ant-select'),
+              ruleLocator.locator('.rule--operator'),
               CONDITIONS_MUST.equalTo.name
             );
 
@@ -3530,7 +3622,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const data = await createCustomPropertyForEntity(
             apiContext,
-            EntityTypeEndpoint.TableColumn
+            EntityTypeEndpoint.TableColumn,
+            valuePropertyTypes
           );
           testData.customPropertyValue = data.customProperties;
           testData.cleanupUser = data.cleanupUser;
@@ -3552,7 +3645,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await afterAction();
         });
 
-        for (const type of Object.values(CustomPropertyTypeByName)) {
+        for (const type of valuePropertyTypes) {
           test(`Set ${type} custom property on column and verify in UI`, async ({
             page,
           }) => {

@@ -59,7 +59,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.resources.domains.DomainResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -385,6 +384,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
+    EntityReference domainRef = isAdd ? getEntityReferenceById(DOMAIN, entityId, ALL) : null;
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
@@ -399,7 +399,6 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-        EntityReference domainRef = getEntityReferenceById(DOMAIN, entityId, ALL);
         LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
       }
 
@@ -408,12 +407,17 @@ public class DomainRepository extends EntityRepository<Domain> {
       // the asset's cached entity bundle and the per-field domains/owners hash entry both
       // hold the previous-domain view. Drop every cached variant so the next read rebuilds
       // it from the freshly-written relationships.
-      invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      searchRepository.updateEntity(ref);
+      // Re-index the asset and fan its re-derived domains out to inherited descendants in search.
+      // Uniform for add and remove: on add descendants follow the newly assigned domain; on remove
+      // they follow whatever the asset now inherits from its own ancestry (or are cleared if none),
+      // matching the entity page. Descendants with an explicit domain are left untouched.
+      searchRepository.updateEntityAndPropagateInheritedDomainsToChildren(ref);
     }
 
     result.withSuccessRequest(success);
@@ -892,9 +896,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       // The pass below runs after updateFqn but inside this transaction — see
       // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedDomains =
-          invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.DOMAIN, oldFqn);
       List<EntityDAO.EntityIdFqnPair> renamedDataProducts =
-          invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.DATA_PRODUCT, oldFqn);
 
       // Update all child domains' FQNs and FQN hashes
       daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
@@ -916,8 +920,9 @@ public class DomainRepository extends EntityRepository<Domain> {
         invalidateDomainReferencers(child.getId());
       }
 
-      finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
-      finishInvalidateCacheForRenameCascade(Entity.DATA_PRODUCT, renamedDataProducts);
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
+      EntityRepository.finishInvalidateCacheForRenameCascade(
+          Entity.DATA_PRODUCT, renamedDataProducts);
     }
 
     private void invalidateDomainReferencers(UUID domainId) {
@@ -929,7 +934,7 @@ public class DomainRepository extends EntityRepository<Domain> {
               .relationshipDAO()
               .findTo(domainId, Entity.DOMAIN, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : referencers) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -937,17 +942,15 @@ public class DomainRepository extends EntityRepository<Domain> {
       // Update field relationships for feed
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-      // Update feed entity links for the domain
-      EntityLink newAbout = new EntityLink(DOMAIN, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      ConversationRepository conversations = Entity.getConversationRepository();
+      conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
       // Update feed entity links for all child domains
       List<Domain> childDomains = getNestedDomains(updated);
       for (Domain child : childDomains) {
-        EntityLink childAbout = new EntityLink(DOMAIN, child.getFullyQualifiedName());
-        Entity.getFeedRepository()
-            .updateLegacyThreadsAbout(childAbout.getLinkString(), child.getId().toString());
+        String childNewFqn = child.getFullyQualifiedName();
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        conversations.updateEntityReference(child.getEntityReference(), childOldFqn);
       }
     }
 

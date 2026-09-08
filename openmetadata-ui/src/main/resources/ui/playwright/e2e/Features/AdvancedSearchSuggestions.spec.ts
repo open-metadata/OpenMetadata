@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
 import { ADVANCED_SEARCH_SUGGESTION_FIELDS } from '../../constant/advancedSearch';
 import { SidebarItem } from '../../constant/sidebar';
@@ -21,11 +22,8 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -58,46 +56,50 @@ test.describe('Advanced Search Suggestions', () => {
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         field.label,
         true
       );
 
-      await selectOption(
-        page,
-        ruleLocator.locator('.rule--operator .ant-select'),
-        '=='
-      );
+      await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
 
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget > .ant-select > .ant-select-selector input'
+        '.widget--widget input[role="combobox"]'
       );
-
-      const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
-
-      await dropdownInput.click();
-
-      await aggregateRes1;
 
       const searchText = toLower(
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );
 
-      const aggregateRes2 = page.waitForResponse(
-        `/api/v1/search/aggregate?*${getEncodedFqn(
-          escapeESReservedCharacters(searchText)
-        )}*`
-      );
+      const suggestionOption = page
+        .locator('[role="listbox"]:visible [role="option"]')
+        .filter({ hasText: searchText });
 
-      await dropdownInput.fill(searchText);
-
-      await aggregateRes2;
-
-      await test
-        .expect(
-          page.locator(`.ant-select-dropdown:visible [title="${searchText}"]`)
-        )
-        .toBeVisible();
+      // The ComboBox popover re-mounts under load and the isMounting gate can
+      // drop the aggregate request — the listbox then opens empty. Retry the
+      // fill until at least one matching option renders; each attempt re-arms
+      // waitForAggregation so we don't block forever on a dropped request, and
+      // the helper matches the typed-value aggregate specifically so the wait
+      // cannot resolve early on the dropdown-open request.
+      await expect(async () => {
+        // .catch at construction: the exact dropped-aggregate case this fix
+        // targets leaves the underlying waitForResponse pending, so it will
+        // reject with a Playwright timeout ~30s later once the 5s fallback
+        // timer has already won the race. Without the catch, every toPass
+        // attempt orphans a fresh promise and Playwright surfaces them as
+        // unhandled rejections that can fail the test.
+        const aggregateResponse = waitForAggregation(page, {
+          field: field.fieldName,
+          value: searchText,
+        }).catch(() => undefined);
+        await dropdownInput.fill('');
+        await dropdownInput.fill(searchText);
+        await Promise.race([
+          aggregateResponse,
+          new Promise((resolve) => setTimeout(resolve, 5_000)),
+        ]);
+        await expect(suggestionOption).not.toHaveCount(0, { timeout: 5_000 });
+      }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     });
   });
 });

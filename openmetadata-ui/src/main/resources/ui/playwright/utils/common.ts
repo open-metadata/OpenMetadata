@@ -19,10 +19,13 @@ import {
   request,
 } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
@@ -30,9 +33,102 @@ import { getToken as getTokenFromStorage } from './tokenStorage';
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
 
+const adminStorageStateFile = 'playwright/.auth/admin.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
+let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
+
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
+
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ *
+ * A `Page` is accepted too, for the callers that have no narrower container to
+ * hand; {@link resolveDescriptionBox} is what makes that case safe.
+ */
+export const getDescriptionBox = (scope: Page | Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Resolve the description editor that an `edit-description` click just opened.
+ *
+ * Editing a description can mount the editor inline on the page or inside a
+ * modal, and on an entity page both can be present at once. `.first()` picks
+ * whichever comes first in the DOM — the inline editor *behind* the overlay. It
+ * is visible, so `toBeVisible()` passes, and the click then fails on
+ * "ant-modal-wrap ... intercepts pointer events" and retries until the test
+ * times out; the trace shows a 45s click on an editor nothing could reach.
+ *
+ * Prefers the editor inside the dialog whenever the edit opened one. Retrying
+ * covers the modal's enter animation, during which the dialog is not yet
+ * attached.
+ */
+export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: getDescriptionBox(page) });
+
+  let editor = getDescriptionBox(page);
+
+  await expect(async () => {
+    if (await descriptionDialog.count()) {
+      editor = getDescriptionBox(descriptionDialog);
+
+      // The one place a single-editor invariant actually holds. Two editors in
+      // one open dialog means the dialog selector matched something it should
+      // not have, which is worth failing on.
+      await expect(editor).toHaveCount(1);
+    } else {
+      // No dialog: a page legitimately hosts several editors at once — an entity
+      // description alongside per-column ones — so there is nothing to assert
+      // and nothing better to discriminate on. This is the long-standing
+      // behaviour, and it was never the bug: the bug was taking the first match
+      // *while a modal was open*, which the branch above now handles.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- a page may hold several description editors; with no dialog to scope to there is no better discriminator
+      editor = getDescriptionBox(page).first();
+    }
+
+    await expect(editor).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
+  return editor;
+};
+
+/**
+ * Fill the description editor for `scope`.
+ *
+ * An explicit `Locator` is a container the author chose — a form, a modal —
+ * where exactly one editor is a real invariant, so the count assertion from
+ * #32599 stands: failing here names the scope that needs narrowing rather than
+ * typing into an arbitrary editor.
+ *
+ * A `Page` means no container was chosen, and a page may legitimately hold
+ * several editors, so asserting there would fail on ordinary pages. Resolve
+ * instead — the dialog's editor when the edit opened one, first match otherwise.
+ */
+export const fillDescriptionBox = async (
+  scope: Page | Locator,
+  value: string
+) => {
+  if ('goto' in scope) {
+    await (await resolveDescriptionBox(scope)).fill(value);
+
+    return;
+  }
+
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
+};
 
 export const INVALID_NAMES = {
   MAX_LENGTH:
@@ -54,50 +150,93 @@ export const getToken = async (page: Page) => {
 };
 
 export const getAuthContext = async (token: string) => {
+  const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+
   return await request.newContext({
+    baseURL:
+      process.env.PLAYWRIGHT_TEST_BASE_URL ??
+      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
     // Default timeout is 30s making it to 1m for AUTs
     timeout: 90000,
+    ignoreHTTPSErrors: isH2Mode,
     extraHTTPHeaders: {
-      Connection: 'keep-alive',
+      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
       Authorization: `Bearer ${token}`,
     },
   });
 };
 
-// Pages that already have the network strip installed, so redirectToHomePage
-// (called many times per spec) does not stack duplicate routes.
-const etagStripInstalled = new WeakSet<Page>();
+const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
+const etagOptOutInstalled = new WeakSet<Page>();
 
 /**
- * Strip the client `If-None-Match` header from `/api/v1/**` requests at the
- * Playwright network layer.
+ * Disable client-side conditional reads without installing a Playwright route.
  *
  * The UI attaches an ETag conditional-GET interceptor; the server ETag only
  * covers version/updatedAt, so a refetch racing a relationship-only or child
  * mutation (followers, votes, customMetrics, testSuite) is answered 304 and the
- * UI renders a stale body — a flaky-assertion source across the suite. Removing
- * the header here forces the server to always return the current body, and it
- * works regardless of the deployed bundle (unlike the localStorage opt-out,
- * which depends on the bundle carrying the interceptor guard).
+ * UI renders a stale body. A Playwright route would disable Chromium's HTTP
+ * cache for the page and can shadow suite-specific API mocks, so E2E sessions
+ * use the application's localStorage opt-out instead.
  */
-export const stripEtagConditionalReads = async (page: Page) => {
-  if (etagStripInstalled.has(page)) {
+export const disableEtagConditionalReads = async (page: Page) => {
+  if (etagOptOutInstalled.has(page)) {
     return;
   }
-  etagStripInstalled.add(page);
-  await page.route('**/api/v1/**', async (route) => {
-    const headers = route.request().headers();
-    delete headers['if-none-match'];
-    await route.continue({ headers });
-  });
+  etagOptOutInstalled.add(page);
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, 'true');
+  }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate((key) => {
+      localStorage.setItem(key, 'true');
+    }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+  }
+};
+
+const LOGGED_IN_USERS_KEY = 'loggedInUsers';
+
+/**
+ * Suppress the landing-page welcome banner at the source.
+ *
+ * MyDataPage renders the welcome banner only when the logged-in user's `name`
+ * is absent from the `loggedInUsers` localStorage list (see
+ * MyDataPage.component.tsx). Seeding that list with the user's name before the
+ * first navigation means the banner never renders for the session, so no test
+ * has to dismiss it. `userName` must equal the app's `currentUser.name` — for a
+ * created UserClass that is `responseData.name`; the email local-part is the
+ * server-assigned fallback for a pure login (e.g. admin).
+ */
+export const suppressWelcomeScreen = async (page: Page, userName: string) => {
+  const name = userName.includes('@') ? userName.split('@')[0] : userName;
+  const seed = ({ key, value }: { key: string; value: string }) => {
+    const existing = (localStorage.getItem(key) ?? '')
+      .split(',')
+      .filter(Boolean);
+    if (!existing.includes(value)) {
+      localStorage.setItem(key, [...existing, value].join(','));
+    }
+  };
+  const arg = { key: LOGGED_IN_USERS_KEY, value: name };
+
+  await page.addInitScript(seed, arg);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate(seed, arg);
+  }
 };
 
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await stripEtagConditionalReads(page);
-  await page.goto('/', {
+  // Every spec funnels through here, including the ones that build their own
+  // page with browser.newPage() and so never touch the `context` fixture. This
+  // is the only hook that reaches all of them; the call is idempotent.
+  await installServerLoadReducers(page.context());
+  await disableEtagConditionalReads(page);
+  await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForURL('**/my-data', {
@@ -115,49 +254,130 @@ export const redirectToExplorePage = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
-export const removeLandingBanner = async (page: Page) => {
-  try {
-    const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
-    await welcomePageCloseButton
-      .waitFor({
-        state: 'visible',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Do nothing if the welcome banner does not exist
-        return;
-      });
+type CreateNewPageResult = {
+  afterAction: () => Promise<void>;
+  apiContext: APIRequestContext;
+};
 
-    // Close the welcome banner if it exists
-    if (await welcomePageCloseButton.isVisible()) {
-      await welcomePageCloseButton.click();
+type NavigatedPageResult = CreateNewPageResult & { page: Page };
+type APIOnlyPageResult = CreateNewPageResult & { page?: never };
+
+export const getSavedAdminToken = async () => {
+  const tokenFile = JSON.parse(await readFile(adminApiTokenFile, 'utf8')) as {
+    token: string;
+  };
+
+  return tokenFile.token;
+};
+
+const createValidatedWorkerAdminAPIContext = async () => {
+  const apiContext = await getAuthContext(await getSavedAdminToken());
+
+  try {
+    const response = await apiContext.get('/api/v1/users/loggedInUser');
+
+    try {
+      if (!response.ok()) {
+        throw new Error(
+          `Saved admin token validation failed (${response.status()})`
+        );
+      }
+    } finally {
+      await response.dispose();
     }
-  } catch {
-    // Do nothing if the welcome banner does not exist
-    return;
+
+    return apiContext;
+  } catch (error) {
+    await apiContext.dispose();
+    throw error;
   }
 };
 
-export const createNewPage = async (browser: Browser) => {
-  // create a new page
-  const page = await browser.newPage();
-  await redirectToHomePage(page);
+export const getWorkerAdminAPIContext = () => {
+  workerAdminAPIContext ??= createValidatedWorkerAdminAPIContext().catch(
+    (error) => {
+      workerAdminAPIContext = undefined;
+      throw error;
+    }
+  );
 
-  // get the token
-  const token = await getToken(page);
-
-  // create a new context with the token
-  const apiContext = await getAuthContext(token);
-
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
-
-  return { page, apiContext, afterAction };
+  return workerAdminAPIContext;
 };
 
+export const disposeWorkerAdminAPIContext = async () => {
+  const apiContext = workerAdminAPIContext;
+  workerAdminAPIContext = undefined;
+  if (apiContext) {
+    await (await apiContext).dispose();
+  }
+};
+
+export function createNewPage(
+  browser: Browser,
+  options: { navigate: true }
+): Promise<NavigatedPageResult>;
+export function createNewPage(
+  browser: Browser,
+  options?: { navigate?: false }
+): Promise<APIOnlyPageResult>;
+export async function createNewPage(
+  browser: Browser,
+  { navigate = false }: { navigate?: boolean } = {}
+): Promise<NavigatedPageResult | APIOnlyPageResult> {
+  let page: Page | undefined;
+  let ownsApiContext = false;
+  if (navigate) {
+    page = await browser.newPage({
+      storageState: existsSync(adminStorageStateFile)
+        ? adminStorageStateFile
+        : undefined,
+    });
+    await installServerLoadReducers(page.context());
+    await redirectToHomePage(page);
+  }
+
+  let apiContext: APIRequestContext;
+  try {
+    apiContext = await getWorkerAdminAPIContext();
+  } catch {
+    if (!page) {
+      page = await browser.newPage({
+        storageState: existsSync(adminStorageStateFile)
+          ? adminStorageStateFile
+          : undefined,
+      });
+      await redirectToHomePage(page);
+    }
+    apiContext = await getAuthContext(await getToken(page));
+    ownsApiContext = true;
+  }
+
+  const afterAction = async () => {
+    if (ownsApiContext) {
+      await apiContext.dispose();
+    }
+    await page?.close();
+  };
+
+  if (navigate) {
+    if (!page) {
+      throw new Error('Expected a navigated page');
+    }
+
+    return { page, apiContext, afterAction };
+  }
+
+  return { apiContext, afterAction };
+}
+
 export const getDefaultAdminAPIContext = async (browser: Browser) => {
+  if (existsSync(adminApiTokenFile)) {
+    const apiContext = await getWorkerAdminAPIContext();
+    const afterAction = async () => undefined;
+
+    return { apiContext, afterAction };
+  }
+
   const context = await browser.newContext({
     storageState: 'playwright/.auth/admin.json',
   });
@@ -227,6 +447,49 @@ export const toastNotification = async (
   await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
+/**
+ * Waits until the toast carrying `message` is gone.
+ *
+ * Always filter by message instead of waiting on a bare `alert-bar` locator: toasts
+ * are a stacking queue, and the backend fans async-delete/job notifications out to
+ * every socket of the logged-in user — so a parallel worker's cleanup can pop an
+ * unrelated toast into this page and turn an unfiltered locator into a strict-mode
+ * violation.
+ */
+export const waitForToastToDisappear = async (
+  page: Page,
+  message: string | RegExp,
+  timeout?: number
+) => {
+  await page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first()
+    .waitFor({ state: 'detached', timeout });
+};
+
+/**
+ * Asserts that the page is showing no error toast, optionally narrowed to the
+ * ones carrying `message`.
+ *
+ * Scoped to the error variant on purpose — a bare `alert-bar` assertion also
+ * catches the background success notifications the backend fans out to every
+ * socket of the logged-in user (async delete, export jobs), which a parallel
+ * worker can trigger at any moment.
+ */
+export const expectNoErrorToast = async (
+  page: Page,
+  message?: string | RegExp
+) => {
+  const errorToast = page.locator(
+    '[data-testid="alert-bar"][data-variant="error"]'
+  );
+
+  await expect(
+    message ? errorToast.filter({ hasText: message }) : errorToast
+  ).toHaveCount(0);
+};
+
 export const clickOutside = async (page: Page) => {
   await page.locator('body').click({
     position: {
@@ -234,6 +497,29 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   });
+};
+
+/**
+ * Blocks until every open Ant Design overlay has finished its enter animation.
+ *
+ * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
+ * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
+ * before the `-active` class that begins the transition. Playwright's actionability
+ * check ("bounding box unchanged across two consecutive animation frames") can be
+ * satisfied on those pre-transition frames, so the click point gets computed against
+ * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
+ * item above the intended one — the click silently selects the wrong option.
+ *
+ * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
+ * is the signal that the popup geometry is final.
+ */
+export const waitForAntdPopupToSettle = async (page: Page) => {
+  await expect(
+    page.locator(
+      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
+        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
+    )
+  ).toHaveCount(0);
 };
 
 export const searchFromSearchInput = async (
@@ -538,10 +824,13 @@ export const assignDataProduct = async (
     );
 
     await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
+      // Match any Data Product search response. The dropdown filters by the
+      // asset's domain only when the "Data Product Domain Validation" rule is
+      // enabled; when it is disabled the query carries no domain, so we cannot
+      // key the wait on the domain name. The tag visibility check below is the
+      // real synchronization guard.
+      const searchDataProduct = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
       await page.locator('[data-testid="data-product-selector"] input').clear();
       await page
@@ -669,7 +958,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -734,19 +1024,27 @@ export const verifyDomainLinkInCard = async (
 export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
-  result: Locator
+  result: Locator,
+  tabSelector?: Locator
 ) => {
   let hasSubmittedSearch = false;
 
   await expect
     .poll(
       async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.request().method() === 'GET',
-          { timeout: 15_000 }
-        );
+        // Swallow the timeout: this wait only exists to let the search settle
+        // before checking the result, and the enclosing poll is what decides
+        // success. Left unhandled, a single slow search rejects and the
+        // exception aborts the whole poll instead of counting as "not yet" —
+        // so a 45s budget could fail after one 15s iteration.
+        const searchResponse = page
+          .waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.request().method() === 'GET',
+            { timeout: 15_000 }
+          )
+          .catch(() => null);
 
         if (hasSubmittedSearch) {
           await Promise.all([searchResponse, page.reload()]);
@@ -759,6 +1057,8 @@ export const waitForSearchResult = async (
           hasSubmittedSearch = true;
         }
         await waitForAllLoadersToDisappear(page);
+        await tabSelector?.click();
+        await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();
       },
@@ -770,15 +1070,125 @@ export const waitForSearchResult = async (
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
-  childFqnSearchTerm: string
+  childFqnSearchTerm: string,
+  exploreTabName?: string
 ) => {
-  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-  const domainLink = entityCard.getByTestId('domain-link').first();
+  // Domain propagation from the parent service to its children — and the
+  // subsequent search reindex — is eventually consistent. Gate on the search
+  // API actually reflecting the propagated domain before touching the UI, so
+  // the test converges on real backend state instead of racing a fixed UI-poll
+  // window under CI load.
+  const { apiContext, afterAction } = await getApiContext(page);
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            childFqnSearchTerm
+          )}&index=all&from=0&size=10`
+        );
 
-  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
-  await expect(entityCard).toBeVisible();
-  await expect(domainLink).toBeVisible();
-  await expect(domainLink).toContainText(domain.displayName);
+        const hits: {
+          _source?: {
+            name?: string;
+            fullyQualifiedName?: string;
+            domains?: { name?: string; fullyQualifiedName?: string }[];
+          };
+        }[] = response.ok() ? (await response.json())?.hits?.hits ?? [] : [];
+        const source = hits.find(
+          (hit) =>
+            hit._source?.fullyQualifiedName === childFqnSearchTerm ||
+            hit._source?.name === childFqnSearchTerm
+        )?._source;
+
+        return Boolean(
+          source?.domains?.some(
+            (entityDomain) =>
+              entityDomain.fullyQualifiedName === domain.fullyQualifiedName ||
+              entityDomain.name === domain.name
+          )
+        );
+      },
+      { timeout: 90_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+  await afterAction();
+
+  // The propagated domain is now indexed. Run a single explore search and
+  // web-first wait for the entity card, then assert it carries the domain by
+  // display name. (The old poll reloaded the page between attempts, dropping
+  // the search term so it could never re-find the card; and the explore card
+  // renders domains via DomainLabel, which exposes no `domain-link` testid.)
+  const searchBox = page.getByTestId('searchBox');
+  await searchBox.fill(childFqnSearchTerm);
+  await searchBox.press('Enter');
+  await waitForAllLoadersToDisappear(page);
+
+  if (exploreTabName) {
+    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await waitForAllLoadersToDisappear(page);
+  }
+
+  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
+  await expect(entityCard).toBeVisible({ timeout: 30_000 });
+  await expect(entityCard).toContainText(domain.displayName);
+};
+
+/**
+ * Wait for a hard-deleted entity to disappear from the search index.
+ *
+ * Search-index deletion is eventually consistent: a selection dropdown
+ * queried immediately after `DELETE /api/v1/...?hardDelete=true` can still
+ * return the deleted entity and fail a `not.toBeVisible()` assertion (the
+ * ExplorePageRightPanel deleted-entity flake family — run 32500973433).
+ * Gate on the search API no longer returning the entity before asserting
+ * its absence in the UI, mirroring how verifyDomainPropagation gates on
+ * presence.
+ */
+export const waitForDeletionFromSearchIndex = async (
+  apiContext: APIRequestContext,
+  searchTerm: string,
+  searchIndex: string,
+  matchNames: string[]
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            searchTerm
+          )}&index=${searchIndex}&from=0&size=10`
+        );
+
+        // This poll resolves on `false` ("entity gone"), the OPPOSITE
+        // polarity of verifyDomainPropagation — so a transient search error
+        // must read as "still present" (keep polling), never as an empty
+        // result set, or a single flaky 5xx would pass the gate against a
+        // stale index.
+        if (!response.ok()) {
+          return true;
+        }
+
+        const hits: {
+          _source?: {
+            name?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+          };
+        }[] = (await response.json())?.hits?.hits ?? [];
+
+        return hits.some((hit) =>
+          matchNames.some(
+            (name) =>
+              hit._source?.name === name ||
+              hit._source?.displayName === name ||
+              hit._source?.fullyQualifiedName === name
+          )
+        );
+      },
+      { timeout: 30_000, intervals: [1_000, 2_000, 3_000, 5_000] }
+    )
+    .toBe(false);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
@@ -1010,13 +1420,15 @@ export const testPaginationNavigation = async (
     if (validateRowCount) {
       expect(initialRowCount).toBeLessThanOrEqual(15);
     }
+    await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await pageSizeDropdown.hover();
-    const isMenuVisibleAfterHover = await menuItem.isVisible();
-    if (!isMenuVisibleAfterHover) {
-      await pageSizeDropdown.click();
-    }
-    await menuItem.waitFor({ state: 'visible' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await menuItem.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
     const pageSizeChangePromise = page.waitForResponse((response) =>
       response.url().includes(apiEndpointPattern)
@@ -1109,7 +1521,7 @@ export const waitForMetricsSearchResponse = (page: Page) =>
 export const testMetricsPaginationNavigation = async (page: Page) => {
   const page1ResponsePromise = waitForMetricsSearchResponse(page);
 
-  await page.goto('/metrics?pageSize=15');
+  await page.goto('/metrics?pageSize=15', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
@@ -1237,11 +1649,13 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  if (!(await menuItem.isVisible())) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
+  await expect(async () => {
+    await pageSizeDropdown.hover();
+    if (!(await menuItem.isVisible())) {
+      await pageSizeDropdown.click();
+    }
+    await expect(menuItem).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
   await menuItem.click();
   await waitForAllLoadersToDisappear(page);
 
@@ -1455,4 +1869,17 @@ export const testTableSearch = async (
       timeout: 5_000,
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+};
+
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 };

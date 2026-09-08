@@ -40,6 +40,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+/**
+ * Every memory is written to the search index regardless of its {@code shareConfig.visibility}, and
+ * privacy is enforced at query time by {@link
+ * org.openmetadata.service.search.security.ContextMemorySearchVisibility}. Indexing only org-wide
+ * memories would hide a user's own PRIVATE memories and the SHARED ones they are a principal of
+ * from {@code GET /contextCenter/memories}, which serves the ContextCenter listing from search
+ * whenever it is given a query, filter, sort or offset.
+ */
 @Slf4j
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
@@ -181,8 +189,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> idsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
       idsByType
-          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .computeIfAbsent(fromType, type -> new HashSet<>())
           .add(UUID.fromString(record.getFromId()));
     }
     Map<String, EntityReference> refById = new HashMap<>();

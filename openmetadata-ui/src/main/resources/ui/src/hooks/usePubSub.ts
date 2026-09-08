@@ -13,12 +13,12 @@
 import { EventEmitter } from 'eventemitter3';
 import { DependencyList, useEffect } from 'react';
 
-type EventCallback<T = any> = (data: T) => void;
+type EventCallback<T = unknown> = (data: T) => void;
 type UnsubscribeFunction = () => void;
 
 const emitter = new EventEmitter();
 
-export const useSub = <T = any>(
+export const useSub = <T = unknown>(
   event: string,
   callback: EventCallback<T>,
   dependencies?: DependencyList
@@ -40,7 +40,7 @@ export const useSub = <T = any>(
 };
 
 export const usePub = () => {
-  return <T = any>(event: string, data: T) => {
+  return <T = unknown>(event: string, data: T) => {
     emitter.emit(event, data);
   };
 };

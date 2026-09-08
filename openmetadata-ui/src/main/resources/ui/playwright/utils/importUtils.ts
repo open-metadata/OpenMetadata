@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -26,11 +26,17 @@ import {
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
+  EntityTypeEndpoint,
+  ENTITY_PATH,
+} from '../support/entity/Entity.interface';
+import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   fetchCompletedCsvAsyncJobResult,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   uuid,
 } from './common';
 import {
@@ -69,6 +75,65 @@ const scrollIntoViewCenter = async (locator: Locator) => {
     .evaluate((element) =>
       element.scrollIntoView({ block: 'center', inline: 'center' })
     )
+    .catch(() => undefined);
+};
+
+const CSV_JOBS_TRAY_INERT_CSS =
+  '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }';
+
+// Pages that already carry the suppression. addInitScript stacks, so without
+// this guard a page routed through several import helpers would grow one style
+// tag per call.
+const csvJobsTraySuppressedPages = new WeakSet<Page>();
+
+/**
+ * Make the CSV background-jobs tray click-through for the rest of this page's
+ * life.
+ *
+ * The tray is a position:fixed panel anchored at bottom:88px that auto-expands
+ * whenever a job it is watching reaches a terminal status. Because the anchor
+ * pins its lower edge just above the viewport bottom, it lands on the profiler's
+ * Manage button (measured at 1280x720: button y 596-636, tray bottom y 632), and
+ * a single job is enough — extra rows only push the top edge higher.
+ *
+ * A spec's own export therefore triggers this. Jobs from other workers make it
+ * worse rather than causing it: `/api/v1/csvAsyncJobs` is scoped per *user* and
+ * every worker shares the admin identity, so unrelated jobs both grow the panel
+ * and keep re-expanding it mid-test.
+ *
+ * addStyleTag alone is not enough — it lives on the current document and dies on
+ * the next hard navigation. addInitScript re-applies the rule to every document
+ * the page loads afterwards, so one call at the start of a flow holds for the
+ * whole flow.
+ *
+ * pointer-events (not display) so the tray stays in the DOM: specs that assert
+ * on it still see it, they just must not route through this helper.
+ */
+export const suppressCsvJobsTray = async (page: Page) => {
+  if (csvJobsTraySuppressedPages.has(page)) {
+    return;
+  }
+
+  csvJobsTraySuppressedPages.add(page);
+
+  await page.addInitScript((css: string) => {
+    const applyStyle = () => {
+      const style = document.createElement('style');
+      style.textContent = css;
+      document.head.appendChild(style);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyStyle);
+    } else {
+      applyStyle();
+    }
+  }, CSV_JOBS_TRAY_INERT_CSS);
+
+  // addInitScript only reaches documents loaded from now on, so the document
+  // already on screen needs the rule injected directly.
+  await page
+    .addStyleTag({ content: CSV_JOBS_TRAY_INERT_CSS })
     .catch(() => undefined);
 };
 
@@ -444,9 +509,12 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   ).toBeVisible();
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=user&*'
+    (response) =>
+      response.url().includes('/api/v1/search/query?q=') &&
+      response.url().includes('index=user')
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
@@ -747,17 +815,24 @@ const editGlossaryCustomProperty = async (
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
+    // Scoped to the markdown editor this block already reaches into for its
+    // save button, rather than to the page: the entity behind the custom
+    // property panel has description editors of its own.
+    const markdownEditor = page.getByTestId('markdown-editor');
+    const markdownDescription = getDescriptionBox(markdownEditor);
 
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+    await markdownDescription.waitFor({ state: 'visible' });
+
+    await fillDescriptionBox(
+      markdownEditor,
+      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
+    );
 
     await clickOutside(page);
 
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
+    await markdownEditor.getByTestId('save').click();
 
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
+    await markdownDescription.waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
@@ -983,6 +1058,11 @@ export const startCsvPreviewAndWaitForGrid = async (
 ) => {
   const timeout = options?.timeout ?? 90000;
 
+  // Disable the CSV jobs tray's click interception for the entire page session.
+  // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
+  // one-shot CSS injection is more robust than polling at specific steps.
+  await suppressCsvJobsTray(page);
+
   if (
     !(await waitForVisibleLocator(
       page.locator('.rdg-header-row').first(),
@@ -1154,15 +1234,20 @@ const editEntityCustomProperty = async (
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
+    // Scoped to the markdown editor, as above.
+    const markdownEditor = page.getByTestId('markdown-editor');
+    const markdownDescription = getDescriptionBox(markdownEditor);
 
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+    await markdownDescription.waitFor({ state: 'visible' });
 
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
+    await fillDescriptionBox(
+      markdownEditor,
+      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
+    );
 
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
+    await markdownEditor.getByTestId('save').click();
+
+    await markdownDescription.waitFor({ state: 'detached' });
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
@@ -1411,6 +1496,105 @@ export const createCustomPropertiesForEntity = async (
   }
 
   return propertyListName;
+};
+
+export const createCustomPropertiesForEntityViaApi = async (
+  apiContext: APIRequestContext,
+  endpoint: EntityTypeEndpoint
+): Promise<{
+  propertyListName: Record<string, string>;
+  cleanup: (apiContext: APIRequestContext) => Promise<void>;
+}> => {
+  const propertiesResponse = await apiContext.get(
+    '/api/v1/metadata/types?category=field&limit=20'
+  );
+
+  if (!propertiesResponse.ok()) {
+    throw new Error(
+      `Failed to fetch field types: ${propertiesResponse.status()} ${propertiesResponse.statusText()}`
+    );
+  }
+
+  const properties = await propertiesResponse.json();
+
+  const entityTypeName = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
+  const entitySchemaResponse = await apiContext.get(
+    `/api/v1/metadata/types/name/${entityTypeName}`
+  );
+
+  if (!entitySchemaResponse.ok()) {
+    throw new Error(
+      `Failed to fetch entity schema for "${entityTypeName}": ${entitySchemaResponse.status()} ${entitySchemaResponse.statusText()}`
+    );
+  }
+
+  const entitySchema = await entitySchemaResponse.json();
+  const entityTypeId: string = entitySchema.id;
+
+  const typeMapping: Array<
+    [string, string, Record<string, unknown> | undefined]
+  > = [
+    [CUSTOM_PROPERTIES_TYPES.STRING, 'string', undefined],
+    [CUSTOM_PROPERTIES_TYPES.MARKDOWN, 'markdown', undefined],
+    [CUSTOM_PROPERTIES_TYPES.SQL_QUERY, 'sqlQuery', undefined],
+    [
+      CUSTOM_PROPERTIES_TYPES.TABLE,
+      'table-cp',
+      {
+        customPropertyConfig: {
+          config: { columns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns },
+        },
+      },
+    ],
+  ];
+
+  const propertyListName: Record<string, string> = {};
+
+  for (const [displayName, apiTypeName, extraConfig] of typeMapping) {
+    const typeInfo = properties.data.find(
+      (item: { name: string }) => item.name === apiTypeName
+    );
+
+    if (!typeInfo) {
+      continue;
+    }
+
+    const propertyName = `pwcustomproperty${entityTypeName}test${uuid()}`;
+
+    const putResponse = await apiContext.put(
+      `/api/v1/metadata/types/${entityTypeId}`,
+      {
+        data: {
+          name: propertyName,
+          description: propertyName,
+          propertyType: { id: typeInfo.id, type: 'type' },
+          ...(extraConfig ?? {}),
+        },
+      }
+    );
+
+    if (!putResponse.ok()) {
+      throw new Error(
+        `Failed to create custom property "${propertyName}" (${apiTypeName}): ${putResponse.status()} ${putResponse.statusText()}`
+      );
+    }
+
+    propertyListName[displayName] = propertyName;
+  }
+
+  const cleanup = async (cleanupApiContext: APIRequestContext) => {
+    await Promise.all(
+      Object.values(propertyListName).map((propertyName) =>
+        cleanupApiContext.delete(
+          `/api/v1/metadata/types/${entityTypeId}/customProperties/${encodeURIComponent(
+            propertyName
+          )}`
+        )
+      )
+    );
+  };
+
+  return { propertyListName, cleanup };
 };
 
 export const fillRecursiveEntityTypeFQNDetails = async (

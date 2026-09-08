@@ -124,6 +124,8 @@ const BotDetails: FC<BotsDetailProps> = ({
   };
 
   const fetchLeftPanel = () => {
+    const canEditDisplayName = displayNamePermission || editAllPermission;
+
     return (
       <Row gutter={[0, 20]}>
         <Col span={24}>
@@ -176,7 +178,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           })}
                         </Typography.Text>
                       )}
-                      {(displayNamePermission || editAllPermission) && (
+                      {canEditDisplayName && (
                         <div>
                           <EditIconButton
                             newLook
@@ -269,7 +271,7 @@ const BotDetails: FC<BotsDetailProps> = ({
   return (
     <PageLayoutV1
       leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.bot-detail')}
+      pageTitle={getEntityName(botData) || t('label.bot-detail')}
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">

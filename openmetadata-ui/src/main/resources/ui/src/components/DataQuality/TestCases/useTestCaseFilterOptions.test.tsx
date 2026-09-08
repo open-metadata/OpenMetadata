@@ -267,7 +267,7 @@ describe('useTestCaseFilterOptions', () => {
   });
 
   it('should toggle isOptionsLoading true during a tier fetch and back to false once it settles', async () => {
-    let resolveTags: (value: unknown) => void = () => undefined;
+    let resolveTags: (value: unknown) => void = (_value) => undefined;
     (getTags as jest.Mock).mockImplementationOnce(
       () =>
         new Promise((resolve) => {

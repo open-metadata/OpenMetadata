@@ -21,15 +21,15 @@
 // Default styles for title
 .data-statistic-title-default {
   color: @grey-600;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   margin-bottom: @size-xxs;
 }
 
 // Default styles for count value
 .data-statistic-count-default {
   color: @text-color;
-  font-weight: 600;
-  font-size: 20px;
+  font-weight: var(--om-font-weight-semibold);
+  font-size: var(--om-font-size-xl);
 }
 
 .data-statistic-widget-icon {
@@ -53,7 +53,7 @@
   &.aborted {
     border-radius: 50%;
     border: 6px solid;
-    padding: 6px;
+    padding: var(--om-space-6);
     background-color: @grey-100;
     border-color: @grey-50;
 
@@ -101,7 +101,7 @@
 .data-statistic-widget-box .data-statistic-widget-default-button {
   padding: 0;
   color: @primary-7;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   font-size: @size-sm;
 
   &:hover,

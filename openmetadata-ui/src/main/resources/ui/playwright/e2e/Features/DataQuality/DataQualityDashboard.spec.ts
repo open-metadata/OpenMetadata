@@ -12,8 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
 import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -23,7 +23,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { createNewPage, uuid } from '../../../utils/common';
+import { createNewPage, getApiContext, uuid } from '../../../utils/common';
 import {
   applyDashboardCertificationFilter,
   applyDashboardTagFilter,
@@ -40,6 +40,7 @@ import {
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 
@@ -625,7 +626,9 @@ test.describe(
         ).toBeVisible();
       });
 
-      await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
+      // table3 is given an owner in beforeAll, so the incident raised by the
+      // Consistency failure is auto-assigned on creation instead of opening as New.
+      await test.step('Verify Assigned incident for Consistency test case on table3 DQ tab', async () => {
         await visitDataQualityTab(page, table3);
         await expect(
           page.locator(
@@ -634,10 +637,10 @@ test.describe(
         ).toContainText('Failed');
         await expect(
           page.locator(`[data-testid="${consistencyTestCaseName}-status"]`)
-        ).toContainText('New');
+        ).toContainText('Assigned');
       });
 
-      await test.step('Verify Resolved incident for Uniqueness test case on table4 DQ tab', async () => {
+      await test.step('Verify Resolved incident chip for Uniqueness test case on table4 DQ tab', async () => {
         await visitDataQualityTab(page, table4);
         await expect(
           page.locator(`[data-testid="status-badge-${uniquenessTestCaseName}"]`)
@@ -668,6 +671,93 @@ test.describe(
           failed: '1',
           aborted: '0',
         });
+      });
+    });
+
+    // Regression for #30455: a resolved incident must stay visible with its
+    // edit affordance so it can be reopened in place, continuing the SAME
+    // incident (stateId) instead of forking a new one.
+    test('Reopen resolved incident in place from the Test Case page', async ({
+      page,
+    }) => {
+      let resolvedStateId = '';
+
+      await test.step('Open the resolved test case from the DQ tab', async () => {
+        await visitDataQualityTab(page, table4);
+        await page
+          .getByTestId(uniquenessTestCaseName)
+          .getByText(uniquenessTestCaseName)
+          .click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Test Case page shows the resolved incident with its edit affordance', async () => {
+        const { apiContext } = await getApiContext(page);
+        const fetchLatestIncident = () =>
+          apiContext
+            .get(
+              `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+                `&startTs=0&endTs=${getCurrentMillis()}` +
+                `&testCaseFQN=${uniquenessTestCaseFqn}`
+            )
+            .then((res) => res.json());
+
+        let latest = await fetchLatestIncident();
+        // A failed earlier attempt may have left the incident reopened;
+        // restore the resolved precondition so retries stay deterministic.
+        if (
+          latest.data?.[0]?.testCaseResolutionStatusType !==
+          TestCaseResolutionStatusTypes.Resolved
+        ) {
+          await apiContext.post(
+            '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+            {
+              data: {
+                testCaseReference: uniquenessTestCaseFqn,
+                testCaseResolutionStatusType:
+                  TestCaseResolutionStatusTypes.Resolved,
+              },
+            }
+          );
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          latest = await fetchLatestIncident();
+        }
+        resolvedStateId = latest.data?.[0]?.stateId ?? '';
+
+        expect(resolvedStateId).not.toBe('');
+
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Resolved');
+        await expect(
+          page.locator('[data-testid="edit-resolution-icon"]')
+        ).toBeVisible();
+      });
+
+      await test.step('Reopen the incident as Acknowledged from the header', async () => {
+        await page.click('[data-testid="edit-resolution-icon"]');
+        await page.click('[data-testid="test-case-resolution-status-type"]');
+        await page.click('[title="Ack"]');
+
+        const reopenResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/dataQuality/testCases/testCaseIncidentStatus') &&
+            response.request().method() === 'POST'
+        );
+        await page.click('#update-status-button');
+        const reopened = await (await reopenResponse).json();
+
+        expect(reopened.stateId).toBe(resolvedStateId);
+        expect(reopened.testCaseResolutionStatusType).toBe(
+          TestCaseResolutionStatusTypes.ACK
+        );
+
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Ack');
       });
     });
 
@@ -892,9 +982,20 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
+        const expectedStatuses = [
+          TestCaseStatus.Failed,
+          TestCaseStatus.Aborted,
+        ];
+        const navFailed = page.waitForURL((url) => {
+          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+
+          return (
+            url.pathname === '/data-quality/test-cases' &&
+            expectedStatuses.every((status) =>
+              selectedStatuses.includes(status)
+            )
+          );
+        });
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
@@ -902,7 +1003,9 @@ test.describe(
         );
         await navFailed;
         await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        expect(
+          new URL(page.url()).searchParams.getAll('testCaseStatus[]')
+        ).toEqual(expectedStatuses);
       });
     });
 

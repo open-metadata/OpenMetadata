@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   CertificationSupportedServices,
   FollowSupportedServices,
@@ -27,6 +27,7 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -84,6 +85,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
   const deleteEntity = new EntityClass();
 
   test.describe(key, () => {
+    test.describe.configure({ mode: 'default' });
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

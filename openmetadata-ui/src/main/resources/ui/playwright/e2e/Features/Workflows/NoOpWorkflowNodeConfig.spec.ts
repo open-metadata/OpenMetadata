@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test as base, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -57,7 +58,9 @@ const WORKFLOW_CREATION_DATA = (name: string) => ({
 
 const test = base.extend<{ page: Page; workflowName: string }>({
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },

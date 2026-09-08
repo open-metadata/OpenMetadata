@@ -68,7 +68,7 @@ export const DOMAIN_DUMMY_DATA: Domain = {
       fullyQualifiedName: 'brittney_thomas3',
       displayName: 'Brittney Thomas',
       deleted: false,
-      href: 'http://sandbox-beta.open-metadata.org/api/v1/users/9a6687fa-8bd5-446c-aa8f-81416c88fe67',
+      href: 'https://sandbox-beta.open-metadata.org/api/v1/users/9a6687fa-8bd5-446c-aa8f-81416c88fe67',
     },
   ],
 };

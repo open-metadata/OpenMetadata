@@ -14,6 +14,7 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
+import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -69,7 +70,7 @@ import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
-import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflows.svg';
+import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflow-settings.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
@@ -679,6 +680,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
             icon: LearningIcon,
+          },
+          {
+            label: t('label.default-app-mode'),
+            description: t('message.default-app-mode-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
+            icon: AppModeIcon,
           },
         ],
       },

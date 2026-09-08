@@ -7,7 +7,6 @@
   - '@ulixius9'
   - '@pmbrull'
   - '@aniketkatkar97'
-  - '@Ashish8689'
   - '@chirag-madlani'
   - '@shahsank3t'
   - '@ShaileshParmar11'
@@ -21,16 +20,11 @@
   - '@snyk-bot'
   - '@dependabot'
   - '@harshsoni2024'
-  - '@SumanMaharana'
   - '@Prajwal214'
   - '@sonika-shah'
-  - '@keshavmohta09'
   - '@sweta1308'
-  - '@shrushti2000'
   - '@mohittilala'
   - '@pellejador'
-  - '@pranita09'
-  - '@edg956'
   - '@manerow'
   - '@miriann-uu'
   - '@github-actions[bot]'
@@ -38,6 +32,7 @@
   - '@Vishnuujain'
   - '@lautel'
   - '@tomasmontielp'
+  - '@yan-3005'
 
 ingestion:
   - '@ayush-shah'
@@ -46,21 +41,20 @@ ingestion:
   - '@pmbrull'
   - '@IceS2'
   - '@harshsoni2024'
-  - '@SumanMaharana'
-  - '@keshavmohta09'
   - '@mohittilala'
-  - '@edg956'
 
 UI:
   - '@aniketkatkar97'
-  - '@Ashish8689'
   - '@chirag-madlani'
   - '@shahsank3t'
   - '@ShaileshParmar11'
   - '@karanh37'
   - '@sweta1308'
-  - '@shrushti2000'
-  - '@pranita09'
+  - '@siddhant1'
+  - '@Rohit0301'
+  - '@shrabantipaul-collate'
+  - '@harsh-vador'
+  - '@anuj-kumary'
 
 backend:
   - '@harshach'
@@ -68,6 +62,7 @@ backend:
   - '@sureshms'
   - '@sonika-shah'
   - '@manerow'
+  - '@yan-3005'
 
 devops:
   - '@akash-jain-10'

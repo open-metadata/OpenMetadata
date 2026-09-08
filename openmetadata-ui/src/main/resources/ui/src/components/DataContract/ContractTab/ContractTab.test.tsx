@@ -75,7 +75,12 @@ jest.mock('../../common/DeleteModal/DeleteModal', () => ({
     onCancel,
     onDelete,
     entityTitle,
-  }: any) {
+  }: {
+    open?: boolean;
+    onCancel?: () => void;
+    onDelete?: () => void;
+    entityTitle?: string;
+  }) {
     if (!open) {
       return null;
     }
@@ -95,7 +100,15 @@ jest.mock('../../common/DeleteModal/DeleteModal', () => ({
 }));
 
 jest.mock('../AddDataContract/AddDataContract', () => {
-  return function MockAddDataContract({ onCancel, onSave, contract }: any) {
+  return function MockAddDataContract({
+    onCancel,
+    onSave,
+    contract,
+  }: {
+    onCancel?: () => void;
+    onSave?: () => void;
+    contract?: { name?: string };
+  }) {
     return (
       <div data-testid="add-data-contract">
         <div>Contract: {contract?.name || 'New Contract'}</div>

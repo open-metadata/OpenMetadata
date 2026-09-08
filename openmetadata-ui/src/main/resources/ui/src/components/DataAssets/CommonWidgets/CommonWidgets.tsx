@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import { lazy, useCallback, useMemo, useState } from 'react';
+import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -58,6 +58,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -65,9 +66,12 @@ type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const WIDGET_FALLBACK = <EntityDetailWidgetSkeleton />;
+const LARGE_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton lineCount={5} />;
+
 const CertificationWidget = withSuspenseFallback(
   lazy(() => import('../../common/CertificationWidget/CertificationWidget')),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -78,16 +82,17 @@ const CustomPropertyTable = withSuspenseFallback(
       })
     )
   ),
-  TAB_CONTENT_FALLBACK
+  LARGE_WIDGET_FALLBACK
 ) as CustomPropertyTableComponent;
 
 const Description = withSuspenseFallback(
-  lazy(() => import('../../common/EntityDescription/Description'))
+  lazy(() => import('../../common/EntityDescription/Description')),
+  WIDGET_FALLBACK
 );
 
 const TierWidget = withSuspenseFallback(
   lazy(() => import('../../common/TierWidget/TierWidget')),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const LeftPanelContainer = withSuspenseFallback(
@@ -96,7 +101,7 @@ const LeftPanelContainer = withSuspenseFallback(
       default: m.LeftPanelContainer,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const DataProductsContainer = withSuspenseFallback(
@@ -106,7 +111,7 @@ const DataProductsContainer = withSuspenseFallback(
         '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
       )
   ),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const DomainExpertWidget = withSuspenseFallback(
@@ -115,12 +120,12 @@ const DomainExpertWidget = withSuspenseFallback(
       default: m.DomainExpertWidget,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const TagsContainerV2 = withSuspenseFallback(
   lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2')),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const DomainLabelV2 = withSuspenseFallback(
@@ -129,7 +134,7 @@ const DomainLabelV2 = withSuspenseFallback(
       default: m.DomainLabelV2,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const OwnerLabelV2 = withSuspenseFallback(
@@ -138,7 +143,7 @@ const OwnerLabelV2 = withSuspenseFallback(
       default: m.OwnerLabelV2,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -147,7 +152,7 @@ const ReviewerLabelV2 = withSuspenseFallback(
       default: m.ReviewerLabelV2,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(
@@ -185,8 +190,15 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
-    useGenericContext<GenericEntity>();
+  const {
+    data,
+    type,
+    entityRules,
+    isRulesLoaded,
+    onUpdate,
+    permissions,
+    isVersionView,
+  } = useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
   const updatedData = useMemo(() => {
@@ -250,41 +262,43 @@ export const CommonWidgets = ({
   // To determine if Description is expanded or not
   // Typically needed when description schema, charts or any other table is empty will expand description by default
   const isDescriptionExpanded = useMemo(() => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        return isEmpty((data as unknown as Table).columns);
-      case EntityType.DASHBOARD:
-        return isEmpty((data as unknown as Dashboard).charts);
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return isEmpty((data as unknown as DashboardDataModel).columns);
-      case EntityType.MLMODEL:
-        return isEmpty((data as unknown as Mlmodel).mlFeatures);
-      case EntityType.PIPELINE:
-        return isEmpty((data as unknown as Pipeline).tasks);
-      case EntityType.TOPIC:
-        return isEmpty((data as unknown as Topic).messageSchema?.schemaFields);
-      case EntityType.SEARCH_INDEX:
-        return isEmpty((data as unknown as SearchIndex).fields);
-      case EntityType.STORED_PROCEDURE:
-        return isEmpty(
+    const expansionCheckers: Partial<Record<EntityType, () => boolean>> = {
+      [EntityType.TABLE]: () => isEmpty((data as unknown as Table).columns),
+      [EntityType.DASHBOARD]: () =>
+        isEmpty((data as unknown as Dashboard).charts),
+      [EntityType.DASHBOARD_DATA_MODEL]: () =>
+        isEmpty((data as unknown as DashboardDataModel).columns),
+      [EntityType.MLMODEL]: () =>
+        isEmpty((data as unknown as Mlmodel).mlFeatures),
+      [EntityType.PIPELINE]: () => isEmpty((data as unknown as Pipeline).tasks),
+      [EntityType.TOPIC]: () =>
+        isEmpty((data as unknown as Topic).messageSchema?.schemaFields),
+      [EntityType.SEARCH_INDEX]: () =>
+        isEmpty((data as unknown as SearchIndex).fields),
+      [EntityType.STORED_PROCEDURE]: () =>
+        isEmpty(
           (data as unknown as StoredProcedure).code ??
             (data as unknown as StoredProcedure).storedProcedureCode
-        );
-      case EntityType.GLOSSARY:
-        return (data as unknown as Glossary).termCount === 0;
-      case EntityType.DOMAIN:
-      case EntityType.METRIC:
-      case EntityType.FILE:
-      case EntityType.WORKSHEET:
-        return true;
-      case EntityType.DIRECTORY:
-        return isEmpty((data as unknown as Directory).children);
-      case EntityType.SPREADSHEET:
-        return isEmpty((data as unknown as Spreadsheet).worksheets);
-      default:
-        return false;
-    }
+        ),
+      [EntityType.GLOSSARY]: () =>
+        (data as unknown as Glossary).termCount === 0,
+      [EntityType.DOMAIN]: () => true,
+      [EntityType.METRIC]: () => true,
+      [EntityType.FILE]: () => true,
+      [EntityType.WORKSHEET]: () => true,
+      [EntityType.DIRECTORY]: () =>
+        isEmpty((data as unknown as Directory).children),
+      [EntityType.SPREADSHEET]: () =>
+        isEmpty((data as unknown as Spreadsheet).worksheets),
+    };
+
+    return expansionCheckers[entityType]?.() ?? false;
   }, [data, entityType]);
+
+  const getEditPermission = useCallback(
+    (flag: boolean) => (flag || permissions.EditAll) && !deleted,
+    [permissions, deleted]
+  );
 
   const {
     editDataProductPermission,
@@ -295,18 +309,17 @@ export const CommonWidgets = ({
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
-      editDataProductPermission: permissions.EditAll && !deleted,
-      editTagsPermission:
-        (permissions.EditTags || permissions.EditAll) && !deleted,
-      editDescriptionPermission:
-        (permissions.EditDescription || permissions.EditAll) && !deleted,
-      editGlossaryTermsPermission:
-        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
-      editCustomAttributePermission:
-        (permissions.EditAll || permissions.EditCustomFields) && !deleted,
-      editAllPermission: permissions.EditAll && !deleted,
-      editLineagePermission:
-        (permissions.EditAll || permissions.EditLineage) && !deleted,
+      editDataProductPermission: getEditPermission(permissions.EditAll),
+      editTagsPermission: getEditPermission(permissions.EditTags),
+      editDescriptionPermission: getEditPermission(permissions.EditDescription),
+      editGlossaryTermsPermission: getEditPermission(
+        permissions.EditGlossaryTerms
+      ),
+      editCustomAttributePermission: getEditPermission(
+        permissions.EditCustomFields
+      ),
+      editAllPermission: getEditPermission(permissions.EditAll),
+      editLineagePermission: getEditPermission(permissions.EditLineage),
       viewSampleDataPermission:
         permissions.ViewAll || permissions.ViewSampleData,
       viewQueriesPermission: permissions.ViewAll || permissions.ViewQueries,
@@ -320,7 +333,7 @@ export const CommonWidgets = ({
         Operation.ViewCustomFields
       ),
     }),
-    [permissions, deleted]
+    [permissions, getEditPermission]
   );
 
   const handleDataProductsSave = useCallback(
@@ -378,6 +391,9 @@ export const CommonWidgets = ({
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
         multiple={entityRules.canAddMultipleDataProducts}
+        requireDomainForDataProduct={
+          !isRulesLoaded || entityRules.requireDomainForDataProduct
+        }
         onSave={handleDataProductsSave}
       />
     );
@@ -385,6 +401,9 @@ export const CommonWidgets = ({
     dataProducts,
     domains,
     editDataProductPermission,
+    entityRules.canAddMultipleDataProducts,
+    entityRules.requireDomainForDataProduct,
+    isRulesLoaded,
     handleDataProductsSave,
   ]);
 
@@ -475,55 +494,58 @@ export const CommonWidgets = ({
   ]);
 
   const widget = useMemo(() => {
-    if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
-      return descriptionWidget;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
-      return dataProductsWidget;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {
-      return tagsWidget;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.GLOSSARY_TERMS)) {
-      return glossaryWidget;
-    } else if (
-      widgetConfig.i.startsWith(DetailPageWidgetKeys.CUSTOM_PROPERTIES)
-    ) {
-      return (
-        <CustomPropertyTable<EntityType.TABLE>
-          isRenderedInRightPanel
-          entityType={entityType as EntityType.TABLE}
-          hasEditAccess={Boolean(editCustomAttributePermission)}
-          hasPermission={viewCustomPropertiesPermission}
-          maxDataCap={5}
-        />
-      );
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
-      return <OwnerLabelV2 />;
-    } else if (
-      widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
-    ) {
-      return <ReviewerLabelV2 />;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-      return <DomainExpertWidget />;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return (
-        <DomainLabelV2
-          showDomainHeading
-          multiple={entityRules.canAddMultipleDomains}
-        />
-      );
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TIER)) {
-      return <TierWidget />;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CERTIFICATION)) {
-      return <CertificationWidget />;
-    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
-      return (
-        <LeftPanelContainer
-          isEditView={false}
-          layout={widgetConfig.children ?? []}
-          type={ENTITY_PAGE_TYPE_MAP[type]}
-          onUpdate={noop}
-        />
-      );
+    const widgetRenderersByPrefix: Array<[string, () => ReactNode]> = [
+      [DetailPageWidgetKeys.DESCRIPTION, () => descriptionWidget],
+      [DetailPageWidgetKeys.DATA_PRODUCTS, () => dataProductsWidget],
+      [DetailPageWidgetKeys.TAGS, () => tagsWidget],
+      [DetailPageWidgetKeys.GLOSSARY_TERMS, () => glossaryWidget],
+      [
+        DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        () => (
+          <CustomPropertyTable<EntityType.TABLE>
+            isRenderedInRightPanel
+            entityType={entityType as EntityType.TABLE}
+            hasEditAccess={Boolean(editCustomAttributePermission)}
+            hasPermission={viewCustomPropertiesPermission}
+            maxDataCap={5}
+          />
+        ),
+      ],
+      [DetailPageWidgetKeys.OWNERS, () => <OwnerLabelV2 />],
+      [GlossaryTermDetailPageWidgetKeys.REVIEWER, () => <ReviewerLabelV2 />],
+      [DetailPageWidgetKeys.EXPERTS, () => <DomainExpertWidget />],
+      [
+        DetailPageWidgetKeys.DOMAIN,
+        () => (
+          <DomainLabelV2
+            showDomainHeading
+            multiple={entityRules.canAddMultipleDomains}
+          />
+        ),
+      ],
+      [DetailPageWidgetKeys.TIER, () => <TierWidget />],
+      [DetailPageWidgetKeys.CERTIFICATION, () => <CertificationWidget />],
+      [
+        DetailPageWidgetKeys.LEFT_PANEL,
+        () => (
+          <LeftPanelContainer
+            isEditView={false}
+            layout={widgetConfig.children ?? []}
+            type={ENTITY_PAGE_TYPE_MAP[type]}
+            onUpdate={noop}
+          />
+        ),
+      ],
+    ];
+
+    const matchedRenderer = widgetRenderersByPrefix.find(([prefix]) =>
+      widgetConfig.i.startsWith(prefix)
+    );
+
+    if (matchedRenderer) {
+      return matchedRenderer[1]();
     }
+
     const Widget =
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 

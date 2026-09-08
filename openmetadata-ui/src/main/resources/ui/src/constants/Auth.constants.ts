@@ -41,3 +41,13 @@ export const UN_AUTHORIZED_EXCLUDED_PATHS = [
   '/auth/refresh',
   '/users/login',
 ];
+
+// 401 messages on the polled `/users/loggedInUser` that a silent token refresh
+// can actually fix (so the interceptor should refresh rather than log out).
+// Kept as substrings to match the backend's `Not Authorized! ...` wrapping.
+export const REFRESHABLE_AUTH_ERRORS = [
+  'Expired token!',
+  // Unknown JWT signing-key id (IdP key rotation / stale token) — a refresh
+  // mints a token signed with a currently-published key.
+  'Token signing key not found',
+];

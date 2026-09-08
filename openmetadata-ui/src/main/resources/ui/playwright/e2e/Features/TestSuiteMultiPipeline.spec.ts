@@ -10,15 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  expectScheduleFrequencySelected,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+} from '../../utils/scheduleInterval';
 import {
   confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
@@ -53,7 +58,10 @@ test(
      * selects the new test case, sets a weekly schedule, deploys, and verifies success modal.
      */
     await test.step('Create a new pipeline', async () => {
-      await page.getByText('Data Observability').click();
+      await page
+        .getByTestId('profiler')
+        .getByText('Data Observability')
+        .click();
       await page
         .getByRole('tab', {
           name: 'Table Profile',
@@ -89,8 +97,7 @@ test(
 
       await page.getByTestId(testCaseName).click();
 
-      await page.getByTestId('cron-type').locator('div').click();
-      await page.getByTitle('Week').click();
+      await selectScheduleFrequency(page, 'week');
 
       await expect(page.getByTestId('deploy-button')).toBeVisible();
 
@@ -120,7 +127,7 @@ test(
 
     /**
      * Step 2: Update the pipeline
-     * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
+     * @description Opens pipeline actions, enters edit flow, changes the weekly day selection, deploys, and
      * validates the updated success messaging before returning to the service view.
      */
     await test.step('Verify test case count column displays correct values', async () => {
@@ -154,14 +161,8 @@ test(
         )
         .click();
 
-      await expect(
-        page.getByTestId('week-segment-day-option-container')
-      ).toBeVisible();
-
-      await page
-        .getByTestId('week-segment-day-option-container')
-        .getByText('W')
-        .click();
+      await expectScheduleFrequencySelected(page, 'week');
+      await selectScheduleDayOfWeek(page, 'Wednesday');
       const updateDeployResponse = page.waitForResponse(
         '/api/v1/services/ingestionPipelines/deploy/*'
       );
@@ -257,7 +258,7 @@ test(
       testCaseNames
     );
     await table.visitEntityPage(page, table.entity.displayName);
-    await page.getByText('Data Observability').click();
+    await page.getByTestId('profiler').getByText('Data Observability').click();
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     const ingestionPipelinesListResponse =

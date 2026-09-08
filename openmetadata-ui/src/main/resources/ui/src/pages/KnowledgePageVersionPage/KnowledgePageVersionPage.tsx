@@ -135,7 +135,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
 
   useEffect(() => {
     onPageChange({
-      rightPanel: getVersionTimeLineElement(),
+      rightPanel: null,
       title: getKnowledgePageName(selectedData, t),
       data: knowledgePage,
     });
@@ -143,25 +143,33 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
 
   if (loading) {
     return (
-      <div className="knowledge-version-page-container">
-        <Space direction="vertical" style={{ width: '650px' }}>
-          <Skeleton active avatar paragraph={{ rows: 2 }} title={false} />
-          <Skeleton
-            active
-            className="m-t-sm"
-            paragraph={{ rows: 8 }}
-            title={false}
-          />
-        </Space>
-      </div>
+      <>
+        <div className="version-data">
+          <Space direction="vertical" style={{ width: '650px' }}>
+            <Skeleton active avatar paragraph={{ rows: 2 }} title={false} />
+            <Skeleton
+              active
+              className="m-t-sm"
+              paragraph={{ rows: 8 }}
+              title={false}
+            />
+          </Space>
+        </div>
+      </>
     );
   }
 
   return (
     <>
-      {selectedData && (
-        <KnowledgePageVersion knowledgePage={selectedData} loading={loading} />
-      )}
+      <div className="version-data">
+        {selectedData && (
+          <KnowledgePageVersion
+            knowledgePage={selectedData}
+            loading={loading}
+          />
+        )}
+      </div>
+      {getVersionTimeLineElement()}
     </>
   );
 };

@@ -108,7 +108,7 @@ export const getDocumentRowByName = (page: Page, fileName: string): Locator =>
     .filter({ hasText: fileName });
 
 export const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
+  const row = await searchAndGetDocumentRow(page, fileName);
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
   await row.getByTestId('document-checkbox').click();
@@ -182,7 +182,7 @@ export const expectCapturedDownload = async (page: Page, fileName: string) => {
   expect(download.href.startsWith('blob:')).toBe(true);
 };
 
-export const DASHBOARD_URL = '/context-center/dashboard';
+export const DASHBOARD_URL = '/context-center/overview';
 export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
@@ -197,6 +197,79 @@ export const navigateToDashboard = async (page: Page) => {
   // Wait for article section to finish loading (either cards or empty state)
   const section = page.getByTestId('dashboard-detail-card');
   await section.waitFor({ state: 'visible' });
+};
+
+/**
+ * Recently-viewed is client-only state: the article detail page pushes it into
+ * the zustand `user-preferences-store` slice in localStorage, and that write
+ * lands after the render that triggered it. Navigating away before it flushes
+ * means the Recently Viewed panel renders from a store that never saw the
+ * article, so the panel assertion has nothing to auto-wait for and only passes
+ * once a retry warms the cache. Waiting on the persisted entry is the real
+ * signal, so no fixed delay is needed.
+ *
+ * The Knowledge Center panel reads `recentlyViewedQuickLinks`, which is a
+ * different slice from the landing page's generic `recentlyViewed` — see
+ * `addToKnowledgeCenterRecentViewed` in `src/utils/KnowledgePageUtils.tsx`.
+ * The match mirrors `getLink` in that file, which builds the panel's test id
+ * from `displayName || fullyQualifiedName`.
+ */
+export const readRecentlyViewed = async (
+  page: Page
+): Promise<{ displayName?: string; fullyQualifiedName?: string }[]> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'user-preferences-store'
+  );
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: {
+        preferences?: Record<
+          string,
+          {
+            recentlyViewedQuickLinks?: {
+              displayName?: string;
+              fullyQualifiedName?: string;
+            }[];
+          }
+        >;
+      };
+    };
+
+    return Object.values(parsed?.state?.preferences ?? {}).flatMap(
+      (slice) => slice?.recentlyViewedQuickLinks ?? []
+    );
+  } catch {
+    return [];
+  }
+};
+
+export const waitForRecentlyViewed = async (
+  page: Page,
+  displayName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const entries = await readRecentlyViewed(page);
+
+        return entries.some(
+          (entry) =>
+            (entry?.displayName || entry?.fullyQualifiedName) === displayName
+        );
+      },
+      {
+        message: `Wait for "${displayName}" to be persisted into recentlyViewed`,
+        timeout: 15_000,
+        intervals: [50, 100, 200, 500],
+      }
+    )
+    .toBe(true);
 };
 
 export const navigateToArticles = async (page: Page) => {
@@ -530,6 +603,54 @@ export async function waitForDocumentPermanentlyDeleted(
   );
 }
 
+export async function waitForDocumentAbsentFromSearch(
+  apiContext: APIRequestContext,
+  documentName: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/search/query', {
+      params: {
+        q: documentName,
+        index: 'contextFile',
+        deleted: false,
+        size: 100,
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling search for absence of ${documentName}: ${response.status()} ${body}`
+      );
+    }
+
+    const body = await response.json();
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentName} was still present in search results after ${timeout}ms`
+  );
+}
+
 interface WaitForDocumentInArchiveOptions {
   updatedBy?: string;
   timeout?: number;
@@ -752,6 +873,7 @@ export const scrollHierarchyToNode = async (
 
       if (lastNode === previousLastNode) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;
@@ -860,6 +982,7 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
       if (lastCard === previousLastCard) {
         staleCount += 1;
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
         await page.waitForTimeout(1000);
         if (staleCount >= 5) {
           break;
@@ -1012,12 +1135,15 @@ export const searchAndGetMemoryRow = async (
   query: string,
   memoryId: string
 ) => {
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes(MEMORIES_API) &&
-      res.url().includes('q=') &&
+  const searchResPromise = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname === MEMORIES_API &&
+      url.searchParams.get('q') === query &&
       res.request().method() === 'GET'
-  );
+    );
+  });
   await page.getByTestId('search-input').locator('input').fill(query);
   await searchResPromise;
   await waitForAllLoadersToDisappear(page);
@@ -1045,6 +1171,39 @@ export const readDraftStore = async (
   } catch {
     return {};
   }
+};
+
+/**
+ * The draft-content debounce (300ms in KnowledgePageDetailComponent) means the
+ * "Unsaved" badge appearing gives no guarantee the debounced write to
+ * localStorage has actually landed yet. Polling the real draft store removes
+ * that race instead of guessing a fixed timeout that can lose the race under
+ * CI load.
+ *
+ * The timeout is deliberately kept well under the real-save debounce
+ * (SHORT_DELAY, 3000ms): once that autosave completes it clears the draft
+ * from localStorage (see endTrackedSave -> removeDraft), so a long poll here
+ * risks racing the autosave itself and observing the draft after it has
+ * already been removed rather than confirming it landed in time.
+ */
+export const waitForDraftPersisted = async (
+  page: Page,
+  articleId: string,
+  expectedDescription: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const drafts = await readDraftStore(page);
+        const draft = drafts[articleId] as { description?: string } | undefined;
+
+        // The draft stores the editor's HTML output (e.g. wrapped in <p>...</p>),
+        // not the plain text that was typed, so match on substring containment.
+        return draft?.description?.includes(expectedDescription) ?? false;
+      },
+      { timeout: 2000, intervals: [50, 100, 200] }
+    )
+    .toBe(true);
 };
 
 /**
@@ -1083,6 +1242,100 @@ export const insertImageViaUrl = async (
   url: string
 ): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
+};
+
+/** A minimal valid MP4 container (ftyp + mdat boxes only), enough for the browser to accept it as a video source. */
+const MINIMAL_MP4_BASE64 = 'AAAAGGZ0eXBpc29tAAACAGlzb21pc28y';
+
+/** A minimal valid MP3 frame header, enough for the browser to accept it as an audio source. */
+const MINIMAL_MP3_BASE64 = '//uQxAAAAAAAAAAAAAAAAAAAAAAA';
+
+export const insertFileViaUpload = async (
+  page: Page,
+  fileName: string,
+  mimeType = 'application/pdf',
+  buffer: Buffer = Buffer.from('playwright file attachment upload test')
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType,
+    buffer,
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertVideoViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.video);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'video/mp4',
+    buffer: Buffer.from(MINIMAL_MP4_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertAudioViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.audio);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'audio/mpeg',
+    buffer: Buffer.from(MINIMAL_MP3_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertFileWithUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
   await page.getByTestId('add-image-container').last().click();
   const embedForm = page.getByTestId('embed-link-form');
   await expect(embedForm).toBeVisible();
