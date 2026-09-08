@@ -112,13 +112,19 @@ test.describe(
         value?: unknown;
       }>;
 
-      const passwordOp = patchBody.find((op) =>
-        op.path.endsWith('/saslPassword')
+      // Guard against the 1.13 regression: clearing the password must not
+      // produce replace/'' in the PATCH. An empty string would cause the
+      // backend to store '' instead of properly removing the secret.
+      // This assertion is unconditional — it fails whether the bad op is
+      // present or absent-but-expected, so it cannot pass vacuously.
+      const badPasswordOp = patchBody.find(
+        (op) =>
+          op.path.endsWith('/saslPassword') &&
+          op.op === 'replace' &&
+          op.value === ''
       );
 
-      if (passwordOp !== undefined) {
-        expect(passwordOp.value).not.toBe('');
-      }
+      expect(badPasswordOp).toBeUndefined();
 
       await waitForAllLoadersToDisappear(page);
     });
@@ -158,8 +164,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
       await waitForServiceConnectionForm(page);
 
-      // On main, CorePasswordWidget converts '' → undefined so the password is
-      // preserved by compare() (no diff). Re-opening shows the masked value.
+      // The password was cleared and saved. Re-opening the edit form must show
+      // an empty field — not the old masked sentinel — confirming the secret
+      // was removed.
       await expect(page.locator(String.raw`#root\/saslPassword`)).toHaveValue(
         ''
       );

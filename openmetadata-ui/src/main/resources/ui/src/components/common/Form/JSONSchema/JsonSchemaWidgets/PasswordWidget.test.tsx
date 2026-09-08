@@ -145,6 +145,20 @@ describe('Test PasswordWidget Component', () => {
     expect(mockOnChange).toHaveBeenCalledWith(undefined);
   });
 
+  it('Should clear the masked sentinel on focus so typing produces a clean value', () => {
+    render(<PasswordWidget {...mockProps} />);
+
+    const passwordInput = screen.getByTestId(
+      'password-input-widget-root/password'
+    );
+
+    // Focusing a field whose value is the masked sentinel must emit undefined
+    // so that subsequent keystrokes produce a clean new value, not '*****newpass'.
+    fireEvent.focus(passwordInput);
+
+    expect(mockOnChange).toHaveBeenCalledWith(undefined);
+  });
+
   it('Should show empty after clearing — no dots visible', () => {
     const { rerender } = render(<PasswordWidget {...mockProps} />);
 

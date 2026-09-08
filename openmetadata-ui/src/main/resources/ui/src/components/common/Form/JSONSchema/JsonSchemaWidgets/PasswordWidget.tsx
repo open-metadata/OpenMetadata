@@ -14,6 +14,7 @@ import { WidgetProps } from '@rjsf/utils';
 import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import { CertificationInputType } from '../../../../../enums/PasswordWidget.enum';
 import FileUploadWidget from './FileUploadWidget';
 import './password-widget.less';
@@ -51,7 +52,13 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
         value={props.value}
         onBlur={() => props.onBlur(props.id, props.value)}
         onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => props.onFocus(props.id, props.value)}
+        onFocus={() => {
+          // Clear the masked sentinel on focus so typing replaces it cleanly.
+          if (ALL_ASTERISKS_REGEX.test(props.value)) {
+            props.onChange(undefined);
+          }
+          props.onFocus(props.id, props.value);
+        }}
       />
     ),
     [props]
