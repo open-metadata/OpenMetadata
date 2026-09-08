@@ -2976,6 +2976,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     setDefaultStatus(entity, update);
+    if (!update) {
+      // Only on create: on PATCH the incoming entity carries the *stored* certification even when
+      // the patch never touched it, so validating there would start rejecting unrelated edits to
+      // every already-certified entity the moment an admin changes allowedClassification.
+      prepareCertification(entity);
+    }
     // Domain is already validated
   }
 
@@ -6198,6 +6204,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withAppliedDate(tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
         .withExpiryDate(
             tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null);
+  }
+
+  /**
+   * Validate a request-supplied certification and replace its {@code appliedDate}/{@code
+   * expiryDate} with the server-computed validity window.
+   *
+   * <p>Both the create and the update paths have to run this. {@link
+   * EntityUpdater#updateCertification} reaches it for an entity that already exists, but create and
+   * bulk-create go straight from {@code storeRelationshipsInternal} to {@link #applyCertification}
+   * without ever constructing an updater — so without a second call site a certification supplied
+   * on a create request would be written to {@code tag_usage} with no classification check and with
+   * whatever dates the client happened to send.
+   */
+  protected void validateAndStampCertification(AssetCertification certification) {
+    AssetCertificationSettings settings =
+        Entity.getSystemRepository().getAssetCertificationSettingOrDefault();
+    validateCertification(certification.getTagLabel().getTagFQN(), settings);
+
+    long appliedDate = System.currentTimeMillis();
+    certification.setAppliedDate(appliedDate);
+    LocalDateTime appliedDateTime =
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC);
+    LocalDateTime expiryDateTime = appliedDateTime.plus(Period.parse(settings.getValidityPeriod()));
+    certification.setExpiryDate(expiryDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+  }
+
+  protected static void validateCertification(
+      String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
+    if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
+      throw new IllegalArgumentException(
+          "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
+    } else {
+      String allowedClassification = assetCertificationSettings.getAllowedClassification();
+      String[] fqnParts = FullyQualifiedName.split(certificationLabel);
+      String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
+      if (!allowedClassification.equals(parentFqn)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid Classification: %s is not valid for Certification.", certificationLabel));
+      }
+    }
+  }
+
+  /**
+   * Certification arriving on a create request never passes through {@link EntityUpdater}, so
+   * validate it and stamp the server-authoritative dates here instead. Mirrors {@link
+   * #applyCertification} in tolerating a certification with no usable tag rather than failing the
+   * create — that shape is already a no-op downstream.
+   */
+  private void prepareCertification(T entity) {
+    if (!supportsCertification || entity.getCertification() == null) {
+      return;
+    }
+    AssetCertification certification = entity.getCertification();
+    if (certification.getTagLabel() == null
+        || nullOrEmpty(certification.getTagLabel().getTagFQN())) {
+      return;
+    }
+    validateAndStampCertification(certification);
   }
 
   protected void applyCertification(T entity) {
@@ -10032,13 +10097,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getCertification())
           && updatedByBot()
-          && !overrideMetadata
-          && updatedCertification == null) {
-        // A bot's PUT/create request that omits certification (most connectors never populate
-        // it) must not blank out a certification set through the UI or a prior explicit request.
-        // Certification can still be updated with a PATCH request, an explicit certification
-        // value in the request (e.g. CreateTableRequest.certification), or via the bulk path with
-        // overrideMetadata=true.
+          && !overrideMetadata) {
+        // Revert change to non-empty certification if it is being updated by a bot, matching the
+        // guard on description/owners: a stored value wins over anything a scheduled re-sync
+        // sends. Certification can still be updated with a PATCH request, or via the bulk path
+        // with overrideMetadata=true.
         updated.setCertification(original.getCertification());
         return;
       }
@@ -10072,44 +10135,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      SystemRepository systemRepository = Entity.getSystemRepository();
-      AssetCertificationSettings assetCertificationSettings =
-          systemRepository.getAssetCertificationSettingOrDefault();
-
-      String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
-
-      validateCertification(certificationLabel, assetCertificationSettings);
-
-      long certificationDate = System.currentTimeMillis();
-      updatedCertification.setAppliedDate(certificationDate);
-
-      LocalDateTime nowDateTime =
-          LocalDateTime.ofInstant(Instant.ofEpochMilli(certificationDate), ZoneOffset.UTC);
-      Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
-      LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
-      updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+      validateAndStampCertification(updatedCertification);
 
       applyCertification(updated);
 
       recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
-    }
-
-    private void validateCertification(
-        String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
-      if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
-        throw new IllegalArgumentException(
-            "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
-      } else {
-        String allowedClassification = assetCertificationSettings.getAllowedClassification();
-        String[] fqnParts = FullyQualifiedName.split(certificationLabel);
-        String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
-        if (!allowedClassification.equals(parentFqn)) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Invalid Classification: %s is not valid for Certification.",
-                  certificationLabel));
-        }
-      }
     }
 
     public final boolean updateVersion(Double oldVersion) {
