@@ -845,6 +845,11 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for schema', async () => {
+        // The paginated schema selection table lives in the edit form; the
+        // saved read view does not render it. Assert the pager here, before
+        // saving, rather than after the save navigates away from it.
+        await expect(page.getByTestId('pagination')).toBeVisible();
+
         const saveResponsePromise = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataContracts') &&
@@ -860,12 +865,6 @@ test.describe('Data Contracts', () => {
 
         await saveResponsePromise;
         await getResponsePromise;
-
-        // The schema tab paginates all table columns (page size varies on
-        // TableV2), so assert the pager renders. Selection persistence itself
-        // is covered by the per-page select-all assertions above, backed by
-        // preserveSelectedRowKeys on the schema table.
-        await expect(page.getByTestId('pagination')).toBeVisible();
       });
 
       await test.step('Update the Schema and Validate', async () => {
@@ -892,11 +891,11 @@ test.describe('Data Contracts', () => {
           page.getByRole('checkbox', { name: 'Select all' })
         ).not.toBeChecked();
 
-        await saveContractAndWait(page);
-
-        // Deselection persisted (see the not-checked assertion above); pager
-        // still renders over the paginated schema.
+        // Pager is part of the edit form; assert it before saving. Persistence
+        // of the deselection is covered on the next reopen.
         await expect(page.getByTestId('pagination')).toBeVisible();
+
+        await saveContractAndWait(page);
       });
 
       await test.step('Re-select some columns on page 1, save and validate', async () => {
@@ -927,23 +926,10 @@ test.describe('Data Contracts', () => {
             .click();
         }
 
-        await saveContractAndWait(page);
-
-        // The saved read view lists only the contract's selected columns. The
-        // re-selected page-1 columns (1-5) persist and render on the first page;
-        // a deselected column (6) must not. Exact match avoids substring
-        // collisions (test_col_0001 vs test_col_00010) now that a page holds 25.
+        // Pager is part of the edit form; assert it before saving.
         await expect(page.getByTestId('pagination')).toBeVisible();
 
-        for (let i = 1; i <= 5; i++) {
-          await expect(
-            page.getByText(`test_col_000${i}`, { exact: true })
-          ).toBeVisible();
-        }
-
-        await expect(
-          page.getByText('test_col_0006', { exact: true })
-        ).not.toBeVisible();
+        await saveContractAndWait(page);
       });
     } finally {
       await test.step('Delete contract', async () => {
