@@ -35,14 +35,15 @@
 #     properly-generated map would, just via `select_playwright_tests`'s
 #     "unmapped code → full" fallback — see PR #32809). The check
 #     records a green skip on forks so branch protection is satisfied
-#     without pushing work onto external contributors. Maintainers
-#     refresh the map post-merge if it has drifted (the drift check
-#     itself catches it on the follow-up merge_group).
+#     without pushing work onto external contributors.
 #
-#   * merge_group: read-only check. If the queue's tentative merge
-#     somehow drifts (unlikely — same-repo PRs auto-refresh before
-#     landing) the check fails and the tentative merge is rejected.
-#     Never commits, never comments, never pushes.
+# We deliberately do NOT run on `merge_group`. The merge queue's
+# tentative merge ref is read-only (`gh-readonly-queue/*`) — the bot
+# cannot push a refreshed map there, so a drift detection would leave
+# the queue with nothing it can act on. Same-repo PRs auto-refresh
+# before they enter the queue, and fork PRs fall back to the unmapped-
+# code → full-suite path in `select_playwright_tests`, so a merge_group
+# gate would only fire on race conditions the queue itself cannot fix.
 #
 # Trigger paths are the code the map is a function of: specs, UI src,
 # and the generator itself. Anything else cannot change the output.
@@ -50,7 +51,6 @@
 name: Playwright impact-map drift
 
 on:
-  merge_group:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
@@ -130,7 +130,6 @@ jobs:
           echo "Fork PR detected — impact-map drift is a no-op on forks."
           echo "The 'unmapped code → full' fallback in select_playwright_tests still"
           echo "runs the specs a stale map would have routed to (see PR #32809)."
-          echo "A maintainer's follow-up merge_group run will catch any real drift."
 
       - name: Determine checkout ref
         if: steps.check-fork.outputs.is_fork != 'true'
@@ -144,9 +143,7 @@ jobs:
           PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
           GITHUB_SHA_VAL: ${{ github.sha }}
         run: |
-          if [ "$EVENT_NAME" == "merge_group" ]; then
-            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
+          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ "$EVENT_NAME" == "pull_request_target" ]; then
             echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
@@ -228,13 +225,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Configure git
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Auto-commit + push (same-repo PRs only)
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref }}
@@ -276,10 +273,4 @@ jobs:
 
       # No fork-PR comment. External contributors are not asked to install
       # Python and regenerate the map locally — the "unmapped code → full"
-      # fallback still routes the specs a fresh map would have. If real
-      # drift lands via a fork merge, the follow-up merge_group's check
-      # (below) catches it.
-
-      - name: Fail check on drift that could not be auto-committed
-        if: steps.git-check.outcome != 'success' && github.event_name == 'merge_group'
-        run: exit 1
+      # fallback still routes the specs a fresh map would have.
