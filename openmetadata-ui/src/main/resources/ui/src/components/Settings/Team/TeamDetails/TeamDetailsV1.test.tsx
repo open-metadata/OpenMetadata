@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
@@ -101,7 +101,17 @@ jest.mock('./RolesAndPoliciesList', () =>
   jest.fn().mockImplementation(() => <div>ListEntities</div>)
 );
 jest.mock('./TeamHierarchy', () =>
-  jest.fn().mockImplementation(() => <div>TeamHierarchy</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({ handleTeamSearch }: { handleTeamSearch?: (v: string) => void }) => (
+        <button
+          data-testid="team-search-trigger"
+          onClick={() => handleTeamSearch?.('om')}>
+          TeamHierarchy
+        </button>
+      )
+    )
 );
 jest.mock('./UserTab/UserTab.component', () => ({
   UserTab: jest.fn().mockImplementation(() => <div>UserTab</div>),
@@ -188,6 +198,30 @@ describe('TeamDetailsV1 Import/Export permission gating', () => {
 
     expect(await screen.findByTestId('export-button')).toBeInTheDocument();
     expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+  });
+});
+
+describe('TeamDetailsV1 Teams-tab search scoping', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('scopes the Teams-tab search to the current team child teams', async () => {
+    mockGetTabs.mockReturnValue([
+      { name: 'label.team-plural', key: TeamsPageTab.TEAMS },
+    ]);
+    const { searchQuery } = jest.requireMock('../../../../rest/searchAPI');
+    renderComponent({ childTeams: [ORGANIZATION_TEAM] });
+
+    fireEvent.click(await screen.findByTestId('team-search-trigger'));
+
+    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+    const queryFilter = JSON.stringify(
+      searchQuery.mock.calls[0][0].queryFilter
+    );
+    // Scoped to child teams of the current team (parents.id), not a global team search.
+    expect(queryFilter).toContain('parents.id');
+    expect(queryFilter).toContain('org-id');
   });
 });
 

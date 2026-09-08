@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Team } from '../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { MOCK_MARKETING_TEAM } from '../../../../../mocks/Teams.mock';
 import { getUsers } from '../../../../../rest/userAPI';
 import { UserTab } from './UserTab.component';
@@ -36,8 +36,19 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ onSearch }: { onSearch?: (t: string) => void }) => (
+      <button data-testid="user-searchbar" onClick={() => onSearch?.('ali')}>
+        Searchbar
+      </button>
+    ));
 });
+jest.mock('../../../../../rest/searchAPI', () => ({
+  searchQuery: jest
+    .fn()
+    .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
+}));
 jest.mock(
   '../../../../common/EntityPageInfos/ManageButton/ManageButton',
   () => {
@@ -178,6 +189,68 @@ describe('UserTab', () => {
 
       expect(await screen.findByTestId('export-button')).toBeInTheDocument();
       expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Non-Group team behavior', () => {
+    const nonGroupTeam = {
+      ...MOCK_MARKETING_TEAM,
+      teamType: TeamType.Department,
+      descendantTeams: [{ id: 'sub-group-1', type: 'team' }],
+    } as Team;
+
+    it('should show the export option but hide import and add-user for a non-Group team', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={nonGroupTeam}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      // Export lets a non-Group team export the users rolled up from its sub-groups.
+      expect(await screen.findByTestId('export-button')).toBeInTheDocument();
+      // Adding users (import / add) is only allowed on Group teams.
+      expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-new-user')).not.toBeInTheDocument();
+    });
+
+    it('should show the add-user action for a Group team', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={
+              { ...MOCK_MARKETING_TEAM, teamType: TeamType.Group } as Team
+            }
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('add-new-user')).toBeInTheDocument();
+      expect(screen.getByTestId('import-button')).toBeInTheDocument();
+    });
+
+    it('should scope the users search to the team and its descendant teams', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      render(
+        <BrowserRouter>
+          <UserTab {...props} currentTeam={nonGroupTeam} />
+        </BrowserRouter>
+      );
+
+      fireEvent.click(await screen.findByTestId('user-searchbar'));
+
+      await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+      const queryFilter = JSON.stringify(
+        searchQuery.mock.calls[0][0].queryFilter
+      );
+      // The team itself and its descendant team are both in the teams.id filter.
+      expect(queryFilter).toContain(nonGroupTeam.id);
+      expect(queryFilter).toContain('sub-group-1');
     });
   });
 });
