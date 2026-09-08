@@ -217,8 +217,10 @@ jobs:
             printf '| Merge commit | `%s` |\n' "$MERGE_SHA"
             printf '| Method | Clean cherry-pick — identical to the commit on `main`. |\n\n'
             printf -- '---\n\n'
-            printf 'Opened by the backport workflow so this change is tested by CI '
-            printf 'before it reaches `%s`. Merge once the checks are green.\n\n' "$TARGET"
+            printf 'Opened by the backport workflow so this change is tested before it '
+            printf 'reaches `%s`. **It merges itself once every check passes** — no ' "$TARGET"
+            printf 'review needed. If a check fails it stays open and the author of '
+            printf '#%s is asked to look.\n\n' "$PR_NUMBER"
             printf '<sub>[run log](%s)</sub>\n' "$RUN_URL"
           } > "$BODY"
 
@@ -256,7 +258,7 @@ jobs:
           elif [ "$PICK" = "empty" ]; then
             BODY="🤖 Nothing to backport to \`$TARGET\` — this change is already on that branch."
           elif [ "$PICK" = "conflict" ]; then
-            BODY=$(printf '🤖 **Backport to `%s` needs you.** The cherry-pick conflicts, so nothing was pushed and this change is **not** on `%s` yet.\n\nConflicting paths:\n```\n%s\n```\n\nTo finish it:\n```bash\ngit fetch origin\ngit checkout -b %s origin/%s\ngit cherry-pick -x %s\n# resolve the conflicts, then:\ngit push origin %s\ngh pr create --base %s --head %s --title "[%s] %s"\n```\n\n<sub>[run log](%s)</sub>' \
+            BODY=$(printf '🤖 **Backport to `%s` needs you.** The cherry-pick conflicts, so nothing was pushed and this change is **not** on `%s` yet.\n\nConflicting paths:\n```\n%s\n```\n\nTo finish it:\n```bash\ngit fetch origin\ngit checkout -b %s origin/%s\ngit cherry-pick -x %s\n# resolve the conflicts, then:\ngit push origin %s\ngh pr create --base %s --head %s --title "[%s] %s"\n```\n\nThat PR merges itself once its checks pass, same as an automatic one.\n\n<sub>[run log](%s)</sub>' \
               "$TARGET" "$TARGET" "$CONFLICTS" \
               "$HEAD_BRANCH" "$TARGET" "$MERGE_SHA" "$HEAD_BRANCH" \
               "$TARGET" "$HEAD_BRANCH" "$TARGET" "$PR_TITLE" "$RUN_URL")
