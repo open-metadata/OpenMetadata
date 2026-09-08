@@ -64,7 +64,10 @@ jobs:
     env:
       # Soft budget: exceed → ping #pw-health, do not fail. See the
       # `Soft budget check` step at the end of this job.
-      SOFT_BUDGET_MINUTES: "15"
+      # Empirical basis (5 recent successful pull_request_target runs,
+      # 2026-09-08): min 15m 54s, p50 18m 26s, p95 20m 35s, max 20m 35s.
+      # 30m ≈ 1.5× observed p95 — headroom for a sonar-slow tail run.
+      SOFT_BUDGET_MINUTES: "30"
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
