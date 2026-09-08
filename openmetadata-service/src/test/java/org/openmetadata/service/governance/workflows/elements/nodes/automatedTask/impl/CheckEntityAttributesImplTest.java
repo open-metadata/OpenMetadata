@@ -174,9 +174,10 @@ class CheckEntityAttributesImplTest {
 
   // --- DataProduct asset/outputPort count enrichment tests (#28433) ---
 
-  private static final String HAS_ASSETS_RULE = "{\">\": [{\"var\": \"assetsCount\"}, 0]}";
+  private static final String HAS_ASSETS_RULE =
+      "{\">\": [{\"var\": \"" + CheckEntityAttributesImpl.ASSETS_COUNT + "\"}, 0]}";
   private static final String HAS_OUTPUT_PORTS_RULE =
-      "{\">\": [{\"var\": \"outputPortsCount\"}, 0]}";
+      "{\">\": [{\"var\": \"" + CheckEntityAttributesImpl.OUTPUT_PORTS_COUNT + "\"}, 0]}";
 
   @Test
   void dataProductWithAssets_assetsCountRule_evaluatesTrue() {

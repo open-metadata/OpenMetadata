@@ -27,6 +27,9 @@ import org.openmetadata.service.rules.RuleEngine;
 
 @Slf4j
 public class CheckEntityAttributesImpl implements JavaDelegate {
+  static final String OUTPUT_PORTS_COUNT = "outputPortsCount";
+  static final String ASSETS_COUNT = "assetsCount";
+
   private Expression rulesExpr;
   private Expression inputNamespaceMapExpr;
 
@@ -78,7 +81,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     int assetsCount =
         relationshipDAO.countFindTo(
             entity.getId(), DATA_PRODUCT, List.of(Relationship.HAS.ordinal()));
-    entityMap.put("outputPortsCount", outputPortsCount);
-    entityMap.put("assetsCount", assetsCount);
+    entityMap.put(OUTPUT_PORTS_COUNT, outputPortsCount);
+    entityMap.put(ASSETS_COUNT, assetsCount);
   }
 }
