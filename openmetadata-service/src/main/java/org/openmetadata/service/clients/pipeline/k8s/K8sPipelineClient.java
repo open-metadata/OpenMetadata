@@ -1069,6 +1069,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
   @VisibleForTesting
   List<PodSummary> parsePodSummaries(String rawJson) throws IOException {
     JsonNode items = POD_SUMMARY_MAPPER.readTree(rawJson).path("items");
+    if (!items.isArray()) {
+      LOG.warn("Pod metadata response has no 'items' array, returning no pods");
+      return List.of();
+    }
     List<PodSummary> summaries = new ArrayList<>();
     for (JsonNode item : items) {
       JsonNode metadata = item.path("metadata");

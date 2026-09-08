@@ -955,6 +955,16 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testParsePodSummariesReturnsEmptyWhenItemsMissing() throws Exception {
+    assertTrue(client.parsePodSummaries("{\"kind\":\"Status\",\"code\":403}").isEmpty());
+  }
+
+  @Test
+  void testParsePodSummariesReturnsEmptyWhenItemsNotAnArray() throws Exception {
+    assertTrue(client.parsePodSummaries("{\"items\":\"oops\"}").isEmpty());
+  }
+
+  @Test
   void testParsePodSummariesThrowsOnMalformedJson() {
     assertThrows(IOException.class, () -> client.parsePodSummaries("{ invalid json"));
   }
