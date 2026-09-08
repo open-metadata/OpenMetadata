@@ -930,6 +930,35 @@ test.describe('Data Contracts', () => {
         await expect(page.getByTestId('pagination')).toBeVisible();
 
         await saveContractAndWait(page);
+
+        // Verify the re-selection persisted: reopen the edit form and confirm
+        // the page-1 rows (cols 1-5) stay selected.
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.getByTestId('contract-action-dropdown').waitFor({
+          state: 'visible',
+        });
+        await page.getByTestId('contract-edit-button').click();
+
+        const reopenColumnResponse = page.waitForResponse(
+          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+        );
+
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
+
+        await reopenColumnResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        for (let i = 1; i <= 5; i++) {
+          await expect(
+            page.locator(
+              `[data-row-key="${entityFQN}.test_col_000${i}"][aria-selected="true"]`
+            )
+          ).toBeVisible();
+        }
       });
     } finally {
       await test.step('Delete contract', async () => {
