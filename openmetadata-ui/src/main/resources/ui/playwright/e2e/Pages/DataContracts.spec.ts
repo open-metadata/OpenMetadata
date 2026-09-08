@@ -218,14 +218,12 @@ test.describe('Data Contracts', () => {
 
           // Check if there are schema fields to select
           const hasSchemaFields = await page
-            .locator('input[type="checkbox"][aria-label="Select all"]')
+            .getByRole('checkbox', { name: 'Select all' })
             .isVisible()
             .catch(() => false);
 
           if (hasSchemaFields) {
-            await page
-              .locator('input[type="checkbox"][aria-label="Select all"]')
-              .check();
+            await page.getByRole('checkbox', { name: 'Select all' }).check();
 
             await expect(
               page.getByRole('checkbox', { name: 'Select all' })
@@ -467,14 +465,10 @@ test.describe('Data Contracts', () => {
           await waitForAllLoadersToDisappear(page);
 
           await expect(
-            page
-              .locator('.ant-table-cell')
-              .filter({ hasText: NEW_TABLE_TEST_CASE.name })
+            page.locator('td').filter({ hasText: NEW_TABLE_TEST_CASE.name })
           ).toBeVisible();
 
-          await page
-            .locator('input[type="checkbox"][aria-label="Select all"]')
-            .check();
+          await page.getByRole('checkbox', { name: 'Select all' }).check();
 
           await expect(
             page.getByRole('checkbox', { name: 'Select all' })
@@ -533,9 +527,7 @@ test.describe('Data Contracts', () => {
           await qualityResponse;
           await waitForAllLoadersToDisappear(page);
 
-          await page
-            .locator('input[type="checkbox"][aria-label="Select all"]')
-            .uncheck();
+          await page.getByRole('checkbox', { name: 'Select all' }).uncheck();
 
           await expect(
             page.getByRole('checkbox', { name: 'Select all' })
@@ -776,9 +768,7 @@ test.describe('Data Contracts', () => {
         await columnResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await page
-          .locator('input[type="checkbox"][aria-label="Select all"]')
-          .check();
+        await page.getByRole('checkbox', { name: 'Select all' }).check();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -795,9 +785,7 @@ test.describe('Data Contracts', () => {
         await columnResponse2;
         await waitForAllLoadersToDisappear(page);
 
-        await page
-          .locator('input[type="checkbox"][aria-label="Select all"]')
-          .check();
+        await page.getByRole('checkbox', { name: 'Select all' }).check();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -814,9 +802,7 @@ test.describe('Data Contracts', () => {
         await columnResponse3;
         await waitForAllLoadersToDisappear(page);
 
-        await page
-          .locator('input[type="checkbox"][aria-label="Select all"]')
-          .check();
+        await page.getByRole('checkbox', { name: 'Select all' }).check();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -824,9 +810,7 @@ test.describe('Data Contracts', () => {
 
         // Now UnSelect the Selected Columns of 3rd Page
 
-        await page
-          .locator('input[type="checkbox"][aria-label="Select all"]')
-          .uncheck();
+        await page.getByRole('checkbox', { name: 'Select all' }).uncheck();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -886,9 +870,7 @@ test.describe('Data Contracts', () => {
         await columnResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await page
-          .locator('input[type="checkbox"][aria-label="Select all"]')
-          .uncheck();
+        await page.getByRole('checkbox', { name: 'Select all' }).uncheck();
 
         await expect(
           page.getByRole('checkbox', { name: 'Select all' })
@@ -930,7 +912,7 @@ test.describe('Data Contracts', () => {
         for (let i = 1; i <= 5; i++) {
           await page
             .locator(
-              `[data-row-key="${entityFQN}.test_col_000${i}"] .ant-checkbox-input`
+              `[data-row-key="${entityFQN}.test_col_000${i}"] input[type="checkbox"]`
             )
             .click();
         }
@@ -1389,13 +1371,13 @@ test.describe('Data Contracts', () => {
     // First level column should be selectable
     await page
       .locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] input[type="checkbox"]`
       )
       .click();
 
     await expect(
       page.locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-checked`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"][aria-selected="true"]`
       )
     ).toBeVisible();
 
@@ -1425,7 +1407,7 @@ test.describe('Data Contracts', () => {
 
       await expect(
         page.locator(
-          `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[i]}"] .ant-checkbox-input`
+          `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[i]}"] input[type="checkbox"]`
         )
       ).toBeDisabled();
     }
@@ -1456,9 +1438,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
-    await page
-      .locator('input[type="checkbox"][aria-label="Select all"]')
-      .check();
+    await page.getByRole('checkbox', { name: 'Select all' }).check();
 
     await expect(
       page.getByRole('checkbox', { name: 'Select all' })
@@ -1540,22 +1520,26 @@ test.describe('Data Contracts', () => {
     // Old column should be visible and we should un-check them
     await page
       .locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[0]}"] .ant-checkbox-input`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[0]}"] input[type="checkbox"]`
       )
       .click();
 
     await page
       .locator(
-        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] input[type="checkbox"]`
       )
       .click();
 
     // Select newly added column
     await page
-      .locator(`[data-row-key="${entityFQN}.new_column_0"] .ant-checkbox-input`)
+      .locator(
+        `[data-row-key="${entityFQN}.new_column_0"] input[type="checkbox"]`
+      )
       .click();
     await page
-      .locator(`[data-row-key="${entityFQN}.new_column_1"] .ant-checkbox-input`)
+      .locator(
+        `[data-row-key="${entityFQN}.new_column_1"] input[type="checkbox"]`
+      )
       .click();
 
     // save and trigger contract validation

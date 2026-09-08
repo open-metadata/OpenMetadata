@@ -18,6 +18,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { getCellByName } from '../../utils/scopedLocators';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -121,7 +122,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const userCell = page.getByRole('cell', { name: displayName }).first();
+    const userCell = getCellByName(page, displayName).first();
     await expect(userCell).toBeVisible();
 
     const userRow = page.locator('tr').filter({ has: userCell });
@@ -259,9 +260,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByRole('cell', { name: displayName }).first()
-      ).toBeVisible();
+      await expect(getCellByName(page, displayName).first()).toBeVisible();
 
       // Search by email should surface the same user
       const emailSearchResponse = page.waitForResponse(
@@ -272,9 +271,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByRole('cell', { name: displayName }).first()
-      ).toBeVisible();
+      await expect(getCellByName(page, displayName).first()).toBeVisible();
     });
   });
 });

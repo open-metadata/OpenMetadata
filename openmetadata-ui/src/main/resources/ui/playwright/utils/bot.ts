@@ -20,6 +20,7 @@ import {
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -111,9 +112,7 @@ export const createBot = async (page: Page) => {
     page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
   ).toBeVisible();
 
-  await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
-  ).toBeVisible();
+  await expect(getCellByName(page, BOT_DETAILS.description)).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });
