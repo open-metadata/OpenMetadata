@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BaseOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
 import {
   ChildElement,
@@ -19,13 +18,21 @@ import {
 } from '../../../../generated/entity/teams/teamHierarchy';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
+export interface TeamsSelectableTreeNode {
+  title: string;
+  value: string;
+  selectable: boolean;
+  disabled: boolean;
+  children?: TeamsSelectableTreeNode[];
+}
+
 const getTreeNodeData = (
   team: TeamHierarchy | ChildElement,
   filterJoinable?: boolean
-): BaseOptionType | null => {
+): TeamsSelectableTreeNode | null => {
   const children = (team.children ?? [])
     .map((child) => getTreeNodeData(child, filterJoinable))
-    .filter((child): child is BaseOptionType => child !== null);
+    .filter((child): child is TeamsSelectableTreeNode => child !== null);
 
   const isGroupTeam = team.teamType === TeamType.Group;
 
@@ -47,7 +54,7 @@ const getTreeNodeData = (
 export const buildTeamsSelectableTree = (
   teams: TeamHierarchy[],
   filterJoinable?: boolean
-): BaseOptionType[] =>
+): TeamsSelectableTreeNode[] =>
   teams
     .map((team) => getTreeNodeData(team, filterJoinable))
-    .filter((team): team is BaseOptionType => team !== null);
+    .filter((team): team is TeamsSelectableTreeNode => team !== null);
