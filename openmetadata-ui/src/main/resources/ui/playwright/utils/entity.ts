@@ -722,14 +722,23 @@ export const updateDescription = async (
   validationContainerTestId = 'asset-description-container',
   endpoint?: EntityTypeEndpoint
 ) => {
+  // The description widget is lazy-loaded behind a Suspense skeleton that is
+  // not a [data-testid="loader"], so the generic loader wait does not cover it
+  // -- on Metric in particular the edit affordance was looked for before the
+  // widget had mounted.
+  await waitForWidgetsToRender(page);
+
   const editDescriptionButton = page.getByTestId('edit-description');
   const editButton = page.getByTestId('edit-button');
 
-  try {
-    await expect(editDescriptionButton).toBeVisible();
+  // Entities expose one affordance or the other. Gate on whichever renders:
+  // the previous try/catch spent a full expect timeout failing the first
+  // before it even looked for the second.
+  await expect(editDescriptionButton.or(editButton)).toBeVisible();
+
+  if (await editDescriptionButton.isVisible()) {
     await editDescriptionButton.click();
-  } catch {
-    await expect(editButton).toBeVisible();
+  } else {
     await editButton.click();
   }
 
