@@ -1,7 +1,10 @@
 # Individual scopes
 
 # Review from UI owners for changes around UI code
-/openmetadata-ui/src/main/resources/ui/ @open-metadata/ui
+/openmetadata-ui/src/main/resources/ui/ @chirag-madlani @karanh37 @ShaileshParmar11
+
+# Auto generated code has no ownership
+/openmetadata-ui/src/main/resources/ui/src/generated/
 
 # Review from @chireg / @karan for changes around component library
 /openmetadata-ui-core-components/src/main/resources/ui/ @chirag-madlani @karanh37
@@ -16,3 +19,17 @@
 # Review from Devops owners for changes around workflows
 /.github @akash-jain-10 @harshach @tutte @open-metadata/mergers
 /docker @akash-jain-10 @harshach @tutte
+
+# Playwright CI (workflow + scripts + config) — UI team owns reliability.
+# Every filename that already carries `playwright` in it is caught by the
+# `*playwright*` wildcards; scripts named after the Playwright timing
+# baseline (which drives shard planning) are caught by `*timing_baseline*`.
+# Keep the wildcards specific to those two names so we do not accidentally
+# sweep in general-purpose CI scripts like classify_test_outcome.py that
+# unrelated workflows share.
+.github/workflows/*playwright*                @chirag-madlani @karanh37 @ShaileshParmar11
+.github/playwright/                           @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/*playwright*                  @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/tests/*playwright*            @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/*timing_baseline*             @chirag-madlani @karanh37 @ShaileshParmar11
+.github/scripts/tests/*timing_baseline*       @chirag-madlani @karanh37 @ShaileshParmar11

@@ -12,7 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
-import { uuid } from '../../../utils/common';
+import { selectOptionWithRetry, uuid } from '../../../utils/common';
 
 import {
   checkServiceFieldSectionHighlighting,
@@ -23,16 +23,19 @@ import ServiceBaseClass from './ServiceBaseClass';
 class BigQueryIngestionClass extends ServiceBaseClass {
   name = '';
   filterPattern: string;
+  authOverrides: Record<string, string>;
 
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
     shouldAddDefaultFilters?: boolean;
+    authOverrides?: Record<string, string>;
   }) {
     const {
       shouldTestConnection = true,
       shouldAddIngestion = true,
       shouldAddDefaultFilters = false,
+      authOverrides,
     } = extraParams ?? {};
 
     super(
@@ -46,6 +49,7 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     );
 
     this.filterPattern = 'testschema';
+    this.authOverrides = authOverrides ?? {};
   }
 
   async createService(page: Page) {
@@ -60,20 +64,23 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     const clientEmail = process.env.PLAYWRIGHT_BQ_CLIENT_EMAIL ?? '';
     const projectId = process.env.PLAYWRIGHT_BQ_PROJECT_ID ?? '';
     const privateKeyId = process.env.PLAYWRIGHT_BQ_PRIVATE_KEY_ID ?? '';
-    const privateKey = process.env.PLAYWRIGHT_BQ_PRIVATE_KEY ?? '';
+    const privateKey =
+      this.authOverrides.privateKey ??
+      process.env.PLAYWRIGHT_BQ_PRIVATE_KEY ??
+      '';
     const clientId = process.env.PLAYWRIGHT_BQ_CLIENT_ID ?? '';
     const projectIdTaxonomy =
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
-    await page
-      .getByRole('button', { name: 'GCP Credentials Values GCP' })
-      .click();
-    await page.getByRole('option', { name: 'GCP Credentials Values' }).click();
+    await selectOptionWithRetry(
+      page.getByRole('button', { name: 'GCP Credentials Values GCP' }),
+      page.getByRole('option', { name: 'GCP Credentials Values' })
+    );
 
-    await page
-      .getByRole('button', { name: 'Single Project ID Project ID' })
-      .click();
-    await page.getByRole('option', { name: 'Multiple Project ID' }).click();
+    await selectOptionWithRetry(
+      page.getByRole('button', { name: 'Single Project ID Project ID' }),
+      page.getByRole('option', { name: 'Multiple Project ID' })
+    );
 
     const projectIds = projectId.split(',');
     for (const id of projectIds) {
@@ -116,6 +123,8 @@ class BigQueryIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
     await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
       .getByTestId('filter-section-schemaFilterPattern')

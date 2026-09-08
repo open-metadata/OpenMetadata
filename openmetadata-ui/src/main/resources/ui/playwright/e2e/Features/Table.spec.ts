@@ -103,13 +103,20 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByText('Name', { exact: true }).click();
     await page.locator('[data-testid="searchbar-component"] input').click();
 
-    const testSearchResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
-    );
+    const searchTerm = 'temp-test-case';
+    const testSearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) && (responseUrl.searchParams.get('q') ?? '') === searchTerm
+      );
+    });
 
     await page
       .locator('[data-testid="searchbar-component"] input')
-      .fill('temp-test-case');
+      .fill(searchTerm);
 
     await testSearchResponse;
     await page
@@ -140,7 +147,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByText('Name', { exact: true }).click();
 
-    await page.getByTestId('status-select-filter').locator('div').click();
+    await page.getByTestId('status-select-filter').click();
 
     const filteredResults = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'
@@ -160,11 +167,15 @@ test.describe('Table pagination sorting search scenarios ', () => {
     // Combine it with a search term that matches nothing to deterministically
     // land on the empty-state placeholder.
     const noMatchSearch = `no-match-${uuid()}`;
-    const emptySearchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-        response.url().includes(noMatchSearch)
-    );
+    const emptySearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) && (responseUrl.searchParams.get('q') ?? '').includes(noMatchSearch)
+      );
+    });
     await page.locator('[data-testid="searchbar-component"] input').click();
     await page
       .locator('[data-testid="searchbar-component"] input')
@@ -238,44 +249,60 @@ test.describe('Table pagination sorting search scenarios ', () => {
     );
   });
 
-  test('should persist page size', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+  test(
+    'should persist page size',
+    { tag: '@quarantine' },
+    async ({ dataConsumerPage: page }) => {
+      await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
 
-    await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+      await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
-    await expect(pageSizeDropdown).toBeVisible();
-    await pageSizeDropdown.hover();
+      const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+      await pageSizeDropdown.scrollIntoViewIfNeeded();
+      await expect(pageSizeDropdown).toBeVisible();
+      await expect(pageSizeDropdown).toBeEnabled();
 
-    const pageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '15 / Page' });
-    await expect(pageSizeOption).toBeVisible();
-    await pageSizeOption.click();
-    await waitForAllLoadersToDisappear(page);
+      // NextPrevious wraps the button in an Ant Dropdown with the default hover
+      // trigger, so a bare click only fires preventDefault. Hover + click-fallback
+      // + retry — a re-render that nudges the footer out from under the pointer
+      // otherwise leaves the menu closed for good.
+      const pageSizeMenu = page.getByRole('menu').filter({ hasText: '/ Page' });
+      const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
+        name: '15 / Page',
+      });
+      await expect(async () => {
+        await pageSizeDropdown.hover();
+        if (!(await pageSizeMenu.isVisible())) {
+          await pageSizeDropdown.click();
+        }
+        await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
+      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
-    const linkInColumn = getFirstRowColumnLink(page);
-    const entityApiResponse = page.waitForResponse(
-      '/api/v1/permissions/table/name/*'
-    );
-    await linkInColumn.click();
+      await pageSizeOption.click();
+      await waitForAllLoadersToDisappear(page);
 
-    await entityApiResponse;
-    await waitForAllLoadersToDisappear(page);
+      const linkInColumn = getFirstRowColumnLink(page);
+      const entityApiResponse = page.waitForResponse(
+        '/api/v1/permissions/table/name/*'
+      );
+      await linkInColumn.click();
 
-    await page.goBack();
-    await waitForAllLoadersToDisappear(page);
-    await page
-      .getByTestId('page-size-selection-dropdown')
-      .scrollIntoViewIfNeeded();
+      await entityApiResponse;
+      await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-      '15 / Page'
-    );
-  });
+      await page.goBack();
+      await waitForAllLoadersToDisappear(page);
+      await page
+        .getByTestId('page-size-selection-dropdown')
+        .scrollIntoViewIfNeeded();
+
+      await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+        '15 / Page'
+      );
+    }
+  );
 });
 
 test.describe('Table & Data Model columns table pagination', () => {
@@ -397,20 +424,29 @@ test.describe('Table & Data Model columns table pagination', () => {
 });
 
 test.describe('Tags and glossary terms should be consistent for search ', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const testClassification = new ClassificationClass();
-  const testTag = new TagClass({
-    classification: testClassification.data.name,
-  });
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
+  let testClassification: ClassificationClass;
+  let testTag: TagClass;
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext } = await performAdminLogin(browser);
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    testClassification = new ClassificationClass();
+    testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
 
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await testClassification.create(apiContext);
-    await testTag.create(apiContext);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('Glossary term should be consistent for search', async ({
@@ -481,8 +517,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await waitForAllLoadersToDisappear(page);
     await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
+    // Scoped to the cell: the select keeps its overlay mounted after closing, so the
+    // matching dropdown option carries the same testid and an unscoped locator is
+    // ambiguous under strict mode.
     await expect(
-      page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
     ).toBeVisible();
 
     await page
@@ -535,7 +576,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
     ).not.toBeVisible();
   });
 
@@ -578,15 +621,17 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
+    const saveTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('saveAssociatedTag').click();
-
-    await page.waitForResponse('api/v1/columns/name/*');
+    await saveTagResponse;
 
     await expect(
-      page.getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      page
+        .locator(rowSelector)
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    page.reload();
+    await page.reload();
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(
@@ -625,9 +670,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
+    const removeTagResponse = page.waitForResponse('api/v1/columns/name/*');
     await page.getByTestId('saveAssociatedTag').click();
-
-    await page.waitForResponse('api/v1/columns/name/*');
+    await removeTagResponse;
 
     await expect(
       page

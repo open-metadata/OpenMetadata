@@ -94,7 +94,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid="date-field-dropdown-trigger"
         role="button"
         tabIndex={0}
-        onClick={() => onOpenChange(!isOpen)}>
+        onClick={() => onOpenChange(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onOpenChange(!isOpen);
+          }
+        }}>
         {children[0]}
       </div>
       {isOpen && children[1]}
@@ -239,6 +244,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )
       ),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
@@ -355,14 +370,19 @@ jest.mock('../../pages/TasksPage/shared/Assignees', () => {
 jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
-    .mockImplementation(({ 'data-testid': testId }) => (
-      <div data-testid={testId}>AsyncSelect.component</div>
+    .mockImplementation(({ className, 'data-testid': testId }) => (
+      <div className={className} data-testid={testId}>
+        AsyncSelect.component
+      </div>
     )),
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+  Link: jest.fn().mockImplementation(({ children, state, to, ...rest }) => (
+    <a
+      data-state={JSON.stringify(state)}
+      data-to={typeof to === 'string' ? to : JSON.stringify(to)}
+      {...rest}>
       {children}
     </a>
   )),
@@ -538,6 +558,24 @@ describe('IncidentManagerPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('should align and wrap incident filters at constrained widths', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(await screen.findByTestId('incident-filter-bar')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('incident-filter-controls')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('test-case-select')).toHaveClass('w-min-15');
+  });
+
   it('should call list incident API on page load', async () => {
     await act(async () => {
       render(<IncidentManager />);
@@ -588,12 +626,14 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
+    const selectBox = select.querySelector(
+      '.ant-select-selector'
+    ) as HTMLElement;
 
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');
@@ -1183,6 +1223,14 @@ describe('IncidentManagerPage', () => {
         fqn,
         TestCasePageTabs.TEST_CASE_RESULTS
       );
+      expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual({
+        breadcrumbData: [
+          {
+            name: 'label.incident-manager',
+            url: '/incident-manager',
+          },
+        ],
+      });
     });
   });
 });

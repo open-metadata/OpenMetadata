@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -170,6 +171,43 @@ class ActivityStreamPublisherTest {
           () -> publisher.sendMessage(event, Collections.emptySet()));
 
       ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository).createFieldEventsFromChangeEvent(any(), any());
+    }
+  }
+
+  @Test
+  void sendMessagePurgesActivityOnHardDelete() throws EventPublisherException {
+    try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
+        mockConstruction(ActivityStreamRepository.class)) {
+      ActivityStreamPublisher publisher =
+          new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
+
+      ChangeEvent event = createChangeEvent(Entity.DOMAIN, createTableEntity());
+      event.setEventType(EventType.ENTITY_DELETED);
+
+      assertDoesNotThrow(() -> publisher.sendMessage(event, Collections.emptySet()));
+
+      ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository).deleteByEntity(event.getEntityType(), event.getEntityId());
+      verify(repository, never()).createFieldEventsFromChangeEvent(any(), any());
+      verify(repository, never()).insertBatch(any());
+    }
+  }
+
+  @Test
+  void sendMessageRecordsActivityOnSoftDelete() throws EventPublisherException {
+    try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
+        mockConstruction(ActivityStreamRepository.class)) {
+      ActivityStreamPublisher publisher =
+          new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
+
+      ChangeEvent event = createChangeEvent(Entity.TABLE, createTableEntity());
+      event.setEventType(EventType.ENTITY_SOFT_DELETED);
+
+      assertDoesNotThrow(() -> publisher.sendMessage(event, Collections.emptySet()));
+
+      ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
+      verify(repository, never()).deleteByEntity(any(), any());
       verify(repository).createFieldEventsFromChangeEvent(any(), any());
     }
   }

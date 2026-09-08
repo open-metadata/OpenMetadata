@@ -14,10 +14,9 @@ Status output utilities
 
 import pprint
 import time
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -31,8 +30,10 @@ logger = ingestion_logger()
 MAX_STACK_TRACE_LENGTH = 1_000_000
 # Max items per list rendered in as_string() to bound memory usage
 MAX_STATUS_DISPLAY_ITEMS = 1_000
+# Placeholder for filtered entities that carry no name
+UNKNOWN_FILTER_KEY = "<unknown>"
 
-TruncatedStr = Annotated[Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]  # noqa: UP045
+TruncatedStr = Annotated[str | None, AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]
 
 
 class TruncatedStackTraceError(StackTraceError):
@@ -54,12 +55,12 @@ class Status(BaseModel):
         default_factory=lambda: time.time()  # pylint: disable=unnecessary-lambda  # noqa: PLW0108
     )
 
-    records: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
+    records: Annotated[list[Any], Field(default_factory=list)]
     record_count: int = Field(default=0)
-    updated_records: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
-    warnings: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
-    filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]  # noqa: UP006
-    failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]  # noqa: UP006
+    updated_records: Annotated[list[Any], Field(default_factory=list)]
+    warnings: Annotated[list[Any], Field(default_factory=list)]
+    filtered: Annotated[list[dict[str, str]], Field(default_factory=list)]
+    failures: Annotated[list[TruncatedStackTraceError], Field(default_factory=list)]
 
     def scanned(self, record: Any) -> None:
         """
@@ -98,16 +99,29 @@ class Status(BaseModel):
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
 
-    def filter(self, key: str, reason: str) -> None:
-        self.filtered.append({key: reason})
+    def filter(self, key: str | None, reason: str) -> None:
+        # Sources can legitimately hand us a nameless entity (e.g. a Tableau workbook
+        # published to a Personal Space has no project), and `filtered` is typed
+        # dict[str, str] — a None key makes the Status un-revalidatable.
+        self.filtered.append({key if key is not None else UNKNOWN_FILTER_KEY: reason})
 
     def as_string(self) -> str:
+        def literal_safe(v: Any) -> Any:
+            return v.model_dump() if isinstance(v, BaseModel) else v
+
         parts = []
         for key, value in self.__dict__.items():
             if isinstance(value, list) and len(value) > MAX_STATUS_DISPLAY_ITEMS:
-                header = f"[{len(value)} total items — showing first {MAX_STATUS_DISPLAY_ITEMS}]"
-                formatted = pprint.pformat(value[:MAX_STATUS_DISPLAY_ITEMS], width=150)
-                parts.append(f"'{key}': {header}\n{formatted}")
+                shown = [literal_safe(v) for v in value[:MAX_STATUS_DISPLAY_ITEMS]]
+                formatted = pprint.pformat(shown, width=150)
+                parts.append(f"'{key}': {formatted}")
+                # Total count as a sibling key, not a list element: Status.model_validate()
+                # ignores unknown fields, so this round-trips without corrupting the typed
+                # list (filtered/failures aren't List[Any]) or inflating len(value).
+                parts.append(f"'{key}_total_items': {len(value)}")
+            elif isinstance(value, list):
+                formatted = pprint.pformat([literal_safe(v) for v in value], width=150)
+                parts.append(f"'{key}': {formatted}")
             else:
                 parts.append(f"'{key}': {pprint.pformat(value, width=150)}")
         return "{\n " + ",\n ".join(parts) + "}"
@@ -127,7 +141,7 @@ class Status(BaseModel):
             )
         )
 
-    def fail_all(self, failures: List[StackTraceError]) -> None:  # noqa: UP006
+    def fail_all(self, failures: list[StackTraceError]) -> None:
         """
         Add a list of failures
         Args:

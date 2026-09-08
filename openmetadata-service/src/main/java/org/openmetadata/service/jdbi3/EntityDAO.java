@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -141,7 +142,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
-      @Bind("json") String json);
+      @BindJson("json") String json);
 
   /** Common queries for all entities implemented here. Do not override. */
   @Transaction
@@ -157,7 +158,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
-      @Bind("json") List<String> json);
+      @BindJson("json") List<String> json);
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -172,7 +173,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
-      @Bind("json") String json);
+      @BindJson("json") String json);
 
   @Transaction
   @ConnectionAwareSqlBatch(
@@ -189,7 +190,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
       @BindUUID("id") List<UUID> ids,
-      @Bind("json") List<String> json);
+      @BindJson("json") List<String> json);
 
   /**
    * Update entity with optimistic locking using version check.
@@ -210,7 +211,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
-      @Bind("json") String json,
+      @BindJson("json") String json,
       @Bind("version") String version);
 
   /**
@@ -234,8 +235,8 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
-      @Bind("json") String json,
-      @Bind("expectedJson") String expectedJson);
+      @BindJson("json") String json,
+      @BindJson("expectedJson") String expectedJson);
 
   /**
    * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
@@ -901,6 +902,59 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("offset") int offset);
+
+  /**
+   * Ordered {@code (name, id)} keys, for callers that merge several entity types into one globally
+   * sorted page. Selects only the key columns for the same index-only reason documented on {@link
+   * #getCursorAtOffset} — the caller fetches {@code json} for the merged page alone, so the number
+   * of rows deserialized is bounded by the page size rather than by the number of candidates.
+   */
+  @SqlQuery("SELECT name, id FROM <table> <cond> ORDER BY name, id LIMIT :limit")
+  @RegisterRowMapper(CursorRowMapper.class)
+  List<CursorRow> listKeys(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit);
+
+  @SqlQuery("SELECT name, id FROM <table> <cond> ORDER BY name DESC, id DESC LIMIT :limit")
+  @RegisterRowMapper(CursorRowMapper.class)
+  List<CursorRow> listKeysDesc(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit);
+
+  default List<CursorRow> listKeys(ListFilter filter, int limit, boolean ascending) {
+    return ascending
+        ? listKeys(getTableName(), filter.getQueryParams(), filter.getCondition(), limit)
+        : listKeysDesc(getTableName(), filter.getQueryParams(), filter.getCondition(), limit);
+  }
+
+  record ServiceTypeCount(String serviceType, int count) {}
+
+  class ServiceTypeCountRowMapper implements RowMapper<ServiceTypeCount> {
+    @Override
+    public ServiceTypeCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ServiceTypeCount(rs.getString("serviceType"), rs.getInt("cnt"));
+    }
+  }
+
+  /**
+   * Counts grouped by the {@code serviceType} generated column. Callers that need both a total and a
+   * per-connector breakdown get both from this single scan — the total is the sum of the groups — so
+   * it replaces rather than supplements {@link #listCount(ListFilter)}. Only meaningful for service
+   * tables, which are the ones exposing a {@code serviceType} column.
+   */
+  @SqlQuery(
+      "SELECT serviceType AS serviceType, count(*) AS cnt FROM <table> <cond> GROUP BY serviceType")
+  @RegisterRowMapper(ServiceTypeCountRowMapper.class)
+  List<ServiceTypeCount> listCountByServiceType(
+      @Define("table") String table, @BindMap Map<String, ?> params, @Define("cond") String cond);
+
+  default List<ServiceTypeCount> listCountByServiceType(ListFilter filter) {
+    return listCountByServiceType(getTableName(), filter.getQueryParams(), filter.getCondition());
+  }
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @BindUUID("id") UUID id);

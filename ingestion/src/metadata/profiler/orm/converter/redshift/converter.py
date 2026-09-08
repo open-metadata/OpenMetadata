@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity for Redshift
 to an SQLAlchemy ORM class.
 """
 
-from typing import Dict, Set, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy.sql.sqltypes import TypeEngine
 
@@ -32,16 +32,16 @@ class RedshiftMapTypes(CommonMapTypes):
     def return_custom_type(self, col: Column, table_service_type):
         if table_service_type == databaseService.DatabaseServiceType.Redshift and col.dataType == DataType.GEOMETRY:
             # pylint: disable=import-outside-toplevel
-            from sqlalchemy_redshift.dialect import GEOMETRY  # noqa: PLC0415
+            from sqlalchemy_redshift.dialect import GEOMETRY
 
             return GEOMETRY
         return super().return_custom_type(col, table_service_type)
 
     @staticmethod
-    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
+    def map_sqa_to_om_types() -> dict[TypeEngine, set[DataType]]:
         """returns an ORM type"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_redshift.dialect import GEOMETRY  # noqa: PLC0415
+        from sqlalchemy_redshift.dialect import GEOMETRY
 
         return {
             **CommonMapTypes.map_sqa_to_om_types(),

@@ -19,6 +19,11 @@ import {
 } from '../../../src/generated/entity/data/apiEndpoint';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -206,41 +211,45 @@ export class ApiEndpointClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.ApiService;
     this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
+    this.exploreTabName = 'API Endpoints';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].fullyQualifiedName ?? '';
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/apiServices',
-      {
-        data: this.service,
-      }
-    );
-
-    const apiCollectionResponse = await apiContext.post(
-      '/api/v1/apiCollections',
-      {
-        data: this.apiCollection,
-      }
-    );
-
-    const entityResponse = await apiContext.post('/api/v1/apiEndpoints', {
-      data: this.entity,
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'ApiEndpointClass.create service',
+      createPath: '/api/v1/services/apiServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.apiCollectionResponseData = await apiCollectionResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.apiCollectionResponseData = await createOrFetch(apiContext, {
+      label: 'ApiEndpointClass.create apiCollection',
+      createPath: '/api/v1/apiCollections',
+      fqnSegments: [this.service.name, this.apiCollection.name],
+      data: this.apiCollection,
+    });
+
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'ApiEndpointClass.create apiEndpoint',
+      createPath: '/api/v1/apiEndpoints',
+      fqnSegments: [
+        this.service.name,
+        this.apiCollection.name,
+        this.entity.name,
+      ],
+      data: this.entity,
+    });
 
     this.childrenSelectorId =
       this.entityResponseData.requestSchema?.schemaFields?.[0]
         .fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      apiCollection: apiCollectionResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      apiCollection: this.apiCollectionResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -251,17 +260,19 @@ export class ApiEndpointClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/apiEndpoints/name/${this.entityResponseData?.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/apiEndpoints/name/${this.entityResponseData?.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'ApiEndpointClass.patch');
 
     return {
       entity: this.entityResponseData,

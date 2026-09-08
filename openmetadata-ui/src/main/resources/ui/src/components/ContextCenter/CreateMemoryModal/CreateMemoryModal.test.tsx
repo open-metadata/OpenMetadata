@@ -142,6 +142,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     return <>{children(controller)}</>;
   },
   FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
+    // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
     <label>{label}</label>
   )),
   getField: (fieldProp: {
@@ -161,33 +162,47 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
         return (
           <div>
-            <label>{fieldProp.label}</label>
-            <select
-              data-testid={testId}
-              value={field.value?.id ?? ''}
-              onChange={(e) => {
-                const next = options.find((opt) => opt.id === e.target.value);
-                field.onChange(next ?? null);
-              }}>
-              <option value="" />
-              {options.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <label htmlFor={testId}>
+              {fieldProp.label}
+              <select
+                data-testid={testId}
+                id={testId}
+                value={field.value?.id ?? ''}
+                onChange={(e) => {
+                  let next: { id: string; label: string } | null = null;
+                  for (const opt of options) {
+                    if (opt.id === e.target.value) {
+                      next = opt;
+
+                      break;
+                    }
+                  }
+                  field.onChange(next);
+                }}>
+                <option aria-label={testId} value="" />
+                {options.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         );
       }
 
       return (
         <div>
-          <label>{fieldProp.label}</label>
-          <input
-            data-testid={testId}
-            value={field.value ?? ''}
-            onChange={(e) => field.onChange(e.target.value)}
-          />
+          <label htmlFor={testId}>
+            {fieldProp.label}
+            <input
+              aria-label={testId}
+              data-testid={testId}
+              id={testId}
+              value={field.value ?? ''}
+              onChange={(e) => field.onChange(e.target.value)}
+            />
+          </label>
         </div>
       );
     };
@@ -222,6 +237,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange?: (val: string) => void;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
@@ -260,6 +276,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange?: (val: string) => void;
     }) => (
       <textarea
+        aria-label={testId}
         data-testid={testId}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}

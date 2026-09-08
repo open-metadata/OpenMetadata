@@ -125,6 +125,10 @@
       "description": "Status of the Glossary.",
       "$ref": "../../type/status.json"
     },
+    "ontologyConfiguration": {
+      "description": "Ontology modeling, layering, import, and IRI settings inherited by glossary terms.",
+      "$ref": "../../type/ontologyConfiguration.json"
+    },
     "namespaces": {
       "description": "Namespace prefix to IRI mappings for terms imported from an external ontology. Used to render CURIEs and preserve identity when re-exporting the glossary as RDF/OWL.",
       "type": "array",

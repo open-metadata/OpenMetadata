@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-disabled-tests */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,6 @@ import {
   waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
@@ -345,7 +343,7 @@ jest.mock('./ClassificationFormDrawer', () =>
   jest.fn().mockImplementation(({ open }) =>
     open ? (
       <div data-testid="classification-form-drawer">
-        <input data-testid="name" />
+        <input aria-label="name" data-testid="name" />
       </div>
     ) : null
   )
@@ -355,7 +353,7 @@ jest.mock('./TagFormDrawer', () =>
   jest.fn().mockImplementation(({ open }) =>
     open ? (
       <div data-testid="tag-form-drawer">
-        <input data-testid="name" />
+        <input aria-label="name" data-testid="name" />
       </div>
     ) : null
   )
@@ -680,8 +678,7 @@ describe('Test TagsPage page', () => {
     expect(editIcon).not.toBeInTheDocument();
   });
 
-  // api is not working for this feature
-  it.skip('User classification should be renamed', async () => {
+  it('User classification should be renamed', async () => {
     (getClassifications as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [mockCategory[1]] })
     );
@@ -691,31 +688,29 @@ describe('Test TagsPage page', () => {
     const tagsComponent = screen.getByTestId('tags-container');
     const header = screen.getByTestId('header');
     const leftPanelContent = screen.getByTestId('tags-left-panel');
-    const editIcon = screen.getByTestId('name-edit-icon');
-    const tagCategoryName = screen.getByTestId('classification-name');
 
     expect(tagsComponent).toBeInTheDocument();
     expect(header).toBeInTheDocument();
     expect(leftPanelContent).toBeInTheDocument();
-    expect(editIcon).toBeInTheDocument();
-    expect(tagCategoryName).toBeInTheDocument();
 
-    fireEvent.click(editIcon);
+    // A user (non-system) classification exposes the Edit action in the
+    // manage dropdown, which opens the classification edit drawer where the
+    // name/displayName can be renamed.
+    const manageButton = screen.getByTestId('manage-button');
 
-    const tagCategoryHeading = screen.getByTestId(
-      'current-classification-name'
-    );
-    const cancelAssociatedTag = screen.getByTestId('cancelAssociatedTag');
-    const saveAssociatedTag = screen.getByTestId('saveAssociatedTag');
+    expect(manageButton).toBeInTheDocument();
 
-    expect(tagCategoryHeading).toBeInTheDocument();
-    expect(cancelAssociatedTag).toBeInTheDocument();
-    expect(saveAssociatedTag).toBeInTheDocument();
+    fireEvent.click(manageButton);
 
-    await userEvent.clear(tagCategoryHeading);
-    await userEvent.type(tagCategoryHeading, 'newPII');
+    const editOption = await screen.findByTestId('edit-classification');
 
-    expect(tagCategoryHeading).toHaveValue('newPII');
+    expect(editOption).toBeInTheDocument();
+
+    fireEvent.click(editOption);
+
+    expect(
+      await screen.findByTestId('classification-form-drawer')
+    ).toBeInTheDocument();
   });
 
   it('User tag should be load', async () => {
@@ -750,7 +745,7 @@ describe('Test TagsPage page', () => {
   });
 
   describe('Render Sad Paths', () => {
-    it.skip('Show error message on failing of deleteTag API', async () => {
+    it('Show error message on failing of deleteTag API', async () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
         Promise.reject(new Error('Error!'))
       );

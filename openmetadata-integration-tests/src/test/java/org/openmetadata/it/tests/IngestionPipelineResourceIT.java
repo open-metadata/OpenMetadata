@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,12 +41,14 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
 import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -58,12 +62,17 @@ import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,6 +162,105 @@ public class IngestionPipelineResourceIT
     return SdkClients.adminClient().ingestionPipelines().create(createRequest);
   }
 
+  @Test
+  void createRejectsSourceConfigWithoutTypeAndDoesNotPersist(TestNamespace ns) throws Exception {
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns).withName(ns.prefix("missingTypeCreate"));
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "POST",
+            IngestionPipelineResource.COLLECTION_PATH,
+            requestWithoutSourceConfigType(request),
+            "application/json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("sourceConfig.config.type is required"));
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                getEntityByName(
+                    request.getService().getFullyQualifiedName() + "." + request.getName()));
+    assertEquals(404, notFound.getStatusCode());
+  }
+
+  @Test
+  void updateRejectsSourceConfigWithoutTypeAndPreservesStoredConfig(TestNamespace ns)
+      throws Exception {
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns).withName(ns.prefix("missingTypeUpdate"));
+    IngestionPipeline pipeline = createEntity(request);
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "PUT",
+            IngestionPipelineResource.COLLECTION_PATH,
+            requestWithoutSourceConfigType(request),
+            "application/json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("sourceConfig.config.type is required"));
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+  }
+
+  @Test
+  void patchRejectsRemovingSourceConfigTypeAndPreservesStoredConfig(TestNamespace ns)
+      throws Exception {
+    IngestionPipeline pipeline =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("missingTypePatch")));
+    List<Map<String, String>> patch =
+        List.of(Map.of("op", "remove", "path", "/sourceConfig/config/type"));
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "PATCH",
+            IngestionPipelineResource.COLLECTION_PATH + pipeline.getId(),
+            patch,
+            "application/json-patch+json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("sourceConfig.config.type is required"));
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+  }
+
+  @Test
+  void migrationRepairsLegacySourceConfigTypeBeforeDeployment(TestNamespace ns) {
+    IngestionPipeline pipeline =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("legacyMissingType")));
+    Map<String, Object> legacyConfig =
+        new LinkedHashMap<>(JsonUtils.getMap(pipeline.getSourceConfig().getConfig()));
+    legacyConfig.remove("type");
+    pipeline.getSourceConfig().setConfig(legacyConfig);
+    Entity.getCollectionDAO().ingestionPipelineDAO().update(pipeline);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+
+    assertNull(
+        JsonUtils.getMap(getEntity(pipeline.getId().toString()).getSourceConfig().getConfig())
+            .get("type"));
+
+    IngestionPipelineMigrationUtil.MigrationResult migrationResult =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(Entity.getCollectionDAO());
+    EntityRepository.invalidateCacheForEntity(
+        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+
+    assertTrue(migrationResult.repaired() >= 1);
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+
+    PipelineServiceClientResponse response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                IngestionPipelineResource.COLLECTION_PATH + "deploy/" + pipeline.getId(),
+                null,
+                PipelineServiceClientResponse.class);
+
+    assertEquals(200, response.getCode());
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+  }
+
   @Override
   protected IngestionPipeline getEntity(String id) {
     return SdkClients.adminClient().ingestionPipelines().get(id);
@@ -229,6 +337,23 @@ public class IngestionPipelineResourceIT
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().ingestionPipelines().getVersionList(id);
+  }
+
+  @Test
+  void delete_forceWithoutHardDelete_nonAdminReturnsForbidden(TestNamespace ns) {
+    IngestionPipeline pipeline = createEntity(createMinimalRequest(ns));
+    Map<String, String> params = Map.of("hardDelete", "false", "force", "true");
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .ingestionPipelines()
+                    .delete(pipeline.getId().toString(), params));
+
+    assertEquals(403, exception.getStatusCode());
+    assertNotNull(getEntity(pipeline.getId().toString()));
   }
 
   @Override
@@ -895,6 +1020,69 @@ public class IngestionPipelineResourceIT
     assertEquals(expectedNewestFirst, actualRunIds);
   }
 
+  /**
+   * Needs more than one pipeline: the single-entity read above binds a one-element hash list, where
+   * a query ordered only by entity hash still looks correct. Timestamps are interleaved across the
+   * two pipelines so a globally-sorted query fails too.
+   */
+  @Test
+  void test_listWithPipelineStatusesOrdersEachPipelineNewestFirst(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    long base = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+
+    Map<String, List<String>> expectedNewestFirst = new LinkedHashMap<>();
+    for (int p = 0; p < 2; p++) {
+      CreateIngestionPipeline request =
+          new CreateIngestionPipeline()
+              .withName(ns.prefix("list_statuses_order_" + p))
+              .withPipelineType(PipelineType.METADATA)
+              .withService(service.getEntityReference())
+              .withSourceConfig(
+                  new SourceConfig()
+                      .withConfig(
+                          new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
+              .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+      IngestionPipeline pipeline = createEntity(request);
+      String statusPath =
+          "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+      List<String> runIds = new ArrayList<>();
+      for (int i = 0; i < 3; i++) {
+        String runId = UUID.randomUUID().toString();
+        runIds.add(runId);
+        PipelineStatus status =
+            new PipelineStatus()
+                .withPipelineState(PipelineStatusType.SUCCESS)
+                .withRunId(runId)
+                .withTimestamp(base + (i * 2000L) + (p * 1000L));
+        client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+      }
+      Collections.reverse(runIds);
+      expectedNewestFirst.put(pipeline.getFullyQualifiedName(), runIds);
+    }
+
+    ListResponse<IngestionPipeline> listed =
+        listEntities(
+            new ListParams()
+                .setFields("pipelineStatuses")
+                .setLimit(1000)
+                .setService(service.getFullyQualifiedName()));
+
+    for (Map.Entry<String, List<String>> expected : expectedNewestFirst.entrySet()) {
+      IngestionPipeline pipeline =
+          listed.getData().stream()
+              .filter(candidate -> expected.getKey().equals(candidate.getFullyQualifiedName()))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("pipeline missing from list: " + expected));
+      List<String> actual =
+          pipeline.getPipelineStatuses().stream().map(PipelineStatus::getRunId).toList();
+      assertEquals(
+          expected.getValue(), actual, "runs must be newest-first for " + expected.getKey());
+    }
+  }
+
   @Test
   void test_pipelineStatusDeletion(TestNamespace ns) throws OpenMetadataException {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
@@ -1233,10 +1421,9 @@ public class IngestionPipelineResourceIT
     assertEquals(
         awsCredentials.getAwsRegion(), actualDbtS3Config.getDbtSecurityConfig().getAwsRegion());
 
-    String maskedSecret = actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey();
-    assertTrue(
-        maskedSecret == null || maskedSecret.contains("*"),
-        "Secret should be masked for admin user");
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
 
     IngestionPipeline botPipeline =
         SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId().toString());
@@ -1254,6 +1441,29 @@ public class IngestionPipelineResourceIT
     assertEquals(
         awsCredentials.getAwsSecretAccessKey(),
         botDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
+
+    actualDbtS3Config.getDbtSecurityConfig().setAwsRegion("us-east-1");
+    actualDbtPipeline.setDbtConfigSource(actualDbtS3Config);
+    SourceConfig maskedSourceConfig = new SourceConfig().withConfig(actualDbtPipeline);
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/sourceConfig")
+        .set("value", JsonUtils.valueToTree(maskedSourceConfig));
+
+    SdkClients.adminClient().ingestionPipelines().patch(pipeline.getId(), patch);
+
+    IngestionPipeline patchedPipeline =
+        SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId());
+    DbtPipeline patchedDbtPipeline =
+        JsonUtils.convertValue(patchedPipeline.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtS3Config patchedDbtS3Config =
+        JsonUtils.convertValue(patchedDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
+    assertEquals("us-east-1", patchedDbtS3Config.getDbtSecurityConfig().getAwsRegion());
+    assertEquals(
+        awsCredentials.getAwsSecretAccessKey(),
+        patchedDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
   }
 
   @Test
@@ -1793,7 +2003,139 @@ public class IngestionPipelineResourceIT
         .statusCode();
   }
 
+  private static HttpResponse<String> sendRawRequest(
+      String method, String path, Object body, String contentType) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", contentType)
+            .timeout(Duration.ofSeconds(30))
+            .method(method, HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(body)))
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> requestWithoutSourceConfigType(
+      CreateIngestionPipeline request) {
+    Map<String, Object> payload = JsonUtils.getMap(request);
+    Map<String, Object> sourceConfig = (Map<String, Object>) payload.get("sourceConfig");
+    Map<String, Object> config = (Map<String, Object>) sourceConfig.get("config");
+    config.remove("type");
+    return payload;
+  }
+
+  private void assertStoredSourceConfigType(UUID pipelineId, String expectedType) {
+    IngestionPipeline stored = getEntity(pipelineId.toString());
+    assertEquals(expectedType, JsonUtils.getMap(stored.getSourceConfig().getConfig()).get("type"));
+  }
+
   private static String encodeSegment(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  /**
+   * A run the orchestrator accepts but never starts leaves a `queued` status behind that no worker
+   * will ever supersede, so it is hidden once older than `queuedStatusTimeoutSeconds`. That cutoff
+   * has to hold for the `pipelineStatuses` entity field too, not just the pipelineStatus endpoint —
+   * the Agents page reads the field, and shows the newest entry as the pipeline's current state.
+   */
+  @Test
+  void test_staleQueuedStatusIsHiddenFromThePipelineStatusesField(TestNamespace ns) {
+    IngestionPipeline pipeline = createEntity(createRequest(ns.prefix("staleQueued"), ns));
+    String fqn = pipeline.getFullyQualifiedName();
+    String serviceFqn = pipeline.getService().getFullyQualifiedName();
+    long twoHoursAgo = System.currentTimeMillis() - Duration.ofHours(2).toMillis();
+    long ninetyMinutesAgo = System.currentTimeMillis() - Duration.ofMinutes(90).toMillis();
+
+    addStatus(fqn, "stale-queued-run", PipelineStatusType.QUEUED, twoHoursAgo);
+    addStatus(fqn, "finished-run", PipelineStatusType.SUCCESS, ninetyMinutesAgo);
+
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(
+            get(
+                    "/v1/services/ingestionPipelines/" + encodeSegment(fqn) + "/pipelineStatus",
+                    PipelineStatusList.class)
+                .getData()),
+        "pipelineStatus endpoint must hide the stale queued run");
+
+    // setFields path: single entity read with the field requested
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(
+            get(
+                    "/v1/services/ingestionPipelines/name/"
+                        + encodeSegment(fqn)
+                        + "?fields=pipelineStatuses",
+                    IngestionPipeline.class)
+                .getPipelineStatuses()),
+        "pipelineStatuses field must hide it too, or the Agents page shows Queued forever");
+
+    // setFieldsInBulk path: the list call the Agents page actually makes
+    IngestionPipeline fromList =
+        get(
+                "/v1/services/ingestionPipelines?limit=100&fields=pipelineStatuses&service="
+                    + encodeSegment(serviceFqn),
+                IngestionPipelineList.class)
+            .getData()
+            .stream()
+            .filter(p -> fqn.equals(p.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("pipeline missing from the list response"));
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(fromList.getPipelineStatuses()),
+        "the bulk field fetch must apply the same cutoff as the single-entity read");
+  }
+
+  private static List<String> runIdsOf(List<PipelineStatus> statuses) {
+    return statuses == null ? List.of() : statuses.stream().map(PipelineStatus::getRunId).toList();
+  }
+
+  private static <T> T get(String path, Class<T> type) {
+    return SdkClients.adminClient().getHttpClient().execute(HttpMethod.GET, path, null, type);
+  }
+
+  private void addStatus(String fqn, String runId, PipelineStatusType state, long timestamp) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/ingestionPipelines/" + encodeSegment(fqn) + "/pipelineStatus",
+            new PipelineStatus()
+                .withRunId(runId)
+                .withPipelineState(state)
+                .withStartDate(timestamp)
+                .withTimestamp(timestamp),
+            IngestionPipeline.class);
+  }
+
+  static class PipelineStatusList extends ResultList<PipelineStatus> {}
+
+  static class IngestionPipelineList extends ResultList<IngestionPipeline> {}
+
+  /**
+   * Creating an application pipeline reads the app type off `appConfig` to pick a specific create
+   * permission. With no `appConfig` there is no type to read, and that used to escape as a 500
+   * before authorization even ran instead of falling back to the generic create permission.
+   */
+  @Test
+  void test_createApplicationPipelineWithoutAppConfig(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("appNoConfig"))
+            .withPipelineType(PipelineType.APPLICATION)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new ApplicationPipeline()))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    assertNotNull(pipeline.getId());
+    assertEquals(PipelineType.APPLICATION, pipeline.getPipelineType());
   }
 }

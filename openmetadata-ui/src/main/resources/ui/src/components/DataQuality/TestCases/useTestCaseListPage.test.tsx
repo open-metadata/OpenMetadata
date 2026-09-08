@@ -263,7 +263,7 @@ describe('useTestCaseListPage', () => {
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({ q: '*orders*' })
+        expect.objectContaining({ q: 'orders' })
       )
     );
   });
@@ -399,6 +399,7 @@ describe('useTestCaseListPage', () => {
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TESTSUITE,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
     ]);
     expect(payload.includeAllTests).toBe(true);
     expect(payload.limit).toBe(10);
@@ -480,7 +481,7 @@ describe('useTestCaseListPage', () => {
 
     // controlType: single-select vs multiselect membership.
     expect(tableDescriptor?.controlType).toBe('select');
-    expect(statusDescriptor?.controlType).toBe('select');
+    expect(statusDescriptor?.controlType).toBe('multiselect');
     expect(typeDescriptor?.controlType).toBe('select');
     expect(tagsDescriptor?.controlType).toBe('multiselect');
 

@@ -127,6 +127,16 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_neverFiltersMemoriesByShareConfigVisibility() {
+    // The search reindex reads memories through this filter, and a user's own PRIVATE/SHARED
+    // memories have to reach the index to stay findable in the ContextCenter listing.
+    String condition = new ListFilter().getCondition("context_memory");
+
+    assertFalse(condition.contains("shareConfig.visibility"));
+    assertFalse(condition.contains("shareConfig'->>'visibility"));
+  }
+
+  @Test
   void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");
@@ -428,32 +438,36 @@ class ListFilterTest {
   }
 
   @Test
-  void test_taskStatusGroup_openIncludesGrantedManualRevokeUniversallyAndDarApproved() {
+  void test_taskStatusGroup_openIncludesSharedOpenAndDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
     String condition = filter.getCondition("task_entity");
 
-    // Shared open statuses (Granted/ManualRevoke included so any hypothetical future task type
-    // reaching those statuses still lands in a bucket rather than silently breaking the invariant).
+    // Shared open statuses. Granted is not here — it's DAR-only and routed to the Closed bucket.
     assertTrue(
         condition.contains(
-            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Granted', 'ManualRevoke')"),
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'ManualRevoke')"),
         condition);
-    // DAR-only bump: Approved only counts as open for DataAccessRequest rows.
+    // DAR-only bump: Approved counts as open for DataAccessRequest rows (still awaiting grant).
     assertTrue(
         condition.contains(
             "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         condition);
+    // Granted must not appear on the open side — the reported UX bug.
+    assertFalse(condition.contains("'Granted'"), condition);
   }
 
   @Test
-  void test_taskStatusGroup_closedExcludesApprovedForDarRows() {
+  void test_taskStatusGroup_closedIncludesTerminalAndGrantedAndNonDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
     String condition = filter.getCondition("task_entity");
 
+    // Shared terminal statuses — Granted is in this list unconditionally because it's
+    // DAR-only in practice; keeps the SQL branch count minimal.
     assertTrue(
         condition.contains(
-            "task_entity.status IN ('Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
+            "task_entity.status IN ('Granted', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
         condition);
+    // Non-DAR Approved is terminal (Glossary/DescriptionUpdate/etc.) — belongs in Closed tab.
     assertTrue(
         condition.contains(
             "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
@@ -479,6 +493,10 @@ class ListFilterTest {
         closedCond.contains(
             "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         "DAR Approved must not appear in the closed bucket: " + closedCond);
+    // DAR Granted lives in closed, never in open (Slack-thread regression guard).
+    assertFalse(
+        openCond.contains("'Granted'"),
+        "Granted must not appear in the open bucket at all: " + openCond);
   }
 
   @Test
@@ -502,5 +520,26 @@ class ListFilterTest {
     assertFalse(condition.contains("OR 1=1"), condition);
     assertTrue(condition.contains(":folderIdParam"), condition);
     assertEquals(hostile, filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_getServiceCondition_filtersDatabaseHierarchyTables() {
+    // The database hierarchy below `databases` is FQN-prefixed by the service, so the
+    // generic service condition applies to it unchanged.
+    List<String> tableNames =
+        List.of("table_entity", "database_schema_entity", "stored_procedure_entity");
+    for (String tableName : tableNames) {
+      ListFilter filter =
+          new ListFilter(Include.NON_DELETED).addQueryParam("service", "my_service");
+      assertEquals(tableName + ".fqnHash LIKE :serviceHash", filter.getServiceCondition(tableName));
+      assertEquals(
+          FullyQualifiedName.buildHash("my_service") + ".%",
+          filter.getQueryParams().get("serviceHash"));
+    }
+  }
+
+  @Test
+  void test_getServiceCondition_absentServiceYieldsNoCondition() {
+    assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
   }
 }

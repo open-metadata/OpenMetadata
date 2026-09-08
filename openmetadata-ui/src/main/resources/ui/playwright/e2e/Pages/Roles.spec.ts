@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -55,7 +55,14 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Roles page should work properly', async ({ page }) => {
-    test.slow();
+    // 8 sequential test.step blocks that each renavigate to the roles list
+    // and paginate via getElementWithPagination (50-page loop, 30s loader
+    // wait each). Under CI load the whole thing has been hitting the
+    // 180s test.slow() ceiling — a 3-minute burn per attempt before the
+    // retry starts. Cap at 120s so failures fail fast and Playwright's
+    // per-test retry recovers the run without triple-timing-out.
+    // Happy-path runtime for this test on a warm shard is ~60-90s.
+    test.setTimeout(120_000);
 
     const roleName = `Role-test-${uuid()}`;
     const description = `This is ${roleName} description`;
@@ -77,7 +84,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -226,7 +233,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -246,18 +253,11 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Edit created role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await waitForAllLoadersToDisappear(page);
-
-      // Edit description
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
+      // Direct-nav to the role detail page. The previous pattern
+      // (settingClick → paginate the roles list until the row is found →
+      // click it) can burn 30s+ of loader waits per hop; the URL is
+      // deterministic from roleName so skip the round-trip entirely.
+      await page.goto(`/settings/access/roles/${roleName}`);
       await waitForAllLoadersToDisappear(page);
 
       const editDescriptionButton = page.locator(
@@ -267,7 +267,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await editDescriptionButton.click();
 
       // Wait for description editor to be visible
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(`${description}-updated`);
 
@@ -336,17 +336,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Add new policy to created role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await waitForAllLoadersToDisappear(page);
-
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
+      await page.goto(`/settings/access/roles/${roleName}`);
       await waitForAllLoadersToDisappear(page);
 
       // Click add policy button
@@ -403,17 +393,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Remove added policy from created role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await waitForAllLoadersToDisappear(page);
-
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
+      await page.goto(`/settings/access/roles/${roleName}`);
       await waitForAllLoadersToDisappear(page);
 
       // Remove policy
@@ -436,17 +416,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Check if last policy is not removed', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
-      await waitForAllLoadersToDisappear(page);
-
-      const roleLocator = page.locator(
-        `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
-
-      // Wait for role details page to load
+      await page.goto(`/settings/access/roles/${roleName}`);
       await waitForAllLoadersToDisappear(page);
 
       // Removing second policy from the role

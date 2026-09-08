@@ -151,10 +151,12 @@ class TestCaseClassBase {
   public getFields(): string[] {
     return [
       TabSpecificField.TESTSUITE,
+      TabSpecificField.TEST_SUITES,
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
       TabSpecificField.TAGS,
       TabSpecificField.DATA_PRODUCTS,
       TabSpecificField.DOMAINS,

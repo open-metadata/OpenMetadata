@@ -6,17 +6,28 @@ This document outlines the standards and best practices that must be followed wh
 
 - [ ] **No `any` types**: Code must never use `any` type - use proper types or `unknown` with type guards
 - [ ] **Proper type imports**: All types imported from existing definitions (e.g., `RJSFSchema` from `@rjsf/utils`, types from `generated/`)
-- [ ] **Interface definitions**: All component props have defined interfaces in `.interface.ts` files
+- [ ] **Prop types defined**: All component props have declared types — `.types.ts` for new files, `.interface.ts` in legacy ones
 - [ ] **Type assertions**: Avoid type assertions unless absolutely necessary and well-justified
 - [ ] **Discriminated unions**: Use discriminated unions for action types and state variants
 
 ## React Component Standards
 
 ### File Structure and Naming
-- [ ] **Component files**: Named as `ComponentName.component.tsx`
-- [ ] **Interface files**: Named as `ComponentName.interface.ts`
+
+Full spec: [`src/main/resources/ui/DEVELOPER_HANDBOOK.md`](src/main/resources/ui/DEVELOPER_HANDBOOK.md).
+
+- [ ] **Placement**: new files live at `<layer>/<domain>/<feature>/` — layers are `components/`,
+      `pages/`, `rest/`, `utils/`, `hooks/`; domains are `discovery`, `governance`, `observability`,
+      `insights`, `platform`. Cross-cutting features (`lineage`, `data-contract`, `entity`,
+      `activity-feed`) sit at the domain level
+- [ ] **New file names**: one stem + role suffix — `GlossaryList.tsx`, `.types.ts`, `.utils.ts`,
+      `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`
+- [ ] **Legacy files untouched**: do not ask for existing `.component.tsx` / `.interface.ts` files to
+      be renamed — the suffix marks migration status
+- [ ] **No `index.ts` barrel** inside a component folder (`no-internal-barrel-imports`)
+- [ ] **Business logic in `*.utils.ts`**: pure functions, no React or JSX, unit-testable without rendering
 - [ ] **Functional components only**: No class components
-- [ ] **Custom hooks**: Prefixed with `use`, placed in `src/hooks/`, return typed objects
+- [ ] **Custom hooks**: Prefixed with `use`, placed in `src/hooks/<domain>/`, return typed objects
 
 ### Component Implementation
 - [ ] **State management**: Uses `useState` with proper typing

@@ -47,8 +47,9 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
           size="sm">
           {getEntityName(selectedItem)}
         </Button>
-        <Dropdown.Popover className="tw:max-h-87 tw:min-w-50 tw:w-max">
+        <Dropdown.Popover className="tw:min-w-50 tw:w-max">
           <Dropdown.Menu
+            className="tw:max-h-87 tw:overflow-y-auto"
             selectedKeys={[activeColumnFqn]}
             selectionMode="single"
             onAction={(key) => {

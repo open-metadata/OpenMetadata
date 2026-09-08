@@ -22,6 +22,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -69,7 +70,7 @@ const CommonWidgets = withSuspenseFallback(
       (module) => ({ default: module.CommonWidgets })
     )
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton />
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -87,7 +88,16 @@ const SchemaTable = withSuspenseFallback(
   lazy(
     () => import('../components/Database/SchemaTable/SchemaTable.component')
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
+
+const AssetHealthWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DataAssets/AssetHealthWidget/AssetHealthWidget.component'
+      )
+  )
 );
 
 const SampleDataTableComponent = withSuspenseFallback(
@@ -136,7 +146,7 @@ const TableConstraints = withSuspenseFallback(
     () =>
       import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const KnowledgeGraph = withSuspenseFallback(
@@ -155,7 +165,7 @@ const FrequentlyJoinedTables = withSuspenseFallback(
       '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
     ).then((module) => ({ default: module.FrequentlyJoinedTables }))
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const PartitionedKeys = withSuspenseFallback(
@@ -164,11 +174,73 @@ const PartitionedKeys = withSuspenseFallback(
       '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
     ).then((module) => ({ default: module.PartitionedKeys }))
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
+
+const isDbtTabHidden = (
+  tableDetails?: TableDetailPageTabProps['tableDetails']
+): boolean =>
+  !(
+    tableDetails?.dataModel?.sql ||
+    tableDetails?.dataModel?.rawSql ||
+    tableDetails?.dataModel?.path ||
+    tableDetails?.dataModel?.dbtSourceProject
+  );
+
+const getSampleDataTabChildren = ({
+  isTourOpen,
+  viewSampleDataPermission,
+  deleted,
+  tableDetails,
+  tablePermissions,
+}: Pick<
+  TableDetailPageTabProps,
+  | 'isTourOpen'
+  | 'viewSampleDataPermission'
+  | 'deleted'
+  | 'tableDetails'
+  | 'tablePermissions'
+>) =>
+  !isTourOpen && !viewSampleDataPermission ? (
+    <ErrorPlaceHolder
+      className="border-none"
+      permissionValue={t('label.view-entity', {
+        entity: t('label.sample-data'),
+      })}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  ) : (
+    <SampleDataTableComponent
+      isTableDeleted={deleted}
+      owners={tableDetails?.owners ?? []}
+      permissions={tablePermissions}
+      tableId={tableDetails?.id ?? ''}
+    />
+  );
+
+const getTableQueriesTabChildren = ({
+  viewQueriesPermission,
+  deleted,
+  tableDetails,
+}: Pick<
+  TableDetailPageTabProps,
+  'viewQueriesPermission' | 'deleted' | 'tableDetails'
+>) =>
+  viewQueriesPermission ? (
+    <TableQueries isTableDeleted={deleted} tableId={tableDetails?.id ?? ''} />
+  ) : (
+    <ErrorPlaceHolder
+      className="border-none"
+      permissionValue={t('label.view-entity', {
+        entity: t('label.query-plural'),
+      })}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  );
 
 export const getTableDetailPageBaseTabs = ({
   queryCount,
+  isQueryCountLoading,
   isTourOpen,
   tablePermissions,
   activeTab,
@@ -237,23 +309,13 @@ export const getTableDetailPageBaseTabs = ({
       ),
 
       key: EntityTabs.SAMPLE_DATA,
-      children:
-        !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <SampleDataTableComponent
-            isTableDeleted={deleted}
-            owners={tableDetails?.owners ?? []}
-            permissions={tablePermissions}
-            tableId={tableDetails?.id ?? ''}
-          />
-        ),
+      children: getSampleDataTabChildren({
+        isTourOpen,
+        viewSampleDataPermission,
+        deleted,
+        tableDetails,
+        tablePermissions,
+      }),
     },
     {
       label: (
@@ -261,6 +323,7 @@ export const getTableDetailPageBaseTabs = ({
           count={queryCount}
           id={EntityTabs.TABLE_QUERIES}
           isActive={activeTab === EntityTabs.TABLE_QUERIES}
+          isLoading={isQueryCountLoading}
           name={get(
             labelMap,
             EntityTabs.TABLE_QUERIES,
@@ -269,20 +332,11 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
-      children: viewQueriesPermission ? (
-        <TableQueries
-          isTableDeleted={deleted}
-          tableId={tableDetails?.id ?? ''}
-        />
-      ) : (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.query-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      ),
+      children: getTableQueriesTabChildren({
+        viewQueriesPermission,
+        deleted,
+        tableDetails,
+      }),
     },
     {
       label: (
@@ -360,12 +414,7 @@ export const getTableDetailPageBaseTabs = ({
           name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
         />
       ),
-      isHidden: !(
-        tableDetails?.dataModel?.sql ||
-        tableDetails?.dataModel?.rawSql ||
-        tableDetails?.dataModel?.path ||
-        tableDetails?.dataModel?.dbtSourceProject
-      ),
+      isHidden: isDbtTabHidden(tableDetails),
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
@@ -481,6 +530,8 @@ export const getTableWidgetFromKey = (
     return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
     return <PartitionedKeys />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ASSET_HEALTH)) {
+    return <AssetHealthWidget />;
   } else {
     return (
       <CommonWidgets

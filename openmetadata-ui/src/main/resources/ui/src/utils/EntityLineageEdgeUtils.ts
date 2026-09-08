@@ -169,7 +169,10 @@ export const getAllTracedEdges = (
   const queue: string[] = [selectedColumn];
 
   while (queue.length > 0) {
-    const currentColumn = queue.shift()!;
+    const currentColumn = queue.shift();
+    if (currentColumn === undefined) {
+      break;
+    }
 
     if (currentColumn !== selectedColumn) {
       result.push(currentColumn);
@@ -322,8 +325,14 @@ export const getColumnLineageData = (
   data: Edge
 ) => {
   const columnsLineage = columnsData?.reduce((col, curr) => {
-    const sourceHandle = data.data?.sourceHandle;
-    const targetHandle = data.data?.targetHandle;
+    // React Flow stores sourceHandle/targetHandle at the top level of the
+    // edge object — not nested under `data`. Reading them from `data.data`
+    // silently returned undefined, so the filter never matched and the
+    // caller PUT the unchanged columnsLineage back to the server, making
+    // column-edge removal look successful in the UI while the edge
+    // reappeared on refresh.
+    const sourceHandle = data.sourceHandle;
+    const targetHandle = data.targetHandle;
 
     if (curr.toColumn === targetHandle) {
       const newCol = {

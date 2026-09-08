@@ -13,11 +13,9 @@
 Source connection handler
 """
 
-import importlib
-import sys
 from abc import ABC
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
@@ -47,6 +45,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.db2.utils import (
     check_clidriver_version,
     install_clidriver,
+    patch_ibmi_dialect,
 )
 from metadata.utils.constants import THREE_MIN, UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -80,6 +79,7 @@ class Db2IbmiStrategy(Db2Strategy):
     by the port (9471) rather than connection parameters."""
 
     def build(self) -> Engine:
+        patch_ibmi_dialect()
         return create_generic_db_connection(
             connection=self._connection,
             get_connection_url_fn=self.get_connection_url,
@@ -135,17 +135,11 @@ class Db2Connection(BaseConnection[Db2ConnectionConfig, Engine]):
             clidriver_version = check_clidriver_version(clidriver_version)
             if clidriver_version:
                 install_clidriver(clidriver_version.value)
-                # Invalidate cached clidriver module so the next import
-                # picks up the freshly installed path
-                sys.modules.pop("clidriver", None)
 
         if connection.license and connection.licenseFileName:
             # pylint: disable=import-outside-toplevel
             # clidriver is installed at runtime by install_clidriver above
-            import clidriver  # noqa: PLC0415 # pyright: ignore[reportMissingImports]
-
-            if clidriver_version:
-                importlib.reload(clidriver)
+            import clidriver  # pyright: ignore[reportMissingImports]
 
             license_dir = Path(clidriver.__path__[0], "license")
             license_dir.mkdir(parents=True, exist_ok=True)
@@ -160,8 +154,8 @@ class Db2Connection(BaseConnection[Db2ConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

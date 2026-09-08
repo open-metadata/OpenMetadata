@@ -14,7 +14,14 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Divider, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { UnitOfMeasurement } from '../../../generated/entity/data/metric';
 import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
@@ -32,6 +39,42 @@ interface CustomUnitSelectProps {
   showSearch?: boolean;
   dataTestId?: string;
 }
+
+const renderCustomUnitDropdown = (
+  menu: ReactNode,
+  {
+    t,
+    newCustomUnit,
+    onNameChange,
+    onAddCustomUnit,
+  }: {
+    t: ReturnType<typeof useTranslation>['t'];
+    newCustomUnit: string;
+    onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onAddCustomUnit: () => void;
+  }
+) => (
+  <>
+    {menu}
+    <Divider className="m-y-sm m-x-0" />
+    <div className="p-x-sm gap-2 d-flex items-center">
+      <Input
+        placeholder={t('label.enter-custom-unit-of-measurement')}
+        value={newCustomUnit}
+        onChange={onNameChange}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            onAddCustomUnit();
+          }
+        }}
+      />
+      <Button icon={<PlusOutlined />} type="text" onClick={onAddCustomUnit}>
+        {t('label.add')}
+      </Button>
+    </div>
+  </>
+);
 
 const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
   value,
@@ -139,31 +182,14 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
     <Select
       data-testid={dataTestId}
       disabled={disabled}
-      dropdownRender={(menu) => (
-        <>
-          {menu}
-          <Divider className="m-y-sm m-x-0" />
-          <div className="p-x-sm gap-2 d-flex items-center">
-            <Input
-              placeholder={t('label.enter-custom-unit-of-measurement')}
-              value={newCustomUnit}
-              onChange={handleNameChange}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === 'Enter') {
-                  handleAddCustomUnit();
-                }
-              }}
-            />
-            <Button
-              icon={<PlusOutlined />}
-              type="text"
-              onClick={handleAddCustomUnit}>
-              {t('label.add')}
-            </Button>
-          </div>
-        </>
-      )}
+      dropdownRender={(menu) =>
+        renderCustomUnitDropdown(menu, {
+          t,
+          newCustomUnit,
+          onNameChange: handleNameChange,
+          onAddCustomUnit: handleAddCustomUnit,
+        })
+      }
       loading={loading}
       options={allOptions}
       placeholder={placeholder}

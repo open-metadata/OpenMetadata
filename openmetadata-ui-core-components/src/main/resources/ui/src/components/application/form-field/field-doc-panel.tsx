@@ -12,6 +12,7 @@
  */
 import type { FC, ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { useActiveFieldDoc, useFieldDocRegistry } from './field-doc-context';
 
 export interface FieldDocPanelProps {
@@ -61,6 +62,7 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
   header,
   emptyState,
 }) => {
+  const { t } = useCoreTranslation();
   const { entry } = useActiveFieldDoc();
   const { enabled, entries } = useFieldDocRegistry();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -139,7 +141,7 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
 
   return (
     <div
-      aria-label="Field documentation"
+      aria-label={t('label.field-documentation', 'Field documentation')}
       className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
       ref={rootRef}
       role="note">

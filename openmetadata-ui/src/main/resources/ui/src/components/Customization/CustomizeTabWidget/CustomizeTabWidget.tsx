@@ -514,6 +514,7 @@ export const CustomizeTabWidget = () => {
           onCancel={() => setShowAddTabModal(false)}
           onOk={() => add()}>
           <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the add-tab modal opens
             autoFocus
             data-testid="add-tab-input"
             value={newTabName}
@@ -529,6 +530,7 @@ export const CustomizeTabWidget = () => {
           onCancel={() => setEditableItem(null)}
           onOk={handleRenameSave}>
           <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the rename-tab modal opens
             autoFocus
             value={getTabDisplayName(editableItem)}
             onChange={handleChange}

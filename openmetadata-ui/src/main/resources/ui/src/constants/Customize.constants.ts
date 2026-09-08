@@ -14,6 +14,12 @@ import { TFunctionKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
+export enum PersonaCustomizePageFqn {
+  Navigation = 'navigation',
+  AppMode = 'app-mode',
+  Homepage = 'homepage',
+}
+
 export const TAB_LABEL_MAP = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',

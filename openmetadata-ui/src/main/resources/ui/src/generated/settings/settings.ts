@@ -29,6 +29,7 @@ export interface Settings {
  */
 export enum SettingType {
     AirflowConfiguration = "airflowConfiguration",
+    AppConfiguration = "appConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
     AuthorizerConfiguration = "authorizerConfiguration",
@@ -57,6 +58,8 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    SparqlQuerySettings = "sparqlQuerySettings",
+    StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -108,6 +111,13 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Administrator-managed SPARQL query templates available across the installation.
+ *
+ * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
+ * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ *
+ * Fingerprints of bundled resources successfully applied during server startup.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -165,8 +175,14 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Additional parameters to initialize the PipelineServiceClient.
      */
-    parameters?:           { [key: string]: any };
-    secretsManagerLoader?: SecretsManagerClientLoader;
+    parameters?: { [key: string]: any };
+    /**
+     * How long a `queued` pipeline status recorded when triggering a run stays visible before
+     * it is treated as stale and hidden. Covers runs that the orchestrator accepted but never
+     * started.
+     */
+    queuedStatusTimeoutSeconds?: number;
+    secretsManagerLoader?:       SecretsManagerClientLoader;
     /**
      * OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata
      * server. It will be picked up from the pipelineServiceClient to use/ignore SSL when
@@ -178,6 +194,13 @@ export interface PipelineServiceClientConfiguration {
      * ignore, validate.
      */
     verifySSL?: VerifySSL;
+    /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
     /**
      * Authentication Authority
      */
@@ -326,6 +349,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs?: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -339,7 +366,9 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
@@ -642,6 +671,32 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?: GlossaryTermRelationType[];
+    /**
+     * Installation query templates visible to SPARQL console users.
+     */
+    queryTemplates?: SavedSparqlQuery[];
+    /**
+     * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
+     * not chosen one; user preference and persona-level app mode still win over this default.
+     * Null means no tenant default is configured.
+     */
+    defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Timestamp when the fingerprints were last persisted.
+     */
+    appliedAt?: number;
+    /**
+     * Fingerprint of the search index templates.
+     */
+    searchTemplateFingerprint?: string;
+    /**
+     * Fingerprint of the bundled seed data and type schemas.
+     */
+    seedDataFingerprint?: string;
+    /**
+     * Server version that produced these fingerprints.
+     */
+    serverVersion?: string;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -677,6 +732,13 @@ export interface AllowedFieldField {
      * Detailed explanation of what this field represents and how it affects search behavior
      */
     description: string;
+    /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
     /**
      * Field name that can be used in searchFields
      */
@@ -974,6 +1036,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }
@@ -1200,6 +1263,13 @@ export enum AuthProvider {
  * Authentication configuration
  */
 export interface AuthenticationConfiguration {
+    /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
     /**
      * Authentication Authority
      */
@@ -1801,6 +1871,11 @@ export interface Aws {
      */
     serviceName?: string;
     [property: string]: any;
+}
+
+export enum DefaultAppMode {
+    AI = "ai",
+    Classic = "classic",
 }
 
 /**
@@ -2619,6 +2694,60 @@ export interface PolicyAgentConfiguration {
      * (pushed) when the run finishes, with a safety timer as the fallback.
      */
     pollingIntervalSeconds?: number;
+}
+
+/**
+ * A SPARQL query saved by a user or curated as an installation query template.
+ */
+export interface SavedSparqlQuery {
+    /**
+     * Preferred result serialization.
+     */
+    format: Format;
+    /**
+     * Stable identifier for the saved query.
+     */
+    id: string;
+    /**
+     * Preferred inference level.
+     */
+    inference: Inference;
+    /**
+     * Display name for the saved query.
+     */
+    name: string;
+    /**
+     * SPARQL query body.
+     */
+    query: string;
+    /**
+     * Time the query was last saved, in Unix epoch milliseconds.
+     */
+    savedAt: number;
+}
+
+/**
+ * Preferred result serialization.
+ */
+export enum Format {
+    CSV = "csv",
+    JSON = "json",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Tsv = "tsv",
+    Turtle = "turtle",
+    XML = "xml",
+}
+
+/**
+ * Preferred inference level.
+ */
+export enum Inference {
+    Custom = "custom",
+    None = "none",
+    Owl = "owl",
+    Rdfs = "rdfs",
 }
 
 /**

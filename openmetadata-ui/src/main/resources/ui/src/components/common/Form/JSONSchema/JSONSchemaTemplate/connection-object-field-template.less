@@ -39,19 +39,19 @@
     input,
     textarea {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       -webkit-text-fill-color: var(--tw-color-text-secondary);
     }
   }
 
   .connection-section-card-scope {
     .connection-section-boolean-grid {
-      gap: 28px 48px;
+      gap: var(--om-space-28) var(--om-space-48);
     }
 
     .connection-section-boolean-grid .design-boolean-field {
       min-height: 0;
-      gap: 18px;
+      gap: var(--om-space-18);
       padding: 0;
       border: 0;
       border-radius: 0;
@@ -61,15 +61,15 @@
 
     .connection-section-boolean-grid .design-boolean-field label {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
     }
 
     .connection-section-boolean-grid .design-boolean-field label + div {
-      margin-top: 2px;
+      margin-top: var(--om-space-2);
       color: var(--tw-color-text-tertiary);
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
     }
   }
@@ -77,7 +77,7 @@
   .connection-section-card-advanced {
     .connection-section-header-description {
       color: var(--tw-color-text-tertiary);
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
     }
 
@@ -90,15 +90,15 @@
       min-height: 0;
       align-items: flex-start;
       flex-wrap: wrap;
-      margin-bottom: 6px;
+      margin-bottom: var(--om-space-6);
       line-height: 20px;
     }
 
     .design-field-label label,
     [data-label='true'] {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
       white-space: normal;
       overflow-wrap: break-word;
@@ -107,7 +107,7 @@
 
     .design-field-label .tw\:text-gray-400 {
       color: var(--tw-color-text-quaternary);
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
       white-space: nowrap;
     }
@@ -118,13 +118,13 @@
 
     [data-label='true'] + button {
       min-height: 40px;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
     }
 
     [slot='description'],
     .design-field-label + div + div {
       color: var(--tw-color-text-tertiary);
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
       max-width: 100%;
       overflow-wrap: anywhere;
@@ -135,7 +135,7 @@
     input,
     textarea {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       line-height: 20px;
       -webkit-text-fill-color: var(--tw-color-text-secondary);
     }
@@ -145,7 +145,7 @@
       min-width: 0;
       min-height: 0;
       align-items: flex-start;
-      gap: 12px;
+      gap: var(--om-space-12);
       padding: 0;
       border: 0;
       border-radius: 0;
@@ -155,8 +155,8 @@
 
     .design-boolean-field label {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
       overflow-wrap: break-word;
       white-space: normal;
@@ -165,7 +165,7 @@
     .design-boolean-field label + div,
     .design-boolean-field .tw\:text-tertiary {
       color: var(--tw-color-text-tertiary);
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
       overflow-wrap: anywhere;
       word-break: normal;
@@ -176,7 +176,7 @@
     }
 
     .core-one-of-field {
-      gap: 12px;
+      gap: var(--om-space-12);
     }
 
     .core-one-of-field-select,
@@ -226,11 +226,11 @@
       .connection-root-object-root\/sampleDataStorageConfig\/config\/storageConfig {
         border: 1px solid var(--tw-color-border-secondary);
         border-radius: var(--tw-radius-lg);
-        padding: 16px;
+        padding: var(--om-space-16);
         grid-template-columns: repeat(2, minmax(0, 1fr));
 
         [data-field-name='overwriteData'] {
-          padding: 16px 0px;
+          padding: var(--om-space-16) 0;
           border-top: 1px solid var(--tw-color-border-secondary);
           border-bottom: 1px solid var(--tw-color-border-secondary);
         }
@@ -240,7 +240,7 @@
       .connection-root-object-root\/sampleDataStorageConfig\/config\/storageConfig {
         .core-object-field-template-body {
           border: none;
-          padding: 0px;
+          padding: 0;
           background-color: var(--tw-color-bg-primary);
         }
         background-color: var(--tw-color-bg-primary);
@@ -254,14 +254,14 @@
     .core-one-of-field-select button,
     .core-select-widget button {
       min-height: 40px;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
     }
 
     .core-one-of-field-select button p,
     .core-select-widget button p {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
     }
 
@@ -300,7 +300,7 @@
       display: grid;
       grid-auto-flow: row dense;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px 18px;
+      gap: var(--om-space-20) var(--om-space-18);
       align-items: start;
     }
 
@@ -338,8 +338,8 @@
     .core-one-of-field-select-popover [slot='label'],
     .core-select-widget-popover [slot='label'] {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
     }
 
@@ -353,8 +353,8 @@
 
     .core-object-field-template-title {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
     }
 
@@ -362,7 +362,7 @@
       .core-object-field-template-body-gated {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: var(--om-space-16);
       width: 100%;
       min-width: 0;
     }
@@ -372,7 +372,7 @@
       display: grid;
       grid-auto-flow: row dense;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 18px 20px;
+      gap: var(--om-space-18) var(--om-space-20);
       align-items: start;
       width: 100%;
       min-width: 0;
@@ -385,7 +385,7 @@
       > .core-object-field-template-body {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px 18px;
+      gap: var(--om-space-20) var(--om-space-18);
     }
 
     .core-object-field-template-sample-data-config .design-field-label,
@@ -471,7 +471,7 @@
     .core-object-field-template-sample-data-config
       > .core-object-field-template-body
       > .core-object-field-template-property-storageConfig {
-      padding-top: 18px;
+      padding-top: var(--om-space-18);
       border-top: 1px solid var(--tw-color-border-secondary);
     }
 
@@ -498,8 +498,8 @@
 
   .connection-additional-object {
     label[id$='__title'] {
-      font-size: 14px;
-      font-weight: 600;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-semibold);
       line-height: 20px;
     }
   }
@@ -508,7 +508,7 @@
 .core-one-of-field-select-popover [slot='label'],
 .core-select-widget-popover [slot='label'] {
   color: var(--tw-color-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
   line-height: 20px;
 }

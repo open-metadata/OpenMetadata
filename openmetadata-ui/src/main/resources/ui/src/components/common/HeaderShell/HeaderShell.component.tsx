@@ -25,7 +25,12 @@ const renderTitle = (title: HeaderShellProps['title']) =>
   isValidElement(title) ? (
     title
   ) : (
-    <Typography as="h3" size="text-xl" weight="semibold">
+    <Typography
+      ellipsis
+      as="h3"
+      className="tw:min-w-0"
+      size="text-xl"
+      weight="semibold">
       {title}
     </Typography>
   );
@@ -57,11 +62,9 @@ const HeaderShell = ({
 }: HeaderShellProps) => {
   // When the header renders a footer (the tab strip), the tabs sit flush at the
   // bottom edge of the card — drop the card's bottom padding but keep the top.
-  const paddingClass = footer
-    ? padding === 'comfortable'
-      ? 'tw:pt-4 tw:pb-0'
-      : 'tw:pt-3 tw:pb-0'
-    : PADDING_CLASS[padding];
+  const footerPaddingClass =
+    padding === 'comfortable' ? 'tw:pt-4 tw:pb-0' : 'tw:pt-3 tw:pb-0';
+  const paddingClass = footer ? footerPaddingClass : PADDING_CLASS[padding];
 
   return (
     <Card
@@ -78,7 +81,7 @@ const HeaderShell = ({
         // Dark mode drops the gradient and restores the neutral border on the
         // semantic bg-primary surface.
         variant === 'gradient' &&
-          'tw:border-[#EFF8FF]! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
+          'tw:border-brand-50! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
         className
       )}
       data-testid={dataTestId}
@@ -89,13 +92,15 @@ const HeaderShell = ({
           {leading}
           <Box
             className={classNames(
-              'tw:min-w-0',
+              'tw:min-w-0 tw:flex-1',
               hasStats ? 'tw:gap-2' : 'tw:gap-0.5'
             )}
             direction="col">
-            <Box align="center" direction="row" gap={2}>
+            <Box align="center" className="tw:min-w-0" direction="row" gap={2}>
               {renderTitle(title)}
-              {badge}
+              {badge != null && (
+                <Box className="tw:shrink-0 tw:empty:hidden">{badge}</Box>
+              )}
             </Box>
             {subtitle && renderSubtitle(subtitle)}
             {meta}

@@ -11,15 +11,25 @@
  *  limitations under the License.
  */
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 
 export const LogoutPage = () => {
+  const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
 
   useEffect(() => {
     onLogoutHandler();
   }, []);
 
-  return <Loader fullScreen />;
+  // Logging out is not instant, so without this the tab would keep the title
+  // of the page the user logged out from.
+  return (
+    <>
+      <DocumentTitle title={t('label.logout')} />
+      <Loader fullScreen />
+    </>
+  );
 };

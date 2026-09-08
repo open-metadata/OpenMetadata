@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CONSUMER_LIKE_POLICY,
@@ -22,12 +22,14 @@ import {
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
+import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 
 // --- Objects ---
 let viewIncidentsPolicy: PolicyClass;
@@ -62,9 +64,11 @@ const test = base.extend<{
   consumerLikePage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   viewIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -116,6 +120,7 @@ test.describe(
       expect(testCaseRes.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
+      await verifyTestCaseLastRunBanner(page, 'failed');
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
       await incidentTab.click();

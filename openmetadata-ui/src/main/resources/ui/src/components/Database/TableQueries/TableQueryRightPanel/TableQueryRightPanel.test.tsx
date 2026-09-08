@@ -75,6 +75,7 @@ jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div>
       Description.component
+      {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
       <button
         data-testid="update-description-button"
         onClick={() => onDescriptionUpdate('new description')}

@@ -132,6 +132,10 @@
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
+    "incidentStatus": {
+      "description": "Latest incident resolution status for this test case. Inlined so clients can render the current incident status without an additional lookup per test case.",
+      "$ref": "./testCaseResolutionStatus.json"
+    },
     "failedRowsSample": {
       "description": "Sample of failed rows for this test case.",
       "$ref": "../entity/data/table.json#/definitions/tableData"

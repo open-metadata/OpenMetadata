@@ -305,7 +305,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(metricDetails)}>
+    <PageLayoutV1
+      className="metric-details-page"
+      pageTitle={getEntityName(metricDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

@@ -14,6 +14,7 @@ Utilities for working with the Presidio Library.
 
 import inspect
 import logging
+import re
 import types
 from collections.abc import Callable, Iterable
 from functools import cache, wraps
@@ -25,6 +26,7 @@ from dateutil import parser
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
+    Pattern,
     PatternRecognizer,
     RecognizerRegistry,
     RecognizerResult,
@@ -35,6 +37,7 @@ from presidio_analyzer.predefined_recognizers import (
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    InAadhaarRecognizer,
     NhsRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
@@ -57,6 +60,34 @@ from metadata.utils.logger import pii_logger
 logger = pii_logger()
 
 MIN_SCORE_FOR_ENHANCEMENT = 0.3
+
+_CONTEXT_TOKEN_SEPARATORS = re.compile(r"[^0-9a-z]+")
+
+
+def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bool:
+    """
+    Whether any of the recognizer's context words is present in the given context
+    (the column name, split into its parts by `split_column_name`).
+
+    Single-word context entries are matched against whole tokens, never as substrings.
+    A plain `"cid" in "acid level"` test is true, which would boost the CVV recognizer on
+    any column whose name merely contains the letters of a context word -- `acid_level`,
+    `incident_count`, `decoder_ring` -- turning a 0.5 "3-4 digits" regex into a 1.0 match.
+    Multi-word entries keep substring semantics; they have no single token to compare against.
+    """
+    context_lower = " ".join(context).lower()
+    tokens = {token for token in _CONTEXT_TOKEN_SEPARATORS.split(context_lower) if token}
+
+    for ctx_word in recognizer_context:
+        word = ctx_word.lower()
+        parts = [part for part in _CONTEXT_TOKEN_SEPARATORS.split(word) if part]
+        if len(parts) == 1:
+            if parts[0] in tokens:
+                return True
+        elif word in context_lower:
+            return True
+
+    return False
 
 
 @cache
@@ -204,6 +235,27 @@ def au_tfn_factory(
     )
 
 
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    InAadhaarRecognizer
+)
+def in_aadhaar_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> InAadhaarRecognizer:
+    return InAadhaarRecognizer(
+        patterns=[
+            Pattern(
+                "AADHAAR",
+                r"(?<![0-9])(?<![0-9]{4}[- ])[0-9]{4}(?:[- ]?[0-9]{4}){2}(?![- ]?[0-9])",
+                0.01,
+            )
+        ],
+        supported_language=supported_language,
+        context=context,
+    )
+
+
 class ContextAwareNhsRecognizer(NhsRecognizer):
     TIMESTAMP_KEYWORDS: ClassVar[set[str]] = {
         "time",
@@ -334,10 +386,10 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
                               accuracy of the context enhancement process
         :param context: list of context words
         """
-        if context is None:
+        # The match depends only on the recognizer and the column, not on the individual
+        # result, so resolve it once instead of re-tokenizing the context for every result.
+        if not context or not self.context or not context_matches(self.context, context):
             return raw_recognizer_results
-
-        context_lower = " ".join(context).lower()
 
         for result in raw_recognizer_results:
             # if previously enhanced, then ignore
@@ -346,17 +398,16 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
             ):
                 continue
 
-            if any(ctx_word.lower() in context_lower for ctx_word in self.context):
-                original_score = result.score
-                result.score = self.MAX_SCORE
+            original_score = result.score
+            result.score = self.MAX_SCORE
 
-                result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
-                    RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-                ] = True
+            result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
+                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
+            ] = True
 
-                logger.debug(
-                    f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
-                )
+            logger.debug(
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
+            )
 
         return raw_recognizer_results
 
@@ -437,12 +488,12 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             context,
         )
 
-        if not rec.context or not context:
-            # If no context is given or the recognizer does not support it,
-            # then ignore this
+        # The match depends only on the recognizer and the column, not on the individual
+        # result, so resolve it once instead of re-tokenizing the context for every result.
+        if not rec.context or not context or not context_matches(rec.context, context):
+            # If no context is given, the recognizer does not support it, or none of its
+            # context words match the column, then ignore this
             return results
-
-        context_lower = " ".join(context).lower()
 
         for result in results:
             # if previously enhanced, then ignore
@@ -455,17 +506,16 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             if result.score < MIN_SCORE_FOR_ENHANCEMENT:
                 continue
 
-            if any(ctx_word.lower() in context_lower for ctx_word in rec.context):
-                original_score = result.score
-                result.score = rec.MAX_SCORE
+            original_score = result.score
+            result.score = rec.MAX_SCORE
 
-                result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
-                    RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-                ] = True
+            result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
+                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
+            ] = True
 
-                logger.debug(
-                    f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
-                )
+            logger.debug(
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
+            )
 
         return results
 

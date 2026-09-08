@@ -35,6 +35,7 @@ import {
   checkServiceFieldSectionHighlighting,
   getAgentCard,
   Services,
+  waitForIngestionWorkflowForm,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
@@ -95,13 +96,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     for (const filter of this.tableFilter) {
-      await waitForAllLoadersToDisappear(page);
-      const ingestionFilterSection = page.getByTestId(
-        'ingestion-section-filters'
-      );
-      if (await ingestionFilterSection.isVisible()) {
-        ingestionFilterSection.click();
-      }
+      await this.openIngestionFilterSection(page);
       await page.getByTestId('filter-section-tableFilterPattern').click();
       await page.getByTestId('tableFilterPattern-only-specific-button').click();
       await page
@@ -167,7 +162,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await expect(profilerMenuItem).toBeVisible();
       await profilerMenuItem.click();
 
-      await waitForAllLoadersToDisappear(page);
+      await waitForIngestionWorkflowForm(page);
       await expandAdvancedConfig(page);
 
       const sampleConfigTypeSelect = page.getByTestId(
@@ -258,7 +253,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
     for (const filter of this.tableFilter) {
       await expect(
-        tableIncludes.getByTestId(`include-chip-contains:${filter}`)
+        tableIncludes.getByTestId(`include-chip-contains:.*${filter}.*`)
       ).toBeVisible();
     }
 

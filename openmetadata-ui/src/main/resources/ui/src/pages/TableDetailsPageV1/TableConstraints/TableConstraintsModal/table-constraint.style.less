@@ -14,11 +14,11 @@
 @import (reference) '../../../../styles/variables.less';
 
 .table-constraint-form-container {
-  margin-bottom: 20px;
+  margin-bottom: var(--om-space-20);
   position: relative;
   background: @grey-6;
-  padding: 20px;
-  border-radius: 10px;
+  padding: var(--om-space-20);
+  border-radius: var(--om-radius-10);
   border: @global-border;
 
   .ant-form-item {
@@ -41,22 +41,22 @@
 .constraint-breadcrumb {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 0;
+  gap: var(--om-space-2);
+  padding: var(--om-space-6) 0;
 
   .constraint-breadcrumb-item {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     max-width: 140px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: @text-grey-muted;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
   }
 
   .constraint-column-name {
     max-width: 100%;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--om-font-size-sm);
+    font-weight: var(--om-font-weight-semibold);
   }
 }

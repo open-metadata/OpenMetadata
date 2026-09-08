@@ -22,6 +22,7 @@ export interface PersonaContext {
     manifest?:        ManifestEntry[];
     persona?:         EntityReference;
     rules?:           RuleResult[];
+    searchScope?:     SearchScope;
     sharedKnowledge?: SharedKnowledge;
     /**
      * Whether at least one selected entity was compacted or omitted, or required knowledge
@@ -49,6 +50,8 @@ export enum Reason {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference (id, name, type) to the service the asset belongs to, when applicable.
  */
 export interface EntityReference {
     /**
@@ -165,6 +168,10 @@ export interface AIContext {
      */
     metrics?: KnowledgeItem[];
     /**
+     * Name of the asset this context describes.
+     */
+    name?: string;
+    /**
      * Runtime signals (profiled shape + data-quality standing) for query construction and
      * answer qualification.
      */
@@ -177,6 +184,10 @@ export interface AIContext {
      * Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).
      */
     resource?: string;
+    /**
+     * Reference (id, name, type) to the service the asset belongs to, when applicable.
+     */
+    service?: EntityReference;
     /**
      * Service type of the asset's service (e.g. Snowflake, BigQuery).
      */
@@ -296,10 +307,16 @@ export interface FieldContext {
     /**
      * Field-level constraint (e.g. PRIMARY_KEY, NOT_NULL), when applicable.
      */
-    constraint?:  string;
-    dataType?:    string;
-    description?: string;
-    name?:        string;
+    constraint?: string;
+    dataType?:   string;
+    /**
+     * Raw data-type enum name of the field (e.g. VARCHAR, BIGINT — a ColumnDataType value for
+     * table columns), for programmatic type branching. `dataType` may carry the source display
+     * form (e.g. varchar(255)).
+     */
+    dataTypeEnum?: string;
+    description?:  string;
+    name?:         string;
 }
 
 /**
@@ -338,6 +355,11 @@ export interface TableContext {
      * Column names forming the primary key.
      */
     primaryKey?: string[];
+    /**
+     * A permission-filtered preview of stored sample data, masked when the caller lacks PII
+     * access. The AI context returns at most 10 rows.
+     */
+    sampleData?: TableData;
     /**
      * DDL for tables and views, when available.
      */
@@ -412,6 +434,23 @@ export interface JoinHint {
 }
 
 /**
+ * A permission-filtered preview of stored sample data, masked when the caller lacks PII
+ * access. The AI context returns at most 10 rows.
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
+}
+
+/**
  * Topic-specific context: its message schema and partitioning.
  */
 export interface TopicContext {
@@ -477,6 +516,15 @@ export interface Observability {
      */
     profiledAt?: number;
     /**
+     * Sample size the profile ran on — a percentage when profileSampleType is PERCENTAGE,
+     * otherwise an absolute row count. Absent when the profile ran on the full dataset.
+     */
+    profileSample?: number;
+    /**
+     * Interpretation of profileSample: PERCENTAGE or ROWS.
+     */
+    profileSampleType?: string;
+    /**
      * Latest profiled row count.
      */
     rowCount?: number;
@@ -488,6 +536,11 @@ export interface Observability {
  */
 export interface ColumnProfileSummary {
     /**
+     * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+     * profiler computed it — lets an agent write exact filter predicates.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Number of distinct values observed.
      */
     distinctCount?: number;
@@ -495,6 +548,16 @@ export interface ColumnProfileSummary {
      * Observed maximum value (numeric/date columns).
      */
     max?: string;
+    /**
+     * Mean value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    mean?: number;
+    /**
+     * Median value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    median?: number;
     /**
      * Observed minimum value (numeric/date columns).
      */
@@ -504,6 +567,37 @@ export interface ColumnProfileSummary {
      * Fraction of rows where this column is null (0..1).
      */
     nullProportion?: number;
+    /**
+     * Fraction of rows whose value occurs exactly once (0..1) — near 1 suggests a
+     * key/identifier column.
+     */
+    uniqueProportion?: number;
+}
+
+/**
+ * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+ * profiler computed it — lets an agent write exact filter predicates.
+ *
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
 }
 
 /**
@@ -519,6 +613,41 @@ export interface DataQuality {
     openIncidents?: number;
     passed?:        number;
     total?:         number;
+}
+
+/**
+ * Default search scope built from the persona's filteredInSearch rules. Consumers apply
+ * queryFilter to every AI search so the persona only sees the entities its rules select,
+ * instead of preloading them into the document.
+ */
+export interface SearchScope {
+    /**
+     * Distinct entity types named by the contributing rules. An entity type absent from this
+     * list is outside the scope entirely.
+     */
+    entityTypes?: string[];
+    /**
+     * Ready-to-use Elasticsearch query DSL string unioning every contributing rule. Empty when
+     * the persona has no filteredInSearch rules, in which case search is unscoped.
+     */
+    queryFilter?: string;
+    /**
+     * The contributing rules, kept for display and debugging.
+     */
+    rules?: SearchScopeRule[];
+}
+
+/**
+ * One filteredInSearch rule contributing to the persona search scope.
+ */
+export interface SearchScopeRule {
+    entityType: string;
+    /**
+     * Elasticsearch query DSL string configured on the rule. Empty selects every entity of the
+     * configured type.
+     */
+    queryFilter?: string;
+    ruleName:     string;
 }
 
 /**

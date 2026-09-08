@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -226,16 +227,20 @@ headerPermTest.describe(
       }
     );
 
-    headerPermTest.skip(
+    headerPermTest(
       'EditTier, EditOwners, EditCertification allowed but EditAll denied – edit buttons not visible',
       async ({ specificEditsPage }) => {
         await headerPermTable.visitEntityPage(specificEditsPage);
 
-        await expect(specificEditsPage.getByTestId('edit-tier')).toBeVisible();
-        await expect(specificEditsPage.getByTestId('edit-owner')).toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-tier')
+        ).not.toBeVisible();
+        await expect(
+          specificEditsPage.getByTestId('edit-owner')
+        ).not.toBeVisible();
         await expect(
           specificEditsPage.getByTestId('edit-certification')
-        ).toBeVisible();
+        ).not.toBeVisible();
       }
     );
   }

@@ -24,10 +24,12 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.CardinalityDistribution;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -42,10 +44,12 @@ import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
@@ -239,6 +243,16 @@ class AIContextBuilderTest {
     assertEquals("id", fields.get(0).getName());
     assertEquals("PRIMARY_KEY", fields.get(0).getConstraint());
     assertEquals("bigint", fields.get(1).getDataType());
+  }
+
+  @Test
+  void toFieldContexts_carriesRawDataTypeEnumAlongsideDisplayType() {
+    List<FieldContext> fields = AIContextBuilder.toFieldContexts(sampleTable().getColumns());
+    // customer_id has a display type ("bigint") that wins for dataType; the raw enum name must
+    // still be available for programmatic type branching.
+    assertEquals("bigint", fields.get(1).getDataType());
+    assertEquals("BIGINT", fields.get(1).getDataTypeEnum());
+    assertEquals("BIGINT", fields.get(0).getDataTypeEnum());
   }
 
   @Test
@@ -551,6 +565,59 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void populateProfile_carriesSampleMetadataAndDetailedColumnStats() {
+    CardinalityDistribution distribution =
+        new CardinalityDistribution()
+            .withCategories(List.of("active", "Others"))
+            .withCounts(List.of(80, 20))
+            .withPercentages(List.of(80.0, 20.0));
+    Table profiled =
+        new Table()
+            .withProfile(
+                new TableProfile()
+                    .withRowCount(1000.0)
+                    .withTimestamp(123L)
+                    .withProfileSample(50.0)
+                    .withProfileSampleType(TableProfile.ProfileSampleType.PERCENTAGE))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("status")
+                        .withProfile(
+                            new ColumnProfile()
+                                .withUniqueProportion(0.97)
+                                .withMean(12.5)
+                                .withMedian(11.0)
+                                .withCardinalityDistribution(distribution))));
+    Observability observability = new Observability();
+    AIContextBuilder.populateProfile(observability, profiled);
+    assertEquals(50.0, observability.getProfileSample());
+    assertEquals("PERCENTAGE", observability.getProfileSampleType());
+    ColumnProfileSummary summary = observability.getColumnProfiles().get(0);
+    assertEquals(0.97, summary.getUniqueProportion());
+    assertEquals(12.5, summary.getMean());
+    assertEquals(11.0, summary.getMedian());
+    assertEquals(distribution, summary.getCardinalityDistribution());
+  }
+
+  @Test
+  void serviceRef_andServiceType_resolveFromTable() {
+    EntityReference service =
+        new EntityReference()
+            .withId(UUID.fromString("33333333-3333-3333-3333-333333333333"))
+            .withName("snowflake_prod")
+            .withType("databaseService");
+    Table table =
+        sampleTable()
+            .withService(service)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+    assertEquals(service, AIContextBuilder.serviceRef(table));
+    assertEquals("Snowflake", AIContextBuilder.serviceType(table));
+    assertNull(AIContextBuilder.serviceRef(new Metric()), "non-table assets carry no service ref");
+    assertNull(AIContextBuilder.serviceType(new Metric()));
+  }
+
+  @Test
   void buildTableContext_composesAllStructuralSignals() {
     TableContext context = AIContextBuilder.buildTableContext(sampleTable());
     assertEquals(2, context.getColumns().size());
@@ -558,5 +625,22 @@ class AIContextBuilderTest {
     assertEquals(1, context.getForeignKeys().size());
     assertEquals(1, context.getFrequentJoins().size());
     assertEquals(List.of("created_at"), context.getPartitionColumns());
+  }
+
+  @Test
+  void boundedSampleData_keepsColumnsAndOnlyFirstTenRows() {
+    List<List<Object>> rows = new ArrayList<>();
+    for (int index = 0; index < 12; index++) {
+      rows.add(new ArrayList<>(List.of(index, "value-" + index)));
+    }
+    TableData source = new TableData().withColumns(List.of("id", "value")).withRows(rows);
+
+    TableData bounded = AIContextBuilder.boundedSampleData(source);
+
+    assertEquals(List.of("id", "value"), bounded.getColumns());
+    assertEquals(10, bounded.getRows().size());
+    assertEquals(List.of(9, "value-9"), bounded.getRows().get(9));
+    rows.get(0).set(1, "mutated");
+    assertEquals("value-0", bounded.getRows().get(0).get(1));
   }
 }

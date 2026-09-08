@@ -43,7 +43,9 @@ export const getIconField = (
     options: iconOptions ?? [],
     labels: {
       customIconUrl: t('label.icon-url'),
-      emptyState: t('message.no-entity-available'),
+      emptyState: t('label.no-entity-available', {
+        entity: t('label.icon-plural'),
+      }),
       enterIconUrl: t('label.enter-entity'),
       iconsTab: t('label.icon-plural'),
       urlTab: t('label.url'),
@@ -85,7 +87,7 @@ export const getNameField = (disabled: boolean, t: TFunction): FieldProp => ({
   },
   props: {
     'data-testid': 'name',
-    disabled,
+    isDisabled: disabled,
   },
 });
 

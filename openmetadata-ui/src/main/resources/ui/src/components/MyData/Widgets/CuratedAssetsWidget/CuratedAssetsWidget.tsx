@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
-import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import { ReactComponent as CuratedAssetsIcon } from '../../../../assets/svg/widget/curated-assets.svg';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import {
@@ -53,6 +53,7 @@ import {
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsPureUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
@@ -360,9 +361,9 @@ const CuratedAssetsWidgetContent = ({
             item.type as EntityType
           )}>
           <div
-            className="curated-assets-list-item flex items-center w-full"
+            className="curated-assets-list-item flex items-center w-full gap-2"
             data-testid={`Curated Assets-${title}`}>
-            {getEntityIcon(item as SearchSourceAlias, 'entity-icon')}
+            {getEntityIcon(item as SearchSourceAlias, EntityIconSize.Size24)}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography.Text
@@ -425,10 +426,10 @@ const CuratedAssetsWidgetContent = ({
           sourceIcon && title ? (
             sourceIcon
           ) : (
-            <StarOutlinedIcon
+            <CuratedAssetsIcon
               data-testid="star-outlined-icon"
-              height={22}
-              width={22}
+              height={24}
+              width={24}
             />
           )
         }

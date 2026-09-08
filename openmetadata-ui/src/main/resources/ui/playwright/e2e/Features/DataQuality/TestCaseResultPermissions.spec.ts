@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   DELETE_RESULTS_POLICY,
@@ -21,12 +21,16 @@ import {
   VIEW_RESULTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForTestCaseDetailsResponse } from '../../../utils/testCases';
+import {
+  verifyTestCaseLastRunBanner,
+  waitForTestCaseDetailsResponse,
+} from '../../../utils/testCases';
 
 // --- Objects ---
 const viewResultsUser = new UserClass();
@@ -49,9 +53,11 @@ const test = base.extend<{
   partialDeleteTablePage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   viewResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -111,6 +117,7 @@ test.describe(
       const detailsPromise = waitForTestCaseDetailsResponse(page);
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
       await detailsPromise;
+      await verifyTestCaseLastRunBanner(page, 'failed');
     };
 
     test.beforeAll(async ({ browser }) => {

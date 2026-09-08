@@ -91,6 +91,7 @@ class EntityRepositoryRestoreTest {
     int softDeleteAdditionalChildrenCalls = 0;
     int hardDeleteAdditionalChildrenCalls = 0;
     int bulkEntitySpecificCleanupCalls = 0;
+    final List<String> entitySpecificCleanupDeletedBy = new ArrayList<>();
     final Set<UUID> bulkRestoreInvokedWith = new HashSet<>();
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
@@ -133,8 +134,14 @@ class EntityRepositoryRestoreTest {
     }
 
     @Override
-    protected void bulkEntitySpecificCleanup(List<Pipeline> entities) {
+    protected void entitySpecificCleanup(String deletedBy, Pipeline entity) {
+      entitySpecificCleanupDeletedBy.add(deletedBy);
+    }
+
+    @Override
+    protected void bulkEntitySpecificCleanup(List<Pipeline> entities, String deletedBy) {
       bulkEntitySpecificCleanupCalls++;
+      super.bulkEntitySpecificCleanup(entities, deletedBy);
     }
   }
 
@@ -262,8 +269,8 @@ class EntityRepositoryRestoreTest {
   void remoteInvalidationEvictsLocalEntriesAndAdvancesLoaderEpochs() {
     UUID id = UUID.randomUUID();
     String fqn = "service.pipeline";
-    long idEpoch = EntityRepository.writeEpochById(Entity.PIPELINE, id);
-    long nameEpoch = EntityRepository.writeEpochByName(Entity.PIPELINE, fqn);
+    long idEpoch = EntityRepository.readEpochById(Entity.PIPELINE, id);
+    long nameEpoch = EntityRepository.readEpochByName(Entity.PIPELINE, fqn);
     EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.PIPELINE, id), "stale");
     EntityRepository.CACHE_WITH_NAME.put(
         EntityRepository.cacheNameKey(Entity.PIPELINE, fqn), "stale");
@@ -275,8 +282,8 @@ class EntityRepositoryRestoreTest {
     assertNull(
         EntityRepository.CACHE_WITH_NAME.getIfPresent(
             EntityRepository.cacheNameKey(Entity.PIPELINE, fqn)));
-    assertTrue(EntityRepository.writeEpochById(Entity.PIPELINE, id) > idEpoch);
-    assertTrue(EntityRepository.writeEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
+    assertTrue(EntityRepository.readEpochById(Entity.PIPELINE, id) > idEpoch);
+    assertTrue(EntityRepository.readEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
   }
 
   @Test
@@ -502,14 +509,18 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
 
-    FeedRepository feedRepository = mock(FeedRepository.class);
+    ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 
     // bulkEntitySpecificCleanup is invoked once per bulk call with the whole batch.
     assertEquals(1, repo.bulkEntitySpecificCleanupCalls);
+    // ...and it must reach the deletedBy-aware per-entity hook. Dispatching to the no-arg variant
+    // instead silently disabled TableRepository's residual test case sweep for every table deleted
+    // through an ancestor cascade, leaving orphans that 404 the test case listing.
+    assertEquals(List.of("user", "user"), repo.entitySpecificCleanupDeletedBy);
     // hardDeleteAdditionalChildren is invoked once per entity in the batch.
     assertEquals(2, repo.hardDeleteAdditionalChildrenCalls);
     assertTrue(repo.bulkHardDeleteInvokedWith.contains(a));
@@ -560,9 +571,9 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
 
-    FeedRepository feedRepository = mock(FeedRepository.class);
+    ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
       repo.bulkHardDeleteSubtree(ids, "user");
     }
 
@@ -614,9 +625,9 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
 
-    FeedRepository feedRepository = mock(FeedRepository.class);
+    ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 

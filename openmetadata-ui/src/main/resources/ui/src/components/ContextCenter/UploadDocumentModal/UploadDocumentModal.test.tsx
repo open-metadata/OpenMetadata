@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { uploadDriveFile } from '../../../rest/assetAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import UploadDocumentModal from './UploadDocumentModal.component';
 
 jest.mock('rest/assetAPI', () => ({
@@ -26,11 +27,14 @@ jest.mock('rest/assetAPI', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
 
-let mockOnDropFiles: ((files: FileList) => void) | undefined;
-let mockOnSizeLimitExceed: ((files: FileList) => void) | undefined;
+let mockOnDropFiles: (files: FileList) => void = (_files: FileList) =>
+  undefined;
+let mockOnSizeLimitExceed: (files: FileList) => void = (_files: FileList) =>
+  undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn(
@@ -174,8 +178,8 @@ describe('UploadDocumentModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockOnDropFiles = undefined;
-    mockOnSizeLimitExceed = undefined;
+    mockOnDropFiles = (_files: FileList) => undefined;
+    mockOnSizeLimitExceed = (_files: FileList) => undefined;
     uuidCounter = 0;
     Object.defineProperty(globalThis, 'crypto', {
       value: { randomUUID: () => `test-uuid-${++uuidCounter}` },
@@ -221,7 +225,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     expect(screen.getByText('test.pdf')).toBeInTheDocument();
@@ -231,7 +235,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     const attachBtn = screen.getByText(/attach-file-plural/i);
@@ -243,7 +247,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'remove-me.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'remove-me.pdf')));
     });
 
     expect(screen.getByText('remove-me.pdf')).toBeInTheDocument();
@@ -276,7 +280,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -291,7 +295,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnSizeLimitExceed!(
+      mockOnSizeLimitExceed(
         makeFileList(new File(['x'.repeat(6 * 1024 * 1024)], 'huge.pdf'))
       );
     });
@@ -310,7 +314,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -318,6 +322,10 @@ describe('UploadDocumentModal', () => {
     const bar = await screen.findByTestId('progress-bar-fail.pdf');
 
     expect(bar).toHaveAttribute('data-failed', 'true');
+    expect(showErrorToast).toHaveBeenCalledWith(
+      new Error('upload failed'),
+      'message.upload-failed'
+    );
   });
 
   it('shows retry button for failed uploads', async () => {
@@ -328,12 +336,16 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
 
     expect(await screen.findByTestId('retry-fail.pdf')).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalledWith(
+      new Error('upload failed'),
+      'message.upload-failed'
+    );
   });
 
   it('retries a failed upload when the retry button is clicked', async () => {
@@ -345,7 +357,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -356,6 +368,31 @@ describe('UploadDocumentModal', () => {
     await waitFor(() => expect(uploadDriveFile).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(defaultProps.onUploaded).toHaveBeenCalledWith([mockAsset])
+    );
+  });
+
+  it('shows an error toast again when a retried upload also fails', async () => {
+    (uploadDriveFile as jest.Mock)
+      .mockRejectedValueOnce(new Error('first attempt failed'))
+      .mockRejectedValueOnce(new Error('retry failed'));
+
+    render(<UploadDocumentModal {...defaultProps} />);
+
+    act(() => {
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
+    });
+
+    fireEvent.click(screen.getByText(/attach-file-plural/i));
+
+    const retryBtn = await screen.findByTestId('retry-fail.pdf');
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => expect(uploadDriveFile).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        new Error('retry failed'),
+        'message.upload-failed'
+      )
     );
   });
 });

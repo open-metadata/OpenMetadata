@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.governance.CreateIntakeForm.TargetEntityType;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.governance.IntakeForm;
+import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKind;
 import org.openmetadata.service.Entity;
@@ -268,9 +269,57 @@ class IntakeFormValidatorTest {
     assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
   }
 
+  @Test
+  void validate_doesNotEnforceIncludedOptionalField() {
+    IntakeFormField optionalField =
+        new IntakeFormField()
+            .withFieldPath("extension.riskAssessment")
+            .withFieldLabel("Risk Assessment")
+            .withFieldKind(IntakeFormField.FieldKind.CUSTOM_PROPERTY)
+            .withRequired(false);
+    IntakeFormField requiredField =
+        new IntakeFormField()
+            .withFieldPath("dataProductType")
+            .withFieldLabel("Data Product Type")
+            .withFieldKind(IntakeFormField.FieldKind.NATIVE)
+            .withRequired(true);
+    IntakeForm form =
+        new IntakeForm()
+            .withId(UUID.randomUUID())
+            .withName("dataProduct-intake")
+            .withEntityType(TargetEntityType.DATA_PRODUCT)
+            .withEnabled(Boolean.TRUE)
+            .withFormFields(List.of(optionalField, requiredField));
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    DataProduct dp = validDataProduct().withDataProductType(DataProductType.DATASET);
+
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
+  }
+
   // ---------------------------------------------------------------------------
   // Edge cases
   // ---------------------------------------------------------------------------
+
+  @Test
+  void validate_namesTheFieldWhenItsLabelIsBlank() {
+    IntakeFormRequiredField unlabelled =
+        new IntakeFormRequiredField()
+            .withFieldPath("extension.testTable")
+            .withFieldLabel("")
+            .withFieldKind(FieldKind.CUSTOM_PROPERTY);
+    IntakeForm form = newEnabledForm(List.of(unlabelled));
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> IntakeFormValidator.validate(validDataProduct(), Entity.DATA_PRODUCT));
+
+    assertTrue(
+        thrown.getMessage().contains("extension.testTable"),
+        "an unlabelled required field must still be named: " + thrown.getMessage());
+  }
 
   @Test
   void validate_skipsRequiredFieldEntryWithBlankFieldPath() {

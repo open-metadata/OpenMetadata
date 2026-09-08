@@ -12,7 +12,7 @@
 DynamoDB Models
 """
 
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -22,5 +22,5 @@ class TableResponse(BaseModel):
     DynamoDB table response model
     """
 
-    Items: Optional[List[Dict]] = []  # noqa: UP006, UP045
-    LastEvaluatedKey: Optional[Any] = None  # noqa: UP045
+    Items: list[dict] | None = []
+    LastEvaluatedKey: Any | None = None

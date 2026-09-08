@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -36,6 +35,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.common.utils.CommonUtil;
@@ -83,6 +83,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -102,7 +103,13 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
+    TableRepository tableRepository = Mockito.mock(TableRepository.class);
+    // This registration is global and never torn down, so the stand-in must answer the indexing
+    // policy hooks the way the real repository does. A bare mock answers false, which would make
+    // Entity.isSearchIndexable report every table as non-indexable for the rest of the JVM.
+    Mockito.doReturn(true).when(tableRepository).isSearchIndexable(ArgumentMatchers.any());
+    Mockito.doReturn(true).when(tableRepository).isVectorEmbeddable(ArgumentMatchers.any());
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
   }
 
   @Test
@@ -1492,14 +1499,7 @@ public class EntityCsvTest {
             .withEntityType(Entity.TABLE)
             .withEntity(entity)
             .withEventType(EventType.ENTITY_UPDATED);
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
-
-    Mockito.when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-
-    try (MockedStatic<Entity> entityStatic = Mockito.mockStatic(Entity.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
-      entityStatic.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    try (MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
       formatterUtil
           .when(
               () ->
@@ -1522,9 +1522,9 @@ public class EntityCsvTest {
       testCsv.invokeCreateChangeEventForBatchedEntity(entity, EventType.ENTITY_CREATED);
 
       assertEquals(List.of(entity), testCsv.pendingSearchIndexUpdates);
-      assertEquals(1, testCsv.pendingChangeEvents.size());
+      assertEquals(2, testCsv.pendingChangeEvents.size());
       assertTrue(testCsv.pendingChangeEvents.get(0).contains(entity.getFullyQualifiedName()));
-      Mockito.verify(changeEventDAO).insert(Mockito.anyString());
+      assertTrue(testCsv.pendingChangeEvents.get(1).contains(entity.getFullyQualifiedName()));
     }
   }
 
@@ -1942,7 +1942,7 @@ public class EntityCsvTest {
         .getEntityWithDependencyResolution(
             Entity.TABLE,
             tableFqn,
-            "owners,tags,domains,extension",
+            "owners,tags,domains,extension,tableConstraints,tablePartition",
             org.openmetadata.schema.type.Include.NON_DELETED);
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
@@ -2334,20 +2334,20 @@ public class EntityCsvTest {
     testCsv.pendingChangeEvents.add("event-2");
 
     AsyncService asyncService = mock(AsyncService.class);
-    @SuppressWarnings("unchecked")
-    java.util.concurrent.ExecutorService executor =
-        mock(java.util.concurrent.ExecutorService.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
 
-    Mockito.when(asyncService.getExecutorService()).thenReturn(executor);
     Mockito.when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-    Mockito.when(executor.submit(Mockito.any(Runnable.class)))
-        .thenAnswer(
+    Mockito.doAnswer(
             invocation -> {
-              ((Runnable) invocation.getArgument(0)).run();
-              return CompletableFuture.completedFuture(null);
-            });
+              ((Runnable) invocation.getArgument(2)).run();
+              return null;
+            })
+        .when(asyncService)
+        .executeDatabaseTask(
+            Mockito.eq(DatabaseOperation.CSV_CHANGE_EVENT),
+            Mockito.eq("table:2"),
+            Mockito.any(Runnable.class));
 
     try (MockedStatic<AsyncService> asyncServiceStatic = Mockito.mockStatic(AsyncService.class);
         MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
@@ -2419,7 +2419,7 @@ public class EntityCsvTest {
   }
 
   @Test
-  void test_createUserEntityNonDryRunPublishesChangeEventWithoutAuthMechanism() throws Exception {
+  void test_createUserEntityNonDryRunQueuesChangeEventWithoutAuthMechanism() throws Exception {
     UserCsv userCsv = new UserCsv();
     userCsv.enableProcessing();
     userCsv.setDryRun(false);
@@ -2430,32 +2430,14 @@ public class EntityCsvTest {
             .withDisplayName("Charlie");
     CSVRecord record = userRecord(userCsv, "charlie", "Charlie", "", "charlie@example.com");
     UserRepository repository = mock(UserRepository.class);
-    AsyncService asyncService = mock(AsyncService.class);
-    @SuppressWarnings("unchecked")
-    java.util.concurrent.ExecutorService executor =
-        mock(java.util.concurrent.ExecutorService.class);
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     ChangeEvent changeEvent =
         new ChangeEvent().withEntityType(Entity.USER).withEventType(EventType.ENTITY_CREATED);
     EntityInterface[] eventEntity = new EntityInterface[1];
 
-    Mockito.when(asyncService.getExecutorService()).thenReturn(executor);
-    Mockito.when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-    Mockito.when(executor.submit(Mockito.any(Runnable.class)))
-        .thenAnswer(
-            invocation -> {
-              ((Runnable) invocation.getArgument(0)).run();
-              return CompletableFuture.completedFuture(null);
-            });
-
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
-        MockedStatic<AsyncService> asyncServiceStatic = Mockito.mockStatic(AsyncService.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
         MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(repository);
-      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      asyncServiceStatic.when(AsyncService::getInstance).thenReturn(asyncService);
       validatorUtil.when(() -> ValidatorUtil.validate(user)).thenReturn(null);
       validatorUtil
           .when(() -> ValidatorUtil.validateUserNameWithEmailPrefix(record))
@@ -2482,7 +2464,8 @@ public class EntityCsvTest {
       User redactedUser = assertInstanceOf(User.class, eventEntity[0]);
       assertNull(redactedUser.getAuthenticationMechanism());
       assertEquals(List.of(user), userCsv.pendingSearchIndexUpdates);
-      Mockito.verify(changeEventDAO).insert(Mockito.anyString());
+      assertEquals(1, userCsv.pendingChangeEvents.size());
+      assertTrue(userCsv.pendingChangeEvents.getFirst().contains("charlie"));
       assertEquals(1, userCsv.importResult.getNumberOfRowsPassed());
     }
   }

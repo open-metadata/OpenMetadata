@@ -368,26 +368,35 @@ const DashboardDetailsPage = () => {
     fetchResourcePermission(dashboardFQN);
   }, [dashboardFQN]);
 
-  if (permissionsLoading || dashboardLoading) {
-    return <PageLoader />;
-  }
-  if (isError) {
-    return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('dashboard', dashboardFQN)}
-      </ErrorPlaceHolder>
-    );
-  }
-  if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.dashboard-detail-plural-lowercase'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
+  const getBlockingStateElement = (): JSX.Element | null => {
+    if (permissionsLoading || dashboardLoading) {
+      return <PageLoader />;
+    }
+    if (isError) {
+      return (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('dashboard', dashboardFQN)}
+        </ErrorPlaceHolder>
+      );
+    }
+    if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.dashboard-detail-plural-lowercase'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const blockingStateElement = getBlockingStateElement();
+  if (blockingStateElement) {
+    return blockingStateElement;
   }
   if (!dashboardDetails) {
     return <PageLoader />;

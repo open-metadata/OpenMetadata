@@ -197,7 +197,7 @@ describe('usePaginatedLiveLog', () => {
   });
 
   it('defers the final tail read past an in-flight request when isLive flips false', async () => {
-    let resolveInflight: (value: LogPage) => void = () => undefined;
+    let resolveInflight: (value: LogPage) => void = (_value) => undefined;
     const fetchPage = jest
       .fn()
       .mockResolvedValueOnce(page('tail-v1'))
@@ -238,7 +238,7 @@ describe('usePaginatedLiveLog', () => {
   });
 
   it('captures the final tail when the last forward page reaches the tail at termination', async () => {
-    let resolveForward: (value: LogPage) => void = () => undefined;
+    let resolveForward: (value: LogPage) => void = (_value) => undefined;
     const fetchPage = jest
       .fn()
       .mockResolvedValueOnce(page('p0', '1', '2'))
@@ -281,7 +281,7 @@ describe('usePaginatedLiveLog', () => {
   });
 
   it('does not replay a rolled-forward page when the run terminates mid-poll', async () => {
-    let resolveRoll: (value: LogPage) => void = () => undefined;
+    let resolveRoll: (value: LogPage) => void = (_value) => undefined;
     const fetchPage = jest
       .fn()
       // Initial: already at the tail (no `after`), tail content 'v1'.

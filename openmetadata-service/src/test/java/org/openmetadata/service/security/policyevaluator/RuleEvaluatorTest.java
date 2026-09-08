@@ -81,7 +81,7 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    TeamRepository teamRepository = mock(TeamRepository.class);
+    TeamRepository teamRepository = stubIndexingPolicy(mock(TeamRepository.class));
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
     Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
         .thenAnswer(
@@ -127,24 +127,28 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
-    tableRepository = mock(TableRepository.class);
+    tableRepository = stubIndexingPolicy(mock(TableRepository.class));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
     Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    // A lazily-resolved ResourceContext asks the repository which fields authorization needs;
+    // the mock would otherwise hand back null. Real repositories always return a Fields.
+    Mockito.when(tableRepository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
 
-    DatabaseRepository databaseRepository = mock(DatabaseRepository.class);
+    DatabaseRepository databaseRepository = stubIndexingPolicy(mock(DatabaseRepository.class));
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
     Mockito.when(databaseRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(Database.class, Entity.DATABASE, databaseRepository);
 
-    DatabaseSchemaRepository databaseSchemaRepository = mock(DatabaseSchemaRepository.class);
+    DatabaseSchemaRepository databaseSchemaRepository =
+        stubIndexingPolicy(mock(DatabaseSchemaRepository.class));
     Mockito.when(databaseSchemaRepository.getEntityType()).thenReturn(Entity.DATABASE_SCHEMA);
     Mockito.when(databaseSchemaRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DatabaseSchema.class, Entity.DATABASE_SCHEMA, databaseSchemaRepository);
 
-    DomainRepository domainRepository = mock(DomainRepository.class);
+    DomainRepository domainRepository = stubIndexingPolicy(mock(DomainRepository.class));
     Mockito.when(domainRepository.getEntityType()).thenReturn(Entity.DOMAIN);
     Mockito.when(domainRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(Domain.class, Entity.DOMAIN, domainRepository);
@@ -156,7 +160,8 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.DOMAIN, i.getArgument(1))),
                     Domain.class));
 
-    DataProductRepository dataProductRepository = mock(DataProductRepository.class);
+    DataProductRepository dataProductRepository =
+        stubIndexingPolicy(mock(DataProductRepository.class));
     Mockito.when(dataProductRepository.getEntityType()).thenReturn(Entity.DATA_PRODUCT);
     Mockito.when(dataProductRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DataProduct.class, Entity.DATA_PRODUCT, dataProductRepository);
@@ -344,7 +349,7 @@ class RuleEvaluatorTest {
 
   @Test
   void test_isReviewer() {
-    GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
+    GlossaryRepository glossaryRepository = stubIndexingPolicy(mock(GlossaryRepository.class));
     Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
 
     User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
@@ -757,6 +762,33 @@ class RuleEvaluatorTest {
     RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, userResourceContext);
     EvaluationContext ctx = new StandardEvaluationContext(evaluator);
     return parseExpression(condition).getValue(ctx, Boolean.class);
+  }
+
+  /**
+   * A ResourceContext built with neither an id nor a name never resolves an entity, so every
+   * attribute a policy condition reads comes back empty - and nothing reports that it did. A tag
+   * condition then answers the same way whether or not the tag is present, which makes a Deny fire
+   * on every entity in one polarity and on none in the other. This is the root cause of #31941;
+   * the fix is that callers holding a specific entity must pass its identity in.
+   */
+  @Test
+  void test_bareResourceContextCannotSeeTags() {
+    table.withTags(getTags("MCP.DEMO"));
+
+    RuleEvaluator bare =
+        new RuleEvaluator(null, subjectContext, new ResourceContext<>(Entity.TABLE));
+    EvaluationContext bareContext = new StandardEvaluationContext(bare);
+
+    assertFalse(
+        parseExpression("matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
+        "an unresolved context reads a present tag as absent");
+    assertTrue(
+        parseExpression("!matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
+        "so the negated form is true for a tagged entity, and a Deny over-blocks");
+
+    // The entity-scoped context, which is what the fixed callers build, sees the truth.
+    assertTrue(evaluateExpression("matchAnyTag('MCP.DEMO')"));
+    assertFalse(evaluateExpression("!matchAnyTag('MCP.DEMO')"));
   }
 
   private Boolean evaluateExpression(String condition) {
@@ -1237,5 +1269,17 @@ class RuleEvaluatorTest {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     LOG.info("Context reset to default state after test completion.");
+  }
+
+  /**
+   * These repository registrations are global and never torn down, so each stand-in has to answer
+   * the indexing policy hooks the way a real repository does. A bare mock answers false, which
+   * would make {@link Entity#isSearchIndexable} report every entity of that type as non-indexable
+   * for the rest of the JVM and break unrelated tests that run later.
+   */
+  private static <T extends EntityRepository<?>> T stubIndexingPolicy(T repository) {
+    Mockito.doReturn(true).when(repository).isSearchIndexable(any());
+    Mockito.doReturn(true).when(repository).isVectorEmbeddable(any());
+    return repository;
   }
 }

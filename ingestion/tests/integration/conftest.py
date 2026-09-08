@@ -2,7 +2,6 @@ import logging
 import os
 import shutil
 import time
-from typing import List, Tuple, Type  # noqa: UP035
 
 import pytest
 
@@ -35,6 +34,10 @@ def _package_of(item) -> str | None:
     return "/".join(parts[:3]) if len(parts) > 3 else None
 
 
+# Headroom below which image reuse stops being worth the risk of filling the disk.
+FREE_DISK_FLOOR_BYTES = 20 * 2**30
+
+
 def _prune_docker_images() -> None:
     import docker
     from docker.errors import DockerException
@@ -54,12 +57,17 @@ def _prune_docker_images() -> None:
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_setup(item):
-    """Reclaim the previous package's images before the next one pulls its own.
+    """Reclaim the previous package's images, but only once disk is actually scarce.
 
     Testcontainers stops containers at fixture teardown but never removes images, so a
     shard's peak disk grows with the number of packages it runs rather than its heaviest
     one. Runners in the ubuntu-latest pool ship either a 72G or a 145G root disk, and the
-    unpruned total only fits the latter. Pruning here keeps peak at one package's images.
+    unpruned total only fits the latter.
+
+    Pruning unconditionally makes every package re-pull images a sibling already fetched
+    -- `profiler` and `sql_server` share a 1.5 GB SQL Server image and land on the same
+    shard. Gating on free space keeps the image cache warm on the roomy runners and still
+    protects the small ones.
 
     CI only: this removes every image not held by a running container, which on a
     developer machine would wipe their local cache.
@@ -67,7 +75,7 @@ def pytest_runtest_setup(item):
     if not os.environ.get("CI"):
         return
     package = _package_of(item)
-    if _last_package["name"] not in (None, package):
+    if _last_package["name"] not in (None, package) and shutil.disk_usage("/").free < FREE_DISK_FLOOR_BYTES:
         _prune_docker_images()
     _last_package["name"] = package
 
@@ -199,7 +207,7 @@ def classifier_config(db_service, workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
+    def _run(workflow_type: type[IngestionWorkflow], config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
@@ -355,9 +363,9 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
 
 @pytest.fixture
 def cleanup_fqns(metadata):
-    fqns: List[Tuple[Type[Entity], str]] = []  # noqa: UP006
+    fqns: list[tuple[type[Entity], str]] = []
 
-    def inner(entity_type: Type[Entity], fqn: str):  # noqa: UP006
+    def inner(entity_type: type[Entity], fqn: str):
         fqns.append((entity_type, fqn))
 
     yield inner

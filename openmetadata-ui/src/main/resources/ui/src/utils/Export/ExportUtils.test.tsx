@@ -10,18 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toPng } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 import { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import { showErrorToast } from '../ToastUtils';
 import {
+  downloadBlob,
   downloadFile,
-  downloadImageFromBase64,
   exportPNGImageFromElement,
+  shouldIncludeInExport,
 } from './ExportUtils';
 
 jest.mock('html-to-image', () => ({
-  toPng: jest.fn(),
+  toCanvas: jest.fn(),
 }));
 
 jest.mock('../ToastUtils', () => ({
@@ -108,7 +109,7 @@ describe('ExportUtils', () => {
     });
   });
 
-  describe('downloadImageFromBase64', () => {
+  describe('downloadBlob', () => {
     const mockLink = {
       href: '',
       download: '',
@@ -117,10 +118,8 @@ describe('ExportUtils', () => {
     };
     let mockCreateObjectURL: jest.Mock;
     let mockRevokeObjectURL: jest.Mock;
-    let originalBlob: typeof Blob;
 
     beforeEach(() => {
-      originalBlob = global.Blob;
       mockCreateObjectURL = jest.fn().mockReturnValue('blob:mock-png-url');
       mockRevokeObjectURL = jest.fn();
       global.URL.createObjectURL = mockCreateObjectURL;
@@ -138,99 +137,58 @@ describe('ExportUtils', () => {
     });
 
     afterEach(() => {
-      global.Blob = originalBlob;
       jest.restoreAllMocks();
     });
 
     it('creates an anchor element and triggers a click', () => {
-      downloadImageFromBase64(
-        'data:image/png;base64,dGVzdA==',
-        'test-image',
-        ExportTypes.PNG
-      );
+      const blob = new Blob(['png-bytes'], { type: 'image/png' });
+
+      downloadBlob(blob, 'test-image', ExportTypes.PNG);
 
       expect(document.createElement).toHaveBeenCalledWith('a');
       expect(mockLink.click).toHaveBeenCalledTimes(1);
     });
 
     it('sets the correct download filename with lowercased extension', () => {
-      downloadImageFromBase64(
-        'data:image/png;base64,dGVzdA==',
-        'my_chart',
-        ExportTypes.PNG
-      );
+      const blob = new Blob(['png-bytes'], { type: 'image/png' });
+
+      downloadBlob(blob, 'my_chart', ExportTypes.PNG);
 
       expect(mockLink.download).toBe('my_chart.png');
     });
 
     it('hides the link element', () => {
-      downloadImageFromBase64(
-        'data:image/png;base64,dGVzdA==',
-        'test-image',
-        ExportTypes.PNG
-      );
+      const blob = new Blob(['png-bytes'], { type: 'image/png' });
+
+      downloadBlob(blob, 'test-image', ExportTypes.PNG);
 
       expect(mockLink.style.visibility).toBe('hidden');
     });
 
     it('appends and removes the link from the DOM', () => {
-      downloadImageFromBase64(
-        'data:image/png;base64,dGVzdA==',
-        'test-image',
-        ExportTypes.PNG
-      );
+      const blob = new Blob(['png-bytes'], { type: 'image/png' });
+
+      downloadBlob(blob, 'test-image', ExportTypes.PNG);
 
       expect(document.body.appendChild).toHaveBeenCalledWith(mockLink);
       expect(document.body.removeChild).toHaveBeenCalledWith(mockLink);
     });
 
-    it('creates a blob URL from the decoded base64 data', () => {
-      downloadImageFromBase64(
-        'data:image/png;base64,dGVzdA==',
-        'test-image',
-        ExportTypes.PNG
-      );
+    it('creates a blob URL from the provided Blob', () => {
+      const blob = new Blob(['png-bytes'], { type: 'image/png' });
 
-      expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+      downloadBlob(blob, 'test-image', ExportTypes.PNG);
+
+      expect(mockCreateObjectURL).toHaveBeenCalledWith(blob);
       expect(mockLink.href).toBe('blob:mock-png-url');
     });
 
     it('revokes the object URL after download', () => {
-      downloadImageFromBase64(
-        'data:image/png;base64,dGVzdA==',
-        'test-image',
-        ExportTypes.PNG
-      );
+      const blob = new Blob(['png-bytes'], { type: 'image/png' });
+
+      downloadBlob(blob, 'test-image', ExportTypes.PNG);
 
       expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-png-url');
-    });
-
-    it('uses the MIME type parsed from the data URL when creating the Blob', () => {
-      const mockBlob = {};
-      const MockBlob = jest.fn().mockReturnValue(mockBlob);
-      global.Blob = MockBlob as unknown as typeof Blob;
-
-      downloadImageFromBase64(
-        'data:image/jpeg;base64,dGVzdA==',
-        'test-image',
-        ExportTypes.PNG
-      );
-
-      expect(MockBlob).toHaveBeenCalledWith(expect.any(Array), {
-        type: 'image/jpeg',
-      });
-    });
-
-    it('falls back to image/png when the data URL has no MIME type', () => {
-      const mockBlob = {};
-      const MockBlob = jest.fn().mockReturnValue(mockBlob);
-      global.Blob = MockBlob as unknown as typeof Blob;
-
-      downloadImageFromBase64('data:,dGVzdA==', 'test-image', ExportTypes.PNG);
-
-      expect(MockBlob).toHaveBeenCalledWith(expect.any(Array), {
-        type: 'image/png',
-      });
     });
   });
 
@@ -247,40 +205,37 @@ describe('ExportUtils', () => {
       scrollHeight: 900,
     };
 
+    let mockNodesCanvas: HTMLCanvasElement;
+    let mockNodesBlob: Blob;
+    let mockCompositeBlob: Blob;
     let mockCompositeCtx: Record<string, jest.Mock | string | number>;
     let mockCompositeCanvas: HTMLCanvasElement;
-    let mockImg: HTMLImageElement;
 
     beforeEach(() => {
+      mockNodesBlob = new Blob(['nodes'], { type: 'image/png' });
+      mockNodesCanvas = {
+        width: 0,
+        height: 0,
+        toBlob: jest.fn((cb: (blob: Blob | null) => void) => cb(mockNodesBlob)),
+      } as unknown as HTMLCanvasElement;
+      (toCanvas as jest.Mock).mockResolvedValue(mockNodesCanvas);
+
       document.querySelector = jest.fn().mockReturnValue(mockElement);
-      (toPng as jest.Mock).mockResolvedValue('data:image/png;base64,nodes');
 
       mockCompositeCtx = {
         fillStyle: '',
         fillRect: jest.fn(),
         drawImage: jest.fn(),
       };
+      mockCompositeBlob = new Blob(['composite'], { type: 'image/png' });
       mockCompositeCanvas = {
         width: 0,
         height: 0,
         getContext: jest.fn().mockReturnValue(mockCompositeCtx),
-        toDataURL: jest.fn().mockReturnValue('data:image/png;base64,composite'),
+        toBlob: jest.fn((cb: (blob: Blob | null) => void) =>
+          cb(mockCompositeBlob)
+        ),
       } as unknown as HTMLCanvasElement;
-
-      mockImg = { onload: null, onerror: null } as unknown as HTMLImageElement;
-      Object.defineProperty(mockImg, 'src', {
-        set(_src: string) {
-          // Fire onload as a microtask — by this point loadImage has already
-          // assigned img.onload = resolve, so the promise resolves correctly.
-          Promise.resolve().then(() => {
-            (mockImg.onload as unknown as (() => void) | null)?.();
-          });
-        },
-        configurable: true,
-      });
-      global.Image = jest
-        .fn()
-        .mockImplementation(() => mockImg) as unknown as typeof Image;
 
       jest
         .spyOn(document, 'createElement')
@@ -310,16 +265,28 @@ describe('ExportUtils', () => {
       jest.restoreAllMocks();
     });
 
-    it('should successfully export PNG image when element exists', async () => {
+    it('renders to a canvas and downloads as a Blob (no base64 string)', async () => {
       await exportPNGImageFromElement(mockExportData);
 
       expect(document.querySelector).toHaveBeenCalledWith('#test-element');
-      expect(toPng).toHaveBeenCalledWith(
+      expect(toCanvas).toHaveBeenCalledWith(
         mockElement,
         expect.objectContaining({
           backgroundColor: '#ffffff',
           width: 1240, // 1200 + (20 * 2) padding
           height: 940, // 900 + (20 * 2) padding
+        })
+      );
+      // canvas.toBlob is used instead of toDataURL — no JS string round-trip
+      expect(mockNodesCanvas.toBlob).toHaveBeenCalled();
+    });
+
+    it('passes margin/minWidth/minHeight style to toCanvas', async () => {
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({
           style: expect.objectContaining({
             width: '1200',
             height: '900',
@@ -331,7 +298,68 @@ describe('ExportUtils', () => {
       );
     });
 
-    it('should throw error when element is not found', async () => {
+    it('uses the desired pixelRatio of 2 for small graphs', async () => {
+      // 2 (not 3) so the encode step stays fast on large graphs — see
+      // ExportUtils.ts comment on DESIRED_PIXEL_RATIO.
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({ pixelRatio: 2 })
+      );
+    });
+
+    it('caps pixelRatio for very large graphs to keep canvas under 16K px', async () => {
+      // A 10000x8000 logical graph at pixelRatio=2 would be 20000x16000 —
+      // over Chrome's 16K per-side cap. Adaptive cap must drop pixelRatio
+      // below 2.
+      document.querySelector = jest.fn().mockReturnValue({
+        scrollWidth: 10000,
+        scrollHeight: 8000,
+      });
+
+      await exportPNGImageFromElement(mockExportData);
+
+      const callArgs = (toCanvas as jest.Mock).mock.calls[0][1];
+
+      expect(callArgs.pixelRatio).toBeLessThan(2);
+      expect(callArgs.pixelRatio).toBeGreaterThan(0);
+
+      // Resulting physical dims must respect both the area and side-length
+      // caps. Allow a tiny floating-point tolerance — sqrt-based math lands
+      // exactly on the boundary and the binary representation can overshoot
+      // by a few ULPs.
+      const physicalW = callArgs.width * callArgs.pixelRatio;
+      const physicalH = callArgs.height * callArgs.pixelRatio;
+      const epsilon = 1;
+
+      expect(physicalW).toBeLessThanOrEqual(16_384 + epsilon);
+      expect(physicalH).toBeLessThanOrEqual(16_384 + epsilon);
+      expect(physicalW * physicalH).toBeLessThanOrEqual(64_000_000 + epsilon);
+    });
+
+    it('allows sub-1 pixelRatio when a single logical dimension already exceeds the cap', async () => {
+      // A 20000x800 logical graph is over the 16384 dim cap on width alone.
+      // The safe ratio must go below 1 so the physical canvas stays inside
+      // the cap; a floor of 1 would silently overshoot.
+      document.querySelector = jest.fn().mockReturnValue({
+        scrollWidth: 20000,
+        scrollHeight: 800,
+      });
+
+      await exportPNGImageFromElement(mockExportData);
+
+      const callArgs = (toCanvas as jest.Mock).mock.calls[0][1];
+
+      expect(callArgs.pixelRatio).toBeLessThan(1);
+
+      const physicalW = callArgs.width * callArgs.pixelRatio;
+      const epsilon = 1;
+
+      expect(physicalW).toBeLessThanOrEqual(16_384 + epsilon);
+    });
+
+    it('throws when element is not found', async () => {
       document.querySelector = jest.fn().mockReturnValue(null);
 
       await expect(exportPNGImageFromElement(mockExportData)).rejects.toThrow(
@@ -339,7 +367,16 @@ describe('ExportUtils', () => {
       );
     });
 
-    it('should handle viewport transformation when provided', async () => {
+    it('passes a filter callback to toCanvas', async () => {
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({ filter: expect.any(Function) })
+      );
+    });
+
+    it('applies viewport transformation when provided', async () => {
       const exportDataWithViewport = {
         ...mockExportData,
         viewport: {
@@ -351,7 +388,7 @@ describe('ExportUtils', () => {
 
       await exportPNGImageFromElement(exportDataWithViewport);
 
-      expect(toPng).toHaveBeenCalledWith(
+      expect(toCanvas).toHaveBeenCalledWith(
         mockElement,
         expect.objectContaining({
           style: expect.objectContaining({
@@ -361,9 +398,21 @@ describe('ExportUtils', () => {
       );
     });
 
-    it('should handle toPng error', async () => {
+    it('shows the invalid-string-length toast when toCanvas throws that error', async () => {
+      const error = new Error('Invalid string length');
+      (toCanvas as jest.Mock).mockRejectedValue(error);
+
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(showErrorToast).toHaveBeenCalledWith(
+        error,
+        'message.invalid-string-length-error'
+      );
+    });
+
+    it('shows the generic export error toast for other errors', async () => {
       const error = new Error('PNG generation failed');
-      (toPng as jest.Mock).mockRejectedValue(error);
+      (toCanvas as jest.Mock).mockRejectedValue(error);
 
       await exportPNGImageFromElement(mockExportData);
 
@@ -387,7 +436,7 @@ describe('ExportUtils', () => {
       it('captures nodes without background color when renderEdgesOverlay is provided', async () => {
         await exportPNGImageFromElement(exportDataWithEdges);
 
-        expect(toPng).toHaveBeenCalledWith(
+        expect(toCanvas).toHaveBeenCalledWith(
           mockElement,
           expect.objectContaining({ backgroundColor: undefined })
         );
@@ -396,7 +445,7 @@ describe('ExportUtils', () => {
       it('uses white background when no renderEdgesOverlay (non-composite path)', async () => {
         await exportPNGImageFromElement(mockExportData);
 
-        expect(toPng).toHaveBeenCalledWith(
+        expect(toCanvas).toHaveBeenCalledWith(
           mockElement,
           expect.objectContaining({ backgroundColor: '#ffffff' })
         );
@@ -409,7 +458,7 @@ describe('ExportUtils', () => {
           1200, // imageWidth
           900, // imageHeight
           20, // padding
-          3 // pixelRatio
+          2 // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
         );
       });
 
@@ -420,8 +469,8 @@ describe('ExportUtils', () => {
         expect(mockCompositeCtx.fillRect).toHaveBeenCalledWith(
           0,
           0,
-          (1200 + 40) * 3,
-          (900 + 40) * 3
+          (1200 + 40) * 2,
+          (900 + 40) * 2
         );
       });
 
@@ -432,18 +481,16 @@ describe('ExportUtils', () => {
 
         // First drawImage call must be the edges canvas
         expect(drawCalls[0][0]).toBe(mockEdgesCanvas);
-        // Second drawImage call must be the nodes image
-        expect(drawCalls[1][0]).toBe(mockImg);
+        // Second drawImage call must be the nodes canvas — drawn directly,
+        // no Image + base64 round-trip.
+        expect(drawCalls[1][0]).toBe(mockNodesCanvas);
       });
 
-      it('uses the composite toDataURL for download, not the transparent nodes image', async () => {
+      it('uses composite.toBlob for download, not toDataURL', async () => {
         await exportPNGImageFromElement(exportDataWithEdges);
 
-        // composite.toDataURL() must have been called — this is what gets downloaded
-        expect(mockCompositeCanvas.toDataURL).toHaveBeenCalledWith(
-          'image/png',
-          1.0
-        );
+        // composite.toBlob() must have been called — this is what gets downloaded
+        expect(mockCompositeCanvas.toBlob).toHaveBeenCalled();
       });
 
       it('produces a usable white-background image when edgesCanvas is null', async () => {
@@ -457,11 +504,11 @@ describe('ExportUtils', () => {
         // White fill must still happen so no transparent fallback
         expect(mockCompositeCtx.fillRect).toHaveBeenCalled();
 
-        // Only the nodes image is drawn — no edges canvas
+        // Only the nodes canvas is drawn — no edges canvas
         const drawCalls = (mockCompositeCtx.drawImage as jest.Mock).mock.calls;
 
         expect(drawCalls).toHaveLength(1);
-        expect(drawCalls[0][0]).toBe(mockImg);
+        expect(drawCalls[0][0]).toBe(mockNodesCanvas);
       });
 
       it('shows error toast when composite canvas 2D context is unavailable', async () => {
@@ -475,5 +522,90 @@ describe('ExportUtils', () => {
         );
       });
     });
+  });
+});
+
+// Kept out of the `ExportUtils` describe because that block mocks
+// `document.createElement` — which the html() helper here calls, and mocking
+// it would recurse. These tests use the real DOM.
+describe('shouldIncludeInExport (DOM filter)', () => {
+  const html = (markup: string): HTMLElement => {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = markup;
+
+    return wrapper.firstElementChild as HTMLElement;
+  };
+
+  it('keeps normal DOM elements', () => {
+    expect(shouldIncludeInExport(html('<div class="node">card</div>'))).toBe(
+      true
+    );
+    expect(shouldIncludeInExport(html('<span>text</span>'))).toBe(true);
+    expect(shouldIncludeInExport(html('<button>click</button>'))).toBe(true);
+  });
+
+  it('keeps React Flow handles — OM lineage handles paint a visible box', () => {
+    // React Flow's `<Handle>` always adds the base `react-flow__handle`
+    // class. OM's CustomNodeV1 wraps it as
+    // `<Handle className="lineage-node-handle" .../>`, so real DOM is
+    // `react-flow__handle react-flow__handle-right lineage-node-handle`,
+    // which `custom-node.less` styles as a visible 20x20 white box with an
+    // SVG icon. Filtering by the base class alone would silently drop those
+    // visible handles from the exported PNG — regression covered here.
+    expect(
+      shouldIncludeInExport(
+        html(
+          '<div class="react-flow__handle react-flow__handle-right lineage-node-handle"></div>'
+        )
+      )
+    ).toBe(true);
+    // Even a bare react-flow__handle (no wrapper) must be kept — we cannot
+    // tell from the class alone whether it paints.
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__handle"></div>'))
+    ).toBe(true);
+  });
+
+  it('skips handles explicitly opted out via data-export-hide="true"', () => {
+    // For handles that truly do not paint (edge-attachment pips on
+    // non-lineage react-flow surfaces, for example), the component author
+    // must opt in individually — the safe path.
+    expect(
+      shouldIncludeInExport(
+        html('<div class="react-flow__handle" data-export-hide="true"></div>')
+      )
+    ).toBe(false);
+  });
+
+  it('honors data-export-hide="true" as an opt-out', () => {
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="true">hidden</div>'))
+    ).toBe(false);
+    // Only literal "true" — anything else stays included so a partial
+    // `data-export-hide` attribute doesn't silently drop content.
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="false">v</div>'))
+    ).toBe(true);
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="">v</div>'))
+    ).toBe(true);
+  });
+
+  it('skips screen-reader-only content (.sr-only, .visually-hidden)', () => {
+    expect(
+      shouldIncludeInExport(html('<span class="sr-only">for AT</span>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(html('<span class="visually-hidden">for AT</span>'))
+    ).toBe(false);
+  });
+
+  it('passes through non-HTMLElement nodes without inspecting them', () => {
+    // SVGElements are Elements but not HTMLElements — filter must return true
+    // so SVG lineage icons keep rendering. Guards against a `.classList` /
+    // `.dataset` access path that only works on HTMLElement.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+    expect(shouldIncludeInExport(svg as unknown as Element)).toBe(true);
   });
 });

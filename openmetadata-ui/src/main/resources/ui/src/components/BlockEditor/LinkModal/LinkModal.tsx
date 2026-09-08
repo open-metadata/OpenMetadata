@@ -61,7 +61,10 @@ const LinkModal: FC<LinkModalProps> = ({
         layout="vertical"
         onFinish={handleSubmit}>
         <Form.Item label="Link" name="href">
-          <Input autoFocus />
+          <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the link input when the modal opens
+            autoFocus
+          />
         </Form.Item>
       </Form>
     </Modal>

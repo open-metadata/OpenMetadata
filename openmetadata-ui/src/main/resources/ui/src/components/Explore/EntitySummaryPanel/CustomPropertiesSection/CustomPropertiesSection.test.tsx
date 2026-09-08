@@ -49,6 +49,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label="Search"
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}

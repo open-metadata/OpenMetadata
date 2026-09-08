@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -21,19 +22,24 @@ import org.openmetadata.schema.security.SecurityConfiguration;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
+import org.openmetadata.schema.security.sasl.SASLClientConfig;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
+import org.openmetadata.schema.services.connections.messaging.SaslMechanismType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 
 abstract class TestEntityMasker {
 
-  private static final String PASSWORD = "*********";
+  private static final String PASSWORD = "openmetadata-secret";
 
   protected static final SecurityConfiguration CONFIG = new SecurityConfiguration();
 
@@ -86,6 +92,24 @@ abstract class TestEntityMasker {
                 .unmaskServiceConnectionConfig(
                     masked, bigQueryConnection, "BigQuery", ServiceType.DATABASE);
     assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getCredentials()));
+  }
+
+  @Test
+  void testPubSubConnectionMasker() {
+    Map<String, Object> connectionConfig =
+        JsonUtils.getMap(new PubSubConnection().withGcpConfig(buildGcpCredentials()));
+    PubSubConnection masked =
+        (PubSubConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(connectionConfig, "PubSub", ServiceType.MESSAGING);
+    assertNotNull(masked);
+    assertEquals(getPrivateKeyFromGcsConfig(masked.getGcpConfig()), getMaskedPassword());
+    PubSubConnection unmasked =
+        (PubSubConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, connectionConfig, "PubSub", ServiceType.MESSAGING);
+    assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getGcpConfig()));
   }
 
   @Test
@@ -169,6 +193,40 @@ abstract class TestEntityMasker {
         JsonUtils.convertValue(
                 ((MysqlConnection) unmasked.getConnection()).getAuthType(), basicAuth.class)
             .getPassword());
+  }
+
+  @Test
+  void testOpenLineageConnectionMasker() {
+    SASLClientConfig saslConfig =
+        new SASLClientConfig()
+            .withSaslMechanism(SaslMechanismType.PLAIN)
+            .withSaslUsername("user")
+            .withSaslPassword(PASSWORD);
+    KafkaBrokerConfig brokerConfig =
+        new KafkaBrokerConfig()
+            .withBrokersUrl("broker:9092")
+            .withTopicName("openlineage")
+            .withConsumerGroupName("om")
+            .withSecurityProtocol(KafkaBrokerConfig.SecurityProtocol.SASL_SSL)
+            .withSaslConfig(saslConfig);
+    OpenLineageConnection connection = new OpenLineageConnection().withBrokerConfig(brokerConfig);
+
+    OpenLineageConnection masked =
+        (OpenLineageConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(connection, "OpenLineage", ServiceType.PIPELINE);
+    assertNotNull(masked);
+    assertEquals(
+        getMaskedPassword(),
+        ((KafkaBrokerConfig) masked.getBrokerConfig()).getSaslConfig().getSaslPassword());
+    OpenLineageConnection unmasked =
+        (OpenLineageConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, connection, "OpenLineage", ServiceType.PIPELINE);
+    assertEquals(
+        PASSWORD,
+        ((KafkaBrokerConfig) unmasked.getBrokerConfig()).getSaslConfig().getSaslPassword());
   }
 
   @Test

@@ -29,5 +29,5 @@
 }
 
 .agents-drawer {
-  animation: rddrawer 0.22s ease;
+  animation: rddrawer var(--om-duration-220) ease;
 }

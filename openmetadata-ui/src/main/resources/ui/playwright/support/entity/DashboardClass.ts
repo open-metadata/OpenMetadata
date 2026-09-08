@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -27,27 +32,19 @@ export interface DataModelType extends ResponseDataWithServiceType {
   columns?: unknown[];
   dataModelType?: string;
 }
+export interface DashboardServiceConfig {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
+  };
+}
 
 export class DashboardClass extends EntityClass {
   private dashboardName: string;
   private dashboardDataModelName: string;
   private projectName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        hostPort: string;
-        connection: {
-          provider: string;
-          username: string;
-          password: string;
-        };
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service: DashboardServiceConfig;
   charts: { name: string; displayName: string; service: string };
   entity: {
     name: string;
@@ -71,13 +68,17 @@ export class DashboardClass extends EntityClass {
   dataModelResponseData: DataModelType = {} as DataModelType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string, dataModelType = 'SupersetDataModel') {
+  constructor(
+    name?: string,
+    dataModelType = 'SupersetDataModel',
+    service?: Partial<DashboardServiceConfig>
+  ) {
     super(EntityTypeEndpoint.Dashboard);
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
 
-    const serviceName = name ?? `pw-dashboard-service-${uuid()}`;
+    const serviceName = service?.name ?? `pw-dashboard-service-${uuid()}`;
     this.dashboardName = `pw-dashboard-${uuid()}`;
     this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
     this.projectName = `pw-project-${uuid()}`;
@@ -106,7 +107,7 @@ export class DashboardClass extends EntityClass {
     };
 
     this.entity = {
-      name: this.dashboardName,
+      name: name ?? this.dashboardName,
       displayName: this.dashboardName,
       service: this.service.name,
       project: this.projectName,
@@ -149,33 +150,41 @@ export class DashboardClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/dashboardServices',
-      {
-        data: this.service,
-      }
-    );
-    const chartsResponse = await apiContext.post('/api/v1/charts', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardClass.create service',
+      createPath: '/api/v1/services/dashboardServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+
+    this.chartsResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardClass.create chart',
+      createPath: '/api/v1/charts',
+      fqnSegments: [this.service.name, this.charts.name],
       data: this.charts,
     });
 
-    const entityResponse = await apiContext.post('/api/v1/dashboards', {
+    // Awaited before the dashboard is posted, not alongside it: the dashboard
+    // references the chart by FQN, so the chart has to exist first. The previous
+    // version fired both POSTs before awaiting either.
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardClass.create dashboard',
+      createPath: '/api/v1/dashboards',
+      fqnSegments: [this.service.name, this.entity.name],
       data: {
         ...this.entity,
         charts: [`${this.service.name}.${this.charts.name}`],
       },
     });
-    const dataModelResponse = await apiContext.post(
-      '/api/v1/dashboard/datamodels',
-      {
-        data: this.dataModel,
-      }
-    );
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.chartsResponseData = await chartsResponse.json();
-    this.dataModelResponseData = await dataModelResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.dataModelResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardClass.create dataModel',
+      createPath: '/api/v1/dashboard/datamodels',
+      // `<serviceFqn>.model.<name>` — DashboardDataModelRepository inserts a
+      // literal `model` segment that no other entity type has.
+      fqnSegments: [this.service.name, 'model', this.dataModel.name],
+      data: this.dataModel,
+    });
 
     return {
       service: this.serviceResponseData,
@@ -192,17 +201,19 @@ export class DashboardClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/dashboards/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/dashboards/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'DashboardClass.patch');
 
     return {
       entity: this.entityResponseData,

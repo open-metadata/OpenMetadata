@@ -15,18 +15,18 @@
 .filters-configuration-row {
   background-color: var(--tw-color-bg-primary);
   border: 1px solid @border-color-1;
-  border-radius: 10px;
-  margin: 20px;
-  margin-bottom: 24px;
+  border-radius: var(--om-radius-10);
+  margin: var(--om-space-20);
+  margin-bottom: var(--om-space-24);
 
   .filter-configuration-container {
-    padding: 20px 16px;
+    padding: var(--om-space-20) var(--om-space-16);
     border: 1px solid @border-color-1;
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     background-color: @grey-15;
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--om-space-8);
     flex-wrap: wrap;
     min-height: auto;
 
@@ -34,7 +34,7 @@
       color: @primary-heading-color;
       border: 1px solid @border-color-2;
       background-color: @blue-13;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
 
       &:hover,
       &:focus {
@@ -47,12 +47,12 @@
     .filter-option {
       flex-direction: row-reverse;
       border: 1px solid @border-color-2;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
     }
 
     .filter-value {
       border: 1px solid @border-color-3;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
     }
   }
 }

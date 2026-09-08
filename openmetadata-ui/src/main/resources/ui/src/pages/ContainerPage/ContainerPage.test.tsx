@@ -202,10 +202,6 @@ jest.mock('../../utils/RouterUtils', () => ({
   getVersionPath: jest.fn().mockReturnValue('/version-path'),
 }));
 
-jest.mock('../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
-
 jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/EntityDisplayPureUtils', () => ({

@@ -10,37 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
-interface RelatedMetricsProps {
-  isInSummaryPanel?: boolean;
-}
+// Extracted so the boolean short-circuits live in their own complexity scope
+// instead of RelatedMetrics's render body.
+const computeCanEditRelatedMetrics = (
+  isEdit: boolean,
+  canEditAll: boolean,
+  isDeleted?: boolean
+): boolean => !isEdit && canEditAll && !isDeleted;
 
-const RelatedMetrics: FC<RelatedMetricsProps> = ({
-  isInSummaryPanel = false,
-}) => {
+const RelatedMetrics: FC = () => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [isShowMore, setIsShowMore] = useState(false);
@@ -153,51 +153,58 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
     [onMetricUpdate, relatedMetrics]
   );
 
-  const header = (
-    <Space className="w-full items-center">
-      <Typography.Text
-        className={classNames('text-sm font-medium')}
-        data-testid="header-label">
-        {t('label.related-metric-plural')}
-      </Typography.Text>
-      {!isEdit &&
-        permissions.EditAll &&
-        !metricDetails.deleted &&
-        (isEmpty(relatedMetrics) ? (
-          <PlusIconButton
-            data-testid="add-related-metrics-container"
-            size="small"
-            title={t('label.add-entity', {
-              entity: t('label.related-metric-plural'),
-            })}
-            onClick={() => setIsEdit(true)}
-          />
-        ) : (
-          <EditIconButton
-            newLook
-            data-testid="edit-related-metrics"
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.related-metric-plural'),
-            })}
-            onClick={() => setIsEdit(true)}
-          />
-        ))}
-    </Space>
+  const canEditRelatedMetrics = computeCanEditRelatedMetrics(
+    isEdit,
+    permissions.EditAll,
+    metricDetails.deleted
   );
 
-  const content = isEdit ? (
-    <RelatedMetricsForm
-      defaultValue={defaultValue}
-      initialOptions={initialOptions}
-      metricFqn={metricDetails.fullyQualifiedName ?? ''}
-      onCancel={() => setIsEdit(false)}
-      onSubmit={handleRelatedMetricUpdate}
-    />
-  ) : isEmpty(relatedMetrics) && (metricDetails.deleted || isInSummaryPanel) ? (
-    <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
-  ) : (
-    !isEmpty(relatedMetrics) && (
+  const renderHeaderExtra = () => {
+    if (!canEditRelatedMetrics) {
+      return null;
+    }
+
+    if (isEmpty(relatedMetrics)) {
+      return (
+        <WidgetPlusButton
+          data-testid="add-related-metrics-container"
+          title={t('label.add-entity', {
+            entity: t('label.related-metric-plural'),
+          })}
+          onClick={() => setIsEdit(true)}
+        />
+      );
+    }
+
+    return (
+      <WidgetEditButton
+        data-testid="edit-related-metrics"
+        title={t('label.edit-entity', {
+          entity: t('label.related-metric-plural'),
+        })}
+        onClick={() => setIsEdit(true)}
+      />
+    );
+  };
+
+  const renderContent = () => {
+    if (isEdit) {
+      return (
+        <RelatedMetricsForm
+          defaultValue={defaultValue}
+          initialOptions={initialOptions}
+          metricFqn={metricDetails.fullyQualifiedName ?? ''}
+          onCancel={() => setIsEdit(false)}
+          onSubmit={handleRelatedMetricUpdate}
+        />
+      );
+    }
+
+    if (isEmpty(relatedMetrics)) {
+      return null;
+    }
+
+    return (
       <div
         className="metric-entity-list-body"
         data-testid="metric-entity-list-body">
@@ -205,17 +212,17 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
         {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
         {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
       </div>
-    )
-  );
+    );
+  };
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      isExpandDisabled={isEmpty(relatedMetrics)}>
-      {content}
-    </ExpandableCard>
+    <WidgetCard
+      forceExpand={isEdit}
+      headerExtra={renderHeaderExtra()}
+      isExpandDisabled={isEmpty(relatedMetrics) && !isEdit}
+      title={t('label.related-metric-plural')}>
+      {renderContent()}
+    </WidgetCard>
   );
 };
 

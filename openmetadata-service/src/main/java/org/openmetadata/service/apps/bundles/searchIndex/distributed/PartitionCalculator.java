@@ -260,7 +260,7 @@ public class PartitionCalculator {
 
   private long getRegularEntityCount(String entityType) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    return repository.getDao().listCount(new ListFilter(Include.ALL));
+    return repository.getDao().listCount(repository.getReindexFilter());
   }
 
   private long getTimeSeriesEntityCount(String entityType, ReindexingConfiguration reindexConfig) {

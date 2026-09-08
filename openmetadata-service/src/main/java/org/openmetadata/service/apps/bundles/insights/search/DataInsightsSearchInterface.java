@@ -2,7 +2,9 @@ package org.openmetadata.service.apps.bundles.insights.search;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -71,11 +73,19 @@ public interface DataInsightsSearchInterface {
 
   default List<String> getEntityAttributeFields(
       DataInsightsSearchConfiguration dataInsightsSearchConfiguration, String entityType) {
-    List<String> entityAttributeFields =
-        dataInsightsSearchConfiguration.getMappingFields().get("common");
-    entityAttributeFields.addAll(
-        dataInsightsSearchConfiguration.getMappingFields().get(entityType));
-
+    DataInsightsSearchConfiguration.MappingFields mappingFields =
+        dataInsightsSearchConfiguration.getMappingFields();
+    List<String> typeFields = mappingFields.getByType().get(DataAssetType.fromValue(entityType));
+    if (typeFields == null) {
+      throw new IllegalStateException(
+          String.format(
+              "%s declares no mappingFields for '%s', so its documents would carry only the common attributes",
+              DATA_INSIGHTS_SEARCH_CONFIG_PATH, entityType));
+    }
+    // Copy: the common list is shared across every call, so appending to it in place would leak one
+    // entity type's attributes into the next.
+    List<String> entityAttributeFields = new ArrayList<>(mappingFields.getCommon());
+    entityAttributeFields.addAll(typeFields);
     return entityAttributeFields;
   }
 

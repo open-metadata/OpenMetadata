@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/conversation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Conversation",
+  "description": "A bounded conversation root whose replies are stored separately.",
+  "javaType": "org.openmetadata.schema.entity.feed.Conversation",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the conversation.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "source": {
+      "$ref": "../../type/conversationSource.json"
+    },
+    "about": {
+      "description": "Entity or entity field this conversation is about.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "entityRef": {
+      "description": "Reference to the entity identified by about.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "activityEventId": {
+      "description": "ActivityEvent associated with an Activity-source conversation.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "activityTimestamp": {
+      "description": "Timestamp of the associated ActivityEvent.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "domains": {
+      "description": "Domains inherited from the target entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "message": {
+      "description": "Root message for a User-source conversation.",
+      "$ref": "../../type/basic.json#/definitions/nonBlankMarkdown"
+    },
+    "createdBy": {
+      "description": "User who created a User-source conversation.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "createdAt": {
+      "description": "Timestamp when the conversation was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Timestamp when the conversation was last updated.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who last updated the conversation.",
+      "type": "string"
+    },
+    "resolved": {
+      "description": "Whether the conversation has been resolved.",
+      "type": "boolean",
+      "default": false
+    },
+    "replyCount": {
+      "description": "Number of replies in the conversation.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "replies": {
+      "description": "A bounded window of recent replies.",
+      "type": "array",
+      "items": {
+        "$ref": "conversationReply.json"
+      },
+      "default": []
+    },
+    "reactions": {
+      "description": "Reactions on the root message.",
+      "$ref": "../../type/reaction.json#/definitions/reactionList"
+    },
+    "href": {
+      "description": "Link to this conversation.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "impersonatedBy": {
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    }
+  },
+  "required": [
+    "id",
+    "source",
+    "about",
+    "entityRef",
+    "createdAt",
+    "updatedAt",
+    "resolved",
+    "replyCount"
+  ],
+  "additionalProperties": false
+}

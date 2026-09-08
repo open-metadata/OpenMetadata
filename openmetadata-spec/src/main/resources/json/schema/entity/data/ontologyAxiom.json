@@ -1,0 +1,121 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/ontologyAxiom.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyAxiom",
+  "description": "A governed OWL axiom whose relational representation remains authoritative when RDF is disabled.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.OntologyAxiom",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "axiomType": {
+      "javaType": "org.openmetadata.schema.type.OntologyAxiomType",
+      "type": "string",
+      "enum": [
+        "SUBCLASS_OF",
+        "EQUIVALENT_CLASS",
+        "DISJOINT_WITH",
+        "CLASS_ASSERTION",
+        "OBJECT_PROPERTY_ASSERTION",
+        "DATA_PROPERTY_ASSERTION"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "glossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "axiomType": {
+      "$ref": "#/definitions/axiomType"
+    },
+    "subjectIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "expressions": {
+      "description": "Class expressions participating in the axiom, ordered from left to right.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyExpression.json"
+      },
+      "default": []
+    },
+    "propertyIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "targetIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "literal": {
+      "$ref": "../../type/ontologyExpression.json#/definitions/literal"
+    },
+    "provenance": {
+      "$ref": "../../type/termRelation.json#/definitions/provenance"
+    },
+    "entityStatus": {
+      "$ref": "../../type/status.json"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "displayName",
+    "fullyQualifiedName",
+    "description",
+    "glossary",
+    "axiomType",
+    "subjectIri",
+    "expressions",
+    "provenance",
+    "entityStatus"
+  ],
+  "additionalProperties": false
+}

@@ -15,7 +15,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
-  stripEtagConditionalReads,
+  disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
@@ -179,7 +179,7 @@ test.describe(
     });
 
     test.beforeEach(async ({ page }) => {
-      await stripEtagConditionalReads(page);
+      await disableEtagConditionalReads(page);
       await glossary.visitEntityPage(page);
       await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
       await waitForAllLoadersToDisappear(page);

@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DremioConnection",
+  "description": "Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software (self-hosted)",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DremioConnection",
+  "definitions": {
+    "dremioType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Dremio"
+      ],
+      "default": "Dremio"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Dremio",
+      "type": "string",
+      "enum": [
+        "Dremio"
+      ]
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.",
+      "oneOf": [
+        {
+          "title": "Dremio Cloud",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio Cloud is a fully managed SaaS platform.",
+          "javaType": "org.openmetadata.schema.services.connections.database.dremio.CloudAuth",
+          "type": "object",
+          "properties": {
+            "region": {
+              "title": "Cloud Region",
+              "description": "Dremio Cloud region where your organization is hosted. Choose 'US' for United States region or 'EU' for European region.",
+              "type": "string",
+              "enum": [
+                "US",
+                "EU"
+              ],
+              "default": "US"
+            },
+            "personalAccessToken": {
+              "title": "Personal Access Token (PAT)",
+              "description": "Personal Access Token for authenticating with Dremio Cloud. Generate this token from your Dremio Cloud account settings under Settings -> Personal Access Tokens.",
+              "type": "string",
+              "format": "password"
+            },
+            "projectId": {
+              "title": "Project ID",
+              "description": "Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio Cloud project URL or project settings.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "region",
+            "personalAccessToken",
+            "projectId"
+          ]
+        },
+        {
+          "title": "Dremio Software",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Authentication configuration for self-hosted Dremio Software using username and password. Dremio Software is deployed on-premises or in your own cloud infrastructure.",
+          "javaType": "org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth",
+          "type": "object",
+          "properties": {
+            "hostPort": {
+              "title": "Host and Port",
+              "description": "URL to your self-hosted Dremio Software instance, including protocol and port (e.g., http://localhost:9047 or https://dremio.example.com:9047).",
+              "type": "string"
+            },
+            "username": {
+              "title": "Username",
+              "description": "Username for authenticating with Dremio Software. This user should have appropriate permissions to access metadata.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password for the Dremio Software user account.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "hostPort",
+            "username",
+            "password"
+          ]
+        }
+      ]
+    },
+    "database": {
+      "title": "Namespace",
+      "description": "Optional: Restrict metadata ingestion to a specific namespace (source/space). When left blank, all namespaces will be ingested.",
+      "type": "string"
+    },
+    "schemaFilterPattern": {
+      "title": "Folder Filter Pattern",
+      "description": "Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders are mapped as schemas.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Namespace Filter Pattern",
+      "description": "Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In Dremio Cloud, namespaces are mapped as databases.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsLineageExtraction": {
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "description": "The source service supports the database concept in its hierarchy",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "authType"
+  ]
+}

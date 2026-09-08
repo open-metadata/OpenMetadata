@@ -65,6 +65,8 @@ class MlFlowIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-mlModelFilterPattern').click();
     await page.getByTestId('mlModelFilterPattern-only-specific-button').click();
     await page
       .getByTestId('filter-section-mlModelFilterPattern')

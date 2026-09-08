@@ -15,6 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
 import {
@@ -23,6 +24,7 @@ import {
 } from '../../../../../mocks/IngestionListTable.mock';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import { getErrorPlaceHolder } from '../../../../../utils/IngestionUtils';
 import IngestionListTable from './IngestionListTable';
 
 const mockGetEntityPermissionByFqn = jest.fn();
@@ -59,8 +61,8 @@ jest.mock('../../../../../utils/IngestionUtils', () => ({
 }));
 
 jest.mock('./PipelineActions/PipelineActions', () =>
-  jest.fn().mockImplementation(({ handleDeleteSelection }) => (
-    <div>
+  jest.fn().mockImplementation(({ handleDeleteSelection, isDisabled }) => (
+    <div data-disabled={isDisabled}>
       PipelineActions
       <button
         onClick={handleDeleteSelection({
@@ -154,6 +156,102 @@ describe('Ingestion', () => {
       render(
         <IngestionListTable
           {...mockIngestionListTableProps}
+          extraTableProps={{ scroll: undefined }}
+          ingestionData={[]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('ErrorPlaceholder')).toBeInTheDocument();
+  });
+
+  it('should request the default empty placeholder with the ingestion table styling', async () => {
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          extraTableProps={{ scroll: undefined }}
+          ingestionData={[]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const lastCall = (getErrorPlaceHolder as jest.Mock).mock.calls.at(-1);
+
+    expect(lastCall?.[4]).toBe('tw:relative tw:py-8');
+  });
+
+  it('should use the ordinary empty state when the pipeline service is unreachable', async () => {
+    (getErrorPlaceHolder as jest.Mock).mockClear();
+
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          airflowInformation={
+            {
+              isAirflowAvailable: false,
+              isFetchingStatus: false,
+              platform: 'Airflow',
+            } as AirflowStatusContextType
+          }
+          extraTableProps={{ scroll: undefined }}
+          ingestionData={[]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    // The list no longer waits on that status, so an empty table really is empty.
+    expect(getErrorPlaceHolder).toHaveBeenCalled();
+  });
+
+  it('should disable the row actions when the pipeline service is unreachable', async () => {
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          airflowInformation={
+            {
+              isAirflowAvailable: false,
+              isFetchingStatus: false,
+              platform: 'Airflow',
+            } as AirflowStatusContextType
+          }
+          extraTableProps={{ scroll: undefined }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('PipelineActions')).toHaveAttribute(
+      'data-disabled',
+      'true'
+    );
+  });
+
+  it('should use the ordinary empty state while the status call is still in flight', async () => {
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          airflowInformation={
+            {
+              isAirflowAvailable: false,
+              isFetchingStatus: true,
+              platform: 'Airflow',
+            } as AirflowStatusContextType
+          }
           extraTableProps={{ scroll: undefined }}
           ingestionData={[]}
         />,

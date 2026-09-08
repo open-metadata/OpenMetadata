@@ -14,19 +14,19 @@
 import {
   Box,
   Card,
+  EmptyPlaceholder,
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
-import { debounce, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
+import { Globe01, Plus } from '@untitledui/icons';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -34,14 +34,15 @@ import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardT
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
+import { useListSearchInput } from '../common/atoms/navigation/useListSearchInput';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
@@ -96,50 +97,37 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isAiMode && !renderPageHeader;
-
-  const [searchInputValue, setSearchInputValue] = useState(
-    domainListing.urlState.searchQuery ?? ''
+  const standaloneBreadcrumb = useMemo(
+    () =>
+      !renderPageHeader && !isAiMode ? (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      ) : null,
+    [renderPageHeader, isAiMode, breadcrumbItems]
   );
 
-  const debouncedSearch = useMemo(
-    () => debounce(domainListing.handleSearchChange, 300),
-    [domainListing.handleSearchChange]
-  );
+  const showHeaderSearch = isAiMode;
 
-  useEffect(() => {
-    debouncedSearch.cancel();
-    setSearchInputValue(domainListing.urlState.searchQuery ?? '');
-  }, [domainListing.urlState.searchQuery, debouncedSearch]);
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: domainListing.urlState.searchQuery,
+    onSearchChange: domainListing.handleSearchChange,
+  });
 
-  useEffect(() => {
-    return () => {
-      debouncedSearch.cancel();
-    };
-  }, [debouncedSearch]);
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
 
-  const searchInputProps = {
-    icon: SearchLg,
-    placeholder: t('label.search'),
-    value: searchInputValue,
-    onChange: (value: string) => {
-      setSearchInputValue(value);
-      debouncedSearch(value);
-    },
-  };
+  const canCreateDomain = permissions.domain?.Create || false;
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
-    createPermission: permissions.domain?.Create || false,
+    createPermission: canCreateDomain,
     addButtonLabelKey: 'label.add-domain',
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
     variant: isAiMode ? 'search' : undefined,
-    search: showHeaderSearch ? (
-      <Input className="tw:w-72" {...searchInputProps} />
-    ) : undefined,
+    search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
 
@@ -153,14 +141,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
-  useEffect(() => {
-    if (isTreeView && !isEmpty(domainListing.urlState.filters)) {
-      domainListing.handleFilterChange([]);
-    }
-  }, [isTreeView]);
-
   const { columns: domainColumns, renderCell: renderDomainCell } =
-    useDomainTableColumns();
+    useDomainTableColumns({
+      onEntityClick: domainListing.actionHandlers.onEntityClick,
+    });
 
   const selectedDomainEntities = useMemo(
     () =>
@@ -188,12 +172,13 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const content = useMemo(() => {
     if (isTreeView) {
       return (
-        <div className="tw:px-6 tw:pb-6">
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:pb-6">
           <DomainTreeView
             filters={domainListing.urlState.filters}
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
+            onClearSearch={domainListing.handleClearAll}
           />
         </div>
       );
@@ -202,28 +187,48 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <ErrorPlaceHolder
-            className="border-none"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:min-h-70 tw:h-full">
+            <EmptyPlaceholder
+              actions={[
+                {
+                  color: 'primary',
+                  key: 'clear-filters',
+                  label: t('label.clear-entity', { entity: t('label.all') }),
+                  onPress: domainListing.handleClearAll,
+                },
+              ]}
+              description={t('message.check-spelling-or-try-different-term')}
+              icon={<NoSearch className="tw:text-quaternary" />}
+              title={t('label.no-matching-results')}
+            />
+          </div>
         );
       }
 
       return (
-        <ErrorPlaceHolder
-          buttonId="domain-add-button"
-          buttonTitle={t('label.add-entity', {
-            entity: t('label.domain'),
-          })}
-          className="border-none"
-          heading={t('message.no-data-message', {
-            entity: t('label.domain-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.domain?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={openDrawer}
-        />
+        <div className="tw:relative tw:min-h-70">
+          <EmptyPlaceholder
+            actions={
+              permissions.domain?.Create
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'add-domain',
+                      label: t('label.add-entity', {
+                        entity: t('label.domain'),
+                      }),
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('label.no-domains-yet-description')}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-domains-yet')}
+            variant="blank"
+          />
+        </div>
       );
     }
 
@@ -233,6 +238,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           <EntityListingTable
             ariaLabel={t('label.domain')}
             columns={domainColumns}
+            containerClassName="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
             entities={domainListing.entities}
             loading={domainListing.loading}
             renderCell={renderDomainCell}
@@ -253,7 +259,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     return (
       <>
         <EntityCardView
-          className="tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={domainListing.entities}
           loading={domainListing.loading}
           renderCard={renderDomainCard}
@@ -277,6 +283,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.currentPage,
     domainListing.totalPages,
     domainListing.handlePageChange,
+    domainListing.handleClearAll,
     isSearchOrFilterActive,
     view,
     renderDomainCell,
@@ -290,31 +297,38 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   return (
     <Box
-      direction="col"
-      style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
-      {!renderPageHeader && !isAiMode && (
-        <HeaderBreadcrumb items={breadcrumbItems} />
-      )}
+      className={classNames('tw:min-h-0 tw:flex-1', {
+        'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
+      })}
+      direction="col">
+      {standaloneBreadcrumb}
       {renderPageHeader
         ? renderPageHeader({
             onAddClick: openDrawer,
-            createPermission: permissions.domain?.Create || false,
+            createPermission: canCreateDomain,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 
-      <Card style={{ marginBottom: 20 }} variant="elevated">
+      <Card
+        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:mb-5': !isAiMode,
+        })}
+        variant={isAiMode ? 'default' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {!showHeaderSearch && titleAndCount}
             {!showHeaderSearch && (
-              <Input className="tw:max-w-86" {...searchInputProps} />
+              <>
+                {titleAndCount}
+                <Input className="tw:max-w-86" {...searchInputProps} />
+              </>
             )}
-            {!isTreeView && quickFilters}
+            {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
@@ -323,7 +337,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             />
             {deleteIconButton}
           </Box>
-          {!isTreeView && filterSelectionDisplay}
+          {filterSelectionDisplay}
         </Box>
         {content}
       </Card>
@@ -333,6 +347,20 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   );
 };
 
+const DomainListPageWithLayout: FC<DomainListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
+  return (
+    <PageLayoutV1
+      className={isAiMode ? 'tw:h-auto!' : undefined}
+      fullHeight={isAiMode}
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <DomainListPage {...props} />
+    </PageLayoutV1>
+  );
+};
+
 export { DomainListPage };
 
-export default withPageLayout(DomainListPage);
+export default DomainListPageWithLayout;

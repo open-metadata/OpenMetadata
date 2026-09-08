@@ -11,18 +11,11 @@
  *  limitations under the License.
  */
 
-import { BrowserContext, expect, Page, test } from '@playwright/test';
+import { BrowserContext, Page } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
-import { performAdminLogin } from '../../utils/admin';
-import { getAuthContext } from '../../utils/common';
+import { expect, test } from '../../support/fixtures/base';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
-import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
-  SecurityConfigSnapshot,
-} from '../../utils/ssoAuth';
-import { getToken } from '../../utils/tokenStorage';
+import { swapSecurityConfig } from '../../utils/ssoAuth';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -45,20 +38,18 @@ const CLAIM_SCENARIOS = [
 for (const scenario of CLAIM_SCENARIOS) {
   test.describe(
     `Okta self-signup username resolution — ${scenario.title} (issue #26591)`,
-    { tag: ['@sso', '@Platform'] },
+    { tag: ['@sso', '@Platform', '@okta'] },
     () => {
-      test.slow();
       // eslint-disable-next-line playwright/no-skipped-test
       test.skip(
-        providerType !== 'okta' || !username || !password,
-        `Requires ${SSO_ENV.PROVIDER_TYPE}=okta with ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
+        !username || !password,
+        `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
       );
 
       test.describe.configure({ mode: 'serial' });
 
       let helper: ProviderHelper;
-      let adminJwt: string | undefined;
-      let originalSecurityConfig: SecurityConfigSnapshot | undefined;
+      let restoreSecurity: (() => Promise<void>) | undefined;
       let userContext: BrowserContext | undefined;
       let userPage: Page | undefined;
 
@@ -66,32 +57,15 @@ for (const scenario of CLAIM_SCENARIOS) {
         'Apply the Okta public config for this claim scenario',
         async ({ browser }) => {
           helper = getProviderHelper(providerType);
-          const { apiContext, afterAction, page } = await performAdminLogin(
-            browser
-          );
+          const baseConfig = await helper.buildConfigPayload();
 
-          try {
-            adminJwt = await getToken(page);
-
-            if (!adminJwt) {
-              throw new Error(
-                'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
-              );
-            }
-
-            originalSecurityConfig = await fetchSecurityConfig(apiContext);
-            const baseConfig = await helper.buildConfigPayload();
-
-            await applyProviderConfig(apiContext, originalSecurityConfig, {
-              ...baseConfig,
-              authenticationConfiguration: {
-                ...baseConfig.authenticationConfiguration,
-                ...scenario.auth,
-              },
-            });
-          } finally {
-            await afterAction();
-          }
+          restoreSecurity = await swapSecurityConfig(browser, {
+            ...baseConfig,
+            authenticationConfiguration: {
+              ...baseConfig.authenticationConfiguration,
+              ...scenario.auth,
+            },
+          });
 
           userContext = await browser.newContext();
           userPage = await userContext.newPage();
@@ -102,20 +76,11 @@ for (const scenario of CLAIM_SCENARIOS) {
         await userPage?.close();
         await userContext?.close();
 
-        if (!adminJwt || !originalSecurityConfig) {
-          return;
-        }
-
-        const adminContext = await getAuthContext(adminJwt);
-
-        try {
-          await restoreSecurityConfig(adminContext, originalSecurityConfig);
-        } finally {
-          await adminContext.dispose();
-        }
+        await restoreSecurity?.();
       });
 
       test('resolves a non-empty username on /signup', async () => {
+        test.slow();
         const page = userPage!;
 
         await test.step('Authenticate at Okta', async () => {

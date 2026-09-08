@@ -12,7 +12,6 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Modal, Space, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
@@ -56,6 +55,7 @@ import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/Filt
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { UserTabProps } from './UserTab.interface';
@@ -199,10 +199,7 @@ export const UserTab = ({
     }
   }, [currentTeam, pageSize, pagingCursor]);
 
-  const isTeamDeleted = useMemo(
-    () => currentTeam.deleted ?? false,
-    [currentTeam]
-  );
+  const isTeamDeleted = currentTeam.deleted ?? false;
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
@@ -325,8 +322,8 @@ export const UserTab = ({
       : t('message.no-permission-for-action');
   }, [permission, isTeamDeleted, t]);
 
-  if (isEmpty(users) && !searchText && !isLoading) {
-    return isGroupType ? (
+  const renderEmptyState = () =>
+    isGroupType ? (
       <ErrorPlaceHolder
         button={
           <Space>
@@ -375,6 +372,36 @@ export const UserTab = ({
         })}
       />
     );
+
+  const renderExtraTableFilters = () =>
+    !currentTeam.deleted &&
+    isGroupType && (
+      <Col>
+        <Space>
+          {users.length > 0 && editUserPermission && (
+            <UserSelectableList
+              hasPermission
+              includeBot
+              selectedUsers={currentTeam?.users ?? []}
+              onUpdate={onAddUser}>
+              <Button data-testid="add-new-user" type="primary">
+                {t('label.add-entity', { entity: t('label.user') })}
+              </Button>
+            </UserSelectableList>
+          )}
+          <ManageButton
+            canDelete={false}
+            displayName={getEntityName(currentTeam)}
+            entityName={currentTeam.name}
+            entityType={EntityType.USER}
+            extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+          />
+        </Space>
+      </Col>
+    );
+
+  if (isEmpty(users) && !searchText && !isLoading) {
+    return renderEmptyState();
   }
 
   return (
@@ -393,33 +420,7 @@ export const UserTab = ({
           onShowSizeChange: handlePageSizeChange,
         }}
         dataSource={sortedUser}
-        extraTableFilters={
-          !currentTeam.deleted &&
-          isGroupType && (
-            <Col>
-              <Space>
-                {users.length > 0 && editUserPermission && (
-                  <UserSelectableList
-                    hasPermission
-                    includeBot
-                    selectedUsers={currentTeam?.users ?? []}
-                    onUpdate={onAddUser}>
-                    <Button data-testid="add-new-user" type="primary">
-                      {t('label.add-entity', { entity: t('label.user') })}
-                    </Button>
-                  </UserSelectableList>
-                )}
-                <ManageButton
-                  canDelete={false}
-                  displayName={getEntityName(currentTeam)}
-                  entityName={currentTeam.name}
-                  entityType={EntityType.USER}
-                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-                />
-              </Space>
-            </Col>
-          )
-        }
+        extraTableFilters={renderExtraTableFilters()}
         loading={isLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,

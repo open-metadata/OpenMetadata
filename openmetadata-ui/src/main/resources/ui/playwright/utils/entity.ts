@@ -36,7 +36,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
-  removeLandingBanner,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
 } from './common';
@@ -59,6 +59,24 @@ export const waitForAllLoadersToDisappear = async (
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
+/**
+ * Wait for the lazily-mounted entity-detail widgets to replace their Suspense
+ * fallback.
+ *
+ * The right-panel widgets — tags, glossary terms, owners, domain — are behind
+ * `React.lazy`, and while their chunk loads the boundary renders
+ * `EntityDetailWidgetSkeleton`. That skeleton is *not* `data-testid="loader"`, so
+ * `waitForAllLoadersToDisappear` returns straight past it and a test can reach
+ * for something inside those widgets before they exist. Anything the widgets own
+ * — `request-entity-tags`, for one — is simply absent until this clears, so the
+ * click waits out the whole test timeout rather than racing by a few frames.
+ */
+export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+  await expect(
+    page.locator('[data-testid="entity-detail-widget-skeleton"]')
+  ).toHaveCount(0, { timeout });
+};
+
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;
@@ -66,16 +84,33 @@ export const visitEntityPage = async (data: {
 }) => {
   const { page, searchTerm, dataTestId } = data;
 
-  await waitForAllLoadersToDisappear(page);
+  // This helper drives the global search box, which only exists inside the app.
+  // Callers reaching here through TableClass.visitEntityPage's fallback branch
+  // may not have navigated at all — the `page` fixture hands out a
+  // browser.newPage(), which sits on about:blank — and that branch runs
+  // precisely when direct navigation was not possible. Without a search box the
+  // fill below waits until the enclosing timeout.
+  //
+  // Probe for the search box rather than inferring from page.url(): a URL check
+  // only tells us whether this is a web page, not whether it is an app page
+  // that renders the global header. Use .first() so the probe reports presence
+  // rather than throwing on strict-mode ambiguity.
+  //
+  // Navigating inline rather than via redirectToHomePage: utils/common.ts
+  // already imports from this module, so importing it back would be circular.
+  const hasSearchBox = await page
+    .getByTestId('searchBox')
+    .first()
+    .waitFor({ state: 'attached', timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
+  if (!hasSearchBox) {
+    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
   }
+
+  await waitForAllLoadersToDisappear(page);
 
   const searchResponse = page.waitForResponse(
     (response) =>
@@ -115,7 +150,6 @@ export const visitEntityPageByFqn = async (data: {
 }) => {
   const { page, endpoint, fqn } = data;
   await waitForAllLoadersToDisappear(page);
-  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
@@ -136,6 +170,7 @@ export const visitEntityPageByFqn = async (data: {
   });
   await entityDetailsResponse;
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };
 
 export const addOwner = async ({
@@ -698,9 +733,8 @@ export const updateDescription = async (
     await editButton.click();
   }
 
-  // Wait for description box to be visible and ready
-  const descBox = page.locator(descriptionBox).first();
-  await expect(descBox).toBeVisible();
+  const descBox = await resolveDescriptionBox(page);
+
   await descBox.click();
   await descBox.clear();
   await descBox.fill(description);
@@ -1164,10 +1198,25 @@ export const openColumnDetailPanel = async ({
   return panelContainer;
 };
 
-export const closeColumnDetailPanel = async (page: Page) => {
+export const closeColumnDetailPanel = async (
+  page: Page,
+  entityUrl?: string
+) => {
+  // Snapshot the column URL. If the panel reopens (bug), it navigates back to this URL.
+  const columnUrl = page.url();
   const panelContainer = page.locator('.column-detail-panel');
   await panelContainer.getByTestId('close-button').click();
 
+  // 1. Immediate visibility check.
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+  // 2. Positive URL check: assert the URL has settled at the entity path, not bounced back.
+  //    Callers should pass entityUrl (the FQN-less entity path) for the strongest guard.
+  if (entityUrl) {
+    await expect(page).toHaveURL(entityUrl);
+  } else {
+    await expect(page).not.toHaveURL(columnUrl);
+  }
+  // 3. After URL has settled, verify the panel is still not visible.
   await expect(page.locator('.column-detail-panel')).not.toBeVisible();
 };
 
@@ -1502,7 +1551,6 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
@@ -1560,7 +1608,16 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.locator(descriptionBox).fill(data.description);
+  // Scoped to the announcement dialog, not the page: this form opens over an
+  // entity page that has description editors of its own, and an unscoped
+  // `descriptionBox` matches those too.
+  const announcementDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: page.locator('#announcement-submit') });
+  const announcementDescription = announcementDialog.locator(descriptionBox);
+
+  await expect(announcementDescription).toHaveCount(1);
+  await announcementDescription.fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
@@ -1569,11 +1626,24 @@ const announcementForm = async (
       response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
-  await announcementSubmit;
+  const announcementResponse = await announcementSubmit;
+  const announcement: unknown = await announcementResponse.json();
+
+  if (
+    typeof announcement !== 'object' ||
+    announcement === null ||
+    !('id' in announcement) ||
+    typeof announcement.id !== 'string'
+  ) {
+    throw new Error('Announcement creation response did not include an id');
+  }
+
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
+
+  return announcement.id;
 };
 
 export const createAnnouncement = async (
@@ -1649,12 +1719,33 @@ export const replyAnnouncement = async (page: Page) => {
   await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
   await page.click('[data-testid="edit-message"]');
 
-  await page.fill(
-    '[data-testid="editor-wrapper"] .ql-editor',
-    'Reply message edited'
+  // With the edit box open there are two Quill editors on the page: the reply's
+  // edit box and the drawer's reply composer. A page-level
+  // `[data-testid="editor-wrapper"] .ql-editor` binds to whichever mounted
+  // first, so the text can land in the composer instead. The edit box then
+  // saves unchanged content, the client sends no PATCH at all, and the final
+  // assertion times out on stale text. `.is_edit_post` is set only on the edit
+  // box (FeedCardBody passes it as `editorClass`), so scope to it — and no
+  // `.first()`, so strict mode fails loudly if it ever stops being unique.
+  const replyEditor = page.locator(
+    '[data-testid="editor-wrapper"] .is_edit_post .ql-editor'
+  );
+
+  // Pre-populated with the current reply, which proves the editor is mounted
+  // and that we are addressing the edit box rather than the empty composer.
+  await expect(replyEditor).toHaveText('Reply message');
+
+  await replyEditor.fill('Reply message edited');
+  await expect(replyEditor).toHaveText('Reply message edited');
+
+  const updatedPostResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/feed/') &&
+      response.request().method() === 'PATCH'
   );
 
   await page.click('[data-testid="save-button"]');
+  await updatedPostResponse;
 
   await expect(
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
@@ -1788,9 +1879,27 @@ export const createInactiveAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.getByTestId('inActive-announcements').isVisible();
-  await page.reload();
+  const announcementId = await announcementForm(
+    page,
+    { ...data, startDate, endDate },
+    hideAlert
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  const announcementDrawer = page.getByTestId('announcement-drawer');
+  const inactiveAnnouncement = announcementDrawer
+    .getByTestId('announcement-card')
+    .filter({ hasText: data.title });
+
+  await expect(
+    announcementDrawer.getByTestId('inActive-announcements')
+  ).toBeVisible();
+  await expect(inactiveAnnouncement).toBeVisible();
+  await page.getByTestId('announcement-close').click();
+
+  return announcementId;
 };
 
 export const updateDisplayNameForEntity = async (
@@ -2589,6 +2698,46 @@ export const copyAndGetClipboardText = async (
   }, textareaId);
 
   return clipboardText;
+};
+
+/**
+ * Replaces navigator.clipboard with an in-memory implementation before any page
+ * script runs. Required for grid components (e.g. BulkImport) that call
+ * navigator.clipboard.writeText/readText directly, since the real OS clipboard
+ * API is unreliable in AUT/headless CI even with clipboard permissions granted.
+ *
+ * @param page - Playwright Page object
+ */
+export const mockClipboardApi = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    // The grid only calls navigator.clipboard when window.isSecureContext is true. On a
+    // plain-HTTP AUT origin it is false, so the copy half falls through to execCommand and
+    // writes to the real OS clipboard while the paste half reads this mock - the two never
+    // agree and every paste yields an empty cell.
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    let clipboardData = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          clipboardData = text;
+        },
+        readText: async () => clipboardData,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  // addInitScript only applies to documents loaded after it is registered. Callers install
+  // this mid-test, by which point the fixture has already navigated, so without a reload the
+  // mock never runs and the grid silently uses the real clipboard.
+  if (!page.url().startsWith('about:')) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
 };
 
 /**

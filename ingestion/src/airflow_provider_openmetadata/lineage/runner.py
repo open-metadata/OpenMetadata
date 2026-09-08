@@ -16,7 +16,6 @@ OpenMetadata Airflow Provider Lineage Runner
 import logging
 import os
 from itertools import groupby
-from typing import List, Optional  # noqa: UP035
 from urllib.parse import quote
 
 from airflow.configuration import conf
@@ -104,7 +103,7 @@ class AirflowLineageRunner:
         metadata: OpenMetadata,
         service_name: str,
         dag: "DAG",  # noqa: F821
-        xlets: Optional[List[XLets]] = None,  # noqa: UP006, UP045
+        xlets: list[XLets] | None = None,
         only_keep_dag_lineage: bool = False,
         max_status: int = 10,
     ):
@@ -167,7 +166,7 @@ class AirflowLineageRunner:
             f"?_flt_3_dag_id={quote(self.dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
         )
 
-    def get_om_tasks(self) -> List[Task]:  # noqa: UP006
+    def get_om_tasks(self) -> list[Task]:
         """
         Get all tasks from the DAG and map them to
         OpenMetadata Task Entities
@@ -232,16 +231,16 @@ class AirflowLineageRunner:
         logger.info("DAG has not changed since last run")
         return pipeline
 
-    def get_pipeline_status_via_api(self) -> List[PipelineStatus]:  # noqa: C901, UP006
+    def get_pipeline_status_via_api(self) -> list[PipelineStatus]:  # noqa: C901
         """
         Collect pipeline status using Airflow REST API (for Airflow 3.x).
         This avoids the direct database access restriction.
         """
         logger.info("Attempting to collect pipeline status via Airflow REST API")
         try:
-            from datetime import datetime  # noqa: PLC0415
+            from datetime import datetime
 
-            import requests  # noqa: PLC0415
+            import requests
 
             # Get authentication credentials from environment or config
             airflow_username = os.getenv("AIRFLOW_USERNAME", "admin")
@@ -275,7 +274,7 @@ class AirflowLineageRunner:
                     logger.warning(f"JWT response: {auth_response.text[:200]}")
             except Exception as auth_error:
                 logger.warning(f"JWT authentication failed with exception: {auth_error}")
-                import traceback  # noqa: PLC0415
+                import traceback
 
                 logger.warning(f"Auth traceback: {traceback.format_exc()}")
 
@@ -288,7 +287,7 @@ class AirflowLineageRunner:
                 logger.info("Using JWT token for authentication")
             else:
                 # Fallback to basic auth
-                import base64  # noqa: PLC0415
+                import base64
 
                 credentials = base64.b64encode(f"{airflow_username}:{airflow_password}".encode()).decode()
                 headers = {
@@ -419,12 +418,12 @@ class AirflowLineageRunner:
 
         except Exception as e:
             logger.error(f"Error collecting pipeline status via API: {e}")
-            import traceback  # noqa: PLC0415
+            import traceback
 
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
 
-    def get_all_pipeline_status(self) -> List[PipelineStatus]:  # noqa: UP006
+    def get_all_pipeline_status(self) -> list[PipelineStatus]:
         """
         Iterate over the DAG's task instances and map
         them to PipelineStatus.
@@ -437,7 +436,7 @@ class AirflowLineageRunner:
 
         if not IS_AIRFLOW_3_OR_HIGHER:
             # Airflow 2.x path - rely on get_task_instances()
-            grouped_ti: List[List["TaskInstance"]] = [  # noqa: F821, UP006, UP037
+            grouped_ti: list[list["TaskInstance"]] = [  # noqa: F821, UP037
                 list(value) for _, value in groupby(self.dag.get_task_instances(), key=lambda ti: ti.run_id)
             ]
             grouped_ti.reverse()
@@ -455,7 +454,7 @@ class AirflowLineageRunner:
 
         # Fallback to direct DB access (will likely fail in Airflow 3.x)
         try:
-            from airflow.models import DagRun  # noqa: PLC0415
+            from airflow.models import DagRun
 
             dag_runs = DagRun.find(dag_id=self.dag.dag_id, state=None)
             if not dag_runs:
@@ -482,7 +481,7 @@ class AirflowLineageRunner:
             return []
 
     @staticmethod
-    def get_dag_status_from_task_instances(task_instances: List["TaskInstance"]) -> str:  # noqa: F821, UP006
+    def get_dag_status_from_task_instances(task_instances: list["TaskInstance"]) -> str:  # noqa: F821
         """
         If any task is in pending state, then return pending.
         If any task is in failed state, return failed.
@@ -500,7 +499,7 @@ class AirflowLineageRunner:
 
     def get_pipeline_status(
         self,
-        task_instances: List["TaskInstance"],  # noqa: F821, UP006
+        task_instances: list["TaskInstance"],  # noqa: F821
     ) -> PipelineStatus:
         """
         Given the task instances for a run, prep the PipelineStatus
@@ -547,10 +546,10 @@ class AirflowLineageRunner:
         )
 
         for from_xlet in xlets.inlets or []:
-            from_entity: Optional[Table] = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)  # noqa: UP045
+            from_entity: Table | None = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)
             if from_entity:
                 for to_xlet in xlets.outlets or []:
-                    to_entity: Optional[Table] = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)  # noqa: UP045
+                    to_entity: Table | None = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)
                     if to_entity:
                         lineage = AddLineageRequest(
                             edge=EntitiesEdge(

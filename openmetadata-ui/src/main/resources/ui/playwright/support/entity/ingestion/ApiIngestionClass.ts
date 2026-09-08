@@ -49,18 +49,19 @@ class ApiIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    // Use the bundled OpenAPI fixture instead of an external URL to keep the test hermetic.
-    const openAPISchemaFilePath =
-      '/home/airflow/ingestion/examples/openapi/sample.json';
+    // Fetch the OpenAPI fixture over HTTP so the test doesn't rely on a file
+    // bundled inside the ingestion image.
+    const openAPISchemaURL =
+      'https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/ingestion/examples/openapi/sample.json';
 
     await page
-      .getByTestId('oneof-option-1')
-      .filter({ hasText: 'Open API Schema File Path' })
+      .getByTestId('oneof-option-0')
+      .filter({ hasText: 'Open API Schema URL' })
       .click();
 
     await page
-      .locator('#root\\/openAPISchemaConnection\\/openAPISchemaFilePath')
-      .fill(openAPISchemaFilePath);
+      .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
+      .fill(openAPISchemaURL);
   }
 
   async deleteService(page: Page): Promise<void> {

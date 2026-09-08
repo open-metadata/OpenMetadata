@@ -54,17 +54,33 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     // still alive and can show the modal.
     originalPushState(null, '', globalThis.location.href);
 
+    // Whether the new URL points at a different pathname than the one we're
+    // currently on. Compare pathnames only — a same-path change that only
+    // adds/updates a query string or hash (e.g. widgets syncing filter state
+    // like `?showDeletedTables=false`) is not a real navigation and must not
+    // trip the blocker. Accept absolute, root-relative, and query/hash-only
+    // strings; fall back to raw compare if URL parsing fails.
+    const isPathChanging = (url: string | URL): boolean => {
+      const raw = url.toString();
+      if (raw.startsWith('?') || raw.startsWith('#')) {
+        return false;
+      }
+      try {
+        const parsed = new URL(raw, globalThis.location.origin);
+
+        return parsed.pathname !== globalThis.location.pathname;
+      } catch {
+        return raw !== globalThis.location.pathname;
+      }
+    };
+
     // Intercept programmatic React Router navigate(path) calls.
     globalThis.history.pushState = function (
       state: unknown,
       title: string,
       url?: string | URL | null
     ) {
-      if (
-        !isNavigatingRef.current &&
-        url &&
-        url !== globalThis.location.pathname
-      ) {
+      if (!isNavigatingRef.current && url && isPathChanging(url)) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
@@ -79,11 +95,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       title: string,
       url?: string | URL | null
     ) {
-      if (
-        !isNavigatingRef.current &&
-        url &&
-        url !== globalThis.location.pathname
-      ) {
+      if (!isNavigatingRef.current && url && isPathChanging(url)) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
@@ -118,11 +130,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
         const linkTarget = link.getAttribute('target');
         const download = link.getAttribute('download');
 
+        const isInternalOrHttpLink =
+          href?.startsWith('/') || href?.startsWith('http');
+        const isSelfTarget = !linkTarget || linkTarget === '_self';
         const shouldBlock =
-          href &&
-          (href.startsWith('/') || href.startsWith('http')) &&
-          !download &&
-          (!linkTarget || linkTarget === '_self');
+          href && isInternalOrHttpLink && !download && isSelfTarget;
 
         if (shouldBlock) {
           event.preventDefault();
@@ -134,12 +146,10 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        !isNavigatingRef.current &&
-        (event.key === 'F5' ||
-          (event.ctrlKey && event.key === 'r') ||
-          (event.metaKey && event.key === 'r'))
-      ) {
+      const isReloadShortcut =
+        (event.ctrlKey || event.metaKey) && event.key === 'r';
+      const isReloadKey = event.key === 'F5' || isReloadShortcut;
+      if (!isNavigatingRef.current && isReloadKey) {
         event.preventDefault();
         setIsModalVisible(true);
         pendingNavigationRef.current = 'reload';

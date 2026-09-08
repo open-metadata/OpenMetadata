@@ -158,6 +158,34 @@ The `Button` component supports these `color` values:
 - `primary`, `secondary`, `tertiary`, `link-gray`, `link-color`
 - `primary-destructive`, `secondary-destructive`, `tertiary-destructive`, `link-destructive`
 
+### i18n — `core` namespace
+
+The library owns its own translations. Everything lives under a flat
+`label.*` bucket inside the `core` i18next namespace. Use the wrapper hook:
+
+```tsx
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+const { t } = useCoreTranslation();
+<button aria-label={t('label.close')}>×</button>;
+```
+
+**Rules (enforced by `yarn check-i18n-all` — CI hard-fail, precommit hook):**
+
+1. **No string literals in user-facing UI.** Every string goes through `t()`.
+2. **No English fallback in `t()` calls.** Write `t('label.close')`, not
+   `t('label.close', 'Close')`. The library eagerly loads all 20 language
+   bundles at boot, so a missing key is a real bug — the raw key rendering
+   is the signal.
+3. **Keys are flat under `label.*`** (with `message.*` for messages).
+   No per-component nesting.
+4. **After adding a key** to `src/locale/languages/en-us.json`, run
+   `yarn i18n` to sync the 19 sibling files with placeholders, then
+   **replace every placeholder with a real translation**. Gate 4
+   (`check-translations-not-english`) fails if any non-en-us value is
+   identical to its en-us source. Legitimate loanwords (French "Page",
+   Dutch "Records") go in `scripts/translation-allowlist.json` per
+   language.
+
 ### Dark Mode
 
 Dark mode uses a custom variant: `@custom-variant dark (&:where(.dark-mode, .dark-mode *))`. Toggle by adding `.dark-mode` class to a parent element.

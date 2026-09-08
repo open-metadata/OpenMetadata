@@ -23,8 +23,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.ChangeEventRepository.Page;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.util.RestUtil;
 
 class ChangeEventRepositoryTest {

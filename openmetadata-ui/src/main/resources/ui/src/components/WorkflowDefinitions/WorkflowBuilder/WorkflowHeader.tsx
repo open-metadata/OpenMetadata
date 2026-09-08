@@ -24,16 +24,21 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { WorkflowControls } from './WorkflowControls';
 
+const getInitialDisplayName = (title?: string) => title ?? '';
+
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
+  breadcrumb,
+  isAiMode = false,
   title,
   workflowName,
   handleTestWorkflow,
@@ -57,7 +62,9 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     isNoOp,
   } = useWorkflowModeContext();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [displayNameInput, setDisplayNameInput] = useState(title ?? '');
+  const [displayNameInput, setDisplayNameInput] = useState(
+    getInitialDisplayName(title)
+  );
 
   useEffect(() => {
     if (isEditModalOpen) {
@@ -65,17 +72,17 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     }
   }, [isEditModalOpen, title]);
 
-  const handleSaveAndEnterViewMode = async () => {
+  const handleSaveAndEnterViewMode = useCallback(async () => {
     try {
       await handleSaveWorkflow();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
+  }, [handleSaveWorkflow]);
 
-  const handleOpenEditModal = () => {
+  const handleOpenEditModal = useCallback(() => {
     setIsEditModalOpen(true);
-  };
+  }, []);
 
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
@@ -88,51 +95,109 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     setIsEditModalOpen(false);
   };
 
-  return (
-    <Card className="tw:px-6 tw:py-4" data-testid="workflow-header">
-      <div className="tw:flex tw:items-center tw:justify-between">
-        <div className="tw:flex tw:items-center tw:gap-3">
-          <div className="tw:flex tw:items-center tw:justify-center tw:size-8 tw:rounded-md tw:bg-brand-solid">
-            <WorkflowIcon className="tw:size-4 tw:text-white" />
-          </div>
+  const workflowControls = useMemo(
+    () => (
+      <WorkflowControls
+        isRunLoading={isRunLoading}
+        onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
+        onDeleteWorkflow={showDeleteButton ? handleDeleteWorkflow : undefined}
+        onRevertAndCancel={showCancelButton ? handleRevertAndCancel : undefined}
+        onRunWorkflow={handleRunWorkflow}
+        onSaveWorkflow={showSaveButton ? handleSaveAndEnterViewMode : undefined}
+        onTestWorkflow={showTestButton ? handleTestWorkflow : undefined}
+      />
+    ),
+    [
+      isRunLoading,
+      showCancelButton,
+      enterViewMode,
+      showDeleteButton,
+      handleDeleteWorkflow,
+      handleRevertAndCancel,
+      handleRunWorkflow,
+      showSaveButton,
+      handleSaveAndEnterViewMode,
+      showTestButton,
+      handleTestWorkflow,
+    ]
+  );
 
-          <div data-testid="workflow-title-section">
-            <div className="tw:flex tw:items-center tw:gap-2">
-              <Typography
-                ellipsis
-                as="p"
-                className="tw:m-0 tw:mb-1 tw:text-primary"
-                data-testid="workflow-title"
-                size="text-md"
-                weight="semibold">
-                {title}
-              </Typography>
-              {isNoOp && (
-                <Tooltip
-                  placement="top"
-                  title={t('message.system-workflow-edit-restriction')}>
-                  <TooltipTrigger>
-                    <Badge
-                      color="gray"
-                      data-testid="system-workflow-badge"
-                      size="sm"
-                      type="color">
-                      {t('label.system')}
-                    </Badge>
-                  </TooltipTrigger>
-                </Tooltip>
-              )}
-              {!isViewMode && !isNoOp && (
-                <Button
-                  color="tertiary"
-                  data-testid="edit-workflow-title-button"
-                  iconLeading={EditIcon}
-                  size="sm"
-                  onPress={handleOpenEditModal}
-                />
-              )}
-            </div>
-            {workflowName && (
+  const editWorkflowButton = useMemo(
+    () =>
+      showEditButton && (
+        <Button
+          color="primary"
+          data-testid="edit-workflow-button"
+          size="sm"
+          onPress={enterEditMode}>
+          {t('label.edit-workflow')}
+        </Button>
+      ),
+    [showEditButton, enterEditMode, t]
+  );
+
+  const systemBadge = useMemo(
+    () =>
+      isNoOp && (
+        <Tooltip
+          placement="top"
+          title={t('message.system-workflow-edit-restriction')}>
+          <TooltipTrigger>
+            <Badge
+              color="gray"
+              data-testid="system-workflow-badge"
+              size="sm"
+              type="color">
+              {t('label.system')}
+            </Badge>
+          </TooltipTrigger>
+        </Tooltip>
+      ),
+    [isNoOp, t]
+  );
+
+  const editTitleButton = useMemo(
+    () =>
+      !isViewMode &&
+      !isNoOp && (
+        <Button
+          color="tertiary"
+          data-testid="edit-workflow-title-button"
+          iconLeading={EditIcon}
+          size="sm"
+          onPress={handleOpenEditModal}
+        />
+      ),
+    [isViewMode, isNoOp, handleOpenEditModal]
+  );
+
+  const workflowIcon = (
+    <div className="tw:flex tw:items-center tw:justify-center tw:size-8 tw:rounded-md tw:bg-brand-solid">
+      <WorkflowIcon className="tw:size-4 tw:text-white" />
+    </div>
+  );
+
+  return (
+    <>
+      {isAiMode ? (
+        <HeaderShell
+          actions={
+            <>
+              {workflowControls}
+              {editWorkflowButton}
+            </>
+          }
+          badge={
+            <>
+              {systemBadge}
+              {editTitleButton}
+            </>
+          }
+          breadcrumb={breadcrumb}
+          data-testid="workflow-header"
+          leading={workflowIcon}
+          subtitle={
+            workflowName ? (
               <Typography
                 ellipsis
                 as="p"
@@ -141,37 +206,60 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                 size="text-sm">
                 {workflowName}
               </Typography>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+          title={
+            <Typography
+              ellipsis
+              as="h3"
+              className="tw:m-0 tw:text-primary"
+              data-testid="workflow-title"
+              size="text-xl"
+              weight="semibold">
+              {title}
+            </Typography>
+          }
+          variant="gradient"
+        />
+      ) : (
+        <Card className="tw:px-6 tw:py-4" data-testid="workflow-header">
+          <div className="tw:flex tw:items-center tw:justify-between">
+            <div className="tw:flex tw:items-center tw:gap-3">
+              {workflowIcon}
+              <div data-testid="workflow-title-section">
+                <div className="tw:flex tw:items-center tw:gap-2">
+                  <Typography
+                    ellipsis
+                    as="p"
+                    className="tw:m-0 tw:mb-1 tw:text-primary"
+                    data-testid="workflow-title"
+                    size="text-md"
+                    weight="semibold">
+                    {title}
+                  </Typography>
+                  {systemBadge}
+                  {editTitleButton}
+                </div>
+                {workflowName && (
+                  <Typography
+                    ellipsis
+                    as="p"
+                    className="tw:m-0 tw:text-secondary tw:max-w-150"
+                    data-testid="workflow-description"
+                    size="text-sm">
+                    {workflowName}
+                  </Typography>
+                )}
+              </div>
+            </div>
 
-        <div className="tw:flex tw:gap-3 tw:items-center">
-          <WorkflowControls
-            isRunLoading={isRunLoading}
-            onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
-            onDeleteWorkflow={
-              showDeleteButton ? handleDeleteWorkflow : undefined
-            }
-            onRevertAndCancel={
-              showCancelButton ? handleRevertAndCancel : undefined
-            }
-            onRunWorkflow={handleRunWorkflow}
-            onSaveWorkflow={
-              showSaveButton ? handleSaveAndEnterViewMode : undefined
-            }
-            onTestWorkflow={showTestButton ? handleTestWorkflow : undefined}
-          />
-          {showEditButton && (
-            <Button
-              color="primary"
-              data-testid="edit-workflow-button"
-              size="sm"
-              onPress={enterEditMode}>
-              {t('label.edit-workflow')}
-            </Button>
-          )}
-        </div>
-      </div>
+            <div className="tw:flex tw:gap-3 tw:items-center">
+              {workflowControls}
+              {editWorkflowButton}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <ModalOverlay isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <Modal>
@@ -209,6 +297,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           </Dialog>
         </Modal>
       </ModalOverlay>
-    </Card>
+    </>
   );
 };

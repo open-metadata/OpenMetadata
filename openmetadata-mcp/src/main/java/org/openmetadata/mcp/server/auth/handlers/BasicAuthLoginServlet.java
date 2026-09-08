@@ -22,8 +22,8 @@ import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -220,7 +220,9 @@ public class BasicAuthLoginServlet extends HttpServlet {
         if (pending.mcpState() != null) {
           queryParams.put("state", pending.mcpState());
         }
-        String redirectUrl = UriUtils.constructRedirectUri(pending.redirectUri(), queryParams);
+        String redirectUrl =
+            UriUtils.constructAuthorizationResponseUri(
+                pending.redirectUri(), queryParams, authProvider.getIssuer());
 
         LOG.info("Basic Auth login successful, redirecting to client callback");
         response.sendRedirect(redirectUrl);

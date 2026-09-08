@@ -11,17 +11,54 @@
  *  limitations under the License.
  */
 
+import { initCoreI18n } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
 import './styles/index';
 import { getBasePath } from './utils/HistoryUtils';
+import i18next from './utils/i18next/LocalUtil';
 import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
+
+// Register the library's `core` i18next namespace. `addResourceBundle` is safe
+// to call before `i18next.init` resolves — the bundles queue and become live
+// once init completes. Kept here (not inside LocalUtil.tsx) so the library
+// import doesn't leak into files that Playwright's `--list` walks.
+initCoreI18n(i18next);
+
+const recordPlaywrightAppBoot = () => {
+  if (!import.meta.env.PW_E2E_BUILD) {
+    return;
+  }
+
+  const scenarioKey = 'playwright-ui-scenario';
+  const isNewScenario = !sessionStorage.getItem(scenarioKey);
+  if (isNewScenario) {
+    sessionStorage.setItem(scenarioKey, '1');
+  }
+
+  const basePath = getBasePath();
+  const diagnostics = new URLSearchParams({ 'playwright-app-boot': '1' });
+  if (isNewScenario) {
+    diagnostics.set('playwright-ui-scenario', '1');
+  }
+  void fetch(`${basePath}/favicon.ico?${diagnostics}`, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    keepalive: true,
+  }).catch(() => {
+    if (isNewScenario) {
+      sessionStorage.removeItem(scenarioKey);
+    }
+  });
+};
 
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Failed to find the root element');
 }
+
+recordPlaywrightAppBoot();
 
 // The SSO "Test Login" popup returns to the configured callback URL. When this
 // document is that isolated popup, handle the OIDC handshake separately and

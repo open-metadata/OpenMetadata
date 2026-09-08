@@ -135,11 +135,19 @@ jest.mock('../../../utils/EntityStatusUtils', () => ({
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(({ onClick }) => (
-      <div onClick={onClick}>ErrorPlaceHolder</div>
-    ))
+  jest.fn().mockImplementation(({ onClick }) => (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.(e);
+        }
+      }}>
+      ErrorPlaceHolder
+    </div>
+  ))
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -150,7 +158,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ({ footer }: { footer?: { props?: { onPress?: () => void } } }) => (
         <div
           data-testid="empty-placeholder"
-          onClick={() => footer?.props?.onPress?.()}>
+          role="button"
+          tabIndex={0}
+          onClick={() => footer?.props?.onPress?.()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              footer?.props?.onPress?.();
+            }
+          }}>
           EmptyPlaceholder
         </div>
       )
@@ -258,7 +273,9 @@ jest.mock('../../common/Table/TableV2', () =>
         {dataSource.length === 0
           ? !loading && locale?.emptyText
           : dataSource.map((record, index) => (
-              <div data-testid={`glossary-row-${index}`} key={index}>
+              <div
+                data-testid={`glossary-row-${index}`}
+                key={record.fullyQualifiedName as string}>
                 {expandable?.expandIcon?.({
                   expanded: false,
                   onExpand: (rec) => expandable?.onExpand?.(true, rec),

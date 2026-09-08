@@ -125,81 +125,85 @@ const verifyAllBulkRoutes = async (page: Page, shouldHaveAccess: boolean) => {
   }
 };
 
-test.describe('Bulk Edit / Import - Non-admin permissions', () => {
-  test.describe.configure({ mode: 'serial' });
+test.describe(
+  'Bulk Edit / Import - Non-admin permissions',
+  { tag: '@import-export' },
+  () => {
+    test.describe.configure({ mode: 'serial' });
 
-  test.beforeAll(async ({ browser }) => {
-    test.setTimeout(180_000);
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await table.create(apiContext);
-    await editorUser.create(apiContext, false);
-    const policyResponse = await editorPolicy.create(
-      apiContext,
-      BULK_EDIT_RULES
-    );
-    const roleResponse = await editorRole.create(apiContext, [
-      policyResponse.name,
-    ]);
-    await editorUser.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/roles/0',
-          value: {
-            id: roleResponse.id,
-            type: 'role',
-            name: roleResponse.name,
+    test.beforeAll(async ({ browser }) => {
+      test.setTimeout(180_000);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await table.create(apiContext);
+      await editorUser.create(apiContext, false);
+      const policyResponse = await editorPolicy.create(
+        apiContext,
+        BULK_EDIT_RULES
+      );
+      const roleResponse = await editorRole.create(apiContext, [
+        policyResponse.name,
+      ]);
+      await editorUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: roleResponse.id,
+              type: 'role',
+              name: roleResponse.name,
+            },
           },
-        },
-      ],
+        ],
+      });
+      await afterAction();
     });
-    await afterAction();
-  });
 
-  test.afterAll(async ({ browser }) => {
-    test.setTimeout(120_000);
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await glossaryTerm.delete(apiContext);
-    await glossary.delete(apiContext);
-    await editorUser.delete(apiContext);
-    await editorRole.delete(apiContext);
-    await editorPolicy.delete(apiContext);
-    await afterAction();
-  });
+    test.afterAll(async ({ browser }) => {
+      test.setTimeout(120_000);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.delete(apiContext);
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await editorUser.delete(apiContext);
+      await editorRole.delete(apiContext);
+      await editorPolicy.delete(apiContext);
+      await afterAction();
+    });
 
-  test('Editor with EditAll can access every bulk edit and import page', async ({
-    bulkEditorPage,
-  }) => {
-    test.setTimeout(150_000);
-    await redirectToHomePage(bulkEditorPage);
-    await verifyAllBulkRoutes(bulkEditorPage, true);
-  });
+    test('Editor with EditAll can access every bulk edit and import page', async ({
+      bulkEditorPage,
+    }) => {
+      test.setTimeout(150_000);
+      await redirectToHomePage(bulkEditorPage);
+      await verifyAllBulkRoutes(bulkEditorPage, true);
+    });
 
-  test('Data Consumer is blocked from every bulk edit and import page', async ({
-    dataConsumerPage,
-  }) => {
-    test.setTimeout(150_000);
-    await redirectToHomePage(dataConsumerPage);
-    await verifyAllBulkRoutes(dataConsumerPage, false);
-  });
+    test('Data Consumer is blocked from every bulk edit and import page', async ({
+      dataConsumerPage,
+    }) => {
+      test.setTimeout(150_000);
+      await redirectToHomePage(dataConsumerPage);
+      await verifyAllBulkRoutes(dataConsumerPage, false);
+    });
 
-  test('Data Steward is blocked from every bulk edit and import page', async ({
-    dataStewardPage,
-  }) => {
-    test.setTimeout(150_000);
-    await redirectToHomePage(dataStewardPage);
-    await verifyAllBulkRoutes(dataStewardPage, false);
-  });
+    test('Data Steward is blocked from every bulk edit and import page', async ({
+      dataStewardPage,
+    }) => {
+      test.setTimeout(150_000);
+      await redirectToHomePage(dataStewardPage);
+      await verifyAllBulkRoutes(dataStewardPage, false);
+    });
 
-  test('View-only user is blocked from every bulk edit and import page', async ({
-    viewOnlyPage,
-  }) => {
-    test.setTimeout(150_000);
-    await redirectToHomePage(viewOnlyPage);
-    await verifyAllBulkRoutes(viewOnlyPage, false);
-  });
-});
+    test('View-only user is blocked from every bulk edit and import page', async ({
+      viewOnlyPage,
+    }) => {
+      test.setTimeout(150_000);
+      await redirectToHomePage(viewOnlyPage);
+      await verifyAllBulkRoutes(viewOnlyPage, false);
+    });
+  }
+);

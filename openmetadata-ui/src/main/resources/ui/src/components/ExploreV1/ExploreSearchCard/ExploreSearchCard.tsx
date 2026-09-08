@@ -30,7 +30,10 @@ import {
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { TableColumnSearchSource } from '../../../interface/search.interface';
+import {
+  SearchExplanation,
+  TableColumnSearchSource,
+} from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
@@ -51,6 +54,8 @@ import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
 const RANKING_STAGE_LABEL_KEYS: Record<string, string> = {
   exactName: 'label.exact-name',
   closeName: 'label.close-name',
@@ -68,7 +73,28 @@ const RANKING_STAGE_DESCRIPTION_KEYS: Record<string, string> = {
 const MAX_RANKING_REASONS = 4;
 const IGNORED_EXPLANATION_FIELDS = new Set(['deleted']);
 
+const FUNCTION_SCORE_PREFIX = 'function score, score mode';
+const MATCH_FILTER_PREFIX = 'match filter:';
+const MAX_BOOST_DESCRIPTION = 'maxboost';
+const CAPPED_SIGNAL_PREFIX = 'min of';
+const SUMMED_SIGNAL_PREFIX = 'sum of';
+const MAX_EXPLANATION_DEPTH = 8;
+
 const formatScoreValue = (value: number) => value.toFixed(value >= 10 ? 2 : 4);
+
+const normalizeDescription = (description: string) =>
+  description.replace(/\s+/g, ' ').trim();
+
+const startsWithDescription = (
+  explanation: SearchExplanation | undefined,
+  prefix: string
+) =>
+  Boolean(
+    explanation &&
+      normalizeDescription(explanation.description)
+        .toLowerCase()
+        .startsWith(prefix)
+  );
 
 const formatExplanationFieldMatch = (fieldValue: string) => {
   const fieldMatch = fieldValue.match(/^([^:]+):(.+?)(?: in \d+)?$/);
@@ -102,8 +128,513 @@ const getReadableExplanation = (description: string) => {
   if (signalMatch?.[1]) {
     return signalMatch[1];
   }
+};
 
-  return;
+/**
+ * Elasticsearch renders the `function_score` clause as its own explanation subtree, so the tier,
+ * status, usage and vote boosts never surface in the lexical `Reason` list — they are a sibling of
+ * it. Returns that subtree along with the two ancestors that say how it folded into the final
+ * score: an enclosing `min of` is the `max_boost` cap, and a `sum of` above that is
+ * `boost_mode: sum`, which is what lets the score be split into lexical vs signal.
+ */
+const findSignalSubtree = (root?: SearchExplanation) => {
+  let found:
+    | {
+        grandParent?: SearchExplanation;
+        node: SearchExplanation;
+        parent?: SearchExplanation;
+      }
+    | undefined;
+
+  const visit = (
+    node: SearchExplanation | undefined,
+    parent: SearchExplanation | undefined,
+    grandParent: SearchExplanation | undefined,
+    depth: number
+  ) => {
+    if (!node || found || depth > MAX_EXPLANATION_DEPTH) {
+      return;
+    }
+
+    if (startsWithDescription(node, FUNCTION_SCORE_PREFIX)) {
+      found = { grandParent, node, parent };
+
+      return;
+    }
+
+    node.details?.forEach((detail) => visit(detail, node, parent, depth + 1));
+  };
+
+  visit(root, undefined, undefined, 0);
+
+  return found;
+};
+
+const getSignalLabel = (detail: SearchExplanation, baselineLabel: string) => {
+  const description = normalizeDescription(detail.description);
+  const fieldValueMatch = description.match(
+    /^field value function: [^(]*\(doc\['([^']+)'\]/i
+  );
+
+  if (fieldValueMatch?.[1]) {
+    return fieldValueMatch[1];
+  }
+
+  const filter = detail.details?.find((child) =>
+    startsWithDescription(child, MATCH_FILTER_PREFIX)
+  );
+
+  if (!filter) {
+    // The `match_all` weight every document receives, which exists so `boost_mode: multiply`
+    // cannot zero out the lexical score. Naming it keeps the contributions adding up to the total.
+    return baselineLabel;
+  }
+
+  const filterDescription = normalizeDescription(filter.description).slice(
+    MATCH_FILTER_PREFIX.length
+  );
+
+  return getReadableExplanation(filterDescription) ?? filterDescription.trim();
+};
+
+const CheckboxCell = ({
+  checked,
+  showCheckboxes,
+  onCheckboxChange,
+}: {
+  checked: boolean;
+  showCheckboxes: boolean;
+  onCheckboxChange?: (checked: boolean) => void;
+}) => {
+  if (!showCheckboxes) {
+    return null;
+  }
+
+  return (
+    <Col flex="25px">
+      <Checkbox
+        checked={checked}
+        className="assets-checkbox"
+        onChange={(e) => {
+          onCheckboxChange?.(e.target.checked);
+          e.stopPropagation();
+        }}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </Col>
+  );
+};
+
+const BreadcrumbAndScoreCell = ({
+  breadcrumbItems,
+  classNameForBreadcrumb,
+  hideBreadcrumbs,
+  score,
+  t,
+}: {
+  breadcrumbItems: ReturnType<typeof searchClassBase.getEntityBreadcrumbItems>;
+  classNameForBreadcrumb?: string;
+  hideBreadcrumbs: boolean;
+  score?: number;
+  t: (key: string) => string;
+}) => {
+  if (hideBreadcrumbs) {
+    return null;
+  }
+
+  return (
+    <Col className="d-flex justify-between items-center" flex="auto">
+      <Breadcrumbs
+        autoCollapse
+        className={classNames(
+          'explore-search-card-breadcrumbs tw:min-w-0',
+          classNameForBreadcrumb
+        )}
+        items={breadcrumbItems}
+      />
+      {score !== undefined && (
+        <div className="flex items-center gap-1 score-container">
+          <ScoreIcon />
+
+          <Typography.Text className="text-xs score">
+            <span className="font-normal">
+              {t('label.score-label').toUpperCase()}
+            </span>
+            <span className="font-semibold">{score.toFixed(4)}</span>
+          </Typography.Text>
+        </div>
+      )}
+    </Col>
+  );
+};
+
+const EntityTitleColumn = ({
+  breadcrumbs,
+  entityIcon,
+  entityLink,
+  handlePrefetch,
+  hasGlossaryTermStatus,
+  isTourOpen,
+  openEntityInNewPage,
+  source,
+}: {
+  breadcrumbs: ReturnType<typeof searchClassBase.getEntityBreadcrumbs>;
+  entityIcon: React.ReactNode;
+  entityLink: ReturnType<typeof searchClassBase.getEntityLink>;
+  handlePrefetch: () => void;
+  hasGlossaryTermStatus: boolean;
+  isTourOpen: boolean;
+  openEntityInNewPage?: boolean;
+  source: ExploreSearchCardProps['source'];
+}) => (
+  <Col
+    data-testid={`${
+      source.service?.name ? `${source.service.name}-` : 'explore-card-'
+    }${source.name}`}
+    span={24}>
+    {isTourOpen ? (
+      <Button data-testid={source.fullyQualifiedName} type="link">
+        <Typography.Text
+          className="text-lg font-medium text-link-color"
+          data-testid="entity-header-display-name">
+          {stringToHTML(searchClassBase.getEntityName(source))}
+        </Typography.Text>
+      </Button>
+    ) : (
+      <div className="w-full d-flex items-center">
+        {entityIcon}
+
+        <Link
+          className={classNames('d-flex no-underline line-height-22 ', {
+            'w-max-full': !hasGlossaryTermStatus,
+            'm-r-xs': hasGlossaryTermStatus,
+          })}
+          data-testid="entity-link"
+          state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
+          target={searchClassBase.getSearchEntityLinkTarget(
+            source,
+            openEntityInNewPage
+          )}
+          to={isObject(entityLink) ? entityLink.pathname : entityLink}
+          onFocus={handlePrefetch}
+          onMouseEnter={handlePrefetch}>
+          <Typography.Text
+            className="text-lg font-medium text-link-color break-word whitespace-normal"
+            data-testid="entity-header-display-name">
+            {stringToHTML(searchClassBase.getEntityName(source))}
+          </Typography.Text>
+        </Link>
+
+        {!isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
+          <div className="tw:ml-1.5">
+            <CertificationTag
+              certification={
+                (source as Table).certification as AssetCertification
+              }
+            />
+          </div>
+        )}
+
+        {hasGlossaryTermStatus && (
+          <EntityStatusBadge
+            status={
+              (source as GlossaryTerm).entityStatus ?? EntityStatus.Approved
+            }
+          />
+        )}
+      </div>
+    )}
+  </Col>
+);
+
+const getColumnOtherDetails = (
+  columnSource: TableColumnSearchSource,
+  t: TFunc
+): ExtraInfo[] => {
+  const columnDetails: ExtraInfo[] = [];
+
+  if (columnSource.table) {
+    columnDetails.push({
+      key: t('label.table'),
+      value: (
+        <Link
+          className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
+          title={getEntityName(columnSource.table)}
+          to={searchClassBase.getEntityLink({
+            ...columnSource.table,
+            entityType: EntityType.TABLE,
+          } as SourceType)}>
+          {getEntityName(columnSource.table)}
+        </Link>
+      ),
+    });
+  }
+
+  columnDetails.push({
+    key: 'Owner',
+    value: (
+      <OwnerLabel
+        avatarSize={18}
+        isCompactView={false}
+        owners={columnSource?.owners ?? []}
+        showLabel={false}
+      />
+    ),
+  });
+
+  return columnDetails;
+};
+
+const getDomainEntries = (
+  source: ExploreSearchCardProps['source']
+): ExtraInfo[] => {
+  const shouldShowDomainField = !searchClassBase
+    .getListOfEntitiesWithoutDomain()
+    .includes(source?.entityType ?? '');
+
+  const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
+    ? [
+        {
+          key: 'Domain',
+          value: '',
+        },
+      ]
+    : [];
+
+  return source?.domains && source.domains.length > 0
+    ? [
+        {
+          key: 'Domains',
+          value: <DomainDisplay domains={source.domains} />,
+        },
+      ]
+    : emptyDomainInfo;
+};
+
+const getOwnerEntry = (
+  source: ExploreSearchCardProps['source']
+): ExtraInfo => ({
+  key: 'Owner',
+  value: (
+    <OwnerLabel
+      avatarSize={18}
+      isCompactView={false}
+      owners={(source?.owners as EntityReference[]) ?? []}
+      showLabel={false}
+    />
+  ),
+});
+
+const getTierEntries = (
+  source: ExploreSearchCardProps['source']
+): ExtraInfo[] => {
+  const tierValue = isString(source.tier)
+    ? source.tier
+    : source.tier && (
+        <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
+      );
+
+  return searchClassBase
+    .getListOfEntitiesWithoutTier()
+    .includes((source?.entityType ?? '') as EntityType)
+    ? []
+    : [
+        {
+          key: 'Tier',
+          value: tierValue,
+        },
+      ];
+};
+
+const getUsageEntries = (
+  source: ExploreSearchCardProps['source']
+): ExtraInfo[] =>
+  'usageSummary' in source
+    ? [
+        {
+          value: getUsagePercentile(
+            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
+            true
+          ),
+        },
+      ]
+    : [];
+
+const getEntityOtherDetails = (
+  source: ExploreSearchCardProps['source']
+): ExtraInfo[] => [
+  ...getDomainEntries(source),
+  getOwnerEntry(source),
+  ...getTierEntries(source),
+  ...getUsageEntries(source),
+];
+
+interface SignalBoosts {
+  contributions: { label: string; value: number }[];
+  isCapped: boolean;
+  lexicalScore: number | undefined;
+  maxBoost: number | undefined;
+  rawTotal: number;
+  total: number;
+}
+
+const MatchesSection = ({
+  matches,
+  t,
+}: {
+  matches: ExploreSearchCardProps['matches'];
+  t: TFunc;
+}) => {
+  if (!matches?.length) {
+    return null;
+  }
+
+  return (
+    <div className="p-t-sm text-grey-muted text-xs" data-testid="matches-stats">
+      <span>{`${t('label.matches')}:`}</span>
+      {matches.map((data, i) => (
+        <span className="m-l-xs" key={uniqueId()}>
+          {`${data.value} ${t('label.in-lowercase')}
+                ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const SignalBoostsSection = ({
+  signalBoosts,
+  t,
+}: {
+  signalBoosts: SignalBoosts | undefined;
+  t: TFunc;
+}) => {
+  if (!signalBoosts || signalBoosts.contributions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className="ranking-score-explanation"
+      data-testid="ranking-signal-boosts">
+      <div className="ranking-details-header">
+        <Typography.Text className="text-xs font-medium">
+          {t('label.signal-boost-plural')}
+        </Typography.Text>
+        <Typography.Text
+          className="text-xs text-grey-muted"
+          data-testid="ranking-signal-total">
+          {signalBoosts.isCapped && signalBoosts.maxBoost !== undefined
+            ? t('message.search-ranking-signal-capped', {
+                max: formatScoreValue(signalBoosts.maxBoost),
+                raw: formatScoreValue(signalBoosts.rawTotal),
+              })
+            : `+${formatScoreValue(signalBoosts.total)}`}
+        </Typography.Text>
+      </div>
+      {signalBoosts.contributions.map(({ label, value }) => (
+        <div
+          className="ranking-score-contributor"
+          data-testid="ranking-signal-contributor"
+          key={`${label}-${value}`}>
+          <Typography.Text className="text-xs font-medium">
+            {`+${formatScoreValue(value)}`}
+          </Typography.Text>
+          <Typography.Text className="text-xs text-grey-muted">
+            {label}
+          </Typography.Text>
+        </div>
+      ))}
+      {signalBoosts.lexicalScore !== undefined ? (
+        <Typography.Text
+          className="text-xs text-grey-muted"
+          data-testid="ranking-score-breakdown">
+          {t('message.search-ranking-score-breakdown', {
+            lexical: formatScoreValue(signalBoosts.lexicalScore),
+            signals: formatScoreValue(signalBoosts.total),
+          })}
+        </Typography.Text>
+      ) : null}
+    </div>
+  );
+};
+
+const RankingDetailsSection = ({
+  rankingStages,
+  score,
+  scoreReasons,
+  signalBoosts,
+  t,
+}: {
+  rankingStages: { description: string; label: string; name: string }[];
+  score: number | undefined;
+  scoreReasons: { description: string; value: number }[];
+  signalBoosts: SignalBoosts | undefined;
+  t: TFunc;
+}) => {
+  if (rankingStages.length === 0 && score === undefined) {
+    return null;
+  }
+
+  return (
+    <div className="ranking-details-container" data-testid="ranking-details">
+      <div className="ranking-details-header">
+        <Typography.Text className="ranking-details-title">
+          {t('label.ranking-detail-plural')}
+        </Typography.Text>
+        {score !== undefined && (
+          <Typography.Text
+            className="ranking-details-score"
+            data-testid="ranking-score">
+            {t('label.score')}: {formatScoreValue(score)}
+          </Typography.Text>
+        )}
+      </div>
+      {rankingStages.length > 0 ? (
+        <div className="ranking-stage-list">
+          {rankingStages.map(({ description, label, name }) => (
+            <div
+              className="ranking-stage-item"
+              data-testid={`ranking-stage-${name}`}
+              key={name}>
+              <Typography.Text className="text-xs font-medium">
+                {label}
+              </Typography.Text>
+              <Typography.Text className="text-xs text-grey-muted">
+                {description}
+              </Typography.Text>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {scoreReasons.length > 0 ? (
+        <div
+          className="ranking-score-explanation"
+          data-testid="ranking-score-explanation">
+          <Typography.Text className="text-xs font-medium">
+            {t('label.reason')}
+          </Typography.Text>
+          {scoreReasons.map(({ description, value }) => (
+            <div
+              className="ranking-score-contributor"
+              data-testid="ranking-score-contributor"
+              key={`${description}-${value}`}>
+              <Typography.Text className="text-xs font-medium">
+                {formatScoreValue(value)}
+              </Typography.Text>
+              <Typography.Text className="text-xs text-grey-muted">
+                {description}
+              </Typography.Text>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <SignalBoostsSection signalBoosts={signalBoosts} t={t} />
+      <Typography.Text className="text-xs text-grey-muted">
+        {t('message.search-ranking-signals-explanation')}
+      </Typography.Text>
+    </div>
+  );
 };
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
@@ -164,6 +695,42 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         name: stageName,
       }));
     }, [matchedQueries, t]);
+
+    const signalBoosts = useMemo(() => {
+      const subtree = findSignalSubtree(scoreExplanation);
+
+      if (!subtree) {
+        return undefined;
+      }
+
+      const { grandParent, node, parent } = subtree;
+      const capNode = startsWithDescription(parent, CAPPED_SIGNAL_PREFIX)
+        ? parent
+        : undefined;
+      const maxBoost = capNode?.details?.find(
+        (detail) =>
+          normalizeDescription(detail.description).toLowerCase() ===
+          MAX_BOOST_DESCRIPTION
+      )?.value;
+      const signalRoot = capNode ?? node;
+      const combiner = capNode ? grandParent : parent;
+
+      return {
+        contributions: (node.details ?? [])
+          .map((detail) => ({
+            label: getSignalLabel(detail, t('label.baseline')),
+            value: detail.value,
+          }))
+          .sort((left, right) => right.value - left.value),
+        isCapped: maxBoost !== undefined && node.value > maxBoost,
+        lexicalScore: startsWithDescription(combiner, SUMMED_SIGNAL_PREFIX)
+          ? (combiner?.value ?? 0) - signalRoot.value
+          : undefined,
+        maxBoost,
+        rawTotal: node.value,
+        total: signalRoot.value,
+      };
+    }, [scoreExplanation, t]);
 
     const scoreReasons = useMemo(() => {
       const reasons: { description: string; value: number }[] = [];
@@ -238,112 +805,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
-    const otherDetails = useMemo(() => {
-      if (source?.entityType === EntityType.TABLE_COLUMN) {
-        const columnSource = source as TableColumnSearchSource;
-        const columnDetails: ExtraInfo[] = [];
-
-        if (columnSource.table) {
-          columnDetails.push({
-            key: t('label.table'),
-            value: (
-              <Link
-                className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-                title={getEntityName(columnSource.table)}
-                to={searchClassBase.getEntityLink({
-                  ...columnSource.table,
-                  entityType: EntityType.TABLE,
-                } as SourceType)}>
-                {getEntityName(columnSource.table)}
-              </Link>
-            ),
-          });
-        }
-
-        columnDetails.push({
-          key: 'Owner',
-          value: (
-            <OwnerLabel
-              avatarSize={18}
-              isCompactView={false}
-              owners={columnSource?.owners ?? []}
-              showLabel={false}
-            />
-          ),
-        });
-
-        return columnDetails;
-      }
-
-      const tierValue = isString(source.tier)
-        ? source.tier
-        : source.tier && (
-            <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
-          );
-
-      const shouldShowDomainField = !searchClassBase
-        .getListOfEntitiesWithoutDomain()
-        .includes(source?.entityType ?? '');
-
-      const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
-        ? [
-            {
-              key: 'Domain',
-              value: '',
-            },
-          ]
-        : [];
-
-      const domainInfo: ExtraInfo[] =
-        source?.domains && source.domains.length > 0
-          ? [
-              {
-                key: 'Domains',
-                value: <DomainDisplay domains={source.domains} />,
-              },
-            ]
-          : emptyDomainInfo;
-
-      const _otherDetails: ExtraInfo[] = [
-        ...domainInfo,
-
-        {
-          key: 'Owner',
-          value: (
-            <OwnerLabel
-              avatarSize={18}
-              isCompactView={false}
-              owners={(source?.owners as EntityReference[]) ?? []}
-              showLabel={false}
-            />
-          ),
-        },
-
-        ...(searchClassBase
-          .getListOfEntitiesWithoutTier()
-          .includes((source?.entityType ?? '') as EntityType)
-          ? []
-          : [
-              {
-                key: 'Tier',
-                value: tierValue,
-              },
-            ]),
-
-        ...('usageSummary' in source
-          ? [
-              {
-                value: getUsagePercentile(
-                  source.usageSummary?.weeklyStats?.percentileRank ?? 0,
-                  true
-                ),
-              },
-            ]
-          : []),
-      ];
-
-      return _otherDetails;
-    }, [source]);
+    const otherDetails = useMemo(
+      () =>
+        source?.entityType === EntityType.TABLE_COLUMN
+          ? getColumnOtherDetails(source as TableColumnSearchSource, t)
+          : getEntityOtherDetails(source),
+      [source, t]
+    );
 
     const breadcrumbs = useMemo(
       () =>
@@ -404,104 +872,28 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
       return (
         <Row gutter={[4, 8]}>
-          {showCheckboxes && (
-            <Col flex="25px">
-              <Checkbox
-                checked={checked}
-                className="assets-checkbox"
-                onChange={(e) => {
-                  onCheckboxChange?.(e.target.checked);
-                  e.stopPropagation();
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </Col>
-          )}
-          {!hideBreadcrumbs && (
-            <Col className="d-flex justify-between items-center" flex="auto">
-              <Breadcrumbs
-                autoCollapse
-                className={classNames(
-                  'explore-search-card-breadcrumbs tw:min-w-0',
-                  classNameForBreadcrumb
-                )}
-                items={breadcrumbItems}
-              />
-              {score !== undefined && (
-                <div className="flex items-center gap-1 score-container">
-                  <ScoreIcon />
-
-                  <Typography.Text className="text-xs score">
-                    <span className="font-normal">
-                      {t('label.score-label').toUpperCase()}
-                    </span>
-                    <span className="font-semibold">{score.toFixed(4)}</span>
-                  </Typography.Text>
-                </div>
-              )}
-            </Col>
-          )}
-          <Col
-            data-testid={`${
-              source.service?.name ? `${source.service.name}-` : 'explore-card-'
-            }${source.name}`}
-            span={24}>
-            {isTourOpen ? (
-              <Button data-testid={source.fullyQualifiedName} type="link">
-                <Typography.Text
-                  className="text-lg font-medium text-link-color"
-                  data-testid="entity-header-display-name">
-                  {stringToHTML(searchClassBase.getEntityName(source))}
-                </Typography.Text>
-              </Button>
-            ) : (
-              <div className="w-full d-flex items-center">
-                {entityIcon}
-
-                <Link
-                  className={classNames('d-flex no-underline line-height-22 ', {
-                    'w-max-full': !hasGlossaryTermStatus,
-                    'm-r-xs': hasGlossaryTermStatus,
-                  })}
-                  data-testid="entity-link"
-                  state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
-                  target={searchClassBase.getSearchEntityLinkTarget(
-                    source,
-                    openEntityInNewPage
-                  )}
-                  to={isObject(entityLink) ? entityLink.pathname : entityLink}
-                  onFocus={handlePrefetch}
-                  onMouseEnter={handlePrefetch}>
-                  <Typography.Text
-                    className="text-lg font-medium text-link-color break-word whitespace-normal"
-                    data-testid="entity-header-display-name">
-                    {stringToHTML(searchClassBase.getEntityName(source))}
-                  </Typography.Text>
-                </Link>
-
-                {!isEmpty(
-                  (source as Table)?.certification?.tagLabel?.tagFQN
-                ) && (
-                  <div className="tw:ml-1.5">
-                    <CertificationTag
-                      certification={
-                        (source as Table).certification as AssetCertification
-                      }
-                    />
-                  </div>
-                )}
-
-                {hasGlossaryTermStatus && (
-                  <EntityStatusBadge
-                    status={
-                      (source as GlossaryTerm).entityStatus ??
-                      EntityStatus.Approved
-                    }
-                  />
-                )}
-              </div>
-            )}
-          </Col>
+          <CheckboxCell
+            checked={checked}
+            showCheckboxes={Boolean(showCheckboxes)}
+            onCheckboxChange={onCheckboxChange}
+          />
+          <BreadcrumbAndScoreCell
+            breadcrumbItems={breadcrumbItems}
+            classNameForBreadcrumb={classNameForBreadcrumb}
+            hideBreadcrumbs={Boolean(hideBreadcrumbs)}
+            score={score}
+            t={t}
+          />
+          <EntityTitleColumn
+            breadcrumbs={breadcrumbs}
+            entityIcon={entityIcon}
+            entityLink={entityLink}
+            handlePrefetch={handlePrefetch}
+            hasGlossaryTermStatus={hasGlossaryTermStatus}
+            isTourOpen={isTourOpen}
+            openEntityInNewPage={openEntityInNewPage}
+            source={source}
+          />
         </Row>
       );
     }, [
@@ -512,6 +904,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showCheckboxes,
       checked,
       entityLink,
+      classNameForBreadcrumb,
+      score,
+      t,
+      onCheckboxChange,
+      entityIcon,
+      handlePrefetch,
+      isTourOpen,
+      openEntityInNewPage,
     ]);
 
     return (
@@ -532,79 +932,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             tags={showTags ? source.tags : []}
           />
         </div>
-        {matches && matches.length > 0 ? (
-          <div
-            className="p-t-sm text-grey-muted text-xs"
-            data-testid="matches-stats">
-            <span>{`${t('label.matches')}:`}</span>
-            {matches.map((data, i) => (
-              <span className="m-l-xs" key={uniqueId()}>
-                {`${data.value} ${t('label.in-lowercase')} 
-                ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {rankingStages.length > 0 || score !== undefined ? (
-          <div
-            className="ranking-details-container"
-            data-testid="ranking-details">
-            <div className="ranking-details-header">
-              <Typography.Text className="ranking-details-title">
-                {t('label.ranking-detail-plural')}
-              </Typography.Text>
-              {score !== undefined && (
-                <Typography.Text
-                  className="ranking-details-score"
-                  data-testid="ranking-score">
-                  {t('label.score')}: {formatScoreValue(score)}
-                </Typography.Text>
-              )}
-            </div>
-            {rankingStages.length > 0 ? (
-              <div className="ranking-stage-list">
-                {rankingStages.map(({ description, label, name }) => (
-                  <div
-                    className="ranking-stage-item"
-                    data-testid={`ranking-stage-${name}`}
-                    key={name}>
-                    <Typography.Text className="text-xs font-medium">
-                      {label}
-                    </Typography.Text>
-                    <Typography.Text className="text-xs text-grey-muted">
-                      {description}
-                    </Typography.Text>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {scoreReasons.length > 0 ? (
-              <div
-                className="ranking-score-explanation"
-                data-testid="ranking-score-explanation">
-                <Typography.Text className="text-xs font-medium">
-                  {t('label.reason')}
-                </Typography.Text>
-                {scoreReasons.map(({ description, value }) => (
-                  <div
-                    className="ranking-score-contributor"
-                    data-testid="ranking-score-contributor"
-                    key={`${description}-${value}`}>
-                    <Typography.Text className="text-xs font-medium">
-                      {formatScoreValue(value)}
-                    </Typography.Text>
-                    <Typography.Text className="text-xs text-grey-muted">
-                      {description}
-                    </Typography.Text>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <Typography.Text className="text-xs text-grey-muted">
-              {t('message.search-ranking-signals-explanation')}
-            </Typography.Text>
-          </div>
-        ) : null}
+        <MatchesSection matches={matches} t={t} />
+        <RankingDetailsSection
+          rankingStages={rankingStages}
+          score={score}
+          scoreReasons={scoreReasons}
+          signalBoosts={signalBoosts}
+          t={t}
+        />
         {actionPopoverContent && (
           <Space className="explore-card-actions">{actionPopoverContent}</Space>
         )}

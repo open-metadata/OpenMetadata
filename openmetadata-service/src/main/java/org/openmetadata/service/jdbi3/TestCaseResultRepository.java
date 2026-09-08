@@ -267,7 +267,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       TestCaseResult testCaseResult, TestCase testCase, String updatedBy) {
     if (TestCaseStatus.Failed.equals(testCaseResult.getTestCaseStatus())) {
       UUID incidentStateId =
-          TestCaseResolutionStatusRepository.getOrCreateIncident(testCase, updatedBy);
+          TestCaseResolutionStatusRepository.getOrCreateIncident(
+              testCase, updatedBy, testCaseResult.getResult());
       testCaseResult.setIncidentId(incidentStateId);
     } else {
       testCaseResult.setIncidentId(null);
@@ -335,16 +336,24 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   protected void deleteAllTestCaseResults(String fqn) {
+    deleteAllTestCaseResults(List.of(fqn));
+  }
+
+  protected void deleteAllTestCaseResults(List<String> testCaseFQNs) {
+    if (testCaseFQNs.isEmpty()) {
+      return;
+    }
     // Delete all the test case results
-    daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
+    daoCollection.dataQualityDataTimeSeriesDao().deleteAllBatch(testCaseFQNs);
 
     // Delete all dimensional results
-    dimensionResultRepository.deleteAllByTestCase(fqn);
+    dimensionResultRepository.deleteAllByTestCases(testCaseFQNs);
 
-    Map<String, Object> params = Map.of("fqn", fqn);
+    Map<String, Object> params = Map.of("fqns", testCaseFQNs);
     searchRepository.deleteByScript(
         TEST_CASE_RESULT,
-        "if (!(doc['testCaseFQN.keyword'].empty)) { doc['testCaseFQN.keyword'].value == params.fqn}",
+        "!doc['testCaseFQN.keyword'].empty && "
+            + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
         params);
   }
 

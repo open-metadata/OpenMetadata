@@ -12,7 +12,7 @@
 Custom defined types
 """
 
-from typing import NewType, Union
+from typing import NewType
 
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
@@ -25,13 +25,11 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 # new typing type wrapping services with connection field types
 ServiceWithConnectionType = NewType(
     "ServiceWithConnectionType",
-    Union[  # noqa: UP007
-        ApiService,
-        DashboardService,
-        DatabaseService,
-        MessagingService,
-        MetadataService,
-        MlModelService,
-        PipelineService,
-    ],
+    ApiService
+    | DashboardService
+    | DatabaseService
+    | MessagingService
+    | MetadataService
+    | MlModelService
+    | PipelineService,
 )

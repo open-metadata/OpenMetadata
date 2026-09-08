@@ -40,6 +40,14 @@ import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUti
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-page.less';
 
+const isValidServiceTab = (
+  tab: string,
+  serviceCategoryValues: Set<string>
+): boolean =>
+  tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
+  Boolean(SERVICE_CATEGORY[tab]) ||
+  serviceCategoryValues.has(tab);
+
 const ServicesPage = () => {
   const { tab } = useRequiredParams<{ tab: string }>();
   const location = useCustomLocation();
@@ -62,10 +70,7 @@ const ServicesPage = () => {
     []
   );
 
-  const isValidTab =
-    tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
-    Boolean(SERVICE_CATEGORY[tab]) ||
-    serviceCategoryValues.has(tab);
+  const isValidTab = isValidServiceTab(tab, serviceCategoryValues);
 
   const serviceName = useMemo(() => {
     if (tab === GlobalSettingOptions.DATA_OBSERVABILITY) {
@@ -129,12 +134,44 @@ const ServicesPage = () => {
     return crumbs;
   }, [tab, t, isEmbedded]);
 
+  const tabItems = useMemo(
+    () => [
+      ...(serviceName === 'dataObservabilityServices'
+        ? []
+        : [
+            {
+              key: 'services',
+              children: <Services serviceName={serviceName} />,
+              label: 'Services',
+            },
+          ]),
+      ...(isAdminUser
+        ? [
+            {
+              key: 'pipelines',
+              children: (
+                <IngestionPipelineList
+                  serviceName={
+                    serviceName === 'dataObservabilityServices'
+                      ? 'testSuites'
+                      : serviceName
+                  }
+                />
+              ),
+              label: 'Pipelines',
+            },
+          ]
+        : []),
+    ],
+    [serviceName, isAdminUser]
+  );
+
   if (!isValidTab) {
     return <Navigate replace to={ROUTES.NOT_FOUND} />;
   }
 
   return viewAllPermission ? (
-    <PageLayoutV1 pageTitle={serviceName}>
+    <PageLayoutV1 pageTitle={startCase(serviceName)}>
       {isEmbedded && <div className="tw:h-4" />}
       <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
         <Col span={24}>
@@ -145,34 +182,7 @@ const ServicesPage = () => {
             destroyInactiveTabPane
             activeKey={search as string}
             className="tabs-new services-tabs"
-            items={[
-              ...(serviceName === 'dataObservabilityServices'
-                ? []
-                : [
-                    {
-                      key: 'services',
-                      children: <Services serviceName={serviceName} />,
-                      label: 'Services',
-                    },
-                  ]),
-              ...(isAdminUser
-                ? [
-                    {
-                      key: 'pipelines',
-                      children: (
-                        <IngestionPipelineList
-                          serviceName={
-                            serviceName === 'dataObservabilityServices'
-                              ? 'testSuites'
-                              : serviceName
-                          }
-                        />
-                      ),
-                      label: 'Pipelines',
-                    },
-                  ]
-                : []),
-            ]}
+            items={tabItems}
             onChange={(activeKey) => navigate({ search: `tab=${activeKey}` })}
           />
         </Col>

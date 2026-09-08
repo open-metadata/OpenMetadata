@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -22,6 +23,7 @@ import {
 } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -58,13 +60,15 @@ test.describe('Explore Assets Discovery', () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-            name: domain.responseData.name,
-            displayName: domain.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+              name: domain.responseData.name,
+              displayName: domain.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -229,7 +233,20 @@ test.describe('Explore Assets Discovery', () => {
 
     await page.getByTestId('delete-modal').waitFor();
 
+    // Wait for the soft delete to land before reloading. Reloading straight
+    // after the click races the request: if the server has not applied the
+    // delete yet, the reloaded page renders the table as live, no deleted-badge
+    // is ever mounted, and the assertion below burns its full timeout. Passes
+    // locally where the delete returns in milliseconds; loses the race under
+    // merge-queue load.
+    const softDelete = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        response.url().includes(`/api/v1/${EntityTypeEndpoint.Table}/`)
+    );
+
     await page.getByTestId('confirm-button').click();
+    await softDelete;
 
     await page.reload();
 
@@ -255,9 +272,11 @@ test.describe('Explore Assets Discovery', () => {
 
     // The user should not be visible in the owners filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Owners"]');
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=false*`
-    );
+    const searchResOwner = waitForAggregation(page, {
+      deleted: false,
+      field: 'ownerDisplayName',
+      value: user.responseData.displayName,
+    });
 
     await page.fill(
       '[data-testid="search-input"]',
@@ -278,9 +297,11 @@ test.describe('Explore Assets Discovery', () => {
     // The domain should not be visible in the domains filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=false*`
-    );
+    const searchResDomain = waitForAggregation(page, {
+      deleted: false,
+      field: 'domains.displayName.keyword',
+      value: domain.responseData.displayName,
+    });
 
     await page.fill(
       '[data-testid="search-input"]',
@@ -315,9 +336,11 @@ test.describe('Explore Assets Discovery', () => {
     const ownerSearchText = user.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Owners"]');
 
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=true*`
-    );
+    const searchResOwner = waitForAggregation(page, {
+      deleted: true,
+      field: 'ownerDisplayName',
+      value: ownerSearchText,
+    });
 
     await page.fill('[data-testid="search-input"]', ownerSearchText);
     await searchResOwner;
@@ -344,14 +367,20 @@ test.describe('Explore Assets Discovery', () => {
     // Close the Owners dropdown before opening the next — immediate-apply keeps
     // it open after selection, and a stale open menu has its own search-input
     await page.keyboard.press('Escape');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(ownerSearchText)
+      .waitFor({ state: 'detached' });
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=true*`
-    );
+    const searchResDomain = waitForAggregation(page, {
+      deleted: true,
+      field: 'domains.displayName.keyword',
+      value: domainSearchText,
+    });
 
     await page.fill('[data-testid="search-input"]', domainSearchText);
     await searchResDomain;
@@ -381,9 +410,18 @@ test.describe('Explore Assets Discovery', () => {
     // Close the Domains dropdown before opening the Data Assets one
     await page.keyboard.press('Escape');
 
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .waitFor({ state: 'detached' });
+
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')

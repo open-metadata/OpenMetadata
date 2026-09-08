@@ -22,6 +22,7 @@ import {
   useLocale,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DateInput } from './date-input';
 import { RangeCalendar } from './range-calendar';
@@ -46,6 +47,7 @@ export const DateRangePicker = ({
   onCancel,
   ...props
 }: DateRangePickerProps) => {
+  const { t } = useCoreTranslation();
   const { locale } = useLocale();
   const formatter = useDateFormatter({
     month: 'short',
@@ -125,7 +127,7 @@ export const DateRangePicker = ({
 
   return (
     <AriaDateRangePicker
-      aria-label="Date range picker"
+      aria-label={t('label.date-range-picker', 'Date range picker')}
       shouldCloseOnSelect={false}
       {...props}
       value={value}
@@ -133,7 +135,9 @@ export const DateRangePicker = ({
       <AriaGroup>
         <Button color="secondary" iconLeading={CalendarIcon} size="md">
           {!value ? (
-            <span className="tw:text-placeholder">Select dates</span>
+            <span className="tw:text-placeholder">
+              {t('label.select-dates', 'Select dates')}
+            </span>
           ) : (
             `${formattedStartDate} – ${formattedEndDate}`
           )}

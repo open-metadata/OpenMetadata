@@ -227,6 +227,14 @@ MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
 """
 )
 
+MSSQL_TEST_GET_TABLES = """
+SELECT TOP 1 name FROM sys.tables WHERE is_ms_shipped = 0
+"""
+
+MSSQL_TEST_GET_VIEWS = """
+SELECT TOP 1 name FROM sys.views WHERE is_ms_shipped = 0
+"""
+
 MSSQL_GET_FOREIGN_KEY = """\
 WITH fk_info AS (
     SELECT
@@ -297,7 +305,8 @@ index_info AS (
         constraint_info.column_name AS referred_column,
         fk_info.match_option,
         fk_info.update_rule,
-        fk_info.delete_rule
+        fk_info.delete_rule,
+        DB_NAME() AS referred_database
     FROM
         fk_info INNER JOIN constraint_info ON
             constraint_info.constraint_schema =
@@ -316,7 +325,8 @@ index_info AS (
         index_info.column_name AS referred_column,
         fk_info.match_option,
         fk_info.update_rule,
-        fk_info.delete_rule
+        fk_info.delete_rule,
+        DB_NAME() AS referred_database
     FROM
         fk_info INNER JOIN index_info ON
             index_info.index_schema = fk_info.unique_constraint_schema

@@ -6,6 +6,7 @@ import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
@@ -21,6 +22,7 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
@@ -69,8 +71,55 @@ public class McpServer implements McpServerProvider {
     addStatelessTransport(contextHandler, tools, prompts, config);
   }
 
+  /**
+   * Advertises only the features this server can actually handle.
+   *
+   * <p>Clients trust what we advertise and call it. If we claim a capability we have no handler for,
+   * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
+   * handler (VSCode used to call it), and no resources, because no resources are registered here.
+   * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
+   * replaced with subscriptions/listen.
+   */
+  protected McpSchema.ServerCapabilities buildServerCapabilities() {
+    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
+  }
+
+  /**
+   * Tools that cannot work without a live triplestore, and are therefore withheld when RDF is off.
+   *
+   * <p>{@code ontology_describe} is deliberately absent: its default path serves the bundled
+   * ontology document straight off the classpath and works with RDF disabled.
+   */
+  private static final Set<String> RDF_DEPENDENT_TOOLS =
+      Set.of("sparql_query", "entity_neighborhood", "find_by_tag", "shacl_validate");
+
+  /**
+   * Advertises the knowledge-graph tools only where they can actually run.
+   *
+   * <p>{@code rdf.enabled} defaults to false, so on a stock deployment these tools were listed to
+   * every client and then failed on every call. That contradicts the rule stated on {@link
+   * #buildServerCapabilities()} - clients trust what we advertise and call it - and it spends the
+   * model's context on four tool schemas that cannot succeed. RDF is initialized during core
+   * infrastructure startup, well before MCP registration, so the repository state is already settled
+   * by the time this runs.
+   */
   protected List<McpSchema.Tool> getTools() {
-    return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
+    List<McpSchema.Tool> tools =
+        toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
+    if (rdfEnabled()) {
+      return tools;
+    }
+    List<McpSchema.Tool> available =
+        tools.stream().filter(tool -> !RDF_DEPENDENT_TOOLS.contains(tool.name())).toList();
+    LOG.info(
+        "[MCP] RDF is disabled; withholding {} knowledge-graph tool(s) from tools/list",
+        tools.size() - available.size());
+    return available;
+  }
+
+  private static boolean rdfEnabled() {
+    RdfRepository repository = RdfRepository.getInstanceOrNull();
+    return repository != null && repository.isEnabled();
   }
 
   protected List<McpSchema.Prompt> getPrompts() {
@@ -83,12 +132,7 @@ public class McpServer implements McpServerProvider {
       List<McpSchema.Prompt> prompts,
       OpenMetadataApplicationConfig config) {
     try {
-      McpSchema.ServerCapabilities serverCapabilities =
-          McpSchema.ServerCapabilities.builder()
-              .tools(true)
-              .prompts(true)
-              .resources(true, true)
-              .build();
+      McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
       String baseUrl = getBaseUrlFromConfig();
@@ -188,6 +232,32 @@ public class McpServer implements McpServerProvider {
       org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpStateChecker(
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
+
+      // Register the persister so handleLogin() links the OIDC round-trip state to the MCP pending
+      // request before it redirects to the provider, keeping the returning /callback resolvable.
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+          (request, state, nonce, codeVerifier) -> {
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            Object authRequestId =
+                session == null
+                    ? null
+                    : session.getAttribute(
+                        org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                            .MCP_AUTH_REQUEST_ID);
+            if (authRequestId instanceof String id) {
+              pendingAuthRepo.updatePac4jSession(id, state, nonce, codeVerifier);
+              request.setAttribute(
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider.MCP_STATE_LINKED,
+                  Boolean.TRUE);
+            } else {
+              LOG.warn(
+                  "MCP pending-state persister could not resolve {} from the session; "
+                      + "the returning /callback will not match a pending request",
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                      .MCP_AUTH_REQUEST_ID);
+            }
+          });
+      LOG.info("Registered MCP pending-state persister for OIDC round-trip linking");
 
       // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization

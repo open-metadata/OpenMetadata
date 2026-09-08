@@ -118,8 +118,10 @@ public class AuthorizationHandler {
                               queryParams.put("state", authParams.getState());
                             }
                             String callbackUrl =
-                                UriUtils.constructRedirectUri(
-                                    authParams.getRedirectUri().toString(), queryParams);
+                                UriUtils.constructAuthorizationResponseUri(
+                                    authParams.getRedirectUri().toString(),
+                                    queryParams,
+                                    provider.getIssuer());
                             return new AuthorizationResponse(callbackUrl, true, null);
                           }
                         })
@@ -167,9 +169,10 @@ public class AuthorizationHandler {
         new AuthorizationErrorResponse(error, errorDescription, state);
 
     if (redirectUri != null) {
-      // Redirect with error parameters
+      // Redirect with error parameters. RFC 9207 requires "iss" on error responses too.
       String redirectUrl =
-          UriUtils.constructRedirectUri(redirectUri.toString(), errorResponse.toQueryParams());
+          UriUtils.constructAuthorizationResponseUri(
+              redirectUri.toString(), errorResponse.toQueryParams(), provider.getIssuer());
 
       return new AuthorizationResponse(redirectUrl, true, errorResponse);
     } else {

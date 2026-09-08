@@ -27,8 +27,8 @@
   border: 3px solid @primary-1;
   background: white;
   border-radius: 50%;
-  margin-top: 0.15rem;
-  z-index: 1;
+  margin-top: var(--om-space-2_4);
+  z-index: var(--om-z-1);
 }
 .ingestion-rounder.active {
   border-color: @primary-color;
@@ -38,11 +38,11 @@
 }
 
 .ingestion-rounder.completed::after {
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   content: '\2713';
   display: block;
-  margin-top: -4px;
-  font-weight: 900;
+  margin-top: calc(-1 * var(--om-space-4));
+  font-weight: var(--om-font-weight-black);
   color: @primary-color;
 }
 
@@ -59,12 +59,12 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  margin-top: 0.15rem;
-  z-index: 1;
+  margin-top: var(--om-space-2_4);
+  z-index: var(--om-z-1);
 }
 
 .ant-steps-label-vertical .ant-steps-item-tail {
-  padding: 3.5px 0px;
+  padding: var(--om-space-3_5) 0;
 }
 
 .ant-steps-item-finish
@@ -87,7 +87,7 @@
 }
 
 .ant-steps-small .ant-steps-item-title {
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   color: @primary-color;
 }
 
@@ -113,7 +113,7 @@
 
 .task-resolution-steps {
   .ant-steps-item-tail {
-    padding: 3.5px 24px;
+    padding: var(--om-space-3_5) var(--om-space-24);
   }
 
   .ant-steps-item-finish
@@ -124,7 +124,7 @@
   }
 
   .ant-steps-item-container > .ant-steps-item-tail::after {
-    background-color: #757575;
+    background-color: var(--om-legacy-color-757575);
     height: 1px;
   }
 

@@ -60,6 +60,7 @@ import teradata from '../assets/svg/teradata.svg';
 // Messaging services
 import kafka from '../assets/img/service-icon-kafka.webp';
 import kinesis from '../assets/img/service-icon-kinesis.webp';
+import nats from '../assets/img/service-icon-nats.png';
 import redpanda from '../assets/img/service-icon-redpanda.webp';
 import pubsub from '../assets/svg/service-icon-pubsub.svg';
 
@@ -71,6 +72,7 @@ import looker from '../assets/img/service-icon-looker.webp';
 import metabase from '../assets/img/service-icon-metabase.webp';
 import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.webp';
+import omni from '../assets/img/service-icon-omni.webp';
 import powerbi from '../assets/img/service-icon-power-bi.webp';
 import qliksense from '../assets/img/service-icon-qlik-sense.webp';
 import quicksight from '../assets/img/service-icon-quicksight.webp';
@@ -90,6 +92,7 @@ import fivetran from '../assets/img/service-icon-fivetran.webp';
 import flink from '../assets/img/service-icon-flink.webp';
 import nifi from '../assets/img/service-icon-nifi.webp';
 import openlineage from '../assets/img/service-icon-openlineage.svg';
+import prefect from '../assets/img/service-icon-prefect.svg';
 import spark from '../assets/img/service-icon-spark.webp';
 import spline from '../assets/img/service-icon-spline.webp';
 
@@ -189,6 +192,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   pubsub: pubsub,
   redpanda: redpanda,
   kinesis: kinesis,
+  nats: nats,
   custommessaging: topicdefault,
 
   // Dashboard services
@@ -199,6 +203,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   metabase: metabase,
   powerbi: powerbi,
   sigma: sigma,
+  omni: omni,
   mode: mode,
   domodashboard: domo,
   quicksight: quicksight,
@@ -221,6 +226,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   spline: spline,
   flink: flink,
   openlineage: openlineage,
+  prefect: prefect,
   domopipeline: domo,
   kafkaconnect: kafka,
   databrickspipeline: databrick,
