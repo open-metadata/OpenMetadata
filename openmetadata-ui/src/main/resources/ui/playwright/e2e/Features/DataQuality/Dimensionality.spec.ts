@@ -51,8 +51,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.slow();
-
 /**
  * Dimensionality Tests
  * @description Creates a dimension-level test case, edits dimension columns, and validates the dimension selector in the details view.

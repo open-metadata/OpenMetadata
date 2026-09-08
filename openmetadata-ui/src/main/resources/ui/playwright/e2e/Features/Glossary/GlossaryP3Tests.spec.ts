@@ -16,7 +16,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -53,9 +53,7 @@ test.describe('Glossary P3 Tests', () => {
 
       // Use name with unicode characters
       await page.fill('[data-testid="name"]', unicodeName);
-      await page
-        .locator(descriptionBox)
-        .fill('Glossary with unicode characters');
+      await fillDescriptionBox(page, 'Glossary with unicode characters');
 
       const [response] = await Promise.all([
         page.waitForResponse(
@@ -818,7 +816,7 @@ test.describe('Glossary P3 Tests', () => {
       await page.getByTestId('name').waitFor();
 
       await page.fill('[data-testid="name"]', 'TestTerm');
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       const addReferenceBtn = page.getByTestId('add-reference');
       await addReferenceBtn.click();
