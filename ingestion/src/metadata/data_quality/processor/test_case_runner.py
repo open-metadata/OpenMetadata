@@ -298,6 +298,9 @@ class TestCaseRunner(Processor):
         test case that checks for a column value to be between two values, but the column is of type
         VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
 
+        A test definition without any `supportedDataTypes` is generic: it declares no restriction, so
+        it runs against every column type rather than against none of them.
+
         Args:
             table: Table entity the test cases are run against
             test_cases: List of test cases
@@ -317,7 +320,8 @@ class TestCaseRunner(Processor):
             column_name = entity_link.get_decoded_column(tc.entityLink.root)
             column = next(c for c in table.columns if c.name.root == column_name)
 
-            if column.dataType not in test_definition.supportedDataTypes:
+            supported_data_types = test_definition.supportedDataTypes
+            if supported_data_types and column.dataType not in supported_data_types:
                 self.status.failed(
                     StackTraceError(
                         name="Incompatible Column for Test Case",

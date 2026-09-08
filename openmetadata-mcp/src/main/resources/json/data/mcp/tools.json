@@ -710,7 +710,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column. While creating column test for entity, column data type should be in supportedDataTypes of parameterDefinition.",
+      "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column. While creating column test for entity, column data type should be in supportedDataTypes of parameterDefinition. A test definition with an empty or absent supportedDataTypes supports every column data type.",
       "parameters": {
         "description": "These test definition are required to create a test case for table or a table's column.",
         "type": "object",

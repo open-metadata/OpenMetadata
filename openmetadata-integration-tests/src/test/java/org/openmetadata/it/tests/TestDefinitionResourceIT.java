@@ -20,6 +20,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -331,6 +332,47 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     }
   }
 
+  // ===================================================================
+  // SUPPORTED DATA TYPE FILTER — issue #27718
+  // ===================================================================
+
+  /**
+   * A test definition that lists no supported data types declares no restriction, so it is generic
+   * and must be offered for every column type. Before the fix the filter required a positive match,
+   * which hid such definitions from the dropdown that maps a test case to a column.
+   */
+  @Test
+  void list_supportedDataTypeFilterKeepsDefinitionsWithoutDataTypes_200_OK(TestNamespace ns) {
+    TestDefinition generic = createColumnTestDefinition(ns, "sdt_generic");
+    TestDefinition numeric =
+        createColumnTestDefinitionWithDataTypes(ns, "sdt_numeric", List.of(ColumnDataType.NUMBER));
+
+    ListResponse<TestDefinition> response =
+        listBySupportedDataType(SdkClients.adminClient(), ColumnDataType.VARCHAR.value());
+    Set<String> fullyQualifiedNames = fullyQualifiedNamesOf(response.getData());
+
+    assertTrue(
+        fullyQualifiedNames.contains(generic.getFullyQualifiedName()),
+        "A test definition without supportedDataTypes must be returned for any data type");
+    assertFalse(
+        fullyQualifiedNames.contains(numeric.getFullyQualifiedName()),
+        "A test definition restricted to NUMBER must not be returned for VARCHAR");
+    assertTrue(
+        response.getPaging().getTotal() > 0,
+        "supportedDataType must produce a non-zero paging total, which is served by the DAO's"
+            + " separate listCount query");
+  }
+
+  private static ListResponse<TestDefinition> listBySupportedDataType(
+      OpenMetadataClient client, String supportedDataType) {
+    ListParams params =
+        new ListParams()
+            .setLimit(ENTITY_TYPE_FILTER_LIMIT)
+            .addFilter("supportedDataType", supportedDataType);
+
+    return client.testDefinitions().list(params);
+  }
+
   private OpenMetadataClient createNonAdminClient(TestNamespace ns) {
     String name = ns.shortPrefix("etfilter");
     String email = name + "@test.openmetadata.org";
@@ -399,6 +441,18 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
 
   private TestDefinition createTableTestDefinition(TestNamespace ns, String name) {
     return createTestDefinition(ns, name, TestDefinitionEntityType.TABLE);
+  }
+
+  private TestDefinition createColumnTestDefinitionWithDataTypes(
+      TestNamespace ns, String name, List<ColumnDataType> supportedDataTypes) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(ns.prefix(name));
+    request.setDescription("Test definition for supportedDataType filtering");
+    request.setEntityType(TestDefinitionEntityType.COLUMN);
+    request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+    request.setSupportedDataTypes(supportedDataTypes);
+
+    return createEntity(request);
   }
 
   private TestDefinition createTestDefinition(

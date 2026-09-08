@@ -79,7 +79,11 @@ export interface TestDefinition {
      * testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data
      * quality validation.
      */
-    sqlExpression?:      string;
+    sqlExpression?: string;
+    /**
+     * List of column data types that this test definition supports. When empty, it implies all
+     * data types are supported.
+     */
     supportedDataTypes?: DataType[];
     /**
      * List of services that this test definition supports. When empty, it implies all services

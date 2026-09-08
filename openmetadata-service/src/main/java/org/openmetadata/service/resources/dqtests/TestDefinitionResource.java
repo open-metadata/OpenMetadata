@@ -153,7 +153,9 @@ public class TestDefinitionResource
           @QueryParam("testPlatform")
           String testPlatformParam,
       @Parameter(
-              description = "Filter tests definition by supported data type",
+              description =
+                  "Filter test definitions by supported data type. Returns test definitions that either "
+                      + "have an empty supportedDataTypes list (supporting all data types) or include the specified data type.",
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
           String supportedDataTypeParam,

@@ -107,6 +107,13 @@ public interface TimeSeriesDAOs {
   @CreateSqlObject
   TestCaseDimensionResultTimeSeriesDAO testCaseDimensionResultTimeSeriesDao();
 
+  /**
+   * An absent or empty {@code supportedDataTypes} or {@code supportedServices} list means the test
+   * definition declares no restriction, so it is generic and applies everywhere. The matching
+   * listing filters must let those definitions through instead of requiring a positive match —
+   * otherwise a generic test definition never appears when picking a test for a column, which is
+   * issue #27718.
+   */
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
     @Override
     default String getTableName() {
@@ -156,9 +163,13 @@ public interface TimeSeriesDAOs {
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeExact", supportedDataType);
         mysqlCondition.append(
-            "AND JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes') ");
+            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
+                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
+                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
         psqlCondition.append(
-            "AND json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT)) ");
+            "AND (json->>'supportedDataTypes' IS NULL "
+                + "OR json->>'supportedDataTypes' = '[]' "
+                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
       }
 
       if (supportedService != null) {
@@ -226,9 +237,13 @@ public interface TimeSeriesDAOs {
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeExact", supportedDataType);
         mysqlCondition.append(
-            "AND JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes') ");
+            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
+                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
+                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
         psqlCondition.append(
-            "AND json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT)) ");
+            "AND (json->>'supportedDataTypes' IS NULL "
+                + "OR json->>'supportedDataTypes' = '[]' "
+                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
       }
 
       if (supportedService != null) {
@@ -296,9 +311,13 @@ public interface TimeSeriesDAOs {
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeExact", supportedDataType);
         mysqlCondition.append(
-            "AND JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes') ");
+            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
+                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
+                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
         psqlCondition.append(
-            "AND json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT)) ");
+            "AND (json->>'supportedDataTypes' IS NULL "
+                + "OR json->>'supportedDataTypes' = '[]' "
+                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
       }
 
       if (supportedService != null) {
