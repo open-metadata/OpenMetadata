@@ -69,13 +69,13 @@ RESOLVE_SUFFIXES = (".ts", ".tsx", ".d.ts")
 # comments or template literals — none of our specs use dynamic require.
 IMPORT_RE = re.compile(
     r"""
-    ^\s*
+    (?:^|;)\s*
     (?:import|export)\b
-    [^'"\n]*                     # any bindings (including empty for side-effect)
-    (?:from\s+)?
+    [^'"]*?                      # any bindings, may span newlines (lazy)
+    (?:from\s*)?
     (['"])([^'"]+)\1
     """,
-    re.VERBOSE | re.MULTILINE,
+    re.VERBOSE | re.MULTILINE | re.DOTALL,
 )
 
 # testIds referenced by a spec. Covers the two conventions the codebase uses:

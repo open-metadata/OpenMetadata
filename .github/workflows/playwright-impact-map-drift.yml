@@ -228,13 +228,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Configure git
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Auto-commit + push (same-repo PRs only)
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref }}
