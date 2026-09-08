@@ -55,7 +55,7 @@ def get_connection(connection: CassandraConnection):
     cluster_config = {}
     if hasattr(connection.authType, "cloudConfig"):
         cloud_config = connection.authType.cloudConfig
-        token = cloud_config.token
+        token = cloud_config.token  # pyright: ignore[reportOptionalMemberAccess]
         cluster_cloud_config = {
             "connect_timeout": cloud_config.connectTimeout,
             "use_default_tempdir": True,
