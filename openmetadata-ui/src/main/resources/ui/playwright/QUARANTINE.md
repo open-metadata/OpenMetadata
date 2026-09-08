@@ -27,7 +27,7 @@ coverage, a retried one looks green.
 
 ## Entries
 
-8 tests. Evidence is failures observed across 11 merge_group runs sampled on
+9 tests. Evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
@@ -36,13 +36,14 @@ generated variant rather than per source line.
 | `e2e/Pages/Lineage/LineageInteraction.spec.ts` | Verify node panel opens on click | 11/11 | `clickLineageNode` → `entity-header-display-name` never visible (15s). The topic node is not in the graph the `beforeEach` renders. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 11/11 | `entity-summary-panel-container` → owner chip not found (10s). Regressed around #31853, which removed the welcome-banner dismiss helpers. |
 | `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | 7/11 | Test timeout. |
+| `e2e/Pages/Domains.spec.ts` | Verify domain tags and glossary terms | 6/11 | Fails both attempts more often than it flakes — likely a real defect, not timing. |
 | `e2e/Features/Table.spec.ts` | should persist page size | 6/11 | Test timeout after `waitForAllLoadersToDisappear`. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal — filters and select | 3/11 | `waitForResponse` on the test-case search never resolves. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 | `e2e/Features/ActivityStream.spec.ts` | activity stream API is called when visiting entity page | 2/11 | |
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 8 plus the 7 setup/teardown
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects these 9 plus the 7 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
 entity seeding still happen — a project-level `grep` *is* applied to dependency
 projects, so filtering them would make every quarantined test fail for want of
@@ -74,7 +75,6 @@ entry.
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should create, edit, and delete a test definition | `TestDefinitionFormBody` rebuilt `options: toOptions(Object.values(…))` on every render. Focusing a field re-renders it via `onActiveFieldChange`, and the new `items` identity made react-aria rebuild the listbox collection, detaching the option mid-click. The option lists are enum-derived and now built once at module scope. |
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should maintain page on edit and reset to first page on delete | Same select-option path as above. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
-| `e2e/Pages/Domains.spec.ts` | Verify domain tags and glossary terms | Two independent bugs in `selectDomain` (`utils/domain.ts`). (1) `Promise.all([domainRow.click(), page.waitForResponse('/api/v1/domains/name/*')])` constructed the click promise before the response listener, so a fast round-trip fired before Playwright was subscribed and the wait hung to timeout — the ordering hazard documented in `utils/waitHelpers.ts`. (2) `DomainTreeView.handleSelectionChange` short-circuits when the clicked FQN already equals `selectedFqnRef.current`; on the second `selectDomain` call the previously-selected node is restored, the click issues no `/domains/name/*` request at all, and the wait can never resolve. Replaced the network-based wait with an assertion on `domain-details` → `entity-header-display-name` `toContainText(displayName)` — the true "domain is displayed" signal, immune to both failure modes. |
 
 ## Left running deliberately
 
