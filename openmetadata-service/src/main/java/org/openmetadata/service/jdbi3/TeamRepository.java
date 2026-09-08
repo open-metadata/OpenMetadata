@@ -944,14 +944,20 @@ public class TeamRepository extends EntityRepository<Team> {
       return Collections.emptyList();
     }
     List<String> hashes = new ArrayList<>();
-    collectSubtreeTeamHashes(team.getId(), team.getName(), hashes);
+    collectSubtreeTeamHashes(team.getId(), team.getName(), hashes, new HashSet<>());
     return hashes;
   }
 
-  private void collectSubtreeTeamHashes(UUID teamId, String teamName, List<String> hashes) {
+  private void collectSubtreeTeamHashes(
+      UUID teamId, String teamName, List<String> hashes, Set<UUID> visited) {
+    // Teams form a DAG (a Division/Department may have multiple parents), so dedupe by id to
+    // avoid revisiting a team reachable through more than one path (e.g. a diamond hierarchy).
+    if (!visited.add(teamId)) {
+      return;
+    }
     hashes.add(FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(teamName)));
     for (EntityReference child : getChildren(teamId)) {
-      collectSubtreeTeamHashes(child.getId(), child.getName(), hashes);
+      collectSubtreeTeamHashes(child.getId(), child.getName(), hashes, visited);
     }
   }
 
@@ -963,14 +969,19 @@ public class TeamRepository extends EntityRepository<Team> {
    */
   private List<EntityReference> getDescendantTeams(Team team) {
     List<EntityReference> descendants = new ArrayList<>();
-    collectDescendantTeams(team.getId(), descendants);
+    collectDescendantTeams(team.getId(), descendants, new HashSet<>());
     return descendants;
   }
 
-  private void collectDescendantTeams(UUID teamId, List<EntityReference> descendants) {
+  private void collectDescendantTeams(
+      UUID teamId, List<EntityReference> descendants, Set<UUID> visited) {
     for (EntityReference child : getChildren(teamId)) {
-      descendants.add(child);
-      collectDescendantTeams(child.getId(), descendants);
+      // Teams form a DAG (a Division/Department may have multiple parents); dedupe by id so a
+      // team reachable through more than one path is listed once, not per path.
+      if (visited.add(child.getId())) {
+        descendants.add(child);
+        collectDescendantTeams(child.getId(), descendants, visited);
+      }
     }
   }
 

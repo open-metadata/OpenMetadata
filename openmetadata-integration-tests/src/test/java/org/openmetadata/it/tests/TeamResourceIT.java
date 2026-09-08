@@ -677,6 +677,50 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_descendantTeams_diamondHierarchyDedupes(TestNamespace ns) {
+    // Teams form a DAG: a Department can have multiple parents. A team reachable through more than
+    // one path (a diamond) must be listed once, not once per path.
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID orgId = client.teams().getByName("Organization").getId();
+
+    Team bu =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-bu"))
+                .withTeamType(TeamType.BUSINESS_UNIT)
+                .withParents(List.of(orgId)));
+    Team div1 =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-div1"))
+                .withTeamType(TeamType.DIVISION)
+                .withParents(List.of(bu.getId())));
+    Team div2 =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-div2"))
+                .withTeamType(TeamType.DIVISION)
+                .withParents(List.of(bu.getId())));
+    Team dept =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("diamond-dept"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(div1.getId(), div2.getId())));
+
+    Team fetchedBu = client.teams().get(bu.getId().toString(), "descendantTeams");
+    assertNotNull(fetchedBu.getDescendantTeams());
+    List<UUID> descendantIds =
+        fetchedBu.getDescendantTeams().stream().map(EntityReference::getId).toList();
+    assertTrue(descendantIds.contains(div1.getId()));
+    assertTrue(descendantIds.contains(div2.getId()));
+    assertEquals(
+        1,
+        descendantIds.stream().filter(id -> id.equals(dept.getId())).count(),
+        "the shared Department must appear exactly once despite two parent paths");
+  }
+
+  @Test
   void test_invalidHierarchy_groupCannotHaveChildren(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
