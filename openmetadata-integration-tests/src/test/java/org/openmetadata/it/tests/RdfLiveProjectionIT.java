@@ -32,8 +32,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -44,6 +47,7 @@ import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
@@ -142,6 +146,49 @@ public class RdfLiveProjectionIT {
             .getAppId());
     GlossaryTestFactory.delete(glossary);
     Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> otherServer.pendingWrites() == 0);
+  }
+
+  @Test
+  void quotedGlossaryTagsProjectWithoutDegradingLiveWrites(final TestNamespace namespace)
+      throws Exception {
+    RdfUpdater.initialize(servingConfig);
+    final var glossary = GlossaryTestFactory.createWithName(namespace, "glossary%.quoted");
+    final var term = GlossaryTermTestFactory.createWithName(namespace, glossary, "term%.quoted");
+    final var service = DatabaseServiceTestFactory.createPostgres(namespace);
+    final var schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+    final var table = TableTestFactory.createSimple(namespace, schema.getFullyQualifiedName());
+    final var tag =
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    final var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/tags/-")
+        .set("value", JsonUtils.valueToTree(tag));
+    SdkClients.adminClient().tables().patch(table.getId(), patch);
+    final var store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
+    assertEquals(RdfProjectionState.READY, status());
+    try (var storage = new JenaFusekiStorage(servingConfig)) {
+      final Model model = storage.getEntity(Entity.TABLE, table.getId());
+      try {
+        assertTrue(
+            model.contains(
+                model.createResource("https://open-metadata.org/entity/table/" + table.getId()),
+                model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
+                model.createResource(
+                    "https://open-metadata.org/entity/glossaryTerm/" + term.getId())));
+      } finally {
+        model.close();
+      }
+    }
+    GlossaryTestFactory.delete(glossary);
+    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
+    assertEquals(RdfProjectionState.READY, status());
   }
 
   @Test
