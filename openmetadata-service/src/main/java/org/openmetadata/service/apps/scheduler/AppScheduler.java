@@ -34,6 +34,7 @@ import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
@@ -122,7 +123,10 @@ public class AppScheduler {
         .addConnectionProvider(
             DATA_SOURCE_NAME,
             new QuartzConnectionProvider(
-                config.getDataSourceFactory().buildSubsystemPool(POOL_NAME, POOL_MAX_SIZE, null)));
+                config
+                    .getDataSourceFactory()
+                    .buildSubsystemPool(
+                        POOL_NAME, POOL_MAX_SIZE, null, PoolWorkload.SHORT_STATEMENTS)));
     this.scheduler = factory.getScheduler();
 
     this.scheduler.setJobFactory(new CustomJobFactory(dao, searchClient));

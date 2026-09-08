@@ -74,6 +74,7 @@ import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -182,7 +183,8 @@ public class WorkflowHandler {
     } else {
       closeMigrationPool();
       migrationPool =
-          dataSourceFactory.buildSubsystemPool(MIGRATION_POOL_NAME, MIGRATION_POOL_MAX_SIZE, null);
+          dataSourceFactory.buildSubsystemPool(
+              MIGRATION_POOL_NAME, MIGRATION_POOL_MAX_SIZE, null, PoolWorkload.LONG_STATEMENTS);
       result = migrationPool;
     }
     return result;
@@ -201,7 +203,8 @@ public class WorkflowHandler {
         dataSourceFactory.buildSubsystemPool(
             RUNTIME_POOL_NAME,
             asyncExecutorMaxPoolSize + RUNTIME_POOL_HEADROOM,
-            mysqlIsolationLevel(databaseType));
+            mysqlIsolationLevel(databaseType),
+            PoolWorkload.LONG_CHECKOUTS);
     return runtimePool;
   }
 

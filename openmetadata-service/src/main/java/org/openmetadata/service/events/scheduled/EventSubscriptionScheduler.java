@@ -51,6 +51,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
@@ -145,7 +146,10 @@ public class EventSubscriptionScheduler {
         .addConnectionProvider(
             DATA_SOURCE_NAME,
             new QuartzConnectionProvider(
-                config.getDataSourceFactory().buildSubsystemPool(POOL_NAME, POOL_MAX_SIZE, null)));
+                config
+                    .getDataSourceFactory()
+                    .buildSubsystemPool(
+                        POOL_NAME, POOL_MAX_SIZE, null, PoolWorkload.SHORT_STATEMENTS)));
     this.alertsScheduler = factory.getScheduler();
 
     DIContainer di = new DIContainer();
