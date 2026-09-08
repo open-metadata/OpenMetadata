@@ -867,13 +867,15 @@ test.describe(
           .locator('textarea')
           .fill('Test definition to validate supported services filtering');
 
+        // Select via keyboard: the react-aria Select popover animates on close,
+        // so a pointer click on the option can race its exit and detach. Typeahead
+        // + Enter selects deterministically without touching the exiting overlay.
         await page.getByTestId('entity-type').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await expect(entityTypeOption).toBeVisible();
-        await entityTypeOption.click();
+        await expect(
+          page.getByRole('option', { name: 'TABLE', exact: true })
+        ).toBeVisible();
+        await page.keyboard.type('TABLE');
+        await page.keyboard.press('Enter');
 
         // Select supported data types (required when OpenMetadata platform is selected)
         await page.getByTestId('supported-data-types').click();
