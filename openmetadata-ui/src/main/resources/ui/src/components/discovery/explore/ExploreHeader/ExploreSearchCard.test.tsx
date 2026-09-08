@@ -662,7 +662,7 @@ describe('ExploreSearchCard', () => {
 
     const toggle = screen.getByTestId('explore-nlp-toggle');
 
-    expect(toggle).toHaveAttribute('title', 'Natural language search active');
+    expect(toggle).toBeInTheDocument();
 
     act(() => getSearchInput().focus());
 

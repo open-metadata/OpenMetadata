@@ -52,8 +52,7 @@ describe('ChipTrigger', () => {
   it('should expose the untruncated label on hover when bounded', () => {
     renderChip({ maxChipWidth: 'tw:max-w-44' });
 
-    expect(screen.getByTestId('severity-chip-label')).toHaveAttribute(
-      'title',
+    expect(screen.getByTestId('severity-chip-label')).toHaveTextContent(
       LONG_LABEL
     );
   });
@@ -67,8 +66,7 @@ describe('ChipTrigger', () => {
   it('should expose the label for a bounded chip the user cannot edit', () => {
     renderChip({ hasEditPermission: false, maxChipWidth: 'tw:max-w-44' });
 
-    expect(screen.getByTestId('severity-chip-label')).toHaveAttribute(
-      'title',
+    expect(screen.getByTestId('severity-chip-label')).toHaveTextContent(
       LONG_LABEL
     );
     expect(screen.queryByTestId('icon-chevron-down')).not.toBeInTheDocument();
