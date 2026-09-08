@@ -1188,12 +1188,15 @@ test.describe('Domains', () => {
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
       });
 
-      // Go straight to /domain — sidebarClick can leave us on the glossary
-      // term page opened by addTagsAndGlossaryToDomain, so selectDomain then
-      // searches the wrong page.
-      await page.goto('/domain');
+      // Navigate straight to the domain detail page. The sidebar + tree
+      // search path leaves us on the glossary term added just above, so
+      // selectDomain runs on the wrong page.
+      const fqn =
+        domain.responseData.fullyQualifiedName ??
+        domain.data.fullyQualifiedName ??
+        domain.data.name;
+      await page.goto(`/domain/${getEncodedFqn(fqn)}`);
       await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, domain.data);
 
       // Verify tag is visible
       await expect(
