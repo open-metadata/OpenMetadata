@@ -21,7 +21,7 @@ import {
   authenticateAdminPage,
   createAdminApiContext,
 } from '../../utils/admin';
-import { descriptionBox } from '../../utils/common';
+import { fillDescriptionBox, getDescriptionBox } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -84,8 +84,8 @@ const createDescriptionTaskViaUI = async (
 
   await selectAssignee(page, assigneeName);
 
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(description);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, description);
 
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
@@ -348,8 +348,8 @@ test.describe('Task Workflow - Table Column Tasks', () => {
 
       await selectAssignee(page, userName);
 
-      await page.locator(descriptionBox).clear();
-      await page.locator(descriptionBox).fill('Column description test');
+      await getDescriptionBox(page).clear();
+      await fillDescriptionBox(page, 'Column description test');
 
       const taskResponse = page.waitForResponse('/api/v1/tasks');
       await page.click('button[type="submit"]');

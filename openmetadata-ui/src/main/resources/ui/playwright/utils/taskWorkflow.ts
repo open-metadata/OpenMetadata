@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { clickOutside, descriptionBox } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  fillDescriptionBox,
+  getDescriptionBox,
+} from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import {
@@ -294,8 +299,8 @@ export const createDescriptionTaskFromForm = async ({
   await selectAssignee(page, assigneeName);
 
   if (description) {
-    await page.locator(descriptionBox).clear();
-    await page.locator(descriptionBox).fill(description);
+    await getDescriptionBox(page).clear();
+    await fillDescriptionBox(page, description);
   }
 
   const taskCreateResponse = waitForTaskCreateResponse(page);

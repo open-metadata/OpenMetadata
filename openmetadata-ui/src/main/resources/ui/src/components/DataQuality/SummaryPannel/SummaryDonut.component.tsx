@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
-import { GREY_200 } from '../../../constants/Color.constants';
+import { useChartColors } from '../../../hooks/useChartColors';
 import { ChartData } from './SummaryPanel.interface';
 
 export interface SummaryDonutProps {
@@ -32,6 +32,7 @@ export const SummaryDonut = ({
   paddingAngle = 0,
   size = 120,
 }: SummaryDonutProps) => {
+  const { emptyFill } = useChartColors();
   const innerRadius = (size * 45) / 120;
   const outerRadius = (size * 60) / 120;
 
@@ -49,7 +50,7 @@ export const SummaryDonut = ({
         paddingAngle={paddingAngle}
         pointerEvents="none"
         startAngle={90}>
-        <Cell fill={GREY_200} />
+        <Cell fill={emptyFill} />
       </Pie>
       <Pie
         cx="50%"
