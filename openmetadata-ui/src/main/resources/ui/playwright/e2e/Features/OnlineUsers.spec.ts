@@ -77,16 +77,16 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify table headers
     await expect(
-      page.getByRole('columnheader', { name: 'Username' })
+      page.getByRole('columnheader').filter({ hasText: 'Username' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Last Activity' })
+      page.getByRole('columnheader').filter({ hasText: 'Last Activity' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Teams' })
+      page.getByRole('columnheader').filter({ hasText: 'Teams' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Roles' })
+      page.getByRole('columnheader').filter({ hasText: 'Roles' })
     ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")

@@ -862,7 +862,7 @@ test.describe('Data Contracts', () => {
         await getResponsePromise;
 
         // Check all schema from 1 to 50, and 10 is the max-pagination chip
-        await expect(page.getByTitle('10')).toBeVisible();
+        await expect(page.getByTestId('page-indicator')).toContainText('10');
 
         for (let i = 1; i <= 50; i++) {
           if (i < 10) {
@@ -877,7 +877,7 @@ test.describe('Data Contracts', () => {
             for (let i = 51; i <= 75; i++) {
               await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
             }
-            await page.getByRole('listitem', { name: 'Next Page' }).click();
+            await page.getByTestId('next').click();
           }
         }
       });
@@ -914,7 +914,7 @@ test.describe('Data Contracts', () => {
 
           // Click "Next Page" after every 5 checks
           if (i % 5 === 0) {
-            await page.getByRole('listitem', { name: 'Next Page' }).click();
+            await page.getByTestId('next').click();
           }
         }
       });
@@ -955,11 +955,11 @@ test.describe('Data Contracts', () => {
 
           // Click "Next Page" after every 5 checks
           if (i % 5 === 0) {
-            await page.getByRole('listitem', { name: 'Next Page' }).click();
+            await page.getByTestId('next').click();
           }
         }
 
-        await page.getByRole('listitem', { name: 'Next Page' }).click();
+        await page.getByTestId('next').click();
 
         for (let i = 1; i <= 5; i++) {
           await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
