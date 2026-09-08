@@ -20,7 +20,10 @@ import pytest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+from metadata.ingestion.source.dashboard.looker.metadata import (
+    DATAMODEL_LINEAGE_SENTINEL,
+    LookerSource,
+)
 from metadata.ingestion.source.dashboard.looker.models import LookMlView
 
 
@@ -94,7 +97,7 @@ def test_project_filter_excludes_lookml_models_and_explores() -> None:
     source._main_lookml_repos = None
     source.service_connection = MagicMock(gitCredentials=None)
 
-    assert list(source.list_datamodels()) == [allowed_explore]
+    assert list(source.list_datamodels()) == [allowed_explore, DATAMODEL_LINEAGE_SENTINEL]
     assert source._all_lookml_models == [allowed_model]
     source.client.lookml_model_explore.assert_called_once_with(
         lookml_model_name="finance",
@@ -105,6 +108,18 @@ def test_project_filter_excludes_lookml_models_and_explores() -> None:
         "Project [secret_project] filtered out.",
     )
     assert source.progress_tracking.registry._global[DashboardDataModel.__name__].total == 1
+
+
+def test_list_datamodels_still_closes_the_stream_when_the_explore_fetch_fails() -> None:
+    """The sentinel is what triggers standalone views and deferred lineage, so it has to
+    survive a failed explore fetch or neither ever runs."""
+    source = object.__new__(LookerSource)
+    source.source_config = MagicMock(includeDataModels=True)
+    source.client = MagicMock()
+    source.client.all_lookml_models.side_effect = RuntimeError("Looker API is down")
+    source.status = MagicMock()
+
+    assert list(source.list_datamodels()) == [DATAMODEL_LINEAGE_SENTINEL]
 
 
 @pytest.mark.parametrize(
@@ -166,13 +181,13 @@ def test_model_liquid_context_selects_source_table_for_standalone_view_lineage()
     source._parsed_views = {}
     source._lookml_constants_map = {}
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
+    # `_yield_bulk_datamodel_lineage` resolves this after the Barrier flush; the
+    # standalone path only reads it.
     view_data_model = SimpleNamespace(name="finance_reports_table_details_view")
+    source._view_data_model = view_data_model
     lineage_request = MagicMock()
 
-    with (
-        patch.object(source, "_build_data_model", return_value=view_data_model),
-        _stubbed_db_services(source, lineage_request) as build_lineage_request,
-    ):
+    with _stubbed_db_services(source, lineage_request) as build_lineage_request:
         assert list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports")) == [
             lineage_request
         ]
@@ -183,3 +198,19 @@ def test_model_liquid_context_selects_source_table_for_standalone_view_lineage()
         to_entity=view_data_model,
         column_lineage=[],
     )
+
+
+def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -> None:
+    """An unresolved data model means there is nothing to point lineage at, so the view
+    is skipped rather than yielding a request with a null target."""
+    source = object.__new__(LookerSource)
+    source._views_cache = {}
+    source._parsed_views = {}
+    source._lookml_constants_map = {}
+    source._view_data_model = None
+    view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
+
+    with _stubbed_db_services(source, MagicMock()) as build_lineage_request:
+        assert list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports")) == []
+
+    build_lineage_request.assert_not_called()
