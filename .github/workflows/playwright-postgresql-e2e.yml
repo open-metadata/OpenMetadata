@@ -126,12 +126,16 @@ jobs:
       # protect against on a manual run). Nightlies pass their own explicit
       # `retries: 2` in their own callers and are unaffected.
       #
-      # Strings, not raw numbers, in the ternary: GH Actions' `X && Y || Z`
-      # short-circuits when `Y` is falsy (`0`), so `pull_request && 0 || 1`
-      # would resolve to `1` and defeat the whole change. `'0'` is a
-      # non-empty string, so it is truthy in the expression and coerces to
-      # numeric 0 when the reusable reads it as `type: number`.
-      retries: ${{ github.event_name == 'merge_group' && '1' || contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && '0' || '1' }}
+      # Numeric expression + inverted ternary. Earlier version used the
+      # string form `'0' / '1'` to work around GH Actions' `X && Y || Z`
+      # short-circuit on falsy `0`, but passing a string to the reusable's
+      # `type: number` input silently prevented the reusable-call job from
+      # scheduling on `pull_request` runs (verified on PR #32833 run
+      # 34104637012: no `playwright / *` jobs, only playwright-summary).
+      # Invert the predicate so `0` is always the ELSE branch, never the
+      # middle — no short-circuit trap, and the value is a real integer
+      # that `type: number` accepts unambiguously.
+      retries: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && 1 || 0 }}
 
   playwright-summary:
     name: >-
