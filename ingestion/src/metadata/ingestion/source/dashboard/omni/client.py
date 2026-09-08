@@ -38,7 +38,9 @@ from metadata.ingestion.source.dashboard.omni.models import (
     OmniModel,
     OmniQuery,
     OmniTopic,
+    OmniUser,
     QueryPresentation,
+    UsersResponse,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
@@ -47,6 +49,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 PAGE_SIZE = 100
+# The user directory is only exposed over SCIM, which is mounted next to the
+# versioned REST API rather than under it.
+SCIM_API_VERSION = "scim/v2"
+SCIM_PAGE_SIZE = 100
 # Only the shared semantic-layer model(s) carry the real views/topics. The other
 # model kinds (QUERY, WORKBOOK, BRANCH, SCHEMA) are per-document and would explode
 # the number of API calls against the 60 req/min rate limit.
@@ -59,10 +65,24 @@ _TABLE_KEYS = ("sql_table_name", "table_name", "table", "sql_table")
 _SCHEMA_KEYS = ("schema", "schema_name")
 
 
+def canonical_ref(ref: str) -> str:
+    """
+    Canonicalize an Omni object reference so every spelling compares equal.
+
+    Omni qualifies a reference with ``.``, ``/`` or ``__`` and always spells the
+    schema part in lower case (``revenues__all_revenues``), while the model YAML
+    paths carry the warehouse's own casing (``REVENUES/all_revenues.view``). A
+    single underscore is a valid identifier character, so only the double
+    underscore is treated as a separator.
+    """
+    return ref.replace("__", ".").replace("/", ".").casefold()
+
+
 class OmniApiClient:
     """REST client wrapper for the Omni API."""
 
     client: TrackedREST
+    scim_client: TrackedREST
 
     def __init__(self, config: OmniConnection, verify_ssl: bool | str | None = None):
         self.config = config
@@ -73,10 +93,14 @@ class OmniApiClient:
         base_url = clean_uri(str(config.hostPort)).rstrip("/")
         base_url = re.sub(r"/api(/v\d+)?$", "", base_url)
         base_url = f"{base_url}/api"
-        client_config = ClientConfig(
+        self.client = TrackedREST(self._client_config(base_url, "v1", verify_ssl), source_name="omni")
+        self.scim_client = TrackedREST(self._client_config(base_url, SCIM_API_VERSION, verify_ssl), source_name="omni")
+
+    def _client_config(self, base_url: str, api_version: str, verify_ssl: bool | str | None) -> ClientConfig:
+        return ClientConfig(
             base_url=base_url,
-            api_version="v1",
-            auth_token=lambda: (config.token.get_secret_value(), 0),
+            api_version=api_version,
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
             auth_header=AUTHORIZATION_HEADER,
             auth_token_mode="Bearer",
             extra_headers={"Content-Type": "application/json"},
@@ -87,13 +111,13 @@ class OmniApiClient:
             retry_codes=[429, 500, 502, 503],
             limit_codes=[],
         )
-        self.client = TrackedREST(client_config, source_name="omni")
 
     def close(self) -> None:
-        """Close the underlying HTTP session, if the REST client exposes one."""
-        close_fn = getattr(self.client, "close", None)
-        if callable(close_fn):
-            close_fn()
+        """Close the underlying HTTP sessions, if the REST clients expose one."""
+        for client in (self.client, self.scim_client):
+            close_fn = getattr(client, "close", None)
+            if callable(close_fn):
+                close_fn()
 
     # -- pagination ---------------------------------------------------------
 
@@ -248,22 +272,24 @@ class OmniApiClient:
                 leaf = base[: -len(".view")]
                 parsed = cls._parse_view(content)
                 view_records.append((leaf, parsed))
-                # Full and dotted-qualified keys are unique; the bare leaf is only
-                # keyed while unambiguous. If two view files share a leaf, drop the
-                # bare key so a bare reference misses (skipping lineage) instead of
-                # resolving to the wrong physical view.
-                view_lookup[full] = parsed
-                view_lookup[full.replace("/", ".")] = parsed
-                if leaf in leaf_seen:
-                    view_lookup.pop(leaf, None)
+                # Keys are canonicalized so a reference resolves regardless of the
+                # separator or the casing the model YAML path happens to use. The
+                # qualified key is unique; the bare leaf is only keyed while
+                # unambiguous. If two view files share a leaf, drop the bare key so
+                # a bare reference misses (skipping lineage) instead of resolving to
+                # the wrong physical view.
+                leaf_key = canonical_ref(leaf)
+                view_lookup[canonical_ref(full)] = parsed
+                if leaf_key in leaf_seen:
+                    view_lookup.pop(leaf_key, None)
                     logger.debug(
                         "View leaf %r is ambiguous in model %s; a qualified reference is required",
                         leaf,
                         model.id,
                     )
                 else:
-                    leaf_seen.add(leaf)
-                    view_lookup[leaf] = parsed
+                    leaf_seen.add(leaf_key)
+                    view_lookup.setdefault(leaf_key, parsed)
             elif filename.endswith(".topic"):
                 topic_defs[base[: -len(".topic")]] = content
 
@@ -279,13 +305,10 @@ class OmniApiClient:
                 continue
             seen_names.add(topic_name)
             base_view = cls._first(topic_def, _BASE_VIEW_KEYS) or topic_name
-            # ``base_view`` may be bare or schema-qualified with ``.``, ``/`` or
-            # ``__`` (per Omni's data-lineage docs); try the raw value and a
-            # separator-normalized form. We never strip a qualifier down to a bare
-            # leaf, so a qualified reference cannot bind to an unrelated view -- it
-            # is left unresolved instead. (A single underscore is a valid
-            # identifier character, so only ``__`` is treated as a separator.)
-            view = view_lookup.get(base_view) or view_lookup.get(base_view.replace("__", ".").replace("/", ".")) or {}
+            # We never strip a qualifier down to a bare leaf, so a qualified
+            # reference cannot bind to an unrelated view -- it is left unresolved
+            # instead.
+            view = view_lookup.get(canonical_ref(base_view)) or {}
             topics.append(
                 OmniTopic(
                     model_id=model.id,
@@ -323,6 +346,29 @@ class OmniApiClient:
                 )
             )
         return topics
+
+    # -- users --------------------------------------------------------------
+
+    def get_users(self) -> list[OmniUser]:
+        """List the instance's users over SCIM, following its index pagination."""
+        users: list[OmniUser] = []
+        start_index = 1
+        try:
+            while True:
+                payload = self.scim_client.get("/Users", data={"startIndex": start_index, "count": SCIM_PAGE_SIZE})
+                if payload is None:
+                    break
+                result = UsersResponse.model_validate(payload)
+                page = result.Resources or []
+                users.extend(page)
+                total = result.totalResults or 0
+                start_index += result.itemsPerPage or len(page) or SCIM_PAGE_SIZE
+                if not page or start_index > total:
+                    break
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning("Error fetching Omni users: %s", exc)
+        return users
 
     # -- documents / dashboards --------------------------------------------
 

@@ -29,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -47,7 +48,9 @@ from metadata.ingestion.source.dashboard.omni.models import (
     OmniOwner,
     OmniQuery,
     OmniTopic,
+    OmniUser,
     QueryPresentation,
+    ScimEmail,
 )
 
 MOCK_CONFIG = {
@@ -109,7 +112,7 @@ MOCK_DOCUMENT = OmniDocument(
     name="Sales Overview",
     description="Monthly sales",
     type="document",
-    owner=OmniOwner(id="u1", name="Jane", email="jane@acme.co"),
+    owner=OmniOwner(id="owner-1", name="Jane Doe"),
     hasDashboard=True,
     url="https://acme.omniapp.co/dashboards/doc-1",
     deleted=False,
@@ -117,6 +120,19 @@ MOCK_DOCUMENT = OmniDocument(
 
 MOCK_ARCHIVED_DOCUMENT = OmniDocument(identifier="doc-2", name="Old", hasDashboard=True, deleted=True)
 MOCK_WORKBOOK_ONLY = OmniDocument(identifier="doc-3", name="Workbook", hasDashboard=False)
+
+MOCK_USERS = [
+    OmniUser(
+        id="scim-1",
+        displayName="Jane Doe",
+        userName="jane.doe@acme.co",
+        emails=[
+            ScimEmail(value="jane.old@acme.co", primary=False),
+            ScimEmail(value="jane.doe@acme.co", primary=True),
+        ],
+    ),
+    OmniUser(id="scim-2", displayName="John Roe", userName="john.roe@acme.co", emails=[]),
+]
 
 MOCK_DASHBOARD_DOC = OmniDashboardDocument(
     identifier="doc-1",
@@ -143,7 +159,7 @@ def omni_source():
             MOCK_CONFIG["source"],
             OpenMetadata(config.workflowConfig.openMetadataServerConfig),
         )
-    source.client = SimpleNamespace()
+    source.client = SimpleNamespace(get_users=lambda *_: [])
     source.context.get().__dict__["dashboard_service"] = "mock_omni"
     return source
 
@@ -179,7 +195,7 @@ def test_resolve_topic_skips_ambiguous_cross_model(omni_source):
     # Two models expose a view with the same name -> must not misroute lineage.
     t1 = MOCK_TOPIC.model_copy(update={"model_id": "m1", "model_name": "a"})
     t2 = MOCK_TOPIC.model_copy(update={"model_id": "m2", "model_name": "b"})
-    omni_source._topic_index = {"orders": [t1, t2]}
+    omni_source._topic_name_index = {"orders": [t1, t2]}
     assert omni_source._resolve_topic("orders") is None
 
 
@@ -255,7 +271,7 @@ def test_yield_dashboard_chart(omni_source):
 def test_yield_dashboard_lineage_details(omni_source):
     """table -> data model (bulk) and dashboard <- data model (per tile)."""
     omni_source.topics = [MOCK_TOPIC]
-    omni_source._topic_index = {"orders": [MOCK_TOPIC]}
+    omni_source._topic_name_index = {"orders": [MOCK_TOPIC]}
 
     datamodel_entity = DashboardDataModel(
         id="550e8400-e29b-41d4-a716-446655440010",
@@ -438,3 +454,259 @@ def test_list_datamodels_respects_include_flag(omni_source):
 
     omni_source.source_config.includeDataModels = False
     assert list(omni_source.list_datamodels()) == []
+
+
+def test_parse_model_yaml_base_view_handle_is_case_insensitive():
+    """Omni spells a base_view handle in lower case (``revenues__all_revenues``)
+    while the model YAML path keeps the warehouse casing (``REVENUES/...``)."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "REVENUES/all_revenues.view": "schema: REVENUES\ntable_name: ALL_REVENUES\ndimensions:\n  amount:\n    label: Amount\n",
+        "Company North Star/revenue.topic": "base_view: revenues__all_revenues\nlabel: Revenue\n",
+    }
+    result = OmniApiClient._parse_model_yaml(OmniModel(id="m1", name="sales"), files)
+    topic = next(t for t in result if t.name == "revenue")
+    assert topic.base_schema == "REVENUES"
+    assert topic.base_table == "ALL_REVENUES"
+    assert [f.name for f in topic.fields] == ["amount"]
+
+
+def test_resolve_topic_is_case_insensitive(omni_source):
+    """A tile reference must resolve regardless of the casing of the schema part."""
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [MOCK_TOPIC]  # base_schema=ANALYTICS
+    omni_source.prepare()
+    assert omni_source._resolve_topic("analytics__orders").base_table == "ORDERS"
+    assert omni_source._resolve_topic("Analytics.Orders").base_table == "ORDERS"
+    assert omni_source._resolve_topic("ORDERS").base_table == "ORDERS"
+
+
+def test_resolve_topic_prefers_the_data_model_named_by_the_reference(omni_source):
+    """A curated topic and the view it sits on are both ingested as data models, so
+    a reference naming that view belongs to the view -- not ambiguous between them."""
+    view = OmniTopic(
+        model_id="m1",
+        model_name="sales",
+        name="clients__fact_lifecycle",
+        base_view="clients__fact_lifecycle",
+        base_schema="CLIENTS",
+        base_table="FACT_LIFECYCLE",
+    )
+    topic = OmniTopic(
+        model_id="m1",
+        model_name="sales",
+        name="Post-Acquisition Lifecycle",
+        base_view="clients__fact_lifecycle",
+        base_schema="CLIENTS",
+        base_table="FACT_LIFECYCLE",
+    )
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [topic, view]
+    omni_source.prepare()
+
+    resolved = omni_source._resolve_topic("clients__fact_lifecycle")
+    assert resolved is not None
+    assert resolved.name == "clients__fact_lifecycle"
+    assert omni_source._resolve_topic("Post-Acquisition Lifecycle").name == "Post-Acquisition Lifecycle"
+
+
+def test_get_owner_ref_resolves_via_user_directory(omni_source):
+    """The documents API carries no owner email, so the owner is matched on the
+    display name it does carry against the SCIM user directory."""
+    omni_source.client.get_models = lambda *_: []
+    omni_source.client.get_model_topics = lambda *_: []
+    omni_source.client.get_users = lambda *_: MOCK_USERS
+    omni_source.prepare()
+
+    reference = EntityReferenceList(root=[EntityReference(id="550e8400-e29b-41d4-a716-446655440020", type="user")])
+    omni_source.metadata.get_reference_by_email = MagicMock(return_value=reference)
+
+    assert omni_source.get_owner_ref(MOCK_DASHBOARD_DETAILS) is reference
+    omni_source.metadata.get_reference_by_email.assert_called_once_with("jane.doe@acme.co")
+
+    # A second lookup for the same owner is served from cache.
+    omni_source.get_owner_ref(MOCK_DASHBOARD_DETAILS)
+    assert omni_source.metadata.get_reference_by_email.call_count == 1
+
+
+def test_get_owner_ref_ignores_display_name_shared_by_several_users(omni_source):
+    """Two users with the same display name cannot be told apart, so neither is used."""
+    omni_source.client.get_models = lambda *_: []
+    omni_source.client.get_model_topics = lambda *_: []
+    omni_source.client.get_users = lambda *_: [
+        OmniUser(id="a", displayName="Jane Doe", emails=[ScimEmail(value="jane1@acme.co", primary=True)]),
+        OmniUser(id="b", displayName="Jane Doe", emails=[ScimEmail(value="jane2@acme.co", primary=True)]),
+    ]
+    omni_source.prepare()
+    omni_source.metadata.get_reference_by_email = MagicMock()
+
+    assert omni_source.get_owner_ref(MOCK_DASHBOARD_DETAILS) is None
+    omni_source.metadata.get_reference_by_email.assert_not_called()
+
+
+def test_get_owner_ref_skipped_when_include_owners_disabled(omni_source):
+    omni_source.source_config.includeOwners = False
+    omni_source.client.get_models = lambda *_: []
+    omni_source.client.get_model_topics = lambda *_: []
+    omni_source.client.get_users = MagicMock(return_value=MOCK_USERS)
+    omni_source.prepare()
+
+    omni_source.client.get_users.assert_not_called()
+    assert omni_source.get_owner_ref(MOCK_DASHBOARD_DETAILS) is None
+
+
+def test_yield_dashboard_chart_inherits_the_document_owner(omni_source):
+    omni_source.client.get_models = lambda *_: []
+    omni_source.client.get_model_topics = lambda *_: []
+    omni_source.client.get_users = lambda *_: MOCK_USERS
+    omni_source.prepare()
+
+    reference = EntityReferenceList(root=[EntityReference(id="550e8400-e29b-41d4-a716-446655440021", type="user")])
+    omni_source.metadata.get_reference_by_email = MagicMock(return_value=reference)
+
+    charts = _rights(omni_source.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
+    assert len(charts) == 2
+    assert all(c.owners is reference for c in charts)
+
+
+def test_get_users_follows_scim_index_pagination():
+    """SCIM pages by startIndex/itemsPerPage rather than a cursor."""
+    from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
+        OmniConnection as OmniConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    client = OmniApiClient(OmniConnectionConfig(hostPort="https://acme.omniapp.co", token="t"))
+    pages = [
+        {
+            "Resources": [{"id": "1", "displayName": "A", "emails": [{"value": "a@acme.co", "primary": True}]}],
+            "totalResults": 2,
+            "itemsPerPage": 1,
+            "startIndex": 1,
+        },
+        {
+            "Resources": [{"id": "2", "displayName": "B", "emails": [{"value": "b@acme.co", "primary": True}]}],
+            "totalResults": 2,
+            "itemsPerPage": 1,
+            "startIndex": 2,
+        },
+    ]
+    client.scim_client = MagicMock()
+    client.scim_client.get.side_effect = pages
+
+    users = client.get_users()
+    assert [u.id for u in users] == ["1", "2"]
+    assert [u.primary_email for u in users] == ["a@acme.co", "b@acme.co"]
+    assert client.scim_client.get.call_args_list[0].kwargs["data"]["startIndex"] == 1
+    assert client.scim_client.get.call_args_list[1].kwargs["data"]["startIndex"] == 2
+
+
+def test_get_users_uses_the_scim_mount_point():
+    """SCIM sits next to the versioned API, not under it."""
+    from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
+        OmniConnection as OmniConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    client = OmniApiClient(OmniConnectionConfig(hostPort="https://acme.omniapp.co", token="t"))
+    assert client.client._api_version == "v1"
+    assert client.scim_client._api_version == "scim/v2"
+    assert client.scim_client._base_url.rstrip("/") == "https://acme.omniapp.co/api"
+
+
+def test_primary_email_falls_back_to_username():
+    assert OmniUser(id="x", displayName="X", userName="x@acme.co").primary_email == "x@acme.co"
+    assert (
+        OmniUser(id="x", displayName="X", userName="x@acme.co", emails=[ScimEmail(value="y@acme.co")]).primary_email
+        == "y@acme.co"
+    )
+
+
+def test_tile_topics_reads_field_references_as_well_as_the_table(omni_source):
+    """A tile's query.table may name a workbook-local query view absent from the
+    shared model, while its field references still name real views."""
+    accounts = OmniTopic(
+        model_id="m1",
+        model_name="sales",
+        name="clients__accounts",
+        base_view="clients__accounts",
+        base_schema="CLIENTS",
+        base_table="ACCOUNTS",
+    )
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [MOCK_TOPIC, accounts]
+    omni_source.prepare()
+
+    tile = QueryPresentation(
+        name="Transactions",
+        query=OmniQuery(
+            table="monthly_active_customers",
+            fields=[
+                "clients__accounts.legal_country",
+                "clients__accounts.count",
+                "monthly_active_customers.total",
+                "omni_period_pivot",
+                "calc_1",
+            ],
+        ),
+    )
+    # The unresolvable table is skipped; the field prefix resolves, once, to its view.
+    assert [t.name for t in omni_source._tile_topics(tile)] == ["clients__accounts"]
+
+    # A resolvable table is still returned, and is not duplicated by its own fields.
+    tile = QueryPresentation(
+        name="Orders", query=OmniQuery(table="orders", fields=["orders.total", "ANALYTICS__orders.country"])
+    )
+    assert [t.name for t in omni_source._tile_topics(tile)] == ["orders"]
+
+
+def test_tile_topics_handles_a_tile_without_a_query(omni_source):
+    assert list(omni_source._tile_topics(QueryPresentation(name="Text tile"))) == []
+
+
+def test_yield_dashboard_lineage_details_uses_field_references(omni_source):
+    """A dashboard whose tiles only reference views through fields still gets edges."""
+    accounts = OmniTopic(
+        model_id="m1",
+        model_name="sales",
+        name="clients__accounts",
+        base_view="clients__accounts",
+        base_schema="CLIENTS",
+        base_table="ACCOUNTS",
+    )
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [accounts]
+    omni_source.prepare()
+
+    document = MOCK_DOCUMENT.model_copy()
+    dashboard_doc = OmniDashboardDocument(
+        identifier="doc-1",
+        queryPresentations=[
+            QueryPresentation(
+                name="Tile",
+                query=OmniQuery(table="workbook_only_view", fields=["clients__accounts.legal_country"]),
+            )
+        ],
+    )
+    details = OmniDashboardDetails(document=document, dashboard=dashboard_doc)
+
+    datamodel_entity = DashboardDataModel(
+        id="550e8400-e29b-41d4-a716-446655440030",
+        name="sales.clients__accounts",
+        dataModelType="OmniDataModel",
+        columns=[],
+    )
+    dashboard_entity = Dashboard(
+        id="550e8400-e29b-41d4-a716-446655440031",
+        name="doc-1",
+        service=EntityReference(id="550e8400-e29b-41d4-a716-446655440032", type="dashboardService"),
+    )
+    omni_source._get_datamodel_entity = lambda topic: datamodel_entity
+    omni_source.metadata.get_by_name = MagicMock(return_value=dashboard_entity)
+
+    edges = [
+        r for r in _rights(omni_source.yield_dashboard_lineage_details(details)) if isinstance(r, AddLineageRequest)
+    ]
+    assert len(edges) == 1
+    assert (edges[0].edge.fromEntity.type, edges[0].edge.toEntity.type) == ("dashboardDataModel", "dashboard")
