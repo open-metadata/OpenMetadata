@@ -24,6 +24,10 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
 
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ emptyFill: '#123456' }),
+}));
+
 const MOCK_START_TS = 1703980800000;
 const MOCK_END_TS = 1704067200000;
 const UPDATED_START_TS = 1703894400000;

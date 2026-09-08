@@ -45,6 +45,7 @@ import {
   getListValue,
   getRuleCopy,
   getRuleItems,
+  getRuleSectionFlags,
   getRulesWithAddedRule,
   getRulesWithEffect,
   getRulesWithName,
@@ -469,12 +470,13 @@ const AlertAiRuleSection = ({
     [selectedRules, supportedRules]
   );
 
-  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
-  const canAddRule =
-    Boolean(supportedRules?.length) && selectedRules.length < maxRules;
-  const isAddDisabled = isEmpty(selectedSource);
-  const showAddButton =
-    !isViewOnly && (field === 'filters' || selectedRules.length === 0);
+  const { canAddRule, isAddDisabled, showAddButton } = getRuleSectionFlags({
+    field,
+    isViewOnly,
+    selectedRules,
+    selectedSource,
+    supportedRules,
+  });
 
   /** Updates the selected rule and rebuilds its argument placeholders. */
   const setRuleName = (index: number, key: Key | null) => {

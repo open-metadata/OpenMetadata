@@ -13,9 +13,10 @@
 
 import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
+import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Node } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import SectionWithEdit from '../../../components/common/SectionWithEdit/SectionWithEdit';
@@ -24,7 +25,11 @@ import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
-import { Source } from '../../../generated/type/entityLineage';
+import {
+  EntityReference as LineagePipelineReference,
+  LineageDetails,
+  Source,
+} from '../../../generated/type/entityLineage';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getLineageDetailsObject } from '../../../utils/EntityLineageEdgeUtils';
 import { getColumnFunctionValue } from '../../../utils/EntityLineagePureUtils';
@@ -59,6 +64,124 @@ const getUserTimeValue = (user?: string, timestamp?: number) => {
   const valueParts = [user, getRelativeTime(timestamp)].filter(Boolean);
 
   return valueParts.length > 0 ? valueParts.join(' ') : NO_DATA_PLACEHOLDER;
+};
+
+type OverviewDataItem = {
+  name: string;
+  value?: unknown;
+  url?: string;
+  isLink?: boolean;
+  visible?: string[];
+};
+
+const getSourceOverviewItem = (
+  sourceData: Node | undefined,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  if (!sourceData) {
+    return undefined;
+  }
+  const {
+    entityType: sourceEntityType = '',
+    fullyQualifiedName: sourceFqn = '',
+  } = sourceData?.data?.node ?? {};
+
+  return {
+    name: t('label.source'),
+    value: getEntityName(sourceData?.data?.node),
+    url: entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
+    isLink: true,
+  };
+};
+
+const getTargetOverviewItem = (
+  targetData: Node | undefined,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  if (!targetData) {
+    return undefined;
+  }
+  const {
+    entityType: targetEntityType = '',
+    fullyQualifiedName: targetFqn = '',
+  } = targetData?.data?.node ?? {};
+
+  return {
+    name: t('label.target'),
+    value: getEntityName(targetData?.data?.node),
+    url: entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
+    isLink: true,
+  };
+};
+
+const getHandleOverviewItem = (
+  handle: string | null | undefined,
+  labelKey: string,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  handle ? { name: t(labelKey), value: getNameFromFQN(handle) } : undefined;
+
+const getPipelineOverviewItem = (
+  pipeline: LineagePipelineReference | undefined,
+  pipelineEntityType: string | undefined,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  if (!pipeline) {
+    return undefined;
+  }
+
+  return {
+    name: t('label.edge'),
+    value: getEntityName(pipeline),
+    url: entityUtilClassBase.getEntityLink(
+      pipelineEntityType as string,
+      pipeline.fullyQualifiedName as string
+    ),
+    isLink: true,
+  };
+};
+
+const getCreatedByOverviewItem = (
+  edgeInfo: LineageDetails | undefined,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  edgeInfo?.createdBy || edgeInfo?.createdAt
+    ? {
+        name: t('label.created-by'),
+        value: getUserTimeValue(edgeInfo?.createdBy, edgeInfo?.createdAt),
+      }
+    : undefined;
+
+const getUpdatedByOverviewItem = (
+  edgeInfo: LineageDetails | undefined,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  edgeInfo?.updatedBy || edgeInfo?.updatedAt
+    ? {
+        name: t('label.updated-by'),
+        value: getUserTimeValue(edgeInfo?.updatedBy, edgeInfo?.updatedAt),
+      }
+    : undefined;
+
+const buildEdgeOverviewData = (
+  edge: Edge,
+  sourceData: Node | undefined,
+  targetData: Node | undefined,
+  t: TFunction
+): OverviewDataItem[] => {
+  const { sourceHandle, targetHandle, data } = edge;
+  const edgeInfo: LineageDetails | undefined = data?.edge;
+  const { pipeline, pipelineEntityType } = edgeInfo ?? {};
+
+  return [
+    getSourceOverviewItem(sourceData, t),
+    getHandleOverviewItem(sourceHandle, 'label.source-column', t),
+    getTargetOverviewItem(targetData, t),
+    getHandleOverviewItem(targetHandle, 'label.target-column', t),
+    getPipelineOverviewItem(pipeline, pipelineEntityType, t),
+    getCreatedByOverviewItem(edgeInfo, t),
+    getUpdatedByOverviewItem(edgeInfo, t),
+  ].filter((item): item is OverviewDataItem => Boolean(item));
 };
 
 const EdgeInfoDrawer = ({
@@ -265,9 +388,7 @@ const EdgeInfoDrawer = ({
   ]);
 
   const getEdgeInfo = () => {
-    const { source, target, data } = edge;
-    const { sourceHandle, targetHandle } = edge;
-    const { pipeline, pipelineEntityType } = data?.edge ?? {};
+    const { source, target } = edge;
 
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
@@ -278,77 +399,7 @@ const EdgeInfoDrawer = ({
       }
     });
 
-    const {
-      entityType: sourceEntityType = '',
-      fullyQualifiedName: sourceFqn = '',
-    } = sourceData?.data?.node ?? {};
-
-    const {
-      entityType: targetEntityType = '',
-      fullyQualifiedName: targetFqn = '',
-    } = targetData?.data?.node ?? {};
-
-    const overviewData = [];
-
-    if (sourceData) {
-      overviewData.push({
-        name: t('label.source'),
-        value: getEntityName(sourceData?.data?.node),
-        url: entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
-        isLink: true,
-      });
-    }
-
-    if (sourceHandle) {
-      overviewData.push({
-        name: t('label.source-column'),
-        value: getNameFromFQN(sourceHandle),
-      });
-    }
-
-    if (targetData) {
-      overviewData.push({
-        name: t('label.target'),
-        value: getEntityName(targetData?.data?.node),
-        url: entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
-        isLink: true,
-      });
-    }
-
-    if (targetHandle) {
-      overviewData.push({
-        name: t('label.target-column'),
-        value: getNameFromFQN(targetHandle),
-      });
-    }
-
-    if (pipeline) {
-      overviewData.push({
-        name: t('label.edge'),
-        value: getEntityName(pipeline),
-        url: entityUtilClassBase.getEntityLink(
-          pipelineEntityType,
-          pipeline.fullyQualifiedName
-        ),
-        isLink: true,
-      });
-    }
-
-    const edgeInfo = data?.edge;
-    if (edgeInfo?.createdBy || edgeInfo?.createdAt) {
-      overviewData.push({
-        name: t('label.created-by'),
-        value: getUserTimeValue(edgeInfo?.createdBy, edgeInfo?.createdAt),
-      });
-    }
-    if (edgeInfo?.updatedBy || edgeInfo?.updatedAt) {
-      overviewData.push({
-        name: t('label.updated-by'),
-        value: getUserTimeValue(edgeInfo?.updatedBy, edgeInfo?.updatedAt),
-      });
-    }
-
-    setEdgeData(overviewData);
+    setEdgeData(buildEdgeOverviewData(edge, sourceData, targetData, t));
     setIsLoading(false);
   };
 

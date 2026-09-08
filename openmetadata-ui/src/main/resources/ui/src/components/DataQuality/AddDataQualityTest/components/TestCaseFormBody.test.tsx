@@ -91,10 +91,10 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 jest.mock(
-  '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1',
+  '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
     jest.fn().mockImplementation(({ onChange }) => (
-      <div data-testid="schedule-interval-v1">
+      <div data-testid="schedule-interval">
         <button
           data-testid="schedule-change-btn"
           onClick={() => onChange?.('0 0 * * *')}>
@@ -575,9 +575,7 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('schedule-interval-v1')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('schedule-interval')).toBeInTheDocument();
     expect(await screen.findByTestId('enable-debug-log')).toBeInTheDocument();
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
   });

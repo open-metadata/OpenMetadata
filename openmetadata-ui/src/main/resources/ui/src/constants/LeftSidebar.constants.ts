@@ -15,6 +15,7 @@ import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ColumnBulkIcon } from '../assets/svg/entity/column.svg';
@@ -60,6 +61,7 @@ export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
+  [ROUTES.CONTEXT_CENTER_AI_CONTEXT]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
 };
 
@@ -231,6 +233,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.CONTEXT_CENTER_OVERVIEW,
         icon: DashboardIcon,
         dataTestId: `app-bar-item-${SidebarItem.OVERVIEW}`,
+      },
+      {
+        key: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        title: 'label.ai-context',
+        redirect_url: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
+        icon: PersonaIcon,
+        dataTestId: `app-bar-item-${SidebarItem.AI_CONTEXT}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,

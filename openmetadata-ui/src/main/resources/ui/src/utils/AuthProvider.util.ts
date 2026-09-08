@@ -36,6 +36,8 @@ import { oidcTokenStorage } from './OidcTokenStorage';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
+const OIDC_SCOPE = 'openid email profile';
+
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
@@ -115,7 +117,7 @@ export const getCandidateUserManagerConfig = (
     client_id: clientId,
     redirect_uri: getRedirectUri(callbackUrl),
     response_type: responseType ?? 'id_token',
-    scope: scope || 'openid email profile',
+    scope: scope || OIDC_SCOPE,
     loadUserInfo: false,
     userStore: testStore,
     stateStore: testStore,
@@ -161,7 +163,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         providerName,
-        scope: 'openid email profile',
+        scope: OIDC_SCOPE,
         responseType,
         clientType,
         enableSelfSignup,
@@ -175,7 +177,7 @@ export const getAuthConfig = (
         clientId,
         callbackUrl: redirectUri,
         provider,
-        scope: 'openid email profile',
+        scope: OIDC_SCOPE,
         responseType,
         clientType,
         enableSelfSignup,
@@ -200,7 +202,7 @@ export const getAuthConfig = (
         clientId,
         callbackUrl: redirectUri,
         provider,
-        scope: 'openid email profile',
+        scope: OIDC_SCOPE,
         responseType,
         clientType,
         enableSelfSignup,
