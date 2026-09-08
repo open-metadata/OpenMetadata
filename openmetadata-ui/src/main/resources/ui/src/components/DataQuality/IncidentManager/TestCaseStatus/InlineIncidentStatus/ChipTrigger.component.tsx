@@ -116,8 +116,14 @@ export const ChipTrigger = ({
         {/* Truncation is visual only — the full label stays in the DOM for the
             button's accessible name, and the Tooltip surfaces it on hover. Both are
             gated on the bound: an unbounded chip cannot clip, so a tooltip there
-            would only repeat text the user can already read. */}
-        <Tooltip isDisabled={!isBounded} title={chipLabel}>
+            would only repeat text the user can already read.
+            excludeTriggerFromTabOrder: ChipTrigger is already inside a <Button>;
+            wrapping <span> in AriaButton (the default) would produce nested buttons
+            (invalid HTML). A plain span wrapper keeps hover tooltips working. */}
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!isBounded}
+          title={chipLabel}>
           <span
             className={isBounded ? 'tw:min-w-0 tw:truncate' : undefined}
             data-testid={`${dataTestId}-label`}>
