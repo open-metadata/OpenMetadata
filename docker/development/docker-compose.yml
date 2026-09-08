@@ -47,7 +47,7 @@ services:
     container_name: openmetadata_elasticsearch
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1024m -Xmx1024m}
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms2048m -Xmx2048m}
       - xpack.security.enabled=false
     networks:
       - local_app_net
