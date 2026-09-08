@@ -95,6 +95,7 @@ jest.mock(
   })
 );
 const mockBannerComponent = () => <div>BannerComponent</div>;
+const mockAdditionalComponent = () => <div>DataDiffResults</div>;
 jest.mock('./TestCaseResultTabClassBase', () => ({
   getAdditionalComponents: jest.fn().mockReturnValue([]),
   getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
@@ -681,6 +682,44 @@ describe('TestCaseResultTab', () => {
 
       expect(
         chart.compareDocumentPosition(description) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+  });
+
+  // Collate mounts extra components into the main column through
+  // `getAdditionalComponents`. The reflow must not drop that seam.
+  describe('class base extension components', () => {
+    const classBase = jest.requireMock('./TestCaseResultTabClassBase') as {
+      getAdditionalComponents: jest.Mock;
+    };
+
+    afterEach(() => {
+      classBase.getAdditionalComponents.mockReturnValue([]);
+    });
+
+    it('mounts components supplied by getAdditionalComponents', async () => {
+      classBase.getAdditionalComponents.mockReturnValue([
+        { id: 'collate-data-diff', Component: mockAdditionalComponent },
+      ]);
+
+      render(<TestCaseResultTab />);
+
+      expect(await screen.findByText('DataDiffResults')).toBeInTheDocument();
+    });
+
+    it('keeps extension components below the result history', async () => {
+      classBase.getAdditionalComponents.mockReturnValue([
+        { id: 'collate-data-diff', Component: mockAdditionalComponent },
+      ]);
+
+      render(<TestCaseResultTab />);
+
+      const chart = await screen.findByText('TestSummary');
+      const extension = await screen.findByText('DataDiffResults');
+
+      expect(
+        chart.compareDocumentPosition(extension) &
           Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
     });
