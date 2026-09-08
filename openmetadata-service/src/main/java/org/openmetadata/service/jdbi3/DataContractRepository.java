@@ -1292,6 +1292,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         testSuite.getTestCaseResultSummary().stream()
             .filter(test -> currentTests.contains(test.getTestCaseName()))
             .toList();
+    if (testSummary.isEmpty()) {
+      return validation; // all referenced test cases filtered out (e.g. soft-deleted); avoid 0/0 ->
+      // NaN
+    }
 
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
