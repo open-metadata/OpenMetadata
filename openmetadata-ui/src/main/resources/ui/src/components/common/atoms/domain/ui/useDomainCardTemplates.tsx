@@ -44,11 +44,11 @@ import {
 const DATA_PRODUCT_LABEL_CLASS = 'tw:text-primary';
 
 /**
- * Description field for the Data Product grid card: a 2-line-clamped plain-text
- * preview, with a "View more" affordance shown only when the text actually
- * overflows 2 lines. Clicking it does nothing on its own — it relies on the
- * card's own onClick (wired in EntityCardView) to navigate into the Data
- * Product, same as clicking anywhere else on the card.
+ * Description field for the Data Product grid card: a 2-line-clamped
+ * markdown-rendered preview, with a "View more" affordance shown only when
+ * the text actually overflows 2 lines. Clicking it does nothing on its own —
+ * it relies on the card's own onClick (wired in EntityCardView) to navigate
+ * into the Data Product, same as clicking anywhere else on the card.
  */
 const DataProductDescriptionField = ({
   description,
