@@ -145,6 +145,15 @@ describe('DomainClassBase', () => {
     });
   });
 
+  describe('getReviewersField', () => {
+    // Guards the OSS default itself: AddDomainForm's own tests mock this class,
+    // so only an assertion on the real one keeps the Collate-only Reviewers
+    // field from reappearing on the Data Product creation form.
+    it('returns null so OSS never renders the Collate-only reviewers field', () => {
+      expect(instance.getReviewersField()).toBeNull();
+    });
+  });
+
   describe('singleton export', () => {
     it('default export is an instance of DomainClassBase', () => {
       expect(domainClassBase).toBeInstanceOf(DomainClassBase);
