@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import {
+  ColorPickerField,
+  FormSelectItem,
+  IconPickerField,
+} from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
@@ -19,7 +24,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
@@ -47,6 +51,10 @@ import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  AVAILABLE_ICONS,
+  DEFAULT_GLOSSARY_TERM_ICON,
+} from '../../common/IconPicker/IconPicker.constants';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import {
   AddGlossaryTermFormProps,
@@ -322,6 +330,23 @@ const AddGlossaryTermForm = ({
 
   const reviewersList = toEntityReferenceArray(reviewersData);
 
+  const selectedColor = Form.useWatch<string | undefined>('color', form);
+
+  const iconOptions = useMemo<FormSelectItem[]>(
+    () =>
+      [
+        DEFAULT_GLOSSARY_TERM_ICON,
+        ...AVAILABLE_ICONS.filter(
+          (icon) => icon.name !== DEFAULT_GLOSSARY_TERM_ICON.name
+        ),
+      ].map((icon) => ({
+        icon: icon.component,
+        id: icon.name,
+        label: icon.name,
+      })),
+    []
+  );
+
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
@@ -386,11 +411,13 @@ const AddGlossaryTermForm = ({
       if (reviewers) {
         form.setFieldValue('reviewers', reviewers);
       }
+      // The fields are flat (`color`, `iconURL`); writing the nested
+      // `style.*` paths here meant an existing style never reached the form.
       if (style?.color) {
-        form.setFieldValue('style.color', style.color);
+        form.setFieldValue('color', style.color);
       }
       if (style?.iconURL) {
-        form.setFieldValue('style.iconURL', style.iconURL);
+        form.setFieldValue('iconURL', style.iconURL);
       }
 
       if (owners) {
@@ -497,17 +524,43 @@ const AddGlossaryTermForm = ({
         filterOptions: [getGlossaryTermFqn(glossaryTerm)],
       },
     },
+    // antd's Form.Item feeds the real `value`/`onChange` into these controlled
+    // pickers, so the `value` below only satisfies their prop types.
     {
       name: 'iconURL',
       id: 'root/iconURL',
-      label: t('label.icon-url'),
+      label: t('label.icon'),
       required: false,
-      placeholder: t('label.icon-url'),
-      type: FieldTypes.TEXT,
-      helperText: t('message.govern-url-size-message'),
+      type: FieldTypes.COMPONENT,
+      helperText: t('message.icon-aspect-ratio'),
+      helperTextType: HelperTextType.Tooltip,
+      formItemProps: {
+        getValueProps: (value) => ({ value: (value as string) ?? '' }),
+      },
       props: {
-        'data-testid': 'icon-url',
-        tooltipPlacement: 'right',
+        children: (
+          <IconPickerField
+            allowUrl
+            backgroundColor={selectedColor}
+            data-testid="icon-picker-btn"
+            defaultIcon={DEFAULT_GLOSSARY_TERM_ICON}
+            items={iconOptions}
+            labels={{
+              customIconUrl: t('label.icon-url'),
+              emptyState: t('label.no-entity-available', {
+                entity: t('label.icon-plural'),
+              }),
+              enterIconUrl: t('label.enter-entity', {
+                entity: t('label.icon-url'),
+              }),
+              iconsTab: t('label.icon-plural'),
+              urlTab: t('label.url'),
+            }}
+            name="iconURL"
+            placeholder={t('label.icon-url')}
+            value=""
+          />
+        ),
       },
     },
     {
@@ -515,13 +568,13 @@ const AddGlossaryTermForm = ({
       id: 'root/color',
       label: t('label.color'),
       required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
+      type: FieldTypes.COMPONENT,
+      formItemProps: {
+        getValueProps: (value) => ({ value: (value as string) ?? '' }),
+      },
+      props: {
+        children: <ColorPickerField data-testid="color-picker" value="" />,
+      },
     },
     {
       name: 'mutuallyExclusive',
