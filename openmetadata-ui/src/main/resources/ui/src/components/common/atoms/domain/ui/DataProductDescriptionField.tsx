@@ -18,7 +18,6 @@ import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import RichTextEditorPreviewerV1 from '../../../RichTextEditor/RichTextEditorPreviewerV1';
 
-
 export const DataProductDescriptionField = ({
   description,
 }: {
@@ -33,7 +32,10 @@ export const DataProductDescriptionField = ({
     if (!container) {
       return;
     }
-
+    // The clamp CSS below targets the nested `.markdown-parser` node that
+    // RichTextEditorPreviewerV1/BlockEditor renders into, not this wrapper -
+    // measure that node (falling back to the wrapper), matching the same
+    // technique FieldCard.tsx already uses for this exact problem.
     const measureNode =
       container.querySelector<HTMLElement>('.markdown-parser') ?? container;
     setIsTruncated(measureNode.scrollHeight > measureNode.clientHeight + 1);
@@ -48,7 +50,11 @@ export const DataProductDescriptionField = ({
     if (!container || typeof ResizeObserver === 'undefined') {
       return;
     }
-    
+    // RichTextEditorPreviewerV1 renders its BlockEditor lazily (React.lazy +
+    // Suspense), so the real content - and its real height - can land a tick
+    // after this component mounts. The effect above can catch a stale
+    // (pre-load) measurement; this observer re-checks whenever the rendered
+    // height actually changes, which is what BlockEditor's async mount does.
     const observer = new ResizeObserver(checkTruncation);
     observer.observe(container);
 
