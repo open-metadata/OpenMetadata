@@ -128,10 +128,7 @@ test.describe(
 
         const teamSelect = page.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
-        const dropdown = page.locator('.ant-tree-select-dropdown');
-        const selectedTeamChips = teamSelect.locator(
-          '.ant-select-selection-item'
-        );
+        const dropdown = page.getByRole('tree');
 
         await test.step(
           'Non-Group team with children is visible but not selectable',
@@ -145,8 +142,10 @@ test.describe(
 
             await departmentOption.click();
 
+            // A selection would render the team name as a chip inside the
+            // select control; the search input value is not text content.
             await expect(
-              selectedTeamChips.filter({ hasText: departmentTeamName })
+              teamSelect.getByText(departmentTeamName)
             ).toHaveCount(0);
           }
         );
@@ -169,9 +168,7 @@ test.describe(
 
           await groupOption.click();
 
-          await expect(
-            selectedTeamChips.filter({ hasText: groupTeamName })
-          ).toHaveCount(1);
+          await expect(teamSelect.getByText(groupTeamName)).toBeVisible();
         });
       } finally {
         await childlessDepartment.delete(apiContext);
@@ -207,9 +204,13 @@ test.describe(
 
         const teamSelect = popover.getByTestId('team-select');
         const teamSelectInput = teamSelect.getByRole('combobox');
+        // `teams-custom-dropdown-class` is set by TeamsSelectableNew via
+        // popupClassName (component-owned, not an antd internal).
         const dropdown = page.locator('.teams-custom-dropdown-class');
         // Chips truncate long labels, so selection is asserted on the tree
-        // node's selected state where the full team name is rendered.
+        // node's selected state where the full team name is rendered. The antd
+        // class is the only selected-state signal: rc-tree renders no treeitem
+        // role and (mis)maps aria-selected to `selectable`, not `selected`.
         const selectedTreeNodes = dropdown.locator(
           '.ant-select-tree-treenode-selected'
         );
